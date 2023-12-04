@@ -336,8 +336,26 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 				})
 			}
 			return nil, fmt.Errorf("unsupported iter type %q", p.AttachTo)
+		case strings.HasPrefix(p.SectionName, "fentry/"):
+			logger.Debugf("Attaching fentry %q to %q", p.Name, p.AttachTo)
+			return link.AttachTracing(link.TracingOptions{
+				Program:    prog,
+				AttachType: ebpf.AttachTraceFEntry,
+			})
+		case strings.HasPrefix(p.SectionName, "fexit/"):
+			logger.Debugf("Attaching fexit %q to %q", p.Name, p.AttachTo)
+			return link.AttachTracing(link.TracingOptions{
+				Program:    prog,
+				AttachType: ebpf.AttachTraceFExit,
+			})
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
+	case ebpf.RawTracepoint:
+		logger.Debugf("Attaching raw tracepoint %q to %q", p.Name, p.AttachTo)
+		return link.AttachRawTracepoint(link.RawTracepointOptions{
+			Name:    p.AttachTo,
+			Program: prog,
+		})
 	}
 
 	return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
