@@ -303,7 +303,49 @@ func (t *Tracer) handleTracers() (string, error) {
 	return tracer.MapName, nil
 }
 
-func (t *Tracer) installTracer(params *params.Params) error {
+func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
+	logger := gadgetCtx.Logger()
+
+	switch p.Type {
+	case ebpf.Kprobe:
+		switch {
+		case strings.HasPrefix(p.SectionName, "kprobe/"):
+			logger.Debugf("Attaching kprobe %q to %q", p.Name, p.AttachTo)
+			return link.Kprobe(p.AttachTo, prog, nil)
+		case strings.HasPrefix(p.SectionName, "kretprobe/"):
+			logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
+			return link.Kretprobe(p.AttachTo, prog, nil)
+		}
+		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
+	case ebpf.TracePoint:
+		logger.Debugf("Attaching tracepoint %q to %q", p.Name, p.AttachTo)
+		parts := strings.Split(p.AttachTo, "/")
+		return link.Tracepoint(parts[0], parts[1], prog, nil)
+	case ebpf.SocketFilter:
+		logger.Debugf("Attaching socket filter %q to %q", p.Name, p.AttachTo)
+		networkTracer := t.networkTracers[p.Name]
+		return nil, networkTracer.AttachProg(prog)
+	case ebpf.Tracing:
+		switch {
+		case strings.HasPrefix(p.SectionName, "iter/"):
+			logger.Debugf("Attaching iter %q to %q", p.Name, p.AttachTo)
+			switch p.AttachTo {
+			case "task", "tcp", "udp":
+				return link.AttachIter(link.IterOptions{
+					Program: prog,
+				})
+			}
+			return nil, fmt.Errorf("unsupported iter type %q", p.AttachTo)
+		}
+		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
+	}
+
+	return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
+}
+
+func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+
 	var err error
 	var tracerMapName string
 
@@ -362,45 +404,21 @@ func (t *Tracer) installTracer(params *params.Params) error {
 
 	// Attach programs
 	for progName, p := range t.spec.Programs {
-		if p.Type == ebpf.Kprobe && strings.HasPrefix(p.SectionName, "kprobe/") {
-			l, err := link.Kprobe(p.AttachTo, t.collection.Programs[progName], nil)
-			if err != nil {
-				return fmt.Errorf("attach BPF program %q: %w", progName, err)
-			}
+		l, err := t.attachProgram(gadgetCtx, p, t.collection.Programs[progName])
+		if err != nil {
+			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
+		}
+		if l != nil {
 			t.links = append(t.links, l)
-		} else if p.Type == ebpf.Kprobe && strings.HasPrefix(p.SectionName, "kretprobe/") {
-			l, err := link.Kretprobe(p.AttachTo, t.collection.Programs[progName], nil)
-			if err != nil {
-				return fmt.Errorf("attach BPF program %q: %w", progName, err)
+		}
+
+		// we need to store links to iterators on a separated list because we need them to run the programs.
+		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, "iter/") {
+			lIter, ok := l.(*link.Iter)
+			if !ok {
+				return fmt.Errorf("link is not an iterator")
 			}
-			t.links = append(t.links, l)
-		} else if p.Type == ebpf.TracePoint && strings.HasPrefix(p.SectionName, "tracepoint/") {
-			parts := strings.Split(p.AttachTo, "/")
-			l, err := link.Tracepoint(parts[0], parts[1], t.collection.Programs[progName], nil)
-			if err != nil {
-				return fmt.Errorf("attach BPF program %q: %w", progName, err)
-			}
-			t.links = append(t.links, l)
-		} else if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
-			networkTracer := t.networkTracers[p.Name]
-			err := networkTracer.AttachProg(t.collection.Programs[progName])
-			if err != nil {
-				return fmt.Errorf("attaching ebpf program to dispatcher: %w", err)
-			}
-		} else if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, "iter/") {
-			switch p.AttachTo {
-			case "task", "tcp", "udp":
-				l, err := link.AttachIter(link.IterOptions{
-					Program: t.collection.Programs[progName],
-				})
-				if err != nil {
-					return fmt.Errorf("attach BPF program %q: %w", progName, err)
-				}
-				t.links = append(t.links, l)
-				t.linksSnapshotters = append(t.linksSnapshotters, &linkSnapshotter{link: l, typ: p.AttachTo})
-			default:
-				return fmt.Errorf("unsupported iter type %q", p.AttachTo)
-			}
+			t.linksSnapshotters = append(t.linksSnapshotters, &linkSnapshotter{link: lIter, typ: p.AttachTo})
 		}
 	}
 
@@ -793,9 +811,7 @@ func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-
-	if err := t.installTracer(params); err != nil {
+	if err := t.installTracer(gadgetCtx); err != nil {
 		t.Close()
 		return fmt.Errorf("install tracer: %w", err)
 	}
