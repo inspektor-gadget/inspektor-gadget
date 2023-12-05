@@ -74,7 +74,9 @@ func (se *SocketEnricher) start() error {
 
 	err = kallsyms.SpecUpdateAddresses(specIter, []string{"socket_file_ops"})
 	if err != nil {
-		return fmt.Errorf("updating socket_file_ops address with ksyms: %w", err)
+		// Being unable to access to /proc/kallsyms can be caused by not having
+		// CAP_SYSLOG.
+		log.Warnf("updating socket_file_ops address with ksyms: %v\nEither you cannot access /proc/kallsyms or this file does not contain socket_file_ops", err)
 	}
 
 	opts := ebpf.CollectionOptions{
