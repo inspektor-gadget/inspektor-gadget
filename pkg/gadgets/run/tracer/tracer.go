@@ -255,12 +255,19 @@ type loadingOptions struct {
 func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 	var err error
 
+	tracerMapName := opts.tracerMapName
+
+	if t.createdByTracerMapMacro(tracerMapName) {
+		err = t.handleTracerMapDefinition(tracerMapName)
+		if err != nil {
+			return fmt.Errorf("handling tracer map definition through GADGET_TRACER_MAP: %w", err)
+		}
+	}
+
 	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts.collectionOptions)
 	if err != nil {
 		return fmt.Errorf("create BPF collection: %w", err)
 	}
-
-	tracerMapName := opts.tracerMapName
 
 	// Some logic before loading the programs
 	if tracerMapName != "" {
