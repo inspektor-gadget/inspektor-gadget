@@ -272,6 +272,16 @@ integration-tests: kubectl-gadget
 generate-documentation:
 	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
 
+.PHONY: website-local-update
+website-local-update:
+	# Check that the website repository is cloned in the parent directory
+	# https://github.com/inspektor-gadget/website
+	# And that "make docs" has been run once
+	test -d ../website/external-docs/inspektor-gadget.git_mainlatest/
+	# Replace the documentation
+	rm -rf ../website/external-docs/inspektor-gadget.git_mainlatest/docs
+	cp -r docs ../website/external-docs/inspektor-gadget.git_mainlatest/
+
 lint:
 	docker build -t linter -f Dockerfiles/linter.Dockerfile --build-arg VERSION=$(LINTER_VERSION) Dockerfiles
 # XDG_CACHE_HOME is necessary to avoid this type of errors:
@@ -393,3 +403,4 @@ help:
 	@echo  '  install-headers		- Install headers used to build gadgets in /usr/include/gadget'
 	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'
 	@echo  '  testdata			- Build testdata'
+	@echo  '  website-local-update		- Update the documentation in the website repository for testing locally'

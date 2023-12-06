@@ -20,7 +20,7 @@ Some characteristics of `ig`:
 - Easy to install as it is a single binary (statically linked).
 
 The architecture of `ig` is described in the main
-[architecture](architecture.md#ig) document.
+[architecture](core-concepts/architecture.md#ig) document.
 
 ## Use cases
 
@@ -41,7 +41,7 @@ The architecture of `ig` is described in the main
 ## Installation
 
 The instruction to install `ig` are available in the main
-[installation](install.md#installing-ig) guide.
+[installation](getting-started/install-linux.md#installing-ig) guide.
 
 ## Usage
 

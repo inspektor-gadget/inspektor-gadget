@@ -1,12 +1,12 @@
 ---
-title: 'Running a containerized gadget'
+title: 'Running a gadget'
 weight: 20
 description: >
   The run command allows to create an instance of a gadget.
 ---
 
 > ⚠️ This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
-Check the installation guide to enable [experimental features](../install.md#experimental-features).
+Check the installation guide to enable [experimental features](../getting-started/install-linux.md#experimental-features).
 
 The `run` command runs a gadget from an OCI image. Check the different gadgets available in https://github.com/orgs/inspektor-gadget/packages.
 

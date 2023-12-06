@@ -23,8 +23,7 @@ the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What eBPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
-* [Read more about the architecture](architecture.md)
-* [Learn how to install Inspektor Gadget](install.md)
-* [Kernel requirements for each gadget](requirements.md)
-* [Using `Trace` resources](custom-resources.md)
-* [Verify release assets](verify.md)
+* [Read more about the architecture](core-concepts/architecture.md)
+* [Learn how to install Inspektor Gadget](getting-started/_index.md)
+* [Kernel requirements for each gadget](getting-started/requirements.md)
+* [Verify release assets](getting-started/verify.md)

@@ -1,8 +1,8 @@
 ---
-title: Installation
+title: Installing on Kubernetes
 weight: 10
 description: >
-  How to install Inspektor Gadget
+  How to install Inspektor Gadget on Kubernetes
 ---
 
 <!-- toc -->
@@ -20,12 +20,7 @@ description: >
     + [Minikube](#minikube)
 - [Uninstalling from the cluster](#uninstalling-from-the-cluster)
 - [Version skew policy](#version-skew-policy)
-- [Installing `ig`](#installing-ig)
-  * [Install a specific release](#install-a-specific-release-1)
-  * [Compile from source](#compile-from-source-1)
 - [Experimental features](#experimental-features)
-  * [ig](#ig)
-  * [kubectl-gadget](#kubectl-gadget)
 <!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
@@ -84,7 +79,7 @@ $ kubectl gadget deploy
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
 
-![Screencast of the deploy command](install.gif)
+![Screencast of the deploy command](../install.gif)
 
 ### Choosing the gadget image
 
@@ -192,7 +187,7 @@ approach to the v1.0 release.
 
 ## Installing `ig`
 
-The [`ig`](ig.md) tool can be built and installed
+The [`ig`](../ig.md) tool can be built and installed
 independently. The result is a single binary (statically linked) that can be
 copied to a Kubernetes node or any host to trace its containers.
 
@@ -224,24 +219,6 @@ $ sudo cp ig /usr/local/bin/
 
 Inspektor Gadget has some experimental features disabled by default. Users can enable those
 features, however they don't provide any stability and could be removed at any time.
-
-### ig
-
-Experimental features can be enabled in `ig` by using the `IG_EXPERIMENTAL` env variable.
-
-```bash
-$ sudo IG_EXPERIMENTAL=true ig trace exec
-INFO[0000] Experimental features enabled
-...
-
-# pass -E if using export and sudo
-$ export IG_EXPERIMENTAL=true
-$ sudo -E ig trace exec
-INFO[0000] Experimental features enabled
-...
-```
-
-### kubectl-gadget
 
 `kubectl gadget deploy` provides an `--experimental` flag to enabled them.
 

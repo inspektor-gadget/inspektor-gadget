@@ -10,7 +10,7 @@ Here you can learn how you can contribute to Inspektor Gadget.
 ## Getting started
 
 To better understand how the pieces fit together, we recommend reading the
-[architecture](../architecture.md) documentation before starting to play with
+[architecture](../core-concepts/architecture.md) documentation before starting to play with
 Inspektor Gadget.
 
 ### Setup developer environment
@@ -94,7 +94,7 @@ For faster iteration, it's possible to make changes to Inspektor Gadget and
 test them on minikube locally without pushing container images to any
 registry.
 
-* Follow the specific [installation instructions](../install.md#minikube) for minikube or use `make minikube-start` to start it.
+* Follow the specific [installation instructions](../getting-started/install-kubernetes.md#minikube) for minikube or use `make minikube-start` to start it.
 * Deploy the locally modified version of Inspektor Gadget to an already
   running minikube cluster with `make minikube-deploy`.
 
