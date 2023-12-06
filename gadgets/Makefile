@@ -7,6 +7,7 @@ IG ?= ig
 GADGETS = \
 	trace_dns \
 	trace_exec \
+	trace_mount \
 	trace_open \
 	trace_tcpconnect \
 	trace_tcpretrans \
