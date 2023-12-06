@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"unsafe"
@@ -31,6 +32,8 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -175,6 +178,73 @@ func (t *Tracer) Close() {
 	for _, networkTracer := range t.networkTracers {
 		networkTracer.Close()
 	}
+}
+
+var (
+	onceRingbuf      sync.Once
+	ringbufAvailable bool
+)
+
+func isRingbufAvailable() bool {
+	onceRingbuf.Do(func() {
+		ringbuf, err := ebpf.NewMap(&ebpf.MapSpec{
+			Type:       ebpf.RingBuf,
+			MaxEntries: uint32(os.Getpagesize()),
+		})
+
+		ringbuf.Close()
+
+		ringbufAvailable = err == nil
+	})
+
+	return ringbufAvailable
+}
+
+// createdByTracerMapMacro returns whether the tracer map was created using
+// GADGET_TRACER_MAP().
+func (t *Tracer) createdByTracerMapMacro(tracerMapName string) bool {
+	results, err := types.GetGadgetIdentByPrefix(t.spec, types.TracerMapPrefix)
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(results, tracerMapName)
+}
+
+func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
+	if !isRingbufAvailable() {
+		if tracerMapName != "" {
+			log.Debugf("Ring buffers are not available, defaulting to perf ones")
+
+			bufMap, ok := t.spec.Maps[tracerMapName]
+			if !ok {
+				return fmt.Errorf("no buffer map named %s", tracerMapName)
+			}
+
+			bufMap.Type = ebpf.PerfEventArray
+			bufMap.KeySize = 4
+			bufMap.ValueSize = 4
+
+			t.spec.Maps[tracerMapName] = bufMap
+		}
+	} else {
+		heapMapName := "gadget_heap"
+		// If we delete the gadget_heap map, the verifier will not load the code
+		// because it cannot find it despite the code using it being dead one:
+		// ...: create BPF collection: program ig_mount_x: missing map gadget_heap
+		// Rather than deleting it, we just set its size to 0 and use a hash to
+		// avoid having one struct per CPU, i.e. reducing as much as possible the
+		// memory footprint it uses.
+		heapMap, ok := t.spec.Maps[heapMapName]
+		if ok {
+			heapMap.Type = ebpf.Hash
+			heapMap.ValueSize = 4
+
+			t.spec.Maps[heapMapName] = heapMap
+		}
+	}
+
+	return nil
 }
 
 type loadingOptions struct {

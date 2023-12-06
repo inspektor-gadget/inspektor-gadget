@@ -38,6 +38,10 @@ const (
 
 	// Prefix used to mark snapshotters structs
 	snapshottersPrefix = "gadget_snapshotter_"
+
+	// Prefix used to mark tracer map created with GADGET_TRACER_MAP() defined in
+	// include/gadget/buffer.h.
+	TracerMapPrefix = "gadget_map_tracer_"
 )
 
 // Keep this aligned with include/gadget/types.h
@@ -422,7 +426,6 @@ func GetGadgetIdentByPrefix(spec *ebpf.CollectionSpec, prefix string) ([]string,
 		if !strings.HasPrefix(btfVar.Name, prefix) {
 			continue
 		}
-
 		if btfVar.Linkage != btf.GlobalVar {
 			resultError = multierror.Append(resultError, fmt.Errorf("%q is not a global variable", btfVar.Name))
 		}
