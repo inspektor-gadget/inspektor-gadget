@@ -354,6 +354,30 @@ func getSimpleType(typ btf.Type) reflect.Type {
 	case *btf.Typedef:
 		typ, _ := getUnderlyingType(typedMember)
 		return getSimpleType(typ)
+	case *btf.Enum:
+		if typedMember.Signed {
+			switch typedMember.Size {
+			case 1:
+				return reflect.TypeOf(int8(0))
+			case 2:
+				return reflect.TypeOf(int16(0))
+			case 4:
+				return reflect.TypeOf(int32(0))
+			case 8:
+				return reflect.TypeOf(int64(0))
+			}
+		}
+
+		switch typedMember.Size {
+		case 1:
+			return reflect.TypeOf(uint8(0))
+		case 2:
+			return reflect.TypeOf(uint16(0))
+		case 4:
+			return reflect.TypeOf(uint32(0))
+		case 8:
+			return reflect.TypeOf(uint64(0))
+		}
 	}
 
 	return nil
@@ -492,6 +516,13 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 	l4endpointCounter := 0
 	timestampsCounter := 0
 
+	type enumDef struct {
+		btfEnum *btf.Enum
+		attrs   columns.Attributes
+	}
+
+	enums := []enumDef{}
+
 	for i, field := range eventStruct.Fields {
 		member := members[field.Name]
 
@@ -561,6 +592,18 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 			continue
 		}
 
+		enum, ok := member.Type.(*btf.Enum)
+		if ok {
+			// Add raw columns for enum. Below a column that print the string
+			// representation is added as well.
+			enums = append(enums, enumDef{
+				btfEnum: enum,
+				attrs:   attrs,
+			})
+			attrs.Name = member.Name + "_raw"
+			attrs.Visible = false
+		}
+
 		field := columns.DynamicField{
 			Attributes: &attrs,
 			Template:   attrs.Template,
@@ -577,6 +620,55 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 	if err := cols.AddFields(fields, base); err != nil {
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
+
+	btfSpec, err := btf.LoadKernelSpec()
+	if err != nil {
+		return nil, fmt.Errorf("getting kernel BTF: %w", err)
+	}
+
+	// Converts enum values to their string representation
+	for _, e := range enums {
+		c, ok := cols.GetColumn(e.attrs.Name + "_raw")
+		if !ok {
+			continue
+		}
+		var getter func(*types.Event) uint64
+		if e.btfEnum.Signed {
+			getterT := columns.GetFieldAsNumberFunc[int64, types.Event](c)
+			getter = func(ev *types.Event) uint64 {
+				return uint64(getterT(ev))
+			}
+		} else {
+			getter = columns.GetFieldAsNumberFunc[uint64, types.Event](c)
+		}
+
+		enum := &btf.Enum{}
+		// First, we search the type in kernel BTF.
+		err = btfSpec.TypeByName(e.btfEnum.Name, &enum)
+		if err != nil {
+			// We default to program BTF if nothing was found in kernel.
+			enum = e.btfEnum
+		}
+
+		err := cols.AddColumn(e.attrs, func(ev *types.Event) any {
+			if ev == nil || len(ev.RawData) == 0 {
+				return ""
+			}
+			val := getter(ev)
+
+			for _, v := range enum.Values {
+				if val == v.Value {
+					return v.Name
+				}
+			}
+
+			return "UNKNOWN"
+		})
+		if err != nil {
+			return nil, fmt.Errorf("adding column %s: %w", e.attrs.Name, err)
+		}
+	}
+
 	return cols, nil
 }
 
