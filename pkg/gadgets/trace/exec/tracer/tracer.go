@@ -114,7 +114,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching enter tracepoint: %w", err)
 	}
 
-	t.exitLink, err = loadExecsnoopExitLink(t.objs)
+	t.exitLink, err = link.Tracepoint("syscalls", "sys_exit_execve", t.objs.IgExecveX, nil)
 	if err != nil {
 		return fmt.Errorf("attaching exit tracepoint: %w", err)
 	}
