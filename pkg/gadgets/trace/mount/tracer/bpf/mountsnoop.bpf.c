@@ -82,7 +82,7 @@ static int probe_exit(void *ctx, int ret)
 
 	eventp = bpf_map_lookup_elem(&heap, &zero);
 	if (!eventp)
-		return 0;
+		goto cleanup;
 
 	eventp->mount_ns_id = gadget_get_mntns_id();
 	eventp->timestamp = bpf_ktime_get_boot_ns();
@@ -117,6 +117,7 @@ static int probe_exit(void *ctx, int ret)
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp,
 			      sizeof(*eventp));
 
+cleanup:
 	bpf_map_delete_elem(&args, &tid);
 	return 0;
 }
