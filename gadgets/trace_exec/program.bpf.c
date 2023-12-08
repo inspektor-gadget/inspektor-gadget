@@ -3,9 +3,6 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-#ifdef __TARGET_ARCH_arm64
-#include <bpf/bpf_tracing.h>
-#endif /* __TARGET_ARCH_arm64 */
 
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
@@ -149,13 +146,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	return 0;
 }
 
-#ifdef __TARGET_ARCH_arm64
-SEC("kretprobe/do_execveat_common.isra.0")
-int BPF_KRETPROBE(ig_execveat_x)
-#else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
-#endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 id;
 	pid_t pid;
@@ -170,11 +162,7 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 	event = bpf_map_lookup_elem(&execs, &pid);
 	if (!event)
 		return 0;
-#ifdef __TARGET_ARCH_arm64
-	ret = PT_REGS_RC(ctx);
-#else /* !__TARGET_ARCH_arm64 */
 	ret = ctx->ret;
-#endif /* !__TARGET_ARCH_arm64 */
 	if (ignore_failed && ret < 0)
 		goto cleanup;
 
