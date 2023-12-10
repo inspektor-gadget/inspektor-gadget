@@ -54,6 +54,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -199,9 +200,9 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
 
-	fanotifyPrivateData, err := readPrivateDataFromFd(fanotifyFd)
+	fanotifyPrivateData, err := kfilefields.ReadPrivateDataFromFd(fanotifyFd)
 	if err != nil {
-		return fmt.Errorf("readPrivateDataFromFd: %w", err)
+		return fmt.Errorf("reading private data from fanotify fd: %w", err)
 	}
 
 	consts := map[string]interface{}{

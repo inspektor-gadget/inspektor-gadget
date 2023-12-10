@@ -21,6 +21,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/cilium/ebpf"
@@ -81,6 +82,17 @@ func RequireKernelVersion(t testing.TB, expectedVersion *kernel.VersionInfo) {
 
 	if kernel.CompareKernelVersion(*version, *expectedVersion) < 0 {
 		t.Skipf("Test requires kernel %s", expectedVersion)
+	}
+}
+
+func RequireFileContains(t testing.TB, path, expected string) {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	require.Nil(t, err, "Failed to read %q: %s", path, err)
+
+	if !strings.Contains(string(data), expected) {
+		t.Skipf("Test requires %q to contain %q", path, expected)
 	}
 }
 

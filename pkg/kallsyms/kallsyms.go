@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package kallsyms provides functions to read /proc/kallsyms.
+// Package kallsyms provides functions to resolve kernel symbols.
 package kallsyms
 
 import (
@@ -149,20 +149,26 @@ var (
 //
 //	kallsyms.SpecUpdateAddresses(spec, []string{"socket_file_ops"})
 func SpecUpdateAddresses(spec *ebpf.CollectionSpec, symbols []string) error {
-	kAllSymsFactory := NewKAllSyms
-	return specUpdateAddresses(kAllSymsFactory, spec, symbols)
-}
-
-func specUpdateAddresses(
-	kAllSymsFactory func() (*KAllSyms, error),
-	spec *ebpf.CollectionSpec,
-	symbols []string,
-) error {
 	if len(symbols) == 0 {
 		// Nothing to do
 		return nil
 	}
 
+	return specUpdateAddresses(
+		[]symbolResolver{
+			newKAllSymsResolver(),
+			newEbpfResolver(),
+		},
+		spec,
+		symbols,
+	)
+}
+
+func specUpdateAddresses(
+	symbolResolvers []symbolResolver,
+	spec *ebpf.CollectionSpec,
+	symbols []string,
+) error {
 	addrLock.Lock()
 	defer addrLock.Unlock()
 
@@ -181,17 +187,19 @@ func specUpdateAddresses(
 
 	// Add the symbols that are not in the cache to the cache
 	if !allFoundInCache {
-		k, err := kAllSymsFactory()
-		if err != nil {
-			triedGetAddr[symbols[0]] = err
-			return err
-		}
 		for _, symbol := range symbols {
-			if _, ok := k.symbolsMap[symbol]; ok {
-				symbolsMap[symbol] = k.symbolsMap[symbol]
-			} else {
-				triedGetAddr[symbol] = os.ErrNotExist
-				return os.ErrNotExist
+			err := os.ErrNotExist
+			var addr uint64
+			for _, resolver := range symbolResolvers {
+				addr, err = resolver.resolve(symbol)
+				if err == nil {
+					symbolsMap[symbol] = addr
+					break
+				}
+			}
+			if err != nil {
+				triedGetAddr[symbol] = err
+				return err
 			}
 		}
 	}

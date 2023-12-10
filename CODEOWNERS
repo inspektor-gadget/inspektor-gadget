@@ -63,6 +63,7 @@
 /pkg/histogram/ @blanquicet
 /pkg/ig-manager/ @blanquicet
 /pkg/kallsyms/ @alban
+/pkg/kfilefields/ @alban @mqasimsarfraz
 /pkg/netnsenter/ @alban
 /pkg/networktracer/ @alban @blanquicet
 /pkg/operators/ @flyth
