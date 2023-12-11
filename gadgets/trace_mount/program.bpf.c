@@ -3,15 +3,50 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-#include "mountsnoop.h"
+#include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
+#include <gadget/types.h>
 
 #define MAX_ENTRIES 10240
+#define TASK_COMM_LEN 16
+#define FS_NAME_LEN 8
+#define DATA_LEN 512
+#define PATH_MAX 4096
+
+enum op {
+	MOUNT,
+	UMOUNT,
+};
+
+struct arg {
+	__u64 ts;
+	__u64 flags;
+	const char *src;
+	const char *dest;
+	const char *fs;
+	const char *data;
+	enum op op;
+};
+
+struct event {
+	__u64 delta;
+	__u64 flags;
+	__u32 pid;
+	__u32 tid;
+	gadget_mntns_id mount_ns_id;
+	__u64 timestamp;
+	int ret;
+	__u8 comm[TASK_COMM_LEN];
+	__u8 fs[FS_NAME_LEN];
+	__u8 src[PATH_MAX];
+	__u8 dest[PATH_MAX];
+	__u8 data[DATA_LEN];
+	enum op op;
+};
 
 const volatile pid_t target_pid = 0;
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event *unusedevent __attribute__((unused));
+GADGET_PARAM(target_pid);
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -32,6 +67,8 @@ struct {
 	__uint(key_size, sizeof(__u32));
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
+
+GADGET_TRACER(exec, events, event);
 
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
@@ -74,7 +111,6 @@ static int probe_exit(void *ctx, int ret)
 	struct arg *argp;
 	struct event *eventp;
 	int zero = 0;
-	u64 mntns_id;
 
 	argp = bpf_map_lookup_elem(&args, &tid);
 	if (!argp)

@@ -42,7 +42,7 @@ structs:
     - name: retval
       description: 'TODO: Fill field description'
       attributes:
-        width: 16
+        width: 3
         alignment: left
         ellipsis: end
     - name: args_count
