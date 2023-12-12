@@ -177,6 +177,38 @@ func (t *Tracer) Close() {
 	}
 }
 
+type loadingOptions struct {
+	collectionOptions ebpf.CollectionOptions
+	tracerMapName     string
+}
+
+func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
+	var err error
+
+	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts.collectionOptions)
+	if err != nil {
+		return fmt.Errorf("create BPF collection: %w", err)
+	}
+
+	tracerMapName := opts.tracerMapName
+
+	// Some logic before loading the programs
+	if tracerMapName != "" {
+		m := t.collection.Maps[tracerMapName]
+		switch m.Type() {
+		case ebpf.RingBuf:
+			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[tracerMapName])
+		case ebpf.PerfEventArray:
+			t.perfReader, err = perf.NewReader(t.collection.Maps[tracerMapName], gadgets.PerfBufferPages*os.Getpagesize())
+		}
+		if err != nil {
+			return fmt.Errorf("create BPF map reader: %w", err)
+		}
+	}
+
+	return err
+}
+
 func (t *Tracer) handleTracers() (string, error) {
 	_, tracer := getAnyMapElem(t.config.Metadata.Tracers)
 
@@ -237,26 +269,12 @@ func (t *Tracer) installTracer(params *params.Params) error {
 	}
 
 	// Load the ebpf objects
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
-	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts)
+	err = t.loadeBPFObjects(loadingOptions{
+		collectionOptions: ebpf.CollectionOptions{MapReplacements: mapReplacements},
+		tracerMapName:     tracerMapName,
+	})
 	if err != nil {
-		return fmt.Errorf("create BPF collection: %w", err)
-	}
-
-	// Some logic before loading the programs
-	if tracerMapName != "" {
-		m := t.collection.Maps[tracerMapName]
-		switch m.Type() {
-		case ebpf.RingBuf:
-			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[tracerMapName])
-		case ebpf.PerfEventArray:
-			t.perfReader, err = perf.NewReader(t.collection.Maps[tracerMapName], gadgets.PerfBufferPages*os.Getpagesize())
-		}
-		if err != nil {
-			return fmt.Errorf("create BPF map reader: %w", err)
-		}
+		return fmt.Errorf("loading eBPF objects: %w", err)
 	}
 
 	// Attach programs
