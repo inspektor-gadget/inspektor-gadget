@@ -86,7 +86,10 @@ message GetGadgetInfoRequest {
 }
 
 message GetGadgetInfoResponse {
-  bytes info = 1; // encoded in json
+  // This is the GadgetInfo structure defined in pkg/gadgets/run/types/types.go encoded in json.
+  // TODO: Ideally we should define the message here, but the implementation is changing too fast.
+  // We'll make it once the implementation is more stable.
+  bytes info = 1;
 }
 
 service GadgetManager {

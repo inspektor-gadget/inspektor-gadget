@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+	"golang.org/x/exp/constraints"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -95,6 +96,8 @@ type Tracer struct {
 
 	containers map[string]*containercollection.Container
 	links      []link.Link
+
+	eventFactory *types.EventFactory
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -129,6 +132,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("getting gadget info: %w", err)
 	}
 
+	t.eventFactory = info.EventFactory
 	t.config.ProgContent = info.ProgContent
 	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
@@ -329,6 +333,10 @@ func verifyGadgetUint64Typedef(t btf.Type) error {
 	return nil
 }
 
+func getAsInteger[OT constraints.Integer](data []byte, offset uint32) OT {
+	return *(*OT)(unsafe.Pointer(&data[offset]))
+}
+
 // processEventFunc returns a callback that parses a binary encoded event in data, enriches and
 // returns it.
 func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []byte) *types.Event {
@@ -354,6 +362,8 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 
 	endpointDefs := []endpointDef{}
 	timestampsOffsets := []uint32{}
+
+	enumSetters := []func(ev *types.Event, data []byte){}
 
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
@@ -401,13 +411,84 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			timestampsOffsets = append(timestampsOffsets, member.Offset.Bytes())
 		}
+
+		btfSpec, err := btf.LoadKernelSpec()
+		if err != nil {
+			logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
+		}
+
+		if enum, ok := member.Type.(*btf.Enum); ok {
+			if btfSpec != nil {
+				kernelEnum := &btf.Enum{}
+				if err = btfSpec.TypeByName(enum.Name, &kernelEnum); err == nil {
+					// Use kernel enum if found
+					enum = kernelEnum
+				}
+			}
+
+			var getter func(data []byte) uint64
+			typ := simpleTypeFromBTF(member.Type)
+			if typ == nil {
+				logger.Warnf("Failed to get type for %s", member.Name)
+				continue
+			}
+			switch typ.Kind {
+			case types.KindUint8:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[uint8](data, member.Offset.Bytes()))
+				}
+			case types.KindUint16:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[uint16](data, member.Offset.Bytes()))
+				}
+			case types.KindUint32:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[uint32](data, member.Offset.Bytes()))
+				}
+			case types.KindUint64:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[uint64](data, member.Offset.Bytes()))
+				}
+			case types.KindInt8:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[int8](data, member.Offset.Bytes()))
+				}
+			case types.KindInt16:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[int16](data, member.Offset.Bytes()))
+				}
+			case types.KindInt32:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[int32](data, member.Offset.Bytes()))
+				}
+			case types.KindInt64:
+				getter = func(data []byte) uint64 {
+					return uint64(getAsInteger[int64](data, member.Offset.Bytes()))
+				}
+			}
+
+			fieldSetter := types.GetSetter[string](t.eventFactory, member.Name)
+			enumSetter := func(ev *types.Event, data []byte) {
+				val := getter(data)
+
+				for _, v := range enum.Values {
+					if val == v.Value {
+						fieldSetter(ev, v.Name)
+						return
+					}
+				}
+
+				fieldSetter(ev, "UNKNOWN")
+			}
+			enumSetters = append(enumSetters, enumSetter)
+		}
 	}
 
 	return func(data []byte) *types.Event {
 		// get mntNsId for enriching the event
 		mntNsId := uint64(0)
 		if mountNsIdFound {
-			mntNsId = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+			mntNsId = getAsInteger[uint64](data, mntNsIdstart)
 		}
 
 		// enrich endpoints
@@ -464,14 +545,23 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			timestamps = append(timestamps, t)
 		}
 
-		return &types.Event{
-			Type:        eventtypes.NORMAL,
-			MountNsID:   mntNsId,
-			RawData:     data,
-			L3Endpoints: l3endpoints,
-			L4Endpoints: l4endpoints,
-			Timestamps:  timestamps,
+		ev := t.eventFactory.NewEvent()
+
+		ev.Type = eventtypes.NORMAL
+		ev.MountNsID = mntNsId
+		ev.L3Endpoints = l3endpoints
+		ev.L4Endpoints = l4endpoints
+		ev.Timestamps = timestamps
+
+		// handle enums
+		for _, setter := range enumSetters {
+			setter(ev, data)
 		}
+
+		// set ebpf data
+		ev.Blob[types.IndexEBPF] = data
+
+		return ev
 	}
 }
 
