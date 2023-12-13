@@ -407,29 +407,19 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		typ   endpointType
 	}
 
-	type wasmColumnDef struct {
-		setter func(*types.Event, string)
-		name   string
-		start  uint32
-		size   uint32
-	}
-
 	endpointDefs := []endpointDef{}
 	timestampsOffsets := []uint32{}
-	wasmColumnsByName := map[string]*wasmColumnDef{}
-	wasmColumns := []*wasmColumnDef{}
+
+	wasmColumnsMap := map[string]struct{}{}
 
 	for _, c := range t.config.Columns {
 		if c.WasmHandler {
-			d := &wasmColumnDef{
-				name: c.Name,
-			}
-			wasmColumnsByName[c.Name] = d
-			wasmColumns = append(wasmColumns, d)
+			wasmColumnsMap[c.Name] = struct{}{}
 		}
 	}
 
-	enumSetters := []func(ev *types.Event, data []byte){}
+	// Functions that are called by the tracer when generating the event
+	setters := []func(ev *types.Event, data []byte){}
 
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
@@ -546,20 +536,34 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 
 				fieldSetter(ev, "UNKNOWN")
 			}
-			enumSetters = append(enumSetters, enumSetter)
+			setters = append(setters, enumSetter)
 		}
 
-		if w, ok := wasmColumnsByName[member.Name]; ok {
-			w.name = member.Name
-			w.start = member.Offset.Bytes()
-			typ, ok := member.Type.(*btf.Array)
-			if !ok {
-				w.size = 1 // FIXME
-			} else {
-				w.size = typ.Nelems * 1 // FIXME
+		if _, ok := wasmColumnsMap[member.Name]; ok {
+			fieldSetter := types.GetSetter[string](t.eventFactory, member.Name)
+
+			methodName := "column_" + member.Name
+
+			start := member.Offset.Bytes()
+			size := uint32(1) // FIXME
+			if typ, ok := member.Type.(*btf.Array); ok {
+				size = typ.Nelems * 1 // FIXME
 			}
 
-			w.setter = types.GetSetter[string](t.eventFactory, member.Name)
+			wasmSetter := func(ev *types.Event, data []byte) {
+				inputBuffer := make([]byte, size)
+				copy(inputBuffer, data[start:start+size])
+
+				result, err := t.wasmInstance.Invoke(t.newHostCallContext(),
+					methodName, inputBuffer)
+				if err != nil {
+					logger.Warnf("invoking %s in wasm: %w", methodName, err)
+					return
+				}
+				fieldSetter(ev, string(result))
+			}
+
+			setters = append(setters, wasmSetter)
 		}
 	}
 
@@ -632,23 +636,9 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		ev.L4Endpoints = l4endpoints
 		ev.Timestamps = timestamps
 
-		// handle enums
-		for _, setter := range enumSetters {
+		// call setters configured above
+		for _, setter := range setters {
 			setter(ev, data)
-		}
-
-		// handle wasm columns
-		for _, wasmColumn := range wasmColumns {
-			methodName := "column_" + wasmColumn.name
-			inputBuffer := make([]byte, wasmColumn.size)
-			copy(inputBuffer, data[wasmColumn.start:wasmColumn.start+wasmColumn.size])
-
-			result, err := t.wasmInstance.Invoke(t.newHostCallContext(),
-				methodName, inputBuffer)
-			if err != nil {
-				logger.Warnf("invoking %s in wasm: %w", methodName, err)
-			}
-			wasmColumn.setter(ev, string(result))
 		}
 
 		// set ebpf data
