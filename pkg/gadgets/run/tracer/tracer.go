@@ -268,6 +268,8 @@ func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 		}
 	}
 
+	gadgets.FixBpfKtimeGetBootNs(t.spec.Programs)
+
 	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts.collectionOptions)
 	if err != nil {
 		return fmt.Errorf("create BPF collection: %w", err)
