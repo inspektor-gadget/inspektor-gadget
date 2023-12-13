@@ -350,17 +350,6 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
-	if !printOnly {
-		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
-		if err != nil {
-			return fmt.Errorf("searching for running Inspektor Gadget instances: %w", err)
-		}
-		if len(gadgetNamespaces) != 0 && gadgetNamespaces[0] != gadgetNamespace {
-			// Inspektor Gadget is the program name and therefore capitalized (Lint error ST1005)
-			//nolint:all
-			return fmt.Errorf("Inspektor Gadget is already deployed to the following namespaces: %v. Only a single instance is allowed", gadgetNamespaces)
-		}
-	}
 
 	found := false
 	for _, supportedHook := range supportedHooks {
