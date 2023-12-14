@@ -6,6 +6,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -50,11 +51,7 @@ struct {
 	__type(value, struct args_t);
 } start SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__uint(value_size, sizeof(u32));
-} events SEC(".maps");
+GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(open, events, event);
 
@@ -125,7 +122,7 @@ int ig_openat_e(struct trace_event_raw_sys_enter *ctx)
 
 static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 {
-	struct event event = {};
+	struct event *event;
 	struct args_t *ap;
 	int ret;
 	u32 pid = bpf_get_current_pid_tgid();
@@ -138,21 +135,24 @@ static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 	if (targ_failed && ret >= 0)
 		goto cleanup; /* want failed only */
 
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		goto cleanup;
+
 	/* event data */
-	event.pid = bpf_get_current_pid_tgid() >> 32;
-	event.uid = (u32)uid_gid;
-	event.gid = (u32)(uid_gid >> 32);
-	bpf_get_current_comm(&event.comm, sizeof(event.comm));
-	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
-	event.flags = ap->flags;
-	event.mode = ap->mode;
-	event.ret = ret;
-	event.mntns_id = gadget_get_mntns_id();
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event->pid = bpf_get_current_pid_tgid() >> 32;
+	event->uid = (u32)uid_gid;
+	event->gid = (u32)(uid_gid >> 32);
+	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
+	event->flags = ap->flags;
+	event->mode = ap->mode;
+	event->ret = ret;
+	event->mntns_id = gadget_get_mntns_id();
+	event->timestamp = bpf_ktime_get_boot_ns();
 
 	/* emit event */
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
-			      sizeof(event));
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
