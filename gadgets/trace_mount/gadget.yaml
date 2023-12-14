@@ -1,7 +1,7 @@
 name: trace mount
 description: trace mount syscalls
 tracers:
-  exec:
+  mount:
     mapName: events
     structName: event
 structs:

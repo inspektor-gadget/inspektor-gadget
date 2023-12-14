@@ -3,6 +3,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -55,20 +56,10 @@ struct {
 	__type(value, struct arg);
 } args SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, int);
-	__type(value, struct event);
-} heap SEC(".maps");
+// Roughly 30 events
+GADGET_TRACER_MAP(events, 1024 * 256);
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(__u32));
-} events SEC(".maps");
-
-GADGET_TRACER(exec, events, event);
+GADGET_TRACER(mount, events, event);
 
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
@@ -116,7 +107,7 @@ static int probe_exit(void *ctx, int ret)
 	if (!argp)
 		return 0;
 
-	eventp = bpf_map_lookup_elem(&heap, &zero);
+	eventp = gadget_reserve_buf(&events, sizeof(*eventp));
 	if (!eventp)
 		goto cleanup;
 
@@ -150,8 +141,7 @@ static int probe_exit(void *ctx, int ret)
 	else
 		eventp->data[0] = '\0';
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp,
-			      sizeof(*eventp));
+	gadget_submit_buf(ctx, &events, eventp, sizeof(*eventp));
 
 cleanup:
 	bpf_map_delete_elem(&args, &tid);

@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"unsafe"
@@ -32,6 +33,8 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
 	"golang.org/x/exp/constraints"
+
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -181,6 +184,112 @@ func (t *Tracer) Close() {
 	}
 }
 
+var (
+	onceRingbuf      sync.Once
+	ringbufAvailable bool
+)
+
+func isRingbufAvailable() bool {
+	onceRingbuf.Do(func() {
+		ringbuf, err := ebpf.NewMap(&ebpf.MapSpec{
+			Type:       ebpf.RingBuf,
+			MaxEntries: uint32(os.Getpagesize()),
+		})
+
+		ringbuf.Close()
+
+		ringbufAvailable = err == nil
+	})
+
+	return ringbufAvailable
+}
+
+// createdByTracerMapMacro returns whether the tracer map was created using
+// GADGET_TRACER_MAP().
+func (t *Tracer) createdByTracerMapMacro(tracerMapName string) bool {
+	results, err := types.GetGadgetIdentByPrefix(t.spec, types.TracerMapPrefix)
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(results, tracerMapName)
+}
+
+func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
+	if !isRingbufAvailable() {
+		if tracerMapName != "" {
+			log.Debugf("Ring buffers are not available, defaulting to perf ones")
+
+			bufMap, ok := t.spec.Maps[tracerMapName]
+			if !ok {
+				return fmt.Errorf("no buffer map named %s", tracerMapName)
+			}
+
+			bufMap.Type = ebpf.PerfEventArray
+			bufMap.KeySize = 4
+			bufMap.ValueSize = 4
+
+			t.spec.Maps[tracerMapName] = bufMap
+		}
+	} else {
+		heapMapName := "gadget_heap"
+		// If we delete the gadget_heap map, the verifier will not load the code
+		// because it cannot find it despite the code using it being dead one:
+		// ...: create BPF collection: program ig_mount_x: missing map gadget_heap
+		// Rather than deleting it, we just set its size to 0 and use a hash to
+		// avoid having one struct per CPU, i.e. reducing as much as possible the
+		// memory footprint it uses.
+		heapMap, ok := t.spec.Maps[heapMapName]
+		if ok {
+			heapMap.Type = ebpf.Hash
+			heapMap.ValueSize = 4
+
+			t.spec.Maps[heapMapName] = heapMap
+		}
+	}
+
+	return nil
+}
+
+type loadingOptions struct {
+	collectionOptions ebpf.CollectionOptions
+	tracerMapName     string
+}
+
+func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
+	var err error
+
+	tracerMapName := opts.tracerMapName
+
+	if t.createdByTracerMapMacro(tracerMapName) {
+		err = t.handleTracerMapDefinition(tracerMapName)
+		if err != nil {
+			return fmt.Errorf("handling tracer map definition through GADGET_TRACER_MAP: %w", err)
+		}
+	}
+
+	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts.collectionOptions)
+	if err != nil {
+		return fmt.Errorf("create BPF collection: %w", err)
+	}
+
+	// Some logic before loading the programs
+	if tracerMapName != "" {
+		m := t.collection.Maps[tracerMapName]
+		switch m.Type() {
+		case ebpf.RingBuf:
+			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[tracerMapName])
+		case ebpf.PerfEventArray:
+			t.perfReader, err = perf.NewReader(t.collection.Maps[tracerMapName], gadgets.PerfBufferPages*os.Getpagesize())
+		}
+		if err != nil {
+			return fmt.Errorf("create BPF map reader: %w", err)
+		}
+	}
+
+	return err
+}
+
 func (t *Tracer) handleTracers() (string, error) {
 	_, tracer := getAnyMapElem(t.config.Metadata.Tracers)
 
@@ -241,26 +350,12 @@ func (t *Tracer) installTracer(params *params.Params) error {
 	}
 
 	// Load the ebpf objects
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
-	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts)
+	err = t.loadeBPFObjects(loadingOptions{
+		collectionOptions: ebpf.CollectionOptions{MapReplacements: mapReplacements},
+		tracerMapName:     tracerMapName,
+	})
 	if err != nil {
-		return fmt.Errorf("create BPF collection: %w", err)
-	}
-
-	// Some logic before loading the programs
-	if tracerMapName != "" {
-		m := t.collection.Maps[tracerMapName]
-		switch m.Type() {
-		case ebpf.RingBuf:
-			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[tracerMapName])
-		case ebpf.PerfEventArray:
-			t.perfReader, err = perf.NewReader(t.collection.Maps[tracerMapName], gadgets.PerfBufferPages*os.Getpagesize())
-		}
-		if err != nil {
-			return fmt.Errorf("create BPF map reader: %w", err)
-		}
+		return fmt.Errorf("loading eBPF objects: %w", err)
 	}
 
 	// Attach programs
