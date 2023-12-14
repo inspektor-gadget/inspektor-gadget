@@ -37,6 +37,9 @@ The first thing we need is to include some header files.
 // more about different available helpers
 #include <bpf/bpf_helpers.h>
 
+// Inspektor Gadget buffer
+#include <gadget/buffer.h>
+
 // Inspektor Gadget macros
 #include <gadget/macros.h>
 ```
@@ -50,21 +53,21 @@ struct event {
 };
 ```
 
-Then, create a perf event array eBPF map to send events to user space:
+Then, create a buffer eBPF map to send events to user space:
 
 ```c
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(__u32));
-} events SEC(".maps");
+// events is the name of the buffer map and 1024 * 256 is its size.
+GADGET_TRACER_MAP(events, 1024 * 256);
 ```
+
+This macro will automatically create a ring buffer if the kernel supports it.
+Otherwise, a perf array will be created.
 
 And mark this map as a tracer map, i.e. a map that is used to push events to user space:
 
 ```c
 // open is the name for the tracer
-// events is the name of the perf event array map
+// events is the name of buffer map
 // event is the structure type
 GADGET_TRACER(open, events, event);
 ```
@@ -74,18 +77,21 @@ need, in this case we'll attach to a tracepoint that is called each time the ope
 is executed.
 
 This program collects the information to fill the event (only pid for now), and then calls
-`bpf_perf_event_output` helper to send the event to user space.
+`gadget_submit_buf()` helper to send the event to user space.
 
 ```c
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct trace_event_raw_sys_enter *ctx)
 {
-	struct event event = {};
+	struct event *event;
 
-	event.pid = bpf_get_current_pid_tgid() >> 32;
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return 0;
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	event->pid = bpf_get_current_pid_tgid() >> 32;
+
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
 }
@@ -111,6 +117,9 @@ The full file should look like:
 // more about different available helpers
 #include <bpf/bpf_helpers.h>
 
+// Inspektor Gadget buffer
+#include <gadget/buffer.h>
+
 // Inspektor Gadget macros
 #include <gadget/macros.h>
 
@@ -118,26 +127,26 @@ struct event {
 	__u32 pid;
 };
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__uint(value_size, sizeof(u32));
-} events SEC(".maps");
+// events is the name of the buffer map and 1024 * 256 is its size.
+GADGET_TRACER_MAP(events, 1024 * 256);
 
 // open is the name of the tracer
-// events is the name of the perf event array map
+// events is the name of the buffer map
 // event is the structure type
 GADGET_TRACER(open, events, event);
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct trace_event_raw_sys_enter *ctx)
 {
-	struct event event = {};
+	struct event *event;
 
-	event.pid = bpf_get_current_pid_tgid() >> 32;
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return 0;
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	event->pid = bpf_get_current_pid_tgid() >> 32;
+
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
 }
@@ -455,8 +464,8 @@ and add the logic in the eBPF program to fill them:
 
 ```c
 	__u64 uid_gid = bpf_get_current_uid_gid();
-	event.uid = (__u32)uid_gid;
-	event.gid = (__u32)(uid_gid >> 32);
+	event->uid = (__u32)uid_gid;
+	event->gid = (__u32)(uid_gid >> 32);
 ```
 
 Let's build the gadget with the `--update-metadata` file, so our new fields are automatically added
