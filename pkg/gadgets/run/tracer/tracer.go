@@ -740,7 +740,13 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		for _, wasmColumn := range wasmColumns {
 			methodName := "column_" + wasmColumn.name
 			inputBuffer := make([]byte, wasmColumn.size)
-			copy(inputBuffer, data[wasmColumn.start:wasmColumn.start+wasmColumn.size])
+			// trim the input buffer if it's not big enough
+			upper := wasmColumn.start + wasmColumn.size
+			if uint32(len(data)) < upper {
+				upper = uint32(len(data)) - 1
+			}
+
+			copy(inputBuffer, data[wasmColumn.start:upper])
 
 			result, err := t.wasmInstance.Invoke(t.newHostCallContext(),
 				methodName, inputBuffer)
