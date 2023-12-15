@@ -37,6 +37,10 @@ import (
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
 )
 
+var (
+	errLayerNotFound = errors.New("layer not found")
+)
+
 type AuthOptions struct {
 	AuthFile    string
 	SecretBytes []byte
@@ -120,7 +124,7 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pu
 	}
 
 	wasm, err := getLayerFromManifest(ctx, imageStore, manifest, wasmObjectMediaType)
-	if err != nil {
+	if err != nil && !errors.Is(err, errLayerNotFound) {
 		return nil, fmt.Errorf("getting wasm program: %w", err)
 	}
 
@@ -493,7 +497,11 @@ func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *oci
 			layerCount++
 		}
 	}
-	if layerCount != 1 {
+	if layerCount == 0 {
+		return nil, fmt.Errorf("layer %s, %w", mediaType, errLayerNotFound)
+	}
+
+	if layerCount > 1 {
 		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
 	}
 	layerBytes, err := getContentFromDescriptor(ctx, target, layer)
