@@ -89,6 +89,7 @@ func main() {
 	removeNRIHooks()
 
 	os.RemoveAll("/sys/fs/bpf/gadget/")
+	os.Remove("/run/gadgettracermanager.socket")
 
 	log.Infof("Cleanup completed")
 }
