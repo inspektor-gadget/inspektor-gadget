@@ -501,6 +501,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
 	for _, member := range typ.Members {
+		member := member
 		switch member.Type.TypeName() {
 		case types.MntNsIdTypeName:
 			if err := verifyGadgetUint64Typedef(member.Type); err != nil {
@@ -565,38 +566,39 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 				logger.Warnf("Failed to get type for %s", member.Name)
 				continue
 			}
+			offset := member.Offset.Bytes()
 			switch typ.Kind {
 			case types.KindUint8:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[uint8](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[uint8](data, offset))
 				}
 			case types.KindUint16:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[uint16](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[uint16](data, offset))
 				}
 			case types.KindUint32:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[uint32](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[uint32](data, offset))
 				}
 			case types.KindUint64:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[uint64](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[uint64](data, offset))
 				}
 			case types.KindInt8:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[int8](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[int8](data, offset))
 				}
 			case types.KindInt16:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[int16](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[int16](data, offset))
 				}
 			case types.KindInt32:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[int32](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[int32](data, offset))
 				}
 			case types.KindInt64:
 				getter = func(data []byte) uint64 {
-					return uint64(getAsInteger[int64](data, member.Offset.Bytes()))
+					return uint64(getAsInteger[int64](data, offset))
 				}
 			}
 
