@@ -60,11 +60,11 @@ structs:
         hidden: true
         ellipsis: end
     - name: args
-      description: 'TODO: Fill field description'
+      description: Process atributes
       attributes:
-        width: 16
+        wasmHandler: true
+        width: 40
         alignment: left
-        hidden: true
         ellipsis: end
     - name: mntns_id
       description: 'Mount namespace inode id'
