@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/url"
 	"strings"
@@ -277,7 +278,11 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 }
 
 func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
-	ctx, cancelDial := context.WithTimeout(ctx, time.Second*time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint()))
+	duration := r.globalParams.Get(ParamConnectionTimeout).AsUint()
+	if duration > math.MaxInt64 {
+		return nil, fmt.Errorf("duration (%d) exceeds math.MaxInt64 (%d)", duration, math.MaxInt64)
+	}
+	ctx, cancelDial := context.WithTimeout(ctx, time.Second*time.Duration(duration))
 	defer cancelDial()
 
 	// use default params for now
@@ -341,7 +346,12 @@ func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *para
 	target := targets[0]
 	log.Debugf("using target %q (%q)", target.addressOrPod, target.node)
 
-	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	duration := r.globalParams.Get(ParamConnectionTimeout).AsUint()
+	if duration > math.MaxInt64 {
+		return nil, fmt.Errorf("duration (%d) exceeds math.MaxInt64 (%d)", duration, math.MaxInt64)
+	}
+
+	timeout := time.Second * time.Duration(duration)
 	conn, err := r.dialContext(ctx, target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)

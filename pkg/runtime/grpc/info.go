@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -60,7 +61,11 @@ func (r *Runtime) UpdateDeployInfo() error {
 }
 
 func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
-	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	duration := r.globalParams.Get(ParamConnectionTimeout).AsUint()
+	if duration > math.MaxInt64 {
+		return nil, fmt.Errorf("duration (%d) exceeds math.MaxInt64 (%d)", duration, math.MaxInt64)
+	}
+	timeout := time.Second * time.Duration(duration)
 	ctx, cancelDial := context.WithTimeout(context.Background(), timeout)
 	defer cancelDial()
 
