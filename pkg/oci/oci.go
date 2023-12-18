@@ -268,18 +268,23 @@ func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc
 	images := []*GadgetImageDesc{}
 	err := store.Tags(ctx, "", func(tags []string) error {
 		for _, fullTag := range tags {
-			repository, err := getRepositoryFromImage(fullTag)
+			parsed, err := reference.Parse(fullTag)
 			if err != nil {
-				log.Debugf("getting repository from image %q: %s", fullTag, err)
+				log.Debugf("parsing image %q: %s", fullTag, err)
 				continue
+			}
+
+			var repository string
+			if named, ok := parsed.(reference.Named); ok {
+				repository = named.Name()
 			}
 			repository = strings.TrimPrefix(repository, defaultDomain+"/"+officialRepoPrefix)
 
-			tag, err := getTagFromImage(fullTag)
-			if err != nil {
-				log.Debugf("getting tag from image %q: %s", fullTag, err)
-				continue
+			tag := "latest"
+			if tagged, ok := parsed.(reference.Tagged); ok {
+				tag = tagged.Tag()
 			}
+
 			image := &GadgetImageDesc{
 				Repository: repository,
 				Tag:        tag,
@@ -381,29 +386,6 @@ func DeleteGadgetImage(ctx context.Context, image string) error {
 		}
 	}
 	return deleteTree(ctx, ociStore, descriptor)
-}
-
-func getTagFromImage(image string) (string, error) {
-	repo, err := reference.Parse(image)
-	if err != nil {
-		return "", fmt.Errorf("parsing image %q: %w", image, err)
-	}
-	tagged, ok := repo.(reference.Tagged)
-	if !ok {
-		return "latest", nil
-	}
-	return tagged.Tag(), nil
-}
-
-func getRepositoryFromImage(image string) (string, error) {
-	repo, err := reference.Parse(image)
-	if err != nil {
-		return "", fmt.Errorf("parsing image %q: %w", image, err)
-	}
-	if named, ok := repo.(reference.Named); ok {
-		return named.Name(), nil
-	}
-	return "", fmt.Errorf("image has to be a named reference")
 }
 
 // splitIGDomain splits a repository name to domain and remote-name.
