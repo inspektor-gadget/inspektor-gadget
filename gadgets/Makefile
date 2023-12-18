@@ -9,6 +9,7 @@ GADGETS = \
 	trace_exec \
 	trace_mount \
 	trace_open \
+	trace_signal \
 	trace_tcpconnect \
 	trace_tcpretrans \
 	snapshot_process \
