@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
@@ -51,6 +52,14 @@ const (
 	PullImageAlways  = "always"
 	PullImageMissing = "missing"
 	PullImageNever   = "never"
+)
+
+const (
+	defaultDomain      = "ghcr.io"
+	officialRepoPrefix = "inspektor-gadget/gadget/"
+	// localhost is treated as a special value for domain-name. Any other
+	// domain-name without a "." or a ":port" are considered a path component.
+	localhost = "localhost"
 )
 
 // GadgetImage is the representation of a gadget packaged in an OCI image.
@@ -142,13 +151,13 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // pullGadgetImageToStore pulls the gadget image into the given store and returns its descriptor.
 func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
-	repo, err := NewRepository(image, authOpts)
-	if err != nil {
-		return nil, fmt.Errorf("creating remote repository: %w", err)
-	}
 	targetImage, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+	repo, err := newRepository(targetImage, authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
 	desc, err := oras.Copy(ctx, repo, targetImage.String(), imageStore,
 		targetImage.String(), oras.DefaultCopyOptions)
@@ -180,7 +189,7 @@ func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthO
 		return fmt.Errorf("resolving image %q: %w", image, err)
 	}
 
-	repo, err := NewRepository(image, authOpts)
+	repo, err := newRepository(targetImage, authOpts)
 	if err != nil {
 		return fmt.Errorf("creating remote repository: %w", err)
 	}
@@ -198,13 +207,13 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
-	repo, err := NewRepository(image, authOpts)
-	if err != nil {
-		return nil, fmt.Errorf("creating remote repository: %w", err)
-	}
 	targetImage, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+	repo, err := newRepository(targetImage, authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
 	desc, err := oras.Copy(context.TODO(), ociStore, targetImage.String(), repo,
 		targetImage.String(), oras.DefaultCopyOptions)
@@ -264,6 +273,8 @@ func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc
 				log.Debugf("getting repository from image %q: %s", fullTag, err)
 				continue
 			}
+			repository = strings.TrimPrefix(repository, defaultDomain+"/"+officialRepoPrefix)
+
 			tag, err := getTagFromImage(fullTag)
 			if err != nil {
 				log.Debugf("getting tag from image %q: %s", fullTag, err)
@@ -395,8 +406,30 @@ func getRepositoryFromImage(image string) (string, error) {
 	return "", fmt.Errorf("image has to be a named reference")
 }
 
+// splitIGDomain splits a repository name to domain and remote-name.
+// If no valid domain is found, the default domain is used. Repository name
+// needs to be already validated before.
+// Inspired on https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L126
+// TODO: Ideally we should use the upstream function but docker.io is harcoded there
+// https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L31
+func splitIGDomain(name string) (domain, remainder string) {
+	i := strings.IndexRune(name, '/')
+	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != localhost && strings.ToLower(name[:i]) == name[:i]) {
+		domain, remainder = defaultDomain, name
+	} else {
+		domain, remainder = name[:i], name[i+1:]
+	}
+	if domain == defaultDomain && !strings.ContainsRune(remainder, '/') {
+		remainder = officialRepoPrefix + remainder
+	}
+	return
+}
+
 func normalizeImageName(image string) (reference.Named, error) {
-	name, err := reference.ParseNormalizedNamed(image)
+	// Use the default gadget's registry if no domain is specified.
+	domain, remainer := splitIGDomain(image)
+
+	name, err := reference.ParseNormalizedNamed(domain + "/" + remainer)
 	if err != nil {
 		return nil, fmt.Errorf("parsing normalized image %q: %w", image, err)
 	}
@@ -468,20 +501,16 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	}, nil
 }
 
-// NewRepository creates a client to the remote repository identified by
+// newRepository creates a client to the remote repository identified by
 // image using the given auth options.
-func NewRepository(image string, authOpts *AuthOptions) (*remote.Repository, error) {
-	repository, err := getRepositoryFromImage(image)
-	if err != nil {
-		return nil, fmt.Errorf("getting repository from image %q: %w", image, err)
-	}
-	repo, err := remote.NewRepository(repository)
+func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Repository, error) {
+	repo, err := remote.NewRepository(image.Name())
 	if err != nil {
 		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
 	repo.PlainHTTP = authOpts.Insecure
 	if !authOpts.Insecure {
-		client, err := newAuthClient(repository, authOpts)
+		client, err := newAuthClient(image.Name(), authOpts)
 		if err != nil {
 			return nil, fmt.Errorf("creating auth client: %w", err)
 		}

@@ -174,19 +174,19 @@ func TestNormalizeImage(t *testing.T) {
 		},
 		"image": {
 			image:         "ig",
-			imageExpected: "docker.io/library/ig:latest",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latest",
 		},
 		"image_and_tag": {
 			image:         "ig:latest",
-			imageExpected: "docker.io/library/ig:latest",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latest",
 		},
 		"image_and_tag_2": {
 			image:         "ig:latestttt",
-			imageExpected: "docker.io/library/ig:latestttt",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latestttt",
 		},
 		"host_image_and_tag": {
 			image:         "inspektor-gadget/ig:foobar",
-			imageExpected: "docker.io/inspektor-gadget/ig:foobar",
+			imageExpected: "ghcr.io/inspektor-gadget/ig:foobar",
 		},
 		"schema_host_image_and_tag": {
 			image: "https://inspektor-gadget/ig:baz",
