@@ -175,7 +175,6 @@ func init() {
 	deployCmd.PersistentFlags().Uint64VarP(
 		&daemonLogLevel,
 		"daemon-log-level", "", 0, "Set the ig-k8s log level. 0=info, 1=debug, 2=trace")
-	fmt.Println("Deploy Conmmand Init")
 	rootCmd.AddCommand(deployCmd)
 }
 
