@@ -19,6 +19,7 @@ package tracer
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,6 +28,8 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+
+	log "github.com/sirupsen/logrus"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -184,6 +187,12 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int)
 		if err != nil {
 			continue
 		}
+
+		if tid64 > math.MaxUint32 {
+			log.Errorf("TID (%d) exceeds math.MaxUint32 (%d)", tid64, math.MaxUint32)
+			continue
+		}
+
 		tid := int(tid64)
 		event, err := getTidEvent(config, enricher, pid, tid)
 		if err != nil {
@@ -213,6 +222,12 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 		if err != nil {
 			continue
 		}
+
+		if pid64 > math.MaxUint32 {
+			log.Errorf("PID (%d) exceeds math.MaxUint32 (%d)", pid64, math.MaxUint32)
+			continue
+		}
+
 		pid := int(pid64)
 
 		if config.ShowThreads {

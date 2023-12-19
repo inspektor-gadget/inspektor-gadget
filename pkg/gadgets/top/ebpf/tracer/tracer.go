@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -182,7 +183,13 @@ func getPidMapFromProcFs() (map[uint32][]*types.Process, error) {
 		}
 		for _, fd := range fdescs {
 			if progID, err := getProgIDFromFile(filepath.Join(host.HostProcFs, p.Name(), "fdinfo", fd.Name())); err == nil {
-				pid, _ := strconv.ParseUint(p.Name(), 10, 32)
+				pid, err := strconv.ParseUint(p.Name(), 10, 32)
+				if err != nil {
+					return nil, err
+				}
+				if pid > math.MaxInt32 {
+					return nil, fmt.Errorf("PID (%d) exceeds math.MaxInt32 (%d)", pid, math.MaxInt32)
+				}
 				if _, ok := pidmap[progID]; !ok {
 					pidmap[progID] = make([]*types.Process, 0, 1)
 				}
