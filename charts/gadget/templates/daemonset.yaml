@@ -93,6 +93,8 @@ spec:
               value: {{ .Values.config.experimental | quote }}
             - name: EVENTS_BUFFER_LENGTH
               value: {{ .Values.config.eventsBufferLength | quote }}
+            - name: GADGET_TRACER_MANAGER_LOG_LEVEL
+              value: {{ .Values.config.daemonLogLevel | quote }}
           securityContext:
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate
             # SELinux context [2] to be able to mount host directories with correct permissions.
