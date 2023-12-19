@@ -51,7 +51,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc5
 	github.com/prometheus/client_golang v1.17.0
 	github.com/shopspring/decimal v1.3.1
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	github.com/tklauser/numcpus v0.7.0
