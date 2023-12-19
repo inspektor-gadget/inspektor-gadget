@@ -145,7 +145,7 @@ jobs:
           make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ebpf-objects
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
-            echo "$changes"
+            >&2 echo "$changes"
             exit 1
           fi
       - name: Check that testdata is updated
@@ -153,7 +153,7 @@ jobs:
           make testdata
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
-            echo "$changes"
+            >&2 echo "$changes"
             exit 1
           fi
 
@@ -567,7 +567,9 @@ jobs:
     name: Publish gadget img manifest
     # level: 2
     if: github.event_name != 'pull_request'
-    needs: build-gadget-container-images
+    needs:
+      - build-gadget-container-images
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -619,6 +621,14 @@ jobs:
 
           image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+      - name: Sign the manifest list
+        env:
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        run: |
+          cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
@@ -1018,6 +1028,27 @@ jobs:
             echo "cosign=false" >> $GITHUB_OUTPUT
           fi
 
+  public-key-check:
+    name: Public key check
+    # level: 1
+    needs: check-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+      - name: Check if public key is up-to-date.
+        env:
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        run: |
+          cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
+          changes="$(git status --porcelain)"
+          if [ -n "$changes" ] ; then
+            >&2 echo "$changes"
+            exit 1
+          fi
+
   test-integration-k8s-ig:
     name: Test ig w/ k8s
     # level: 3
@@ -1387,8 +1418,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      # Needed by cosign to sign the container image.
-      packages: write
     if: startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.cosign == 'true'
     steps:
     - uses: actions/checkout@v4
@@ -1481,15 +1510,6 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Sign container image
-      shell: bash
-      env:
-        COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
-        COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-      run: |
-        image_digest=${{ needs.publish-gadget-images-manifest.outputs.image-digest }}
-
-        cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}@${image_digest}"
     - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
       with:
