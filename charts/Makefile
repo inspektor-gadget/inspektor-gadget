@@ -19,9 +19,11 @@ build: clean
 	cp -r gadget $(BUILD_DIR)
 	cp -r ../pkg/resources/crd/bases $(CHART_DIR)/crds
 	mv $(CHART_DIR)/Chart.yaml.tmpl $(CHART_DIR)/Chart.yaml
+	# sed on macOS requires an extra argument for the backup file
+	# or an empty string to disable backup files
 ifeq ($(shell uname -s),Darwin)
-	sed -i "*.bak" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
-	sed -i "*.bak" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
+	sed -i "" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
+	sed -i "" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
 else
 	sed -i "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
 	sed -i "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
