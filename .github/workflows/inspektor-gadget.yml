@@ -251,8 +251,6 @@ jobs:
     name: btfgen
     # level: 0
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -289,6 +287,8 @@ jobs:
       - btfgen
       - build-helper-images
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
