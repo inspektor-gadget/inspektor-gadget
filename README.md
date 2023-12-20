@@ -274,3 +274,5 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 The Inspektor Gadget user space components are licensed under the
 [Apache License, Version 2.0](LICENSE). The BPF code templates are licensed
 under the [General Public License, Version 2.0, with the Linux-syscall-note](LICENSE-bpf.txt).
+
+foo
