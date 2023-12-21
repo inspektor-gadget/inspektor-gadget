@@ -40,6 +40,7 @@ import (
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 )
 
 func main() {
