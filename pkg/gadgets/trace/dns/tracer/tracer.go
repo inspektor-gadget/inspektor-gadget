@@ -23,10 +23,13 @@ import (
 	"time"
 	"unsafe"
 
+	log "github.com/sirupsen/logrus"
+
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -50,6 +53,12 @@ func NewTracer() (*Tracer, error) {
 	if err := t.install(); err != nil {
 		t.Close()
 		return nil, fmt.Errorf("installing tracer: %w", err)
+	}
+
+	// timeout not configurable in this case
+	if err := t.run(context.TODO(), log.StandardLogger(), time.Minute); err != nil {
+		t.Close()
+		return nil, fmt.Errorf("running tracer: %w", err)
 	}
 
 	return t, nil
@@ -280,20 +289,19 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 
 	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
 
-	// Start a background thread to garbage collect queries without responses
-	// from the queries map (used to calculate DNS latency).
-	// The goroutine terminates when t.ctx is done.
-	queryMap := t.Tracer.GetMap(BPFQueryMapName)
-	if queryMap == nil {
-		t.Close()
-		return fmt.Errorf("got nil retrieving DNS query map")
-	}
-	startGarbageCollector(t.ctx, gadgetCtx.Logger(), gadgetCtx.GadgetParams(), queryMap)
-
 	return nil
 }
 
 func (t *Tracer) install() error {
+	networkTracer, err := networktracer.NewTracer[types.Event]()
+	if err != nil {
+		return fmt.Errorf("creating network tracer: %w", err)
+	}
+	t.Tracer = networkTracer
+	return nil
+}
+
+func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.Duration) error {
 	spec, err := loadDns()
 	if err != nil {
 		return fmt.Errorf("loading asset: %w", err)
@@ -316,19 +324,30 @@ func (t *Tracer) install() error {
 		return event, nil
 	}
 
-	networkTracer, err := networktracer.NewTracer[types.Event]()
-	if err != nil {
-		return fmt.Errorf("creating network tracer: %w", err)
-	}
-	err = networkTracer.Run(spec, types.Base, parseDNSEvent)
-	if err != nil {
+	if err := t.Tracer.Run(spec, types.Base, parseDNSEvent); err != nil {
 		return fmt.Errorf("setting network tracer spec: %w", err)
 	}
-	t.Tracer = networkTracer
+
+	// Start a background thread to garbage collect queries without responses
+	// from the queries map (used to calculate DNS latency).
+	// The goroutine terminates when t.ctx is done.
+	queryMap := t.Tracer.GetMap(BPFQueryMapName)
+	if queryMap == nil {
+		t.Close()
+		return fmt.Errorf("got nil retrieving DNS query map")
+	}
+	startGarbageCollector(t.ctx, logger, dnsTimeout, queryMap)
+
 	return nil
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	dnsTimeout := gadgetCtx.GadgetParams().Get(ParamDNSTimeout).AsDuration()
+
+	if err := t.run(t.ctx, gadgetCtx.Logger(), dnsTimeout); err != nil {
+		return err
+	}
+
 	<-t.ctx.Done()
 	return nil
 }

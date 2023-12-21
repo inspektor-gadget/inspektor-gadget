@@ -50,6 +50,11 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
+	if err := t.run(); err != nil {
+		t.Close()
+		return nil, fmt.Errorf("running tracer: %w", err)
+	}
+
 	return t, nil
 }
 
@@ -102,24 +107,33 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) install() error {
-	spec, err := loadSnisnoop()
-	if err != nil {
-		return fmt.Errorf("loading asset: %w", err)
-	}
-
 	networkTracer, err := networktracer.NewTracer[types.Event]()
 	if err != nil {
 		return fmt.Errorf("creating network tracer: %w", err)
-	}
-	err = networkTracer.Run(spec, types.Base, parseSNIEvent)
-	if err != nil {
-		return fmt.Errorf("setting network tracer spec: %w", err)
 	}
 	t.Tracer = networkTracer
 	return nil
 }
 
+func (t *Tracer) run() error {
+	spec, err := loadSnisnoop()
+	if err != nil {
+		return fmt.Errorf("loading asset: %w", err)
+	}
+
+	err = t.Tracer.Run(spec, types.Base, parseSNIEvent)
+	if err != nil {
+		return fmt.Errorf("setting network tracer spec: %w", err)
+	}
+
+	return nil
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	if err := t.run(); err != nil {
+		return nil
+	}
+
 	<-t.ctx.Done()
 	return nil
 }
