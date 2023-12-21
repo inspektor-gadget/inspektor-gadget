@@ -31,6 +31,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -254,15 +255,9 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 	return imageDesc, nil
 }
 
-// ListGadgetImages lists all the gadget images.
-func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting oci store: %w", err)
-	}
-
-	imageColumns := []*GadgetImageDesc{}
-	err = ociStore.Tags(ctx, "", func(tags []string) error {
+func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc, error) {
+	images := []*GadgetImageDesc{}
+	err := store.Tags(ctx, "", func(tags []string) error {
 		for _, fullTag := range tags {
 			repository, err := getRepositoryFromImage(fullTag)
 			if err != nil {
@@ -274,26 +269,107 @@ func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 				log.Debugf("getting tag from image %q: %s", fullTag, err)
 				continue
 			}
-			imageColumn := &GadgetImageDesc{
+			image := &GadgetImageDesc{
 				Repository: repository,
 				Tag:        tag,
 			}
 
-			desc, err := ociStore.Resolve(ctx, fullTag)
+			desc, err := store.Resolve(ctx, fullTag)
 			if err != nil {
 				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
 				continue
 			}
-			imageColumn.Digest = desc.Digest.String()
-			imageColumns = append(imageColumns, imageColumn)
+			image.Digest = desc.Digest.String()
+			images = append(images, image)
 		}
 		return nil
 	})
+
+	return images, err
+}
+
+// ListGadgetImages lists all the gadget images.
+func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	images, err := listGadgetImages(ctx, ociStore)
 	if err != nil {
 		return nil, fmt.Errorf("listing all tags: %w", err)
 	}
 
-	return imageColumns, nil
+	return images, nil
+}
+
+func deleteTree(ctx context.Context, store *oci.Store, root ocispec.Descriptor) error {
+	predecessors, err := store.Predecessors(ctx, root)
+	if err != nil {
+		return fmt.Errorf("getting image predecessors: %w", err)
+	}
+
+	// We need to check if there are more than 1 predecessor as the current tree
+	// is counted in.
+	if len(predecessors) > 1 {
+		return nil
+	}
+
+	descriptors, err := content.Successors(ctx, store, root)
+	if err != nil {
+		return fmt.Errorf("getting image successors: %w", err)
+	}
+
+	for _, descriptor := range descriptors {
+		err := deleteTree(ctx, store, descriptor)
+		if err != nil {
+			return err
+		}
+	}
+
+	return store.Delete(ctx, root)
+}
+
+// DeleteGadgetImage removes the given image.
+func DeleteGadgetImage(ctx context.Context, image string) error {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return fmt.Errorf("getting oci store: %w", err)
+	}
+
+	targetImage, err := normalizeImageName(image)
+	if err != nil {
+		return fmt.Errorf("normalizing image: %w", err)
+	}
+
+	fullName := targetImage.String()
+	descriptor, err := ociStore.Resolve(ctx, fullName)
+	if err != nil {
+		return fmt.Errorf("resolving image: %w", err)
+	}
+
+	images, err := listGadgetImages(ctx, ociStore)
+	if err != nil {
+		return fmt.Errorf("listing images: %w", err)
+	}
+
+	digest := descriptor.Digest.String()
+	for _, img := range images {
+		imgFullName := fmt.Sprintf("%s:%s", img.Repository, img.Tag)
+		if img.Digest == digest && imgFullName != fullName {
+			// We cannot blindly delete a whole image tree.
+			// Indeed, it is possible for several image names to point to the same
+			// underlying image, like:
+			// REPOSITORY            TAG    DIGEST
+			// docker.io/library/bar latest f959f580ba01
+			// docker.io/library/foo latest f959f580ba01
+			// Where foo and bar are different names referencing the same image, as
+			// the digest shows.
+			// In this case, we just untag the image name given by the user.
+			return ociStore.Untag(ctx, fullName)
+		}
+	}
+	return deleteTree(ctx, ociStore, descriptor)
 }
 
 func getTagFromImage(image string) (string, error) {
