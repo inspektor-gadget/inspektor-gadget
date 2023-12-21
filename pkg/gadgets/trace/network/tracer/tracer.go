@@ -48,12 +48,18 @@ func NewTracer() (_ *Tracer, err error) {
 		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
+	return t, nil
+}
+
+// RunWorkaround is used by pkg/gadget-collection/gadgets/trace/network/gadget.go to run the gadget
+// after calling NewTracer(). Get rid of it once that file is removed.
+func (t *Tracer) RunWorkaround() error {
 	if err := t.run(); err != nil {
 		t.Close()
-		return nil, fmt.Errorf("running tracer: %w", err)
+		return fmt.Errorf("running tracer: %w", err)
 	}
 
-	return t, nil
+	return nil
 }
 
 func pktTypeString(pktType int) string {

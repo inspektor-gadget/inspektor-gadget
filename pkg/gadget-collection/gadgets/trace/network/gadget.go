@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -39,8 +40,9 @@ type Trace struct {
 	tracer *netTracer.Tracer
 	conn   *networktracer.ConnectionToContainerCollection
 
-	kubeIPInst   operators.OperatorInstance
-	kubeNameInst operators.OperatorInstance
+	kubeIPInst         operators.OperatorInstance
+	kubeNameInst       operators.OperatorInstance
+	socketEnricherInst operators.OperatorInstance
 }
 
 type TraceFactory struct {
@@ -127,11 +129,19 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if err == nil {
 		t.kubeIPInst.PreGadgetRun()
 	}
+
 	kubeNameOp := operators.GetRaw(kubenameresolver.OperatorName).(*kubenameresolver.KubeNameResolver)
 	kubeNameOp.Init(nil)
 	t.kubeNameInst, err = kubeNameOp.Instantiate(nil, nil, nil)
 	if err == nil {
 		t.kubeNameInst.PreGadgetRun()
+	}
+
+	socketEnricherOp := operators.GetRaw(socketenricher.OperatorName).(*socketenricher.SocketEnricher)
+	socketEnricherOp.Init(nil)
+	t.socketEnricherInst, err = socketEnricherOp.Instantiate(nil, t.tracer, nil)
+	if err == nil {
+		t.socketEnricherInst.PreGadgetRun()
 	}
 
 	eventCallback := func(event *netTypes.Event) {
@@ -165,6 +175,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	if err := t.tracer.RunWorkaround(); err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to start network-graph tracer: %s", err)
+		return
+	}
+
 	t.started = true
 	trace.Status.State = gadgetv1alpha1.TraceStateStarted
 }
@@ -182,6 +197,10 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	if t.kubeNameInst != nil {
 		t.kubeNameInst.PostGadgetRun()
 		t.kubeNameInst = nil
+	}
+	if t.socketEnricherInst != nil {
+		t.socketEnricherInst.PostGadgetRun()
+		t.socketEnricherInst = nil
 	}
 
 	t.stop()
