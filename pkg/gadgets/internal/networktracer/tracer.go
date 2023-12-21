@@ -49,8 +49,8 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 

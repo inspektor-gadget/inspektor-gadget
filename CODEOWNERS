@@ -40,7 +40,6 @@
 /pkg/gadgets/audit/seccomp/ @alban
 /pkg/gadgets/common/ @mauriciovasquezbernal
 /pkg/gadgets/internal/networktracer/ @alban @blanquicet
-/pkg/gadgets/internal/socketenricher/ @alban
 /pkg/gadgets/profile/tcprtt/ @blanquicet
 /pkg/gadgets/prometheus/ @mauriciovasquezbernal
 /pkg/gadgets/run/ @burak-ok @mauriciovasquezbernal
@@ -76,6 +75,7 @@
 /pkg/resources/rbac/ @eiffel-fl
 /pkg/runcfanotify/ @alban
 /pkg/runtime/ @flyth @mauriciovasquezbernal
+/pkg/socketenricher/ @alban
 /pkg/standardgadgets/ @mauriciovasquezbernal
 /pkg/tracer-collection/ @alban
 /pkg/types/ @blanquicet

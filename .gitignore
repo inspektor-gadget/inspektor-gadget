@@ -34,7 +34,9 @@ pkg/btfgen/btfs/arm64/*
 *.o
 *.tgz
 # keep all bpf objects generated with bpf2go
-!pkg/gadgets/**/*.o
 !pkg/container-hook/**/*.o
+!pkg/gadgets/**/*.o
+!pkg/socketenricher/*.o
+
 !gadgets/*.o
 !testdata/*.o

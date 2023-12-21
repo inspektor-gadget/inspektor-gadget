@@ -386,7 +386,7 @@ func bindSocketWithOpts(ipStr string, domain, typ int, port int, opts []sockOpt)
 	//
 	// Example how to test this:
 	//
-	//	$ go test -c ./pkg/gadgets/internal/socketenricher/...
+	//	$ go test -c ./pkg/socketenricher/...
 	//	$ sudo ./socketenricher.test
 	//	PASS
 	//	$ mv socketenricher.test se.test

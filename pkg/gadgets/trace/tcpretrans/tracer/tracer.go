@@ -29,8 +29,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
