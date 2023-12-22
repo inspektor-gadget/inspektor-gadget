@@ -814,6 +814,12 @@ func calculateColumnsForClient(
 			columns = append(columns, colStr)
 
 			colName = member.Name + "_raw"
+		case types.UnixSignalTypeName:
+			// Name of the signal
+			colStr := types.FactoryAddString(eventFactory, member.Name)
+			columns = append(columns, colStr)
+
+			colName = member.Name + "_raw"
 		}
 
 		rType := typeFromBTF(member.Type)

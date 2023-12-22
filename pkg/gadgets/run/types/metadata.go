@@ -57,6 +57,9 @@ const (
 
 	// Name of the type to store a timestamp
 	TimestampTypeName = "gadget_timestamp"
+
+	// Name of the type to store a unix signal
+	UnixSignalTypeName = "gadget_signal"
 )
 
 type EBPFParam struct {

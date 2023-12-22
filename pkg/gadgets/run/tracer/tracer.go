@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -33,6 +34,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
 	"golang.org/x/exp/constraints"
+	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 
@@ -550,6 +552,16 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 				timestamp := *(*uint64)(unsafe.Pointer(&data[offset]))
 				t := gadgets.WallTimeFromBootTime(timestamp)
 				strSetter(ev, t.String())
+			}
+			setters = append(setters, setter)
+		case types.UnixSignalTypeName:
+			offset := member.Offset.Bytes()
+			strSetter := types.GetSetter[string](t.eventFactory, member.Name)
+
+			setter := func(ev *types.Event, data []byte) {
+				signal := *(*uint32)(unsafe.Pointer(&data[offset]))
+				name := unix.SignalName(syscall.Signal(signal))
+				strSetter(ev, name)
 			}
 			setters = append(setters, setter)
 		}

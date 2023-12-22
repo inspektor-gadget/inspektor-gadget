@@ -34,4 +34,7 @@ typedef __u64 gadget_mntns_id;
 // time.
 typedef __u64 gadget_timestamp;
 
+// gadget_signal is used to represent a unix signal. It's automatically converted to the signal name.
+typedef __u32 gadget_signal;
+
 #endif /* __TYPES_H */
