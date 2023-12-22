@@ -4,8 +4,8 @@
 #ifndef __BUFFER_BPF_H
 #define __BUFFER_BPF_H
 
-#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_core_read.h>
 
 #ifndef MAX_EVENT_SIZE
 #define MAX_EVENT_SIZE		10240
@@ -29,7 +29,7 @@ static __always_inline void *gadget_reserve_buf(void *map, __u64 size)
 {
 	static const int zero = 0;
 
-	if (bpf_core_type_exists(struct bpf_ringbuf))
+	if (bpf_core_enum_value_exists(enum bpf_func_id, BPF_FUNC_ringbuf_reserve))
 		return bpf_ringbuf_reserve(map, size, 0);
 
 	return bpf_map_lookup_elem(&gadget_heap, &zero);
@@ -37,7 +37,7 @@ static __always_inline void *gadget_reserve_buf(void *map, __u64 size)
 
 static __always_inline long gadget_submit_buf(void *ctx, void *map, void *buf, __u64 size)
 {
-	if (bpf_core_type_exists(struct bpf_ringbuf)) {
+	if (bpf_core_enum_value_exists(enum bpf_func_id, BPF_FUNC_ringbuf_submit)) {
 		bpf_ringbuf_submit(buf, 0);
 		return 0;
 	}
