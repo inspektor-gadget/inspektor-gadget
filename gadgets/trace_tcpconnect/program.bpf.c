@@ -9,6 +9,8 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
+#define MAX_EVENT_SIZE 512
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -99,11 +101,7 @@ struct {
 	__type(value, u64);
 } ipv6_count SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__uint(value_size, sizeof(u32));
-} events SEC(".maps");
+GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(tcpconnect, events, event);
 
@@ -196,55 +194,61 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 				     struct sock *sk, __u16 dport,
 				     __u64 mntns_id)
 {
-	struct event event = {};
+	struct event *event;
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return;
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event.pid = pid;
-	event.uid = (u32)uid_gid;
-	event.gid = (u32)(uid_gid >> 32);
-	event.src.l3.version = event.dst.l3.version = 4;
-	event.src.proto = event.dst.proto = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event.src.l3.addr.v4, sk,
+	event->pid = pid;
+	event->uid = (u32)uid_gid;
+	event->gid = (u32)(uid_gid >> 32);
+	event->src.l3.version = event->dst.l3.version = 4;
+	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	BPF_CORE_READ_INTO(&event->src.l3.addr.v4, sk,
 			   __sk_common.skc_rcv_saddr);
-	BPF_CORE_READ_INTO(&event.dst.l3.addr.v4, sk, __sk_common.skc_daddr);
-	event.dst.port =
+	BPF_CORE_READ_INTO(&event->dst.l3.addr.v4, sk, __sk_common.skc_daddr);
+	event->dst.port =
 		bpf_ntohs(dport); // host expects data in host byte order
-	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	event.mntns_id = mntns_id;
-	bpf_get_current_comm(event.task, sizeof(event.task));
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
+	event->mntns_id = mntns_id;
+	bpf_get_current_comm(event->task, sizeof(event->task));
+	event->timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
-			      sizeof(event));
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
 
 static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 				     struct sock *sk, __u16 dport,
 				     __u64 mntns_id)
 {
-	struct event event = {};
+	struct event *event;
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return;
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event.pid = pid;
-	event.uid = (u32)uid_gid;
-	event.gid = (u32)(uid_gid >> 32);
-	event.mntns_id = mntns_id;
-	event.src.l3.version = event.dst.l3.version = 6;
-	event.src.proto = event.dst.proto = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event.src.l3.addr.v6, sk,
+	event->pid = pid;
+	event->uid = (u32)uid_gid;
+	event->gid = (u32)(uid_gid >> 32);
+	event->mntns_id = mntns_id;
+	event->src.l3.version = event->dst.l3.version = 6;
+	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	BPF_CORE_READ_INTO(&event->src.l3.addr.v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-	BPF_CORE_READ_INTO(&event.dst.l3.addr.v6, sk,
+	BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-	event.dst.port =
+	event->dst.port =
 		bpf_ntohs(dport); // host expects data in host byte order
-	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	bpf_get_current_comm(event.task, sizeof(event.task));
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
+	bpf_get_current_comm(event->task, sizeof(event->task));
+	event->timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
-			      sizeof(event));
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
 
 static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
@@ -300,7 +304,7 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 							struct sock *sk)
 {
 	struct piddata *piddatap;
-	struct event event = {};
+	struct event *event;
 	unsigned int family;
 	u64 ts;
 
@@ -315,33 +319,37 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	if (ts < piddatap->ts)
 		goto cleanup;
 
-	event.latency = ts - piddatap->ts;
-	if (targ_min_latency_ns && event.latency < targ_min_latency_ns)
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
 		goto cleanup;
-	__builtin_memcpy(&event.task, piddatap->comm, sizeof(event.task));
-	event.pid = piddatap->pid;
-	event.mntns_id = piddatap->mntns_id;
-	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
+
+	event->latency = ts - piddatap->ts;
+	if (targ_min_latency_ns && event->latency < targ_min_latency_ns)
+		goto cleanup;
+	__builtin_memcpy(&event->task, piddatap->comm, sizeof(event->task));
+	event->pid = piddatap->pid;
+	event->mntns_id = piddatap->mntns_id;
+	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	// host expects data in host byte order
-	event.dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-	event.src.proto = event.dst.proto = IPPROTO_TCP;
+	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+	event->src.proto = event->dst.proto = IPPROTO_TCP;
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family == AF_INET) {
-		event.src.l3.version = event.dst.l3.version = 4;
-		event.src.l3.addr.v4 =
+		event->src.l3.version = event->dst.l3.version = 4;
+		event->src.l3.addr.v4 =
 			BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-		event.dst.l3.addr.v4 = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+		event->dst.l3.addr.v4 =
+			BPF_CORE_READ(sk, __sk_common.skc_daddr);
 	} else {
-		event.src.l3.version = event.dst.l3.version = 6;
+		event->src.l3.version = event->dst.l3.version = 6;
 		BPF_CORE_READ_INTO(
-			&event.src.l3.addr.v6, sk,
+			&event->src.l3.addr.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		BPF_CORE_READ_INTO(&event.dst.l3.addr.v6, sk,
+		BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
-	event.timestamp = bpf_ktime_get_boot_ns();
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
-			      sizeof(event));
+	event->timestamp = bpf_ktime_get_boot_ns();
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 cleanup:
 	return cleanup_sockets_latency_map(sk);
