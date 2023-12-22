@@ -34,3 +34,9 @@ push: build
 	for GADGET in $(GADGETS); do \
 		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
+
+.PHONY:
+clean:
+	for GADGET in $(GADGETS); do \
+		sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+	done
