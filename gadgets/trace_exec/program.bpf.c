@@ -4,6 +4,8 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 
+#define GADGET_NO_BUF_RESERVE
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -49,11 +51,7 @@ struct {
 	__type(value, struct event);
 } execs SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__uint(value_size, sizeof(u32));
-} events SEC(".maps");
+GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(exec, events, event);
 
@@ -170,8 +168,7 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
-		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
-				      len);
+		gadget_output_buf(ctx, &events, event, len);
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
 	return 0;
