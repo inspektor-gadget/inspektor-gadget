@@ -494,9 +494,8 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 
 	endpointDefs := []endpointDef{}
-	timestampsOffsets := []uint32{}
 
-	enumSetters := []func(ev *types.Event, data []byte){}
+	setters := []func(ev *types.Event, data []byte){}
 
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
@@ -543,7 +542,16 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 				logger.Warn("%s is not a uint64: %s", member.Name, err)
 				continue
 			}
-			timestampsOffsets = append(timestampsOffsets, member.Offset.Bytes())
+
+			offset := member.Offset.Bytes()
+			strSetter := types.GetSetter[string](t.eventFactory, member.Name)
+
+			setter := func(ev *types.Event, data []byte) {
+				timestamp := *(*uint64)(unsafe.Pointer(&data[offset]))
+				t := gadgets.WallTimeFromBootTime(timestamp)
+				strSetter(ev, t.String())
+			}
+			setters = append(setters, setter)
 		}
 
 		btfSpec, err := btf.LoadKernelSpec()
@@ -615,7 +623,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 
 				fieldSetter(ev, "UNKNOWN")
 			}
-			enumSetters = append(enumSetters, enumSetter)
+			setters = append(setters, enumSetter)
 		}
 	}
 
@@ -672,24 +680,15 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 		}
 
-		// handle timestamps
-		timestamps := []eventtypes.Time{}
-		for _, offset := range timestampsOffsets {
-			timestamp := *(*uint64)(unsafe.Pointer(&data[offset]))
-			t := gadgets.WallTimeFromBootTime(timestamp)
-			timestamps = append(timestamps, t)
-		}
-
 		ev := t.eventFactory.NewEvent()
 
 		ev.Type = eventtypes.NORMAL
 		ev.MountNsID = mntNsId
 		ev.L3Endpoints = l3endpoints
 		ev.L4Endpoints = l4endpoints
-		ev.Timestamps = timestamps
 
-		// handle enums
-		for _, setter := range enumSetters {
+		// handle all other fields timestamps
+		for _, setter := range setters {
 			setter(ev, data)
 		}
 

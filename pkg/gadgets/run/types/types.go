@@ -49,9 +49,8 @@ type Event struct {
 	// Message when Type is ERR, WARN, DEBUG or INFO
 	Message string `json:"message,omitempty"`
 
-	L3Endpoints []L3Endpoint      `json:"l3endpoints,omitempty"`
-	L4Endpoints []L4Endpoint      `json:"l4endpoints,omitempty"`
-	Timestamps  []eventtypes.Time `json:"timestamps,omitempty"`
+	L3Endpoints []L3Endpoint `json:"l3endpoints,omitempty"`
+	L4Endpoints []L4Endpoint `json:"l4endpoints,omitempty"`
 
 	MountNsID uint64 `json:"-"`
 	NetNsID   uint64 `json:"-"`
@@ -116,7 +115,6 @@ const (
 	// TODO: this should be made more generic to avoid coupling operators with this
 	KindL3Endpoint
 	KindL4Endpoint
-	KindTimestamp
 )
 
 type Type struct {

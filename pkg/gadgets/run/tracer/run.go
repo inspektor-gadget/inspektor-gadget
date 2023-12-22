@@ -473,7 +473,6 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 
 	l3endpointCounter := 0
 	l4endpointCounter := 0
-	timestampsCounter := 0
 
 	fields := map[string]types.Field{}
 	for _, field := range eventStruct.Fields {
@@ -538,21 +537,6 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 					return e.L4Endpoints[index].L4Endpoint
 				})
 				l4endpointCounter++
-			case types.KindTimestamp:
-				// Take the value here, otherwise it'll use the wrong value after
-				// it's increased
-				index := timestampsCounter
-				err := cols.AddColumn(attrs, func(e *types.Event) any {
-					if len(e.Timestamps) == 0 {
-						return ""
-					}
-					return e.Timestamps[index].String()
-				})
-				if err != nil {
-					return nil, fmt.Errorf("adding timestamp column: %w", err)
-				}
-				timestampsCounter++
-				continue
 
 			}
 		case types.IndexEBPF:
@@ -798,6 +782,7 @@ func calculateColumnsForClient(
 
 	for _, member := range eventType.Members {
 		member := member
+		colName := member.Name
 
 		_, ok := colNames[member.Name]
 		if !ok {
@@ -824,13 +809,11 @@ func calculateColumnsForClient(
 			columns = append(columns, col)
 			continue
 		case types.TimestampTypeName:
-			col := types.ColumnDesc{
-				Name:      member.Name,
-				BlobIndex: types.IndexVirtual,
-				Type:      types.Type{Kind: types.KindTimestamp},
-			}
-			columns = append(columns, col)
-			continue
+			// String representation of the timestamp
+			colStr := types.FactoryAddString(eventFactory, member.Name)
+			columns = append(columns, colStr)
+
+			colName = member.Name + "_raw"
 		}
 
 		rType := typeFromBTF(member.Type)
@@ -839,25 +822,15 @@ func calculateColumnsForClient(
 		}
 
 		if _, ok := member.Type.(*btf.Enum); ok {
-			// Add two columns for enums
-
 			// String representation
 			col := types.FactoryAddString(eventFactory, member.Name)
 			columns = append(columns, col)
 
-			// Raw representation
-			colRaw := types.ColumnDesc{
-				Name:   member.Name + "_raw",
-				Type:   *rType,
-				Offset: uintptr(member.Offset.Bytes()),
-			}
-			columns = append(columns, colRaw)
-
-			continue
+			colName = member.Name + "_raw"
 		}
 
 		col := types.ColumnDesc{
-			Name:   member.Name,
+			Name:   colName,
 			Type:   *rType,
 			Offset: uintptr(member.Offset.Bytes()),
 		}
