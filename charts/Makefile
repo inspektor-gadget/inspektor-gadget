@@ -22,8 +22,8 @@ build: clean
 	# sed on macOS requires an extra argument for the backup file
 	# or an empty string to disable backup files, GNU sed does not
 	# require this argument but allows it
-	sed -i"" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
-	sed -i"" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
+	sed -i "" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
+	sed -i "" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
 	@echo "Preparing docs"
 	docker run --user $(shell id -u):$(shell id -g) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
 	@echo "Charts available at: $(CHART_DIR)"
