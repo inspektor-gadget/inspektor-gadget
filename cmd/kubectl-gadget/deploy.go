@@ -174,7 +174,7 @@ func init() {
 		"The events buffer length. A low value could impact horizontal scaling.")
 	deployCmd.PersistentFlags().StringVarP(
 		&daemonLogLevel,
-		"daemon-log-level", "", "info", "Set the ig-k8s log level. 0=info, 1=debug, 2=trace")
+		"daemon-log-level", "", "info", "Set the ig-k8s log level. trace, debug, info, warning, error, fatal, panic")
 	rootCmd.AddCommand(deployCmd)
 }
 
