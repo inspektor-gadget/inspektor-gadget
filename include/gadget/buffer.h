@@ -36,6 +36,12 @@ static __always_inline void *gadget_reserve_buf(void *map, __u64 size)
 	return bpf_map_lookup_elem(&gadget_heap, &zero);
 }
 
+static __always_inline void gadget_discard_buf(void *buf)
+{
+	if (bpf_core_enum_value_exists(enum bpf_func_id, BPF_FUNC_ringbuf_discard))
+		bpf_ringbuf_discard(buf, 0);
+}
+
 static __always_inline long gadget_submit_buf(void *ctx, void *map, void *buf, __u64 size)
 {
 	if (bpf_core_enum_value_exists(enum bpf_func_id, BPF_FUNC_ringbuf_submit)) {
