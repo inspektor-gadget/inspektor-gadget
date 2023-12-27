@@ -1,0 +1,35 @@
+name: oomkill
+description: trace OOM killer
+tracers:
+  events:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: fpid
+      attributes:
+        template: pid
+    - name: fuid
+      attributes:
+        template: uid
+    - name: fgid
+      attributes:
+        template: uid
+    - name: tpid
+      attributes:
+        template: pid
+    - name: pages
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
+    - name: timestamp
+      attributes:
+        template: timestamp
+    - name: fcomm
+      attributes:
+        template: comm
+    - name: tcomm
+      attributes:
+        template: comm
