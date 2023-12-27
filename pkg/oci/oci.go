@@ -32,7 +32,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -332,33 +331,6 @@ func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 	return images, nil
 }
 
-func deleteTree(ctx context.Context, store *oci.Store, root ocispec.Descriptor) error {
-	predecessors, err := store.Predecessors(ctx, root)
-	if err != nil {
-		return fmt.Errorf("getting image predecessors: %w", err)
-	}
-
-	// We need to check if there are more than 1 predecessor as the current tree
-	// is counted in.
-	if len(predecessors) > 1 {
-		return nil
-	}
-
-	descriptors, err := content.Successors(ctx, store, root)
-	if err != nil {
-		return fmt.Errorf("getting image successors: %w", err)
-	}
-
-	for _, descriptor := range descriptors {
-		err := deleteTree(ctx, store, descriptor)
-		if err != nil {
-			return err
-		}
-	}
-
-	return store.Delete(ctx, root)
-}
-
 // DeleteGadgetImage removes the given image.
 func DeleteGadgetImage(ctx context.Context, image string) error {
 	ociStore, err := getLocalOciStore()
@@ -398,7 +370,13 @@ func DeleteGadgetImage(ctx context.Context, image string) error {
 			return ociStore.Untag(ctx, fullName)
 		}
 	}
-	return deleteTree(ctx, ociStore, descriptor)
+
+	err = ociStore.Delete(ctx, descriptor)
+	if err != nil {
+		return err
+	}
+
+	return ociStore.GC(ctx)
 }
 
 // splitIGDomain splits a repository name to domain and remote-name.
