@@ -449,6 +449,25 @@ jobs:
         name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
+    - name: Generate SBOM for gadget ${{ matrix.os }} ${{ matrix.platform }} image as artifacts
+      uses: docker/build-push-action@v5
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
+        outputs: type=local,dest=/tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        # The following permits to generate SBOM:
+        # https://github.com/moby/buildkit/issues/2773#issue-1194754388
+        build-args: BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
+    - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}-bom-json
+        path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json
+        retention-days: 1
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image to registry
@@ -554,6 +573,26 @@ jobs:
       with:
         name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+        retention-days: 1
+    - name: Generate ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
+      uses: docker/build-push-action@v5
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
+        outputs: type=local,dest=/tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
+    - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}-bom-json
+        path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json
         retention-days: 1
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
@@ -1595,6 +1634,12 @@ jobs:
         # Derivate public key from private key to publish it as release
         # artifact, so people can verify our signature.
         cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
+    - name: Rename containers SBOMs
+      shell: bash
+      run: |
+        for i in *-bom-json; do
+          mv $i/sbom_cyclonedx.json $(basename $i -bom-json)-${{ github.ref_name }}.bom.json
+        done
     - name: Login to Container Registry
       uses: docker/login-action@v3
       with:
@@ -1661,7 +1706,13 @@ jobs:
         pattern: "*.sig"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Upload SBOMs
+    - name: Upload container images SBOMs
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "*.bom.json"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload binaries SBOMs
       uses: csexton/release-asset-action@v2
       with:
         pattern: "sbom/*.bom.json"
