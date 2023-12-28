@@ -49,7 +49,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.7+incompatible
 	github.com/opencontainers/image-spec v1.1.0-rc5
-	github.com/prometheus/client_golang v1.17.0
+	github.com/prometheus/client_golang v1.18.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
