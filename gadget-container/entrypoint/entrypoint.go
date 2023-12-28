@@ -19,20 +19,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	nriv1 "github.com/containerd/nri/types/v1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
-
-	nriv1 "github.com/containerd/nri/types/v1"
-	log "github.com/sirupsen/logrus"
-
-	"golang.org/x/sys/unix"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const gadgetPullSecretPath = "/var/run/secrets/gadget/pull-secret/config.json"
@@ -220,25 +218,8 @@ func prepareGadgetPullSecret() error {
 }
 
 func main() {
-	log.Info("STARTING ENTRYPOINT")
-	originalLogLevel := log.GetLevel()
-	newLogLvlStr, ok := os.LookupEnv("GADGET_TRACER_MANAGER_LOG_LEVEL")
-	if ok {
-		log.Trace("====================================================================================================")
-		log.WithFields(log.Fields{
-			"originalLogLevel": originalLogLevel,
-			"newLogLvlStr":     newLogLvlStr,
-		}).Info("Found env var GADGET_TRACER_MANAGER_LOG_LEVEL")
-		log.Trace("====================================================================================================")
-		level, err := log.ParseLevel(newLogLvlStr)
-		if err == nil {
-			log.SetLevel(level)
-		} else {
-			log.Warn("Could not parse log level from GADGET_TRACER_MANAGER_LOG_LEVEL env var")
-		}
-	} else {
-		log.Warn("Could not find env var GADGET_TRACER_MANAGER_LOG_LEVEL")
-	}
+	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
+	log.SetLevel(tracerManLogLvl)
 	if _, err := os.Stat(filepath.Join(host.HostRoot, "/bin")); os.IsNotExist(err) {
 		log.Fatalf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
 	}
