@@ -19,6 +19,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"reflect"
 	"strconv"
 	"strings"
@@ -95,7 +96,10 @@ var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", 
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
-
+	strLevels := make([]string, len(log.AllLevels))
+	for i, level := range log.AllLevels {
+		strLevels[i] = level.String()
+	}
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
 		"image", "",
@@ -174,7 +178,7 @@ func init() {
 		"The events buffer length. A low value could impact horizontal scaling.")
 	deployCmd.PersistentFlags().StringVarP(
 		&daemonLogLevel,
-		"daemon-log-level", "", "info", "Set the ig-k8s log level. trace, debug, info, warning, error, fatal, panic")
+		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
 	rootCmd.AddCommand(deployCmd)
 }
 
