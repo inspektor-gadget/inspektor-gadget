@@ -26,7 +26,7 @@ func LogLevel() log.Level {
 				loglevel = level
 				return
 			} else {
-				log.WithError(parseErr).Error(fmt.Sprintf("Invalid log level, valid levels are: %v, defaulting to Info", strings.Join(strLevels, ", ")))
+				log.WithError(parseErr).Errorf("Invalid log level, valid levels are: %v, defaulting to %q", strings.Join(strLevels, ", "), log.InfoLevel)
 			}
 		}
 		loglevel = log.InfoLevel
