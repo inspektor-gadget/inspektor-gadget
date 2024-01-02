@@ -1086,7 +1086,9 @@ jobs:
     # to secrets.
     # So, we skip this job when run by dependabot and from a PR coming from a
     # fork.
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    # We still need to run this job on push, otherwise it will not be run when
+    # we merge something on main.
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     steps:
       - uses: actions/checkout@v4
       - name: Install Cosign
