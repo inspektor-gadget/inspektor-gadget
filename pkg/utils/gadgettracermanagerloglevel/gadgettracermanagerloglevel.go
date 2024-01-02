@@ -1,7 +1,6 @@
 package gadgettracermanagerloglevel
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -26,7 +25,7 @@ func LogLevel() log.Level {
 				loglevel = level
 				return
 			} else {
-				log.WithError(parseErr).Errorf("Invalid log level, valid levels are: %v, defaulting to %q", strings.Join(strLevels, ", "), log.InfoLevel)
+				log.WithError(parseErr).Errorf("Invalid log level, valid levels are: %v, defaulting to %s", strings.Join(strLevels, ", "), log.InfoLevel)
 			}
 		}
 		loglevel = log.InfoLevel
