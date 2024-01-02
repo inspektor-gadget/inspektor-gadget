@@ -8,6 +8,7 @@ GADGETS = \
 	trace_dns \
 	trace_exec \
 	trace_mount \
+	trace_oomkill \
 	trace_open \
 	trace_signal \
 	trace_tcpconnect \
