@@ -1,10 +1,11 @@
 package gadgettracermanagerloglevel
 
 import (
-	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (

@@ -19,12 +19,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"

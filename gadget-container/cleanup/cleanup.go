@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"os"
 	"path/filepath"
 
@@ -85,6 +86,8 @@ func removeNRIHooks() {
 }
 
 func main() {
+	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
+	log.SetLevel(tracerManLogLvl)
 	removeCRIOHooks()
 	removeNRIHooks()
 
