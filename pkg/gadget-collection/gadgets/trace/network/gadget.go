@@ -190,6 +190,14 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	t.stop()
+	trace.Status.State = gadgetv1alpha1.TraceStateStopped
+}
+
+func (t *Trace) stop() {
+	if t.conn != nil {
+		t.conn.Close()
+	}
 	if t.kubeIPInst != nil {
 		t.kubeIPInst.PostGadgetRun()
 		t.kubeIPInst = nil
@@ -201,15 +209,6 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	if t.socketEnricherInst != nil {
 		t.socketEnricherInst.PostGadgetRun()
 		t.socketEnricherInst = nil
-	}
-
-	t.stop()
-	trace.Status.State = gadgetv1alpha1.TraceStateStopped
-}
-
-func (t *Trace) stop() {
-	if t.conn != nil {
-		t.conn.Close()
 	}
 
 	t.tracer.Close()
