@@ -19,7 +19,6 @@ package tracer
 import (
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,8 +27,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-
-	log "github.com/sirupsen/logrus"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -183,18 +180,12 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int)
 			continue
 		}
 
-		tid64, err := strconv.ParseUint(item.Name(), 10, 32)
+		tid, err := strconv.ParseInt(item.Name(), 10, strconv.IntSize)
 		if err != nil {
 			continue
 		}
 
-		if tid64 > math.MaxUint32 {
-			log.Errorf("TID (%d) exceeds math.MaxUint32 (%d)", tid64, math.MaxUint32)
-			continue
-		}
-
-		tid := int(tid64)
-		event, err := getTidEvent(config, enricher, pid, tid)
+		event, err := getTidEvent(config, enricher, pid, int(tid))
 		if err != nil {
 			continue
 		}
@@ -218,26 +209,19 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 			continue
 		}
 
-		pid64, err := strconv.ParseUint(item.Name(), 10, 32)
+		pid, err := strconv.ParseInt(item.Name(), 10, strconv.IntSize)
 		if err != nil {
 			continue
 		}
 
-		if pid64 > math.MaxUint32 {
-			log.Errorf("PID (%d) exceeds math.MaxUint32 (%d)", pid64, math.MaxUint32)
-			continue
-		}
-
-		pid := int(pid64)
-
 		if config.ShowThreads {
-			pidEvents, err := getPidEvents(config, enricher, pid)
+			pidEvents, err := getPidEvents(config, enricher, int(pid))
 			if err != nil {
 				continue
 			}
 			events = append(events, pidEvents...)
 		} else {
-			event, err := getTidEvent(config, enricher, pid, pid)
+			event, err := getTidEvent(config, enricher, int(pid), int(pid))
 			if err != nil {
 				continue
 			}

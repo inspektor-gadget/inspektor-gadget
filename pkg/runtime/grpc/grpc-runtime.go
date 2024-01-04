@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/url"
 	"strings"
@@ -159,7 +158,7 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 			Key:          ParamConnectionTimeout,
 			Description:  "Maximum time to establish a connection to remote target in seconds",
 			DefaultValue: fmt.Sprintf("%d", ConnectTimeout),
-			TypeHint:     params.TypeUint,
+			TypeHint:     params.TypeUint16,
 		},
 	}
 	switch r.connectionMode {
@@ -278,11 +277,8 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 }
 
 func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
-	duration := r.globalParams.Get(ParamConnectionTimeout).AsUint()
-	if duration > math.MaxInt64 {
-		return nil, fmt.Errorf("duration (%d) exceeds math.MaxInt64 (%d)", duration, math.MaxInt64)
-	}
-	ctx, cancelDial := context.WithTimeout(ctx, time.Second*time.Duration(duration))
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
+	ctx, cancelDial := context.WithTimeout(ctx, timeout)
 	defer cancelDial()
 
 	// use default params for now
@@ -346,12 +342,7 @@ func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *para
 	target := targets[0]
 	log.Debugf("using target %q (%q)", target.addressOrPod, target.node)
 
-	duration := r.globalParams.Get(ParamConnectionTimeout).AsUint()
-	if duration > math.MaxInt64 {
-		return nil, fmt.Errorf("duration (%d) exceeds math.MaxInt64 (%d)", duration, math.MaxInt64)
-	}
-
-	timeout := time.Second * time.Duration(duration)
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
 	conn, err := r.dialContext(ctx, target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
@@ -438,7 +429,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	connCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
 	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
 	defer cancelDial()
 
