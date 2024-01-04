@@ -21,6 +21,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -90,15 +91,16 @@ var (
 	skipSELinuxOpts     bool
 	eventBufferLength   uint64
 	daemonLogLevel      string
+	strLevels           []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
-	strLevels := make([]string, len(log.AllLevels))
-	for i, level := range log.AllLevels {
-		strLevels[i] = level.String()
+	strLevels = make([]string, len(log.AllLevels))
+	for _, level := range log.AllLevels {
+		strLevels = append(strLevels, level.String())
 	}
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
@@ -490,7 +492,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case "EVENTS_BUFFER_LENGTH":
 					gadgetContainer.Env[i].Value = strconv.FormatUint(eventBufferLength, 10)
 				case "GADGET_TRACER_MANAGER_LOG_LEVEL":
-					gadgetContainer.Env[i].Value = daemonLogLevel
+					if slices.Contains(strLevels, daemonLogLevel) {
+						gadgetContainer.Env[i].Value = daemonLogLevel
+					} else {
+						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
+					}
 				}
 			}
 
