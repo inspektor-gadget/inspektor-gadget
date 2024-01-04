@@ -42,6 +42,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -156,7 +157,6 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 			t.networkTracers[p.Name] = networkTracer
 		}
 	}
-
 	return nil
 }
 
@@ -303,9 +303,7 @@ func (t *Tracer) handleTracers() (string, error) {
 	return tracer.MapName, nil
 }
 
-func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
-	logger := gadgetCtx.Logger()
-
+func (t *Tracer) attachProgram(p *ebpf.ProgramSpec, prog *ebpf.Program, logger logger.Logger) (link.Link, error) {
 	switch p.Type {
 	case ebpf.Kprobe:
 		switch {
@@ -361,9 +359,7 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 	return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 }
 
-func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-
+func (t *Tracer) installTracer(logger logger.Logger, params *params.Params) error {
 	var err error
 	var tracerMapName string
 
@@ -422,7 +418,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 
 	// Attach programs
 	for progName, p := range t.spec.Programs {
-		l, err := t.attachProgram(gadgetCtx, p, t.collection.Programs[progName])
+		l, err := t.attachProgram(p, t.collection.Programs[progName], logger)
 		if err != nil {
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
 		}
@@ -472,9 +468,8 @@ func getAsInteger[OT constraints.Integer](data []byte, offset uint32) OT {
 
 // processEventFunc returns a callback that parses a binary encoded event in data, enriches and
 // returns it.
-func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []byte) *types.Event {
+func (t *Tracer) processEventFunc(logger logger.Logger) func(data []byte) *types.Event {
 	typ := t.eventType
-	logger := gadgetCtx.Logger()
 
 	var mntNsIdstart uint32
 	mountNsIdFound := false
@@ -700,8 +695,8 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 }
 
-func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
-	cb := t.processEventFunc(gadgetCtx)
+func (t *Tracer) runTracers(logger logger.Logger) {
+	cb := t.processEventFunc(logger)
 
 	for {
 		var rawSample []byte
@@ -713,7 +708,7 @@ func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
 					// nothing to do, we're done
 					return
 				}
-				gadgetCtx.Logger().Errorf("read ring buffer: %w", err)
+				logger.Errorf("read ring buffer: %w", err)
 				return
 			}
 			rawSample = record.RawSample
@@ -723,12 +718,12 @@ func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
 				if errors.Is(err, perf.ErrClosed) {
 					return
 				}
-				gadgetCtx.Logger().Errorf("read perf ring buffer: %w", err)
+				logger.Errorf("read perf ring buffer: %w", err)
 				return
 			}
 
 			if record.LostSamples != 0 {
-				gadgetCtx.Logger().Warnf("lost %d samples", record.LostSamples)
+				logger.Warnf("lost %d samples", record.LostSamples)
 				continue
 			}
 			rawSample = record.RawSample
@@ -799,8 +794,8 @@ func splitAndConvert(data []byte, size int, cb func([]byte) *types.Event) []*typ
 	return events
 }
 
-func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
-	cb := t.processEventFunc(gadgetCtx)
+func (t *Tracer) runSnapshotter(logger logger.Logger) error {
+	cb := t.processEventFunc(logger)
 
 	events := []*types.Event{}
 
@@ -831,16 +826,16 @@ func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	if err := t.installTracer(gadgetCtx); err != nil {
+	if err := t.installTracer(gadgetCtx.Logger(), gadgetCtx.GadgetParams()); err != nil {
 		t.Close()
 		return fmt.Errorf("install tracer: %w", err)
 	}
 
 	if t.perfReader != nil || t.ringbufReader != nil {
-		go t.runTracers(gadgetCtx)
+		go t.runTracers(gadgetCtx.Logger())
 	}
 	if len(t.linksSnapshotters) > 0 {
-		return t.runSnapshotter(gadgetCtx)
+		return t.runSnapshotter(gadgetCtx.Logger())
 	}
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
