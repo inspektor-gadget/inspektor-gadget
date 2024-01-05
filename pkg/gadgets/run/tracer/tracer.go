@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -843,6 +845,26 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 		return t.runSnapshotter(gadgetCtx.Logger())
 	}
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
+
+	return nil
+}
+
+func (t *Tracer) RunWithoutGadgetContext(logger logger.Logger, ctx context.Context, timeout time.Duration, params *params.Params) error {
+	if err := t.installTracer(logger, params); err != nil {
+		t.Close()
+		return fmt.Errorf("install tracer: %w", err)
+	}
+
+	if t.perfReader != nil || t.ringbufReader != nil {
+		go t.runTracers(logger)
+	}
+	if len(t.linksSnapshotters) > 0 {
+		return t.runSnapshotter(logger)
+	}
+
+	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(ctx, timeout)
+	defer cancel()
+	<-ctx.Done()
 
 	return nil
 }
