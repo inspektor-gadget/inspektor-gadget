@@ -51,6 +51,12 @@ const (
 	pullSecret            = "pull-secret"
 )
 
+type RunOpts struct {
+	AuthOpts         *oci.AuthOptions
+	ValidateMetadata bool
+	PullPolicy       string
+}
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -138,18 +144,27 @@ func getGadgetType(spec *ebpf.CollectionSpec,
 }
 
 func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, logger logger.Logger) (*types.GadgetInfo, error) {
-	authOpts := &oci.AuthOptions{
-		AuthFile:    params.Get(authfileParam).AsString(),
-		SecretBytes: secretBytes,
-		Insecure:    params.Get(insecureParam).AsBool(),
+	runOpts := RunOpts{
+		AuthOpts: &oci.AuthOptions{
+			AuthFile:    params.Get(authfileParam).AsString(),
+			SecretBytes: secretBytes,
+			Insecure:    params.Get(insecureParam).AsBool(),
+		},
+		ValidateMetadata: params.Get(validateMetadataParam).AsBool(),
+		PullPolicy:       params.Get(pullParam).AsString(),
 	}
-	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts, params.Get(pullParam).AsString())
+
+	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], runOpts.AuthOpts, runOpts.PullPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget image: %w", err)
 	}
 
+	return getGadgetInfoFromBytes(gadget.EbpfObject, gadget.Metadata, runOpts, logger)
+}
+
+func getGadgetInfoFromBytes(ebpfBytes []byte, metadata []byte, runOpts RunOpts, logger logger.Logger) (*types.GadgetInfo, error) {
 	ret := &types.GadgetInfo{
-		ProgContent:    gadget.EbpfObject,
+		ProgContent:    ebpfBytes,
 		GadgetMetadata: &types.GadgetMetadata{},
 	}
 
@@ -158,20 +173,18 @@ func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, log
 		return nil, err
 	}
 
-	if bytes.Equal(gadget.Metadata, ocispec.DescriptorEmptyJSON.Data) {
+	if bytes.Equal(metadata, ocispec.DescriptorEmptyJSON.Data) {
 		// metadata is not present. synthesize something on the fly from the spec
 		if err := ret.GadgetMetadata.Populate(spec); err != nil {
 			return nil, err
 		}
 	} else {
-		validate := params.Get(validateMetadataParam).AsBool()
-
-		if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetMetadata); err != nil {
+		if err := yaml.Unmarshal(metadata, &ret.GadgetMetadata); err != nil {
 			return nil, fmt.Errorf("unmarshaling metadata: %w", err)
 		}
 
 		if err := ret.GadgetMetadata.Validate(spec); err != nil {
-			if !validate {
+			if !runOpts.ValidateMetadata {
 				logger.Warnf("gadget metadata is not valid: %v", err)
 			} else {
 				return nil, fmt.Errorf("gadget metadata is not valid: %w", err)
@@ -189,7 +202,7 @@ func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, log
 	}
 
 	ret.EventFactory = types.NewEventFactory()
-	ret.Columns, err = calculateColumnsForClient(ret.EventFactory, ret.GadgetMetadata, gadget.EbpfObject, logger)
+	ret.Columns, err = calculateColumnsForClient(ret.EventFactory, ret.GadgetMetadata, ret.ProgContent, logger)
 	if err != nil {
 		return nil, err
 	}
