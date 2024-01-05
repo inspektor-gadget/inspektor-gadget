@@ -301,6 +301,19 @@ func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types
 	return getGadgetInfo(params, args, secretBytes, log.StandardLogger())
 }
 
+func (g *GadgetDesc) GetGadgetInfoWithRunOpts(image string, runOpts RunOpts, logger logger.Logger) (*types.GadgetInfo, error) {
+	gadget, err := oci.GetGadgetImage(context.TODO(), image, runOpts.AuthOpts, runOpts.PullPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget image: %w", err)
+	}
+
+	return getGadgetInfoFromBytes(gadget.EbpfObject, gadget.Metadata, runOpts, logger)
+}
+
+func (g *GadgetDesc) GetGadgetInfoFromBytesRunOpts(ebpfProgram []byte, runOpts RunOpts, logger logger.Logger) (*types.GadgetInfo, error) {
+	return getGadgetInfoFromBytes(ebpfProgram, []byte("{}"), runOpts, logger)
+}
+
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
 	switch typedMember := tf.Type.(type) {
 	case *btf.Typedef:
