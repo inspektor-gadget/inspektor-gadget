@@ -20,7 +20,7 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
 	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
-	golang.org/x/sys v0.15.0
+	golang.org/x/sys v0.16.0
 	golang.org/x/term v0.15.0
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.32.0
