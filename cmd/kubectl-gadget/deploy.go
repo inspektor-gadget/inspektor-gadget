@@ -100,8 +100,8 @@ var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
 	strLevels = make([]string, len(log.AllLevels))
-	for _, level := range log.AllLevels {
-		strLevels = append(strLevels, level.String())
+	for i, level := range log.AllLevels {
+		strLevels[i] = level.String()
 	}
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
