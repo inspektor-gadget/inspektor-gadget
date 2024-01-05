@@ -493,11 +493,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case "EVENTS_BUFFER_LENGTH":
 					gadgetContainer.Env[i].Value = strconv.FormatUint(eventBufferLength, 10)
 				case "GADGET_TRACER_MANAGER_LOG_LEVEL":
-					if slices.Contains(strLevels, daemonLogLevel) {
-						gadgetContainer.Env[i].Value = daemonLogLevel
-					} else {
+					if !slices.Contains(strLevels, daemonLogLevel) {
 						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
 					}
+					gadgetContainer.Env[i].Value = daemonLogLevel
 				}
 			}
 
