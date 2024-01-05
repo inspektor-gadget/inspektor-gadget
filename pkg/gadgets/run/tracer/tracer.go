@@ -113,10 +113,6 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 		return errors.New("run needs experimental features to be enabled")
 	}
 
-	t.config = &Config{}
-	t.containers = make(map[string]*containercollection.Container)
-	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
-
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
 
@@ -136,8 +132,17 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("getting gadget info: %w", err)
 	}
 
+	return t.InitWithGadgetInfo(info)
+}
+
+func (t *Tracer) InitWithGadgetInfo(info *types.GadgetInfo) error {
+	t.config = &Config{}
+	t.containers = make(map[string]*containercollection.Container)
+	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
+
 	t.eventFactory = info.EventFactory
 	t.config.ProgContent = info.ProgContent
+	var err error
 	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
 		return err
