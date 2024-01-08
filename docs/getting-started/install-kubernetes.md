@@ -7,19 +7,23 @@ description: >
 
 <!-- toc -->
 - [Installing kubectl gadget](#installing-kubectl-gadget)
-  * [Using krew](#using-krew)
-  * [Install a specific release](#install-a-specific-release)
-  * [Compile from source](#compile-from-source)
+  - [Using krew](#using-krew)
+  - [Install a specific release](#install-a-specific-release)
+  - [Compile from source](#compile-from-source)
 - [Installing in the cluster](#installing-in-the-cluster)
-  * [Quick installation](#quick-installation)
-  * [Choosing the gadget image](#choosing-the-gadget-image)
-  * [Deploy to specific nodes](#deploy-to-specific-nodes)
-  * [Deploying into a custom namespace](#deploying-into-a-custom-namespace)
-  * [Hook Mode](#hook-mode)
-  * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
-    + [Minikube](#minikube)
+  - [Quick installation](#quick-installation)
+  - [Choosing the gadget image](#choosing-the-gadget-image)
+  - [Deploy to specific nodes](#deploy-to-specific-nodes)
+  - [Deploying into a custom namespace](#deploying-into-a-custom-namespace)
+  - [Running multiple Inspektor Gadget instances in parallel](#running-multiple-inspektor-gadget-instances-in-parallel)
+  - [Hook Mode](#hook-mode)
+  - [Specific Information for Different Platforms](#specific-information-for-different-platforms)
+    - [Minikube](#minikube)
 - [Uninstalling from the cluster](#uninstalling-from-the-cluster)
 - [Version skew policy](#version-skew-policy)
+- [Installing `ig`](#installing-ig)
+  - [Install a specific release](#install-a-specific-release-1)
+  - [Compile from source](#compile-from-source-1)
 - [Experimental features](#experimental-features)
 <!-- /toc -->
 
@@ -112,6 +116,26 @@ By default Inspektor Gadget is deployed to the namespace `gadget`.
 This can be changed with the `--gadget-namespace` flag.
 When using gadgets (e.g. `kubectl gadget trace exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
 For `undeploy` the `--gadget-namespace` flag is mandatory.
+
+### Running multiple Inspektor Gadget instances in parallel
+
+It is possible to run multiple instances of Inspektor Gadget at the same time.
+To do so, they have to run in their own namespace, which is specified using `--gadget-namespace` at deploy time.
+The instances are version agnostic.
+
+No resources are shared between running instances besides a Custom Resource Definition (CRD).
+So when undeploying the `--skip-crd` flag **must be used** in order to preserve the CRD, if there are any other running Inspektor Gadget instances.
+Only the **last** instance can clean up these resources.
+
+```bash
+$ kubectl gadget deploy --gadget-namespace foo
+$ kubectl gadget deploy --gadget-namespace bar
+$ kubectl gadget deploy --gadget-namespace xyz
+...
+$ kubectl gadget undeploy --gadget-namespace foo --skip-crd
+$ kubectl gadget undeploy --gadget-namespace xyz --skip-crd
+$ kubectl gadget undeploy --gadget-namespace bar
+```
 
 ### Hook Mode
 
