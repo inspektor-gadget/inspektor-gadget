@@ -10,6 +10,7 @@ enum fs_file_op {
 	F_WRITE,
 	F_OPEN,
 	F_FSYNC,
+	F_STATFS,
 	F_MAX_OP,
 };
 

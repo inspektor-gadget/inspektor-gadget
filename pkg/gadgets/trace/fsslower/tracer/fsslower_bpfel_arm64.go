@@ -66,14 +66,16 @@ type fsslowerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type fsslowerProgramSpecs struct {
-	IgFsslOpenE *ebpf.ProgramSpec `ebpf:"ig_fssl_open_e"`
-	IgFsslOpenX *ebpf.ProgramSpec `ebpf:"ig_fssl_open_x"`
-	IgFsslReadE *ebpf.ProgramSpec `ebpf:"ig_fssl_read_e"`
-	IgFsslReadX *ebpf.ProgramSpec `ebpf:"ig_fssl_read_x"`
-	IgFsslSyncE *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_e"`
-	IgFsslSyncX *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_x"`
-	IgFsslWrE   *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_e"`
-	IgFsslWrX   *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_x"`
+	IgFsslOpenE   *ebpf.ProgramSpec `ebpf:"ig_fssl_open_e"`
+	IgFsslOpenX   *ebpf.ProgramSpec `ebpf:"ig_fssl_open_x"`
+	IgFsslReadE   *ebpf.ProgramSpec `ebpf:"ig_fssl_read_e"`
+	IgFsslReadX   *ebpf.ProgramSpec `ebpf:"ig_fssl_read_x"`
+	IgFsslStatfsE *ebpf.ProgramSpec `ebpf:"ig_fssl_statfs_e"`
+	IgFsslStatfsX *ebpf.ProgramSpec `ebpf:"ig_fssl_statfs_x"`
+	IgFsslSyncE   *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_e"`
+	IgFsslSyncX   *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_x"`
+	IgFsslWrE     *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_e"`
+	IgFsslWrX     *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_x"`
 }
 
 // fsslowerMapSpecs contains maps before they are loaded into the kernel.
@@ -121,14 +123,16 @@ func (m *fsslowerMaps) Close() error {
 //
 // It can be passed to loadFsslowerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type fsslowerPrograms struct {
-	IgFsslOpenE *ebpf.Program `ebpf:"ig_fssl_open_e"`
-	IgFsslOpenX *ebpf.Program `ebpf:"ig_fssl_open_x"`
-	IgFsslReadE *ebpf.Program `ebpf:"ig_fssl_read_e"`
-	IgFsslReadX *ebpf.Program `ebpf:"ig_fssl_read_x"`
-	IgFsslSyncE *ebpf.Program `ebpf:"ig_fssl_sync_e"`
-	IgFsslSyncX *ebpf.Program `ebpf:"ig_fssl_sync_x"`
-	IgFsslWrE   *ebpf.Program `ebpf:"ig_fssl_wr_e"`
-	IgFsslWrX   *ebpf.Program `ebpf:"ig_fssl_wr_x"`
+	IgFsslOpenE   *ebpf.Program `ebpf:"ig_fssl_open_e"`
+	IgFsslOpenX   *ebpf.Program `ebpf:"ig_fssl_open_x"`
+	IgFsslReadE   *ebpf.Program `ebpf:"ig_fssl_read_e"`
+	IgFsslReadX   *ebpf.Program `ebpf:"ig_fssl_read_x"`
+	IgFsslStatfsE *ebpf.Program `ebpf:"ig_fssl_statfs_e"`
+	IgFsslStatfsX *ebpf.Program `ebpf:"ig_fssl_statfs_x"`
+	IgFsslSyncE   *ebpf.Program `ebpf:"ig_fssl_sync_e"`
+	IgFsslSyncX   *ebpf.Program `ebpf:"ig_fssl_sync_x"`
+	IgFsslWrE     *ebpf.Program `ebpf:"ig_fssl_wr_e"`
+	IgFsslWrX     *ebpf.Program `ebpf:"ig_fssl_wr_x"`
 }
 
 func (p *fsslowerPrograms) Close() error {
@@ -137,6 +141,8 @@ func (p *fsslowerPrograms) Close() error {
 		p.IgFsslOpenX,
 		p.IgFsslReadE,
 		p.IgFsslReadX,
+		p.IgFsslStatfsE,
+		p.IgFsslStatfsX,
 		p.IgFsslSyncE,
 		p.IgFsslSyncX,
 		p.IgFsslWrE,
