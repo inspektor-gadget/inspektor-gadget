@@ -106,7 +106,7 @@ func (m *KubeIPResolverInstance) PostGadgetRun() error {
 }
 
 func (m *KubeIPResolverInstance) enrich(ev any) {
-	pods := m.manager.k8sInventory.GetPods()
+	pods, _ := m.manager.k8sInventory.GetPods()
 	endpoints := ev.(KubeIPResolverInterface).GetEndpoints()
 	for j := range endpoints {
 		// initialize to this default value if we don't find a match
@@ -114,7 +114,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 	}
 
 	found := 0
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		if pod.Spec.HostNetwork {
 			continue
 		}
@@ -134,9 +134,9 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		}
 	}
 
-	svcs := m.manager.k8sInventory.GetSvcs()
+	svcs, _ := m.manager.k8sInventory.GetSvcs()
 
-	for _, svc := range svcs.Items {
+	for _, svc := range svcs {
 		for _, endpoint := range endpoints {
 			if svc.Spec.ClusterIP == endpoint.Addr {
 				endpoint.Kind = types.EndpointKindService
