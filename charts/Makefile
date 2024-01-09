@@ -15,18 +15,11 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 build: clean
-# the --version option is only found in the GNU version of sed:
-ifeq ($(shell sed --version >/dev/null 2>&1 ; echo $$?),0)
-	@echo Using GNU sed
-else
-	@echo "Using BSD sed"
-endif
 	@echo "Building chart:"
 	mkdir -p $(BUILD_DIR)
 	cp -r gadget $(BUILD_DIR)
 	cp -r ../pkg/resources/crd/bases $(CHART_DIR)/crds
 	mv $(CHART_DIR)/Chart.yaml.tmpl $(CHART_DIR)/Chart.yaml
-	@echo "The sed version is: $(SED_VERSION)"
 ifeq ($(findstring GNU,$(SED_VERSION)),GNU)
 	@echo "Using GNU sed"
 	sed -i "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
