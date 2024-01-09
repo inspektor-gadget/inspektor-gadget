@@ -219,6 +219,17 @@ func (t *Tracer) run() {
 			return
 		}
 
+		if record.LostSamples > 0 {
+			msg := fmt.Sprintf("lost %d samples", record.LostSamples)
+			t.eventCallback(types.Base(eventtypes.Warn(msg)))
+			continue
+		}
+
+		if len(record.RawSample) < 1 {
+			t.eventCallback(types.Base(eventtypes.Warn("empty record")))
+			continue
+		}
+
 		bpfEvent := (*capabilitiesCapEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		capability := bpfEvent.Cap
