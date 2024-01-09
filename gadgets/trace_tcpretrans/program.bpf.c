@@ -15,6 +15,8 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
+#define MAX_EVENT_SIZE 512
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -47,11 +49,7 @@ struct event {
 #define AF_INET 2
 #define AF_INET6 10
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(u32));
-} events SEC(".maps");
+GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(tcpretrans, events, event);
 
@@ -59,8 +57,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 					       const struct sk_buff *skb)
 {
 	struct inet_sock *sockp;
-	struct event event = {};
 	struct tcp_skb_cb *tcb;
+	struct event *event;
 	unsigned int family;
 
 	if (sk == NULL)
@@ -68,51 +66,56 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 
 	if (BPF_CORE_READ_BITFIELD_PROBED(sk, sk_protocol) != IPPROTO_TCP)
 		return 0;
-	event.src.proto = event.dst.proto = IPPROTO_TCP;
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return 0;
+
+	event->src.proto = event->dst.proto = IPPROTO_TCP;
 
 	sockp = (struct inet_sock *)sk;
 
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp = bpf_ktime_get_boot_ns();
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	switch (family) {
 	case AF_INET:
-		event.src.l3.version = event.dst.l3.version = 4;
+		event->src.l3.version = event->dst.l3.version = 4;
 
-		BPF_CORE_READ_INTO(&event.src.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&event->src.l3.addr.v4, sk,
 				   __sk_common.skc_rcv_saddr);
-		if (event.src.l3.addr.v4 == 0)
-			return 0;
+		if (event->src.l3.addr.v4 == 0)
+			goto cleanup;
 
-		BPF_CORE_READ_INTO(&event.dst.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&event->dst.l3.addr.v4, sk,
 				   __sk_common.skc_daddr);
-		if (event.dst.l3.addr.v4 == 0)
-			return 0;
+		if (event->dst.l3.addr.v4 == 0)
+			goto cleanup;
 		break;
 
 	case AF_INET6:
-		event.src.l3.version = event.dst.l3.version = 6;
+		event->src.l3.version = event->dst.l3.version = 6;
 
 		BPF_CORE_READ_INTO(
-			&event.src.l3.addr.v6, sk,
+			&event->src.l3.addr.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (((u64 *)event.src.l3.addr.v6)[0] == 0 &&
-		    ((u64 *)event.src.l3.addr.v6)[1] == 0)
-			return 0;
+		if (((u64 *)event->src.l3.addr.v6)[0] == 0 &&
+		    ((u64 *)event->src.l3.addr.v6)[1] == 0)
+			goto cleanup;
 
-		BPF_CORE_READ_INTO(&event.dst.l3.addr.v6, sk,
+		BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (((u64 *)event.dst.l3.addr.v6)[0] == 0 &&
-		    ((u64 *)event.dst.l3.addr.v6)[1] == 0)
-			return 0;
+		if (((u64 *)event->dst.l3.addr.v6)[0] == 0 &&
+		    ((u64 *)event->dst.l3.addr.v6)[1] == 0)
+			goto cleanup;
 		break;
 
 	default:
 		// drop
-		return 0;
+		goto cleanup;
 	}
 
-	event.state = BPF_CORE_READ(sk, __sk_common.skc_state);
+	event->state = BPF_CORE_READ(sk, __sk_common.skc_state);
 
 	// The tcp_retransmit_skb tracepoint is fired with a skb that does not
 	// contain the TCP header because the TCP header is built on a cloned skb
@@ -120,41 +123,46 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	// skb->transport_header is not set: skb_transport_header_was_set() == false.
 	// Instead, we have to read the TCP flags from the TCP control buffer.
 	tcb = (struct tcp_skb_cb *)&(skb->cb[0]);
-	bpf_probe_read_kernel(&event.tcpflags, sizeof(event.tcpflags),
+	bpf_probe_read_kernel(&event->tcpflags, sizeof(event->tcpflags),
 			      &tcb->tcp_flags);
 
-	BPF_CORE_READ_INTO(&event.dst.port, sk, __sk_common.skc_dport);
-	event.dst.port = bpf_ntohs(
-		event.dst.port); // host expects data in host byte order
-	if (event.dst.port == 0)
-		return 0;
+	BPF_CORE_READ_INTO(&event->dst.port, sk, __sk_common.skc_dport);
+	event->dst.port = bpf_ntohs(
+		event->dst.port); // host expects data in host byte order
+	if (event->dst.port == 0)
+		goto cleanup;
 
-	BPF_CORE_READ_INTO(&event.src.port, sockp, inet_sport);
-	event.src.port = bpf_ntohs(
-		event.src.port); // host expects data in host byte order
-	if (event.src.port == 0)
-		return 0;
+	BPF_CORE_READ_INTO(&event->src.port, sockp, inet_sport);
+	event->src.port = bpf_ntohs(
+		event->src.port); // host expects data in host byte order
+	if (event->src.port == 0)
+		goto cleanup;
 
-	BPF_CORE_READ_INTO(&event.netns, sk, __sk_common.skc_net.net, ns.inum);
+	BPF_CORE_READ_INTO(&event->netns, sk, __sk_common.skc_net.net, ns.inum);
 
-	struct sockets_value *skb_val = gadget_socket_lookup(sk, event.netns);
+	struct sockets_value *skb_val = gadget_socket_lookup(sk, event->netns);
 
 	if (skb_val != NULL) {
-		event.mntns_id = skb_val->mntns;
+		event->mntns_id = skb_val->mntns;
 		// Use the mount namespace of the socket to filter by container
-		if (gadget_should_discard_mntns_id(event.mntns_id))
-			return 0;
+		if (gadget_should_discard_mntns_id(event->mntns_id))
+			goto cleanup;
 
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task, skb_val->task,
-				 sizeof(event.task));
-		event.uid = (__u32)skb_val->uid_gid;
-		event.gid = (__u32)(skb_val->uid_gid >> 32);
+		event->pid = skb_val->pid_tgid >> 32;
+		event->tid = (__u32)skb_val->pid_tgid;
+		__builtin_memcpy(&event->task, skb_val->task,
+				 sizeof(event->task));
+		event->uid = (__u32)skb_val->uid_gid;
+		event->gid = (__u32)(skb_val->uid_gid >> 32);
 	}
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
-			      sizeof(event));
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
+
+	return 0;
+
+cleanup:
+	gadget_discard_buf(event);
+
 	return 0;
 }
 

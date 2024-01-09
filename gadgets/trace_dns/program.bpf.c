@@ -11,6 +11,9 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
+#define GADGET_NO_BUF_RESERVE
+#define MAX_EVENT_SIZE 512
+#include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
 
@@ -79,12 +82,7 @@ struct event_t {
 #define DNS_QR_QUERY 0
 #define DNS_QR_RESP 1
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(__u32));
-} events SEC(".maps");
-
+GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(dns, events, event_t);
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
@@ -357,7 +355,16 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	// size of full structure - addresses + only used addresses
 	unsigned long long size =
 		sizeof(*event); // - MAX_ADDR_ANSWERS * 16 + anaddrcount * 16;
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, event, size);
+
+	/*
+	 * We cannot use the reserve/commit API due to using load_*() with skb:
+	 * > Disallow usage of BPF_LD_[ABS|IND] with reference tracking, as
+	 * > gen_ld_abs() may terminate the program at runtime, leading to
+	 * > reference leak.
+	 * See:
+	 * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=fd978bf7fd31
+	 */
+	gadget_output_buf(skb, &events, event, size);
 
 	return 0;
 }
