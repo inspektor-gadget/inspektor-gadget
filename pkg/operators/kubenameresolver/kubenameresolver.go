@@ -116,15 +116,15 @@ func (m *KubeNameResolverInstance) enrich(ev any) {
 	kubeNameResolver, _ := ev.(KubeNameResolverInterface)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	pods := m.manager.k8sInventory.GetPods()
-	for i, pod := range pods.Items {
+	pods, _ := m.manager.k8sInventory.GetPods()
+	for _, pod := range pods {
 		if pod.Namespace == containerInfo.GetNamespace() && pod.Name == containerInfo.GetPod() {
 			owner := ""
 			// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
 			// shorter name without the random suffix. That will be used to
 			// generate the network policy name.
-			if pods.Items[i].OwnerReferences != nil {
-				nameItems := strings.Split(pods.Items[i].Name, "-")
+			if pod.OwnerReferences != nil {
+				nameItems := strings.Split(pod.Name, "-")
 				if len(nameItems) > 2 {
 					owner = strings.Join(nameItems[:len(nameItems)-2], "-")
 				}

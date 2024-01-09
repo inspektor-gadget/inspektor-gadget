@@ -15,16 +15,14 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/informers"
+	listersv1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
@@ -32,14 +30,12 @@ import (
 // K8sInventoryCache is a cache of Kubernetes resources such as pods and services
 // that can be used by operators to enrich events.
 type K8sInventoryCache struct {
-	clientset *kubernetes.Clientset
+	factory informers.SharedInformerFactory
 
-	pods atomic.Pointer[v1.PodList]
-	svcs atomic.Pointer[v1.ServiceList]
+	pods listersv1.PodLister
+	svcs listersv1.ServiceLister
 
-	exit           chan struct{}
-	ticker         *time.Ticker
-	tickerDuration time.Duration
+	exit chan struct{}
 
 	useCount      int
 	useCountMutex sync.Mutex
@@ -53,42 +49,31 @@ var (
 
 func GetK8sInventoryCache() (*K8sInventoryCache, error) {
 	once.Do(func() {
-		cache, err = newCache(1 * time.Second)
+		cache, err = newCache(10 * time.Minute)
 	})
 	return cache, err
 }
 
-func newCache(tickerDuration time.Duration) (*K8sInventoryCache, error) {
+func newCache(defaultResync time.Duration) (*K8sInventoryCache, error) {
 	clientset, err := k8sutil.NewClientset("")
 	if err != nil {
 		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
 	}
+	factory := informers.NewSharedInformerFactory(clientset, defaultResync)
+	pods := factory.Core().V1().Pods().Lister()
+	svcs := factory.Core().V1().Services().Lister()
 
 	return &K8sInventoryCache{
-		clientset:      clientset,
-		tickerDuration: tickerDuration,
+		factory: factory,
+		pods:    pods,
+		svcs:    svcs,
 	}, nil
-}
-
-func (cache *K8sInventoryCache) loop() {
-	for {
-		select {
-		case <-cache.exit:
-			return
-		case <-cache.ticker.C:
-			cache.update()
-		}
-	}
 }
 
 func (cache *K8sInventoryCache) Close() {
 	if cache.exit != nil {
 		close(cache.exit)
 		cache.exit = nil
-	}
-	if cache.ticker != nil {
-		cache.ticker.Stop()
-		cache.ticker = nil
 	}
 }
 
@@ -98,10 +83,9 @@ func (cache *K8sInventoryCache) Start() {
 
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
-		cache.update()
 		cache.exit = make(chan struct{})
-		cache.ticker = time.NewTicker(cache.tickerDuration)
-		go cache.loop()
+		cache.factory.Start(cache.exit)
+		cache.factory.WaitForCacheSync(cache.exit)
 	}
 	cache.useCount++
 }
@@ -117,26 +101,10 @@ func (cache *K8sInventoryCache) Stop() {
 	cache.useCount--
 }
 
-func (cache *K8sInventoryCache) update() {
-	pods, err := cache.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Errorf("listing pods: %v", err)
-		return
-	}
-	cache.pods.Store(pods)
-
-	svcs, err := cache.clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Errorf("listing services: %s", err)
-		return
-	}
-	cache.svcs.Store(svcs)
+func (cache *K8sInventoryCache) GetPods() ([]*v1.Pod, error) {
+	return cache.pods.List(labels.Everything())
 }
 
-func (cache *K8sInventoryCache) GetPods() *v1.PodList {
-	return cache.pods.Load()
-}
-
-func (cache *K8sInventoryCache) GetSvcs() *v1.ServiceList {
-	return cache.svcs.Load()
+func (cache *K8sInventoryCache) GetSvcs() ([]*v1.Service, error) {
+	return cache.svcs.List(labels.Everything())
 }
