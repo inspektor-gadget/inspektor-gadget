@@ -63,7 +63,7 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Title:          "Filesystem",
 			DefaultValue:   "ext4",
 			Description:    "Filesystem to trace",
-			PossibleValues: []string{"btrfs", "ext4", "nfs", "xfs"},
+			PossibleValues: []string{"btrfs", "cifs-direct", "cifs-loose", "cifs-strict", "ext4", "nfs", "xfs"},
 		},
 	}
 }

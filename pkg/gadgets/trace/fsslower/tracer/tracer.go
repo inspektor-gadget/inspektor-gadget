@@ -75,6 +75,27 @@ var fsConfMap = map[string]fsConf{
 		fsync:  "btrfs_sync_file",
 		statfs: "btrfs_statfs",
 	},
+	"cifs-direct": {
+		read:   "cifs_direct_readv",
+		write:  "cifs_direct_writev",
+		open:   "cifs_open",
+		fsync:  "cifs_fsync",
+		statfs: "cifs_statfs",
+	},
+	"cifs-loose": {
+		read:   "cifs_loose_read_iter",
+		write:  "cifs_file_write_iter",
+		open:   "cifs_open",
+		fsync:  "cifs_fsync",
+		statfs: "cifs_statfs",
+	},
+	"cifs-strict": {
+		read:   "cifs_strict_readv",
+		write:  "cifs_strict_writev",
+		open:   "cifs_open",
+		fsync:  "cifs_strict_fsync",
+		statfs: "cifs_statfs",
+	},
 	"ext4": {
 		read:   "ext4_file_read_iter",
 		write:  "ext4_file_write_iter",
