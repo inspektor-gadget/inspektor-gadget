@@ -616,10 +616,7 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 			return "TODO"
 		}
 	case reflect.String:
-		ff := GetFieldFunc[string, T](column)
-		return func(entry *T) string {
-			return ff(entry)
-		}
+		return GetFieldFunc[string, T](column)
 	}
 	return func(entry *T) string {
 		return ""
