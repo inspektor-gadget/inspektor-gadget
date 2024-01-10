@@ -23,6 +23,7 @@ struct event {
 	__u32 sessionid;
 	int retval;
 	int args_count;
+	bool upper_layer;
 	unsigned int args_size;
 	__u8 comm[TASK_COMM_LEN];
 #ifdef WITH_CWD

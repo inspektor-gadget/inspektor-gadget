@@ -12,6 +12,9 @@
 #endif
 #include "execsnoop.h"
 
+// Defined in include/uapi/linux/magic.h
+#define OVERLAYFS_SUPER_MAGIC 0x794c7630
+
 const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile int max_args = DEFAULT_MAXARGS;
@@ -139,6 +142,43 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	return 0;
 }
 
+// struct ovl_inode defined in fs/overlayfs/ovl_entry.h
+// Unfortunately, not exported to vmlinux.h
+// and not available in /sys/kernel/btf/vmlinux
+// See https://github.com/cilium/ebpf/pull/1300
+// So we don't benefit from CO-RE's preserve_access_index
+// We only rely on vfs_inode and __upperdentry relative positions
+struct _ovl_inode {
+	struct inode vfs_inode;
+	struct dentry *__upperdentry;
+};
+
+static __always_inline bool upper_layer()
+{
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
+	if (!inode) {
+		return false;
+	}
+	unsigned long sb_magic = BPF_CORE_READ(inode, i_sb, s_magic);
+
+	if (sb_magic != OVERLAYFS_SUPER_MAGIC) {
+		return false;
+	}
+
+	struct _ovl_inode *oi =
+		container_of(inode, struct _ovl_inode, vfs_inode);
+	if (!oi) {
+		return false;
+	}
+
+	struct dentry *upperdentry;
+
+	bpf_probe_read_kernel(&upperdentry, sizeof(upperdentry),
+			      &oi->__upperdentry);
+	return upperdentry != NULL;
+}
+
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 {
@@ -158,6 +198,10 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 	ret = ctx->ret;
 	if (ignore_failed && ret < 0)
 		goto cleanup;
+
+	if (ret == 0) {
+		event->upper_layer = upper_layer();
+	}
 
 	event->retval = ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));

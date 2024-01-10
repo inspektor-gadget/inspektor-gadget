@@ -29,9 +29,9 @@ func TestTraceExec(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-exec")
 
-	cmd := "setuidgid 1000:1111 sh -c 'while true; do date ; /bin/sleep 0.1; done'"
+	cmd := "cp /bin/date /date ; setuidgid 1000:1111 sh -c 'while true; do /date ; /bin/sleep 0.1; done'"
 	shArgs := []string{"/bin/sh", "-c", cmd}
-	dateArgs := []string{"/bin/date"}
+	dateArgs := []string{"/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
 	traceExecCmd := &Command{
@@ -55,11 +55,12 @@ func TestTraceExec(t *testing.T) {
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 					),
-					Comm: "date",
-					Args: dateArgs,
-					Uid:  1000,
-					Gid:  1111,
-					Cwd:  "/",
+					Comm:       "date",
+					Args:       dateArgs,
+					Uid:        1000,
+					Gid:        1111,
+					Cwd:        "/",
+					UpperLayer: true,
 				},
 				{
 					Event: BuildBaseEvent(ns,

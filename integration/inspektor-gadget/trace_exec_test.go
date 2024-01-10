@@ -31,9 +31,9 @@ func TestTraceExec(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	cmd := "setuidgid 1000:1111 sh -c 'while true; do date ; /bin/sleep 0.1; done'"
+	cmd := "cp /bin/date /date ; setuidgid 1000:1111 sh -c 'while true; do /date ; /bin/sleep 0.1; done'"
 	shArgs := []string{"/bin/sh", "-c", cmd}
-	dateArgs := []string{"/bin/date"}
+	dateArgs := []string{"/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
 	traceExecCmd := &Command{
@@ -49,12 +49,13 @@ func TestTraceExec(t *testing.T) {
 					Cwd:   "/",
 				},
 				{
-					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
-					Comm:  "date",
-					Args:  dateArgs,
-					Uid:   1000,
-					Gid:   1111,
-					Cwd:   "/",
+					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Comm:       "date",
+					Args:       dateArgs,
+					Uid:        1000,
+					Gid:        1111,
+					Cwd:        "/",
+					UpperLayer: true,
 				},
 				{
 					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
