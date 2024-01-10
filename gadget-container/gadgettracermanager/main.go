@@ -48,6 +48,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -103,7 +104,8 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
+	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
+	log.SetLevel(tracerManLogLvl)
 	labels := []*pb.Label{}
 	if label != "" {
 		pairs := strings.Split(label, ",")

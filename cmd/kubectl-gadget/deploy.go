@@ -20,9 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
@@ -88,13 +91,18 @@ var (
 	experimentalVar     bool
 	skipSELinuxOpts     bool
 	eventBufferLength   uint64
+	daemonLogLevel      string
+	strLevels           []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
-
+	strLevels = make([]string, len(log.AllLevels))
+	for i, level := range log.AllLevels {
+		strLevels[i] = level.String()
+	}
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
 		"image", "",
@@ -171,6 +179,9 @@ func init() {
 		"events-buffer-length", "",
 		16384,
 		"The events buffer length. A low value could impact horizontal scaling.")
+	deployCmd.PersistentFlags().StringVarP(
+		&daemonLogLevel,
+		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -481,6 +492,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
 				case "EVENTS_BUFFER_LENGTH":
 					gadgetContainer.Env[i].Value = strconv.FormatUint(eventBufferLength, 10)
+				case "GADGET_TRACER_MANAGER_LOG_LEVEL":
+					if !slices.Contains(strLevels, daemonLogLevel) {
+						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
+					}
+					gadgetContainer.Env[i].Value = daemonLogLevel
 				}
 			}
 

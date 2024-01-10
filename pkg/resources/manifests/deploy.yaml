@@ -173,6 +173,8 @@ spec:
               value: "false"
             - name: EVENTS_BUFFER_LENGTH
               value: "16384"
+            - name: GADGET_TRACER_MANAGER_LOG_LEVEL
+              value: "info"
           securityContext:
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate
             # SELinux context [2] to be able to mount host directories with correct permissions.

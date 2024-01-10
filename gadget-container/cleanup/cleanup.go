@@ -19,6 +19,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
+
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 
@@ -85,6 +87,8 @@ func removeNRIHooks() {
 }
 
 func main() {
+	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
+	log.SetLevel(tracerManLogLvl)
 	removeCRIOHooks()
 	removeNRIHooks()
 

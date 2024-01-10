@@ -22,6 +22,9 @@ config:
   # -- Events buffer length. A low value could impact horizontal scaling.
   eventsBufferLength: "16384"
 
+  # -- Daemon Log Level. Valid values are: "trace", "debug", "info", "warning", "error", "fatal", "panic"
+  daemonLogLevel: "info"
+
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 

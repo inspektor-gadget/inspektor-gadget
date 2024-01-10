@@ -7,6 +7,7 @@ CHART_DIR := $(BUILD_DIR)/gadget
 # This version will be overridden by the release process to match the tag
 CHART_VERSION ?= "1.0.0-dev"
 APP_VERSION ?= $(shell ./../tools/image-tag branch)
+SED_VERSION := $(shell sed --version 2>&1)
 
 .DEFAULT_GOAL := help
 
@@ -19,8 +20,15 @@ build: clean
 	cp -r gadget $(BUILD_DIR)
 	cp -r ../pkg/resources/crd/bases $(CHART_DIR)/crds
 	mv $(CHART_DIR)/Chart.yaml.tmpl $(CHART_DIR)/Chart.yaml
+ifeq ($(findstring GNU,$(SED_VERSION)),GNU)
+	@echo "Using GNU sed"
 	sed -i "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
 	sed -i "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
+else
+	@echo "Using BSD sed"
+	sed -i "" "s/%VERSION%/$(CHART_VERSION)/g" $(CHART_DIR)/Chart.yaml
+	sed -i "" "s/%APP_VERSION%/$(APP_VERSION)/g" $(CHART_DIR)/Chart.yaml
+endif
 	@echo "Preparing docs"
 	docker run --user $(shell id -u):$(shell id -g) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
 	@echo "Charts available at: $(CHART_DIR)"
