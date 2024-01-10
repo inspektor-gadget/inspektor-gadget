@@ -6,17 +6,28 @@
 #include <bpf/bpf_tracing.h>
 #endif /* __TARGET_ARCH_arm64 */
 
-#include <gadget/mntns_filter.h>
+//#include <gadget/mntns_filter.h>
 #ifdef WITH_CWD
 #include <gadget/filesystem.h>
 #endif
 #include "execsnoop.h"
 
-const volatile bool ignore_failed = true;
-const volatile uid_t targ_uid = INVALID_UID;
-const volatile int max_args = DEFAULT_MAXARGS;
+//const volatile bool ignore_failed = true;
+//const volatile uid_t targ_uid = INVALID_UID;
+//const volatile int max_args = DEFAULT_MAXARGS;
 
-static const struct event empty_event = {};
+#define ignore_failed true
+#define targ_uid INVALID_UID
+#define max_args DEFAULT_MAXARGS
+
+static struct event empty_event = {};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(u32));
+	__type(value, struct event);
+} empty_event_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -43,6 +54,8 @@ static __always_inline bool valid_uid(uid_t uid)
 SEC("tracepoint/syscalls/sys_enter_execve")
 int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 {
+	//bpf_printk("ig_execve_e\n");
+
 	u64 id;
 	char *cwd;
 	pid_t pid, tgid;
@@ -57,6 +70,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	u64 uid_gid = bpf_get_current_uid_gid();
 	u32 uid = (u32)uid_gid;
 	u32 gid = (u32)(uid_gid >> 32);
+	size_t len;
 
 	if (valid_uid(targ_uid) && targ_uid != uid)
 		return 0;
@@ -64,18 +78,28 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	task = (struct task_struct *)bpf_get_current_task();
 	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (gadget_should_discard_mntns_id(mntns_id))
+	//if (gadget_should_discard_mntns_id(mntns_id))
+	//	return 0;
+
+	u32 zero = 0;
+
+	/*struct event **/event = bpf_map_lookup_elem(&empty_event_map, &zero);
+	if (!event) {
+		//bpf_printk("empty_event_ptr is null\n");
 		return 0;
+	}
 
 	id = bpf_get_current_pid_tgid();
 	pid = (pid_t)id;
 	tgid = id >> 32;
-	if (bpf_map_update_elem(&execs, &pid, &empty_event, BPF_NOEXIST))
-		return 0;
-
-	event = bpf_map_lookup_elem(&execs, &pid);
-	if (!event)
-		return 0;
+//	if (bpf_map_update_elem(&execs, &pid, empty_event_ptr/*&empty_event*/, BPF_ANY)) {
+//		bpf_printk("bpf_map_update_elem\n");
+//		return 0;
+//	}
+//
+//	event = bpf_map_lookup_elem(&execs, &pid);
+//	if (!event)
+//		return 0;
 
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
@@ -116,15 +140,15 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
 		bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (!argp)
-			return 0;
+			goto send;
 
 		if (event->args_size > LAST_ARG)
-			return 0;
+			goto send;
 
 		ret = bpf_probe_read_user_str(&event->args[event->args_size],
 					      ARGSIZE, argp);
 		if (ret > ARGSIZE)
-			return 0;
+			goto send;
 
 		event->args_count++;
 		event->args_size += ret;
@@ -132,16 +156,27 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	/* try to read one more argument to check if there is one */
 	bpf_probe_read_user(&argp, sizeof(argp), &args[max_args]);
 	if (!argp)
-		return 0;
+		goto send;
 
 	/* pointer to max_args+1 isn't null, asume we have more arguments */
 	event->args_count++;
+
+send:
+	len = EVENT_SIZE(event);
+	if (len <= sizeof(*event)) {
+		//bpf_printk("send event\n");
+		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
+				      len);
+	}
+
 	return 0;
 }
 
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 {
+	return 0;
+
 	u64 id;
 	pid_t pid;
 	int ret;

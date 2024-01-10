@@ -32,8 +32,8 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS}  -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS}  -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -102,7 +102,7 @@ func (t *Tracer) install() error {
 	}
 
 	consts := map[string]interface{}{
-		"ignore_failed": t.config.IgnoreErrors,
+		//"ignore_failed": t.config.IgnoreErrors,
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
@@ -189,9 +189,9 @@ func (t *Tracer) run() {
 			}
 		}
 
-		if t.enricher != nil {
-			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
-		}
+		//if t.enricher != nil {
+		//	t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
+		//}
 
 		t.eventCallback(&event)
 	}

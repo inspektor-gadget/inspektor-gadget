@@ -81,10 +81,10 @@ type execsnoopWithCwdProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopWithCwdMapSpecs struct {
-	Bufs                 *ebpf.MapSpec `ebpf:"bufs"`
-	Events               *ebpf.MapSpec `ebpf:"events"`
-	Execs                *ebpf.MapSpec `ebpf:"execs"`
-	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	Bufs          *ebpf.MapSpec `ebpf:"bufs"`
+	EmptyEventMap *ebpf.MapSpec `ebpf:"empty_event_map"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	Execs         *ebpf.MapSpec `ebpf:"execs"`
 }
 
 // execsnoopWithCwdObjects contains all objects after they have been loaded into the kernel.
@@ -106,18 +106,18 @@ func (o *execsnoopWithCwdObjects) Close() error {
 //
 // It can be passed to loadExecsnoopWithCwdObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopWithCwdMaps struct {
-	Bufs                 *ebpf.Map `ebpf:"bufs"`
-	Events               *ebpf.Map `ebpf:"events"`
-	Execs                *ebpf.Map `ebpf:"execs"`
-	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	Bufs          *ebpf.Map `ebpf:"bufs"`
+	EmptyEventMap *ebpf.Map `ebpf:"empty_event_map"`
+	Events        *ebpf.Map `ebpf:"events"`
+	Execs         *ebpf.Map `ebpf:"execs"`
 }
 
 func (m *execsnoopWithCwdMaps) Close() error {
 	return _ExecsnoopWithCwdClose(
 		m.Bufs,
+		m.EmptyEventMap,
 		m.Events,
 		m.Execs,
-		m.GadgetMntnsFilterMap,
 	)
 }
 

@@ -35,8 +35,9 @@ func main() {
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event *types.Event) {
-		fmt.Printf("A new %q process with pid %d was executed\n",
-			event.Comm, event.Pid)
+		fmt.Printf("event: %+v\n", event)
+		//fmt.Printf("A new %q process with pid %d was executed\n",
+		//	event.Comm, event.Pid)
 	}
 
 	// Create the tracer. An empty configuration is passed as we are
@@ -44,7 +45,7 @@ func main() {
 	// reason, no enricher is passed.
 	tracer, err := tracer.NewTracer(&tracer.Config{}, nil, eventCallback)
 	if err != nil {
-		fmt.Printf("error creating tracer: %s\n", err)
+		fmt.Printf("error creating tracer: %+v\n", err)
 		return
 	}
 	defer tracer.Stop()

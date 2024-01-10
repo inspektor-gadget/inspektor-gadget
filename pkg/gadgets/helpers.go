@@ -18,6 +18,7 @@ package gadgets
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
@@ -31,7 +32,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -263,32 +263,52 @@ func LoadeBPFSpec(
 ) error {
 	FixBpfKtimeGetBootNs(spec.Programs)
 
-	mapReplacements := map[string]*ebpf.Map{}
-	filterByMntNs := false
-
-	if mountnsMap != nil {
-		filterByMntNs = true
-		mapReplacements[MntNsFilterMapName] = mountnsMap
+	//btfSpec := btfgen.GetBTFSpec()
+	btfSpec, err := btf.LoadSpec("/tmp/4.15.0-101-generic.btf")
+	if err != nil {
+		return fmt.Errorf("error loading spec: %v", err)
 	}
 
-	if consts == nil {
-		consts = map[string]interface{}{}
-	}
+	//	mapReplacements := map[string]*ebpf.Map{}
+	//	filterByMntNs := false
+	//
+	//	if mountnsMap != nil {
+	//		filterByMntNs = true
+	//		mapReplacements[MntNsFilterMapName] = mountnsMap
+	//	}
+	//
+	//	if consts == nil {
+	//		consts = map[string]interface{}{}
+	//	}
+	//
+	//	consts[FilterByMntNsName] = filterByMntNs
+	//
+	//	if err := spec.RewriteConstants(consts); err != nil {
+	//		return fmt.Errorf("rewriting constants: %w", err)
+	//	}
 
-	consts[FilterByMntNsName] = filterByMntNs
-
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
-	}
+	//fmt.Printf("program:\n")
+	//for _, prog := range spec.Programs {
+	//	fmt.Printf("  %s\n", prog.Name)
+	//	fmt.Printf("%s\n", prog.Instructions.String())
+	//}
 
 	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
+		//MapReplacements: mapReplacements,
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			KernelTypes: btfSpec,
+			//KernelTypes: btfgen.GetBTFSpec(),
 		},
 	}
 
 	if err := spec.LoadAndAssign(objs, &opts); err != nil {
+		var errVerifier *ebpf.VerifierError
+
+		if errors.As(err, &errVerifier) {
+			fmt.Printf("Verifier error: %+v\n", errVerifier.Error())
+			fmt.Printf("truncated: %v\n", errVerifier.Truncated)
+		}
+
 		return fmt.Errorf("loading maps and programs: %w", err)
 	}
 
