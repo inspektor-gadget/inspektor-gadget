@@ -59,6 +59,11 @@ const (
 	TimestampTypeName = "gadget_timestamp"
 )
 
+// Keep this aligned with include/gadget/buffer.h
+const (
+	GadgetHeapMapName = "gadget_heap"
+)
+
 type EBPFParam struct {
 	params.ParamDesc `yaml:",inline"`
 }
