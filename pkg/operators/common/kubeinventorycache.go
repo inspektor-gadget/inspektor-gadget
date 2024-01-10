@@ -22,6 +22,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
@@ -30,16 +31,21 @@ import (
 // K8sInventoryCache is a cache of Kubernetes resources such as pods and services
 // that can be used by operators to enrich events.
 type K8sInventoryCache struct {
-	factory informers.SharedInformerFactory
+	clientset *kubernetes.Clientset
 
-	pods listersv1.PodLister
-	svcs listersv1.ServiceLister
+	factory informers.SharedInformerFactory
+	pods    listersv1.PodLister
+	svcs    listersv1.ServiceLister
 
 	exit chan struct{}
 
 	useCount      int
 	useCountMutex sync.Mutex
 }
+
+const (
+	informerResync = 10 * time.Minute
+)
 
 var (
 	cache *K8sInventoryCache
@@ -49,24 +55,19 @@ var (
 
 func GetK8sInventoryCache() (*K8sInventoryCache, error) {
 	once.Do(func() {
-		cache, err = newCache(10 * time.Minute)
+		cache, err = newCache()
 	})
 	return cache, err
 }
 
-func newCache(defaultResync time.Duration) (*K8sInventoryCache, error) {
+func newCache() (*K8sInventoryCache, error) {
 	clientset, err := k8sutil.NewClientset("")
 	if err != nil {
 		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
 	}
-	factory := informers.NewSharedInformerFactory(clientset, defaultResync)
-	pods := factory.Core().V1().Pods().Lister()
-	svcs := factory.Core().V1().Services().Lister()
 
 	return &K8sInventoryCache{
-		factory: factory,
-		pods:    pods,
-		svcs:    svcs,
+		clientset: clientset,
 	}, nil
 }
 
@@ -74,6 +75,10 @@ func (cache *K8sInventoryCache) Close() {
 	if cache.exit != nil {
 		close(cache.exit)
 		cache.exit = nil
+	}
+	if cache.factory != nil {
+		cache.factory.Shutdown()
+		cache.factory = nil
 	}
 }
 
@@ -83,6 +88,10 @@ func (cache *K8sInventoryCache) Start() {
 
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
+		cache.factory = informers.NewSharedInformerFactory(cache.clientset, informerResync)
+		cache.pods = cache.factory.Core().V1().Pods().Lister()
+		cache.svcs = cache.factory.Core().V1().Services().Lister()
+
 		cache.exit = make(chan struct{})
 		cache.factory.Start(cache.exit)
 		cache.factory.WaitForCacheSync(cache.exit)

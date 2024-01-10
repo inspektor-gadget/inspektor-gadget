@@ -36,9 +36,7 @@ type KubeIPResolverInterface interface {
 	GetEndpoints() []*types.L3Endpoint
 }
 
-type KubeIPResolver struct {
-	k8sInventory *common.K8sInventoryCache
-}
+type KubeIPResolver struct{}
 
 func (k *KubeIPResolver) Name() string {
 	return OperatorName
@@ -66,30 +64,29 @@ func (k *KubeIPResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (k *KubeIPResolver) Init(params *params.Params) error {
-	k8sInventory, err := common.GetK8sInventoryCache()
-	if err != nil {
-		return fmt.Errorf("creating k8s inventory cache: %w", err)
-	}
-	k.k8sInventory = k8sInventory
 	return nil
 }
 
 func (k *KubeIPResolver) Close() error {
-	k.k8sInventory.Close()
 	return nil
 }
 
 func (k *KubeIPResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+	k8sInventory, err := common.GetK8sInventoryCache()
+	if err != nil {
+		return nil, fmt.Errorf("creating k8s inventory cache: %w", err)
+	}
+
 	return &KubeIPResolverInstance{
 		gadgetCtx:      gadgetCtx,
-		manager:        k,
+		k8sInventory:   k8sInventory,
 		gadgetInstance: gadgetInstance,
 	}, nil
 }
 
 type KubeIPResolverInstance struct {
 	gadgetCtx      operators.GadgetContext
-	manager        *KubeIPResolver
+	k8sInventory   *common.K8sInventoryCache
 	gadgetInstance any
 }
 
@@ -98,17 +95,17 @@ func (m *KubeIPResolverInstance) Name() string {
 }
 
 func (m *KubeIPResolverInstance) PreGadgetRun() error {
-	m.manager.k8sInventory.Start()
+	m.k8sInventory.Start()
 	return nil
 }
 
 func (m *KubeIPResolverInstance) PostGadgetRun() error {
-	m.manager.k8sInventory.Stop()
+	m.k8sInventory.Stop()
 	return nil
 }
 
 func (m *KubeIPResolverInstance) enrich(ev any) {
-	pods, err := m.manager.k8sInventory.GetPods()
+	pods, err := m.k8sInventory.GetPods()
 	if err != nil {
 		log.Warnf("getting pods from k8s inventory: %v", err)
 		return
@@ -141,7 +138,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		}
 	}
 
-	svcs, err := m.manager.k8sInventory.GetSvcs()
+	svcs, err := m.k8sInventory.GetSvcs()
 	if err != nil {
 		log.Warnf("getting services from k8s inventory: %v", err)
 		return
