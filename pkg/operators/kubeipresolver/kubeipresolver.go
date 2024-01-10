@@ -19,6 +19,8 @@ package kubeipresolver
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -106,7 +108,12 @@ func (m *KubeIPResolverInstance) PostGadgetRun() error {
 }
 
 func (m *KubeIPResolverInstance) enrich(ev any) {
-	pods, _ := m.manager.k8sInventory.GetPods()
+	pods, err := m.manager.k8sInventory.GetPods()
+	if err != nil {
+		log.Warnf("getting pods from k8s inventory: %v", err)
+		return
+	}
+
 	endpoints := ev.(KubeIPResolverInterface).GetEndpoints()
 	for j := range endpoints {
 		// initialize to this default value if we don't find a match
@@ -134,8 +141,11 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		}
 	}
 
-	svcs, _ := m.manager.k8sInventory.GetSvcs()
-
+	svcs, err := m.manager.k8sInventory.GetSvcs()
+	if err != nil {
+		log.Warnf("getting services from k8s inventory: %v", err)
+		return
+	}
 	for _, svc := range svcs {
 		for _, endpoint := range endpoints {
 			if svc.Spec.ClusterIP == endpoint.Addr {
