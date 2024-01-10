@@ -12,7 +12,6 @@
 #include <bpf/bpf_endian.h>
 
 #define GADGET_NO_BUF_RESERVE
-#define MAX_EVENT_SIZE 512
 #include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
