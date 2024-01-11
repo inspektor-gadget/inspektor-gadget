@@ -615,6 +615,18 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		return func(entry *T) string {
 			return "TODO"
 		}
+	case reflect.Slice:
+		s := column.(*Column[T]).Type().Elem().Size()
+		if s == 1 {
+			ff := GetFieldFunc[[]byte, T](column)
+			return func(entry *T) string {
+				return string(ff(entry))
+			}
+		}
+
+		return func(entry *T) string {
+			return "TODO"
+		}
 	case reflect.String:
 		return GetFieldFunc[string, T](column)
 	}
