@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -116,7 +118,11 @@ func (m *KubeNameResolverInstance) enrich(ev any) {
 	kubeNameResolver, _ := ev.(KubeNameResolverInterface)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	pods, _ := m.manager.k8sInventory.GetPods()
+	pods, err := m.manager.k8sInventory.GetPods()
+	if err != nil {
+		log.Warnf("getting pods from k8s inventory: %v", err)
+		return
+	}
 	for _, pod := range pods {
 		if pod.Namespace == containerInfo.GetNamespace() && pod.Name == containerInfo.GetPod() {
 			owner := ""
