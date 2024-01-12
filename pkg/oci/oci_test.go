@@ -17,8 +17,83 @@ package oci
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSplitIGDomain(t *testing.T) {
+	t.Parallel()
+
+	type testDefinition struct {
+		name              string
+		expectedDomain    string
+		expectedRemainder string
+	}
+
+	tests := map[string]testDefinition{
+		"no_domain_and_remainder": {
+			name:              "trace_exec",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: officialRepoPrefix + "trace_exec",
+		},
+		"no_domain_and_remainder_with_tag": {
+			name:              "trace_exec:v0.42.0",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: officialRepoPrefix + "trace_exec:v0.42.0",
+		},
+		"no_domain": {
+			name:              "xyz/gadget/trace_exec",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: "xyz/gadget/trace_exec",
+		},
+		"full": {
+			name:              "foobar.baz/xyz/gadget/trace_exec",
+			expectedDomain:    "foobar.baz",
+			expectedRemainder: "xyz/gadget/trace_exec",
+		},
+		"full_with_port": {
+			name:              "foobar.baz:443/xyz/gadget/trace_exec",
+			expectedDomain:    "foobar.baz:443",
+			expectedRemainder: "xyz/gadget/trace_exec",
+		},
+		"full_with_port_with_tag": {
+			name:              "foobar.baz:443/xyz/gadget/trace_exec:v0.42.0",
+			expectedDomain:    "foobar.baz:443",
+			expectedRemainder: "xyz/gadget/trace_exec:v0.42.0",
+		},
+		"localhost": {
+			name:              "localhost/trace_exec",
+			expectedDomain:    "localhost",
+			expectedRemainder: "trace_exec",
+		},
+		"localhost_with_long_remainder": {
+			name:              "localhost/a/b/c/e/d/g/r/trace_exec",
+			expectedDomain:    "localhost",
+			expectedRemainder: "a/b/c/e/d/g/r/trace_exec",
+		},
+		"localhost_with_port": {
+			name:              "localhost:5000/trace_exec",
+			expectedDomain:    "localhost:5000",
+			expectedRemainder: "trace_exec",
+		},
+		"localhost_with_port_with_tag": {
+			name:              "localhost:5000/trace_exec:v1.0.3",
+			expectedDomain:    "localhost:5000",
+			expectedRemainder: "trace_exec:v1.0.3",
+		},
+	}
+
+	for name, test := range tests {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			actualDomain, actualRemainder := splitIGDomain(test.name)
+			assert.Equal(t, test.expectedDomain, actualDomain)
+			assert.Equal(t, test.expectedRemainder, actualRemainder)
+		})
+	}
+}
 
 func TestNormalizeImage(t *testing.T) {
 	t.Parallel()
