@@ -39,9 +39,7 @@ type KubeNameResolverInterface interface {
 	SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string)
 }
 
-type KubeNameResolver struct {
-	k8sInventory *common.K8sInventoryCache
-}
+type KubeNameResolver struct{}
 
 func (k *KubeNameResolver) Name() string {
 	return OperatorName
@@ -73,30 +71,29 @@ func (k *KubeNameResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (k *KubeNameResolver) Init(params *params.Params) error {
-	k8sInventory, err := common.GetK8sInventoryCache()
-	if err != nil {
-		return fmt.Errorf("creating k8s inventory cache: %w", err)
-	}
-	k.k8sInventory = k8sInventory
 	return nil
 }
 
 func (k *KubeNameResolver) Close() error {
-	k.k8sInventory.Close()
 	return nil
 }
 
 func (k *KubeNameResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+	k8sInventory, err := common.GetK8sInventoryCache()
+	if err != nil {
+		return nil, fmt.Errorf("creating k8s inventory cache: %w", err)
+	}
+
 	return &KubeNameResolverInstance{
 		gadgetCtx:      gadgetCtx,
-		manager:        k,
+		k8sInventory:   k8sInventory,
 		gadgetInstance: gadgetInstance,
 	}, nil
 }
 
 type KubeNameResolverInstance struct {
 	gadgetCtx      operators.GadgetContext
-	manager        *KubeNameResolver
+	k8sInventory   *common.K8sInventoryCache
 	gadgetInstance any
 }
 
@@ -105,12 +102,12 @@ func (m *KubeNameResolverInstance) Name() string {
 }
 
 func (m *KubeNameResolverInstance) PreGadgetRun() error {
-	m.manager.k8sInventory.Start()
+	m.k8sInventory.Start()
 	return nil
 }
 
 func (m *KubeNameResolverInstance) PostGadgetRun() error {
-	m.manager.k8sInventory.Stop()
+	m.k8sInventory.Stop()
 	return nil
 }
 
@@ -118,7 +115,7 @@ func (m *KubeNameResolverInstance) enrich(ev any) {
 	kubeNameResolver, _ := ev.(KubeNameResolverInterface)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	pods, err := m.manager.k8sInventory.GetPods()
+	pods, err := m.k8sInventory.GetPods()
 	if err != nil {
 		log.Warnf("getting pods from k8s inventory: %v", err)
 		return
