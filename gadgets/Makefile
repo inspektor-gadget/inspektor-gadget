@@ -11,6 +11,7 @@ GADGETS = \
 	trace_oomkill \
 	trace_open \
 	trace_signal \
+	trace_sni \
 	trace_tcpconnect \
 	trace_tcpretrans \
 	snapshot_process \

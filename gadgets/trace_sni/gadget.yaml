@@ -1,0 +1,44 @@
+name: sni
+description: trace sni
+tracers:
+  sni:
+    mapName: events
+    structName: event_t
+
+structs:
+  event_t:
+    fields:
+    - name: timestamp
+      attributes:
+        template: timestamp
+    - name: pid
+      description: PID of the process that sent the request
+      attributes:
+        template: pid
+    - name: task
+      attributes:
+        template: comm
+    - name: uid
+      attributes:
+        hidden: true
+        template: uid
+    - name: gid
+      attributes:
+        hidden: true
+        template: uid
+    - name: name
+      attributes:
+        width: 30
+    - name: netns
+      description: 'Network namespace inode id'
+      attributes:
+        template: ns
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
+    - name: tid
+      description: TID of the thread sending the request
+      attributes:
+        template: pid
+        hidden: true
