@@ -17,54 +17,69 @@ package oci
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetRepositoryFromImage(t *testing.T) {
+func TestSplitIGDomain(t *testing.T) {
 	t.Parallel()
 
 	type testDefinition struct {
-		image      string
-		repository string
-		err        bool
+		name              string
+		expectedDomain    string
+		expectedRemainder string
 	}
 
 	tests := map[string]testDefinition{
-		"empty": {
-			image: "",
-			err:   true,
+		"no_domain_and_remainder": {
+			name:              "trace_exec",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: officialRepoPrefix + "trace_exec",
 		},
-		"badtag": {
-			image: "inspektor-gadget/ig:~½¬",
-			err:   true,
+		"no_domain_and_remainder_with_tag": {
+			name:              "trace_exec:v0.42.0",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: officialRepoPrefix + "trace_exec:v0.42.0",
 		},
-		"image": {
-			image:      "ig",
-			repository: "ig",
+		"no_domain": {
+			name:              "xyz/gadget/trace_exec",
+			expectedDomain:    defaultDomain,
+			expectedRemainder: "xyz/gadget/trace_exec",
 		},
-		"image_and_tag": {
-			image:      "ig:latest",
-			repository: "ig",
+		"full": {
+			name:              "foobar.baz/xyz/gadget/trace_exec",
+			expectedDomain:    "foobar.baz",
+			expectedRemainder: "xyz/gadget/trace_exec",
 		},
-		"host": {
-			image:      "ghcr.io",
-			repository: "ghcr.io",
+		"full_with_port": {
+			name:              "foobar.baz:443/xyz/gadget/trace_exec",
+			expectedDomain:    "foobar.baz:443",
+			expectedRemainder: "xyz/gadget/trace_exec",
 		},
-		"host_image_and_tag": {
-			image:      "inspektor-gadget/ig:latest",
-			repository: "inspektor-gadget/ig",
+		"full_with_port_with_tag": {
+			name:              "foobar.baz:443/xyz/gadget/trace_exec:v0.42.0",
+			expectedDomain:    "foobar.baz:443",
+			expectedRemainder: "xyz/gadget/trace_exec:v0.42.0",
 		},
-		"schema_host_image_and_tag": {
-			image: "https://inspektor-gadget/ig:latest",
-			err:   true,
+		"localhost": {
+			name:              "localhost/trace_exec",
+			expectedDomain:    "localhost",
+			expectedRemainder: "trace_exec",
 		},
-		"host_port_image_and_tag": {
-			image:      "ghcr.io:443/inspektor-gadget/ig:latest",
-			repository: "ghcr.io:443/inspektor-gadget/ig",
+		"localhost_with_long_remainder": {
+			name:              "localhost/a/b/c/e/d/g/r/trace_exec",
+			expectedDomain:    "localhost",
+			expectedRemainder: "a/b/c/e/d/g/r/trace_exec",
 		},
-		"schema_host_port_image_and_tag": {
-			image: "https://ghcr.io:443/inspektor-gadget/ig:latest",
-			err:   true,
+		"localhost_with_port": {
+			name:              "localhost:5000/trace_exec",
+			expectedDomain:    "localhost:5000",
+			expectedRemainder: "trace_exec",
+		},
+		"localhost_with_port_with_tag": {
+			name:              "localhost:5000/trace_exec:v1.0.3",
+			expectedDomain:    "localhost:5000",
+			expectedRemainder: "trace_exec:v1.0.3",
 		},
 	}
 
@@ -73,83 +88,9 @@ func TestGetRepositoryFromImage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			repository, err := getRepositoryFromImage(test.image)
-			if test.err {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, test.repository, repository)
-		})
-	}
-}
-
-func TestGetTagFromImage(t *testing.T) {
-	t.Parallel()
-
-	type testDefinition struct {
-		image string
-		tag   string
-		err   bool
-	}
-
-	tests := map[string]testDefinition{
-		"empty": {
-			image: "",
-			err:   true,
-		},
-		"badtag": {
-			image: "inspektor-gadget/ig:~½¬",
-			err:   true,
-		},
-		"image": {
-			image: "ig",
-			tag:   "latest",
-		},
-		"image_and_tag": {
-			image: "ig:latest",
-			tag:   "latest",
-		},
-		"image_and_tag_2": {
-			image: "ig:latestttt",
-			tag:   "latestttt",
-		},
-		"host": {
-			image: "ghcr.io",
-			tag:   "latest",
-		},
-		"host_image_and_tag": {
-			image: "inspektor-gadget/ig:foobar",
-			tag:   "foobar",
-		},
-		"schema_host_image_and_tag": {
-			image: "https://inspektor-gadget/ig:baz",
-			err:   true,
-		},
-		"host_port_image_and_tag": {
-			image: "ghcr.io:443/inspektor-gadget/ig:baz",
-			tag:   "baz",
-		},
-		"schema_host_port_image_and_tag": {
-			image: "https://ghcr.io:443/inspektor-gadget/ig:latest",
-			err:   true,
-		},
-	}
-
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			tag, err := getTagFromImage(test.image)
-			if test.err {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, test.tag, tag)
+			actualDomain, actualRemainder := splitIGDomain(test.name)
+			assert.Equal(t, test.expectedDomain, actualDomain)
+			assert.Equal(t, test.expectedRemainder, actualRemainder)
 		})
 	}
 }
@@ -174,19 +115,19 @@ func TestNormalizeImage(t *testing.T) {
 		},
 		"image": {
 			image:         "ig",
-			imageExpected: "docker.io/library/ig:latest",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latest",
 		},
 		"image_and_tag": {
 			image:         "ig:latest",
-			imageExpected: "docker.io/library/ig:latest",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latest",
 		},
 		"image_and_tag_2": {
 			image:         "ig:latestttt",
-			imageExpected: "docker.io/library/ig:latestttt",
+			imageExpected: "ghcr.io/inspektor-gadget/gadget/ig:latestttt",
 		},
 		"host_image_and_tag": {
 			image:         "inspektor-gadget/ig:foobar",
-			imageExpected: "docker.io/inspektor-gadget/ig:foobar",
+			imageExpected: "ghcr.io/inspektor-gadget/ig:foobar",
 		},
 		"schema_host_image_and_tag": {
 			image: "https://inspektor-gadget/ig:baz",
