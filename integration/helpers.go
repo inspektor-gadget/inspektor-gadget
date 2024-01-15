@@ -127,7 +127,20 @@ out:
 				continue out
 			}
 		}
-		t.Fatalf("output doesn't contain the expected entry: %+v", expectedEntry)
+
+		var str strings.Builder
+
+		str.WriteString("output doesn't contain the expected entry\n")
+		str.WriteString("captured:\n")
+		for _, entry := range entries {
+			entryJson, _ := json.Marshal(entry)
+			str.WriteString(string(entryJson))
+			str.WriteString("\n")
+		}
+		expectedEntryJson, _ := json.Marshal(expectedEntry)
+		str.WriteString("expected:\n")
+		str.WriteString(string(expectedEntryJson))
+		t.Fatal(str.String())
 	}
 }
 
