@@ -33,7 +33,7 @@ $(GADGETS):
 push: build
 	@echo "Pushing all gadgets"
 	for GADGET in $(GADGETS); do \
-		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
 	done
 
 .PHONY:
