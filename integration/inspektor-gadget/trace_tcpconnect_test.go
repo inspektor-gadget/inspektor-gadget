@@ -68,6 +68,7 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
@@ -135,6 +136,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntry)

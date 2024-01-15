@@ -150,6 +150,7 @@ func TestTraceDns(t *testing.T) {
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				if e.Qr == tracednsTypes.DNSPktTypeResponse {
 					e.DstPort = 0

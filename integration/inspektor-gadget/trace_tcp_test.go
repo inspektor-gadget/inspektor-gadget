@@ -70,6 +70,7 @@ func TestTraceTcp(t *testing.T) {
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 			}
 
 			fmt.Printf("output: %s\n", output)

@@ -45,6 +45,7 @@ func newTopFileCmd(ns, cmd string, startAndStop bool, isDockerRuntime bool) *Com
 			e.Runtime.RuntimeName = ""
 			e.Runtime.ContainerName = ""
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 		}
 
 		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)

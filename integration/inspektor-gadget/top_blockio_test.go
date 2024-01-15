@@ -47,6 +47,7 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime 
 			e.Runtime.RuntimeName = ""
 			e.Runtime.ContainerName = ""
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 		}
 
 		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)

@@ -57,6 +57,7 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Operations = 0
 
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 
 			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			if isDockerRuntime {
