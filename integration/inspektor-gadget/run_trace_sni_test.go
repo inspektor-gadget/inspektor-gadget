@@ -37,15 +37,15 @@ func runTraceSni(t *testing.T, ns string, cmd string) {
 			})
 
 			expectedTraceSniJsonObj := map[string]interface{}{
-				"comm":      "wget",
+				"task":      "wget",
 				"name":      "inspektor-gadget.io",
-				"timestamp": 0,
-				"mntns_id":  0,
-				"netns":     "",
+				"timestamp": "",
 				"pid":       0,
 				"tid":       0,
 				"uid":       1000,
 				"gid":       1111,
+				"mntns_id":  0,
+				"netns":     0,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceSniJsonObj)
@@ -59,8 +59,11 @@ func runTraceSni(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeContainerName(m, "")
 
 				m["timestamp"] = ""
-				m["mntns_id"] = 0
 				m["pid"] = uint32(0)
+				m["tid"] = uint32(0)
+
+				m["mntns_id"] = 0
+				m["netns"] = 0
 			}
 
 			ExpectEntriesToMatchObj(t, output, normalize, expectedJsonObj)
@@ -94,7 +97,7 @@ func TestRunTraceSni(t *testing.T) {
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	cmd := fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s -o json", ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_sni:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns)
 
 	runTraceSni(t, ns, cmd)
 }
