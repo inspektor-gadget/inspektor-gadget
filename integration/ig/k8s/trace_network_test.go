@@ -82,8 +82,6 @@ func TestTraceNetwork(t *testing.T) {
 						},
 					},
 					Comm:    "nginx",
-					Uid:     101, // default nginx user
-					Gid:     101,
 					PktType: "HOST",
 					Proto:   "TCP",
 					Port:    80,
@@ -115,6 +113,10 @@ func TestTraceNetwork(t *testing.T) {
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
+				// nginx uses multiple processes, in this case Inspektor Gadget is
+				// not able to determine the UID / GID in a reliable way.
+				e.Uid = 0
+				e.Gid = 0
 
 				e.Runtime.ContainerID = ""
 				e.Runtime.ContainerImageDigest = ""
