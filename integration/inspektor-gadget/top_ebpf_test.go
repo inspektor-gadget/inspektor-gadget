@@ -51,6 +51,7 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 			e.Runtime.RuntimeName = ""
 			e.Runtime.ContainerName = ""
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 		}
 
 		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)

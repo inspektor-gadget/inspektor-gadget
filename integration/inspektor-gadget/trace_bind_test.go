@@ -58,6 +58,7 @@ func TestTraceBind(t *testing.T) {
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectAllToMatch(t, output, normalize, expectedEntry)

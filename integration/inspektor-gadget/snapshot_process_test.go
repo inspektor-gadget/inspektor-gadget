@@ -68,6 +68,7 @@ func TestSnapshotProcess(t *testing.T) {
 					e.Runtime.RuntimeName = ""
 					e.Runtime.ContainerName = ""
 					e.Runtime.ContainerID = ""
+					e.Runtime.ContainerImageDigest = ""
 				}
 
 				ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)

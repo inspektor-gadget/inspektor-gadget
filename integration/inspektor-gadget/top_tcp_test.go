@@ -59,6 +59,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool
 			e.Runtime.RuntimeName = ""
 			e.Runtime.ContainerName = ""
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 		}
 
 		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
