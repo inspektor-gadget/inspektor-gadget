@@ -19,10 +19,6 @@ const (
 
 	PerfBufferPages = 64
 
-	// bpf_ktime_get_boot_ns()'s func id as defined in Linux API
-	// https://github.com/torvalds/linux/blob/v6.2-rc1/include/uapi/linux/bpf.h#L5614
-	BpfKtimeGetBootNsFuncID = 125
-
 	// Constant used to enable filtering by mount namespace inode id in eBPF.
 	// Keep in syn with variable defined in pkg/gadgets/common/mntns_filter.h.
 	FilterByMntNsName = "gadget_filter_by_mntns"

@@ -21,13 +21,12 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
-	"github.com/cilium/ebpf/btf"
+	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
@@ -187,38 +186,12 @@ func WallTimeFromBootTime(ts uint64) types.Time {
 	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
 }
 
-var (
-	bpfKtimeGetBootNsOnce   sync.Once
-	bpfKtimeGetBootNsExists bool
-)
-
 // DetectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
-// in the current kernel. False negatives are possible if BTF is not available.
 func DetectBpfKtimeGetBootNs() bool {
-	bpfKtimeGetBootNsOnce.Do(func() {
-		bpfKtimeGetBootNsExists = false
-
-		btfSpec, err := btf.LoadKernelSpec()
-		if err != nil {
-			return
-		}
-
-		enum := &btf.Enum{}
-		err = btfSpec.TypeByName("bpf_func_id", &enum)
-		if err != nil {
-			return
-		}
-
-		for _, value := range enum.Values {
-			if value.Name == "BPF_FUNC_ktime_get_boot_ns" && value.Value == BpfKtimeGetBootNsFuncID {
-				bpfKtimeGetBootNsExists = true
-
-				return
-			}
-		}
-	})
-
-	return bpfKtimeGetBootNsExists
+	// We only care about the helper, hence test with ebpf.SocketFilter that exist in all
+	// kernels that support ebpf.
+	err := features.HaveProgramHelper(ebpf.SocketFilter, asm.FnKtimeGetBootNs)
+	return err == nil
 }
 
 // removeBpfKtimeGetBootNs removes calls to bpf_ktime_get_boot_ns and replaces
@@ -231,7 +204,7 @@ func removeBpfKtimeGetBootNs(p *ebpf.ProgramSpec) {
 
 		if in.OpCode.Class().IsJump() &&
 			in.OpCode.JumpOp() == asm.Call &&
-			in.Constant == BpfKtimeGetBootNsFuncID {
+			in.Constant == int64(asm.FnKtimeGetBootNs) {
 			// reset timestamp to zero
 			in.OpCode = asm.Mov.Op(asm.ImmSource)
 			in.Dst = asm.R0
