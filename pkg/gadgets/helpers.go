@@ -186,8 +186,8 @@ func WallTimeFromBootTime(ts uint64) types.Time {
 	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
 }
 
-// DetectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
-func DetectBpfKtimeGetBootNs() bool {
+// HasBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
+func HasBpfKtimeGetBootNs() bool {
 	// We only care about the helper, hence test with ebpf.SocketFilter that exist in all
 	// kernels that support ebpf.
 	err := features.HaveProgramHelper(ebpf.SocketFilter, asm.FnKtimeGetBootNs)
@@ -216,7 +216,7 @@ func removeBpfKtimeGetBootNs(p *ebpf.ProgramSpec) {
 // FixBpfKtimeGetBootNs checks if bpf_ktime_get_boot_ns is supported by the
 // kernel and removes it if not
 func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
-	if DetectBpfKtimeGetBootNs() {
+	if HasBpfKtimeGetBootNs() {
 		return
 	}
 
