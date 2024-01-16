@@ -65,6 +65,7 @@ const (
 // GadgetImage is the representation of a gadget packaged in an OCI image.
 type GadgetImage struct {
 	EbpfObject []byte
+	WasmObject []byte
 	Metadata   []byte
 }
 
@@ -118,14 +119,22 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pu
 		}
 	}
 
-	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
+	manifest, err := getImageManifest(ctx, imageStore, image, authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
 
-	prog, err := getEbpfProgramFromManifest(ctx, imageStore, manifest)
+	prog, err := getLayerFromManifest(ctx, imageStore, manifest, eBPFObjectMediaType)
 	if err != nil {
 		return nil, fmt.Errorf("getting ebpf program: %w", err)
+	}
+	if prog == nil {
+		return nil, fmt.Errorf("no ebpf program found")
+	}
+
+	wasm, err := getLayerFromManifest(ctx, imageStore, manifest, wasmObjectMediaType)
+	if err != nil {
+		return nil, fmt.Errorf("getting wasm program: %w", err)
 	}
 
 	metadata, err := getMetadataFromManifest(ctx, imageStore, manifest)
@@ -135,6 +144,7 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pu
 
 	return &GadgetImage{
 		EbpfObject: prog,
+		WasmObject: wasm,
 		Metadata:   metadata,
 	}, nil
 }
@@ -524,7 +534,7 @@ func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget,
 	return index, nil
 }
 
-func getHostArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocispec.Manifest, error) {
+func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocispec.Manifest, error) {
 	var manifestDesc ocispec.Descriptor
 	for _, indexManifest := range index.Manifests {
 		// TODO: Check docker code
@@ -564,18 +574,29 @@ func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *
 	return metadata, nil
 }
 
-func getEbpfProgramFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
-	if len(manifest.Layers) != 1 {
-		return nil, fmt.Errorf("expected exactly one layer, got %d", len(manifest.Layers))
+func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
+	var layer ocispec.Descriptor
+	layerCount := 0
+	for _, l := range manifest.Layers {
+		if l.MediaType == mediaType {
+			layer = l
+			layerCount++
+		}
 	}
-	prog, err := getContentFromDescriptor(ctx, target, manifest.Layers[0])
+	if layerCount == 0 {
+		return nil, nil
+	}
+	if layerCount != 1 {
+		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
+	}
+	layerBytes, err := getContentFromDescriptor(ctx, target, layer)
 	if err != nil {
-		return nil, fmt.Errorf("getting ebpf program from descriptor: %w", err)
+		return nil, fmt.Errorf("getting layer %q from descriptor: %w", mediaType, err)
 	}
-	if len(prog) == 0 {
-		return nil, errors.New("program is empty")
+	if len(layerBytes) == 0 {
+		return nil, errors.New("layer is empty")
 	}
-	return prog, nil
+	return layerBytes, nil
 }
 
 func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
@@ -591,7 +612,7 @@ func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarge
 	return bytes, nil
 }
 
-func getImageManifestForArch(ctx context.Context, target oras.Target, image string, authOpts *AuthOptions) (*ocispec.Manifest, error) {
+func getImageManifest(ctx context.Context, target oras.Target, image string, authOpts *AuthOptions) (*ocispec.Manifest, error) {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
@@ -602,9 +623,9 @@ func getImageManifestForArch(ctx context.Context, target oras.Target, image stri
 		return nil, fmt.Errorf("getting image list descriptor: %w", err)
 	}
 
-	manifest, err := getHostArchManifest(target, index)
+	manifestHost, err := getArchManifest(target, index)
 	if err != nil {
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
-	return manifest, nil
+	return manifestHost, nil
 }
