@@ -131,22 +131,25 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 		log.Debugf("  %s", operator.Name())
 	}
 
-	// Set event handler
-	if setter, ok := gadgetInstance.(gadgets.EventHandlerSetter); ok {
-		log.Debugf("set event handler")
-		setter.SetEventHandler(gadgetCtx.Parser().EventHandlerFunc(operatorInstances.Enrich))
-	}
+	parser := gadgetCtx.Parser()
+	if parser != nil {
+		// Set event handler
+		if setter, ok := gadgetInstance.(gadgets.EventHandlerSetter); ok {
+			log.Debugf("set event handler")
+			setter.SetEventHandler(parser.EventHandlerFunc(operatorInstances.Enrich))
+		}
 
-	// Set event handler for array results
-	if setter, ok := gadgetInstance.(gadgets.EventHandlerArraySetter); ok {
-		log.Debugf("set event handler for arrays")
-		setter.SetEventHandlerArray(gadgetCtx.Parser().EventHandlerFuncArray(operatorInstances.Enrich))
-	}
+		// Set event handler for array results
+		if setter, ok := gadgetInstance.(gadgets.EventHandlerArraySetter); ok {
+			log.Debugf("set event handler for arrays")
+			setter.SetEventHandlerArray(parser.EventHandlerFuncArray(operatorInstances.Enrich))
+		}
 
-	// Set event enricher (currently only used by profile/cpu)
-	if setter, ok := gadgetInstance.(gadgets.EventEnricherSetter); ok {
-		log.Debugf("set event enricher")
-		setter.SetEventEnricher(operatorInstances.Enrich)
+		// Set event enricher (currently only used by profile/cpu)
+		if setter, ok := gadgetInstance.(gadgets.EventEnricherSetter); ok {
+			log.Debugf("set event enricher")
+			setter.SetEventEnricher(operatorInstances.Enrich)
+		}
 	}
 
 	log.Debug("calling operator.PreGadgetRun()")
