@@ -386,9 +386,11 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 
 	mapReplacements := map[string]*ebpf.Map{}
 
-	t.eventType, err = getEventTypeBTF(t.config.ProgContent, t.config.Metadata)
-	if err != nil {
-		return err
+	if len(t.config.Metadata.Structs) > 0 {
+		t.eventType, err = getEventTypeBTF(t.config.ProgContent, t.config.Metadata)
+		if err != nil {
+			return err
+		}
 	}
 
 	switch {
