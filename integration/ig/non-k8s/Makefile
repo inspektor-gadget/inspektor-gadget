@@ -22,5 +22,5 @@ test: test-$(CONTAINER_RUNTIME)
 test-%: build
 	cp ../../../ig-linux-amd64 ig
 	go test -c -o ./ig-docker-integration.test ./...
-	sudo ./ig-docker-integration.test -test.v -integration -runtime $* -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}
+	sudo ./ig-docker-integration.test -test.v -test.timeout 30m -integration -runtime $* -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}
 	rm -f ./ig-docker-integration.test ./ig

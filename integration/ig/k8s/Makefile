@@ -50,4 +50,4 @@ test-%: build build-tests
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /var/lib/minikube/binaries/$(KUBERNETES_VERSION)/kubectl /bin/kubectl" && \
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /etc/kubernetes/admin.conf /root/.kube/config" && \
 	echo "Running test in minikube with profile $${MINIKUBE_PROFILE} ..." && \
-	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -integration -container-runtime $* -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}"
+	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -test.timeout 30m -integration -container-runtime $* -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}"
