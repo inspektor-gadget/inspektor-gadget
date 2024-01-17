@@ -43,7 +43,7 @@ const garbageCollectorBatchSize = 256
 //
 // The garbage collector goroutine terminates when the context is done.
 func startGarbageCollector(ctx context.Context, logger logger.Logger, gadgetParams *params.Params, queryMap *ebpf.Map) {
-	if !gadgets.DetectBpfKtimeGetBootNs() {
+	if !gadgets.HasBpfKtimeGetBootNs() {
 		logger.Warnf("DNS latency will not be reported (requires Linux kernel 5.8 or later)")
 		return
 	}

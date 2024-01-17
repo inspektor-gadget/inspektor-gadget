@@ -237,7 +237,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 }
 
 func timestampFromEvent(event *syscallEvent) eventtypes.Time {
-	if !gadgets.DetectBpfKtimeGetBootNs() {
+	if !gadgets.HasBpfKtimeGetBootNs() {
 		// Traceloop works differently than other gadgets: if the
 		// kernel does not support bpf_ktime_get_boot_ns, don't
 		// generate a timestamp from userspace because traceloop reads
@@ -620,7 +620,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	})
 
 	// Remove timestamps if we couldn't get reliable ones
-	if !gadgets.DetectBpfKtimeGetBootNs() {
+	if !gadgets.HasBpfKtimeGetBootNs() {
 		for i := range events {
 			events[i].Timestamp = 0
 		}
