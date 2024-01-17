@@ -158,6 +158,10 @@ spec:
                 # Needed by gadgets that open a raw sock like dns and snisnoop:
                 # https://github.com/inspektor-gadget/inspektor-gadget/blob/3c51ff5e9f5b/gadgets/trace_dns/program.bpf.c#L365-L366
                 - NET_RAW
+
+                # Needed to attach qdiscs and filters to network interfaces. See createClsActQdisc()
+                # and addTCFilter() in pkg/gadgets/internal/tcnetworktracer/tc.go
+                - NET_ADMIN
               {{- else }}
               {{- toYaml .Values.capabilities | nindent 14 }}
               {{- end }}

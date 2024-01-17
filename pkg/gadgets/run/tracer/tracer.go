@@ -40,6 +40,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -90,6 +91,11 @@ type Tracer struct {
 	socketEnricherMap *ebpf.Map
 	networkTracers    map[string]*networktracer.Tracer[types.Event]
 
+	tcHandlers map[string]*tchandler.Handler
+	// Network interface to attach the TC programs to. If set, the gadget won't attach to any
+	// container.
+	ifaceName string
+
 	// Tracers related
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
@@ -115,6 +121,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.config = &Config{}
 	t.containers = make(map[string]*containercollection.Container)
 	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
+	t.tcHandlers = make(map[string]*tchandler.Handler)
 
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
@@ -128,6 +135,11 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// TODO: how to check that other parameters like containername, namespace, etc are not set?
+	if ifaceParam := params.Get(types.IfaceParam); ifaceParam != nil {
+		t.ifaceName = ifaceParam.AsString()
 	}
 
 	info, err := getGadgetInfo(params, args, secretBytes, gadgetCtx.Logger())
@@ -147,13 +159,44 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	// Create network tracers, one for each socket filter program.
 	// We need to make this in Init() because AttachContainer() is called before Run().
 	for _, p := range t.spec.Programs {
-		if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
-			networkTracer, err := networktracer.NewTracer[types.Event]()
+		switch p.Type {
+		case ebpf.SocketFilter:
+			if strings.HasPrefix(p.SectionName, "socket") {
+				networkTracer, err := networktracer.NewTracer[types.Event]()
+				if err != nil {
+					t.Close()
+					return fmt.Errorf("creating network tracer: %w", err)
+				}
+				t.networkTracers[p.Name] = networkTracer
+			}
+		case ebpf.SchedCLS:
+			parts := strings.Split(p.SectionName, "/")
+			if len(parts) != 3 {
+				return fmt.Errorf("invalid section name %q", p.SectionName)
+			}
+			if parts[0] != "classifier" {
+				return fmt.Errorf("invalid section name %q", p.SectionName)
+			}
+
+			var direction tchandler.AttachmentDirection
+
+			switch parts[1] {
+			case "ingress":
+				direction = tchandler.AttachmentDirectionIngress
+			case "egress":
+				direction = tchandler.AttachmentDirectionEgress
+			default:
+				return fmt.Errorf("unsupported hook type %q", parts[1])
+			}
+
+			handler, err := tchandler.NewHandler(direction)
 			if err != nil {
 				t.Close()
-				return fmt.Errorf("creating network tracer: %w", err)
+				return fmt.Errorf("creating tc network tracer: %w", err)
 			}
-			t.networkTracers[p.Name] = networkTracer
+
+			t.tcHandlers[p.Name] = handler
+
 		}
 	}
 
@@ -178,6 +221,9 @@ func (t *Tracer) Close() {
 	}
 	for _, networkTracer := range t.networkTracers {
 		networkTracer.Close()
+	}
+	for _, handler := range t.tcHandlers {
+		handler.Close()
 	}
 }
 
@@ -373,6 +419,22 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 			Name:    p.AttachTo,
 			Program: prog,
 		})
+	case ebpf.SchedCLS:
+		handler := t.tcHandlers[p.Name]
+
+		if t.ifaceName != "" {
+			iface, err := net.InterfaceByName(t.ifaceName)
+			if err != nil {
+				return nil, fmt.Errorf("getting interface %q: %w", t.ifaceName, err)
+			}
+
+			if err := handler.AttachIface(iface); err != nil {
+				return nil, fmt.Errorf("attaching iface %q: %w", t.ifaceName, err)
+			}
+		}
+
+		logger.Debugf("Attaching sched_cls %q", p.Name)
+		return nil, handler.AttachProg(prog)
 	}
 
 	return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
@@ -862,6 +924,11 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
+	// Only attach to containers if ifaceName is not set
+	if t.ifaceName != "" {
+		return nil
+	}
+
 	t.mu.Lock()
 	t.containers[container.Runtime.ContainerID] = container
 	t.mu.Unlock()
@@ -872,16 +939,32 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 		}
 	}
 
+	for _, handler := range t.tcHandlers {
+		if err := handler.AttachContainer(container); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (t *Tracer) DetachContainer(container *containercollection.Container) error {
+	if t.ifaceName != "" {
+		return nil
+	}
+
 	t.mu.Lock()
 	delete(t.containers, container.Runtime.ContainerID)
 	t.mu.Unlock()
 
 	for _, networkTracer := range t.networkTracers {
 		if err := networkTracer.Detach(container.Pid); err != nil {
+			return err
+		}
+	}
+
+	for _, handler := range t.tcHandlers {
+		if err := handler.DetachContainer(container); err != nil {
 			return err
 		}
 	}
