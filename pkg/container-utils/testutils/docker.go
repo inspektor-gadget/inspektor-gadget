@@ -46,18 +46,6 @@ type DockerContainer struct {
 	client *client.Client
 }
 
-func (d *DockerContainer) Running() bool {
-	return d.started
-}
-
-func (d *DockerContainer) ID() string {
-	return d.id
-}
-
-func (d *DockerContainer) Pid() int {
-	return d.pid
-}
-
 func (d *DockerContainer) initClient() error {
 	var err error
 	d.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -83,6 +71,10 @@ func (d *DockerContainer) Run(t *testing.T) {
 	hostConfig := &container.HostConfig{}
 	if d.options.seccompProfile != "" {
 		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", d.options.seccompProfile)}
+	}
+
+	if d.options.portBindings != nil {
+		hostConfig.PortBindings = d.options.portBindings
 	}
 
 	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
@@ -113,6 +105,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		t.Fatalf("Failed to inspect container: %s", err)
 	}
 	d.pid = containerJSON.State.Pid
+	d.portBindings = containerJSON.NetworkSettings.Ports
 
 	if d.options.logs {
 		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})

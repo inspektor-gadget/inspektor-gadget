@@ -1019,6 +1019,23 @@ jobs:
 
         make ig-tests
 
+  test-components:
+    name: Test components
+    # level: 1
+    runs-on: ubuntu-latest
+    needs:
+      - build-helper-images
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+    - name: Run component tests
+      run: |
+        make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} component-tests
+
   check-secrets:
     name: Check repo secrets
     # level: 0
@@ -1462,6 +1479,7 @@ jobs:
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
+      - test-components
       - test-ig
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig

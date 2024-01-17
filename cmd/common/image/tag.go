@@ -38,7 +38,7 @@ func NewTagCmd() *cobra.Command {
 				return fmt.Errorf("tagging image: %w", err)
 			}
 
-			fmt.Printf("Successfully tagged with %s\n", desc.String())
+			cmd.Printf("Successfully tagged with %s\n", desc.String())
 			return nil
 		},
 	}

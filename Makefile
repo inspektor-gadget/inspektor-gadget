@@ -268,6 +268,11 @@ integration-tests: kubectl-gadget
 			-gadget-tag $(GADGET_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
 
+
+.PHONY: component-tests
+component-tests:
+	go test -exec sudo -v ./integration/components/... -integration -timeout 5m --builder-image $(EBPF_BUILDER)
+
 .PHONY: generate-documentation
 generate-documentation:
 	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
