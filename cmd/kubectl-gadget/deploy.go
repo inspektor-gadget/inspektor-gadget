@@ -528,22 +528,19 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if ns, isNs := object.(*v1.Namespace); isNs {
-			ns.Name = gadgetNamespace
-		}
-		if sa, isSa := object.(*v1.ServiceAccount); isSa {
-			sa.Namespace = gadgetNamespace
-		}
-		if crBinding, isCrBinding := object.(*rbacv1.ClusterRoleBinding); isCrBinding {
-			if len(crBinding.Subjects) == 1 {
-				crBinding.Subjects[0].Namespace = gadgetNamespace
+		switch o := object.(type) {
+		case *v1.Namespace:
+			o.Name = gadgetNamespace
+		case *v1.ServiceAccount:
+			o.Namespace = gadgetNamespace
+		case *rbacv1.ClusterRoleBinding:
+			if len(o.Subjects) == 1 {
+				o.Subjects[0].Namespace = gadgetNamespace
 			}
-		}
-		if role, isRole := object.(*rbacv1.Role); isRole {
-			role.Namespace = gadgetNamespace
-		}
-		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
-			rBinding.Namespace = gadgetNamespace
+		case *rbacv1.Role:
+			o.Namespace = gadgetNamespace
+		case *rbacv1.RoleBinding:
+			o.Namespace = gadgetNamespace
 		}
 
 		if printOnly {
