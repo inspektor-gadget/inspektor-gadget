@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +33,8 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+	"github.com/wapc/wapc-go"
+	"github.com/wapc/wapc-go/engines/wazero"
 	"golang.org/x/exp/constraints"
 
 	log "github.com/sirupsen/logrus"
@@ -64,7 +67,9 @@ type l4EndpointT struct {
 
 type Config struct {
 	ProgContent []byte
+	WasmContent []byte
 	Metadata    *types.GadgetMetadata
+	Columns     []types.ColumnDesc
 	MountnsMap  *ebpf.Map
 
 	// constants to replace in the ebpf program
@@ -97,8 +102,10 @@ type Tracer struct {
 	// Snapshotters related
 	linksSnapshotters []*linkSnapshotter
 
-	containers map[string]*containercollection.Container
-	links      []link.Link
+	containers   map[string]*containercollection.Container
+	links        []link.Link
+	wasmModule   wapc.Module
+	wasmInstance wapc.Instance
 
 	eventFactory *types.EventFactory
 }
@@ -136,7 +143,10 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	}
 
 	t.eventFactory = info.EventFactory
+	t.config.WasmContent = info.WasmContent
 	t.config.ProgContent = info.ProgContent
+	t.config.Columns = info.Columns
+
 	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
 		return err
@@ -161,6 +171,12 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) Close() {
+	if t.wasmModule != nil {
+		t.wasmModule.Close(context.Background())
+	}
+	if t.wasmInstance != nil {
+		t.wasmInstance.Close(context.Background())
+	}
 	if t.collection != nil {
 		t.collection.Close()
 		t.collection = nil
@@ -362,9 +378,36 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 }
 
 func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
+	// Load wasm module
+	ctx := gadgetCtx.Context()
+	engine := wazero.Engine()
 
 	var err error
+	if t.config.WasmContent != nil {
+		host := t.newWasmHost(gadgetCtx.Logger())
+		t.wasmModule, err = engine.New(ctx, host, t.config.WasmContent, &wapc.ModuleConfig{
+			Logger: func(msg string) {
+				gadgetCtx.Logger().Info(msg)
+			},
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
+		})
+		if err != nil {
+			return fmt.Errorf("creating wasm module: %w", err)
+		}
+		t.wasmInstance, err = t.wasmModule.Instantiate(ctx)
+		if err != nil {
+			return fmt.Errorf("instantiating wasm module: %w", err)
+		}
+
+		_, err = t.wasmInstance.Invoke(t.newHostCallContext(ctx),
+			"Init", []byte{})
+		if err != nil {
+			return fmt.Errorf("invoking Init() in wasm module: %w", err)
+		}
+	}
+
+	// Load the spec
 	var tracerMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
@@ -382,6 +425,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 		}
 	}
 
+	params := gadgetCtx.GadgetParams()
 	t.setEBPFParameters(t.config.Metadata.EBPFParams, params)
 	consts := t.config.Consts
 
@@ -493,8 +537,27 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		typ   endpointType
 	}
 
+	type wasmColumnDef struct {
+		setter func(*types.Event, string)
+		name   string
+		start  uint32
+		size   uint32
+	}
+
 	endpointDefs := []endpointDef{}
 	timestampsOffsets := []uint32{}
+	wasmColumnsByName := map[string]*wasmColumnDef{}
+	wasmColumns := []*wasmColumnDef{}
+
+	for _, c := range t.config.Columns {
+		if c.WasmHandler {
+			d := &wasmColumnDef{
+				name: c.Name,
+			}
+			wasmColumnsByName[c.Name] = d
+			wasmColumns = append(wasmColumns, d)
+		}
+	}
 
 	enumSetters := []func(ev *types.Event, data []byte){}
 
@@ -617,6 +680,19 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			enumSetters = append(enumSetters, enumSetter)
 		}
+
+		if w, ok := wasmColumnsByName[member.Name]; ok {
+			w.name = member.Name
+			w.start = member.Offset.Bytes()
+			typ, ok := member.Type.(*btf.Array)
+			if !ok {
+				w.size = 1 // FIXME
+			} else {
+				w.size = typ.Nelems * 1 // FIXME
+			}
+
+			w.setter = types.GetSetter[string](t.eventFactory, member.Name)
+		}
 	}
 
 	return func(data []byte) *types.Event {
@@ -691,6 +767,21 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		// handle enums
 		for _, setter := range enumSetters {
 			setter(ev, data)
+		}
+
+		// handle wasm columns
+		for _, wasmColumn := range wasmColumns {
+			methodName := "column_" + wasmColumn.name
+			inputBuffer := make([]byte, wasmColumn.size)
+			copy(inputBuffer, data[wasmColumn.start:wasmColumn.start+wasmColumn.size])
+
+			result, err := t.wasmInstance.Invoke(t.newHostCallContext(gadgetCtx.Context()),
+				methodName, inputBuffer)
+			if err != nil {
+				logger.Warnf("invoking %s in wasm: %w", methodName, err)
+				continue
+			}
+			wasmColumn.setter(ev, string(result))
 		}
 
 		// set ebpf data

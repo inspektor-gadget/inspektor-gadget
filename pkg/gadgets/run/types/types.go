@@ -130,16 +130,18 @@ type Type struct {
 // ColumnDesc describes how a column is built. It's basically a serializable version of
 // columns.DynamicField
 type ColumnDesc struct {
-	Name      string
-	BlobIndex int // -1: virtual, 0: ebpf, 1: fixed length, 1+ strings
-	Type      Type
-	Offset    uintptr
+	Name        string
+	BlobIndex   int // -1: virtual, 0: ebpf, 1: fixed length, 1+ strings
+	Type        Type
+	Offset      uintptr
+	WasmHandler bool
 }
 
 type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
 	Columns        []ColumnDesc
 	ProgContent    []byte
+	WasmContent    []byte
 	GadgetType     gadgets.GadgetType
 	EventFactory   *EventFactory
 }
