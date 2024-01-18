@@ -320,6 +320,9 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 	case ebpf.TracePoint:
 		logger.Debugf("Attaching tracepoint %q to %q", p.Name, p.AttachTo)
 		parts := strings.Split(p.AttachTo, "/")
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("invalid section name %q", p.AttachTo)
+		}
 		return link.Tracepoint(parts[0], parts[1], prog, nil)
 	case ebpf.SocketFilter:
 		logger.Debugf("Attaching socket filter %q to %q", p.Name, p.AttachTo)
