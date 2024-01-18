@@ -46,19 +46,28 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
+func setIfEmptyStr[T ~string](s *T, v T) {
+	if *s == "" {
+		*s = v
+	}
+}
+
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.Runtime.ContainerID = containerData.Runtime.ContainerID
-	container.Runtime.RuntimeName = containerData.Runtime.RuntimeName
-	container.Runtime.ContainerName = containerData.Runtime.ContainerName
-	container.Runtime.ContainerImageName = containerData.Runtime.ContainerImageName
-	container.Runtime.ContainerImageDigest = containerData.Runtime.ContainerImageDigest
+	setIfEmptyStr(&container.Runtime.ContainerID, containerData.Runtime.ContainerID)
+	setIfEmptyStr(&container.Runtime.RuntimeName, containerData.Runtime.RuntimeName)
+	setIfEmptyStr(&container.Runtime.ContainerName, containerData.Runtime.ContainerName)
+	setIfEmptyStr(&container.Runtime.ContainerImageName, containerData.Runtime.ContainerImageName)
+	setIfEmptyStr(&container.Runtime.ContainerImageDigest, containerData.Runtime.ContainerImageDigest)
 
 	// Kubernetes
-	container.K8s.Namespace = containerData.K8s.Namespace
-	container.K8s.PodName = containerData.K8s.PodName
-	container.K8s.PodUID = containerData.K8s.PodUID
-	container.K8s.ContainerName = containerData.K8s.ContainerName
+	setIfEmptyStr(&container.K8s.Namespace, containerData.K8s.Namespace)
+	setIfEmptyStr(&container.K8s.PodName, containerData.K8s.PodName)
+	setIfEmptyStr(&container.K8s.PodUID, containerData.K8s.PodUID)
+	setIfEmptyStr(&container.K8s.ContainerName, containerData.K8s.ContainerName)
+	if container.K8s.PodLabels == nil {
+		container.K8s.PodLabels = containerData.K8s.PodLabels
+	}
 }
 
 func containerRuntimeEnricher(
