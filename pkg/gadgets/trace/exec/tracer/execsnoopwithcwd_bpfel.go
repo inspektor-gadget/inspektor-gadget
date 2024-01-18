@@ -15,21 +15,22 @@ import (
 type execsnoopWithCwdBufT struct{ Buf [32768]uint8 }
 
 type execsnoopWithCwdEvent struct {
-	MntnsId   uint64
-	Timestamp uint64
-	Pid       uint32
-	Ppid      uint32
-	Uid       uint32
-	Gid       uint32
-	Loginuid  uint32
-	Sessionid uint32
-	Retval    int32
-	ArgsCount int32
-	ArgsSize  uint32
-	Comm      [16]uint8
-	Cwd       [4096]uint8
-	Args      [7680]uint8
-	_         [4]byte
+	MntnsId    uint64
+	Timestamp  uint64
+	Pid        uint32
+	Ppid       uint32
+	Uid        uint32
+	Gid        uint32
+	Loginuid   uint32
+	Sessionid  uint32
+	Retval     int32
+	ArgsCount  int32
+	UpperLayer bool
+	_          [3]byte
+	ArgsSize   uint32
+	Comm       [16]uint8
+	Cwd        [4096]uint8
+	Args       [7680]uint8
 }
 
 // loadExecsnoopWithCwd returns the embedded CollectionSpec for execsnoopWithCwd.

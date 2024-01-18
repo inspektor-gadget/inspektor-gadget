@@ -105,3 +105,36 @@ $ sudo ig trace exec  --cwd
 RUNTIME.CONTAINERNAME           PID        PPID       COMM              RET ARGS                                      CWD
 mycontainer2                    287752     287360     mkdir             0   /bin/mkdir -p /tmp/bar/foo/               /
 mycontainer2                    287897     287360     cat               0   /bin/cat /dev/null                        /tmp/bar/foo
+```
+
+### Overlay filesystem upper layer
+
+It can be useful to know if the executable in a container was modified or part
+of the original container image. If it was modified, it will be located in the
+upper layer of the overlay filesystem. For this reason, this gadget provides
+the upper layer field which is true if the executable is located in the upper
+layer of the overlay filesystem.
+
+```bash
+$ sudo ig trace exec -c test -o columns=comm,ret,upperlayer
+COMM             RET UPPERLAYER
+sh               0   false
+cp               0   false
+echo             0   false
+echo2            0   true
+```
+
+```bash
+$ docker run -ti --rm --name=test ubuntu \
+    sh -c 'cp /bin/echo /bin/echo2 ; /bin/echo lower ; /bin/echo2 upper'
+lower
+upper
+```
+
+Limitations:
+- The upper layer field is only available when the executable is executed
+ correctly (ret=0). For example, if the executable does not have the "execute"
+ permission, the execution will fail and the upper layer field will not be
+ defined.
+- In case of a shell script, the upper layer field will refer to the location
+ of the shell program (e.g. `/bin/sh`) and not the script file.

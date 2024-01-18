@@ -67,9 +67,15 @@ structs:
         hidden: true
         ellipsis: end
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
+    - name: upper_layer
+      description: Whether the executable is in the upper layer of the overlay filesystem
+      attributes:
+        width: 5
+        alignment: left
+        ellipsis: end
 ebpfParams:
   ignore_failed:
     key: ignore-failed
