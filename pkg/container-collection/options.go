@@ -488,8 +488,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			// Skip enriching if all k8s fields are already known.
 			// This is an optimization and to make sure to avoid erasing the fields in case of error.
-			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
-				container.K8s.PodLabels != nil {
+			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) {
 				return true
 			}
 

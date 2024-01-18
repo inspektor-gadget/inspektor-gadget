@@ -139,13 +139,14 @@ func (b *BasicRuntimeMetadata) IsEnriched() bool {
 }
 
 type BasicK8sMetadata struct {
-	Namespace     string `json:"namespace,omitempty" column:"namespace,template:namespace"`
-	PodName       string `json:"podName,omitempty" column:"pod,template:pod"`
-	ContainerName string `json:"containerName,omitempty" column:"container,template:container"`
+	Namespace     string            `json:"namespace,omitempty" column:"namespace,template:namespace"`
+	PodName       string            `json:"podName,omitempty" column:"pod,template:pod"`
+	PodLabels     map[string]string `json:"podLabels,omitempty" column:"labels,hide"`
+	ContainerName string            `json:"containerName,omitempty" column:"container,template:container"`
 }
 
 func (b *BasicK8sMetadata) IsEnriched() bool {
-	return b.Namespace != "" && b.PodName != "" && b.ContainerName != ""
+	return b.Namespace != "" && b.PodName != "" && b.ContainerName != "" && b.PodLabels != nil
 }
 
 type K8sMetadata struct {
@@ -174,6 +175,7 @@ func (c *CommonData) SetNode(node string) {
 func (c *CommonData) SetPodMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata) {
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace
+	c.K8s.PodLabels = k8s.PodLabels
 
 	// All containers in the same pod share the same container runtime
 	c.Runtime.RuntimeName = runtime.RuntimeName
@@ -183,6 +185,7 @@ func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicR
 	c.K8s.ContainerName = k8s.ContainerName
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace
+	c.K8s.PodLabels = k8s.PodLabels
 
 	c.Runtime.RuntimeName = runtime.RuntimeName
 	c.Runtime.ContainerName = runtime.ContainerName

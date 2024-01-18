@@ -91,15 +91,13 @@ type RuntimeMetadata struct {
 
 type K8sMetadata struct {
 	types.BasicK8sMetadata `json:",inline"`
-	PodLabels              map[string]string `json:"podLabels,omitempty"`
-	PodUID                 string            `json:"podUID,omitempty"`
+	PodUID                 string `json:"podUID,omitempty"`
 
 	ownerReference *metav1.OwnerReference
 }
 
 type K8sSelector struct {
 	types.BasicK8sMetadata
-	PodLabels map[string]string
 }
 
 type RuntimeSelector struct {
