@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,6 +26,7 @@ import (
 	"syscall"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/vishvananda/netlink"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
@@ -32,6 +34,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/podman"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -116,4 +119,60 @@ func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
 	id = ociState.ID
 	pid = ociState.Pid
 	return
+}
+
+// GetIfacePeers returns the networking interfaces on the host side of the container where pid is
+// running in.
+func GetIfacePeers(pid int) ([]*net.Interface, error) {
+	var ifaceLinks []int
+
+	err := netnsenter.NetnsEnter(pid, func() error {
+		links, err := netlink.LinkList()
+		if err != nil {
+			return fmt.Errorf("getting links: %w", err)
+		}
+
+		for _, link := range links {
+			veth, ok := link.(*netlink.Veth)
+			if !ok {
+				continue
+			}
+
+			if veth.LinkAttrs.Flags&net.FlagUp == 0 {
+				continue
+			}
+
+			ifaceLink, err := netlink.VethPeerIndex(veth)
+			if err != nil {
+				return fmt.Errorf("getting veth's pair index: %w", err)
+			}
+
+			ifaceLinks = append(ifaceLinks, ifaceLink)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ifaceLinks) == 0 {
+		return nil, fmt.Errorf("no interface found")
+	}
+
+	ifacesHost := make([]*net.Interface, 0, len(ifaceLinks))
+
+	err = netnsenter.NetnsEnter(1, func() error {
+		for _, ifaceLink := range ifaceLinks {
+			ifaceHost, err := net.InterfaceByIndex(ifaceLink)
+			if err != nil {
+				return fmt.Errorf("getting interface by index: %w", err)
+			}
+
+			ifacesHost = append(ifacesHost, ifaceHost)
+		}
+		return nil
+	})
+
+	return ifacesHost, err
 }
