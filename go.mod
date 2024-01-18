@@ -24,11 +24,11 @@ require (
 	golang.org/x/term v0.16.0
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.32.0
-	k8s.io/api v0.29.0
+	k8s.io/api v0.29.1
 	k8s.io/apiextensions-apiserver v0.29.0
-	k8s.io/apimachinery v0.29.0
-	k8s.io/cli-runtime v0.29.0
-	k8s.io/client-go v0.29.0
+	k8s.io/apimachinery v0.29.1
+	k8s.io/cli-runtime v0.29.1
+	k8s.io/client-go v0.29.1
 	k8s.io/code-generator v0.29.0
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/security-profiles-operator v0.8.2
@@ -180,7 +180,7 @@ require (
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
