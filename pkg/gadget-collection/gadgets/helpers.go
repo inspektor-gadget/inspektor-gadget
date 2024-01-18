@@ -44,8 +44,8 @@ func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *co
 				Namespace:     f.Namespace,
 				PodName:       f.Podname,
 				ContainerName: f.ContainerName,
+				PodLabels:     labels,
 			},
-			PodLabels: labels,
 		},
 	}
 }

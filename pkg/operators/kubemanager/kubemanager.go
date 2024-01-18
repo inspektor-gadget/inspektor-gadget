@@ -214,8 +214,8 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 				Namespace:     m.params.Get(ParamNamespace).AsString(),
 				PodName:       m.params.Get(ParamPodName).AsString(),
 				ContainerName: m.params.Get(ParamContainerName).AsString(),
+				PodLabels:     labels,
 			},
-			PodLabels: labels,
 		},
 	}
 
