@@ -290,9 +290,10 @@ func getPodLogs(ns string) string {
 	var sb strings.Builder
 	logCommands := []string{
 		fmt.Sprintf("kubectl get pods -n %s -o wide", ns),
-		fmt.Sprintf(`for pod in $(kubectl get pods -n %s -o name); do
-			kubectl logs -n %s $pod;
-		done`, ns, ns),
+		fmt.Sprintf(`for pod in $(kubectl get pods -n %[1]s -o name); do
+			kubectl logs -n %[1]s $pod --previous;
+			kubectl logs -n %[1]s $pod;
+		done`, ns),
 	}
 
 	for _, c := range logCommands {
