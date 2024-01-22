@@ -38,6 +38,7 @@ import (
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -80,6 +81,27 @@ func containerRuntimeEnricher(
 	if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
 		runtimeclient.IsEnrichedWithRuntimeMetadata(container.Runtime.BasicRuntimeMetadata) {
 		return true
+	}
+
+	// Enrich labels when we have a sandbox ID. cri-o might not find the corresponding container yet
+	if container.SandboxId != "" {
+		criClient, ok := runtimeClient.(*cri.CRIClient)
+		if ok {
+			labels, err := criClient.GetPodLabels(container.SandboxId)
+			if err != nil {
+				log.Printf("Runtime enricher (%s): failed to GetPodLabels: %s",
+					runtimeName, err)
+				// Container could be managed by another runtime, don't drop it.
+				return true
+			}
+			log.Printf("Runtime enricher (%s): pod labels: %v", runtimeName, labels)
+			container.K8s.PodLabels = labels
+
+			// If this was the only information needed, skip rest of this enricher
+			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) {
+				return true
+			}
+		}
 	}
 
 	containerData, err := runtimeClient.GetContainer(container.Runtime.ContainerID)

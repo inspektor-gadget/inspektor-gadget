@@ -16,7 +16,7 @@ func TestNamespace(t *testing.T) {
 	// validate the container in k8s.io (default for ig) namespace
 	c1 := testutils.NewContainerdContainer("test-k8s-io", "sleep inf")
 	c1.Start(t)
-	k8sClient, err := NewContainerdClient("", nil)
+	k8sClient, err := NewContainerdClient("", containerutilsTypes.ExtraConfig{})
 	t.Cleanup(func() {
 		k8sClient.Close()
 		c1.Stop(t)
@@ -33,7 +33,7 @@ func TestNamespace(t *testing.T) {
 	// validate the container in default (default for containerd) namespace
 	c2 := testutils.NewContainerdContainer("test-default", "sleep inf", testutils.WithNamespace("default"))
 	c2.Start(t)
-	defaultClient, err := NewContainerdClient("", &containerutilsTypes.ExtraConfig{Namespace: "default"})
+	defaultClient, err := NewContainerdClient("", containerutilsTypes.ExtraConfig{Namespace: "default"})
 	t.Cleanup(func() {
 		defaultClient.Close()
 		c2.Stop(t)
@@ -48,7 +48,7 @@ func TestNamespace(t *testing.T) {
 	require.Equal(t, "test-default", container.Runtime.ContainerName)
 
 	// validate we can't see the container in empty-ns namespace
-	emptyClient, err := NewContainerdClient("", &containerutilsTypes.ExtraConfig{Namespace: "empty-ns"})
+	emptyClient, err := NewContainerdClient("", containerutilsTypes.ExtraConfig{Namespace: "empty-ns"})
 	t.Cleanup(func() {
 		emptyClient.Close()
 	})
