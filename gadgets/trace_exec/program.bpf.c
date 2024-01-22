@@ -148,18 +148,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	return 0;
 }
 
-// struct ovl_inode defined in fs/overlayfs/ovl_entry.h
-// Unfortunately, not exported to vmlinux.h
-// and not available in /sys/kernel/btf/vmlinux
-// See https://github.com/cilium/ebpf/pull/1300
-// So we don't benefit from CO-RE's preserve_access_index
-// We only rely on vfs_inode and __upperdentry relative positions
-struct _ovl_inode {
-	struct inode vfs_inode;
-	struct dentry *__upperdentry;
-};
-
-static __always_inline bool upper_layer()
+static __always_inline bool has_upper_layer()
 {
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
@@ -172,16 +161,17 @@ static __always_inline bool upper_layer()
 		return false;
 	}
 
-	struct _ovl_inode *oi =
-		container_of(inode, struct _ovl_inode, vfs_inode);
-	if (!oi) {
-		return false;
-	}
-
 	struct dentry *upperdentry;
 
+	// struct ovl_inode defined in fs/overlayfs/ovl_entry.h
+	// Unfortunately, not exported to vmlinux.h
+	// and not available in /sys/kernel/btf/vmlinux
+	// See https://github.com/cilium/ebpf/pull/1300
+	// We only rely on vfs_inode and __upperdentry relative positions
 	bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
-			      &oi->__upperdentry);
+			      ((void *)inode) +
+				      bpf_core_type_size(struct inode));
+
 	return upperdentry != NULL;
 }
 
@@ -206,7 +196,7 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 		goto cleanup;
 
 	if (ret == 0)
-		event->upper_layer = upper_layer();
+		event->upper_layer = has_upper_layer();
 
 	event->retval = ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
