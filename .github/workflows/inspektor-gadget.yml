@@ -168,7 +168,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check if added dependencies do not contain CVE.
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
 
   build-clients:
     name: clients
