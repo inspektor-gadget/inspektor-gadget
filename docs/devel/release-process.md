@@ -62,6 +62,13 @@ $ git push origin v0.x.0
 
 ## Post release tasks
 
+- Create a branch for this release named `release-v0.x`, this will be used as stable branch where fixes would be backported:
+
+```bash
+$ git checkout -b release-v0.x
+$ git push --set-upstream origin release-v0.x
+```
+
 - Check if the [milestone for the release](https://github.com/inspektor-gadget/inspektor-gadget/milestones) still
   contain open issues. If so, move them as appropriate. Close the milestone.
 
@@ -92,3 +99,56 @@ are issues that need to be handled before.
 If there is a security issue or an important bug fix we make patch releases in between. We don't
 have a formal definition of what an "important bug fix" is, it's up the team to discuss and decide
 whether to make a new release or not.
+
+## Making a bugfix release
+
+All newly merged patches fixing previous bug have to be backported to the latest release.
+When you merge a PR containing a patch fixing a bug, you should test if the buggy commits belongs to the latest release.
+Let's take an example with this commit:
+
+```patch
+commit 95fe7405738d58476ddad29856ebe30599644666
+Author: author <author@mail.com>
+Date:   Tue Jan 9 16:42:38 2024 +0100
+
+    check for empty record in capabilities tracer to avoid a panic
+
+    Fixes: 39aefb92dd1df2ff73647b17707984662f8718c0 ("pkg/gadgets: Add capabilities CO-RE tracer.")
+    Signed-off-by: author <author@mail.com>
+```
+
+To test if the buggy commit belongs to the latest release, you can use the following:
+
+```bash
+$ git tag --contains 39aefb92dd1df2ff73647b17707984662f8718c0 --sort=-v:refname
+v0.x.y
+...
+v0.x.1
+v0.x.0
+v0.24.0
+v0.23.1
+```
+
+You now need to backport the patch to the latest release branch:
+
+```bash
+$ git checkout release-v0.x
+$ git pull
+$ git checkout -b release-v0.x/fix-something
+$ git cherry-pick 95fe7405738d58476ddad29856ebe30599644666
+# If the patch does not apply cleanly, you will need to adapt it.
+# Once done, push your branch and open a PR against the release branch:
+$ git push --set-upstream origin release-v0.x/fix-something
+```
+
+Even if the patch applies cleanly, you need to open a PR.
+Once your PR is merged, you can now create the bugfix tag:
+
+```bash
+$ git checkout release-v0.x
+$ git pull
+# Where z would be y + 1:
+$ git tag v0.x.z
+```
+
+Once done, follow the instructions listed [here](#making-a-new-release), to create a new release.
