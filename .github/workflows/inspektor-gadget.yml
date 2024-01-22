@@ -264,7 +264,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -308,7 +308,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -397,7 +397,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v3
     - name: Cache Docker layers
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gadget.Dockerfile') }}
@@ -422,7 +422,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -503,7 +503,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v3
     - name: Cache Docker layers
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/ig.Dockerfile') }}
@@ -528,7 +528,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v3.3.3
+      uses: actions/cache@v4.0.0
       with:
         path: pkg/btfgen/btfs
         # key is composed by
