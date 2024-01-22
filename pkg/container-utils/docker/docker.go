@@ -22,6 +22,7 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
@@ -66,7 +67,7 @@ func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, e
 }
 
 func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.Container, error) {
-	opts := dockertypes.ContainerListOptions{
+	opts := container.ListOptions{
 		// We need to request for all containers (also non-running) because
 		// when we are enriching a container that is being created, it is
 		// not in "running" state yet.
