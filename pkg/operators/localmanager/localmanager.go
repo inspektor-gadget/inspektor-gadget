@@ -47,6 +47,7 @@ const (
 	CrioSocketPath       = "crio-socketpath"
 	PodmanSocketPath     = "podman-socketpath"
 	ContainerdNamespace  = "containerd-namespace"
+	UseCri               = "use-cri"
 )
 
 type MountNsMapSetter interface {
@@ -109,6 +110,12 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          ContainerdNamespace,
 			DefaultValue: constants.K8sContainerdNamespace,
 			Description:  "Containerd namespace to use",
+		},
+		{
+			Key:          UseCri,
+			DefaultValue: "false",
+			Description:  "Use CRI API to retrieve more K8s information, but ignore non K8s containers",
+			TypeHint:     params.TypeBool,
 		},
 	}
 }
@@ -196,11 +203,12 @@ partsLoop:
 		r := &containerutilsTypes.RuntimeConfig{
 			Name:       runtimeName,
 			SocketPath: socketPath,
+			Extra: containerutilsTypes.ExtraConfig{
+				UseCri: operatorParams.Get(UseCri).AsBool(),
+			},
 		}
 		if namespace != "" {
-			r.Extra = &containerutilsTypes.ExtraConfig{
-				Namespace: namespace,
-			}
+			r.Extra.Namespace = namespace
 		}
 
 		rc = append(rc, r)

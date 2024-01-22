@@ -28,6 +28,7 @@ const (
 	PodmanDefaultSocketPath     = "/run/podman/podman.sock"
 	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
 	DockerDefaultSocketPath     = "/run/docker.sock"
+	CriDockerDefaultSocketPath  = "/run/cri-dockerd.sock"
 )
 
 var ErrPauseContainer = errors.New("it is a pause container")

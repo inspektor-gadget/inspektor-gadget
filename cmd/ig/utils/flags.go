@@ -56,6 +56,9 @@ type CommonFlags struct {
 
 	// ContainerdNamespace is the namespace used by containerd
 	ContainerdNamespace string
+
+	// UseCri specifies whether to use the CRI API to talk to the runtime
+	UseCri bool
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
@@ -95,12 +98,13 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			r := &containerutilsTypes.RuntimeConfig{
 				Name:       runtimeName,
 				SocketPath: socketPath,
+				Extra: containerutilsTypes.ExtraConfig{
+					UseCri: commonFlags.UseCri,
+				},
 			}
 
 			if namespace != "" {
-				r.Extra = &containerutilsTypes.ExtraConfig{
-					Namespace: namespace,
-				}
+				r.Extra.Namespace = namespace
 			}
 
 			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, r)
@@ -155,6 +159,13 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"containerd-namespace",
 		constants.K8sContainerdNamespace,
 		"Namespace used by containerd",
+	)
+
+	command.PersistentFlags().BoolVar(
+		&commonFlags.UseCri,
+		"use-cri",
+		false,
+		"Use CRI API to retrieve more K8s information, but ignore non K8s containers",
 	)
 }
 

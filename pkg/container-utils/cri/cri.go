@@ -52,7 +52,7 @@ type CRIClient struct {
 	client runtime.RuntimeServiceClient
 }
 
-func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (CRIClient, error) {
+func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (*CRIClient, error) {
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -62,18 +62,16 @@ func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Durati
 		}),
 	)
 	if err != nil {
-		return CRIClient{}, err
+		return nil, err
 	}
 
-	cc := CRIClient{
+	return &CRIClient{
 		Name:        name,
 		SocketPath:  socketPath,
 		ConnTimeout: timeout,
 		conn:        conn,
 		client:      runtime.NewRuntimeServiceClient(conn),
-	}
-
-	return cc, nil
+	}, nil
 }
 
 func listContainers(c *CRIClient, filter *runtime.ContainerFilter) ([]*runtime.Container, error) {

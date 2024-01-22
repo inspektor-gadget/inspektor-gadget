@@ -28,6 +28,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -46,9 +47,14 @@ type DockerClient struct {
 	socketPath string
 }
 
-func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+func NewDockerClient(socketPath string, useCri bool) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
 		socketPath = runtimeclient.DockerDefaultSocketPath
+	}
+	if useCri {
+		// TODO: Configurable
+		socketPath = runtimeclient.CriDockerDefaultSocketPath
+		return cri.NewCRIClient(types.RuntimeNameDocker, socketPath, DefaultTimeout)
 	}
 
 	cli, err := client.NewClientWithOpts(

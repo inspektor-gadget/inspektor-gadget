@@ -38,6 +38,7 @@ import (
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -75,10 +76,31 @@ func containerRuntimeEnricher(
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
-	// If the container is already enriched with the metadata a runtime client
-	// is able to provide, skip it.
+	// If the container is already enriched with all the metadata a runtime
+	// client is able to provide, skip it.
 	if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
 		runtimeclient.IsEnrichedWithRuntimeMetadata(container.Runtime.BasicRuntimeMetadata) {
+		return true
+	}
+
+	// For new CRI-O containers, the next GetContainer() call will always fail
+	// because the container doesn't exist yet. So, if we have the sandbox ID,
+	// let's enrich the container at least with the PodLabels as the PodSandbox
+	// do exist at this point.
+	if container.Runtime.RuntimeName == types.RuntimeNameCrio {
+		criClient, ok := runtimeClient.(*cri.CRIClient)
+		if ok && container.SandboxId != "" {
+			labels, err := criClient.GetPodLabels(container.SandboxId)
+			if err != nil {
+				log.Warnf("Runtime enricher (%s): failed to GetPodLabels: %s",
+					runtimeName, err)
+
+				// We couldn't get the labels, but don't drop the container.
+				return true
+			}
+			container.K8s.PodLabels = labels
+		}
+
 		return true
 	}
 

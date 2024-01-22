@@ -53,7 +53,7 @@ func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runt
 		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
-		return docker.NewDockerClient(socketPath)
+		return docker.NewDockerClient(socketPath, runtime.Extra.UseCri)
 	case types.RuntimeNameContainerd:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
