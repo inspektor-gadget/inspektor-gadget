@@ -23,6 +23,9 @@ inputs:
   gadget_tag:
     description: 'Tag used for gadgets OCI images'
     required: true
+  test_summary_suffix:
+    description: 'Suffix of the test summary file'
+    required: true
 
 runs:
   using: "composite"
@@ -84,3 +87,4 @@ runs:
       with:
         test-log-file: integration.log
         test-step-conclusion: ${{ steps.integration-tests.conclusion }}
+        test-summary-suffix: ${{ inputs.test_summary_suffix }}
