@@ -296,12 +296,12 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 		return fmt.Errorf("creating builder container: %w", err)
 	}
 	defer func() {
-		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{}); err != nil {
+		if err := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{}); err != nil {
 			fmt.Printf("Failed to remove builder container: %s\n", err)
 		}
 	}()
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("starting builder container: %w", err)
 	}
 
@@ -317,7 +317,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 	}
 
 	if status.StatusCode != 0 || common.Verbose {
-		opts := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
+		opts := container.LogsOptions{ShowStdout: true, ShowStderr: true}
 		out, err := cli.ContainerLogs(ctx, resp.ID, opts)
 		if err != nil {
 			return fmt.Errorf("getting builder container logs: %w", err)

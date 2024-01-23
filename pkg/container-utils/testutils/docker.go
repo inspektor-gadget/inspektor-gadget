@@ -60,7 +60,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		t.Fatalf("Failed to initialize client: %s", err)
 	}
 
-	_ = d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{})
+	_ = d.client.ContainerRemove(d.options.ctx, d.name, container.RemoveOptions{})
 
 	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, types.ImagePullOptions{})
 	if err != nil {
@@ -85,7 +85,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
-	if err := d.client.ContainerStart(d.options.ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := d.client.ContainerStart(d.options.ctx, resp.ID, container.StartOptions{}); err != nil {
 		t.Fatalf("Failed to start container: %s", err)
 	}
 	d.id = resp.ID
@@ -108,7 +108,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 	d.portBindings = containerJSON.NetworkSettings.Ports
 
 	if d.options.logs {
-		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			t.Fatalf("Failed to get container logs: %s", err)
 		}
@@ -164,7 +164,7 @@ func (d *DockerContainer) Stop(t *testing.T) {
 }
 
 func (d *DockerContainer) removeAndClose() error {
-	err := d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{Force: true})
+	err := d.client.ContainerRemove(d.options.ctx, d.name, container.RemoveOptions{Force: true})
 	if err != nil {
 		return fmt.Errorf("removing container: %w", err)
 	}
