@@ -43,14 +43,13 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -70,11 +69,11 @@ type attachment struct {
 }
 
 type Tracer[Event any] struct {
-	socketEnricher *socketenricher.SocketEnricher
-	dispatcherMap  *ebpf.Map
-	collection     *ebpf.Collection
-	prog           *ebpf.Program
-	perfRd         *perf.Reader
+	socketEnricherMap *ebpf.Map
+	dispatcherMap     *ebpf.Map
+	collection        *ebpf.Collection
+	prog              *ebpf.Program
+	perfRd            *perf.Reader
 
 	// key: network namespace inode number
 	// value: Tracelet
@@ -152,6 +151,10 @@ func NewTracer[Event any]() (_ *Tracer[Event], err error) {
 	return t, nil
 }
 
+func (t *Tracer[Event]) SetSocketEnricherMap(m *ebpf.Map) {
+	t.socketEnricherMap = m
+}
+
 func (t *Tracer[Event]) Run(
 	spec *ebpf.CollectionSpec,
 	baseEvent func(ev types.Event) *Event,
@@ -167,25 +170,10 @@ func (t *Tracer[Event]) Run(
 			if t.collection != nil {
 				t.collection.Close()
 			}
-			if t.socketEnricher != nil {
-				t.socketEnricher.Close()
-			}
 		}
 	}()
 
 	var opts ebpf.CollectionOptions
-
-	// Only create socket enricher if this is used by the tracer
-	for _, m := range spec.Maps {
-		if m.Name == socketenricher.SocketsMapName {
-			t.socketEnricher, err = socketenricher.NewSocketEnricher()
-			if err != nil {
-				// Non fatal: support kernels without BTF
-				log.Errorf("creating socket enricher: %s", err)
-			}
-			break
-		}
-	}
 
 	// Automatically find the socket program
 	bpfProgName := ""
@@ -215,9 +203,17 @@ func (t *Tracer[Event]) Run(
 		return fmt.Errorf("no perf map found")
 	}
 
-	if t.socketEnricher != nil {
+	usesSocketEnricher := false
+	for _, m := range spec.Maps {
+		if m.Name == socketenricher.SocketsMapName {
+			usesSocketEnricher = true
+			break
+		}
+	}
+
+	if usesSocketEnricher && t.socketEnricherMap != nil {
 		mapReplacements := map[string]*ebpf.Map{}
-		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
+		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 		opts.MapReplacements = mapReplacements
 	}
 
@@ -376,9 +372,6 @@ func (t *Tracer[Event]) Close() {
 	}
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
-	}
-	if t.socketEnricher != nil {
-		t.socketEnricher.Close()
 	}
 	if t.dispatcherMap != nil {
 		t.dispatcherMap.Close()

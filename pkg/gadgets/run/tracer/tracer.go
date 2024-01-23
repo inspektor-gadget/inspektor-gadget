@@ -40,10 +40,10 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -87,8 +87,8 @@ type Tracer struct {
 	// Type describing the format the gadget uses
 	eventType *btf.Struct
 
-	socketEnricher *socketenricher.SocketEnricher
-	networkTracers map[string]*networktracer.Tracer[types.Event]
+	socketEnricherMap *ebpf.Map
+	networkTracers    map[string]*networktracer.Tracer[types.Event]
 
 	// Tracers related
 	ringbufReader *ringbuf.Reader
@@ -175,9 +175,6 @@ func (t *Tracer) Close() {
 	}
 	if t.perfReader != nil {
 		t.perfReader.Close()
-	}
-	if t.socketEnricher != nil {
-		t.socketEnricher.Close()
 	}
 	for _, networkTracer := range t.networkTracers {
 		networkTracer.Close()
@@ -393,12 +390,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 		switch m.Name {
 		// Only create socket enricher if this is used by the tracer
 		case socketenricher.SocketsMapName:
-			t.socketEnricher, err = socketenricher.NewSocketEnricher()
-			if err != nil {
-				// Containerized gadgets require a kernel with BTF
-				return fmt.Errorf("creating socket enricher: %w", err)
-			}
-			mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
+			mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 		// Replace filter mount ns map
 		case gadgets.MntNsFilterMapName:
 			if t.config.MountnsMap == nil {
@@ -896,4 +888,8 @@ func (t *Tracer) SetEventHandlerArray(handler any) {
 		panic("event handler invalid")
 	}
 	t.eventArrayCallback = nh
+}
+
+func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
+	t.socketEnricherMap = m
 }

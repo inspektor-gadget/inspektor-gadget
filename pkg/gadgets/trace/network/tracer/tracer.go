@@ -51,6 +51,17 @@ func NewTracer() (_ *Tracer, err error) {
 	return t, nil
 }
 
+// RunWorkaround is used by pkg/gadget-collection/gadgets/trace/network/gadget.go to run the gadget
+// after calling NewTracer(). Get rid of it once that file is removed.
+func (t *Tracer) RunWorkaround() error {
+	if err := t.run(); err != nil {
+		t.Close()
+		return fmt.Errorf("running tracer: %w", err)
+	}
+
+	return nil
+}
+
 func pktTypeString(pktType int) string {
 	// pkttype definitions:
 	// https://github.com/torvalds/linux/blob/v5.14-rc7/include/uapi/linux/if_packet.h#L26
@@ -124,24 +135,34 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) install() error {
+	networkTracer, err := networktracer.NewTracer[types.Event]()
+	if err != nil {
+		return fmt.Errorf("creating network tracer: %w", err)
+	}
+
+	t.Tracer = networkTracer
+	return nil
+}
+
+func (t *Tracer) run() error {
 	spec, err := loadNetwork()
 	if err != nil {
 		return fmt.Errorf("loading asset: %w", err)
 	}
 
-	networkTracer, err := networktracer.NewTracer[types.Event]()
-	if err != nil {
-		return fmt.Errorf("creating network tracer: %w", err)
-	}
-	err = networkTracer.Run(spec, types.Base, parseNetEvent)
+	err = t.Tracer.Run(spec, types.Base, parseNetEvent)
 	if err != nil {
 		return fmt.Errorf("setting network tracer spec: %w", err)
 	}
-	t.Tracer = networkTracer
+
 	return nil
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	if err := t.run(); err != nil {
+		return err
+	}
+
 	<-t.ctx.Done()
 	return nil
 }

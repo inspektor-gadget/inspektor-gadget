@@ -44,6 +44,9 @@ import (
 	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
+	// Blank import for some operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
+
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"

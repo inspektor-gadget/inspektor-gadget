@@ -29,8 +29,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -38,7 +38,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type event tcpretrans ./bpf/tcpretrans.bpf.c -- -I./bpf/
 
 type Tracer struct {
-	socketEnricher *socketenricher.SocketEnricher
+	socketEnricherMap *ebpf.Map
 
 	eventCallback func(*types.Event)
 
@@ -71,6 +71,10 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
+func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
+	t.socketEnricherMap = m
+}
+
 func (t *Tracer) close() {
 	t.retransmitSkbLink = gadgets.CloseLink(t.retransmitSkbLink)
 
@@ -78,19 +82,11 @@ func (t *Tracer) close() {
 		t.reader.Close()
 	}
 
-	if t.socketEnricher != nil {
-		t.socketEnricher.Close()
-	}
-
 	t.objs.Close()
 }
 
 func (t *Tracer) install() error {
 	var err error
-	t.socketEnricher, err = socketenricher.NewSocketEnricher()
-	if err != nil {
-		return err
-	}
 
 	spec, err := loadTcpretrans()
 	if err != nil {
@@ -106,7 +102,7 @@ func (t *Tracer) install() error {
 	}
 
 	mapReplacements := map[string]*ebpf.Map{}
-	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
+	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 	opts.MapReplacements = mapReplacements
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {

@@ -140,7 +140,7 @@ func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 
 	instance, err := gi.NewInstance()
 	if err != nil {
-		log.Warn("failed to create dummy instance")
+		log.Warnf("failed to create dummy %s instance: %s", OperatorName, err)
 		return false
 	}
 	_, isMountNsMapSetter := instance.(MountNsMapSetter)

@@ -26,7 +26,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -42,13 +41,11 @@ const garbageCollectorBatchSize = 256
 // are deleted from the map.
 //
 // The garbage collector goroutine terminates when the context is done.
-func startGarbageCollector(ctx context.Context, logger logger.Logger, gadgetParams *params.Params, queryMap *ebpf.Map) {
+func startGarbageCollector(ctx context.Context, logger logger.Logger, dnsTimeout time.Duration, queryMap *ebpf.Map) {
 	if !gadgets.HasBpfKtimeGetBootNs() {
 		logger.Warnf("DNS latency will not be reported (requires Linux kernel 5.8 or later)")
 		return
 	}
-
-	dnsTimeout := gadgetParams.Get(ParamDNSTimeout).AsDuration()
 
 	logger.Debugf("starting garbage collection for DNS tracer with dnsTimeout %s", dnsTimeout)
 	go func() {

@@ -31,16 +31,16 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type event tcpdrop ./bpf/tcpdrop.bpf.c -- -I./bpf/
 type Tracer struct {
-	socketEnricher *socketenricher.SocketEnricher
-	dropReasons    map[int]string
+	socketEnricherMap *ebpf.Map
+	dropReasons       map[int]string
 
 	eventCallback func(*types.Event)
 
@@ -73,15 +73,15 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
+func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
+	t.socketEnricherMap = m
+}
+
 func (t *Tracer) close() {
 	t.kfreeSkbLink = gadgets.CloseLink(t.kfreeSkbLink)
 
 	if t.reader != nil {
 		t.reader.Close()
-	}
-
-	if t.socketEnricher != nil {
-		t.socketEnricher.Close()
 	}
 
 	t.objs.Close()
@@ -116,11 +116,6 @@ func (t *Tracer) install() error {
 		return err
 	}
 
-	t.socketEnricher, err = socketenricher.NewSocketEnricher()
-	if err != nil {
-		return err
-	}
-
 	spec, err := loadTcpdrop()
 	if err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
@@ -135,7 +130,7 @@ func (t *Tracer) install() error {
 	}
 
 	mapReplacements := map[string]*ebpf.Map{}
-	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
+	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 	opts.MapReplacements = mapReplacements
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {

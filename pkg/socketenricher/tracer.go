@@ -243,4 +243,5 @@ func (se *SocketEnricher) Close() {
 	}
 	se.links = nil
 	se.objs.Close()
+	se.objsIter.Close()
 }
