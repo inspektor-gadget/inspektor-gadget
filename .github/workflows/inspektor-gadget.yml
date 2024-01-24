@@ -202,13 +202,6 @@ jobs:
     - uses: github/codeql-action/init@v3
       with:
         languages: go
-        # CodeQL did not handle well one of our fixes for a CWE.
-        # The problem was fixed upstream:
-        # https://github.com/github/codeql/pull/12247
-        # And CodeQL maintainer advised us to use the following to profit from
-        # this fix:
-        # https://github.com/github/codeql/issues/12241#issuecomment-1438238330
-        tools: latest
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -320,7 +313,6 @@ jobs:
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - uses: github/codeql-action/init@v3
       with:
-        tools: latest
         languages: go
     - name: Build ig-linux-${{ matrix.platform }}
       run: |
@@ -366,7 +358,6 @@ jobs:
       id: go
     - uses: github/codeql-action/init@v3
       with:
-        tools: latest
         languages: go
     - name: Build gadget-container-deps
       run: |
