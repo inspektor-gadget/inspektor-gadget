@@ -36,6 +36,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -408,8 +409,13 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 
 	// Load the ebpf objects
 	err = t.loadeBPFObjects(loadingOptions{
-		collectionOptions: ebpf.CollectionOptions{MapReplacements: mapReplacements},
-		tracerMapName:     tracerMapName,
+		collectionOptions: ebpf.CollectionOptions{
+			MapReplacements: mapReplacements,
+			Programs: ebpf.ProgramOptions{
+				KernelTypes: btfgen.GetBTFSpec(),
+			},
+		},
+		tracerMapName: tracerMapName,
 	})
 	if err != nil {
 		return fmt.Errorf("loading eBPF objects: %w", err)
