@@ -204,4 +204,6 @@ replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1
 
 replace github.com/vishvananda/netns => github.com/inspektor-gadget/netns v0.0.5-0.20230524185006-155d84c555d6
 
+replace github.com/cilium/ebpf => github.com/brycekahle/ebpf v0.0.0-20240123210446-5a8c94d45b4f
+
 replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20231221070400-5073458982fd
