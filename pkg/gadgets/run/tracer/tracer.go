@@ -43,6 +43,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -69,7 +70,7 @@ type l4EndpointT struct {
 
 type Config struct {
 	ProgContent []byte
-	Metadata    *types.GadgetMetadata
+	Metadata    *metadatav1.GadgetMetadata
 	MountnsMap  *ebpf.Map
 
 	// constants to replace in the ebpf program
@@ -854,7 +855,7 @@ func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
 	}
 }
 
-func (t *Tracer) setEBPFParameters(ebpfParams map[string]types.EBPFParam, gadgetParams *params.Params) {
+func (t *Tracer) setEBPFParameters(ebpfParams map[string]metadatav1.EBPFParam, gadgetParams *params.Params) {
 	t.config.Consts = make(map[string]interface{})
 	for varName, paramDef := range ebpfParams {
 		p := gadgetParams.Get(paramDef.Key)

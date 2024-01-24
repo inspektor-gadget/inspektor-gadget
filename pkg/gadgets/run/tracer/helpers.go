@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
 // getAnyMapElem returns any element of a map. If the map is empty, it returns nil, nil.
@@ -34,7 +34,7 @@ func getAnyMapElem[K comparable, V any](m map[K]V) (*K, *V) {
 	return nil, nil
 }
 
-func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.Struct, error) {
+func getEventTypeBTF(progContent []byte, metadata *metadatav1.GadgetMetadata) (*btf.Struct, error) {
 	spec, err := loadSpec(progContent)
 	if err != nil {
 		return nil, err
