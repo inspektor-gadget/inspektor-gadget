@@ -148,6 +148,11 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	return 0;
 }
 
+struct ovl_inode___gadget {
+	struct inode vfs_inode;
+	struct dentry *__upperdentry;
+} __attribute__((preserve_access_index));
+
 static __always_inline bool has_upper_layer()
 {
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
@@ -163,14 +168,16 @@ static __always_inline bool has_upper_layer()
 
 	struct dentry *upperdentry;
 
-	// struct ovl_inode defined in fs/overlayfs/ovl_entry.h
-	// Unfortunately, not exported to vmlinux.h
-	// and not available in /sys/kernel/btf/vmlinux
-	// See https://github.com/cilium/ebpf/pull/1300
-	// We only rely on vfs_inode and __upperdentry relative positions
-	bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
-			      ((void *)inode) +
-				      bpf_core_type_size(struct inode));
+	if (bpf_core_type_exists(struct ovl_inode___gadget)) {
+		struct ovl_inode___gadget *oi = container_of(
+			inode, struct ovl_inode___gadget, vfs_inode);
+		bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
+				      &oi->__upperdentry);
+	} else {
+		bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
+				      ((void *)inode) +
+					      bpf_core_type_size(struct inode));
+	}
 
 	return upperdentry != NULL;
 }
