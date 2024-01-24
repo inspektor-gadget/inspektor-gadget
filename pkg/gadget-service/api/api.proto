@@ -50,6 +50,32 @@ message GadgetRunRequest {
   int64 timeout = 13;
 }
 
+message OCIGadgetRunRequest {
+  string url = 1;
+
+  // params is a combined map of all params a gadget could need (including those
+  // of runtime and operators, which need specific prefixes, see implementation in
+  // pkg/runtime/grpc)
+  map<string, string> params = 2;
+
+  // args are all parameters which were not specified with a flag
+  repeated string args = 3;
+
+  // used to inform the server about the expected protocol version
+  uint32 version = 4;
+
+  // a list of nodes the gadget should run on; if not specified, it should run
+  // on all nodes
+  repeated string nodes = 10;
+
+  // sets the requested log level (see pkg/logger/logger.go)
+  uint32 logLevel = 12;
+
+  // time that a gadget should run; use 0, if the gadget should run until it's being
+  // stopped or done
+  int64 timeout = 13;
+}
+
 message GadgetStopRequest {
 }
 
@@ -58,11 +84,19 @@ message GadgetEvent {
   uint32 type = 1;
   uint32 seq = 2;
   bytes payload = 3;
+  uint32 dataSourceID = 4;
 }
 
 message GadgetControlRequest {
   oneof Event {
     GadgetRunRequest runRequest = 1;
+    GadgetStopRequest stopRequest = 2;
+  }
+}
+
+message OCIGadgetControlRequest {
+  oneof Event {
+    OCIGadgetRunRequest ociRunRequest = 1;
     GadgetStopRequest stopRequest = 2;
   }
 }
@@ -75,6 +109,56 @@ message InfoResponse {
   string version = 1;
   bytes catalog = 2;
   bool experimental = 3;
+}
+
+message GadgetData {
+  string node = 1;
+  uint32 seq = 2;
+  repeated bytes payload = 3;
+}
+
+message Param {
+  string key = 1;
+  string description = 2;
+  string defaultValue = 3;
+  string typeHint = 4;
+  string title = 5;
+  string alias = 6;
+  repeated string tags = 7;
+  string valueHint = 8;
+  repeated string possibleValues = 9;
+  bool isMandatory = 10;
+}
+
+message GadgetInfo {
+  string name = 1;
+  string url = 2;
+  repeated DataSource dataSources = 4;
+  map<string, string> annotations = 5;
+  bytes metadata = 6;
+  repeated Param params = 7;
+}
+
+message DataSource {
+  uint32 dataSourceID = 1;
+  string name = 2;
+  uint32 type = 3;
+  repeated Field fields = 4;
+  repeated string tags = 5;
+  map<string, string> annotations = 6;
+}
+
+message Field {
+  string name = 1;
+  uint32 index = 2;
+  uint32 payloadIndex = 3;
+  uint32 offs = 4;
+  uint32 size = 5;
+  uint32 flags = 6;
+  uint32 type = 7;
+  repeated string tags = 8;
+  map<string, string> annotations = 9;
+  uint32 parent = 10;
 }
 
 message GetGadgetInfoRequest {
@@ -92,8 +176,28 @@ message GetGadgetInfoResponse {
   bytes info = 1;
 }
 
+message GetOCIGadgetInfoRequest {
+  // params are the gadget's parameters
+  map<string, string> params = 1;
+
+  // args are all parameters which were not specified with a flag
+  repeated string args = 2;
+
+  // can be used to inform about the expected version of GadgetInfo
+  uint32 version = 3;
+}
+
+message GetOCIGadgetInfoResponse {
+  GadgetInfo gadgetInfo = 1;
+}
+
 service GadgetManager {
   rpc GetInfo(InfoRequest) returns (InfoResponse) {}
   rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+}
+
+service OCIGadgetManager {
+  rpc GetOCIGadgetInfo(GetOCIGadgetInfoRequest) returns (GetOCIGadgetInfoResponse) {}
+  rpc RunOCIGadget(stream OCIGadgetControlRequest) returns (stream GadgetEvent) {}
 }

@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,16 @@
 package api
 
 const (
+	VersionGadgetInfo        = 1
+	VersionGadgetRunProtocol = 1
+)
+
+const (
 	EventTypeGadgetPayload uint32 = 0
 	EventTypeGadgetResult  uint32 = 1
 	EventTypeGadgetDone    uint32 = 2
 	EventTypeGadgetJobID   uint32 = 3
+	EventTypeGadgetInfo    uint32 = 4
 
 	EventLogShift = 16
 )
