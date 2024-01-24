@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,10 +23,13 @@ import (
 
 	"github.com/cilium/ebpf"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ocioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -88,6 +91,105 @@ func (r *Runtime) GetGadgetInfo(_ context.Context, desc gadgets.GadgetDesc, pars
 		return nil, fmt.Errorf("GetGadgetInfo not supported for gadget %s", desc.Name())
 	}
 	return runDesc.GetGadgetInfo(pars, args)
+}
+
+func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, params *params.Params, args []string) (*api.GadgetInfo, error) {
+	ociOp := &ocioperator.OciHandler{}
+
+	opInst, err := ociOp.Instantiate(gadgetCtx, ociOp.ParamDescs().ToParams(), gadgetCtx.Args())
+	if err != nil {
+		return nil, fmt.Errorf("instantiating: %w", err)
+	}
+
+	err = opInst.Prepare()
+	if err != nil {
+		return nil, fmt.Errorf("prepare: %w", err)
+	}
+
+	return gadgetCtx.SerializeGadgetInfo()
+}
+
+func (r *Runtime) RunOCIGadget(gadgetCtx runtime.GadgetContext) error {
+	ociOp := &ocioperator.OciHandler{}
+
+	opInst, err := ociOp.Instantiate(gadgetCtx, ociOp.ParamDescs().ToParams(), gadgetCtx.Args())
+	if err != nil {
+		return fmt.Errorf("instantiating: %w", err)
+	}
+
+	err = opInst.Prepare()
+	if err != nil {
+		return fmt.Errorf("prepare: %w", err)
+	}
+
+	gadgetCtx.CallPrepareCallbacks()
+	// TODO: Send GadgetInfo
+
+	// The following will actually be handled by another operator
+	for _, ds := range gadgetCtx.GetDataSources() {
+		sink := gadgetCtx.GetSinkForDataSource(ds)
+		if sink == nil {
+			// Don't subscribe if we don't have a sink
+			continue
+		}
+
+		gadgetCtx.Logger().Debugf("subscribing to %s", ds.Name())
+
+		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			sink(ds, data)
+			return nil
+		}, 10000)
+		continue
+
+		p, err := ds.Parser()
+		if err != nil {
+			gadgetCtx.Logger().Debugf("failed to get parser: %w", err)
+			continue
+		}
+		defCols := p.GetDefaultColumns()
+		gadgetCtx.Logger().Debugf("default columns: %s", defCols)
+		formatter := p.GetTextColumnsFormatter()
+
+		fmt.Printf("%s\n", formatter.FormatHeader())
+
+		formatter.SetEventCallback(func(s string) {
+			fmt.Printf("%s\n", s)
+		})
+
+		p.SetEventCallback(formatter.EventHandlerFunc())
+		handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
+		if !ok {
+			gadgetCtx.Logger().Warnf("invalid data format")
+			continue
+		}
+
+		if !ok {
+			gadgetCtx.Logger().Debugf("failed to get parser func: %w", err)
+			continue
+		}
+
+		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			// gadgetCtx.Logger().Debugf("event")
+			// ds.Dump(data, os.Stdout)
+			t := datasource.NewDataTuple(ds, data)
+			handler(t)
+			return nil
+		}, 10000)
+	}
+
+	err = opInst.PreGadgetRun()
+	if err != nil {
+		return fmt.Errorf("preGadgetRun: %w", err)
+	}
+
+	<-gadgetCtx.Context().Done()
+
+	err = opInst.PostGadgetRun()
+	if err != nil {
+		return fmt.Errorf("postGadgetRun: %w", err)
+	}
+
+	return nil
 }
 
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
