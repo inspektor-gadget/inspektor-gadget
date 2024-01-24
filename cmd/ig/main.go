@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import (
 
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
@@ -38,6 +40,8 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 
 	// Another blank import for the used operator
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
@@ -74,10 +78,13 @@ func main() {
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
+	operators.RegisterDataOperator(ocihandler.OciHandler)
+
 	rootCmd.AddCommand(newDaemonCommand(runtime))
 	rootCmd.AddCommand(image.NewImageCmd())
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
