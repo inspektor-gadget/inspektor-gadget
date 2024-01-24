@@ -288,7 +288,6 @@ func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc
 			if named, ok := parsed.(reference.Named); ok {
 				repository = named.Name()
 			}
-			repository = strings.TrimPrefix(repository, defaultDomain+"/"+officialRepoPrefix)
 
 			tag := "latest"
 			if tagged, ok := parsed.(reference.Tagged); ok {
@@ -324,6 +323,10 @@ func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 	images, err := listGadgetImages(ctx, ociStore)
 	if err != nil {
 		return nil, fmt.Errorf("listing all tags: %w", err)
+	}
+
+	for _, image := range images {
+		image.Repository = strings.TrimPrefix(image.Repository, defaultDomain+"/"+officialRepoPrefix)
 	}
 
 	return images, nil
