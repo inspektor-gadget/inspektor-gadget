@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -262,6 +264,8 @@ type localManagerTrace struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+
+	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
 }
 
 func (l *localManagerTrace) Name() string {
@@ -422,6 +426,178 @@ func (l *localManagerTrace) EnrichEvent(ev any) error {
 	return nil
 }
 
+type localManagerTraceWrapper struct {
+	localManagerTrace
+}
+
+func (l *LocalManager) InstantiateDataOperator(ctx operators.GadgetContext) (operators.DataOperatorInstance, error) {
+	// Wrapper is used to have ParamDescs() with the new signature
+	traceInstance := &localManagerTraceWrapper{
+		localManagerTrace: localManagerTrace{
+			manager:            l,
+			enrichEvents:       false,
+			attachedContainers: make(map[*containercollection.Container]struct{}),
+			params:             l.ParamDescs().ToParams(), // TODO
+			gadgetCtx:          ctx,
+			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
+		},
+	}
+
+	if l.igManager == nil {
+		traceInstance.enrichEvents = false
+	}
+
+	// hack - this makes it possible to use the Attacher interface
+	var ok bool
+	traceInstance.gadgetInstance, ok = ctx.GetVar("ebpfInstance")
+	if !ok {
+		return nil, fmt.Errorf("getting ebpfInstance")
+	}
+
+	activate := true // TODO: change to false once snapshot_socket is not skipped anymore
+
+	// Check, whether the gadget requested a map from us
+	if t, ok := ctx.GetVar(gadgets.MntNsFilterMapName); ok {
+		if _, ok := t.(*ebpf.Map); ok {
+			ctx.Logger().Debugf("gadget requested map %s", gadgets.MntNsFilterMapName)
+			activate = true
+		}
+	}
+
+	// Check for data sources containing refererences to mntns/netns that we could enrich data for
+	for _, ds := range ctx.GetDataSources() {
+		mntnsFields := ds.GetFieldsWithTag("type:gadget_mntns_id")               // TODO: const
+		netnsFields := ds.GetFieldsWithTag("type:gadget_netns_id", "name:netns") // TODO: const
+		if len(mntnsFields) == 0 && len(netnsFields) == 0 {
+			continue
+		}
+
+		ctx.Logger().Debugf("ds found: %q", ds.Name())
+
+		activate = true
+
+		var err error
+
+		var mntnsField datasource.FieldAccessor
+		var netnsField datasource.FieldAccessor
+
+		for _, f := range mntnsFields {
+			ctx.Logger().Debugf("using mntns enrichment")
+			mntnsField = f
+			mntnsField.SetHidden(true)
+			// We only support one of those per DataSource for now
+			break
+		}
+		for _, f := range netnsFields {
+			ctx.Logger().Debugf("using netns enrichment")
+			netnsField = f
+			netnsField.SetHidden(true)
+			// We only support one of those per DataSource for now
+			break
+		}
+
+		traceInstance.eventWrappers[ds], err = compat.WrapAccessors(ds, mntnsField, netnsField)
+		if err != nil {
+			return nil, fmt.Errorf("registering accessors: %w", err)
+		}
+	}
+
+	if !activate {
+		return nil, nil
+	}
+
+	return traceInstance, nil
+}
+
+func (l *localManagerTrace) ParamDescs() params.ParamDescs {
+	return params.ParamDescs{
+		{
+			Key:         ContainerName,
+			Alias:       "c",
+			Description: "Show only data from containers with that name",
+			ValueHint:   gadgets.LocalContainer,
+		},
+		{
+			Key:          Host,
+			Description:  "Show data from both the host and containers",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+	}
+}
+
+func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
+	return l.localManagerTrace.ParamDescs()
+}
+
+func (l *localManagerTraceWrapper) Prepare(gadgetCtx operators.GadgetContext) error {
+	id := uuid.New()
+	host := false // TODO
+
+	containerSelector := containercollection.ContainerSelector{
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: "", // TODO l.params.Get(ContainerName).AsString(),
+		},
+	}
+
+	if !host {
+		if l.manager.igManager == nil {
+			return fmt.Errorf("container-collection isn't available")
+		}
+
+		// Create mount namespace map to filter by containers
+		mountnsmap, err := l.manager.igManager.CreateMountNsMap(id.String(), containerSelector)
+		if err != nil {
+			return commonutils.WrapInErrManagerCreateMountNsMap(err)
+		}
+
+		log.Debugf("set mountnsmap for gadget")
+		gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
+
+		l.mountnsmap = mountnsmap
+	} else if l.manager.igManager == nil {
+		log.Warn("container-collection isn't available: container enrichment and filtering won't work")
+	}
+
+	for ds, wrapper := range l.eventWrappers {
+		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			wr := &compat.EventWrapper{
+				EventWrapperBase: wrapper,
+				Data:             data,
+			}
+			if wrapper.MntnsidAccessor != nil {
+				l.manager.igManager.ContainerCollection.EnrichEventByMntNs(wr)
+			}
+			if wrapper.NetnsidAccessor != nil {
+				l.manager.igManager.ContainerCollection.EnrichEventByNetNs(wr)
+			}
+			return nil
+		}, 0)
+	}
+
+	// using PreGadgetRun() for the time being to register attacher funcs
+	err := l.PreGadgetRun()
+	if err != nil {
+		return fmt.Errorf("preGadgetRun: %w", err)
+	}
+
+	return nil
+}
+
+func (l *localManagerTraceWrapper) Priority() int {
+	return -1
+}
+
+func (l *localManagerTraceWrapper) Start(ctx operators.GadgetContext) error {
+	return nil
+}
+
+func (l *localManagerTraceWrapper) Stop(ctx operators.GadgetContext) error {
+	return nil
+}
+
 func init() {
-	operators.Register(&LocalManager{})
+	lm := &LocalManager{}
+	operators.Register(lm)
+	operators.RegisterOperator(lm)
 }
