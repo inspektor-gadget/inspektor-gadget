@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -609,4 +609,98 @@ func getImageManifest(ctx context.Context, target oras.Target, image string, aut
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
 	return manifestHost, nil
+}
+
+// EnsureImage ensures the image is present in the local store
+func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) error {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	switch pullPolicy {
+	case PullImageAlways:
+		_, err := pullGadgetImageToStore(ctx, imageStore, image, authOpts)
+		if err != nil {
+			return fmt.Errorf("pulling image %q: %w", image, err)
+		}
+	case PullImageMissing:
+		if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
+			return fmt.Errorf("pulling image %q: %w", image, err)
+		}
+	case PullImageNever:
+		// Just check if the image exists to report a better error message
+		targetImage, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image: %w", err)
+		}
+		if _, err := imageStore.Resolve(ctx, targetImage.String()); err != nil {
+			return fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
+		}
+	}
+	return nil
+}
+
+func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
+	index, err := GetIndex(ctx, image)
+	if err != nil {
+		return nil, fmt.Errorf("getting index: %w", err)
+	}
+	var manifestDesc *ocispec.Descriptor
+	for _, indexManifest := range index.Manifests {
+		// TODO: Check docker code
+		if indexManifest.Platform.Architecture == runtime.GOARCH {
+			manifestDesc = &indexManifest
+			break
+		}
+	}
+	if manifestDesc == nil {
+		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
+	}
+
+	r, err := GetContentFromDescriptor(ctx, *manifestDesc)
+	if err != nil {
+		return nil, fmt.Errorf("getting content from descriptor: %w", err)
+	}
+	defer r.Close()
+
+	manifest := &ocispec.Manifest{}
+	err = json.NewDecoder(r).Decode(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("decoding manifest: %w", err)
+	}
+	return manifest, nil
+}
+
+// GetIndex gets an index for the given image
+func GetIndex(ctx context.Context, image string) (*ocispec.Index, error) {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	imageRef, err := normalizeImageName(image)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+
+	index, err := getImageListDescriptor(ctx, imageStore, imageRef.String())
+	if err != nil {
+		return nil, fmt.Errorf("getting image list descriptor: %w", err)
+	}
+
+	return &index, nil
+}
+
+func GetContentFromDescriptor(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	reader, err := imageStore.Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching descriptor: %w", err)
+	}
+	return reader, nil
 }
