@@ -18,15 +18,12 @@ package tracer
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/cilium/ebpf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // Delay between each garbage collection run.
@@ -78,46 +75,5 @@ func startGarbageCollector(ctx context.Context, logger logger.Logger, dnsTimeout
 }
 
 func collectGarbage(dnsTimeout time.Duration, queryMap *ebpf.Map, keysBatch []dnsQueryKeyT, valuesBatch []uint64) (int, error) {
-	var (
-		keysToDelete []dnsQueryKeyT
-		prevKeyOut   interface{}
-		nextKeyOut   dnsQueryKeyT
-	)
-
-	// Nil means start from the beginning.
-	// Type of prevKeyOut is interface{}, not dnsQueryKeyT, to ensure that the first call
-	// to BatchLookup sees an untyped nil (not an interface with value nil); otherwise it crashes.
-	prevKeyOut = nil
-
-	for {
-		n, err := queryMap.BatchLookup(prevKeyOut, &nextKeyOut, keysBatch, valuesBatch, nil)
-		if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-			return 0, fmt.Errorf("looking up keys in query map: %w", err)
-		}
-
-		cutoffTs := types.Time(time.Now().Add(-1 * dnsTimeout).UnixNano())
-		for i := 0; i < n; i++ {
-			ts := gadgets.WallTimeFromBootTime(valuesBatch[i])
-			if ts < cutoffTs {
-				keysToDelete = append(keysToDelete, keysBatch[i])
-			}
-		}
-
-		if errors.Is(err, ebpf.ErrKeyNotExist) {
-			// This error means there are no more keys after the ones we just read.
-			break
-		}
-
-		prevKeyOut = nextKeyOut
-	}
-
-	if len(keysToDelete) == 0 {
-		return 0, nil
-	}
-
-	n, err := queryMap.BatchDelete(keysToDelete, nil)
-	if err != nil {
-		return 0, fmt.Errorf("deleting keys from query map: %w", err)
-	}
-	return n, nil
+	return 0, nil
 }
