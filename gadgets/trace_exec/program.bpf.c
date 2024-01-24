@@ -169,11 +169,13 @@ static __always_inline bool has_upper_layer()
 	struct dentry *upperdentry;
 
 	if (bpf_core_type_exists(struct ovl_inode___gadget)) {
+		bpf_printk("ovl_inode exists, using BTF automatically");
 		struct ovl_inode___gadget *oi = container_of(
 			inode, struct ovl_inode___gadget, vfs_inode);
 		bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
 				      &oi->__upperdentry);
 	} else {
+		bpf_printk("ovl_inode does not exist, using bpf_core_type_size");
 		bpf_probe_read_kernel(&upperdentry, sizeof upperdentry,
 				      ((void *)inode) +
 					      bpf_core_type_size(struct inode));
