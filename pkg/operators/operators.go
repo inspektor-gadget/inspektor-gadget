@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,11 @@ import (
 	"fmt"
 	"sync"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -32,6 +35,13 @@ type GadgetContext interface {
 	Context() context.Context
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
+
+	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
+	GetDataSources() map[string]datasource.DataSource
+	SetVar(string, any)
+	GetVar(string) (any, bool)
+	RegisterParam(param *api.Param) error
+	Params() []*api.Param
 }
 
 type (
@@ -69,6 +79,45 @@ type Operator interface {
 	// This is useful to create a context for an operator by wrapping it.
 	// Params given here are the ones returned by ParamDescs()
 	Instantiate(gadgetContext GadgetContext, gadgetInstance any, params *params.Params) (OperatorInstance, error)
+}
+
+type ImageOperator interface {
+	Name() string
+
+	// InstantiateImageOperator will be run to load information about a gadget and also to _possibly_
+	// run the gadget afterward. It should only do things that are required to populate
+	// DataSources and Params. It could use caching to speed things up, if necessary.
+	InstantiateImageOperator(GadgetContext, ocispec.Descriptor) (ImageOperatorInstance, error)
+}
+
+type ImageOperatorInstance interface {
+	Name() string
+	Prepare(ctx GadgetContext) error
+	Start(ctx GadgetContext) error
+}
+
+type DataOperator interface {
+	Name() string
+
+	// Init allows the operator to initialize itself
+	Init(params *params.Params) error
+
+	// GlobalParamDescs will return global params (required) for this operator
+	GlobalParamDescs() params.ParamDescs
+
+	// InstantiateDataOperator should create a new (lightweight) instance for the operator that can read/write
+	// from and to DataSources, register Params and read/write Variables
+	InstantiateDataOperator(GadgetContext) (DataOperatorInstance, error)
+}
+
+type DataOperatorInstance interface {
+	Name() string
+	Prepare(ctx GadgetContext) error
+	Start(ctx GadgetContext) error
+}
+
+type TargetOperator interface {
+	Name() string
 }
 
 type OperatorInstance interface {
@@ -117,7 +166,10 @@ type ContainerInfoGetters interface {
 	GetContainerImageName() string
 }
 
-var allOperators = map[string]Operator{}
+var (
+	allOperators    = map[string]Operator{}
+	operatorsByType = map[string]map[string]Operator{}
+)
 
 type operatorWrapper struct {
 	Operator
@@ -233,6 +285,10 @@ func (e Operators) Instantiate(gadgetContext GadgetContext, trace any, perGadget
 		oi, err := operator.Instantiate(gadgetContext, trace, perGadgetParamCollection[operator.Name()])
 		if err != nil {
 			return nil, fmt.Errorf("start trace on operator %q: %w", operator.Name(), err)
+		}
+		if oi == nil {
+			// skip operators that opted out of handling the gadget
+			continue
 		}
 		operatorInstances = append(operatorInstances, oi)
 	}
