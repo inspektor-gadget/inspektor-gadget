@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,10 @@
 
 package columns
 
-import "strings"
+import (
+	"reflect"
+	"strings"
+)
 
 // ToLowerStrings transforms the elements of an array of strings into lowercase.
 func ToLowerStrings(in []string) []string {
@@ -22,4 +25,29 @@ func ToLowerStrings(in []string) []string {
 		in[i] = strings.ToLower(in[i])
 	}
 	return in
+}
+
+func GetWidthFromType(kind reflect.Kind) int {
+	switch kind {
+	default:
+		return 0
+	case reflect.Uint8:
+		return MaxCharsUint8
+	case reflect.Int8:
+		return MaxCharsInt8
+	case reflect.Uint16:
+		return MaxCharsUint16
+	case reflect.Int16:
+		return MaxCharsInt16
+	case reflect.Uint32:
+		return MaxCharsUint32
+	case reflect.Int32:
+		return MaxCharsInt32
+	case reflect.Uint64, reflect.Uint:
+		return MaxCharsUint64
+	case reflect.Int64, reflect.Int:
+		return MaxCharsInt64
+	case reflect.Bool:
+		return MaxCharsBool
+	}
 }
