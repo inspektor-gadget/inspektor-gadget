@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -39,6 +41,21 @@ type GadgetContext interface {
 	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
 	GadgetInfo() *runTypes.GadgetInfo
+
+	ImageName() string
+	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
+	GetDataSources() map[string]datasource.DataSource
+	SetVar(string, any)
+	GetVar(string) (any, bool)
+	SerializeGadgetInfo() (*api.GadgetInfo, error)
+	LoadGadgetInfo(info *api.GadgetInfo) error
+	LocalOperatorsParamCollection() params.Collection
+	RegisterParam(param *api.Param) error
+	Params() []*api.Param
+	GetSinkForDataSource(source datasource.DataSource) datasource.Sink
+	OnPrepare(func())
+	CallPrepareCallbacks()
+	SetMetadata([]byte)
 }
 
 // GadgetResult contains the (optional) payload and error of a gadget run for a node
@@ -88,10 +105,17 @@ type Runtime interface {
 	Close() error
 	GlobalParamDescs() params.ParamDescs
 	ParamDescs() params.ParamDescs
+
 	// GetGadgetInfo returns information about the gadget that is being run. It only makes sense
 	// for the run gadget.
 	GetGadgetInfo(context.Context, gadgets.GadgetDesc, *params.Params, []string) (*runTypes.GadgetInfo, error)
+
+	// GetOCIGadgetInfo returns information about the gadget and used operators; this info potentially comes
+	// from a cache
+	GetOCIGadgetInfo(GadgetContext) (*api.GadgetInfo, error)
+
 	RunGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
+	RunOCIGadget(gadgetCtx GadgetContext) error
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)
