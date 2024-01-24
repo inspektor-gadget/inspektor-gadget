@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -475,6 +475,9 @@ func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry
 			start := unsafe.Pointer(entry)
 			if column.(*Column[T]).getStart != nil {
 				start = column.(*Column[T]).getStart(entry)
+				if start == nil {
+					return *new(OT)
+				}
 			}
 			// Previous note was outdated since we weren't using uintptr here
 			return *(*OT)(unsafe.Add(start, offset))
@@ -485,6 +488,9 @@ func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry
 		start := unsafe.Pointer(entry)
 		if column.(*Column[T]).getStart != nil {
 			start = column.(*Column[T]).getStart(entry)
+			if start == nil {
+				return *new(OT)
+			}
 		}
 		for i := 0; i < subLen-1; i++ {
 			if sub[i].isPtr {
