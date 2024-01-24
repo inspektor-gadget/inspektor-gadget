@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,11 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 
 	// Another blank import for the used operator
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 )
@@ -78,6 +82,7 @@ func main() {
 	rootCmd.AddCommand(image.NewImageCmd())
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
