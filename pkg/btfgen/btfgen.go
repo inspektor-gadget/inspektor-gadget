@@ -29,20 +29,30 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf/btf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
-	spec *btf.Spec
+	spec []*btf.Spec
 	once sync.Once
 )
 
 func initialize() error {
 	// If the kernel exposes BTF; nothing to do
-	_, err := btf.LoadKernelSpec()
+	kernelBTF, err := btf.LoadKernelSpec()
 	if err == nil {
+		// FIXME: don't hardcode the overlay module name
+		// We should iterate on all the modules
+		overlayBTF, err := btf.LoadKernelModuleSpec("overlay")
+		if err != nil {
+			spec = []*btf.Spec{kernelBTF}
+		} else {
+			fmt.Printf("Loaded kernel BTF and overlay BTF\n")
+			spec = []*btf.Spec{kernelBTF, overlayBTF}
+		}
 		return nil
 	}
 
@@ -73,13 +83,13 @@ func initialize() error {
 		return fmt.Errorf("loading BTF spec: %w", err)
 	}
 
-	spec = s
+	spec = []*btf.Spec{s}
 	return nil
 }
 
 // GetBTFSpec returns the BTF spec with kernel information for the current kernel version. If the
 // kernel exposes BTF information or if the BTF for this kernel is not found, it returns nil.
-func GetBTFSpec() *btf.Spec {
+func GetBTFSpec() []*btf.Spec {
 	once.Do(func() {
 		err := initialize()
 		if err != nil {
