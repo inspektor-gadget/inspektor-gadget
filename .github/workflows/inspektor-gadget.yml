@@ -241,6 +241,8 @@ jobs:
         rm -rf $platform
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       uses: github/codeql-action/analyze@v3
+      with:
+        category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
       uses: actions/upload-artifact@v3
       with:
@@ -339,6 +341,8 @@ jobs:
         rm -rf ${{ matrix.platform }}
     - name: CWE checks for ig-linux-${{ matrix.platform }}
       uses: github/codeql-action/analyze@v3
+      with:
+        category: ig-linux-${{ matrix.platform }}
     - name: Add ig-linux-${{ matrix.platform }}.tar.gz as artifact.
       uses: actions/upload-artifact@v3
       with:
@@ -369,6 +373,8 @@ jobs:
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
       uses: github/codeql-action/analyze@v3
+      with:
+        category: gadget-container-deps
 
   build-gadget-container-images:
     name: gadget img
