@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,11 @@ import (
 	"fmt"
 	"sync"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -32,6 +35,17 @@ type GadgetContext interface {
 	Context() context.Context
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
+
+	Cancel()
+	SerializeGadgetInfo() (*api.GadgetInfo, error)
+	ImageName() string
+	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
+	GetDataSources() map[string]datasource.DataSource
+	SetVar(string, any)
+	GetVar(string) (any, bool)
+	Params() []*api.Param
+	SetParams([]*api.Param)
+	SetMetadata([]byte)
 }
 
 type (
@@ -68,7 +82,64 @@ type Operator interface {
 	// This must return something that implements OperatorInstance.
 	// This is useful to create a context for an operator by wrapping it.
 	// Params given here are the ones returned by ParamDescs()
-	Instantiate(gadgetContext GadgetContext, gadgetInstance any, params *params.Params) (OperatorInstance, error)
+	Instantiate(gadgetCtx GadgetContext, gadgetInstance any, params *params.Params) (OperatorInstance, error)
+}
+
+type ImageOperator interface {
+	Name() string
+
+	// InstantiateImageOperator will be run to load information about a gadget and also to _possibly_
+	// run the gadget afterward. It should only do things that are required to populate
+	// DataSources and Params. It could use caching to speed things up, if necessary.
+	InstantiateImageOperator(gadgetCtx GadgetContext, descriptor ocispec.Descriptor,
+		paramValues api.ParamValues) (ImageOperatorInstance, error)
+}
+
+type ImageOperatorInstance interface {
+	Name() string
+	Prepare(gadgetCtx GadgetContext) error
+	Start(gadgetCtx GadgetContext) error
+	Stop(gadgetCtx GadgetContext) error
+	ExtraParams(gadgetCtx GadgetContext) api.Params
+}
+
+type DataOperator interface {
+	Name() string
+
+	// Init allows the operator to initialize itself
+	Init(params *params.Params) error
+
+	// GlobalParams should return global params (required) for this operator; these are valid globally for the process
+	GlobalParams() api.Params
+
+	// InstanceParams should return parameters valid for a single gadget run
+	InstanceParams() api.Params
+
+	// InstantiateDataOperator should create a new (lightweight) instance for the operator that can read/write
+	// from and to DataSources, register Params and read/write Variables; instanceParamValues can contain values for
+	// both params defined by InstanceParams() as well as params defined by DataOperatorInstance.ExtraParams())
+	InstantiateDataOperator(gadgetCtx GadgetContext, instanceParamValues api.ParamValues) (DataOperatorInstance, error)
+
+	Priority() int
+}
+
+type DataOperatorInstance interface {
+	Name() string
+	Start(gadgetCtx GadgetContext) error
+	Stop(gadgetCtx GadgetContext) error
+}
+
+type DataOperatorExtraParams interface {
+	// ExtraParams can return dynamically created params; they are read after Prepare() has been called
+	ExtraParams(gadgetCtx GadgetContext) api.Params
+}
+
+type PreStart interface {
+	PreStart(gadgetCtx GadgetContext) error
+}
+
+type PostStop interface {
+	PostStop(gadgetCtx GadgetContext) error
 }
 
 type OperatorInstance interface {
@@ -233,6 +304,10 @@ func (e Operators) Instantiate(gadgetContext GadgetContext, trace any, perGadget
 		oi, err := operator.Instantiate(gadgetContext, trace, perGadgetParamCollection[operator.Name()])
 		if err != nil {
 			return nil, fmt.Errorf("start trace on operator %q: %w", operator.Name(), err)
+		}
+		if oi == nil {
+			// skip operators that opted out of handling the gadget
+			continue
 		}
 		operatorInstances = append(operatorInstances, oi)
 	}
