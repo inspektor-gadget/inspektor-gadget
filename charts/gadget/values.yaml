@@ -47,11 +47,7 @@ affinity: {}
 capabilities: {}
 
 # -- Tolerations used by `gadget` container
-tolerations:
-  - effect: NoSchedule
-    operator: Exists
-  - effect: NoExecute
-    operator: Exists
+tolerations: {}
 
 # -- Skip Helm labels
 skipLabels: true
