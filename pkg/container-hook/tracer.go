@@ -47,6 +47,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
@@ -152,6 +153,7 @@ var runtimePaths = []string{
 	"/run/torcx/unpack/docker/bin/runc",
 	"/usr/bin/crun",
 	"/usr/bin/conmon",
+	"/var/lib/rancher/k3s/data/current/bin/runc",
 }
 
 // initFanotify initializes the fanotify API with the flags we need
@@ -271,6 +273,15 @@ func (n *ContainerNotifier) install() error {
 	if runtimePath != "" {
 		log.Debugf("container-hook: trying runtime from RUNTIME_PATH env variable at %s", runtimePath)
 
+		// Check if we have to prepend the host root to the runtime path
+		if !strings.HasPrefix(runtimePath, host.HostRoot) {
+			// SecureJoin will resolve symlinks according to the host root
+			runtimePath, err = securejoin.SecureJoin(host.HostRoot, runtimePath)
+			if err != nil {
+				return fmt.Errorf("container-hook: securejoin failed: %w", err)
+			}
+		}
+
 		if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
 			return err
 		}
@@ -278,10 +289,16 @@ func (n *ContainerNotifier) install() error {
 		if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
 			return fmt.Errorf("fanotify marking of %s: %w", runtimePath, err)
 		}
+		log.Debugf("container-hook: monitoring runtime at %s", runtimePath)
 		runtimeFound = true
 	} else {
 		for _, r := range runtimePaths {
-			runtimePath := filepath.Join(host.HostRoot, r)
+			// SecureJoin will resolve symlinks according to the host root
+			runtimePath, err := securejoin.SecureJoin(host.HostRoot, r)
+			if err != nil {
+				log.Debugf("container-hook: securejoin failed: %s", err)
+				continue
+			}
 
 			log.Debugf("container-hook: trying runtime at %s", runtimePath)
 
@@ -294,6 +311,7 @@ func (n *ContainerNotifier) install() error {
 				log.Warnf("container-hook: failed to fanotify mark: %s", err)
 				continue
 			}
+			log.Debugf("container-hook: monitoring runtime at %s", runtimePath)
 			runtimeFound = true
 		}
 	}
