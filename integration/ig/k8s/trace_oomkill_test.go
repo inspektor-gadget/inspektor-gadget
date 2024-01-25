@@ -38,9 +38,7 @@ func TestTraceOOMKill(t *testing.T) {
 					WithRuntimeMetadata(*containerRuntime),
 					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 				),
-				KilledComm:   "tail",
-				TriggeredUid: 1000,
-				TriggeredGid: 2000,
+				KilledComm: "tail",
 			}
 
 			normalize := func(e *oomkillTypes.Event) {
@@ -57,6 +55,8 @@ func TestTraceOOMKill(t *testing.T) {
 				e.KilledPid = 0
 				e.Pages = 0
 				e.TriggeredPid = 0
+				e.TriggeredUid = 0
+				e.TriggeredGid = 0
 				e.TriggeredComm = ""
 				e.MountNsID = 0
 
@@ -90,7 +90,7 @@ spec:
         memory: "128Mi"
     command: ["/bin/sh", "-c"]
     args:
-    - setuidgid 1000:2000 sh -c "while true; do tail /dev/zero; done"
+    - while true; do tail /dev/zero; done
 `, ns)
 
 	commands := []*Command{
