@@ -16,6 +16,7 @@ GADGETS = \
 	trace_tcpretrans \
 	snapshot_process \
 	snapshot_socket \
+	ci/sched_cls_drop \
 	#
 
 .PHONY: all
