@@ -42,7 +42,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.5.0
-	github.com/docker/cli v25.0.0+incompatible
+	github.com/docker/cli v25.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-cmp v0.6.0
