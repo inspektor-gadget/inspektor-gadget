@@ -175,11 +175,13 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 				PodName:       containerDefinition.Podname,
 				ContainerName: containerDefinition.Name,
 			},
-			PodLabels: map[string]string{},
 		},
 	}
-	for _, l := range containerDefinition.Labels {
-		container.K8s.PodLabels[l.Key] = l.Value
+	if containerDefinition.LabelsSet {
+		container.K8s.PodLabels = make(map[string]string)
+		for _, l := range containerDefinition.Labels {
+			container.K8s.PodLabels[l.Key] = l.Value
+		}
 	}
 	if containerDefinition.OciConfig != "" {
 		containerConfig := &ocispec.Spec{}

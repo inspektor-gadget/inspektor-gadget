@@ -137,6 +137,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
 		Id:        r.ID,
 		Labels:    labels,
+		LabelsSet: true,
 		Namespace: namespace,
 		Podname:   podName,
 		Name:      containerName,
