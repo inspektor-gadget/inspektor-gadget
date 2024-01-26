@@ -67,6 +67,7 @@ func newListContainerTestStep(
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
 
+				c.SandboxId = ""
 				c.K8s.PodLabels = nil
 				c.Runtime.ContainerID = ""
 				c.Runtime.ContainerImageDigest = ""
@@ -191,6 +192,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
+				e.Container.SandboxId = ""
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
@@ -281,6 +283,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
+				e.Container.SandboxId = ""
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
@@ -374,6 +377,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
+				e.Container.SandboxId = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.K8s.PodLabels = nil

@@ -46,11 +46,13 @@ func TestTraceNetwork(t *testing.T) {
 			testPodIP := GetTestPodIP(t, ns, "test-pod")
 			testPodIPVersion := GetIPVersion(t, testPodIP)
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
 			expectedEntries := []*networkTypes.Event{
 				{
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:    "wget",
 					Uid:     0,

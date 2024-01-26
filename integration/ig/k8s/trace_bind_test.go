@@ -33,10 +33,12 @@ func TestTraceBind(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
 			expectedEntry := &bindTypes.Event{
 				Event: BuildBaseEvent(ns,
 					WithRuntimeMetadata(*containerRuntime),
 					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					WithPodLabels("test-pod", ns, isCrioRuntime),
 				),
 				Comm:     "nc",
 				Protocol: "TCP",
