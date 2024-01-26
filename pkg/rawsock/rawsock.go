@@ -23,6 +23,7 @@ import (
 	"github.com/vishvananda/netns"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	netnsig "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/netns"
 )
 
 // Both openRawSock and htons are from github.com/cilium/ebpf:
@@ -49,7 +50,7 @@ func OpenRawSock(pid uint32) (int, error) {
 		origns, _ := netns.Get()
 		defer origns.Close()
 
-		netnsHandle, err := netns.GetFromPidWithAltProcfs(int(pid), host.HostProcFs)
+		netnsHandle, err := netnsig.GetFromPidWithAltProcfs(int(pid), host.HostProcFs)
 		if err != nil {
 			return -1, err
 		}
