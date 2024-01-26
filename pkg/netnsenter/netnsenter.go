@@ -20,6 +20,7 @@ import (
 	"github.com/vishvananda/netns"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	netnsig "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/netns"
 )
 
 func NetnsEnter(pid int, f func() error) error {
@@ -35,7 +36,7 @@ func NetnsEnter(pid int, f func() error) error {
 	origns, _ := netns.Get()
 	defer origns.Close()
 
-	netnsHandle, err := netns.GetFromPidWithAltProcfs(pid, host.HostProcFs)
+	netnsHandle, err := netnsig.GetFromPidWithAltProcfs(pid, host.HostProcFs)
 	if err != nil {
 		return err
 	}
