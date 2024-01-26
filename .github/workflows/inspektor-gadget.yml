@@ -202,13 +202,6 @@ jobs:
     - uses: github/codeql-action/init@v3
       with:
         languages: go
-        # CodeQL did not handle well one of our fixes for a CWE.
-        # The problem was fixed upstream:
-        # https://github.com/github/codeql/pull/12247
-        # And CodeQL maintainer advised us to use the following to profit from
-        # this fix:
-        # https://github.com/github/codeql/issues/12241#issuecomment-1438238330
-        tools: latest
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -241,6 +234,8 @@ jobs:
         rm -rf $platform
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       uses: github/codeql-action/analyze@v3
+      with:
+        category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
       uses: actions/upload-artifact@v3
       with:
@@ -316,10 +311,6 @@ jobs:
         # - latest commit of btfhub
         # - hash of all bpf objects
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
-    - uses: github/codeql-action/init@v3
-      with:
-        tools: latest
-        languages: go
     - name: Build ig-linux-${{ matrix.platform }}
       run: |
         if [ "${{ matrix.platform }}" = 'arm64' ]; then
@@ -337,13 +328,45 @@ jobs:
           -czf ig-linux-${{ matrix.platform }}.tar.gz -C ${{ matrix.platform }} \
           ig LICENSE
         rm -rf ${{ matrix.platform }}
-    - name: CWE checks for ig-linux-${{ matrix.platform }}
-      uses: github/codeql-action/analyze@v3
     - name: Add ig-linux-${{ matrix.platform }}.tar.gz as artifact.
       uses: actions/upload-artifact@v3
       with:
         name: ig-linux-${{ matrix.platform }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/ig-linux-${{ matrix.platform }}.tar.gz
+
+  build-ig-cwe:
+    name: Check ig CWE
+    # level: 0
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [amd64, arm64]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - uses: github/codeql-action/init@v3
+      with:
+        languages: go
+    - name: Build ig-linux-${{ matrix.platform }} for CWE checks
+      run: |
+        # We need to build ig using go build otherwise CodeQL will not detect
+        # that the binary was built and will try to autobuild it which adds
+        # extra time in the CI pipeline.
+        CGO_ENABLED=0 GOARCH=${{ matrix.platform }} go build \
+          -ldflags "-extldflags '-static'" \
+          github.com/inspektor-gadget/inspektor-gadget/cmd/ig
+    - name: CWE checks for ig-linux-${{ matrix.platform }}
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: ig-linux-${{ matrix.platform }}
 
   build-gadget-container-deps:
     # We only build this dependencies to check if they do not contain CWE.
@@ -362,13 +385,14 @@ jobs:
       id: go
     - uses: github/codeql-action/init@v3
       with:
-        tools: latest
         languages: go
     - name: Build gadget-container-deps
       run: |
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
       uses: github/codeql-action/analyze@v3
+      with:
+        category: gadget-container-deps
 
   build-gadget-container-images:
     name: gadget img
@@ -1480,6 +1504,7 @@ jobs:
       - test-integration-aks
       - test-integration-aro
       - test-components
+      - build-ig-cwe
       - test-ig
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
