@@ -729,7 +729,8 @@ func isEnrichedWithOCIConfigInfo(container *Container) bool {
 		container.K8s.ContainerName != "" &&
 		container.K8s.PodName != "" &&
 		container.K8s.Namespace != "" &&
-		container.K8s.PodUID != ""
+		container.K8s.PodUID != "" &&
+		container.SandboxId != ""
 }
 
 // WithOCIConfigEnrichment enriches container using provided OCI config
@@ -773,6 +774,9 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			}
 			if imageName := resolver.ContainerImageName(container.OciConfig.Annotations); imageName != "" {
 				container.Runtime.ContainerImageName = imageName
+			}
+			if podSandboxId := resolver.PodSandboxId(container.OciConfig.Annotations); podSandboxId != "" {
+				container.SandboxId = podSandboxId
 			}
 
 			return true

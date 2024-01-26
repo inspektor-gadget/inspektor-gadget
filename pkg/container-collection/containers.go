@@ -50,6 +50,9 @@ type Container struct {
 	// See https://github.com/opencontainers/runtime-spec/blob/main/bundle.md
 	Bundle string `json:"bundle,omitempty"`
 
+	// SandboxId is the sandbox id for the corresponding pod
+	SandboxId string `json:"sandboxId,omitempty"`
+
 	// Linux metadata can be derived from the pid via /proc/$pid/...
 	Mntns       uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
 	Netns       uint64 `json:"netns,omitempty" column:"netns,template:ns"`
