@@ -46,11 +46,21 @@ func TestTraceNetwork(t *testing.T) {
 			testPodIP := GetTestPodIP(t, ns, "test-pod")
 			testPodIPVersion := GetIPVersion(t, testPodIP)
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
+
+			addPodLabels := func() map[string]string {
+				if isCrioRuntime {
+					return map[string]string{"run": "nginx-pod"}
+				}
+				return nil
+			}
+
 			expectedEntries := []*networkTypes.Event{
 				{
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:    "wget",
 					Uid:     0,
@@ -72,6 +82,7 @@ func TestTraceNetwork(t *testing.T) {
 									Namespace:     ns,
 									PodName:       "nginx-pod",
 									ContainerName: "nginx-pod",
+									PodLabels:     addPodLabels(),
 								},
 							},
 							Runtime: eventtypes.BasicRuntimeMetadata{

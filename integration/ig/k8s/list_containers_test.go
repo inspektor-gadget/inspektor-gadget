@@ -23,6 +23,14 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+// Only CRI-O enriches the container with the pod labels by default.
+func addPodLabels(podName string) map[string]string {
+	if *containerRuntime == ContainerRuntimeCRIO {
+		return map[string]string{"run": podName}
+	}
+	return nil
+}
+
 func newListContainerTestStep(
 	cmd string,
 	cn, pod, podUID, ns, runtime, runtimeContainerName string,
@@ -38,6 +46,7 @@ func newListContainerTestStep(
 						ContainerName: cn,
 						PodName:       pod,
 						Namespace:     ns,
+						PodLabels:     addPodLabels(pod),
 					},
 					PodUID: podUID,
 				},
@@ -67,7 +76,8 @@ func newListContainerTestStep(
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
 
-				c.K8s.PodLabels = nil
+				c.SandboxId = ""
+				c.K8s.PodLabels = addPodLabels(pod)
 				c.Runtime.ContainerID = ""
 				c.Runtime.ContainerImageDigest = ""
 
@@ -162,6 +172,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 							ContainerName: cn,
 							PodName:       pod,
 							Namespace:     ns,
+							PodLabels:     addPodLabels(pod),
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
@@ -191,7 +202,8 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
-				e.Container.K8s.PodLabels = nil
+				e.Container.SandboxId = ""
+				e.Container.K8s.PodLabels = addPodLabels(pod)
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
@@ -251,6 +263,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 							ContainerName: cn,
 							PodName:       pod,
 							Namespace:     ns,
+							PodLabels:     addPodLabels(pod),
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
@@ -281,7 +294,8 @@ func TestWatchDeletedContainers(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
-				e.Container.K8s.PodLabels = nil
+				e.Container.SandboxId = ""
+				e.Container.K8s.PodLabels = addPodLabels(pod)
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
@@ -345,6 +359,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 							ContainerName: cn,
 							PodName:       po,
 							Namespace:     ns,
+							PodLabels:     addPodLabels(po),
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
@@ -374,9 +389,10 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
+				e.Container.SandboxId = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
-				e.Container.K8s.PodLabels = nil
+				e.Container.K8s.PodLabels = addPodLabels(po)
 				e.Container.K8s.PodUID = ""
 
 				// Docker and CRI-O use a custom container name composed, among
@@ -409,6 +425,8 @@ kind: Pod
 metadata:
   name: %s
   namespace: %s
+  labels:
+    run: %s
 spec:
   securityContext:
     runAsUser: 1000
@@ -420,7 +438,7 @@ spec:
   - name: %s
     image: busybox
     command: ["sleep", "inf"]
-`, po, ns, cn)
+`, po, ns, po, cn)
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
