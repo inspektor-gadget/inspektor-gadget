@@ -68,6 +68,8 @@ message ContainerDefinition {
   string podname = 5;
   string name = 6;
   repeated Label labels = 7;
+  // Some hooks do not have information about the pod labels
+  bool labels_set = 8;
 }
 
 message DumpStateRequest {
