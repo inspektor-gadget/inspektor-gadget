@@ -38,13 +38,13 @@ func runTraceOOMKill(t *testing.T, ns string, cmd string) {
 
 			expectedTraceOOMKillJsonObj := map[string]interface{}{
 				"fpid":      0,
-				"fuid":      1000,
-				"fgid":      2000,
+				"fuid":      0,
+				"fgid":      0,
 				"tpid":      0,
 				"pages":     0,
 				"mntns_id":  0,
 				"timestamp": "",
-				"fcomm":     "tail",
+				"fcomm":     "",
 				"tcomm":     "tail",
 			}
 
@@ -58,7 +58,10 @@ func runTraceOOMKill(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeContainerID(m, "")
 				SetEventRuntimeContainerName(m, "")
 
+				m["fcomm"] = ""
 				m["fpid"] = uint32(0)
+				m["fuid"] = uint32(0)
+				m["fgid"] = uint32(0)
 				m["tpid"] = uint32(0)
 				m["pages"] = uint32(0)
 				m["mntns_id"] = 0
@@ -86,7 +89,7 @@ spec:
         memory: "128Mi"
     command: ["/bin/sh", "-c"]
     args:
-    - setuidgid 1000:2000 sh -c "while true; do tail /dev/zero; done"
+    - while true; do tail /dev/zero; done
 `, ns)
 
 	commands := []*Command{
