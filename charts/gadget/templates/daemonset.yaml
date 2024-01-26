@@ -203,6 +203,10 @@ spec:
               name: cgroup
             - mountPath: /sys/fs/bpf
               name: bpffs
+            {{- if .Values.config.mountOCIStore }}
+            - mountPath: /var/lib/ig/oci-store
+              name: oci-store
+            {{- end }}
             {{- if .Values.config.mountPullSecret }}
             - mountPath: /var/run/secrets/gadget/pull-secret
               name: pull-secret
@@ -257,6 +261,11 @@ spec:
         - name: debugfs
           hostPath:
             path: /sys/kernel/debug
+        {{- if .Values.config.mountOCIStore }}
+        - name: oci-store
+          local:
+            path: /var/lib/ig/oci-store
+        {{- end }}
         {{- if .Values.config.mountPullSecret }}
         - name: pull-secret
           secret:

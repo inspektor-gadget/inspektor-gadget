@@ -25,6 +25,9 @@ config:
   # -- Daemon Log Level. Valid values are: "trace", "debug", "info", "warning", "error", "fatal", "panic"
   daemonLogLevel: "info"
 
+  # -- Whether  to mount oci-store volume in gadget.
+  mountOCIStore: false
+
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 
@@ -58,3 +61,7 @@ skipLabels: true
 # -- Labels to be added to all other resources.
 additionalLabels:
   labels: {}
+
+persistentVolume:
+  # -- Storage capacity for the Persistent Volume
+  storageCapacity: 16Mi
