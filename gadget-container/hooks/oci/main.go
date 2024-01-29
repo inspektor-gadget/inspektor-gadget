@@ -149,6 +149,7 @@ func main() {
 		Id:        ociStateID,
 		Pid:       uint32(ociStatePid),
 		OciConfig: string(bundleConfig),
+		LabelsSet: false,
 	})
 	if err != nil {
 		panic(err)

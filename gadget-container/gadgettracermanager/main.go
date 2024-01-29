@@ -182,6 +182,7 @@ func main() {
 			Podname:   podname,
 			Name:      containername,
 			Labels:    labels,
+			LabelsSet: label != "",
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

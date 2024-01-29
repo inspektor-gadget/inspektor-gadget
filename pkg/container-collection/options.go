@@ -26,6 +26,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -437,6 +438,35 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 	return res.GetOwnerReferences(), nil
 }
 
+func getPodByCgroups(clientset *kubernetes.Clientset, nodeName string, container *Container) (*corev1.Pod, error) {
+	if container.CgroupV1 == "" && container.CgroupV2 == "" {
+		return nil, fmt.Errorf("need cgroup paths to work")
+	}
+
+	fieldSelector := fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
+	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
+		FieldSelector: fieldSelector,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("fetching pods: %w", err)
+	}
+
+	for _, pod := range pods.Items {
+		uid := string(pod.ObjectMeta.UID)
+		// check if this container is associated to this pod
+		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
+
+		if !strings.Contains(container.CgroupV2, uidWithUnderscores) &&
+			!strings.Contains(container.CgroupV2, uid) &&
+			!strings.Contains(container.CgroupV1, uidWithUnderscores) &&
+			!strings.Contains(container.CgroupV1, uid) {
+			continue
+		}
+		return &pod, nil
+	}
+	return nil, fmt.Errorf("no pod found for container %q", container.Runtime.ContainerName)
+}
+
 // WithKubernetesEnrichment automatically adds pod metadata
 //
 // ContainerCollection.Initialize(WithKubernetesEnrichment())
@@ -456,50 +486,32 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.K8s.PodName != "" {
+			// Skip enriching if all k8s fields are already known.
+			// This is an optimization and to make sure to avoid erasing the fields in case of error.
+			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
+				container.K8s.PodLabels != nil {
 				return true
 			}
 
-			if container.CgroupV1 == "" && container.CgroupV2 == "" {
-				log.Errorf("kubernetes enricher: cannot work without cgroup paths")
-				return true
+			var pod *corev1.Pod
+			var err error
+			if container.K8s.PodName == "" || container.K8s.Namespace == "" {
+				pod, err = getPodByCgroups(clientset, nodeName, container)
+				if err != nil {
+					log.Errorf("kubernetes enricher (from UID): cannot find pod for container %s: %s", container.Runtime.ContainerName, err)
+					return false
+				}
+			} else {
+				pod, err = clientset.CoreV1().Pods(container.K8s.Namespace).Get(context.TODO(), container.K8s.PodName, metav1.GetOptions{})
+				if err != nil {
+					log.Errorf("kubernetes enricher (from ns/podname): cannot find pod %s/%s: %s", container.K8s.Namespace, container.K8s.PodName, err)
+					return false
+				}
 			}
 
-			fieldSelector := fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
-			pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
-				FieldSelector: fieldSelector,
-			})
-			if err != nil {
-				log.Errorf("kubernetes enricher: cannot fetch pods: %s", err)
-				return true
-			}
-
-			// Fill Kubernetes fields
-			namespace := ""
-			podname := ""
-			podUID := ""
-			containerName := ""
-			labels := make(map[string]string)
-			for _, pod := range pods.Items {
+			if container.K8s.ContainerName == "" {
+				var containerName string
 				uid := string(pod.ObjectMeta.UID)
-				// check if this container is associated to this pod
-				uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
-
-				if !strings.Contains(container.CgroupV2, uidWithUnderscores) &&
-					!strings.Contains(container.CgroupV2, uid) &&
-					!strings.Contains(container.CgroupV1, uidWithUnderscores) &&
-					!strings.Contains(container.CgroupV1, uid) {
-					continue
-				}
-
-				namespace = pod.ObjectMeta.Namespace
-				podname = pod.ObjectMeta.Name
-				podUID = uid
-
-				for k, v := range pod.ObjectMeta.Labels {
-					labels[k] = v
-				}
-
 				containerNames := []string{}
 				for _, c := range pod.Spec.Containers {
 					containerNames = append(containerNames, c.Name)
@@ -520,16 +532,16 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 						}
 					}
 				}
+				container.K8s.ContainerName = containerName
 			}
 
-			container.K8s.Namespace = namespace
-			container.K8s.PodName = podname
-			container.K8s.PodUID = podUID
-			container.K8s.ContainerName = containerName
-			container.K8s.PodLabels = labels
+			container.K8s.Namespace = pod.ObjectMeta.Namespace
+			container.K8s.PodName = pod.ObjectMeta.Name
+			container.K8s.PodUID = string(pod.ObjectMeta.UID)
+			container.K8s.PodLabels = pod.ObjectMeta.Labels
 
 			// drop pause containers
-			if container.K8s.PodName != "" && containerName == "" {
+			if container.K8s.PodName != "" && container.K8s.ContainerName == "" {
 				return false
 			}
 
