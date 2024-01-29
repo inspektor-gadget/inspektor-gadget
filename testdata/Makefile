@@ -16,6 +16,7 @@ TESTDATA = \
 	populate_metadata_tracer_non_existing_map.o \
 	populate_metadata_tracer_bad_tracer_info.o \
 	populate_metadata_snapshotter_struct.o \
+	populate_metadata_profiler_struct.o \
 	validate_metadata1.o \
 	validate_metadata_profiler.o \
 	validate_metadata_topper.o \

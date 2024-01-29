@@ -1012,6 +1012,60 @@ func TestPopulate(t *testing.T) {
 				},
 			},
 		},
+		"profiler_struct": {
+			objectPath: "../../../../testdata/populate_metadata_profiler_struct.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
+				Profilers: map[string]Profiler{
+					"hists": {
+						MapName:         "hists",
+						StructKeyName:   "hist_key",
+						StructValueName: "hist_value",
+					},
+				},
+				Structs: map[string]Struct{
+					"hist_key": {
+						Fields: []Field{
+							{
+								Name:        "cmd_flags",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "dev",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+					"hist_value": {
+						Fields: []Field{
+							{
+								Name:        "slots",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 		"topper_invalid_struct_name": {
 			objectPath: "../../../../testdata/populate_metadata_1_topper_1_struct_from_scratch.o",
 			initialMetadata: &GadgetMetadata{
