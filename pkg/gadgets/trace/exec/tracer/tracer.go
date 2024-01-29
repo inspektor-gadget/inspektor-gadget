@@ -171,12 +171,12 @@ func (t *Tracer) run() {
 
 		argsCount := 0
 		buf := []byte{}
-		args := bpfEvent.Args
+		args := &bpfEvent.Args
 
 		if t.config.GetCwd {
 			bpfEventWithCwd := (*execsnoopWithCwdEvent)(unsafe.Pointer(&record.RawSample[0]))
 			event.Cwd = gadgets.FromCString(bpfEventWithCwd.Cwd[:])
-			args = bpfEventWithCwd.Args
+			args = &bpfEventWithCwd.Args
 		}
 
 		for i := 0; i < int(bpfEvent.ArgsSize) && argsCount < int(bpfEvent.ArgsCount); i++ {
