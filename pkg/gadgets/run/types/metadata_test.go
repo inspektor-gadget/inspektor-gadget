@@ -46,8 +46,11 @@ func TestValidate(t *testing.T) {
 				Snapshotters: map[string]Snapshotter{
 					"bar": {},
 				},
+				Profilers: map[string]Profiler{
+					"quux": {},
+				},
 			},
-			expectedErrString: "gadget can implement only one tracer or snapshotter or topper",
+			expectedErrString: "gadget can implement only one tracer or snapshotter or topper or profiler",
 		},
 		"tracers_more_than_one": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
@@ -388,6 +391,123 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
+		},
+		"profilers_more_than_one": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {},
+					"bar": {},
+				},
+			},
+			expectedErrString: "only one profiler is allowed",
+		},
+		"profilers_missing_map_name": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						StructKeyName:   "hist_key",
+						StructValueName: "hist_value",
+					},
+				},
+			},
+			expectedErrString: "missing mapName",
+		},
+		"profilers_missing_struct_key_name": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:         "hists",
+						StructValueName: "hist_value",
+					},
+				},
+			},
+			expectedErrString: "is missing structKeyName",
+		},
+		"profilers_missing_struct_value_name": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:       "hists",
+						StructKeyName: "hist_key",
+					},
+				},
+			},
+			expectedErrString: "missing structName",
+		},
+		"profilers_references_unknown_struct_key": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:         "hists",
+						StructKeyName:   "nonexistent",
+						StructValueName: "hist_value",
+					},
+				},
+			},
+			expectedErrString: "references unknown key struct",
+		},
+		"profilers_references_unknown_struct_value": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:         "hists",
+						StructKeyName:   "hist_key",
+						StructValueName: "nonexistent",
+					},
+				},
+				Structs: map[string]Struct{
+					"hist_key": {},
+				},
+			},
+			expectedErrString: "referencing unknown struct",
+		},
+		"profilers_map_not_found": {
+			objectPath: "../../../../testdata/validate_metadata_profiler.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:         "nonexistent",
+						StructKeyName:   "hist_key",
+						StructValueName: "hist_value",
+					},
+				},
+				Structs: map[string]Struct{
+					"hist_key":   {},
+					"hist_value": {},
+				},
+			},
+			expectedErrString: "map \"nonexistent\" not found in eBPF object",
+		},
+		"profilers_bad_map_type": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Profilers: map[string]Profiler{
+					"foo": {
+						MapName:         "events",
+						StructKeyName:   "hist_key",
+						StructValueName: "hist_value",
+					},
+				},
+				Structs: map[string]Struct{
+					"hist_key":   {},
+					"hist_value": {},
+				},
+			},
+			expectedErrString: "map \"events\" has a wrong type, expected: hash",
 		},
 	}
 

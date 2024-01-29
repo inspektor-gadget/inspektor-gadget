@@ -17,6 +17,7 @@ TESTDATA = \
 	populate_metadata_tracer_bad_tracer_info.o \
 	populate_metadata_snapshotter_struct.o \
 	validate_metadata1.o \
+	validate_metadata_profiler.o \
 	validate_metadata_topper.o \
 	validate_metadata_sched_cls.o \
 	populate_metadata_1_topper_1_struct_from_scratch.o \
