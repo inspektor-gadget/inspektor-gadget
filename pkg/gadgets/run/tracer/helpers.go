@@ -62,7 +62,13 @@ func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.S
 		if err := spec.Types.TypeByName(topper.StructName, &valueStruct); err != nil {
 			return nil, fmt.Errorf("finding struct %q in eBPF object: %w", topper.StructName, err)
 		}
-
+		return valueStruct, nil
+	case len(metadata.Profilers) > 0:
+		var valueStruct *btf.Struct
+		_, profiler := getAnyMapElem(metadata.Profilers)
+		if err := spec.Types.TypeByName(profiler.StructValueName, &valueStruct); err != nil {
+			return nil, fmt.Errorf("finding profiler struct %q in eBPF object: %w", profiler.StructValueName, err)
+		}
 		return valueStruct, nil
 	default:
 		return nil, fmt.Errorf("the gadget doesn't provide any compatible way to show information")
