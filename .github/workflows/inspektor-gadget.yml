@@ -47,7 +47,7 @@ jobs:
       uses: gaurav-nelson/github-action-markdown-link-check@v1
       with:
         use-quiet-mode: 'yes'
-    - uses: dorny/paths-filter@v2
+    - uses: dorny/paths-filter@v3
       id: filter
       with:
         filters: |
@@ -820,7 +820,7 @@ jobs:
               - "cmd/common/image/Makefile.build"
     steps:
     - uses: actions/checkout@v4
-    - uses: dorny/paths-filter@v2
+    - uses: dorny/paths-filter@v3
       id: filter
       with:
         # https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-type-check-expression
