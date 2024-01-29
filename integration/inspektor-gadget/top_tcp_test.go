@@ -27,7 +27,7 @@ import (
 func newTopTCPCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &toptcpTypes.Stats{
-			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
+			CommonData: BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 			Comm:       "curl",
 			IPVersion:  syscall.AF_INET,
 			SrcEndpoint: eventtypes.L4Endpoint{

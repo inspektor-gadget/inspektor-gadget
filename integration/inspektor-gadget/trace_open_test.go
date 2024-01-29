@@ -37,7 +37,7 @@ func TestTraceOpen(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &traceopenTypes.Event{
-				Event:    BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				Event:    BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:     "cat",
 				Fd:       3,
 				Ret:      3,

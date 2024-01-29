@@ -37,7 +37,7 @@ func TestTraceSignal(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracesignalTypes.Event{
-				Event:  BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				Event:  BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:   "sh",
 				Signal: "SIGTERM",
 			}

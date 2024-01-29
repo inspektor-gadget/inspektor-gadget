@@ -58,7 +58,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &networkTypes.Event{
-					Event:     BuildBaseEvent(nsClient, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:     BuildBaseEventK8s(nsClient, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:      "nc",
 					Uid:       0,
 					Gid:       0,
@@ -111,7 +111,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 				}
 
 				expectedEntry := &networkTypes.Event{
-					Event: BuildBaseEvent(nsServer, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event: BuildBaseEventK8s(nsServer, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					// The socket enricher can find the correct "comm" because it supports dual stack sockets
 					Comm:      "nc",
 					Uid:       0,
