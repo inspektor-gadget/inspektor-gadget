@@ -52,7 +52,7 @@ func TestRunSnapshotProcess(t *testing.T) {
 			StartAndStop: true,
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedBaseJsonObj := RunEventToObj(t, &types.Event{
-					CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					CommonData: BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				})
 
 				expectedSnapshotProcessJsonObj := map[string]interface{}{

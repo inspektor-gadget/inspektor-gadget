@@ -37,7 +37,7 @@ func TestTraceOOMKill(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &traceoomkillTypes.Event{
-				Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				KilledComm: "tail",
 			}
 			expectedEntry.K8s.ContainerName = "test-pod-container"
@@ -70,6 +70,8 @@ kind: Pod
 metadata:
   name: test-pod
   namespace: %s
+  labels:
+    run: test-pod
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0

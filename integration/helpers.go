@@ -187,6 +187,17 @@ func WithContainerImageName(imageName string, isDockerRuntime bool) CommonDataOp
 	}
 }
 
+// WithPodLabels sets the PodLabels to facilitate the tests
+func WithPodLabels(podName string, namespace string, enable bool) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		if enable {
+			commonData.K8s.PodLabels = map[string]string{
+				"run": podName,
+			}
+		}
+	}
+}
+
 func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.CommonData {
 	e := eventtypes.CommonData{
 		K8s: eventtypes.K8sMetadata{
@@ -205,6 +216,12 @@ func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.C
 	return e
 }
 
+func BuildCommonDataK8s(namespace string, options ...CommonDataOption) eventtypes.CommonData {
+	e := BuildCommonData(namespace, options...)
+	WithPodLabels("test-pod", namespace, true)(&e)
+	return e
+}
+
 func BuildBaseEvent(namespace string, options ...CommonDataOption) eventtypes.Event {
 	e := eventtypes.Event{
 		Type:       eventtypes.NORMAL,
@@ -213,6 +230,12 @@ func BuildBaseEvent(namespace string, options ...CommonDataOption) eventtypes.Ev
 	for _, option := range options {
 		option(&e.CommonData)
 	}
+	return e
+}
+
+func BuildBaseEventK8s(namespace string, options ...CommonDataOption) eventtypes.Event {
+	e := BuildBaseEvent(namespace, options...)
+	WithPodLabels("test-pod", namespace, true)(&e.CommonData)
 	return e
 }
 

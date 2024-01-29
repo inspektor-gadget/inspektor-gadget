@@ -43,13 +43,13 @@ func TestTraceExec(t *testing.T) {
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*traceexecTypes.Event{
 				{
-					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sh",
 					Args:  shArgs,
 					Cwd:   "/",
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "date",
 					Args:       dateArgs,
 					Uid:        1000,
@@ -58,7 +58,7 @@ func TestTraceExec(t *testing.T) {
 					UpperLayer: true,
 				},
 				{
-					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sleep",
 					Args:  sleepArgs,
 					Uid:   1000,

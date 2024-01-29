@@ -38,7 +38,7 @@ func TestTraceTcp(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracetcpTypes.Event{
-				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
+				Event:     BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				Operation: "connect",

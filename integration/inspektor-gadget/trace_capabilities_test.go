@@ -41,7 +41,7 @@ func TestTraceCapabilities(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracecapabilitiesTypes.Event{
-				Event:         BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				Event:         BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:          "nice",
 				CapName:       "SYS_NICE",
 				Cap:           23,

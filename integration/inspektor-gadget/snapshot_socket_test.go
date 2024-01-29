@@ -57,7 +57,7 @@ func TestSnapshotSocket(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &snapshotsocketTypes.Event{
-					Event:    BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:    BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Protocol: "TCP",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{

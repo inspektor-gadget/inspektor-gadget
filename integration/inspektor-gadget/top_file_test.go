@@ -25,7 +25,7 @@ import (
 func newTopFileCmd(ns, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &topfileTypes.Stats{
-			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+			CommonData: BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Reads:      0,
 			ReadBytes:  0,
 			Filename:   "date.txt",
