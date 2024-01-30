@@ -40,6 +40,10 @@ func (t GadgetType) IsPeriodic() bool {
 	return t == TypeTraceIntervals
 }
 
+func (t GadgetType) IsReporter() bool {
+	return t == TypeProfile
+}
+
 // GadgetDesc is the main interface for handling gadgets
 type GadgetDesc interface {
 	// Name provides the name of the gadget. This is used for the calling the gadget, auto-creating the cobra commands,

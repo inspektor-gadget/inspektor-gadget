@@ -17,6 +17,7 @@ package types
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
@@ -55,6 +56,8 @@ type Event struct {
 
 	MountNsID uint64 `json:"-"`
 	NetNsID   uint64 `json:"-"`
+
+	Slots histogram.Histogram `json:"slots,omitempty"`
 
 	// Blob is used to save data to be sent to the client.
 	// [0] is used for bpf event

@@ -687,7 +687,11 @@ func buildCommandFromGadget(
 					}
 					break
 				}
-				fe.Output(formatter.FormatHeader())
+
+				if !gType.IsReporter() {
+					fe.Output(formatter.FormatHeader())
+				}
+
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case OutputModeJSON:
 				jsonCallback := printEventAsJSONFn(fe)
