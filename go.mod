@@ -49,7 +49,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v25.0.1+incompatible
-	github.com/opencontainers/image-spec v1.1.0-rc5
+	github.com/opencontainers/image-spec v1.1.0-rc6
 	github.com/prometheus/client_golang v1.18.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/viper v1.18.2
@@ -204,4 +204,4 @@ replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1
 
 replace github.com/vishvananda/netns => github.com/inspektor-gadget/netns v0.0.5-0.20230524185006-155d84c555d6
 
-replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20231221070400-5073458982fd
+replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20240123101058-64fedf45bfd3
