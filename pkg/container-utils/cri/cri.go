@@ -448,5 +448,10 @@ func criContainerToContainerData(runtimeName types.RuntimeName, container CRICon
 			containerMetadata.GetAttempt())
 	}
 
+	fmt.Printf("DEBUG(Alban): Runtime.Name: %q (%q), K8s.Name: %q\n",
+		containerMetadata.GetName(),
+		containerData.Runtime.ContainerName,
+		containerData.K8s.ContainerName)
+
 	return containerData
 }
