@@ -73,3 +73,30 @@ func TestGetEndpoints(t *testing.T) {
 		t.Errorf("Unexpected values for DstEndpoint, got IP: %s, Version: %d", endpoints[1].Addr, endpoints[1].Version)
 	}
 }
+func TestGetColumns(t *testing.T) {
+	cols := GetColumns()
+
+	if cols == nil {
+		t.Fatalf("GetColumns returned nil")
+	}
+	if _, ok := cols.GetColumn("ip"); !ok {
+		t.Errorf("Expected 'ip' column, but it was not found")
+	}
+
+	if _, ok := cols.GetColumn("sent"); !ok {
+		t.Errorf("Expected 'sent' column, but it was not found")
+	}
+
+	if _, ok := cols.GetColumn("recv"); !ok {
+		t.Errorf("Expected 'recv' column, but it was not found")
+	}
+
+	if _, ok := cols.GetColumn("src"); !ok {
+		t.Errorf("Expected 'src' column, but it was not found")
+	}
+
+	if _, ok := cols.GetColumn("dst"); !ok {
+		t.Errorf("Expected 'dst' column, but it was not found")
+	}
+
+}
