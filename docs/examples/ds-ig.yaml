@@ -1,3 +1,7 @@
+# This manifest is a template for running the ig binary as a daemon set. For simplicity, we use a
+# privileged pod, but you can use a more restrictive setup. Check
+# charts/gadget/templates/daemonset.yaml that is our source of true for the security configuration
+# needed by Inspektor Gadget.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -18,9 +22,7 @@ spec:
         # CHANGEME: use your own image
         image: mycontainerimage:latest
         securityContext:
-          # CHANGEME: you can also use a more restrictive securityContext
-          # See example in
-          # https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/resources/manifests/deploy.yaml
+          # CHANGEME: see comment at the top of this file
           privileged: true
         # CHANGEME: replace this with your own commands
         command:
