@@ -59,6 +59,11 @@ const (
 	TimestampTypeName = "gadget_timestamp"
 )
 
+// Keep this aligned with include/gadget/buffer.h
+const (
+	GadgetHeapMapName = "gadget_heap"
+)
+
 type EBPFParam struct {
 	params.ParamDesc `yaml:",inline"`
 }
@@ -368,7 +373,7 @@ func getColumnSize(typ btf.Type) uint {
 }
 
 func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
-	tracerInfo, err := getTracerInfo(spec)
+	tracerInfo, err := GetTracerInfo(spec)
 	if err != nil {
 		return err
 	}
@@ -381,9 +386,9 @@ func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
 		m.Tracers = make(map[string]Tracer)
 	}
 
-	tracerMap := spec.Maps[tracerInfo.mapName]
+	tracerMap := spec.Maps[tracerInfo.MapName]
 	if tracerMap == nil {
-		return fmt.Errorf("map %q not found in eBPF object", tracerInfo.mapName)
+		return fmt.Errorf("map %q not found in eBPF object", tracerInfo.MapName)
 	}
 
 	if err := validateTraceMap(tracerMap); err != nil {
@@ -391,18 +396,18 @@ func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
 	}
 
 	var tracerMapStruct *btf.Struct
-	if err := spec.Types.TypeByName(tracerInfo.eventType, &tracerMapStruct); err != nil {
-		return fmt.Errorf("finding struct %q in eBPF object: %w", tracerInfo.eventType, err)
+	if err := spec.Types.TypeByName(tracerInfo.EventType, &tracerMapStruct); err != nil {
+		return fmt.Errorf("finding struct %q in eBPF object: %w", tracerInfo.EventType, err)
 	}
 
-	if _, found := m.Tracers[tracerInfo.name]; !found {
+	if _, found := m.Tracers[tracerInfo.Name]; !found {
 		log.Debugf("Adding tracer %q", tracerMap.Name)
 		m.Tracers[tracerMap.Name] = Tracer{
 			MapName:    tracerMap.Name,
 			StructName: tracerMapStruct.Name,
 		}
 	} else {
-		log.Debugf("Tracer %q already defined, skipping", tracerInfo.name)
+		log.Debugf("Tracer %q already defined, skipping", tracerInfo.Name)
 	}
 
 	if err := m.populateStruct(tracerMapStruct); err != nil {
@@ -451,15 +456,15 @@ func GetGadgetIdentByPrefix(spec *ebpf.CollectionSpec, prefix string) ([]string,
 	return resultNames, resultError
 }
 
-type tracerInfo struct {
-	name      string
-	mapName   string
-	eventType string
+type TracerInfo struct {
+	Name      string
+	MapName   string
+	EventType string
 }
 
-// getTracerInfo returns the tracer info generated with GADGET_TRACER().
+// GetTracerInfo returns the tracer info generated with GADGET_TRACER().
 // If there are multiple annotations only the first one is returned.
-func getTracerInfo(spec *ebpf.CollectionSpec) (*tracerInfo, error) {
+func GetTracerInfo(spec *ebpf.CollectionSpec) (*TracerInfo, error) {
 	tracersInfo, err := GetGadgetIdentByPrefix(spec, tracerInfoPrefix)
 	if err != nil {
 		return nil, err
@@ -477,10 +482,10 @@ func getTracerInfo(spec *ebpf.CollectionSpec) (*tracerInfo, error) {
 		return nil, fmt.Errorf("invalid tracer info: %q", tracersInfo[0])
 	}
 
-	return &tracerInfo{
-		name:      parts[0],
-		mapName:   parts[1],
-		eventType: parts[2],
+	return &TracerInfo{
+		Name:      parts[0],
+		MapName:   parts[1],
+		EventType: parts[2],
 	}, nil
 }
 

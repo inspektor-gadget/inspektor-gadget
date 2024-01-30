@@ -213,6 +213,8 @@ func (t *Tracer) createdByTracerMapMacro(tracerMapName string) bool {
 }
 
 func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
+	heapMap, heapMapPresent := t.spec.Maps[types.GadgetHeapMapName]
+
 	if !isRingbufAvailable() {
 		if tracerMapName != "" {
 			log.Debugf("Ring buffers are not available, defaulting to perf ones")
@@ -227,21 +229,36 @@ func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
 			bufMap.ValueSize = 4
 
 			t.spec.Maps[tracerMapName] = bufMap
+
+			if heapMapPresent {
+				infos, err := types.GetTracerInfo(t.spec)
+				if err != nil {
+					return fmt.Errorf("getting tracer information: %w", err)
+				}
+
+				var eventStruct *btf.Struct
+				if err := t.spec.Types.TypeByName(infos.EventType, &eventStruct); err != nil {
+					return fmt.Errorf("finding event type %q: %w", infos.EventType, err)
+				}
+
+				// Replace MAX_EVENT_SIZE by the actual event size.
+				heapMap.ValueSize = eventStruct.Size
+
+				t.spec.Maps[types.GadgetHeapMapName] = heapMap
+			}
 		}
 	} else {
-		heapMapName := "gadget_heap"
 		// If we delete the gadget_heap map, the verifier will not load the code
 		// because it cannot find it despite the code using it being dead one:
 		// ...: create BPF collection: program ig_mount_x: missing map gadget_heap
 		// Rather than deleting it, we just set its size to 0 and use a hash to
 		// avoid having one struct per CPU, i.e. reducing as much as possible the
 		// memory footprint it uses.
-		heapMap, ok := t.spec.Maps[heapMapName]
-		if ok {
+		if heapMapPresent {
 			heapMap.Type = ebpf.Hash
 			heapMap.ValueSize = 4
 
-			t.spec.Maps[heapMapName] = heapMap
+			t.spec.Maps[types.GadgetHeapMapName] = heapMap
 		}
 	}
 

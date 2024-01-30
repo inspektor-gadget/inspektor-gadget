@@ -15,7 +15,6 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
-#define MAX_EVENT_SIZE 512
 #include <gadget/buffer.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
