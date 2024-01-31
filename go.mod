@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/cilium/ebpf v0.12.3
 	github.com/containerd/nri v0.5.0
-	github.com/containers/common v0.57.2
+	github.com/containers/common v0.57.3
 	github.com/docker/docker v25.0.1+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/giantswarm/crd-docs-generator v0.11.0
@@ -38,7 +38,7 @@ require (
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/containerd/containerd v1.7.12
-	github.com/containers/image/v5 v5.29.1
+	github.com/containers/image/v5 v5.29.2
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.5.0
