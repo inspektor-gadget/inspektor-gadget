@@ -3,69 +3,66 @@ module github.com/inspektor-gadget/inspektor-gadget
 go 1.21
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.12.3
+	github.com/containerd/containerd v1.7.12
 	github.com/containerd/nri v0.5.0
 	github.com/containers/common v0.57.3
+	github.com/containers/image/v5 v5.29.2
+	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/distribution/reference v0.5.0
+	github.com/docker/cli v25.0.1+incompatible
 	github.com/docker/docker v25.0.1+incompatible
+	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/giantswarm/crd-docs-generator v0.11.0
+	github.com/godbus/dbus/v5 v5.1.0
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
+	github.com/hashicorp/go-multierror v1.1.1
+	github.com/kr/pretty v0.3.1
+	github.com/moby/moby v25.0.1+incompatible
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.31.1
+	github.com/opencontainers/image-spec v1.1.0-rc6
 	github.com/opencontainers/runtime-spec v1.1.0
+	github.com/prometheus/client_golang v1.18.0
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
+	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
+	github.com/spf13/viper v1.18.2
+	github.com/stretchr/testify v1.8.4
+	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
+	github.com/tklauser/numcpus v0.7.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
+	go.opentelemetry.io/otel v1.22.0
+	go.opentelemetry.io/otel/exporters/prometheus v0.45.0
+	go.opentelemetry.io/otel/metric v1.22.0
+	go.opentelemetry.io/otel/sdk/metric v1.22.0
 	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
 	golang.org/x/term v0.16.0
+	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.1
 	k8s.io/apiextensions-apiserver v0.29.1
 	k8s.io/apimachinery v0.29.1
 	k8s.io/cli-runtime v0.29.1
 	k8s.io/client-go v0.29.1
 	k8s.io/code-generator v0.29.1
+	k8s.io/cri-api v0.29.1
+	oras.land/oras-go/v2 v2.3.1
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/security-profiles-operator v0.8.2
 	sigs.k8s.io/yaml v1.4.0
-)
-
-require (
-	github.com/blang/semver v3.5.1+incompatible
-	github.com/containerd/containerd v1.7.12
-	github.com/containers/image/v5 v5.29.2
-	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
-	github.com/distribution/reference v0.5.0
-	github.com/docker/cli v25.0.1+incompatible
-	github.com/docker/go-connections v0.5.0
-	github.com/godbus/dbus/v5 v5.1.0
-	github.com/google/go-cmp v0.6.0
-	github.com/hashicorp/go-multierror v1.1.1
-	github.com/kr/pretty v0.3.1
-	github.com/moby/moby v25.0.1+incompatible
-	github.com/opencontainers/image-spec v1.1.0-rc6
-	github.com/prometheus/client_golang v1.18.0
-	github.com/shopspring/decimal v1.3.1
-	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
-	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
-	github.com/tklauser/numcpus v0.7.0
-	go.opentelemetry.io/otel v1.22.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.45.0
-	go.opentelemetry.io/otel/metric v1.22.0
-	go.opentelemetry.io/otel/sdk/metric v1.22.0
-	golang.org/x/sync v0.6.0
-	golang.org/x/text v0.14.0
-	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/cri-api v0.29.1
-	oras.land/oras-go/v2 v2.3.1
 )
 
 require (
@@ -201,7 +198,5 @@ require (
 )
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
-
-replace github.com/vishvananda/netns => github.com/inspektor-gadget/netns v0.0.5-0.20230524185006-155d84c555d6
 
 replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20240123101058-64fedf45bfd3
