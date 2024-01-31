@@ -6,6 +6,7 @@
 #ifdef GADGET_TYPE_NETWORKING
 
 #include <linux/if_ether.h>
+#include <linux/in.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
