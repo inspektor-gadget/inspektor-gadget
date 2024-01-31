@@ -218,39 +218,44 @@ func autoSdUnitRestart() (exit bool, err error) {
 func autoMountFilesystems(dryRun bool) (mountsSuggested []string, err error) {
 	fs := []struct {
 		name    string
-		path    string
+		paths   []string
 		magic   int64
 		suggest bool // suggest mounting this filesystem
 	}{
 		{
 			"bpf",
-			"/sys/fs/bpf",
+			[]string{"/sys/fs/bpf"},
 			unix.BPF_FS_MAGIC,
 			false, // do not make 'ig --auto-mount-filesystems=false' fail if bpffs is not mounted
 		},
 		{
 			"debugfs",
-			"/sys/kernel/debug",
+			[]string{"/sys/kernel/debug"},
 			unix.DEBUGFS_MAGIC,
 			true,
 		},
 		{
 			"tracefs",
-			"/sys/kernel/tracing",
+			[]string{"/sys/kernel/tracing", "/sys/kernel/debug/tracing"},
 			unix.TRACEFS_MAGIC,
 			true,
 		},
 	}
+
+filesystemLoop:
 	for _, f := range fs {
 		var statfs unix.Statfs_t
-		err = unix.Statfs(f.path, &statfs)
-		if err != nil {
-			return mountsSuggested, fmt.Errorf("statfs %s: %w", f.path, err)
+		for _, path := range f.paths {
+			err = unix.Statfs(path, &statfs)
+			if err != nil {
+				return mountsSuggested, fmt.Errorf("statfs %s: %w", path, err)
+			}
+			if statfs.Type == f.magic {
+				log.Debugf("%s already mounted", f.name)
+				continue filesystemLoop
+			}
 		}
-		if statfs.Type == f.magic {
-			log.Debugf("%s already mounted", f.name)
-			continue
-		}
+
 		if f.suggest {
 			mountsSuggested = append(mountsSuggested, f.name)
 		}
@@ -258,11 +263,11 @@ func autoMountFilesystems(dryRun bool) (mountsSuggested []string, err error) {
 			continue
 		}
 
-		err = unix.Mount("none", f.path, f.name, 0, "")
+		err = unix.Mount("none", f.paths[0], f.name, 0, "")
 		if err != nil {
-			return mountsSuggested, fmt.Errorf("mounting %s: %w", f.path, err)
+			return mountsSuggested, fmt.Errorf("mounting %s: %w", f.paths[0], err)
 		}
-		log.Debugf("%s mounted (%s)", f.name, f.path)
+		log.Debugf("%s mounted (%s)", f.name, f.paths[0])
 	}
 	return
 }
