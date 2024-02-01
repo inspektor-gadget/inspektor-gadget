@@ -92,6 +92,7 @@ var (
 	skipSELinuxOpts     bool
 	eventBufferLength   uint64
 	daemonLogLevel      string
+	appArmorprofile     string
 	strLevels           []string
 )
 
@@ -182,6 +183,9 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&daemonLogLevel,
 		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
+	deployCmd.PersistentFlags().StringVarP(
+		&appArmorprofile,
+		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -433,6 +437,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
+			daemonSet.Spec.Template.Annotations["container.apparmor.security.beta.kubernetes.io/gadget"] = appArmorprofile
 			daemonSet.Namespace = gadgetNamespace
 
 			// Inspektor Gadget used to require hostPID=true. This is no longer
