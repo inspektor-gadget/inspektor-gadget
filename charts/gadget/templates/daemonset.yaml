@@ -162,12 +162,37 @@ spec:
               {{- toYaml .Values.capabilities | nindent 14 }}
               {{- end }}
           volumeMounts:
-            - mountPath: /host
-              name: host
+            - mountPath: /host/bin
+              name: bin
+              readOnly: true
+            # We need to have read/write as we write NRI and OCI config files
+            # here.
+            - mountPath: /host/etc
+              name: etc
+              readOnly: false
+            # We need to have read/write as we write NRI and OCI binaries here.
+            - mountPath: /host/opt
+              name: opt
+              readOnly: false
+            - mountPath: /host/usr
+              name: usr
+              readOnly: true
+            - mountPath: /host/run
+              name: run
+              readOnly: true
+            # WARNING Despite mounting host proc as readonly, it is possible to
+            # write host file system using symlinks under /host/proc. The
+            # following command, ran from gadget pod, will result in writing to
+            # the host filesystem:
+            # touch /host/proc/1/root/foobar
+            # This limitation comes from Inspektor Gadget needing to be run as
+            # unconfined with regard to AppArmor and having the SYS_PTRACE
+            # capability.
+            - mountPath: /host/proc
+              name: proc
+              readOnly: true
             - mountPath: /run
               name: run
-            - mountPath: /lib/modules
-              name: modules
             - mountPath: /sys/kernel/debug
               name: debugfs
             - mountPath: /sys/fs/cgroup
@@ -192,18 +217,36 @@ spec:
           {{- toYaml .Values.tolerations | nindent 8 }}
         {{ end }}
       volumes:
-        - name: host
+        # /bin is needed to find runc.
+        - name: bin
           hostPath:
-            path: /
+            path: /bin
+        # /etc is needed for several reasons:
+        # 1. entrypoint needs /etc/os-release to print information.
+        # 2. entrypoint needs /etc/nri to handle NRI hooks
+        # 3. entrypoint needs /etc/containers/oci to handle OCI hooks.
+        - name: etc
+          hostPath:
+            path: /etc
+        # /opt is needed for several reasons:
+        # 1. entrypoint needs /opt/nri to handle NRI hooks.
+        # 2. entrypoint needs /opt/hooks/oci to handle OCI hooks.
+        - name: opt
+          hostPath:
+            path: /opt
+        # /usr is needed to find runc.
+        - name: usr
+          hostPath:
+            path: /usr
+        - name: proc
+          hostPath:
+            path: /proc
         - name: run
           hostPath:
             path: /run
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup
-        - name: modules
-          hostPath:
-            path: /lib/modules
         - name: bpffs
           hostPath:
             path: /sys/fs/bpf
