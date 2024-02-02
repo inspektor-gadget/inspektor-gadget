@@ -12,6 +12,7 @@
 // answers won't be sent to userspace.
 #define MAX_ADDR_ANSWERS 8
 
+// this needs to be manually kept in sync with dnsEventTAbbrev in tracer.go (without the anaddr field)
 struct event_t {
 	// Keep netns at the top: networktracer depends on it
 	__u32 netns;

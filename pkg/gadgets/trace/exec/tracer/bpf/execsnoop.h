@@ -12,6 +12,7 @@
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
+// this needs to be manually kept in sync with execsnoopEventAbbrev in tracer.go (without the args field)
 struct event {
 	__u64 mntns_id;
 	__u64 timestamp;

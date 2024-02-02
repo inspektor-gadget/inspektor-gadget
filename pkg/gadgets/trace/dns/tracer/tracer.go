@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,6 +39,37 @@ const (
 	BPFQueryMapName = "query_map"
 	MaxAddrAnswers  = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
 )
+
+// needs to be kept in sync with dnsEventT from dns_bpfel.go (without the Anaddr field)
+type dnsEventTAbbrev struct {
+	Netns       uint32
+	_           [4]byte
+	Timestamp   uint64
+	MountNsId   uint64
+	Pid         uint32
+	Tid         uint32
+	Uid         uint32
+	Gid         uint32
+	Task        [16]uint8
+	SaddrV6     [16]uint8
+	DaddrV6     [16]uint8
+	Af          uint16
+	Sport       uint16
+	Dport       uint16
+	Proto       uint8
+	_           [1]byte
+	Id          uint16
+	Qtype       uint16
+	Qr          uint8
+	PktType     uint8
+	Rcode       uint8
+	_           [1]byte
+	LatencyNs   uint64
+	Name        [255]uint8
+	_           [1]byte
+	Ancount     uint16
+	Anaddrcount uint16
+}
 
 type Tracer struct {
 	*networktracer.Tracer[types.Event]
@@ -203,7 +234,7 @@ func parseLabelSequence(sample []byte) (ret string) {
 	return ret
 }
 
-func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error) {
+func bpfEventToDNSEvent(bpfEvent *dnsEventTAbbrev, answers []byte, netns uint64) (*types.Event, error) {
 	event := types.Event{
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
@@ -268,7 +299,7 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error)
 	for i := uint16(0); i < bpfEvent.Anaddrcount; i++ {
 		// For A records, the address in the bpf event will be
 		// IPv4-mapped-IPv6, which netip.Addr.Unmap() converts back to IPv4.
-		addr := netip.AddrFrom16(bpfEvent.Anaddr[i]).Unmap().String()
+		addr := netip.AddrFrom16([16]byte(answers[i*16 : i*16+16])).Unmap().String()
 		event.Addresses = append(event.Addresses, addr)
 	}
 
@@ -308,15 +339,15 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.
 	}
 
 	parseDNSEvent := func(rawSample []byte, netns uint64) (*types.Event, error) {
-		bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
-		// TODO: Why do I need 4+?
-		expected := 4 + int(unsafe.Sizeof(*bpfEvent)) - MaxAddrAnswers*16 + int(bpfEvent.Anaddrcount)*16
+		bpfEvent := (*dnsEventTAbbrev)(unsafe.Pointer(&rawSample[0]))
+		// 4 (padding) + (size of event without addresses) + (address count * 16)
+		expected := 4 + int(unsafe.Sizeof(*bpfEvent)) + int(bpfEvent.Anaddrcount)*16
 		if len(rawSample) != expected {
 			return nil, fmt.Errorf("invalid sample size: received: %d vs expected: %d",
 				len(rawSample), expected)
 		}
 
-		event, err := bpfEventToDNSEvent(bpfEvent, netns)
+		event, err := bpfEventToDNSEvent(bpfEvent, rawSample[unsafe.Offsetof(dnsEventT{}.Anaddr):], netns)
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +367,7 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.
 		t.Close()
 		return fmt.Errorf("got nil retrieving DNS query map")
 	}
-	startGarbageCollector(t.ctx, logger, dnsTimeout, queryMap)
+	startGarbageCollector(ctx, logger, dnsTimeout, queryMap)
 
 	return nil
 }

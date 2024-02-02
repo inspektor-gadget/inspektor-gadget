@@ -13,6 +13,7 @@ struct start_t {
 	__u8 fname[NAME_MAX];
 };
 
+// this needs to be manually kept in sync with opensnoopEventAbbrev in tracer.go (without the full_fname field)
 struct event {
 	__u64 timestamp;
 	/* user terminology for pid: */
