@@ -27,7 +27,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
+	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -159,11 +159,12 @@ func main() {
 		}
 	}
 
-	_, err = containerhook.NewContainerNotifier(callback)
+	notifier, err := containerhook.NewContainerNotifier(callback)
 	if err != nil {
 		fmt.Printf("containerhook failed: %v\n", err)
 		os.Exit(1)
 	}
+	defer notifier.Close()
 
 	// Graceful shutdown
 	exit := make(chan os.Signal, 1)
