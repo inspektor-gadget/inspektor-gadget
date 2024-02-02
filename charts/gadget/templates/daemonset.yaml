@@ -96,6 +96,7 @@ spec:
             - name: GADGET_TRACER_MANAGER_LOG_LEVEL
               value: {{ .Values.config.daemonLogLevel | quote }}
           securityContext:
+            readOnlyRootFilesystem: true
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate
             # SELinux context [2] to be able to mount host directories with correct permissions.
             # This option is ignored if hostPID/hostNetwork/privileged is set to true or SELinux isn't enabled.
@@ -207,6 +208,11 @@ spec:
               readOnly: true
             - mountPath: /sys/fs/bpf
               name: bpffs
+            # We need to add a dedicated volume to store OCI image otherwise it
+            # will fail as the container root filesystem is read only.
+            # For this, we use an emptyDir without size limit.
+            - mountPath: /var/lib/ig
+              name: oci
             {{- if .Values.config.mountPullSecret }}
             - mountPath: /var/run/secrets/gadget/pull-secret
               name: pull-secret
@@ -266,6 +272,8 @@ spec:
         - name: debugfs
           hostPath:
             path: /sys/kernel/debug
+        - name: oci
+          emptyDir:
         {{- if .Values.config.mountPullSecret }}
         - name: pull-secret
           secret:
