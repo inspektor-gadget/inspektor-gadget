@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,21 @@ const (
 	// Keep in sync with opensnoop.bpf.c.
 	CHAR_BIT = 8
 )
+
+// needs to be kept in sync with opensnoopEvent from opensnoop_bpfel.go without the FullFname field
+type opensnoopEventAbbrev struct {
+	Timestamp uint64
+	Pid       uint32
+	Uid       uint32
+	Gid       uint32
+	_         [4]byte
+	MntnsId   uint64
+	Ret       int32
+	Flags     int32
+	Mode      uint16
+	Comm      [16]uint8
+	Fname     [255]uint8
+}
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -197,7 +212,7 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		bpfEvent := (*opensnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*opensnoopEventAbbrev)(unsafe.Pointer(&record.RawSample[0]))
 
 		ret := int(bpfEvent.Ret)
 		fd := 0
@@ -229,7 +244,7 @@ func (t *Tracer) run() {
 			ModeRaw:       mode,
 			Mode:          mode.String(),
 			Path:          gadgets.FromCString(bpfEvent.Fname[:]),
-			FullPath:      gadgets.FromCString(bpfEvent.FullFname[:]),
+			FullPath:      gadgets.FromCString(record.RawSample[unsafe.Offsetof(opensnoopEvent{}.FullFname):]),
 		}
 
 		if t.enricher != nil {
