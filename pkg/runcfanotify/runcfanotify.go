@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
@@ -104,8 +105,10 @@ type RuncNotifier struct {
 	futureMu         sync.Mutex
 
 	// set to true when RuncNotifier is closed
-	closed bool
-	done   chan bool
+	closed atomic.Bool
+	// this channel is used in watchContainersTermination() to avoid having to wait for the
+	// ticker to trigger before returning
+	done chan bool
 
 	wg sync.WaitGroup
 }
@@ -251,7 +254,7 @@ func (n *RuncNotifier) watchContainersTermination() {
 		case <-n.done:
 			return
 		case <-ticker.C:
-			if n.closed {
+			if n.closed.Load() {
 				return
 			}
 
@@ -270,22 +273,22 @@ func (n *RuncNotifier) watchContainersTermination() {
 				pids[pid] = true
 			}
 
+			n.containersMu.Lock()
 			for _, c := range n.containers {
 				if pids[c.pid] {
 					// container still running
 					continue
 				}
 
-				n.callback(ContainerEvent{
+				go n.callback(ContainerEvent{
 					Type:         EventTypeRemoveContainer,
 					ContainerID:  c.id,
 					ContainerPID: uint32(c.pid),
 				})
 
-				n.containersMu.Lock()
 				delete(n.containers, c.id)
-				n.containersMu.Unlock()
 			}
+			n.containersMu.Unlock()
 		}
 	}
 }
@@ -477,7 +480,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 		defer pidFileDirNotify.File.Close()
 		for {
 			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, pidFile, pidFileDir)
-			if n.closed {
+			if n.closed.Load() {
 				return
 			}
 			if err != nil {
@@ -498,7 +501,7 @@ func (n *RuncNotifier) watchRunc() {
 
 	for {
 		stop, err := n.watchRuncIterate()
-		if n.closed {
+		if n.closed.Load() {
 			n.runcBinaryNotify.File.Close()
 			return
 		}
@@ -704,7 +707,7 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 }
 
 func (n *RuncNotifier) Close() {
-	n.closed = true
+	n.closed.Store(true)
 	close(n.done)
 	n.runcBinaryNotify.File.Close()
 	n.wg.Wait()

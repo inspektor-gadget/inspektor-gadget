@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/florianl/go-tc"
@@ -78,6 +79,10 @@ type Handler struct {
 	tcnl *tc.Tc
 
 	direction AttachmentDirection
+
+	// mu protects attachments from concurrent access
+	// AttachContainer and DetachContainer can be called in parallel
+	mu sync.Mutex
 }
 
 func NewHandler(direction AttachmentDirection) (*Handler, error) {
@@ -207,6 +212,9 @@ func (t *Handler) AttachContainer(container *containercollection.Container) erro
 		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
 	}
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	// We need to perform these operations from the host network namespace, otherwise we won't
 	// be able to add the filter to the network interface.
 	err = netnsenter.NetnsEnter(1, func() error {
@@ -236,6 +244,9 @@ func (t *Handler) DetachContainer(container *containercollection.Container) erro
 	}
 
 	pid := container.Pid
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	for ifacename, a := range t.attachments {
 		if _, ok := a.users[pid]; ok {

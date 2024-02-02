@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -80,6 +81,10 @@ type Tracer[Event any] struct {
 	attachments map[uint64]*attachment
 
 	eventHandler func(ev *Event)
+
+	// mu protects attachments from concurrent access
+	// AttachContainer and DetachContainer can be called in parallel
+	mu sync.Mutex
 }
 
 func (t *Tracer[Event]) newAttachment(
@@ -249,6 +254,9 @@ func (t *Tracer[Event]) AttachProg(prog *ebpf.Program) error {
 }
 
 func (t *Tracer[Event]) Attach(pid uint32) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	netns, err := containerutils.GetNetNs(int(pid))
 	if err != nil {
 		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
@@ -351,6 +359,9 @@ func (t *Tracer[Event]) releaseAttachment(netns uint64, a *attachment) {
 }
 
 func (t *Tracer[Event]) Detach(pid uint32) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	for netns, a := range t.attachments {
 		if _, ok := a.users[pid]; ok {
 			delete(a.users, pid)
@@ -364,6 +375,9 @@ func (t *Tracer[Event]) Detach(pid uint32) error {
 }
 
 func (t *Tracer[Event]) Close() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	if t.perfRd != nil {
 		t.perfRd.Close()
 	}
