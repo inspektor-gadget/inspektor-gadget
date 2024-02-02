@@ -108,6 +108,7 @@ message InfoResponse {
   string version = 1;
   bytes catalog = 2;
   bool experimental = 3;
+  string serverVersion = 4;
 }
 
 message GadgetData {

@@ -43,6 +43,7 @@ func (r *Runtime) InitDeployInfo() {
 		log.Warnf("could not load gadget info from remote: %v", err)
 		return
 	}
+
 	r.info = info
 
 	err = deployinfo.Store(info)
@@ -84,7 +85,8 @@ func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 	}
 
 	retInfo := &deployinfo.DeployInfo{
-		Experimental: info.Experimental,
+		Experimental:  info.Experimental,
+		ServerVersion: info.ServerVersion,
 	}
 	err = json.Unmarshal(info.Catalog, &retInfo.Catalog)
 	if err != nil {

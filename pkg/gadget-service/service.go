@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -82,9 +83,10 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 		return nil, fmt.Errorf("marshal catalog: %w", err)
 	}
 	return &api.InfoResponse{
-		Version:      "1.0", // TODO
-		Catalog:      catalogJSON,
-		Experimental: experimental.Enabled(),
+		Version:       "1.0", // TODO
+		Catalog:       catalogJSON,
+		Experimental:  experimental.Enabled(),
+		ServerVersion: version.Version().String(),
 	}, nil
 }
 

@@ -56,7 +56,7 @@ include crd.mk
 include tests.mk
 include minikube.mk
 
-LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=$(VERSION) \
+LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 
@@ -210,7 +210,7 @@ gadget-container:
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
-		--build-arg GOPROXY=$(GOPROXY) \
+		--build-arg GOPROXY=$(GOPROXY) --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 .PHONY: cross-gadget-container
@@ -223,7 +223,7 @@ cross-gadget-container:
 			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
-		--push --build-arg GOPROXY=$(GOPROXY) \
+		--push --build-arg GOPROXY=$(GOPROXY) --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 push-gadget-container:
