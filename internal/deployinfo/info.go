@@ -25,8 +25,9 @@ import (
 )
 
 type DeployInfo struct {
-	Catalog      *runtime.Catalog
-	Experimental bool
+	Catalog       *runtime.Catalog
+	Experimental  bool
+	ServerVersion string
 }
 
 func getFilename() (string, error) {

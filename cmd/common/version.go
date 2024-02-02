@@ -18,21 +18,16 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
-
-// version is filled out by the Makefile at build
-var version = "undefined"
-
-func Version() string {
-	return version
-}
 
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version)
+			fmt.Println("v" + version.Version().String())
 		},
 	}
 }

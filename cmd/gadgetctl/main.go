@@ -20,11 +20,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/blang/semver"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
@@ -75,7 +78,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		gadgetctlVersion := version.Version()
 		runtime.InitDeployInfo()
+		info, err := deployinfo.Load()
+		if err != nil {
+			log.Warnf("failed to load deploy info: %s", err)
+		}
+		serverSemver, _ := semver.Make(info.ServerVersion)
+
+		if !gadgetctlVersion.Equals(serverSemver) {
+			log.Warnf(
+				"WARNING: version skew detected (gadget pods v%s vs gadgetctl v%s), use 'gadgetctl' to fix it.\n",
+				serverSemver, gadgetctlVersion,
+			)
+		}
 	}
 
 	hiddenColumnTags := []string{"kubernetes"}

@@ -12,6 +12,8 @@ FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
 ARG TARGETARCH
 ARG BUILDARCH
+ARG VERSION=v0.0.0
+ENV VERSION=${VERSION}
 
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
