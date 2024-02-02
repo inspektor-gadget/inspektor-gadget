@@ -43,6 +43,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -126,9 +127,11 @@ type ContainerNotifier struct {
 	objs  execruntimeObjects
 	links []link.Link
 
-	// set to true when Runtime is closed
-	closed bool
-	done   chan bool
+	// set to true when the notifier is closed is closed
+	closed atomic.Bool
+	// this channel is used in watchContainersTermination() to avoid having to wait for the
+	// ticker to trigger before returning
+	done chan bool
 
 	wg sync.WaitGroup
 }
@@ -350,7 +353,7 @@ func (n *ContainerNotifier) watchContainersTermination() {
 		case <-n.done:
 			return
 		case <-ticker.C:
-			if n.closed {
+			if n.closed.Load() {
 				return
 			}
 
@@ -369,22 +372,22 @@ func (n *ContainerNotifier) watchContainersTermination() {
 				pids[pid] = true
 			}
 
+			n.containersMu.Lock()
 			for _, c := range n.containers {
 				if pids[c.pid] {
 					// container still running
 					continue
 				}
 
-				n.callback(ContainerEvent{
+				go n.callback(ContainerEvent{
 					Type:         EventTypeRemoveContainer,
 					ContainerID:  c.id,
 					ContainerPID: uint32(c.pid),
 				})
 
-				n.containersMu.Lock()
 				delete(n.containers, c.id)
-				n.containersMu.Unlock()
 			}
+			n.containersMu.Unlock()
 		}
 	}
 }
@@ -587,7 +590,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 		defer pidFileDirNotify.File.Close()
 		for {
 			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, configJSONPath, pidFile, pidFileDir)
-			if n.closed {
+			if n.closed.Load() {
 				return
 			}
 			if err != nil {
@@ -608,7 +611,7 @@ func (n *ContainerNotifier) watchRuntimeBinary() {
 
 	for {
 		stop, err := n.watchRuntimeIterate()
-		if n.closed {
+		if n.closed.Load() {
 			n.runtimeBinaryNotify.File.Close()
 			return
 		}
@@ -781,7 +784,7 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 }
 
 func (n *ContainerNotifier) Close() {
-	n.closed = true
+	n.closed.Store(true)
 	close(n.done)
 	if n.runtimeBinaryNotify != nil {
 		n.runtimeBinaryNotify.File.Close()
