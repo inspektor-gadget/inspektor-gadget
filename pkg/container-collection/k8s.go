@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -27,6 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
+	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
+	kubeletconfigscheme "k8s.io/kubernetes/pkg/kubelet/apis/config/scheme"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
@@ -53,6 +57,12 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 
 	fieldSelector := fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
 
+	kubeletConfig, err := getCurrentKubeletConfig(clientset, nodeName)
+	if err != nil {
+		return nil, fmt.Errorf("getting /configz %w", err)
+	}
+	socketPath, _ := strings.CutPrefix(kubeletConfig.ContainerRuntimeEndpoint, "unix:///")
+
 	node, err := clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("getting node %w", err)
@@ -63,7 +73,8 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
 		&containerutilsTypes.RuntimeConfig{
-			Name: types.String2RuntimeName(list[0]),
+			Name:       types.String2RuntimeName(list[0]),
+			SocketPath: socketPath,
 		})
 	if err != nil {
 		return nil, err
@@ -180,4 +191,43 @@ func (k *K8sClient) ListContainers() (arr []Container, err error) {
 		arr = append(arr, containers...)
 	}
 	return arr, nil
+}
+
+func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (*kubeletconfig.KubeletConfiguration, error) {
+	resp, err := clientset.CoreV1().RESTClient().Get().Resource("nodes").Name(nodeName).Suffix("proxy", "configz").DoRaw(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch /configz from %q", nodeName)
+	}
+	kubeCfg, err := decodeConfigz(resp)
+	if err != nil {
+		return nil, err
+	}
+	return kubeCfg, nil
+}
+
+func decodeConfigz(respBody []byte) (*kubeletconfig.KubeletConfiguration, error) {
+	// This hack because /configz reports the following structure:
+	// {"kubeletconfig": {the JSON representation of kubeletconfigv1beta1.KubeletConfiguration}}
+	type configzWrapper struct {
+		ComponentConfig kubeletconfigv1beta1.KubeletConfiguration `json:"kubeletconfig"`
+	}
+
+	configz := configzWrapper{}
+	kubeCfg := kubeletconfig.KubeletConfiguration{}
+
+	err := json.Unmarshal(respBody, &configz)
+	if err != nil {
+		return nil, err
+	}
+
+	scheme, _, err := kubeletconfigscheme.NewSchemeAndCodecs()
+	if err != nil {
+		return nil, err
+	}
+	err = scheme.Convert(&configz.ComponentConfig, &kubeCfg, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeCfg, nil
 }
