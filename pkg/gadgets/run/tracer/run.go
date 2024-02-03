@@ -128,6 +128,8 @@ func getGadgetType(spec *ebpf.CollectionSpec,
 	gadgetMetadata *types.GadgetMetadata,
 ) (gadgets.GadgetType, error) {
 	switch {
+	case len(gadgetMetadata.Structs) == 0:
+		return gadgets.TypeOther, nil
 	case len(gadgetMetadata.Tracers) > 0:
 		return gadgets.TypeTrace, nil
 	case len(gadgetMetadata.Snapshotters) > 0:
@@ -188,10 +190,12 @@ func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, log
 		return nil, err
 	}
 
-	ret.EventFactory = types.NewEventFactory()
-	ret.Columns, err = calculateColumnsForClient(ret.EventFactory, ret.GadgetMetadata, gadget.EbpfObject, logger)
-	if err != nil {
-		return nil, err
+	if len(ret.GadgetMetadata.Structs) > 0 {
+		ret.EventFactory = types.NewEventFactory()
+		ret.Columns, err = calculateColumnsForClient(ret.EventFactory, ret.GadgetMetadata, gadget.EbpfObject, logger)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return ret, nil
@@ -602,6 +606,11 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 }
 
 func (g *GadgetDesc) CustomParser(info *types.GadgetInfo) (parser.Parser, error) {
+	// There are gadgets that don't provide any events, like networking ones.
+	if len(info.GadgetMetadata.Structs) == 0 {
+		return nil, nil
+	}
+
 	cols, err := g.getColumns(info)
 	if err != nil {
 		return nil, fmt.Errorf("getting columns: %w", err)

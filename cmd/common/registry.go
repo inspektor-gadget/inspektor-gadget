@@ -267,13 +267,17 @@ func buildCommandFromGadget(
 					return fmt.Errorf("calling custom parser: %w", err)
 				}
 
-				ebpfParams := params.Params{}
+				params := params.Params{}
 				for _, desc := range runGadgetInfo.GadgetMetadata.EBPFParams {
 					desc := desc
-					ebpfParams.Add(desc.ToParam())
+					params.Add(desc.ToParam())
+				}
+				for _, desc := range runGadgetInfo.GadgetMetadata.GadgetParams {
+					desc := desc
+					params.Add(desc.ToParam())
 				}
 
-				extraGadgetParams.Add(ebpfParams...)
+				extraGadgetParams.Add(params...)
 			}
 			// add flags
 			if gType != gadgets.TypeOneShot {

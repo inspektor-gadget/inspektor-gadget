@@ -23,19 +23,20 @@ import (
 )
 
 func TestValidate(t *testing.T) {
-	const objectPath = "../../../../testdata/validate_metadata1.o"
-
 	type testCase struct {
+		objectPath        string
 		metadata          *GadgetMetadata
 		expectedErrString string
 	}
 
 	tests := map[string]testCase{
 		"missing_name": {
+			objectPath:        "../../../../testdata/validate_metadata1.o",
 			metadata:          &GadgetMetadata{},
 			expectedErrString: "gadget name is required",
 		},
 		"multiple_types": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -48,6 +49,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "gadget cannot have tracers and snapshotters",
 		},
 		"tracers_more_than_one": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -58,6 +60,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "only one tracer is allowed",
 		},
 		"tracers_missing_map_name": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -69,6 +72,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "is missing mapName",
 		},
 		"tracers_missing_struct_name": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -80,6 +84,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "is missing structName",
 		},
 		"tracers_references_unknown_struct": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -92,6 +97,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "references unknown struct",
 		},
 		"tracers_map_not_found": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -107,6 +113,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "map \"nonexistent\" not found in eBPF object",
 		},
 		"tracers_bad_map_type": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -122,6 +129,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "map \"myhashmap\" has a wrong type, expected: ringbuf or perf event array",
 		},
 		"tracers_map_without_btf": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -136,6 +144,7 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		"tracers_good": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Tracers: map[string]Tracer{
@@ -150,6 +159,7 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		"structs_nonexistent": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Structs: map[string]Struct{
@@ -159,6 +169,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "looking for struct \"nonexistent\" in eBPF object",
 		},
 		"structs_field_nonexistent": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Structs: map[string]Struct{
@@ -174,6 +185,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "field \"nonexistent\" not found in eBPF struct",
 		},
 		"structs_good": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Structs: map[string]Struct{
@@ -188,6 +200,7 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		"param_nonexistent": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				EBPFParams: map[string]EBPFParam{
@@ -197,6 +210,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "variable \"bar\" not found in eBPF object: type name bar: not found",
 		},
 		"param_nokey": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				EBPFParams: map[string]EBPFParam{
@@ -206,6 +220,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "param \"bar\" has an empty key",
 		},
 		"param_good": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				EBPFParams: map[string]EBPFParam{
@@ -218,6 +233,7 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		"param2_not_volatile": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				EBPFParams: map[string]EBPFParam{
@@ -227,6 +243,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "\"param2\" is not volatile",
 		},
 		"param3_not_const": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				EBPFParams: map[string]EBPFParam{
@@ -236,6 +253,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "\"param3\" is not const",
 		},
 		"snapshotters_more_than_one": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Snapshotters: map[string]Snapshotter{
@@ -246,6 +264,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "only one snapshotter is allowed",
 		},
 		"snapshotters_missing_struct_name": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Snapshotters: map[string]Snapshotter{
@@ -255,6 +274,7 @@ func TestValidate(t *testing.T) {
 			expectedErrString: "is missing structName",
 		},
 		"snapshotters_good": {
+			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &GadgetMetadata{
 				Name: "foo",
 				Snapshotters: map[string]Snapshotter{
@@ -267,16 +287,26 @@ func TestValidate(t *testing.T) {
 				},
 			},
 		},
+		"sched_cls": {
+			objectPath: "../../../../testdata/validate_metadata_sched_cls.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				GadgetParams: map[string]params.ParamDesc{
+					"iface": {
+						Key: "iface",
+					},
+				},
+			},
+		},
 	}
-
-	// it's fine for now to use the same spec for all tests, hence do this once
-	spec, err := ebpf.LoadCollectionSpec(objectPath)
-	require.NoError(t, err)
 
 	for name, test := range tests {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
+			spec, err := ebpf.LoadCollectionSpec(test.objectPath)
+			require.NoError(t, err)
 
 			err = test.metadata.Validate(spec)
 			if test.expectedErrString == "" {
