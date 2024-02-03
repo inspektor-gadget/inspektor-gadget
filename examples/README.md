@@ -43,3 +43,4 @@ or `ig` directly.
     print events in a column format.
     - [trace/exec](gadgets/formatter/trace/exec/): traces creation of
       new processes inside a particular container.
+  - [runner](gadgets/runner/): shows how to use the Runner API for image based gadgets
