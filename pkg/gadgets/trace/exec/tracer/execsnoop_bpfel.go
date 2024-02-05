@@ -82,6 +82,7 @@ type execsnoopMapSpecs struct {
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	Execs                *ebpf.MapSpec `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	PidByTgid            *ebpf.MapSpec `ebpf:"pid_by_tgid"`
 }
 
 // execsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -106,6 +107,7 @@ type execsnoopMaps struct {
 	Events               *ebpf.Map `ebpf:"events"`
 	Execs                *ebpf.Map `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	PidByTgid            *ebpf.Map `ebpf:"pid_by_tgid"`
 }
 
 func (m *execsnoopMaps) Close() error {
@@ -113,6 +115,7 @@ func (m *execsnoopMaps) Close() error {
 		m.Events,
 		m.Execs,
 		m.GadgetMntnsFilterMap,
+		m.PidByTgid,
 	)
 }
 
