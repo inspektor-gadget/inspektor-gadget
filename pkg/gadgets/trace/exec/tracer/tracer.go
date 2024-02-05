@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,43 @@ import (
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/
+
+// needs to be kept in sync with execsnoopEvent from execsnoop_bpfel.go without the Args field
+type execsnoopEventAbbrev struct {
+	MntnsId    uint64
+	Timestamp  uint64
+	Pid        uint32
+	Ppid       uint32
+	Uid        uint32
+	Gid        uint32
+	Loginuid   uint32
+	Sessionid  uint32
+	Retval     int32
+	ArgsCount  int32
+	UpperLayer bool
+	_          [3]byte
+	ArgsSize   uint32
+	Comm       [16]uint8
+}
+
+// needs to be kept in sync with execsnoopwithcwdEvent from execsnoopwithcwd_bpfel.go without the Args field
+type execsnoopWithCwdEventAbbrev struct {
+	MntnsId    uint64
+	Timestamp  uint64
+	Pid        uint32
+	Ppid       uint32
+	Uid        uint32
+	Gid        uint32
+	Loginuid   uint32
+	Sessionid  uint32
+	Retval     int32
+	ArgsCount  int32
+	UpperLayer bool
+	_          [3]byte
+	ArgsSize   uint32
+	Comm       [16]uint8
+	Cwd        [4096]uint8
+}
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -150,7 +187,7 @@ func (t *Tracer) run() {
 
 		// this works regardless the kind of event because cwd is defined at the end of the
 		// structure. (Just before args that are handled in a different way below)
-		bpfEvent := (*execsnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*execsnoopEventAbbrev)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
@@ -171,12 +208,12 @@ func (t *Tracer) run() {
 
 		argsCount := 0
 		buf := []byte{}
-		args := &bpfEvent.Args
+		args := record.RawSample[unsafe.Offsetof(execsnoopEvent{}.Args):]
 
 		if t.config.GetCwd {
-			bpfEventWithCwd := (*execsnoopWithCwdEvent)(unsafe.Pointer(&record.RawSample[0]))
+			bpfEventWithCwd := (*execsnoopWithCwdEventAbbrev)(unsafe.Pointer(&record.RawSample[0]))
 			event.Cwd = gadgets.FromCString(bpfEventWithCwd.Cwd[:])
-			args = &bpfEventWithCwd.Args
+			args = record.RawSample[unsafe.Offsetof(execsnoopWithCwdEvent{}.Args):]
 		}
 
 		for i := 0; i < int(bpfEvent.ArgsSize) && argsCount < int(bpfEvent.ArgsCount); i++ {
