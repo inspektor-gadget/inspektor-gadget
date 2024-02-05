@@ -17,6 +17,7 @@ package image
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+
+	"golang.org/x/term"
 )
 
 func NewListCmd() *cobra.Command {
@@ -40,8 +43,10 @@ func NewListCmd() *cobra.Command {
 				return fmt.Errorf("list gadgets: %w", err)
 			}
 
+			isTerm := term.IsTerminal(int(os.Stdout.Fd()))
+
 			cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
-			if !noTrunc {
+			if !noTrunc && isTerm {
 				cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
 					if i.Digest == "" {
 						return ""
@@ -50,13 +55,13 @@ func NewListCmd() *cobra.Command {
 					return strings.TrimPrefix(i.Digest, "sha256:")[:12]
 				})
 			}
-			formatter := textcolumns.NewFormatter(cols.GetColumnMap())
+			formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(isTerm))
 			formatter.WriteTable(cmd.OutOrStdout(), images)
 			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output")
+	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output, this option is only valid when used in a terminal")
 
 	return utils.MarkExperimental(cmd)
 }
