@@ -288,6 +288,15 @@ type CRIContainer interface {
 	GetImageRef() string
 }
 
+func digestFromRef(imageRef string) string {
+	splitted := strings.Split(imageRef, "@")
+	if len(splitted) == 1 {
+		return imageRef
+	} else {
+		return splitted[1]
+	}
+}
+
 func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRIContainer) *runtimeclient.ContainerData {
 	containerMetadata := container.GetMetadata()
 	image := container.GetImage()
@@ -303,7 +312,7 @@ func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRICon
 				ContainerName:        strings.TrimPrefix(containerMetadata.GetName(), "/"),
 				RuntimeName:          runtimeName,
 				ContainerImageName:   image.GetImage(),
-				ContainerImageDigest: strings.Split(imageRef, "@")[1],
+				ContainerImageDigest: digestFromRef(imageRef),
 			},
 			State: containerStatusStateToRuntimeClientState(container.GetState()),
 		},
