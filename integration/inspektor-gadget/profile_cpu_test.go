@@ -18,51 +18,34 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/inspektor-gadget/inspektor-gadget/integration/common"
 	profilecpuTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
 func TestProfileCpu(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-profile-cpu")
-
 	t.Parallel()
+	ns := GenerateTestNamespaceName("test-profile-cpu")
 
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
-		WaitUntilTestPodReadyCommand(ns),
-		{
-			Name: "RunProfileCpuGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
-			ValidateOutput: func(t *testing.T, output string) {
-				expectedEntry := &profilecpuTypes.Report{
-					CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
-					Comm:       "sh",
-				}
-
-				normalize := func(e *profilecpuTypes.Report) {
-					e.Pid = 0
-					e.UserStack = nil
-					e.KernelStack = nil
-					e.Count = 0
-
-					e.K8s.Node = ""
-					// TODO: Verify container runtime and container name
-					e.Runtime.RuntimeName = ""
-					e.Runtime.ContainerName = ""
-					e.Runtime.ContainerID = ""
-					e.Runtime.ContainerImageDigest = ""
-				}
-
-				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-			},
-		},
-		DeleteTestNamespaceCommand(ns),
+	normalizeOpt := func(e *profilecpuTypes.Report) {
+		e.K8s.Node = ""
+		// TODO: Verify container runtime and container name
+		e.Runtime.RuntimeName = ""
+		e.Runtime.ContainerName = ""
 	}
+
+	cmd := fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns)
+	normalize := common.ProfileCPUNormalize(normalizeOpt)
+	commands := common.NewProfileCPUTestCmds(
+		cmd,
+		ns,
+		normalize,
+		WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+	)
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }

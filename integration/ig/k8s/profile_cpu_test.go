@@ -20,61 +20,40 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/common"
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 )
 
 func TestProfileCpu(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-cpu-profile")
+	ns := GenerateTestNamespaceName("test-profile-cpu")
+	isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 
-	profileCPUCmd := &Command{
-		Name: "ProfileCpu",
-		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
-		ValidateOutput: func(t *testing.T, output string) {
-			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
-			expectedEntry := &cpuprofileTypes.Report{
-				CommonData: BuildCommonData(ns,
-					WithRuntimeMetadata(*containerRuntime),
-					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
-				),
-				Comm: "sh",
-			}
+	normalizeOpt := func(e *cpuprofileTypes.Report) {
+		// Docker and CRI-O use a custom container name composed, among
+		// other things, by the pod UID. We don't know the pod UID in
+		// advance, so we can't match the exact expected container name.
+		prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+		if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+			strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+			e.Runtime.ContainerName = "test-pod"
+		}
 
-			normalize := func(e *cpuprofileTypes.Report) {
-				// Docker and CRI-O use a custom container name composed, among
-				// other things, by the pod UID. We don't know the pod UID in
-				// advance, so we can't match the exact expected container name.
-				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
-				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
-					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
-					e.Runtime.ContainerName = "test-pod"
-				}
-
-				e.Pid = 0
-				e.UserStack = nil
-				e.KernelStack = nil
-				e.Count = 0
-
-				e.Runtime.ContainerID = ""
-				e.Runtime.ContainerImageDigest = ""
-
-				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
-				if isDockerRuntime {
-					e.Runtime.ContainerImageName = ""
-				}
-			}
-
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-		},
+		// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+		if isDockerRuntime {
+			e.Runtime.ContainerImageName = ""
+		}
 	}
 
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
-		WaitUntilTestPodReadyCommand(ns),
-		profileCPUCmd,
-		DeleteTestNamespaceCommand(ns),
-	}
+	cmd := fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime)
+	normalize := common.ProfileCPUNormalize(normalizeOpt)
+	commands := common.NewProfileCPUTestCmds(
+		cmd,
+		ns,
+		normalize,
+		WithRuntimeMetadata(*containerRuntime),
+		WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+	)
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }

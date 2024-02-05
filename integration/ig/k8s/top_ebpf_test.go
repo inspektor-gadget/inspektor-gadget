@@ -18,44 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cilium/ebpf"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/common"
 )
-
-func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
-	validateOutputFn := func(t *testing.T, output string) {
-		expectedEntry := &types.Stats{
-			Type: ebpf.Tracing.String(),
-			Name: "ig_top_ebpf_it",
-		}
-
-		normalize := func(e *types.Stats) {
-			e.ProgramID = 0
-			e.Processes = nil
-			e.CurrentRuntime = 0
-			e.CurrentRunCount = 0
-			e.CumulativeRuntime = 0
-			e.CumulativeRunCount = 0
-			e.TotalRuntime = 0
-			e.TotalRunCount = 0
-			e.MapMemory = 0
-			e.MapCount = 0
-			e.TotalCpuUsage = 0
-			e.PerCpuUsage = 0
-		}
-
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
-	}
-
-	return &Command{
-		Name:           "TopEbpf",
-		ValidateOutput: validateOutputFn,
-		Cmd:            cmd,
-		StartAndStop:   startAndStop,
-	}
-}
 
 func TestTopEbpf(t *testing.T) {
 	t.Parallel()
@@ -64,7 +29,7 @@ func TestTopEbpf(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100", *containerRuntime)
-		topEbpfCmd := newTopEbpfCmd(cmd, true)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, true)
 		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 
@@ -73,7 +38,7 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100 --timeout %d",
 			*containerRuntime, timeout)
-		topEbpfCmd := newTopEbpfCmd(cmd, false)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, false)
 		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 
@@ -82,7 +47,7 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100 --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
-		topEbpfCmd := newTopEbpfCmd(cmd, false)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, false)
 		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 }

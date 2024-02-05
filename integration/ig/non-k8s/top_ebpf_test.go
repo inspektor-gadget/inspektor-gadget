@@ -17,47 +17,13 @@ package main
 import (
 	"testing"
 
-	"github.com/cilium/ebpf"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/common"
 )
 
 func TestTopEbpf(t *testing.T) {
 	t.Parallel()
 
-	topebpfCmd := &Command{
-		Name:         "TopEbpf",
-		Cmd:          "./ig top ebpf -o json -m 100 --runtimes=docker",
-		StartAndStop: true,
-		ValidateOutput: func(t *testing.T, output string) {
-			expectedEntry := &topebpfTypes.Stats{
-				Type: ebpf.Tracing.String(),
-				Name: "ig_top_ebpf_it",
-			}
-
-			normalize := func(e *topebpfTypes.Stats) {
-				e.ProgramID = 0
-				e.Processes = nil
-				e.CurrentRuntime = 0
-				e.CurrentRunCount = 0
-				e.CumulativeRuntime = 0
-				e.CumulativeRunCount = 0
-				e.TotalRuntime = 0
-				e.TotalRunCount = 0
-				e.MapMemory = 0
-				e.MapCount = 0
-				e.TotalCpuUsage = 0
-				e.PerCpuUsage = 0
-			}
-
-			ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		topebpfCmd,
-	}
-
-	RunTestSteps(commands, t)
+	topEbpfCmd := common.NewTopEbpfCmd("./ig top ebpf -o json -m 100 --runtimes=docker", true)
+	RunTestSteps([]*Command{topEbpfCmd}, t)
 }

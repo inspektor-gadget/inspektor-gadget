@@ -18,51 +18,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cilium/ebpf"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/common"
 	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
-
-func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
-	validateOutputFn := func(t *testing.T, output string) {
-		expectedEntry := &topebpfTypes.Stats{
-			Type: ebpf.Tracing.String(),
-			Name: "ig_top_ebpf_it",
-		}
-
-		normalize := func(e *topebpfTypes.Stats) {
-			e.ProgramID = 0
-			e.Processes = nil
-			e.CurrentRuntime = 0
-			e.CurrentRunCount = 0
-			e.CumulativeRuntime = 0
-			e.CumulativeRunCount = 0
-			e.TotalRuntime = 0
-			e.TotalRunCount = 0
-			e.MapMemory = 0
-			e.MapCount = 0
-			e.TotalCpuUsage = 0
-			e.PerCpuUsage = 0
-
-			e.K8s = types.K8sMetadata{}
-			// TODO: Verify container runtime and container name
-			e.Runtime.RuntimeName = ""
-			e.Runtime.ContainerName = ""
-			e.Runtime.ContainerID = ""
-			e.Runtime.ContainerImageDigest = ""
-		}
-
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
-	}
-	return &Command{
-		Name:           "TopEbpf",
-		Cmd:            cmd,
-		StartAndStop:   startAndStop,
-		ValidateOutput: validateOutputFn,
-	}
-}
 
 func TestTopEbpf(t *testing.T) {
 	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
@@ -71,11 +31,20 @@ func TestTopEbpf(t *testing.T) {
 
 	t.Parallel()
 
+	normalizeOpts := func(e *topebpfTypes.Stats) {
+		e.K8s = types.K8sMetadata{}
+		// TODO: Verify container runtime and container name
+		e.Runtime.RuntimeName = ""
+		e.Runtime.ContainerName = ""
+		e.Runtime.ContainerID = ""
+		e.Runtime.ContainerImageDigest = ""
+	}
+
 	t.Run("StartAndStop", func(t *testing.T) {
 		t.Parallel()
 
 		cmd := "$KUBECTL_GADGET top ebpf -o json -m 100"
-		topEbpfCmd := newTopEbpfCmd(cmd, true)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, true, normalizeOpts)
 		RunTestSteps([]*Command{topEbpfCmd}, t)
 	})
 
@@ -83,7 +52,7 @@ func TestTopEbpf(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top ebpf -o json -m 999 --timeout %d", topTimeoutInSeconds)
-		topEbpfCmd := newTopEbpfCmd(cmd, false)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, false, normalizeOpts)
 		RunTestSteps([]*Command{topEbpfCmd}, t)
 	})
 
@@ -91,7 +60,7 @@ func TestTopEbpf(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top ebpf -o json -m 999 --timeout %d --interval %d", topTimeoutInSeconds, topTimeoutInSeconds)
-		topEbpfCmd := newTopEbpfCmd(cmd, false)
+		topEbpfCmd := common.NewTopEbpfCmd(cmd, false, normalizeOpts)
 		RunTestSteps([]*Command{topEbpfCmd}, t)
 	})
 }
