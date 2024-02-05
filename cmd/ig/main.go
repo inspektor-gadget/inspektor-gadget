@@ -17,9 +17,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
@@ -43,14 +46,17 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 )
 
+const EnvPrefix = "IG"
+
 func main() {
 	if experimental.Enabled() {
 		log.Info("Experimental features enabled")
 	}
 
 	rootCmd := &cobra.Command{
-		Use:   "ig",
-		Short: "Collection of gadgets for containers",
+		Use:               "ig",
+		Short:             "Collection of gadgets for containers",
+		PersistentPreRunE: bindViper,
 	}
 	common.AddVerboseFlag(rootCmd)
 
@@ -61,15 +67,6 @@ func main() {
 		common.NewVersionCmd(),
 	)
 
-	// evaluate flags early; this will make sure that flags for host are evaluated before
-	// calling host.Init()
-	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
-	if err != nil {
-		// Analogous to cobra error message
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
 	runtime := local.New()
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
@@ -79,7 +76,38 @@ func main() {
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
 
+	// evaluate flags early; this will make sure that flags for host are evaluated before
+	// calling host.Init()
+	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
+	if err != nil {
+		// Analogous to cobra error message
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+// bindViper initializes viper and binds command flags with environment variables
+func bindViper(command *cobra.Command, args []string) error {
+	v := viper.New()
+
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	v.SetEnvPrefix(EnvPrefix)
+	v.AutomaticEnv()
+
+	command.Flags().VisitAll(func(f *pflag.Flag) {
+		// Apply the viper config value to the flag when the flag is not set and viper has a value
+		if !f.Changed && v.IsSet(f.Name) {
+			val := v.Get(f.Name)
+			log.Debugf("Binding %s command flag to environment variable: %s", f.Name, fmt.Sprintf("%v", val))
+			if err := command.Flags().Set(f.Name, fmt.Sprintf("%v", val)); err != nil {
+				log.Errorf("Error occurred while binding flags to env vars: %s", err)
+			}
+		}
+	})
+
+	return nil
 }

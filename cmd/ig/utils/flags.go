@@ -59,7 +59,7 @@ type CommonFlags struct {
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
-	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	command.PreRunE = func(cmd *cobra.Command, args []string) error {
 		// Runtimes Configuration
 		parts := strings.Split(commonFlags.Runtimes, ",")
 
