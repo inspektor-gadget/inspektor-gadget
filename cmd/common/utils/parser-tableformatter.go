@@ -16,11 +16,14 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
+
+	"golang.org/x/term"
 )
 
 const (
@@ -64,23 +67,18 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 		colsMap = cols.GetColumnMap(columns.Or(columns.WithAnyTag(opts.metadataTags), columns.WithNoTags()))
 	}
 
-	var formatter *textcolumns.TextColumnsFormatter[T]
+	textColumnsOptions := []textcolumns.Option{textcolumns.WithShouldTruncate(term.IsTerminal(int(os.Stdout.Fd())))}
 	if len(outputConfig.CustomColumns) != 0 {
 		validCols, invalidCols := cols.VerifyColumnNames(outputConfig.CustomColumns)
 		if len(invalidCols) != 0 {
 			return nil, fmt.Errorf("invalid columns: %s", strings.Join(invalidCols, ", "))
 		}
 
-		formatter = textcolumns.NewFormatter(
-			colsMap,
-			textcolumns.WithDefaultColumns(validCols),
-		)
-	} else {
-		formatter = textcolumns.NewFormatter(colsMap)
+		textColumnsOptions = append(textColumnsOptions, textcolumns.WithDefaultColumns(validCols))
 	}
 
 	return &GadgetParser[T]{
-		formatter: formatter,
+		formatter: textcolumns.NewFormatter(colsMap, textColumnsOptions...),
 		colsMap:   colsMap,
 	}, nil
 }

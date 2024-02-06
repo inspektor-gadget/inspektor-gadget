@@ -35,6 +35,11 @@ func (tf *TextColumnsFormatter[T]) buildFixedString(s string, length int, ellips
 	if length <= 0 {
 		return ""
 	}
+
+	if !tf.options.ShouldTruncate {
+		return s
+	}
+
 	rs := []rune(s)
 
 	shortened := ellipsis.Shorten(rs, length, ellipsisType)
@@ -110,7 +115,7 @@ func (tf *TextColumnsFormatter[T]) FormatTable(entries []*T) string {
 	return string(out[:len(out)-1])
 }
 
-// WriteTable writes header, divider nd the formatted entries with the current settings to writer
+// WriteTable writes header, divider and the formatted entries with the current settings to writer
 func (tf *TextColumnsFormatter[T]) WriteTable(writer io.Writer, entries []*T) error {
 	_, err := writer.Write([]byte(tf.FormatHeader()))
 	if err != nil {

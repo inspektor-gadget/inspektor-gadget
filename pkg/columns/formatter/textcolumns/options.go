@@ -37,6 +37,7 @@ type Options struct {
 	DefaultColumns []string    // defines which columns to show by default; will be set to all visible columns if nil
 	HeaderStyle    HeaderStyle // defines how column headers are decorated (e.g. uppercase/lowercase)
 	RowDivider     string      // defines the (to be repeated) string that should be used below the header
+	ShouldTruncate bool        // defines whether to truncate strings or not
 }
 
 func DefaultOptions() *Options {
@@ -46,6 +47,7 @@ func DefaultOptions() *Options {
 		DefaultColumns: nil,
 		HeaderStyle:    HeaderStyleUppercase,
 		RowDivider:     DividerNone,
+		ShouldTruncate: true,
 	}
 }
 
@@ -81,5 +83,12 @@ func WithHeaderStyle(headerStyle HeaderStyle) Option {
 func WithRowDivider(divider string) Option {
 	return func(opts *Options) {
 		opts.RowDivider = divider
+	}
+}
+
+// WithShouldTruncate sets whether strings should be truncated.
+func WithShouldTruncate(ellipsis bool) Option {
+	return func(opts *Options) {
+		opts.ShouldTruncate = ellipsis
 	}
 }
