@@ -22,6 +22,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	ParamSyscallFilters = "syscall-filters"
+)
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -41,7 +45,13 @@ func (g *GadgetDesc) Description() string {
 }
 
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
-	return nil
+	return params.ParamDescs{
+		{
+			Key:          ParamSyscallFilters,
+			Description:  "Filter out by syscall names. Join multiple names with ','",
+			DefaultValue: "",
+		},
+	}
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {

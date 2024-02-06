@@ -161,3 +161,48 @@ CPU PID        COMM             NAME                                       PARAM
 6   150829     ls               write                                      fd=1, buf=5355360 bin   dev   etc   home  pro… 158
 6   150829     ls               exit_group                                 error_code=0                                                                                  ...
 ```
+
+### Filter by syscalls
+
+If you are only interested by specific syscalls, you can use the `--syscall-filters` flag:
+
+```bash
+$ kubectl gadget traceloop start --syscall-filters openat,write,execve
+$ kubectl create ns test
+$ kubectl run --restart=Never -n test --rm -ti --image=busybox mypod -- sh -c 'RANDOM=output ; echo "3*7*2" | bc > /tmp/file-$RANDOM ; cat /tmp/file-$RANDOM'
+cat: can't open '/tmp/file-3240': No such file or directory
+pod default/mypod terminated (Error)
+$ kubectl delete pod -n test mypod
+pod "mypod" deleted
+$ kubectl gadget traceloop list
+NODE                           NAMESPACE                      POD                           CONTAINER                     CONTAINERID
+...
+minikube                       test                           mypod                         mypod                         50f702a9e3f0cd2
+$ kubectl gadget traceloop show 50f702a9e3f0cd2
+CPU PID        COMM             SYSCALL                      PARAMS                                                                 RET
+...
+1   118483     sh               execve                       filename="/bin/bc", argv=0x5576c8219668, envp=0x5576c8219698           0
+...
+5   118470     sh               execve                       filename="/bin/cat", argv=0x5576c8219688, envp=0x5576c82196a0          0
+...
+1   10685      cat              openat                       dfd=4294967196, filename="/tmp/file-3240", flags=0, mode=0             -1 (…
+1   10685      cat              write                        fd=2, buf="cat: can't open '/tmp/file-3240': No such file or director… 60
+```
+
+This options is also available with `ig`:
+
+```bash
+$ sudo ig traceloop -c test-traceloop --syscall-filters openat,write
+RUNTIME.CONTAINERNAME              CPU PID        COMM             SYSCALL               PARAMS                                       RET
+# Run a container in a second terminal
+$ docker run --rm --name test-traceloop busybox ls
+bin
+dev
+...
+# Go back to first terminal
+^C
+...
+test-traceloop                     1   135771     ls               openat                dfd=4294967196, filename=".", flags=591872,… 3
+test-traceloop                     1   135771     ls               write                 fd=1, buf="bin\ndev\netc\nhome\nlib\nlib64\… 53
+f
+```
