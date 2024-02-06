@@ -28,6 +28,9 @@ config:
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 
+  # -- Set AppArmor profile.
+  appArmorProfile: "unconfined"
+
 image:
   # -- Container repository for the container image
   repository: ghcr.io/inspektor-gadget/inspektor-gadget
