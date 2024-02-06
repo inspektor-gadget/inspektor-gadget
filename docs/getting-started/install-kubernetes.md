@@ -142,6 +142,17 @@ The different supported modes can be set by using the `hook-mode` option:
   eBPF module. It works with both runc and crun. It works regardless of the
   pid namespace configuration.
 
+### Deploying with an AppArmor profile
+
+By default, Inspektor Gadget runs as unconfined because it needs to write to different files under `/sys`.
+It is nonetheless possible to deploy Inspektor Gadget using a custom AppArmor profile with the `--apparmor-profile` flag:
+
+```bash
+$ kubectl gadget deploy --apparmor-profile 'localhost/inspektor-gadget-profile'
+```
+
+Note that, the AppArmor profile should already exists in the cluster to be used.
+
 ### Specific Information for Different Platforms
 
 This section explains the additional steps that are required to run Inspektor
