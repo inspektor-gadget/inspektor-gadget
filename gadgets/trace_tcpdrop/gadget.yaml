@@ -1,0 +1,64 @@
+name: tcpdrop
+description: trace TCP packets dropped by the kernel
+tracers:
+  tcpdrop:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: timestamp
+      attributes:
+        template: timestamp
+    - name: src
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: dst
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: task
+      attributes:
+        template: comm
+    - name: pid
+      attributes:
+        template: pid
+    - name: tid
+      description: Thread id that generated event
+      attributes:
+        hidden: true
+        template: pid
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      description: Group id of the event's process
+      attributes:
+        template: uid
+    - name: tcpflags
+      description: TCP flags from a TCP header
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: reason
+      description: Reason for dropping a packet
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: start
+    - name: netns
+      description: Network namespace inode id
+      attributes:
+        template: ns
+    - name: mount_ns_id
+      description: Mount namespace inode id
+      attributes:
+        template: ns
+    - name: state
+      description: State of the TCP connection
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
