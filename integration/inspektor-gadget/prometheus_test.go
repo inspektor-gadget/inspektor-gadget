@@ -27,6 +27,8 @@ import (
 func TestPrometheus(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-prometheus")
 
+	t.Parallel()
+
 	// prepare prometheus scrape targets
 	gadgetPodIps := GetPodIPsFromLabel(t, "gadget", "k8s-app=gadget")
 	targets := make([]string, 0, len(gadgetPodIps))
