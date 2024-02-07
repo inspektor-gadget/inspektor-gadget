@@ -203,6 +203,9 @@ This table can be generated with:
 ```bash
 $ go run ./pkg/gadgets/trace/tcpdrop/tracer/dropreasongen/...
 ```
+### Requirements
+
+The gadget currently needs Linux Kernel version >= 5.17
 
 ### Other tools showing dropped packets
 
