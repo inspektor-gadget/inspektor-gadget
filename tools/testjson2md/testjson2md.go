@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -45,6 +46,7 @@ var ErrInvalidContent = fmt.Errorf("invalid content")
 var (
 	inPath     = flag.String("in", "", "path to JSON file produced by go tool test2json")
 	outPath    = flag.String("out", "", "path to output file")
+	outSummary = flag.String("out_summary", "", "path to summary file")
 	conclusion = flag.String("conclusion", "", "conclusion (success, failure, skipped and cancelled) indicating GitHub Action test step status")
 )
 
@@ -67,6 +69,16 @@ func main() {
 	content, err := report.Generate(models.ReportDetail{}, groups)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if *outSummary != "" {
+		r, err := summaryForContent(content)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err = os.WriteFile(*outSummary, r, 0644); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	markdown, err := markdownForContent(content)
@@ -140,6 +152,49 @@ func markdownForContent(content report.DisplayContent) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func summaryForContent(content report.DisplayContent) ([]byte, error) {
+	var s struct {
+		Id          string `json:"id"`
+		RunId       string `json:"run_id"`
+		RefName     string `json:"ref_name"`
+		PullRequest struct {
+			Id     string `json:"id"`
+			Author string `json:"author"`
+			Title  string `json:"title"`
+		} `json:"pull_request"`
+		Summary struct {
+			Conclusion string   `json:"conclusion"`
+			Pass       []string `json:"pass"`
+			Fail       []string `json:"fail"`
+			Skip       []string `json:"skip"`
+		} `json:"summary"`
+	}
+
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return nil, fmt.Errorf("summary is only available in GitHub Actions")
+	}
+
+	s.Id = fmt.Sprintf("%s_%s", os.Getenv("GITHUB_RUN_NUMBER"), os.Getenv("GITHUB_RUN_ATTEMPT"))
+	s.RunId = os.Getenv("GITHUB_RUN_ID")
+	s.RefName = os.Getenv("GITHUB_REF_NAME")
+	s.PullRequest.Id = os.Getenv("PULL_REQUEST_ID")
+	s.PullRequest.Author = os.Getenv("PULL_REQUEST_AUTHOR")
+	s.PullRequest.Title = os.Getenv("PULL_REQUEST_TITLE")
+
+	for _, test := range content.Results["pass"] {
+		s.Summary.Pass = append(s.Summary.Pass, test.TestName)
+	}
+	for _, test := range content.Results["fail"] {
+		s.Summary.Fail = append(s.Summary.Fail, test.TestName)
+	}
+	for _, test := range content.Results["skip"] {
+		s.Summary.Skip = append(s.Summary.Skip, test.TestName)
+	}
+	s.Summary.Conclusion = *conclusion
+
+	return json.Marshal(s)
 }
 
 func appendDuration(content report.DisplayContent, buf *bytes.Buffer, title, status string) {
