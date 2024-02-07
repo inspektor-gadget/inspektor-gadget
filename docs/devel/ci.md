@@ -32,7 +32,7 @@ between "in development" images and production ones.
 
 Note that, you need to [set repository packages as public](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#configuring-visibility-of-container-images-for-your-personal-account) to allow anonymous pull.
 
-## Run integration tests on an ARO cluster
+## Run integration tests on ARO
 
 Optionally, we can add the secrets described in this section so that the
 integration tests will also run on a pre-created [Azure Red Hat OpenShift
@@ -153,7 +153,7 @@ Please take into account that any change done on this cluster could cause issues
 with the integration tests running on GitHub actions at that moment.
 
 
-## Run integration tests on an AKS cluster
+## Run integration tests on AKS
 
 When secrets described in the below sections are set, the integration tests
 will also run on
@@ -238,6 +238,19 @@ By default, each of this cluster features
 [3 nodes](https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create).
 Once created, the integration tests will be run on these clusters.
 Finally, the clusters are deleted, whatsoever is the result of the tests.
+
+## Run integration tests on EKS
+
+We use OpenID Connect to authenticate Github Actions against AWS. If you want to run the integration
+tests on your fork, follow
+[this](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
+to configure your AWS account.
+
+You need to create a role with the [minimum IAM
+policies](https://eksctl.io/usage/minimum-iam-policies/) needed by eksctl. Save the name of this
+role (including the rull `arn:aws..` prefix). in a [repository
+variable](https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository)
+named `AWS_ROLE`.
 
 ## Benchmarks
 
