@@ -29,11 +29,13 @@ import (
 )
 
 const (
-	OutputModeJSON          = "json"
-	OutputModeCustomColumns = "custom-columns"
+	OutputModeColumns    = "columns"
+	OutputModeJSON       = "json"
+	OutputModeJSONPretty = "jsonpretty"
+	OutputModeYAML       = "yaml"
 )
 
-var SupportedOutputModes = []string{OutputModeJSON, OutputModeCustomColumns}
+var SupportedOutputModes = []string{OutputModeJSON, OutputModeColumns}
 
 // OutputConfig contains the flags that describes how to print the gadget's output
 type OutputConfig struct {
@@ -71,27 +73,27 @@ func (config *OutputConfig) ParseOutputConfig() error {
 
 	switch {
 	case len(config.OutputMode) == 0:
-		config.OutputMode = OutputModeCustomColumns
+		config.OutputMode = OutputModeColumns
 		return nil
 	case config.OutputMode == OutputModeJSON:
 		return nil
-	case strings.HasPrefix(config.OutputMode, OutputModeCustomColumns):
+	case strings.HasPrefix(config.OutputMode, OutputModeColumns):
 		parts := strings.Split(config.OutputMode, "=")
 		if len(parts) != 2 {
-			return WrapInErrInvalidArg(OutputModeCustomColumns,
+			return WrapInErrInvalidArg(OutputModeColumns,
 				errors.New("expects a comma separated list of columns to use"))
 		}
 
 		cols := strings.Split(strings.ToLower(parts[1]), ",")
 		for _, col := range cols {
 			if len(col) == 0 {
-				return WrapInErrInvalidArg(OutputModeCustomColumns,
+				return WrapInErrInvalidArg(OutputModeColumns,
 					errors.New("column can't be empty"))
 			}
 		}
 
 		config.CustomColumns = cols
-		config.OutputMode = OutputModeCustomColumns
+		config.OutputMode = OutputModeColumns
 		return nil
 	default:
 		return WrapInErrOutputModeNotSupported(config.OutputMode)

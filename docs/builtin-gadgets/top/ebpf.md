@@ -56,7 +56,7 @@ So in this case for example, in the past second `vfs_write_entry` has been calle
 The program references 4 maps that have a total maximum size of 40.953 MB (see below for more information on MapMemory).
 
 If you want to get the cumulative runtime and run count of the eBPF programs starting from the beginning of the trace,
-you can call the gadget with the custom-columns option and specify the cumulruntime and cumulruncount columns.
+you can call the gadget with the columns option and specify the cumulruntime and cumulruncount columns.
 Combined with the `--sort cumulruntime` and `--timeout 60` parameters, you can for example measure the time spent
 over a minute:
 
