@@ -227,11 +227,12 @@ struct event {
 };
 ```
 
-Now create the logic to fill those fields in the `enter_openat` program.
+Now create the logic to fill those fields in the `enter_openat` program. Insert them after you have
+reserved space for your event structure and before you submit the buffer.
 
 ```c
-	bpf_get_current_comm(&event.comm, sizeof(event.comm));
-	bpf_probe_read_user_str(&event.filename, sizeof(event.filename), (const char *)ctx->args[1]);
+	bpf_get_current_comm(event->comm, sizeof(event->comm));
+	bpf_probe_read_user_str(event->filename, sizeof(event->filename), (const char *)ctx->args[1]);
 ```
 
 Build and run the gadget again. Now it provides more information.
