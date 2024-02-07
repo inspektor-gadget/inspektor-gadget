@@ -30,7 +30,7 @@ import (
 
 const (
 	OutputModeJSON          = "json"
-	OutputModeCustomColumns = "custom-columns"
+	OutputModeCustomColumns = "columns"
 )
 
 var SupportedOutputModes = []string{OutputModeJSON, OutputModeCustomColumns}

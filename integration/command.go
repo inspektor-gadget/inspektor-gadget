@@ -218,7 +218,7 @@ var CleanupSPO = []*Command{
 		Cmd: `
 		while true; do
 		  # Ensure we have profiles to clean, otherwise just exit.
-		  NAMESPACES=$(kubectl get seccompprofile --all-namespaces --no-headers --ignore-not-found -o custom-columns=":metadata.namespace" | uniq)
+		  NAMESPACES=$(kubectl get seccompprofile --all-namespaces --no-headers --ignore-not-found -o columns=":metadata.namespace" | uniq)
 		  if [ -z $NAMESPACES ]; then
 		    break
 		  fi
