@@ -166,7 +166,6 @@ created when the CI is triggered.
 To be able to create them in the CI, you need to follow [these instructions](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux):
 
 ```bash
-$ subscription=<mySubscription>
 $ subscription_id=<mySubscriptionID>
 $ resourcegroup=<myResourceName>
 $ location=<myLocation>
@@ -178,7 +177,7 @@ $ repository=<myGitHubRepository>
 $ environment=<myCIJobEnvironment>
 
 # Set subscription so that we don't need to specify it at every command.
-$ az account set --subscription $subscription
+$ az account set --subscription $subscription_id
 
 # Create resource group.
 # This is not needed to generate secrets but it is mandatory to creates AKS
@@ -204,7 +203,7 @@ $ az ad sp create --id $app_id
 $ sp_id=$(az ad sp list --display-name $app_name --query [0].id | tr -d '"')
 
 # Let's create a new role for this service principal.
-$ az role assignment create --role contributor --subscription $subscription_id --assignee-object-id $sp_id --assignee-principal-type ServicePrincipal --scope /subscriptions/$subscription_id/resourceGroups/$resourcegroup
+$ az role assignment create --role contributor --assignee-object-id $sp_id --assignee-principal-type ServicePrincipal --scope /subscriptions/$subscription_id/resourceGroups/$resourcegroup
 {
 # It should reply with a big JSON object.
 }
