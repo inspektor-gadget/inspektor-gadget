@@ -91,7 +91,7 @@ moment.
 | AKS, EKS, GKS                                          | ✔️                                                                                |
 | AWS Fargate, Azure Containers instances, GKE Autopilot | ❌ (see [#1320](https://github.com/inspektor-gadget/inspektor-gadget/issues/1320)) |
 | OpenShift                                              | ✔️                                                                                |
-| Talos                                                  | ❌ (see [#1934](https://github.com/inspektor-gadget/inspektor-gadget/issues/1934)) |
+| Talos                                                  | ✔️                                                                                |
 
 ## Container Runtime Requirements
 
