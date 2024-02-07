@@ -85,7 +85,10 @@ struct dnshdr {
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
 #pragma pack(2)
 struct dnsrr {
-	__u16 name; // Two octets when using message compression, see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
+	// Two octets when using message compression, see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
+	// If not compressed, the offset will be calculated manually.
+	__u16 name;
+
 	__u16 type;
 	__u16 class;
 	__u32 ttl;
@@ -114,23 +117,31 @@ struct {
 	__uint(max_entries, 1024);
 } query_map SEC(".maps");
 
-static __always_inline __u32 dns_name_length(struct __sk_buff *skb)
+static __always_inline __u32 dns_name_length(struct __sk_buff *skb,
+					     unsigned int *name_size)
 {
 	// This loop iterates over the DNS labels to find the total DNS name
 	// length.
 	unsigned int i;
 	unsigned int skip = 0;
+	*name_size = 1;
 	for (i = 0; i < MAX_DNS_NAME; i++) {
 		if (skip != 0) {
 			skip--;
 		} else {
 			int label_len = load_byte(
 				skb, DNS_OFF + sizeof(struct dnshdr) + i);
-			if (label_len == 0)
+			if (label_len == 0) {
 				break;
+			} else if ((label_len & 0xf0) == 0xc0) {
+				*name_size += 1;
+				break;
+			}
+
 			// The simple solution "i += label_len" gives verifier
 			// errors, so work around with skip.
 			skip = label_len;
+			*name_size += label_len + 1;
 		}
 	}
 
@@ -139,18 +150,21 @@ static __always_inline __u32 dns_name_length(struct __sk_buff *skb)
 
 // Save the IPv4 and IPv6 addresses in event->anaddr. Returns the number of saved addresses.
 static __always_inline int load_addresses(struct __sk_buff *skb, int ancount,
-					  int anoffset, struct event_t *event)
+					  int anoffset, unsigned int name_size,
+					  struct event_t *event)
 {
 	int rroffset = anoffset;
 	int index = 0;
+
 	for (int i = 0; i < ancount && i < MAX_ADDR_ANSWERS; i++) {
 		__u16 rrname =
 			load_byte(skb, rroffset + offsetof(struct dnsrr, name));
 
 		// In most cases, the name will be compressed to two octets (indicated by first two bits 0b11).
-		// The offset calculations below assume compression, so exit early if the name isn't compressed.
-		if ((rrname & 0xf0) != 0xc0)
-			return 0;
+		if ((rrname & 0xf0) != 0xc0) {
+			// If the name isn't compressed, we adjust the offset.
+			rroffset += name_size - 2;
+		}
 
 		// Safe to assume that all answers refer to the same domain name
 		// because we verified earlier that there's exactly one question.
@@ -184,9 +198,9 @@ static __always_inline int load_addresses(struct __sk_buff *skb, int ancount,
 	return index;
 }
 
-static __always_inline int output_dns_event(struct __sk_buff *skb,
-					    union dnsflags flags,
-					    __u32 name_len, __u16 ancount)
+static __always_inline int
+output_dns_event(struct __sk_buff *skb, union dnsflags flags, __u32 name_len,
+		 unsigned int name_size, __u16 ancount)
 {
 	__u32 zero = 0;
 	struct event_t *event = bpf_map_lookup_elem(&tmp_event, &zero);
@@ -264,7 +278,8 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	// DNS answers start immediately after qname (name_len octets)
 	// + the zero length octet + qtype (2 octets) + qclass (2 octets).
 	int anoffset = DNS_OFF + sizeof(struct dnshdr) + name_len + 5;
-	int anaddrcount = load_addresses(skb, ancount, anoffset, event);
+	int anaddrcount =
+		load_addresses(skb, ancount, anoffset, name_size, event);
 	event->anaddrcount = anaddrcount;
 
 	// Calculate latency:
@@ -344,11 +359,15 @@ int ig_trace_dns(struct __sk_buff *skb)
 	if ((flags.qr == 0) && (ancount + nscount != 0))
 		return 0;
 
-	__u32 name_len = dns_name_length(skb);
+	// name_size is the size of the field in byte
+	// name_len is the length of the string
+	// It can be different because of compression
+	unsigned int name_size;
+	__u32 name_len = dns_name_length(skb, &name_size);
 	if (name_len == 0)
 		return 0;
 
-	return output_dns_event(skb, flags, name_len, ancount);
+	return output_dns_event(skb, flags, name_len, name_size, ancount);
 }
 
 char _license[] SEC("license") = "GPL";
