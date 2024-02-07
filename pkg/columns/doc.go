@@ -56,7 +56,7 @@ The parameter could be used for specific options, passing nil will use the defau
 	| ellipsis  | none,left,right,middle | defines how situations of content exceeding the given space should be handled, eg: where to place the ellipsis ("…") |
 	| fixed     | none                   | defines that this column will have a fixed width, even when auto-scaling is enabled                                  |
 	| group     | sum                    | defines what should happen with the field whenever entries are grouped (see grouping)                                |
-	| hide      | none                   | specifies that this column is not to be considered by default (see custom columns)                                   |
+	| hide      | none                   | specifies that this column is not to be considered by default                                                        |
 	| precision | int                    | specifies the precision of floats (number of decimals)                                                               |
 	| width     | int                    | defines the space allocated for the column                                                                           |
 

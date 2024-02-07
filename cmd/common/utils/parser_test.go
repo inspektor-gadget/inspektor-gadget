@@ -54,7 +54,7 @@ func TestBaseParser(t *testing.T) {
 			description: "none valid column using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			columnsWidth: map[string]int{
 				"pid":  0,
@@ -66,7 +66,7 @@ func TestBaseParser(t *testing.T) {
 			description: "none valid column using tabs",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			availableColumns: []string{
 				"pid",
@@ -79,7 +79,7 @@ func TestBaseParser(t *testing.T) {
 			description: "ignore invalid column using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			columnsWidth: map[string]int{
 				"pid":  -7,
@@ -94,7 +94,7 @@ func TestBaseParser(t *testing.T) {
 			description: "ignore invalid column using tabs",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			availableColumns: []string{
 				"pid",
@@ -109,7 +109,7 @@ func TestBaseParser(t *testing.T) {
 			description: "ignore multiple invalid columns using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "invalid-col", "comm", "another-invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			columnsWidth: map[string]int{
 				"pid":  -7,
@@ -124,7 +124,7 @@ func TestBaseParser(t *testing.T) {
 			description: "ignore multiple invalid column using tabs",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "invalid-col", "comm", "another-invalid-col"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			availableColumns: []string{
 				"pid",
@@ -139,7 +139,7 @@ func TestBaseParser(t *testing.T) {
 			description: "normal case using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "comm"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			columnsWidth: map[string]int{
 				"pid":  -7,
@@ -154,7 +154,7 @@ func TestBaseParser(t *testing.T) {
 			description: "normal case using tabs",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"pid", "comm"},
-				OutputMode:    OutputModeCustomColumns,
+				OutputMode:    OutputModeColumns,
 			},
 			availableColumns: []string{
 				"pid",

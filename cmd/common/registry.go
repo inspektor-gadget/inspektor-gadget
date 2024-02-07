@@ -40,13 +40,6 @@ import (
 )
 
 const (
-	OutputModeColumns    = "columns"
-	OutputModeJSON       = "json"
-	OutputModeJSONPretty = "jsonpretty"
-	OutputModeYAML       = "yaml"
-)
-
-const (
 	kubernetesColumnPrefix = "k8s"
 	runtimeColumnPrefix    = "runtime"
 )
@@ -153,7 +146,7 @@ func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser,
 
 	of.Description += out.String()
 
-	return gadgets.OutputFormats{OutputModeColumns: of}
+	return gadgets.OutputFormats{utils.OutputModeColumns: of}
 }
 
 func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
@@ -264,28 +257,28 @@ func buildCommandFromGadget(
 			AddFlags(cmd, &extraGadgetParams, skipParams, runtime)
 
 			outputFormats.Append(gadgets.OutputFormats{
-				OutputModeJSON: {
+				utils.OutputModeJSON: {
 					Name:        "JSON",
 					Description: "The output of the gadget is returned as raw JSON",
 					Transform:   nil,
 				},
-				OutputModeJSONPretty: {
+				utils.OutputModeJSONPretty: {
 					Name:        "JSON Prettified",
 					Description: "The output of the gadget is returned as prettified JSON",
 					Transform:   nil,
 				},
-				OutputModeYAML: {
+				utils.OutputModeYAML: {
 					Name:        "YAML",
 					Description: "The output of the gadget is returned as YAML",
 					Transform:   nil,
 				},
 			})
-			defaultOutputFormat = OutputModeJSON
+			defaultOutputFormat = utils.OutputModeJSON
 
 			// Add parser output flags
 			if parser != nil {
 				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
-				defaultOutputFormat = "columns"
+				defaultOutputFormat = utils.OutputModeColumns
 
 				cmd.PersistentFlags().StringSliceVarP(
 					&filters,
@@ -411,12 +404,12 @@ func buildCommandFromGadget(
 					}
 
 					transformResult = formats[outputModeName].Transform
-				case OutputModeJSON:
+				case utils.OutputModeJSON:
 					transformResult = func(result any) ([]byte, error) {
 						r, _ := result.([]byte)
 						return r, nil
 					}
-				case OutputModeJSONPretty:
+				case utils.OutputModeJSONPretty:
 					transformResult = func(result any) ([]byte, error) {
 						var out bytes.Buffer
 
@@ -427,7 +420,7 @@ func buildCommandFromGadget(
 
 						return out.Bytes(), nil
 					}
-				case OutputModeYAML:
+				case utils.OutputModeYAML:
 					transformResult = func(result any) ([]byte, error) {
 						d, err := k8syaml.JSONToYAML(result.([]byte))
 						if err != nil {
@@ -617,7 +610,7 @@ func buildCommandFromGadget(
 					}
 					fe.Output(string(transformed))
 				})
-			case OutputModeColumns:
+			case utils.OutputModeColumns:
 				formatter.SetEventCallback(fe.Output)
 
 				// Enable additional output, if the gadget supports it (e.g. profile/cpu)
@@ -644,13 +637,13 @@ func buildCommandFromGadget(
 				}
 				fe.Output(formatter.FormatHeader())
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
-			case OutputModeJSON:
+			case utils.OutputModeJSON:
 				jsonCallback := printEventAsJSONFn(fe)
 				parser.SetEventCallback(jsonCallback)
-			case OutputModeJSONPretty:
+			case utils.OutputModeJSONPretty:
 				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
 				parser.SetEventCallback(jsonPrettyCallback)
-			case OutputModeYAML:
+			case utils.OutputModeYAML:
 				yamlCallback := printEventAsYAMLFn(fe)
 				parser.SetEventCallback(yamlCallback)
 			}
