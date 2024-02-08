@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
@@ -72,6 +73,7 @@ func TestExecTracer(t *testing.T) {
 	require.Nil(t, err, "Failed to get current working directory: %s", err)
 
 	type testDefinition struct {
+		shouldSkip      func(t *testing.T)
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
 		runnerConfig    *utilstest.RunnerConfig
 		generateEvent   func() (int, error)
@@ -220,11 +222,65 @@ func TestExecTracer(t *testing.T) {
 				require.Len(t, events, 0, "Zero events expected")
 			},
 		},
+		"event_from_non_main_thread_success": {
+			shouldSkip: func(t *testing.T) {
+				if _, err := exec.LookPath("python3"); err != nil {
+					t.Skip("Python3 not found")
+				}
+			},
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
+			generateEvent: generateEventFromThread(true),
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
+				// python + cat
+				require.Len(t, events, 2, "Two events expected")
+				require.Equal(t, "python3", events[0].Comm, "Event has bad comm")
+				require.Equal(t, 0, events[0].Retval, "Event has bad retval")
+				require.Equal(t, "cat", events[1].Comm, "Event has bad comm")
+				require.Equal(t, 0, events[1].Retval, "Event has bad retval")
+			},
+		},
+		"event_from_non_main_thread_fail": {
+			shouldSkip: func(t *testing.T) {
+				if _, err := exec.LookPath("python3"); err != nil {
+					t.Skip("Python3 not found")
+				}
+			},
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
+			generateEvent: generateEventFromThread(false),
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
+				// python + cat
+				require.Len(t, events, 2, "Two events expected")
+				require.Equal(t, "python3", events[0].Comm, "Event has bad comm")
+				require.Equal(t, 0, events[0].Retval, "Event has bad retval")
+				require.Equal(t, "python3", events[1].Comm, "Event has bad comm")
+				require.Equal(t, -int(unix.ENOENT), events[1].Retval, "Event has bad retval")
+			},
+		},
 	} {
 		test := test
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
+			if test.shouldSkip != nil {
+				test.shouldSkip(t)
+			}
 
 			events := []types.Event{}
 			eventCallback := func(event *types.Event) {
@@ -353,4 +409,34 @@ func generateFailedEvent() (int, error) {
 	// Ignore error since we want to capture a failed event
 	exec.Command("/bin/foobar").Run()
 	return 0, nil
+}
+
+// Function to generate an exec() event from a thread.
+func generateEventFromThread(success bool) func() (int, error) {
+	return func() (int, error) {
+		bin := "/bin/cat"
+		if !success {
+			bin = "/bin/NONE"
+		}
+		script := fmt.Sprintf(`
+import threading
+import os
+
+def exec():
+    os.execve("%s", ["cat", "/dev/null"], {})
+
+def main():
+    thread = threading.Thread(target=exec)
+    thread.start()
+    thread.join()
+
+if __name__ == "__main__":
+    main()
+`, bin)
+		cmd := exec.Command("python3", "-c", script)
+		if err := cmd.Run(); err != nil {
+			return 0, fmt.Errorf("running command: %w", err)
+		}
+		return cmd.Process.Pid, nil
+	}
 }
