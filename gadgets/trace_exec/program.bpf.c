@@ -59,6 +59,36 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(exec, events, event);
 
+// man clone(2):
+//   If any of the threads in a thread group performs an
+//   execve(2), then all threads other than the thread group
+//   leader are terminated, and the new program is executed in
+//   the thread group leader.
+//
+// sys_enter_execve might be called from a thread and the corresponding
+// sys_exit_execve will be called from the thread group leader in case of
+// execve success, or from the same thread in case of execve failure. So we
+// need to lookup the pid from the tgid in sys_exit_execve.
+//
+// We don't know in advance which execve(2) will succeed, so we need to keep
+// track of all tgid<->pid mappings in a BPF map.
+//
+// We don't want to use bpf_for_each_map_elem() because it requires Linux 5.13.
+//
+// If several execve(2) are performed in parallel from different threads, only
+// one can succeed. The kernel will run the tracepoint syscalls/sys_exit_execve
+// for the failing execve(2) first and then for the successful one last.
+//
+// So we can insert a tgid->pid mapping in the same hash entry by modulo adding
+// the pid in value and removing it by subtracting. By the time we need to
+// lookup the pid by the tgid, there will be only one pid left in the hash entry.
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, pid_t); // tgid
+	__type(value, u64); // sum of pids
+	__uint(max_entries, 1024);
+} pid_by_tgid SEC(".maps");
+
 static __always_inline bool valid_uid(uid_t uid)
 {
 	return uid != INVALID_UID;
@@ -69,6 +99,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 {
 	u64 id;
 	pid_t pid, tgid;
+	u64 zero64 = 0;
+	u64 *pid_sum;
 	struct event *event;
 	struct task_struct *task;
 	unsigned int ret;
@@ -98,6 +130,14 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	event = bpf_map_lookup_elem(&execs, &pid);
 	if (!event)
 		return 0;
+
+	bpf_map_update_elem(&pid_by_tgid, &tgid, &zero64, BPF_NOEXIST);
+
+	pid_sum = bpf_map_lookup_elem(&pid_by_tgid, &tgid);
+	if (!pid_sum)
+		return 0;
+
+	__atomic_add_fetch(pid_sum, (u64)pid, __ATOMIC_RELAXED);
 
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
@@ -179,7 +219,9 @@ SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 {
 	u64 id;
-	pid_t pid;
+	pid_t pid, tgid;
+	pid_t execs_lookup_key;
+	u64 *pid_sum;
 	int ret;
 	struct event *event;
 	u32 uid = (u32)bpf_get_current_uid_gid();
@@ -188,10 +230,26 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 		return 0;
 	id = bpf_get_current_pid_tgid();
 	pid = (pid_t)id;
-	event = bpf_map_lookup_elem(&execs, &pid);
+	tgid = id >> 32;
+	ret = ctx->ret;
+
+	pid_sum = bpf_map_lookup_elem(&pid_by_tgid, &tgid);
+	if (!pid_sum)
+		return 0;
+
+	// sys_enter_execve and sys_exit_execve might be called from different
+	// threads. We need to lookup the pid from the tgid.
+	execs_lookup_key = (ret == 0) ? (pid_t)*pid_sum : pid;
+	event = bpf_map_lookup_elem(&execs, &execs_lookup_key);
+
+	// Remove the tgid->pid mapping if the value reaches 0
+	// or the execve() call was successful
+	__atomic_add_fetch(pid_sum, (u64)-pid, __ATOMIC_RELAXED);
+	if (*pid_sum == 0 || ret == 0)
+		bpf_map_delete_elem(&pid_by_tgid, &tgid);
+
 	if (!event)
 		return 0;
-	ret = ctx->ret;
 	if (ignore_failed && ret < 0)
 		goto cleanup;
 
@@ -204,7 +262,7 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 	if (len <= sizeof(*event))
 		gadget_output_buf(ctx, &events, event, len);
 cleanup:
-	bpf_map_delete_elem(&execs, &pid);
+	bpf_map_delete_elem(&execs, &execs_lookup_key);
 	return 0;
 }
 
