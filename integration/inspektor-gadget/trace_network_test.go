@@ -25,6 +25,10 @@ import (
 )
 
 func TestTraceNetwork(t *testing.T) {
+	if *k8sDistro == K8sDistroGKECOS {
+		t.Skip("Skip running top ebpf gadget on GKE COS: see pull_request #2280")
+	}
+
 	ns := GenerateTestNamespaceName("test-trace-network")
 
 	t.Parallel()
