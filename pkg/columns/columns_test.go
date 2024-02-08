@@ -101,10 +101,11 @@ func TestGetters(t *testing.T) {
 		*embeddedPtrStruct
 		PointerStruct           *ptrStruct
 		NormalStruct            normalStruct
-		NotEmbeddedPtrStruct    *ptrStruct   `column:"ptrStruct,noembed"`
-		NotEmbeddedNormalStruct normalStruct `column:"normalStruct,noembed"`
-		StringField             string       `column:"stringField"`
-		IntField                int          `column:"intField"`
+		NotEmbeddedPtrStruct    *ptrStruct        `column:"ptrStruct,noembed"`
+		NotEmbeddedNormalStruct normalStruct      `column:"normalStruct,noembed"`
+		StringField             string            `column:"stringField"`
+		IntField                int               `column:"intField"`
+		MapField                map[string]string `column:"mapField"`
 	}
 	cols := expectColumnsSuccess[testStruct](t)
 
@@ -121,6 +122,15 @@ func TestGetters(t *testing.T) {
 	str, ok = col.GetRaw(&testStruct{StringField: "demo"}).Interface().(string)
 	require.True(t, ok, "type should be string")
 	assert.Equal(t, str, "demo")
+
+	// Map tests
+	col = expectColumn(t, cols, "MaPfiELd")
+	require.Equal(t, col.Kind(), reflect.Map)
+	_, ok = col.Get(nil).Interface().(map[string]string)
+	require.True(t, ok, "type should be map[string]string")
+	m, ok := col.Get(&testStruct{MapField: map[string]string{"demo": "foo"}}).Interface().(map[string]string)
+	require.True(t, ok, "type should be map[string]string")
+	assert.Equal(t, m["demo"], "foo")
 
 	// Int tests
 	col = expectColumn(t, cols, "InTfIeLd")
@@ -378,16 +388,20 @@ func TestEmbeddedStructs(t *testing.T) {
 
 func TestFieldFuncs(t *testing.T) {
 	type testStruct struct {
-		stringField    string    `column:"stringField"`
-		uint8ArrField  [16]uint8 `column:"uint8ArrField"`
-		uint64ArrField [4]uint64 `column:"uint64ArrField"`
+		stringField    string            `column:"stringField"`
+		uint8ArrField  [16]uint8         `column:"uint8ArrField"`
+		uint64ArrField [4]uint64         `column:"uint64ArrField"`
+		mapField       map[string]string `column:"mapField"`
 	}
 
 	testInstance := &testStruct{
 		stringField:    "foo",
 		uint8ArrField:  [16]uint8{}, // Will be setup by copy
 		uint64ArrField: [4]uint64{1123, 4567, 8910, 111213141516},
+		mapField:       map[string]string{"foo": "bar", "abc": "xyz"},
 	}
+	testInstanceDefault := &testStruct{}
+
 	copy(testInstance.uint8ArrField[:], []uint8("foobarbaz\x00asdfgh"))
 
 	cols := MustCreateColumns[testStruct]()
@@ -406,4 +420,8 @@ func TestFieldFuncs(t *testing.T) {
 	uint64ArrFieldCol, _ := cols.GetColumn("uint64ArrField")
 	uint64ArrFieldFunc := GetFieldAsArrayFunc[uint64, testStruct](uint64ArrFieldCol)
 	assert.Equal(t, []uint64{1123, 4567, 8910, 111213141516}, uint64ArrFieldFunc(testInstance))
+	mapFieldCol, _ := cols.GetColumn("mapField")
+	mapFieldFunc := GetFieldAsString[testStruct](mapFieldCol)
+	assert.Equal(t, "abc=xyz,foo=bar", mapFieldFunc(testInstance))
+	assert.Equal(t, "", mapFieldFunc(testInstanceDefault))
 }

@@ -627,6 +627,26 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		return func(entry *T) string {
 			return "TODO"
 		}
+	case reflect.Map:
+		keyType := column.(*Column[T]).Type().Key()
+		valueType := column.(*Column[T]).Type().Elem()
+
+		if keyType.Kind() == reflect.String && valueType.Kind() == reflect.String {
+			ff := GetFieldFunc[map[string]string, T](column)
+			return func(entry *T) string {
+				m := ff(entry)
+				kvPairs := make([]string, 0, len(m))
+				for k, v := range m {
+					kvPairs = append(kvPairs, fmt.Sprintf("%s=%s", k, v))
+				}
+				sort.Strings(kvPairs)
+				return strings.Join(kvPairs, ",")
+			}
+		}
+
+		return func(entry *T) string {
+			return "TODO"
+		}
 	case reflect.String:
 		return GetFieldFunc[string, T](column)
 	}
