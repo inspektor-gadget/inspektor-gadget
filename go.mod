@@ -46,7 +46,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.23.1
 	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.16.0
+	golang.org/x/sys v0.17.0
 	golang.org/x/term v0.16.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.61.0
