@@ -40,10 +40,10 @@ require (
 	github.com/tklauser/numcpus v0.7.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
-	go.opentelemetry.io/otel v1.23.0
+	go.opentelemetry.io/otel v1.23.1
 	go.opentelemetry.io/otel/exporters/prometheus v0.45.1
-	go.opentelemetry.io/otel/metric v1.23.0
-	go.opentelemetry.io/otel/sdk/metric v1.23.0
+	go.opentelemetry.io/otel/metric v1.23.1
+	go.opentelemetry.io/otel/sdk/metric v1.23.1
 	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
@@ -171,8 +171,8 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.23.0 // indirect
-	go.opentelemetry.io/otel/trace v1.23.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.23.1 // indirect
+	go.opentelemetry.io/otel/trace v1.23.1 // indirect
 	go.starlark.net v0.0.0-20230814145427-12f4cb8177e4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
