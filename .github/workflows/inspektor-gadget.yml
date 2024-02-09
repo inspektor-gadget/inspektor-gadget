@@ -1327,7 +1327,6 @@ jobs:
       - check-secrets
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
@@ -1429,7 +1428,6 @@ jobs:
       - check-secrets
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
@@ -1480,7 +1478,6 @@ jobs:
     needs:
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - build-helper-images
       - build-and-push-gadgets
