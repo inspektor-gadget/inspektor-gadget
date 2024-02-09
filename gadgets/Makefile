@@ -14,6 +14,7 @@ GADGETS = \
 	trace_sni \
 	trace_tcp \
 	trace_tcpconnect \
+	trace_tcpdrop \
 	trace_tcpretrans \
 	snapshot_process \
 	snapshot_socket \
