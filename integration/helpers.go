@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -253,6 +254,24 @@ func GetPodUID(t *testing.T, ns, podname string) string {
 func CheckNamespace(ns string) bool {
 	cmd := exec.Command("kubectl", "get", "ns", ns)
 	return cmd.Run() == nil
+}
+
+// GetContainerRuntime returns the container runtime the cluster is using.
+func GetContainerRuntime() (string, error) {
+	cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	r, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("getting container runtime: %w, %s", err, stderr.String())
+	}
+
+	ret := string(r)
+	parts := strings.Split(ret, ":")
+	if len(parts) < 1 {
+		return "", fmt.Errorf("unexpected container runtime version: %s", ret)
+	}
+	return parts[0], nil
 }
 
 // IsDockerRuntime checks whether the container runtime of the first node in the Kubernetes cluster is Docker or not.

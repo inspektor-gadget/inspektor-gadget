@@ -1,0 +1,126 @@
+// Copyright 2019-2022 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	traceoomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
+)
+
+func TestTraceOOMKill(t *testing.T) {
+	t.Parallel()
+	ns := GenerateTestNamespaceName("test-trace-oomkill")
+
+	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)}
+
+	var extraArgs string
+	var podYaml string
+	switch DefaultTestComponent {
+	case IgTestComponent:
+		extraArgs = "--runtimes=" + containerRuntime
+		commonDataOpts = append(commonDataOpts, WithRuntimeMetadata(containerRuntime))
+		podYaml = ""
+	case InspektorGadgetTestComponent:
+		extraArgs = "-n " + ns
+		podYaml = "-container"
+	}
+
+	traceOomkillCmd := &Command{
+		Name:         "StartOomkilGadget",
+		Cmd:          fmt.Sprintf("%s trace oomkill -o json %s", DefaultTestComponent, extraArgs),
+		StartAndStop: true,
+		ValidateOutput: func(t *testing.T, output string) {
+			expectedEntry := &traceoomkillTypes.Event{
+				Event:      BuildBaseEvent(ns, commonDataOpts...),
+				KilledComm: "tail",
+			}
+
+			if DefaultTestComponent == InspektorGadgetTestComponent {
+				expectedEntry.K8s.ContainerName = "test-pod-container"
+			}
+
+			normalize := func(e *traceoomkillTypes.Event) {
+				e.Timestamp = 0
+				e.KilledPid = 0
+				e.Pages = 0
+				e.TriggeredPid = 0
+				e.TriggeredUid = 0
+				e.TriggeredGid = 0
+				e.TriggeredComm = ""
+				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
+
+				if DefaultTestComponent == IgTestComponent {
+					prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+					if (containerRuntime == ContainerRuntimeDocker || containerRuntime == ContainerRuntimeCRIO) &&
+						strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+						e.Runtime.ContainerName = "test-pod"
+					}
+					if isDockerRuntime {
+						e.Runtime.ContainerImageName = ""
+					}
+				} else if DefaultTestComponent == InspektorGadgetTestComponent {
+					e.K8s.Node = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+				}
+			}
+
+			ExpectAllToMatch(t, output, normalize, expectedEntry)
+		},
+	}
+
+	limitPodYaml := fmt.Sprintf(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: %s
+spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  containers:
+  - name: test-pod%s
+    image: busybox
+    resources:
+      limits:
+        memory: "128Mi"
+    command: ["/bin/sh", "-c"]
+    args:
+    - while true; do tail /dev/zero; done
+`, ns, podYaml)
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		traceOomkillCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		{
+			Name:           "RunOomkillTestPod",
+			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
+			ExpectedRegexp: "pod/test-pod created",
+		},
+		WaitUntilTestPodReadyCommand(ns),
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
