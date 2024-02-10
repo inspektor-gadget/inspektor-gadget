@@ -14,135 +14,158 @@
 
 package main
 
-// import (
-// 	"fmt"
-// 	"testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
 
-// 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-// 	tracenetworkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-// 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-// )
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	tracenetworkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+)
 
-// func TestTraceNetwork(t *testing.T) {
-// 	t.Parallel()
-// 	ns := GenerateTestNamespaceName("test-trace-network")
+func TestTraceNetwork(t *testing.T) {
+	t.Parallel()
+	ns := GenerateTestNamespaceName("test-trace-network")
 
-// 	commandsPreTest := []*Command{
-// 		CreateTestNamespaceCommand(ns),
-// 		PodCommand("nginx-pod", "nginx", ns, "", ""),
-// 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-// 	}
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
 
-// 	RunTestSteps(commandsPreTest, t)
-// 	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
-// 	nginxIPVersion := GetIPVersion(t, nginxIP)
+	RunTestSteps(commandsPreTest, t)
+	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
+	nginxIPVersion := GetIPVersion(t, nginxIP)
 
-// 	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)}
+	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)}
 
-// 	var extraArgs string
-// 	switch DefaultTestComponent {
-// 	case IgTestComponent:
-// 		extraArgs = "--runtimes=" + containerRuntime
-// 		commonDataOpts = append(commonDataOpts, WithRuntimeMetadata(containerRuntime))
-// 	case InspektorGadgetTestComponent:
-// 		extraArgs = "-n " + ns
-// 	}
+	var extraArgs string
+	switch DefaultTestComponent {
+	case IgTestComponent:
+		extraArgs = "--runtimes=" + containerRuntime
+		commonDataOpts = append(commonDataOpts, WithRuntimeMetadata(containerRuntime))
+	case InspektorGadgetTestComponent:
+		extraArgs = "-n " + ns
+	}
 
-// 	traceNetworkCmd := &Command{
-// 		Name:         "StartTraceNetworkGadget",
-// 		Cmd:          fmt.Sprintf("%s trace network -o json %s", DefaultTestComponent, extraArgs),
-// 		StartAndStop: true,
-// 		ValidateOutput: func(t *testing.T, output string) {
-// 			testPodIP := GetTestPodIP(t, ns, "test-pod")
-// 			testPodIPVersion := GetIPVersion(t, testPodIP)
+	traceNetworkCmd := &Command{
+		Name:         "StartTraceNetworkGadget",
+		Cmd:          fmt.Sprintf("%s trace network -o json %s", DefaultTestComponent, extraArgs),
+		StartAndStop: true,
+		ValidateOutput: func(t *testing.T, output string) {
+			testPodIP := GetTestPodIP(t, ns, "test-pod")
+			testPodIPVersion := GetIPVersion(t, testPodIP)
 
-// 			expectedEntries := []*tracenetworkTypes.Event{
-// 				{
-// 					Event:     BuildBaseEvent(ns, commonDataOpts...),
-// 					Comm:      "wget",
-// 					Uid:       0,
-// 					Gid:       0,
-// 					PktType:   "OUTGOING",
-// 					Proto:     "TCP",
-// 					Port:      80,
-// 					PodIP:     testPodIP,
-// 					PodLabels: map[string]string{"run": "test-pod"},
-// 					DstEndpoint: eventtypes.L3Endpoint{
-// 						Addr:      nginxIP,
-// 						Version:   nginxIPVersion,
-// 						Namespace: ns,
-// 						Name:      "nginx-pod",
-// 						Kind:      eventtypes.EndpointKindPod,
-// 						PodLabels: map[string]string{"run": "nginx-pod"},
-// 					},
-// 				},
-// 				{
-// 					Event: eventtypes.Event{
-// 						Type: eventtypes.NORMAL,
-// 						CommonData: eventtypes.CommonData{
-// 							K8s: eventtypes.K8sMetadata{
-// 								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-// 									Namespace:     ns,
-// 									PodName:       "nginx-pod",
-// 									ContainerName: "nginx-pod",
-// 								},
-// 							},
-// 							Runtime: eventtypes.BasicRuntimeMetadata{
-// 								ContainerImageName: "docker.io/library/nginx:latest",
-// 							},
-// 						},
-// 					},
-// 					Comm:      "nginx",
-// 					PktType:   "HOST",
-// 					Proto:     "TCP",
-// 					PodIP:     nginxIP,
-// 					PodLabels: map[string]string{"run": "nginx-pod"},
-// 					Port:      80,
-// 					DstEndpoint: eventtypes.L3Endpoint{
-// 						Addr:      testPodIP,
-// 						Version:   testPodIPVersion,
-// 						Namespace: ns,
-// 						Name:      "test-pod",
-// 						Kind:      eventtypes.EndpointKindPod,
-// 						PodLabels: map[string]string{"run": "test-pod"},
-// 					},
-// 				},
-// 			}
+			expectedEntries := []*tracenetworkTypes.Event{
+				{
+					Event:   BuildBaseEvent(ns, commonDataOpts...),
+					Comm:    "wget",
+					Uid:     0,
+					Gid:     0,
+					PktType: "OUTGOING",
+					Proto:   "TCP",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr:    nginxIP,
+						Version: nginxIPVersion,
+					},
+				},
+				{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+						CommonData: eventtypes.CommonData{
+							K8s: eventtypes.K8sMetadata{
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									Namespace:     ns,
+									PodName:       "nginx-pod",
+									ContainerName: "nginx-pod",
+								},
+							},
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								ContainerImageName: "docker.io/library/nginx:latest",
+							},
+						},
+					},
+					Comm:    "nginx",
+					PktType: "HOST",
+					Proto:   "TCP",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr:    testPodIP,
+						Version: testPodIPVersion,
+					},
+				},
+			}
 
-// 			// TODO: Handle it once we support getting container image name from docker
-// 			if isDockerRuntime {
-// 				expectedEntries[1].CommonData.Runtime.ContainerImageName = ""
-// 			}
+			if DefaultTestComponent == IgTestComponent {
+				expectedEntries[1].Event.Runtime.ContainerName = "nginx-pod"
+				expectedEntries[1].Event.Runtime.RuntimeName = eventtypes.String2RuntimeName(containerRuntime)
+			}
 
-// 			normalize := func(e *tracenetworkTypes.Event) {
-// 				e.Timestamp = 0
-// 				e.PodHostIP = ""
-// 				e.MountNsID = 0
-// 				e.NetNsID = 0
-// 				e.Pid = 0
-// 				e.Tid = 0
-// 				// nginx uses multiple processes, in this case Inspektor Gadget is
-// 				// not able to determine the UID / GID in a reliable way.
-// 				e.Uid = 0
-// 				e.Gid = 0
+			if DefaultTestComponent == InspektorGadgetTestComponent {
+				expectedEntries[0].PodIP = testPodIP
+				expectedEntries[0].PodLabels = map[string]string{"run": "test-pod"}
+				expectedEntries[0].DstEndpoint.Namespace = ns
+				expectedEntries[0].DstEndpoint.Name = "nginx-pod"
+				expectedEntries[0].DstEndpoint.Kind = eventtypes.EndpointKindPod
+				expectedEntries[0].DstEndpoint.PodLabels = map[string]string{"run": "nginx-pod"}
 
-// 				e.K8s.Node = ""
-// 				e.Runtime.RuntimeName = ""
-// 				e.Runtime.ContainerName = ""
-// 				e.Runtime.ContainerID = ""
-// 				e.Runtime.ContainerImageDigest = ""
-// 			}
+				expectedEntries[1].PodIP = nginxIP
+				expectedEntries[1].PodLabels = map[string]string{"run": "nginx-pod"}
+				expectedEntries[1].DstEndpoint.Namespace = ns
+				expectedEntries[1].DstEndpoint.Name = "test-pod"
+				expectedEntries[1].DstEndpoint.Kind = eventtypes.EndpointKindPod
+				expectedEntries[1].DstEndpoint.PodLabels = map[string]string{"run": "test-pod"}
+			}
 
-// 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
-// 		},
-// 	}
+			// TODO: Handle it once we support getting container image name from docker
+			if isDockerRuntime {
+				expectedEntries[1].CommonData.Runtime.ContainerImageName = ""
+			}
 
-// 	commands := []*Command{
-// 		traceNetworkCmd,
-// 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", nginxIP)),
-// 		WaitUntilTestPodReadyCommand(ns),
-// 		DeleteTestNamespaceCommand(ns),
-// 	}
+			normalize := func(e *tracenetworkTypes.Event) {
+				e.Timestamp = 0
+				e.MountNsID = 0
+				e.NetNsID = 0
+				e.Pid = 0
+				e.Tid = 0
+				// nginx uses multiple processes, in this case Inspektor Gadget is
+				// not able to determine the UID / GID in a reliable way.
+				e.Uid = 0
+				e.Gid = 0
 
-// 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
-// }
+				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
+
+				if DefaultTestComponent == IgTestComponent {
+					if containerRuntime == ContainerRuntimeDocker || containerRuntime == ContainerRuntimeCRIO {
+						cn := e.K8s.ContainerName
+						if strings.HasPrefix(e.Runtime.ContainerName, fmt.Sprintf("k8s_%s_%s_%s_", cn, cn, ns)) {
+							e.Runtime.ContainerName = cn
+						}
+					}
+					if isDockerRuntime {
+						e.Runtime.ContainerImageName = ""
+					}
+				} else if DefaultTestComponent == InspektorGadgetTestComponent {
+					e.PodHostIP = ""
+					e.K8s.Node = ""
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+				}
+			}
+
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+		},
+	}
+
+	commands := []*Command{
+		traceNetworkCmd,
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", nginxIP)),
+		WaitUntilTestPodReadyCommand(ns),
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
