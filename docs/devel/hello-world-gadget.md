@@ -14,6 +14,18 @@ description: >
 This is a short getting started guide to write your first gadget. This guide will get you familiar
 with the key concepts by implementing a simplified version of the "trace open" (opensnoop) tool.
 
+## Starting from a template
+
+If you want to create a new repository for your gadget, you can use the [gadget-template
+repository](https://github.com/inspektor-gadget/gadget-template). This is a
+[GitHub tempate repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+
+## Starting from scratch
+
+If you already have a git repository for your project and want to add a gadget
+to it, you can start from scratch. The rest of this guide assumes you will
+start from scratch.
+
 The first step is to create an empty folder where the source code of the gadget will be stored:
 
 ```bash
