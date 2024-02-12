@@ -25,8 +25,6 @@ import (
 
 func TestAuditSeccomp(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-audit-seccomp")
-	spName := "log"
-
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
@@ -38,29 +36,77 @@ func TestAuditSeccomp(t *testing.T) {
 			Name: "CreateSeccompProfile",
 			Cmd: fmt.Sprintf(`
 				kubectl apply -f - <<EOF
-apiVersion: security-profiles-operator.x-k8s.io/v1beta1
-kind: SeccompProfile
+# This yaml template is used to copy a seccomp profile to all nodes on the cluster.
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: %s
-  namespace: %s
-  annotations:
-    description: "Log some syscalls"
+  name: myseccompprofile
+  namespace: %[1]s
+data:
+  ig-test-profile.json: |
+    {
+        "defaultAction": "SCMP_ACT_ALLOW",
+        "syscalls": [
+            {
+                "names": [
+                    "unshare"
+                ],
+                "action": "SCMP_ACT_KILL"
+            },
+            {
+                "names": [
+                    "mkdir"
+                ],
+                "action": "SCMP_ACT_LOG"
+            }
+        ]
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: seccomp-copier
+  namespace: %[1]s
 spec:
-  defaultAction: SCMP_ACT_ALLOW
-  syscalls:
-  - action: SCMP_ACT_KILL
-    names:
-    - unshare
-  - action: SCMP_ACT_LOG
-    names:
-    - mkdir
+  selector:
+    matchLabels:
+      name: seccomp-copier
+  template:
+    metadata:
+      labels:
+        name: seccomp-copier
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: copier
+        image: busybox:latest
+        command: [ "sh", "-c", "cp /sourceprofile/ig-test-profile.json /seccomp/ig-test-profile.json ; sleep inf"]
+        volumeMounts:
+        - name: seccomp
+          mountPath: /seccomp/
+        - name: sourceprofile
+          mountPath: /sourceprofile/
+      terminationGracePeriodSeconds: 1
+      volumes:
+      - name: seccomp
+        hostPath:
+          path: /var/lib/kubelet/seccomp/
+      - name: sourceprofile
+        configMap:
+          name: myseccompprofile
 EOF
-			`, spName, ns),
-			ExpectedRegexp: fmt.Sprintf("seccompprofile.security-profiles-operator.x-k8s.io/%s created", spName),
+`, ns),
+			ExpectedRegexp: fmt.Sprintf("daemonset.apps/seccomp-copier created"),
 		},
 		{
-			Name: "WaitForSeccompProfile",
-			Cmd:  fmt.Sprintf("kubectl wait sp --for condition=ready -n %s %s", ns, spName),
+			Name: "WaitForDaemonSet",
+			Cmd:  fmt.Sprintf("kubectl wait pod --for condition=ready -l name=seccomp-copier -n %s", ns),
 		},
 		{
 			Name: "RunSeccompAuditTestPod",
@@ -75,7 +121,7 @@ spec:
   securityContext:
     seccompProfile:
       type: Localhost
-      localhostProfile: operator/%s/log.json
+      localhostProfile: ig-test-profile.json
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
@@ -84,7 +130,7 @@ spec:
     command: ["sh"]
     args: ["-c", "while true; do unshare -i; sleep 1; done"]
 EOF
-			`, ns, ns),
+`, ns),
 			ExpectedRegexp: "pod/test-pod created",
 		},
 		WaitUntilTestPodReadyCommand(ns),
