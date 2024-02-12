@@ -1705,73 +1705,73 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Upload kubectl-gadget binary
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload IG *.tar.gz binary
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "ig-*-*-tar-gz/ig-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload gadgetctl *.tar.gz binary
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload YAML
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         file: inspektor-gadget-${{ github.ref_name }}.yaml
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload checksums file
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         file: SHA256SUMS
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload IG distributions packages
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "ig_packages/ig*"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload Inpektor Gadget Helm Charts
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "gadget-charts-tgz/gadget-*.tgz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload public key
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "*.pub"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload bundle
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "*.bundle"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload signature
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "*.sig"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload container images SBOMs
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "*.bom.json"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload binaries SBOMs
-      uses: csexton/release-asset-action@v2
+      uses: csexton/release-asset-action@v3
       with:
         pattern: "sbom/*.bom.json"
         github-token: ${{ secrets.GITHUB_TOKEN }}
