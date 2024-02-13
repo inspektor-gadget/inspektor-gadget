@@ -30,12 +30,7 @@ func TestAuditSeccomp(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		{
-			Name: "CreateSeccompProfile",
-			Cmd: fmt.Sprintf(`
-				kubectl apply -f - <<EOF
+	seccompInstallerYaml := fmt.Sprintf(`
 # This yaml template is used to copy a seccomp profile to all nodes on the cluster.
 apiVersion: v1
 kind: ConfigMap
@@ -62,20 +57,54 @@ data:
         ]
     }
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: installer-sa
+  namespace: %[1]s
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: installer-cluster-role-%[1]s
+rules:
+  - apiGroups: ["security.openshift.io"]
+    # It is necessary to use the 'privileged' security context constraints to be
+    # able mount host directories as volumes, use the host networking, among others.
+    # This will be used only when running on OpenShift:
+    # https://docs.openshift.com/container-platform/4.14/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
+    resources: ["securitycontextconstraints"]
+    resourceNames: ["privileged"]
+    verbs: ["use"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: installer-cluster-role-binding-%[1]s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: installer-cluster-role-%[1]s
+subjects:
+  - kind: ServiceAccount
+    name: installer-sa
+    namespace: %[1]s
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: seccomp-copier
+  name: seccomp-installer
   namespace: %[1]s
 spec:
   selector:
     matchLabels:
-      name: seccomp-copier
+      name: seccomp-installer
   template:
     metadata:
       labels:
-        name: seccomp-copier
+        name: seccomp-installer
     spec:
+      serviceAccount: installer-sa
       tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
@@ -84,9 +113,17 @@ spec:
         operator: Exists
         effect: NoSchedule
       containers:
-      - name: copier
+      - name: installer
         image: busybox:latest
+        securityContext:
+          # needed to mount host volumes
+          seLinuxOptions:
+              type: "spc_t"
         command: [ "sh", "-c", "cp /sourceprofile/ig-test-profile.json /seccomp/ig-test-profile.json ; sleep inf"]
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /seccomp/ig-test-profile.json"]
         volumeMounts:
         - name: seccomp
           mountPath: /seccomp/
@@ -100,13 +137,18 @@ spec:
       - name: sourceprofile
         configMap:
           name: myseccompprofile
-EOF
-`, ns),
-			ExpectedRegexp: fmt.Sprintf("daemonset.apps/seccomp-copier created"),
+`, ns)
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		{
+			Name:           "CreateSeccompProfile",
+			Cmd:            fmt.Sprintf("kubectl apply -f - <<EOF%sEOF", seccompInstallerYaml),
+			ExpectedRegexp: "daemonset.apps/seccomp-installer created",
 		},
 		{
 			Name: "WaitForDaemonSet",
-			Cmd:  fmt.Sprintf("kubectl wait pod --for condition=ready -l name=seccomp-copier -n %s", ns),
+			Cmd:  fmt.Sprintf("kubectl rollout -n %s status daemonset/seccomp-installer --timeout=120s", ns),
 		},
 		{
 			Name: "RunSeccompAuditTestPod",
@@ -160,6 +202,11 @@ EOF
 
 				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
+		},
+		{
+			Name:    "RemoveSeccompProfile",
+			Cmd:     fmt.Sprintf("kubectl delete -f - <<EOF%sEOF", seccompInstallerYaml),
+			Cleanup: true,
 		},
 		DeleteTestNamespaceCommand(ns),
 	}
