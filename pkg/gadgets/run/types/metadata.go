@@ -434,8 +434,10 @@ func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
 	}
 
 	if _, found := m.Tracers[tracerInfo.Name]; !found {
-		log.Debugf("Adding tracer %q", tracerMap.Name)
-		m.Tracers[tracerMap.Name] = Tracer{
+		log.Debugf("Adding tracer %q with map %q and struct %q",
+			tracerInfo.Name, tracerMap.Name, tracerMapStruct.Name)
+
+		m.Tracers[tracerInfo.Name] = Tracer{
 			MapName:    tracerMap.Name,
 			StructName: tracerMapStruct.Name,
 		}
