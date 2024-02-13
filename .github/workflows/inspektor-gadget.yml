@@ -1327,7 +1327,6 @@ jobs:
       - check-secrets
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
@@ -1429,7 +1428,6 @@ jobs:
       - check-secrets
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
@@ -1474,13 +1472,91 @@ jobs:
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         test_summary_suffix: "aro"
 
+  test-integration-eks:
+    name: Integration tests on EKS
+    # level: 4
+    needs:
+      - test-unit
+      - build-clients
+      - build-gadget-container-images
+      - publish-gadget-images-manifest
+      - build-and-push-gadgets
+    if: ${{ vars.AWS_ROLE != '' }}
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      AWS_REGION: us-east-2
+      AWS_EKS_CLUSTER_PREFIX: ig-ci-eks-
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+    - name: Craft cluster name
+      shell: bash
+      run: |
+        echo "CLUSTER_NAME=${{ env.AWS_EKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${RANDOM}" >> $GITHUB_ENV
+    # Install eksctl following https://eksctl.io/installation/#for-unix
+    - name: Install eksctl
+      run: |
+        ARCH=$(dpkg-architecture -qDEB_HOST_ARCH)
+        PLATFORM=$(uname -s)_$ARCH
+        curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+        curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
+        tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
+        sudo mv /tmp/eksctl /usr/local/bin
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE }}
+        aws-region: ${{ env.AWS_REGION }}
+    - name: Create EKS cluster ${{ env.CLUSTER_NAME }}
+      shell: bash
+      run: |
+        # We need to use big nodes, otherwise integration tests fail because the node can't handle
+        # many gadgets running on parallel
+        node_type='t2.xlarge'
+        if [ ${{ matrix.arch }} = 'arm64' ]; then
+          node_type='a1.xlarge'
+        fi
+        eksctl create cluster --name ${{ env.CLUSTER_NAME }} --tags ig-ci=true --node-type $node_type
+    - name: Run integration tests
+      uses: ./.github/actions/run-integration-tests
+      with:
+        kubernetes_distribution: "eks-AmazonLinux"
+        kubernetes_architecture: "${{ matrix.arch }}"
+        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+        test_summary_suffix: "EKS-${{ matrix.arch }}"
+    - name: Delete EKS cluster ${{ env.CLUSTER_NAME }}
+      if: always()
+      shell: bash
+      run: |
+        eksctl delete cluster --name ${{ env.CLUSTER_NAME }} --wait=false
+
   test-integration-minikube:
     name: Integr. tests
     # level: 3
     needs:
       - test-unit
       - build-clients
-      - build-ig
       - build-gadget-container-images
       - build-helper-images
       - build-and-push-gadgets
@@ -1545,6 +1621,7 @@ jobs:
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
+      - test-integration-eks
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
     runs-on: ubuntu-latest
@@ -1575,6 +1652,7 @@ jobs:
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
+      - test-integration-eks
       - test-components
       - build-ig-cwe
       - test-ig

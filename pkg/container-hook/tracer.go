@@ -39,7 +39,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -241,21 +240,11 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	}
 	n.links = append(n.links, l)
 
-	if runtime.GOARCH == "arm64" {
-		// On arm64, the tracepoint for sys_exit_execve is only supported in Linux >= v6.0.
-		// See https://github.com/torvalds/linux/commit/de6921856f99
-		l, err := link.Kretprobe("do_execveat_common.isra.0", n.objs.IgExecveX, nil)
-		if err != nil {
-			return fmt.Errorf("attaching kretprobe do_execveat_common.isra.0: %w", err)
-		}
-		n.links = append(n.links, l)
-	} else {
-		l, err = link.Tracepoint("syscalls", "sys_exit_execve", n.objs.IgExecveX, nil)
-		if err != nil {
-			return fmt.Errorf("attaching tracepoint: %w", err)
-		}
-		n.links = append(n.links, l)
+	l, err = link.Tracepoint("syscalls", "sys_exit_execve", n.objs.IgExecveX, nil)
+	if err != nil {
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
+	n.links = append(n.links, l)
 
 	return nil
 }

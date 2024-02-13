@@ -16,9 +16,8 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -66,7 +65,14 @@ func TestRunSchedCLS(t *testing.T) {
 				// TODO: Another approach will be to test the return code of wget,
 				// but it's difficult to implement with the current testing
 				// framework.
-				require.Contains(t, output, "can't connect to remote host")
+				expected := []string{"can't connect to remote host", "download timed out"}
+				for _, e := range expected {
+					if strings.Contains(output, e) {
+						return
+					}
+				}
+
+				t.Fatal("output doesn't contain expected error")
 			},
 		},
 	}

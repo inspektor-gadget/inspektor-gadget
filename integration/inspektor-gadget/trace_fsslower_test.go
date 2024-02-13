@@ -25,7 +25,7 @@ import (
 
 func TestTraceFsslower(t *testing.T) {
 	fsType := "ext4"
-	if *k8sDistro == K8sDistroARO {
+	if *k8sDistro == K8sDistroARO || *k8sDistro == K8sDistroEKSAmazonLinux {
 		fsType = "xfs"
 	}
 

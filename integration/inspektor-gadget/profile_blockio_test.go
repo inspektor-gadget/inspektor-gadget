@@ -26,6 +26,10 @@ import (
 func TestProfileBlockIO(t *testing.T) {
 	t.Parallel()
 
+	if *k8sDistro == K8sDistroEKSAmazonLinux {
+		t.Skip("profile block-io is not supported on Amazon Linux: See issue #2468")
+	}
+
 	commands := []*Command{
 		{
 			Name: "RunProfileBlockIOGadget",

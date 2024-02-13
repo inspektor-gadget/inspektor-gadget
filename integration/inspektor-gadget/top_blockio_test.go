@@ -65,6 +65,10 @@ func TestTopBlockIO(t *testing.T) {
 		t.Skip("Skip running top block-io gadget on ARO: see issue #589")
 	}
 
+	if *k8sDistro == K8sDistroEKSAmazonLinux {
+		t.Skip("Skip running top block-io gadget on EKS: see issue #589")
+	}
+
 	version, err := kernel.GetKernelVersion()
 	require.Nil(t, err, "Failed to get kernel version: %s", err)
 	v5_17 := kernel.VersionInfo{Kernel: 5, Major: 17, Minor: 0}

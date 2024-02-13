@@ -147,13 +147,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 	return 0;
 }
 
-#ifdef __TARGET_ARCH_arm64
-SEC("kretprobe/do_execveat_common.isra.0")
-int BPF_KRETPROBE(ig_execve_x)
-#else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
-#endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 pid_tgid;
 	u32 tgid;
