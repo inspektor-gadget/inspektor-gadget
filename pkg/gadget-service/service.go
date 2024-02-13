@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,6 +56,7 @@ type RunConfig struct {
 
 type Service struct {
 	api.UnimplementedGadgetManagerServer
+	api.UnimplementedOCIGadgetManagerServer
 	listener          net.Listener
 	runtime           runtime.Runtime
 	logger            logger.Logger
@@ -120,7 +121,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 
 	request := ctrl.GetRunRequest()
 	if request == nil {
-		return fmt.Errorf("expected first control message to be gadget request")
+		return fmt.Errorf("expected first control message to be gadget run request")
 	}
 
 	// Create a new logger that logs to gRPC and falls back to the standard logger when it failed to send the message
@@ -376,6 +377,7 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 
 	server := grpc.NewServer(serverOptions...)
 	api.RegisterGadgetManagerServer(server, s)
+	api.RegisterOCIGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 
