@@ -34,6 +34,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
@@ -188,6 +189,8 @@ func callback(notif runcfanotify.ContainerEvent) {
 }
 
 func main() {
+	host.Init(host.Config{})
+
 	flag.Parse()
 	var err error
 	timeoutDuration, err = time.ParseDuration(*timeout)
@@ -231,11 +234,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = runcfanotify.NewRuncNotifier(callback)
+	notifier, err := runcfanotify.NewRuncNotifier(callback)
 	if err != nil {
 		fmt.Printf("runcfanotify failed: %v\n", err)
 		os.Exit(1)
 	}
+	defer notifier.Close()
 
 	// Graceful shutdown
 	exit := make(chan os.Signal, 1)
