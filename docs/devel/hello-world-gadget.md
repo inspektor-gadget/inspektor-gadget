@@ -5,7 +5,8 @@ description: >
   Hello world gadget
 ---
 
-> ⚠️ This feature is experimental. In order for the commands to work, the `IG_EXPERIMENTAL` env var must be set to `true`
+> [!WARNING]
+> This feature is experimental. To activate the commands, you must set the `IG_EXPERIMENTAL` environment variable to `true`.
 >
 > ```bash
 > $ export IG_EXPERIMENTAL=true
@@ -75,12 +76,18 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 This macro will automatically create a ring buffer if the kernel supports it.
 Otherwise, a perf array will be created.
 
-And mark this map as a tracer map, i.e. a map that is used to push events to user space:
+Optionally, you can employ the `GADGET_TRACER` macro to define a tracer with the
+following parameters:
+
+- Tracer's Name: `open`
+- Buffer Map Name: `events`
+- Event Structure Name: `event`
+
+This information enables Inspektor Gadget to generate the metadata file automatically.
+Refer to the [metadata file](#creating-a-metadata-file) section for detailed instructions.
 
 ```c
-// open is the name for the tracer
-// events is the name of buffer map
-// event is the structure type
+// [Optional] Define a tracer
 GADGET_TRACER(open, events, event);
 ```
 
@@ -142,9 +149,7 @@ struct event {
 // events is the name of the buffer map and 1024 * 256 is its size.
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-// open is the name of the tracer
-// events is the name of the buffer map
-// event is the structure type
+// [Optional] Define a tracer
 GADGET_TRACER(open, events, event);
 
 SEC("tracepoint/syscalls/sys_enter_openat")
@@ -193,6 +198,7 @@ INFO[0000] Experimental features enabled
 Pushing ghcr.io/mauriciovasquezbernal/mygadget:latest...
 Successfully pushed ghcr.io/mauriciovasquezbernal/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
+
 ## Running the gadget
 
 We're now all set to run our gadget for the first time.
@@ -273,6 +279,10 @@ filename is being trimmed. The metadata file contains extra information about th
 other things, it can be used to specify the format to be used.
 
 An initial version of the metadata file can be created by passing `--update-metadata` to the build command:
+
+> [!NOTE]
+> The `tracers` and `structs` sections will only be generated if the eBPF program defined a tracer
+> using the `GADGET_TRACER` macro.
 
 ```bash
 $ sudo -E ig image build . -t mygadget --update-metadata
@@ -372,7 +382,6 @@ RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
 
 Now the output is much better.
 
-
 ### Filtering and container enrichement
 
 The gadget we created provides information about all events happening on the host, however it (a)
@@ -389,7 +398,6 @@ The first step is to include these two addional header files:
 
 - `gadget/mntns_filter.h`: Defines an eBPF map and some helper functions used to filter events by containers
 - `gadget/types.h`: Inspektor Gadget specific types, like `gadget_mntns_id`.
-
 
 Add the following field to the event structure.
 
