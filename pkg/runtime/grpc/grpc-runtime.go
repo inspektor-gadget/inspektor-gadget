@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,6 +104,10 @@ func New(options ...Option) *Runtime {
 }
 
 func (r *Runtime) Init(runtimeGlobalParams *params.Params) error {
+	if runtimeGlobalParams == nil {
+		runtimeGlobalParams = r.GlobalParamDescs().ToParams()
+	}
+
 	// overwrite only if not yet initialized; for gadgetctl, this initialization happens
 	// already in the main.go to specify a target address
 	if r.globalParams == nil {
