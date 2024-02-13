@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -139,6 +139,7 @@ func main() {
 	rootCmd.AddCommand(advise.NewAdviseCmd(gadgetNamespace))
 	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
 	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
