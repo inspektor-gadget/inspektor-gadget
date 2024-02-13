@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -278,6 +278,9 @@ func b64DecodeAndDecompress(s string) ([]byte, error) {
 }
 
 func (p *Params) CopyToMap(target map[string]string, prefix string) {
+	if target == nil || p == nil {
+		return
+	}
 	for _, param := range *p {
 		if param.TypeHint == TypeBytes {
 			target[prefix+param.Key] = compressAndB64Encode(param.String())
