@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,9 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -56,6 +58,7 @@ type RunConfig struct {
 
 type Service struct {
 	api.UnimplementedGadgetManagerServer
+	api.UnimplementedOCIGadgetManagerServer
 	listener          net.Listener
 	runtime           runtime.Runtime
 	logger            logger.Logger
@@ -112,6 +115,153 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 	}, nil
 }
 
+func (s *Service) GetOCIGadgetInfo(ctx context.Context, req *api.GetOCIGadgetInfoRequest) (*api.GetOCIGadgetInfoResponse, error) {
+	if req.Version != api.VersionGadgetInfo {
+		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
+	}
+
+	if len(req.Args) < 1 {
+		return nil, fmt.Errorf("invalid arguments")
+	}
+
+	gadgetCtx := gadgetcontext.NewSimple(ctx, req.Args[0], s.logger)
+	gi, err := s.runtime.GetOCIGadgetInfo(gadgetCtx, nil, req.Args)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget info: %w", err)
+	}
+	return &api.GetOCIGadgetInfoResponse{GadgetInfo: gi}, nil
+}
+
+func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer) error {
+	ctrl, err := runGadget.Recv()
+	if err != nil {
+		return err
+	}
+
+	ociRequest := ctrl.GetOciRunRequest()
+	if ociRequest == nil {
+		return fmt.Errorf("expected first control message to be gadget run request")
+	}
+
+	if ociRequest.Version != api.VersionGadgetRunProtocol {
+		return fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetRunProtocol, ociRequest.Version)
+	}
+
+	// Create a new logger that logs to gRPC and falls back to the standard logger when it failed to send the message
+	logger := logger.NewFromGenericLogger(&Logger{
+		send:           runGadget.Send,
+		level:          logger.Level(ociRequest.LogLevel),
+		fallbackLogger: s.logger,
+	})
+
+	runtime := s.runtime
+
+	gadgetCtx := gadgetcontext.NewSimple(runGadget.Context(), ociRequest.Url, logger)
+
+	// Create payload buffer
+	outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
+
+	outputDone := make(chan bool)
+	defer func() {
+		outputDone <- true
+	}()
+
+	go func() {
+		// Receive control messages
+		for {
+			msg, err := runGadget.Recv()
+			if err != nil {
+				s.logger.Warnf("error on connection: %v", err)
+				gadgetCtx.Cancel()
+				return
+			}
+			switch msg.Event.(type) {
+			case *api.OCIGadgetControlRequest_StopRequest:
+				logger.Debugf("received stop request")
+				gadgetCtx.Cancel()
+				return
+			default:
+				logger.Warn("unexpected request")
+			}
+		}
+	}()
+
+	go func() {
+		// Message pump to handle slow readers
+		for {
+			select {
+			case ev := <-outputBuffer:
+				runGadget.Send(ev)
+			case <-outputDone:
+				return
+			}
+		}
+	}()
+
+	seq := uint32(0)
+	var seqLock sync.Mutex
+
+	// Register OnPrepare callback - this is called once the gadget information and all DataSources
+	// are available; in here we subscribe to the DataSources and actually marshal things
+	gadgetCtx.OnPrepare(func() {
+		gi, err := gadgetCtx.SerializeGadgetInfo()
+		if err != nil {
+			logger.Errorf("could not serialize gadget info: %v", err)
+			return
+		}
+
+		// datasource mapping; we're sending an array of available DataSources including a
+		// DataSourceID; this ID will be used when sending actual data and needs to be remapped
+		// to the actual DataSource on the client later on
+		dsLookup := make(map[string]uint32)
+		for i, ds := range gi.DataSources {
+			ds.DataSourceID = uint32(i)
+			dsLookup[ds.Name] = ds.DataSourceID
+		}
+
+		// todo: skip DataSources we're not interested in
+
+		for _, ds := range gadgetCtx.GetDataSources() {
+			dsID := dsLookup[ds.Name()]
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				d, _ := proto.Marshal(data.Raw())
+
+				event := &api.GadgetEvent{
+					Type:         api.EventTypeGadgetPayload,
+					Payload:      d,
+					DataSourceID: dsID,
+				}
+
+				seqLock.Lock()
+				seq++
+				event.Seq = seq
+
+				// Try to send event; if outputBuffer is full, it will be dropped by taking
+				// the default path.
+				select {
+				case outputBuffer <- event:
+				default:
+				}
+				seqLock.Unlock()
+				return nil
+			}, 1000000) // TODO: static int?
+		}
+
+		// Send gadget information
+		d, _ := proto.Marshal(gi)
+		runGadget.Send(&api.GadgetEvent{
+			Type:    api.EventTypeGadgetInfo,
+			Payload: d,
+		})
+	})
+
+	err = runtime.RunOCIGadget(gadgetCtx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
@@ -120,7 +270,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 
 	request := ctrl.GetRunRequest()
 	if request == nil {
-		return fmt.Errorf("expected first control message to be gadget request")
+		return fmt.Errorf("expected first control message to be gadget run request")
 	}
 
 	// Create a new logger that logs to gRPC and falls back to the standard logger when it failed to send the message
@@ -372,6 +522,7 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 
 	server := grpc.NewServer(serverOptions...)
 	api.RegisterGadgetManagerServer(server, s)
+	api.RegisterOCIGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 
