@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,29 +60,6 @@ type DataNodeEnricher interface {
 // is available.
 type DataEnricherByNetNs interface {
 	EnrichByNetNs(event *types.CommonData, netnsid uint64)
-}
-
-func FromCString(in []byte) string {
-	for i := 0; i < len(in); i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
-	}
-	return string(in)
-}
-
-func FromCStringN(in []byte, length int) string {
-	l := len(in)
-	if length < l {
-		l = length
-	}
-
-	for i := 0; i < l; i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
-	}
-	return string(in[:l])
 }
 
 func Htonl(hl uint32) uint32 {
