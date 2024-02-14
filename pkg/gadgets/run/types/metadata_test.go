@@ -70,7 +70,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			expectedErrString: "is missing mapName",
+			expectedErrString: "missing mapName",
 		},
 		"tracers_missing_struct_name": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
@@ -82,7 +82,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			expectedErrString: "is missing structName",
+			expectedErrString: "missing structName",
 		},
 		"tracers_references_unknown_struct": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
@@ -95,7 +95,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			expectedErrString: "references unknown struct",
+			expectedErrString: "referencing unknown struct",
 		},
 		"tracers_map_not_found": {
 			objectPath: "../../../../testdata/validate_metadata1.o",

@@ -216,40 +216,24 @@ func (m *GadgetMetadata) validateTracers(spec *ebpf.CollectionSpec) error {
 		result = multierror.Append(result, errors.New("only one tracer is allowed"))
 	}
 
-	for name, tracer := range m.Tracers {
-		if tracer.MapName == "" {
-			result = multierror.Append(result, fmt.Errorf("tracer %q is missing mapName", name))
-		}
-
-		if tracer.StructName == "" {
-			result = multierror.Append(result, fmt.Errorf("tracer %q is missing structName", name))
-		}
-
-		_, ok := m.Structs[tracer.StructName]
-		if !ok {
-			result = multierror.Append(result, fmt.Errorf("tracer %q references unknown struct %q", name, tracer.StructName))
-		}
-
-		ebpfm, ok := spec.Maps[tracer.MapName]
-		if !ok {
-			result = multierror.Append(result, fmt.Errorf("map %q not found in eBPF object", tracer.MapName))
-			continue
-		}
-
-		if err := validateTraceMap(ebpfm); err != nil {
-			result = multierror.Append(result, err)
+	for name, t := range m.Tracers {
+		err := validateMapAndStruct(t.MapName, t.StructName, spec, m, validateTracerMap)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("validating tracer %q: %w", name, err))
 		}
 	}
 
 	return result
 }
 
-func validateTraceMap(traceMap *ebpf.MapSpec) error {
-	if traceMap.Type != ebpf.RingBuf && traceMap.Type != ebpf.PerfEventArray {
+// validateTracerMap only checks if the map type. It does not check the map
+// value name and type because such a information is not available in the map
+// definition for perf event arrays and ring buffers.
+func validateTracerMap(tracerMap *ebpf.MapSpec, _ string) error {
+	if tracerMap.Type != ebpf.RingBuf && tracerMap.Type != ebpf.PerfEventArray {
 		return fmt.Errorf("map %q has a wrong type, expected: ringbuf or perf event array, got: %s",
-			traceMap.Name, traceMap.Type.String())
+			tracerMap.Name, tracerMap.Type)
 	}
-
 	return nil
 }
 
@@ -273,6 +257,36 @@ func (m *GadgetMetadata) validateSnapshotters(spec *ebpf.CollectionSpec) error {
 	}
 
 	return result
+}
+
+// validateMapAndStruct fully validates the map, while the struct is only
+// checked for existence in the Structs section of the metadata as it will be
+// validated with the rest of the structs.
+func validateMapAndStruct(mapName, structName string,
+	spec *ebpf.CollectionSpec,
+	m *GadgetMetadata,
+	validateMap func(*ebpf.MapSpec, string) error,
+) (result error) {
+	if mapName == "" {
+		result = multierror.Append(result, errors.New("missing mapName"))
+	} else {
+		ebpfMap, ok := spec.Maps[mapName]
+		if !ok {
+			return fmt.Errorf("map %q not found in eBPF object", mapName)
+		}
+
+		if err := validateMap(ebpfMap, structName); err != nil {
+			result = multierror.Append(result, err)
+		}
+	}
+
+	if structName == "" {
+		result = multierror.Append(result, errors.New("missing structName"))
+	} else if _, ok := m.Structs[structName]; !ok {
+		result = multierror.Append(result, fmt.Errorf("referencing unknown struct %q", structName))
+	}
+
+	return
 }
 
 func (m *GadgetMetadata) validateStructs(spec *ebpf.CollectionSpec) error {
@@ -445,8 +459,8 @@ func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
 		return fmt.Errorf("map %q not found in eBPF object", tracerInfo.mapName)
 	}
 
-	if err := validateTraceMap(tracerMap); err != nil {
-		return fmt.Errorf("trace map is invalid: %w", err)
+	if err := validateTracerMap(tracerMap, ""); err != nil {
+		return fmt.Errorf("tracer map is invalid: %w", err)
 	}
 
 	var tracerMapStruct *btf.Struct
