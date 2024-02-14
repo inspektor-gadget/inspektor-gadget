@@ -333,7 +333,7 @@ func TestPopulate(t *testing.T) {
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
 				Tracers: map[string]Tracer{
-					"events": {
+					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
@@ -379,7 +379,7 @@ func TestPopulate(t *testing.T) {
 				Name:        "foo",
 				Description: "bar",
 				Tracers: map[string]Tracer{
-					"events": {
+					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
@@ -415,7 +415,7 @@ func TestPopulate(t *testing.T) {
 				Name:        "foo",
 				Description: "bar",
 				Tracers: map[string]Tracer{
-					"events": {
+					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
@@ -476,7 +476,7 @@ func TestPopulate(t *testing.T) {
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
 				Tracers: map[string]Tracer{
-					"events": {
+					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
