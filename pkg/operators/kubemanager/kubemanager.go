@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -192,6 +194,8 @@ type KubeManagerInstance struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+
+	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
 }
 
 func (m *KubeManagerInstance) Name() string {
@@ -337,6 +341,156 @@ func (m *KubeManagerInstance) EnrichEvent(ev any) error {
 	return nil
 }
 
+func (k *KubeManager) InstantiateDataOperator(ctx operators.GadgetContext) (operators.DataOperatorInstance, error) {
+	traceInstance := &KubeManagerInstance{
+		manager:            k,
+		enrichEvents:       false,
+		attachedContainers: make(map[string]*containercollection.Container),
+		params:             k.ParamDescs().ToParams(), // TODO
+		gadgetCtx:          ctx,
+		id:                 uuid.New().String(),
+
+		eventWrappers: make(map[datasource.DataSource]*compat.EventWrapperBase),
+	}
+
+	if k.gadgetTracerManager == nil {
+		traceInstance.enrichEvents = false
+	}
+
+	// hack - this makes it possible to use the Attacher interface
+	var ok bool
+	traceInstance.gadgetInstance, ok = ctx.GetVar("ebpfInstance")
+	if !ok {
+		return nil, fmt.Errorf("getting ebpfInstance")
+	}
+
+	activate := true // TODO: change to false once snapshot_socket is not skipped anymore
+
+	// Check, whether the gadget requested a map from us
+	if t, ok := ctx.GetVar(gadgets.MntNsFilterMapName); ok {
+		if _, ok := t.(*ebpf.Map); ok {
+			ctx.Logger().Debugf("gadget requested map %s", gadgets.MntNsFilterMapName)
+			activate = true
+		}
+	}
+
+	// Check for data sources containing refererences to mntns/netns that we could enrich data for
+	for _, ds := range ctx.GetDataSources() {
+		mntnsFields := ds.GetFieldsWithTag("type:gadget_mntns_id")               // TODO: const
+		netnsFields := ds.GetFieldsWithTag("type:gadget_netns_id", "name:netns") // TODO: const
+		if len(mntnsFields) == 0 && len(netnsFields) == 0 {
+			continue
+		}
+
+		ctx.Logger().Debugf("ds found: %q", ds.Name())
+
+		activate = true
+
+		var err error
+
+		var mntnsField datasource.FieldAccessor
+		var netnsField datasource.FieldAccessor
+
+		for _, f := range mntnsFields {
+			ctx.Logger().Debugf("using mntns enrichment")
+			mntnsField = f
+			mntnsField.SetHidden(true)
+			// We only support one of those per DataSource for now
+			break
+		}
+		for _, f := range netnsFields {
+			ctx.Logger().Debugf("using netns enrichment")
+			netnsField = f
+			netnsField.SetHidden(true)
+			// We only support one of those per DataSource for now
+			break
+		}
+
+		traceInstance.eventWrappers[ds], err = compat.WrapAccessors(ds, mntnsField, netnsField)
+		if err != nil {
+			return nil, fmt.Errorf("registering accessors: %w", err)
+		}
+	}
+
+	if !activate {
+		return nil, nil
+	}
+
+	return traceInstance, nil
+}
+
+func (m *KubeManagerInstance) Priority() int {
+	return -1
+}
+
+func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
+	return nil
+}
+
+func (m *KubeManagerInstance) Prepare(gadgetCtx operators.GadgetContext) error {
+	containerSelector := containercollection.ContainerSelector{
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: "", // TODO l.params.Get(ContainerName).AsString(),
+		},
+	}
+
+	if m.manager.gadgetTracerManager == nil {
+		return fmt.Errorf("container-collection isn't available")
+	}
+
+	// Create mount namespace map to filter by containers
+	err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
+	if err != nil {
+		return fmt.Errorf("adding tracer: %w", err)
+	}
+
+	mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
+	if err != nil {
+		m.manager.gadgetTracerManager.RemoveTracer(m.id)
+		return fmt.Errorf("creating mountnsmap: %w", err)
+	}
+
+	log.Debugf("set mountnsmap for gadget")
+	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
+
+	m.mountnsmap = mountnsmap
+
+	for ds, wrapper := range m.eventWrappers {
+		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			wr := &compat.EventWrapper{
+				EventWrapperBase: wrapper,
+				Data:             data,
+			}
+			if wrapper.MntnsidAccessor != nil {
+				m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs(wr)
+			}
+			if wrapper.NetnsidAccessor != nil {
+				m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByNetNs(wr)
+			}
+			return nil
+		}, 0)
+	}
+
+	// using PreGadgetRun() for the time being to register attacher funcs
+	err = m.PreGadgetRun()
+	if err != nil {
+		return fmt.Errorf("preGadgetRun: %w", err)
+	}
+
+	return nil
+}
+
+func (m *KubeManagerInstance) Start(ctx operators.GadgetContext) error {
+	return nil
+}
+
+func (m *KubeManagerInstance) Stop(ctx operators.GadgetContext) error {
+	m.manager.gadgetTracerManager.RemoveTracer(m.id)
+	return nil
+}
+
 func init() {
-	operators.Register(&KubeManager{})
+	km := &KubeManager{}
+	operators.Register(km)
+	operators.RegisterOperator(km)
 }
