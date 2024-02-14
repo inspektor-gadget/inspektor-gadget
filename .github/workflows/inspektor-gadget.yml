@@ -1365,10 +1365,10 @@ jobs:
     - name: Create AKS cluster ${{ env.CLUSTER_NAME }}
       shell: bash
       run: |
-        node_size='Standard_D2s_v5'
+        node_size='Standard_D4s_v5'
         if [ ${{ matrix.arch }} = 'arm64' ]; then
           # 'p' means the node size corresponds to arm64 hardware.
-          node_size='Standard_D2ps_v5'
+          node_size='Standard_D4ps_v5'
         fi
 
         # Enable the aks-preview extension to use AzureLinux as --os-sku.
