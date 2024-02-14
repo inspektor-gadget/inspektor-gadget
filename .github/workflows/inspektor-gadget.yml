@@ -1543,7 +1543,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        eksctl delete cluster --name ${{ env.CLUSTER_NAME }} --wait=false
+        eksctl delete cluster --name ${{ env.CLUSTER_NAME }} --force --disable-nodegroup-eviction
 
   test-integration-minikube:
     name: Integr. tests
