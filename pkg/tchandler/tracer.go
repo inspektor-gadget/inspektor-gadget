@@ -14,7 +14,7 @@
 
 // Package tchandler handles how SchedCLS programs are attached to containers and network
 // interfaces. The behavior is very similar to the network tracer implemented in
-// pkg/gadgets/internal/networktracer/tracer.go.
+// pkg/networktracer/tracer.go.
 // The main difference is that SchedCLS programs need to be attached to network interfaces and can
 // be attached on ingress or egress.
 package tchandler

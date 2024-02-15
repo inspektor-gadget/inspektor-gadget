@@ -537,7 +537,7 @@ https://github.com/inspektor-gadget/inspektor-gadget/pull/1825.
 
 Attach ebpf programs of type `BPF_PROG_TYPE_SOCKET_FILTER`. These programs need to be attached in
 each network namespace of interest. Currently it's handled by the
-`pkg/gadgets/internal/networktracer` package. Somehow the same logic needs to be used for
+`pkg/networktracer` package. Somehow the same logic needs to be used for
 containerized gadgets.
 
 #### Socket enricher

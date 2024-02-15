@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
