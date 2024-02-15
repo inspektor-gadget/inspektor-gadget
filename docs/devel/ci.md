@@ -241,7 +241,7 @@ Finally, the clusters are deleted, whatsoever is the result of the tests.
 
 ## Run integration tests on EKS
 
-We use OpenID Connect to authenticate Github Actions against AWS. If you want to run the integration
+We use OpenID Connect to authenticate GitHub Actions against AWS. If you want to run the integration
 tests on your fork, follow
 [this](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
 to configure your AWS account.
@@ -251,6 +251,25 @@ policies](https://eksctl.io/usage/minimum-iam-policies/) needed by eksctl. Save 
 role (including the rull `arn:aws..` prefix). in a [repository
 variable](https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository)
 named `AWS_ROLE`.
+
+## Run integration tests on GKE
+
+In order to run the integration tests on GKE on a fork, you need to set the following secrets:
+
+- `GKE_PROJECT`: The GCP project where the GKE cluster is located.
+- `GKE_SERVICE_ACCOUNT`: The service account used to authenticate to GCP.
+- `GKE_WORKLOAD_IDENTITY_PROVIDER`: The workload identity provider used to authenticate to GCP.
+
+these secrets use OpenID Connect to authenticate GitHub Actions against GCP for more information on how it works
+you can check the GitHub documentation [here](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-google-cloud-platform#adding-a-google-cloud-workload-identity-provider).
+The steps to create a service account and a workload identity provider can be found in the [google-github-actions/auth](https://github.com/google-github-actions/auth?tab=readme-ov-file#workload-identity-federation-through-a-service-account) repository till step 6.
+In terms of permissions, the service account needs to have the following roles:
+
+- `roles/container.admin`
+- `roles/container.clusterAdmin`
+- `roles/iam.serviceAccountUser`
+
+You can see the guide [here](https://cloud.google.com/kubernetes-engine/docs/how-to/iam#assigning_roles_to_service_accounts) to see how these roles can be assigned to the service account.
 
 ## Benchmarks
 

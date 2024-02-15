@@ -33,6 +33,7 @@ const (
 	K8sDistroARO            = "aro"
 	K8sDistroMinikubeGH     = "minikube-github"
 	K8sDistroEKSAmazonLinux = "eks-AmazonLinux"
+	K8sDistroGKECOS         = "gke-COS_containerd"
 )
 
 const securityProfileOperatorNamespace = "security-profiles-operator"
@@ -46,6 +47,7 @@ var (
 		K8sDistroARO,
 		K8sDistroMinikubeGH,
 		K8sDistroEKSAmazonLinux,
+		K8sDistroGKECOS,
 	}
 	cleaningUp = uint32(0)
 )

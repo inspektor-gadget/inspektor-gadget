@@ -1101,6 +1101,7 @@ jobs:
     outputs:
       aro: ${{ steps.set_output.outputs.aro }}
       aks: ${{ steps.set_output.outputs.aks }}
+      gke: ${{ steps.set_output.outputs.gke }}
       cosign: ${{ steps.set_output.outputs.cosign }}
     steps:
       # Secrets cannot be used as if condition, use job output as workaround.
@@ -1116,6 +1117,9 @@ jobs:
           AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          GKE_PROJECT: '${{ secrets.GKE_PROJECT }}'
+          GKE_SERVICE_ACCOUNT: '${{ secrets.GKE_SERVICE_ACCOUNT }}'
+          GKE_WORKLOAD_IDENTITY_PROVIDER: '${{ secrets.GKE_WORKLOAD_IDENTITY_PROVIDER }}'
         run: |
           if [[ "${OPENSHIFT_SERVER}" != "" && \
                 "${OPENSHIFT_USER}" != "" && \
@@ -1148,6 +1152,17 @@ jobs:
           else
             echo "Secrets to use cosign were not configured in the repo"
             echo "cosign=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ "${GKE_PROJECT}" != "" && \
+                "${GKE_SERVICE_ACCOUNT}" != "" && \
+                "${GKE_WORKLOAD_IDENTITY_PROVIDER}" != "" ]]; \
+          then
+            echo "Secrets to use a GKE cluster were configured in the repo"
+            echo "gke=true" >> $GITHUB_OUTPUT
+          else
+            echo "Secrets to use a GKE cluster were not configured in the repo"
+            echo "gke=false" >> $GITHUB_OUTPUT
           fi
 
   public-key-check:
@@ -1545,6 +1560,95 @@ jobs:
       run: |
         eksctl delete cluster --name ${{ env.CLUSTER_NAME }} --wait=false
 
+  test-integration-gke:
+    name: Integration tests on GKE
+    # level: 4
+    if: needs.check-secrets.outputs.gke == 'true'
+    needs:
+      - check-secrets
+      - test-unit
+      - build-clients
+      - build-gadget-container-images
+      - publish-gadget-images-manifest
+      - build-and-push-gadgets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor:
+          - arch: amd64
+            region: us-east1
+            machine_type: e2-standard-2
+          - arch: arm64
+            region: us-central1
+            machine_type: t2a-standard-2
+    # Following permissions are needed to use OIDC authentication with GKE.
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      GKE_CLUSTER_PREFIX: 'ig-ci-gke-'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Set container repository and determine image tag
+        id: set-repo-determine-image-tag
+        uses: ./.github/actions/set-container-repo-and-determine-image-tag
+        with:
+          registry: ${{ env.REGISTRY }}
+          container-image: ${{ env.CONTAINER_REPO }}
+      - name: Authenticate with GKE
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.GKE_PROJECT }}
+          service_account: ${{ secrets.GKE_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GKE_WORKLOAD_IDENTITY_PROVIDER }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Craft cluster name
+        shell: bash
+        run: |
+            echo "CLUSTER_NAME=${{ env.GKE_CLUSTER_PREFIX }}${{ matrix.flavor.arch }}-${RANDOM}" >> $GITHUB_ENV
+      - name: Create GKE cluster
+        run: |
+          # arm64 machine types are only available in zones (us-central1-a, us-central1-b, us-central1-f, us-central1-d) in us-central1 region
+          extra_args=""
+          if [ ${{ matrix.flavor.arch }} = "arm64" ]; then
+                extra_args="--node-locations us-central1-a,us-central1-b,us-central1-f"
+          fi
+
+          gcloud container clusters create ${{ env.CLUSTER_NAME }} --project ${{ secrets.GKE_PROJECT }} \
+            --region ${{ matrix.flavor.region }} --machine-type ${{ matrix.flavor.machine_type }} --num-nodes 1 --disk-size 50 $extra_args
+      - name: Set GKE cluster ${{ env.CLUSTER_NAME }} context
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ matrix.flavor.region }}
+      # ARM nodes come with a taint that prevents pods from being scheduled on them.
+      # https://cloud.google.com/kubernetes-engine/docs/how-to/prepare-arm-workloads-for-deployment
+      - name: Remove taint for arm64 nodes
+        if: ${{ matrix.flavor.arch == 'arm64' }}
+        run: |
+          kubectl taint nodes --all kubernetes.io/arch=arm64:NoSchedule-
+      - name: Run integration tests
+        uses: ./.github/actions/run-integration-tests
+        with:
+          kubernetes_distribution: "gke-COS_containerd"
+          kubernetes_architecture: ${{ matrix.flavor.arch }}
+          container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+          image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+          test_summary_suffix: "GKE-${{ matrix.flavor.arch }}"
+      - name: Delete GKE cluster
+        if: always()
+        run: |
+          gcloud container clusters delete --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} ${{ env.CLUSTER_NAME }} --async --quiet
+
   test-integration-minikube:
     name: Integr. tests
     # level: 3
@@ -1616,6 +1720,7 @@ jobs:
       - test-integration-aks
       - test-integration-aro
       - test-integration-eks
+      - test-integration-gke
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
     runs-on: ubuntu-latest
