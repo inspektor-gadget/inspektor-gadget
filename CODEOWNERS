@@ -39,7 +39,6 @@
 /pkg/gadgets/advise/seccomp/ @alban
 /pkg/gadgets/audit/seccomp/ @alban
 /pkg/gadgets/common/ @mauriciovasquezbernal
-/pkg/gadgets/internal/networktracer/ @alban @blanquicet
 /pkg/gadgets/profile/tcprtt/ @blanquicet
 /pkg/gadgets/prometheus/ @mauriciovasquezbernal
 /pkg/gadgets/run/ @burak-ok @mauriciovasquezbernal
@@ -65,6 +64,7 @@
 /pkg/ig-manager/ @blanquicet
 /pkg/kallsyms/ @alban
 /pkg/netnsenter/ @alban
+/pkg/networktracer/ @alban @blanquicet
 /pkg/operators/ @flyth
 /pkg/operators/kubeipresolver/ @burak-ok
 /pkg/operators/kubenameresolver/ @burak-ok
