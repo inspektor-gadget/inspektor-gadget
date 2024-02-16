@@ -18,13 +18,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/blang/semver"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	// Import this early to set the enrivonment variable before any other package is imported
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+
+	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
@@ -128,19 +127,12 @@ func main() {
 	}
 
 	if !skipInfo {
-		kubectlGadgetVersion := version.Version()
 		grpcRuntime.InitDeployInfo()
 		info, err := deployinfo.Load()
 		if err != nil {
-			log.Warnf("failed to load deploy info: %s", err)
-		}
-		serverSemver, _ := semver.Make(info.ServerVersion)
-
-		if !kubectlGadgetVersion.Equals(serverSemver) {
-			log.Warnf(
-				"WARNING: version skew detected (gadget pods v%s vs kubectl-gadget v%s), use 'kubectl gadget deploy' to fix it.\n",
-				serverSemver, kubectlGadgetVersion,
-			)
+			log.Warnf("Failed to load deploy info: %s", err)
+		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
+			log.Warnf(err.Error())
 		}
 	}
 

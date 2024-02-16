@@ -186,7 +186,7 @@ func getTraceClient() (*clientset.Clientset, error) {
 
 func printVersionSkewWarning(pods *corev1.PodList) {
 	// Do not print any warning if this is a prerelease to avoid
-	// annoyting developers.
+	// annoying developers.
 	kubectlGadgetVersion := version.Version()
 	if len(kubectlGadgetVersion.Pre) > 0 {
 		return

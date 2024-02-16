@@ -191,6 +191,7 @@ gadget-container:
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
+	 --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 .PHONY: cross-gadget-container
@@ -203,7 +204,7 @@ cross-gadget-container:
 			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
-		--push \
+		--push --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 push-gadget-container:
