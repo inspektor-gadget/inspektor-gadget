@@ -59,7 +59,7 @@ require (
 	k8s.io/cli-runtime v0.29.1
 	k8s.io/client-go v0.29.1
 	k8s.io/code-generator v0.29.1
-	k8s.io/cri-api v0.29.1
+	k8s.io/cri-api v0.29.2
 	oras.land/oras-go/v2 v2.3.1
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/security-profiles-operator v0.8.2
