@@ -277,14 +277,11 @@ func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
 			t.spec.Maps[tracerMapName] = bufMap
 
 			if heapMapPresent {
-				infos, err := types.GetTracerInfo(t.spec)
-				if err != nil {
-					return fmt.Errorf("getting tracer information: %w", err)
-				}
+				_, tracer := getAnyMapElem(t.config.Metadata.Tracers)
 
 				var eventStruct *btf.Struct
-				if err := t.spec.Types.TypeByName(infos.EventType, &eventStruct); err != nil {
-					return fmt.Errorf("finding event type %q: %w", infos.EventType, err)
+				if err := t.spec.Types.TypeByName(tracer.StructName, &eventStruct); err != nil {
+					return fmt.Errorf("finding event type %q: %w", tracer.StructName, err)
 				}
 
 				// Replace MAX_EVENT_SIZE by the actual event size.
