@@ -274,8 +274,6 @@ func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
 			bufMap.KeySize = 4
 			bufMap.ValueSize = 4
 
-			t.spec.Maps[tracerMapName] = bufMap
-
 			if heapMapPresent {
 				_, tracer := getAnyMapElem(t.config.Metadata.Tracers)
 
@@ -286,8 +284,6 @@ func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
 
 				// Replace MAX_EVENT_SIZE by the actual event size.
 				heapMap.ValueSize = eventStruct.Size
-
-				t.spec.Maps[types.GadgetHeapMapName] = heapMap
 			}
 		}
 	} else {
