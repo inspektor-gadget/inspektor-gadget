@@ -410,6 +410,53 @@ func TestValidate(t *testing.T) {
 }
 
 func TestPopulate(t *testing.T) {
+	expectedTopperMetadataFromScratch := &GadgetMetadata{
+		Name:             "TODO: Fill the gadget name",
+		Description:      "TODO: Fill the gadget description",
+		HomepageURL:      "TODO: Fill the gadget homepage URL",
+		DocumentationURL: "TODO: Fill the gadget documentation URL",
+		SourceURL:        "TODO: Fill the gadget source code URL",
+		Toppers: map[string]Topper{
+			"my_topper": {
+				MapName:    "events",
+				StructName: "event",
+			},
+		},
+		Structs: map[string]Struct{
+			"event": {
+				Fields: []Field{
+					{
+						Name:        "pid",
+						Description: "TODO: Fill field description",
+						Attributes: FieldAttributes{
+							Width:     10,
+							Alignment: AlignmentLeft,
+							Ellipsis:  EllipsisEnd,
+						},
+					},
+					{
+						Name:        "comm",
+						Description: "TODO: Fill field description",
+						Attributes: FieldAttributes{
+							Width:     16,
+							Alignment: AlignmentLeft,
+							Ellipsis:  EllipsisEnd,
+						},
+					},
+					{
+						Name:        "filename",
+						Description: "TODO: Fill field description",
+						Attributes: FieldAttributes{
+							Width:     16,
+							Alignment: AlignmentLeft,
+							Ellipsis:  EllipsisEnd,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	type testCase struct {
 		initialMetadata   *GadgetMetadata
 		expectedMetadata  *GadgetMetadata
@@ -748,6 +795,136 @@ func TestPopulate(t *testing.T) {
 		"tracer_bad_tracer_info": {
 			objectPath:        "../../../../testdata/populate_metadata_tracer_bad_tracer_info.o",
 			expectedErrString: "invalid tracer info",
+		},
+		"1_topper_1_struct_from_scratch": {
+			objectPath:       "../../../../testdata/populate_metadata_1_topper_1_struct_from_scratch.o",
+			expectedMetadata: expectedTopperMetadataFromScratch,
+		},
+		"topper_multi_definition": {
+			objectPath:       "../../../../testdata/populate_metadata_topper_multi_definition.o",
+			expectedMetadata: expectedTopperMetadataFromScratch,
+		},
+		"topper_add_missing_field": {
+			objectPath: "../../../../testdata/populate_metadata_topper_add_missing_field.o",
+			initialMetadata: &GadgetMetadata{
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Toppers: map[string]Topper{
+					"my_topper": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						// Set desc and some attributes to be sure they aren't overwritten
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "foo-pid",
+								Attributes: FieldAttributes{
+									Width:     4747,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "bar-comm",
+								Attributes: FieldAttributes{
+									Width:     1313,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							// missing filename field on purpose to check if it's added
+						},
+					},
+				},
+			},
+			expectedMetadata: &GadgetMetadata{
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Toppers: map[string]Topper{
+					"my_topper": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "foo-pid",
+								Attributes: FieldAttributes{
+									Width:     4747,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "bar-comm",
+								Attributes: FieldAttributes{
+									Width:     1313,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"topper_invalid_struct_name": {
+			objectPath: "../../../../testdata/populate_metadata_1_topper_1_struct_from_scratch.o",
+			initialMetadata: &GadgetMetadata{
+				Name:        "foo",
+				Description: "bar",
+				Toppers: map[string]Topper{
+					"my_topper": {
+						MapName:    "events",
+						StructName: "event2",
+					},
+				},
+			},
+			expectedErrString: "map \"events\" value name is \"event\", expected \"event2\"",
+		},
+		"topper_non_existing_map": {
+			objectPath:        "../../../../testdata/populate_metadata_topper_non_existing_map.o",
+			expectedErrString: "map \"non_existing_map\" not found in eBPF object",
+		},
+		"topper_invalid_info": {
+			objectPath:        "../../../../testdata/populate_metadata_topper_bad_topper_info.o",
+			expectedErrString: "invalid topper info: \"name___map___bad\"",
+		},
+		"topper_wrong_map_type": {
+			objectPath:        "../../../../testdata/populate_metadata_topper_wrong_map_type.o",
+			expectedErrString: "map \"events\" has a wrong type, expected: hash",
+		},
+		"topper_map_without_btf": {
+			objectPath:        "../../../../testdata/populate_metadata_topper_map_without_btf.o",
+			expectedErrString: "map \"events\" does not have BTF information for its values",
+		},
+		"topper_wrong_map_value_type": {
+			objectPath:        "../../../../testdata/populate_metadata_topper_wrong_map_value_type.o",
+			expectedErrString: "map \"events\" value is \"__u32\", expected \"struct\"",
 		},
 	}
 

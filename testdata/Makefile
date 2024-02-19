@@ -19,6 +19,14 @@ TESTDATA = \
 	validate_metadata1.o \
 	validate_metadata_topper.o \
 	validate_metadata_sched_cls.o \
+	populate_metadata_1_topper_1_struct_from_scratch.o \
+	populate_metadata_topper_non_existing_map.o \
+	populate_metadata_topper_bad_topper_info.o \
+	populate_metadata_topper_wrong_map_type.o \
+	populate_metadata_topper_map_without_btf.o \
+	populate_metadata_topper_wrong_map_value_type.o \
+	populate_metadata_topper_add_missing_field.o \
+	populate_metadata_topper_multi_definition.o \
 	#
 
 .PHONY: testdata_host
