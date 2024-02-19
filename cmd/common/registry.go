@@ -462,9 +462,24 @@ func buildCommandFromGadget(
 						return r, nil
 					}
 				case OutputModeJSONPretty:
-					printEventAsJSONPrettyFn(fe)
+					transformResult = func(result any) ([]byte, error) {
+						var out bytes.Buffer
+
+						err := json.Indent(&out, result.([]byte), "", "  ")
+						if err != nil {
+							return []byte{}, fmt.Errorf("transforming %+v: %w", result, err)
+						}
+
+						return out.Bytes(), nil
+					}
 				case OutputModeYAML:
-					printEventAsYAMLFn(fe)
+					transformResult = func(result any) ([]byte, error) {
+						d, err := k8syaml.JSONToYAML(result.([]byte))
+						if err != nil {
+							return []byte{}, fmt.Errorf("transforming %+v: %w", result, err)
+						}
+						return []byte("---\n" + string(d)), nil
+					}
 				}
 
 				if timeout == 0 && gType != gadgets.TypeTrace && gType != gadgets.TypeTraceIntervals {
