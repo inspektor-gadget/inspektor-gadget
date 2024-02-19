@@ -142,11 +142,17 @@ func AddFlags(command *cobra.Command) {
 		false,
 		"Automatically run in a privileged systemd unit if lacking enough capabilities",
 	)
+
+	// Enable the mount workaround by default when running inside a container.
+	automountFilesystemsDefault := false
+	if HostRoot != "" && HostRoot != "/" {
+		automountFilesystemsDefault = true
+	}
 	command.PersistentFlags().BoolVarP(
 		&autoMountFilesystemsFlag,
 		"auto-mount-filesystems",
 		"",
-		false,
+		automountFilesystemsDefault,
 		"Automatically mount bpffs, debugfs and tracefs if they are not already mounted",
 	)
 	command.PersistentFlags().BoolVarP(
