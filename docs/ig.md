@@ -109,7 +109,7 @@ docker              b72558e589cb95e835c4840de19f0306d4081091c34045246d62b6efed35
 Notice that most of the commands support the following features even if, for
 simplicity, they are not demonstrated in each command guide:
 
-- JSON format and `custom-columns` output mode are supported through the
+- JSON format and `columns` output mode are supported through the
   `--output` flag.
 - It is possible to filter events by container name using the `--containername`
   flag.
