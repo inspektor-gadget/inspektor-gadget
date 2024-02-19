@@ -56,7 +56,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 
 	listContainersCmd := &Command{
 		Name: "RunListContainers",
-		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --use-cri", *containerRuntime),
+		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --runtime-protocol=cri", *containerRuntime),
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
@@ -122,7 +122,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 
 	listContainersCmd := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --use-cri --watch", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --runtime-protocol=cri --watch", *containerRuntime),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker

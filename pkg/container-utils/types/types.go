@@ -16,13 +16,18 @@ package types
 
 import "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
+const (
+	RuntimeProtocolInternal = "internal"
+	RuntimeProtocolCRI      = "cri"
+)
+
 type ExtraConfig struct {
 	Namespace string
-	UseCri    bool
 }
 
 type RuntimeConfig struct {
-	Name       types.RuntimeName
-	SocketPath string
-	Extra      ExtraConfig
+	Name            types.RuntimeName
+	SocketPath      string
+	RuntimeProtocol string
+	Extra           ExtraConfig
 }

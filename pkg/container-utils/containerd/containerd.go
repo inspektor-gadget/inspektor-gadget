@@ -48,16 +48,25 @@ type ContainerdClient struct {
 	ctx    context.Context
 }
 
-func NewContainerdClient(socketPath string, config containerutilsTypes.ExtraConfig) (runtimeclient.ContainerRuntimeClient, error) {
+func NewContainerdClient(socketPath string, protocol string, config *containerutilsTypes.ExtraConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
 		socketPath = runtimeclient.ContainerdDefaultSocketPath
 	}
-	if config.UseCri {
+
+	switch protocol {
+	// Empty string falls back to "internal". Used by unit tests.
+	case "", containerutilsTypes.RuntimeProtocolInternal:
+		// handled below
+
+	case containerutilsTypes.RuntimeProtocolCRI:
 		return cri.NewCRIClient(types.RuntimeNameContainerd, socketPath, DefaultTimeout)
+
+	default:
+		return nil, fmt.Errorf("unknown runtime protocol %q", protocol)
 	}
 
 	namespace := constants.K8sContainerdNamespace
-	if config.Namespace != "" {
+	if config != nil && config.Namespace != "" {
 		namespace = config.Namespace
 	}
 

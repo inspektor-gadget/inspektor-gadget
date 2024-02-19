@@ -57,13 +57,24 @@ type CommonFlags struct {
 	// ContainerdNamespace is the namespace used by containerd
 	ContainerdNamespace string
 
-	// UseCri specifies whether to use the CRI API to talk to the runtime
-	UseCri bool
+	// RuntimeProtocol specifies whether to use the CRI API to talk to the runtime.
+	// Useful for docker and containerd.
+	// CRI-O is always using the CRI API. Podman is always using the internal API.
+	// Supported values: internal, cri.
+	RuntimeProtocol string
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Runtimes Configuration
+		switch commonFlags.RuntimeProtocol {
+		case containerutilsTypes.RuntimeProtocolInternal:
+		case containerutilsTypes.RuntimeProtocolCRI:
+		default:
+			return commonutils.WrapInErrInvalidArg("--runtime-protocol",
+				fmt.Errorf("runtime protocol %q is not supported", commonFlags.RuntimeProtocol))
+		}
+
 		parts := strings.Split(commonFlags.Runtimes, ",")
 
 	partsLoop:
@@ -96,15 +107,12 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			}
 
 			r := &containerutilsTypes.RuntimeConfig{
-				Name:       runtimeName,
-				SocketPath: socketPath,
+				Name:            runtimeName,
+				SocketPath:      socketPath,
+				RuntimeProtocol: commonFlags.RuntimeProtocol,
 				Extra: containerutilsTypes.ExtraConfig{
-					UseCri: commonFlags.UseCri,
+					Namespace: namespace,
 				},
-			}
-
-			if namespace != "" {
-				r.Extra.Namespace = namespace
 			}
 
 			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, r)
@@ -161,11 +169,12 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"Namespace used by containerd",
 	)
 
-	command.PersistentFlags().BoolVar(
-		&commonFlags.UseCri,
-		"use-cri",
-		false,
-		"Use CRI API to retrieve more K8s information, but ignore non K8s containers",
+	command.PersistentFlags().StringVar(
+		&commonFlags.RuntimeProtocol,
+		"runtime-protocol",
+		containerutilsTypes.RuntimeProtocolInternal,
+		fmt.Sprintf("Container runtime protocol (docker and containerd). Supported values are: %s",
+			strings.Join(containerutils.AvailableRuntimeProtocols, ", ")),
 	)
 }
 
