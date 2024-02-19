@@ -80,17 +80,11 @@ func startGarbageCollector(ctx context.Context, logger logger.Logger, dnsTimeout
 func collectGarbage(dnsTimeout time.Duration, queryMap *ebpf.Map, keysBatch []dnsQueryKeyT, valuesBatch []uint64) (int, error) {
 	var (
 		keysToDelete []dnsQueryKeyT
-		prevKeyOut   interface{}
-		nextKeyOut   dnsQueryKeyT
+		cursor       ebpf.MapBatchCursor
 	)
 
-	// Nil means start from the beginning.
-	// Type of prevKeyOut is interface{}, not dnsQueryKeyT, to ensure that the first call
-	// to BatchLookup sees an untyped nil (not an interface with value nil); otherwise it crashes.
-	prevKeyOut = nil
-
 	for {
-		n, err := queryMap.BatchLookup(prevKeyOut, &nextKeyOut, keysBatch, valuesBatch, nil)
+		n, err := queryMap.BatchLookup(&cursor, keysBatch, valuesBatch, nil)
 		if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 			return 0, fmt.Errorf("looking up keys in query map: %w", err)
 		}
@@ -107,8 +101,6 @@ func collectGarbage(dnsTimeout time.Duration, queryMap *ebpf.Map, keysBatch []dn
 			// This error means there are no more keys after the ones we just read.
 			break
 		}
-
-		prevKeyOut = nextKeyOut
 	}
 
 	if len(keysToDelete) == 0 {
