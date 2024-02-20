@@ -215,7 +215,9 @@ func autoSdUnitRestart() (exit bool, err error) {
 // If dryRun is true, autoMount will only check if the filesystems need to be
 // mounted.
 // Returns the list of filesystems that need to be mounted.
-func autoMountFilesystems(dryRun bool) (mountsSuggested []string, err error) {
+func autoMountFilesystems(dryRun bool) ([]string, error) {
+	var mountsSuggested []string
+
 	fs := []struct {
 		name    string
 		paths   []string
@@ -246,9 +248,9 @@ filesystemLoop:
 	for _, f := range fs {
 		var statfs unix.Statfs_t
 		for _, path := range f.paths {
-			err = unix.Statfs(path, &statfs)
-			if err != nil {
-				return mountsSuggested, fmt.Errorf("statfs %s: %w", path, err)
+			if err := unix.Statfs(path, &statfs); err != nil {
+				log.Debugf("statfs returned error on %s: %s", path, err)
+				continue
 			}
 			if statfs.Type == f.magic {
 				log.Debugf("%s already mounted", f.name)
@@ -263,13 +265,12 @@ filesystemLoop:
 			continue
 		}
 
-		err = unix.Mount("none", f.paths[0], f.name, 0, "")
-		if err != nil {
+		if err := unix.Mount("none", f.paths[0], f.name, 0, ""); err != nil {
 			return mountsSuggested, fmt.Errorf("mounting %s: %w", f.paths[0], err)
 		}
 		log.Debugf("%s mounted (%s)", f.name, f.paths[0])
 	}
-	return
+	return mountsSuggested, nil
 }
 
 func suggestWSLWorkaround() error {
