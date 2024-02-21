@@ -37,7 +37,7 @@ func TestTraceMount(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracemountTypes.Event{
-				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				Event:     BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:      "mount",
 				Operation: "mount",
 				Retval:    -2,

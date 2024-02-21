@@ -37,7 +37,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracetcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
+				Event:     BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -100,7 +100,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracetcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
+				Event:     BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{

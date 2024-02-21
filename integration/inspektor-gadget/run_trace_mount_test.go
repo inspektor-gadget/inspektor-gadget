@@ -33,7 +33,7 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedBaseJsonObj := RunEventToObj(t, &types.Event{
-				CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				CommonData: BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			})
 
 			expectedTraceMountJsonObj := map[string]interface{}{

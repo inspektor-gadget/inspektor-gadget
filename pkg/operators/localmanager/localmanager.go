@@ -47,6 +47,7 @@ const (
 	CrioSocketPath       = "crio-socketpath"
 	PodmanSocketPath     = "podman-socketpath"
 	ContainerdNamespace  = "containerd-namespace"
+	RuntimeProtocol      = "runtime-protocol"
 )
 
 type MountNsMapSetter interface {
@@ -109,6 +110,11 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          ContainerdNamespace,
 			DefaultValue: constants.K8sContainerdNamespace,
 			Description:  "Containerd namespace to use",
+		},
+		{
+			Key:          RuntimeProtocol,
+			DefaultValue: "internal",
+			Description:  "Container runtime protocol. Supported values are: internal, cri",
 		},
 	}
 }
@@ -194,13 +200,12 @@ partsLoop:
 		}
 
 		r := &containerutilsTypes.RuntimeConfig{
-			Name:       runtimeName,
-			SocketPath: socketPath,
-		}
-		if namespace != "" {
-			r.Extra = &containerutilsTypes.ExtraConfig{
+			Name:            runtimeName,
+			SocketPath:      socketPath,
+			RuntimeProtocol: operatorParams.Get(RuntimeProtocol).AsString(),
+			Extra: containerutilsTypes.ExtraConfig{
 				Namespace: namespace,
-			}
+			},
 		}
 
 		rc = append(rc, r)

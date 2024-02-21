@@ -55,10 +55,10 @@ func TestSelector(t *testing.T) {
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
-					},
-					PodLabels: map[string]string{
-						"key1": "value1",
-						"key2": "value2",
+						PodLabels: map[string]string{
+							"key1": "value1",
+							"key2": "value2",
+						},
 					},
 				},
 			},
@@ -68,11 +68,11 @@ func TestSelector(t *testing.T) {
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
-					},
-					PodLabels: map[string]string{
-						"unrelated-label": "here",
-						"key1":            "value1",
-						"key2":            "value2",
+						PodLabels: map[string]string{
+							"unrelated-label": "here",
+							"key1":            "value1",
+							"key2":            "value2",
+						},
 					},
 				},
 			},
@@ -107,10 +107,10 @@ func TestSelector(t *testing.T) {
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
-					},
-					PodLabels: map[string]string{
-						"key1": "value1",
-						"key2": "value2",
+						PodLabels: map[string]string{
+							"key1": "value1",
+							"key2": "value2",
+						},
 					},
 				},
 			},
@@ -120,10 +120,10 @@ func TestSelector(t *testing.T) {
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
-					},
-					PodLabels: map[string]string{
-						"key1": "value1",
-						"key2": "something-else",
+						PodLabels: map[string]string{
+							"key1": "value1",
+							"key2": "something-else",
+						},
 					},
 				},
 			},
@@ -328,10 +328,10 @@ func TestContainerResolver(t *testing.T) {
 				Namespace:     "another-namespace",
 				PodName:       "my-pod",
 				ContainerName: "container0",
-			},
-			PodLabels: map[string]string{
-				"key1": "value1",
-				"key2": "value2",
+				PodLabels: map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+				},
 			},
 		},
 	})
@@ -339,8 +339,10 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers with label 'key1=value1'
 	selectedContainers := cc.GetContainersBySelector(&ContainerSelector{
 		K8s: K8sSelector{
-			PodLabels: map[string]string{
-				"key1": "value1",
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				PodLabels: map[string]string{
+					"key1": "value1",
+				},
 			},
 		},
 	})
@@ -355,9 +357,11 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers with label 'key1=value1' and 'key2=value2'
 	selector := ContainerSelector{
 		K8s: K8sSelector{
-			PodLabels: map[string]string{
-				"key1": "value1",
-				"key2": "value2",
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				PodLabels: map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+				},
 			},
 		},
 	}

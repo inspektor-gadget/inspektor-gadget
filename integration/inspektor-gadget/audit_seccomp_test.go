@@ -159,6 +159,8 @@ kind: Pod
 metadata:
   name: test-pod
   namespace: %s
+  labels:
+    run: test-pod
 spec:
   securityContext:
     seccompProfile:
@@ -181,7 +183,7 @@ EOF
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &seccompauditTypes.Event{
-					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Syscall: "unshare",
 					Code:    "kill_thread",
 					Comm:    "unshare",

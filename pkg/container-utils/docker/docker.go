@@ -28,7 +28,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -46,7 +48,21 @@ type DockerClient struct {
 	socketPath string
 }
 
-func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+func NewDockerClient(socketPath string, protocol string) (runtimeclient.ContainerRuntimeClient, error) {
+	switch protocol {
+	// Empty string falls back to "internal". Used by unit tests.
+	case "", containerutilsTypes.RuntimeProtocolInternal:
+		// handled below
+
+	case containerutilsTypes.RuntimeProtocolCRI:
+		// TODO: Configurable
+		socketPath = runtimeclient.CriDockerDefaultSocketPath
+		return cri.NewCRIClient(types.RuntimeNameDocker, socketPath, DefaultTimeout)
+
+	default:
+		return nil, fmt.Errorf("unknown runtime protocol %q", protocol)
+	}
+
 	if socketPath == "" {
 		socketPath = runtimeclient.DockerDefaultSocketPath
 	}

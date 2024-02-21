@@ -56,11 +56,25 @@ type CommonFlags struct {
 
 	// ContainerdNamespace is the namespace used by containerd
 	ContainerdNamespace string
+
+	// RuntimeProtocol specifies whether to use the CRI API to talk to the runtime.
+	// Useful for docker and containerd.
+	// CRI-O is always using the CRI API. Podman is always using the internal API.
+	// Supported values: internal, cri.
+	RuntimeProtocol string
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Runtimes Configuration
+		switch commonFlags.RuntimeProtocol {
+		case containerutilsTypes.RuntimeProtocolInternal:
+		case containerutilsTypes.RuntimeProtocolCRI:
+		default:
+			return commonutils.WrapInErrInvalidArg("--runtime-protocol",
+				fmt.Errorf("runtime protocol %q is not supported", commonFlags.RuntimeProtocol))
+		}
+
 		parts := strings.Split(commonFlags.Runtimes, ",")
 
 	partsLoop:
@@ -93,14 +107,12 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			}
 
 			r := &containerutilsTypes.RuntimeConfig{
-				Name:       runtimeName,
-				SocketPath: socketPath,
-			}
-
-			if namespace != "" {
-				r.Extra = &containerutilsTypes.ExtraConfig{
+				Name:            runtimeName,
+				SocketPath:      socketPath,
+				RuntimeProtocol: commonFlags.RuntimeProtocol,
+				Extra: containerutilsTypes.ExtraConfig{
 					Namespace: namespace,
-				}
+				},
 			}
 
 			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, r)
@@ -155,6 +167,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"containerd-namespace",
 		constants.K8sContainerdNamespace,
 		"Namespace used by containerd",
+	)
+
+	command.PersistentFlags().StringVar(
+		&commonFlags.RuntimeProtocol,
+		"runtime-protocol",
+		containerutilsTypes.RuntimeProtocolInternal,
+		fmt.Sprintf("Container runtime protocol (docker and containerd). Supported values are: %s",
+			strings.Join(containerutils.AvailableRuntimeProtocols, ", ")),
 	)
 }
 

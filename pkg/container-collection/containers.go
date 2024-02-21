@@ -50,6 +50,9 @@ type Container struct {
 	// See https://github.com/opencontainers/runtime-spec/blob/main/bundle.md
 	Bundle string `json:"bundle,omitempty"`
 
+	// SandboxId is the sandbox id for the corresponding pod
+	SandboxId string `json:"sandboxId,omitempty"`
+
 	// Linux metadata can be derived from the pid via /proc/$pid/...
 	Mntns       uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
 	Netns       uint64 `json:"netns,omitempty" column:"netns,template:ns"`
@@ -91,15 +94,13 @@ type RuntimeMetadata struct {
 
 type K8sMetadata struct {
 	types.BasicK8sMetadata `json:",inline"`
-	PodLabels              map[string]string `json:"podLabels,omitempty"`
-	PodUID                 string            `json:"podUID,omitempty"`
+	PodUID                 string `json:"podUID,omitempty"`
 
 	ownerReference *metav1.OwnerReference
 }
 
 type K8sSelector struct {
 	types.BasicK8sMetadata
-	PodLabels map[string]string
 }
 
 type RuntimeSelector struct {

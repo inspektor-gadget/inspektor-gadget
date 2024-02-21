@@ -63,11 +63,13 @@ func TestTraceDns(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
 			expectedEntries := []*dnsTypes.Event{
 				{
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
@@ -85,6 +87,7 @@ func TestTraceDns(t *testing.T) {
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
@@ -106,6 +109,7 @@ func TestTraceDns(t *testing.T) {
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
@@ -123,6 +127,7 @@ func TestTraceDns(t *testing.T) {
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
@@ -144,6 +149,7 @@ func TestTraceDns(t *testing.T) {
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
@@ -161,6 +167,7 @@ func TestTraceDns(t *testing.T) {
 					Event: BuildBaseEvent(ns,
 						WithRuntimeMetadata(*containerRuntime),
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,

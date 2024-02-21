@@ -53,7 +53,7 @@ func TestSnapshotProcess(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json --node %s", ns, nodeName),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &snapshotprocessTypes.Event{
-					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Command: "nc",
 				}
 				expectedEntry.K8s.Node = nodeName

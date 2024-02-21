@@ -32,10 +32,12 @@ func TestProfileCpu(t *testing.T) {
 		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
 		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
 			expectedEntry := &cpuprofileTypes.Report{
 				CommonData: BuildCommonData(ns,
 					WithRuntimeMetadata(*containerRuntime),
 					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					WithPodLabels("test-pod", ns, isCrioRuntime),
 				),
 				Comm: "sh",
 			}

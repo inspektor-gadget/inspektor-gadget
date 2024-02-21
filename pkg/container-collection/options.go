@@ -38,6 +38,7 @@ import (
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -46,19 +47,28 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
+func setIfEmptyStr[T ~string](s *T, v T) {
+	if *s == "" {
+		*s = v
+	}
+}
+
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.Runtime.ContainerID = containerData.Runtime.ContainerID
-	container.Runtime.RuntimeName = containerData.Runtime.RuntimeName
-	container.Runtime.ContainerName = containerData.Runtime.ContainerName
-	container.Runtime.ContainerImageName = containerData.Runtime.ContainerImageName
-	container.Runtime.ContainerImageDigest = containerData.Runtime.ContainerImageDigest
+	setIfEmptyStr(&container.Runtime.ContainerID, containerData.Runtime.ContainerID)
+	setIfEmptyStr(&container.Runtime.RuntimeName, containerData.Runtime.RuntimeName)
+	setIfEmptyStr(&container.Runtime.ContainerName, containerData.Runtime.ContainerName)
+	setIfEmptyStr(&container.Runtime.ContainerImageName, containerData.Runtime.ContainerImageName)
+	setIfEmptyStr(&container.Runtime.ContainerImageDigest, containerData.Runtime.ContainerImageDigest)
 
 	// Kubernetes
-	container.K8s.Namespace = containerData.K8s.Namespace
-	container.K8s.PodName = containerData.K8s.PodName
-	container.K8s.PodUID = containerData.K8s.PodUID
-	container.K8s.ContainerName = containerData.K8s.ContainerName
+	setIfEmptyStr(&container.K8s.Namespace, containerData.K8s.Namespace)
+	setIfEmptyStr(&container.K8s.PodName, containerData.K8s.PodName)
+	setIfEmptyStr(&container.K8s.PodUID, containerData.K8s.PodUID)
+	setIfEmptyStr(&container.K8s.ContainerName, containerData.K8s.ContainerName)
+	if container.K8s.PodLabels == nil {
+		container.K8s.PodLabels = containerData.K8s.PodLabels
+	}
 }
 
 func containerRuntimeEnricher(
@@ -66,10 +76,31 @@ func containerRuntimeEnricher(
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
-	// If the container is already enriched with the metadata a runtime client
-	// is able to provide, skip it.
+	// If the container is already enriched with all the metadata a runtime
+	// client is able to provide, skip it.
 	if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
 		runtimeclient.IsEnrichedWithRuntimeMetadata(container.Runtime.BasicRuntimeMetadata) {
+		return true
+	}
+
+	// For new CRI-O containers, the next GetContainer() call will always fail
+	// because the container doesn't exist yet. So, if we have the sandbox ID,
+	// let's enrich the container at least with the PodLabels as the PodSandbox
+	// do exist at this point.
+	if container.Runtime.RuntimeName == types.RuntimeNameCrio {
+		criClient, ok := runtimeClient.(*cri.CRIClient)
+		if ok && container.SandboxId != "" {
+			labels, err := criClient.GetPodLabels(container.SandboxId)
+			if err != nil {
+				log.Warnf("Runtime enricher (%s): failed to GetPodLabels: %s",
+					runtimeName, err)
+
+				// We couldn't get the labels, but don't drop the container.
+				return true
+			}
+			container.K8s.PodLabels = labels
+		}
+
 		return true
 	}
 
@@ -488,8 +519,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			// Skip enriching if all k8s fields are already known.
 			// This is an optimization and to make sure to avoid erasing the fields in case of error.
-			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
-				container.K8s.PodLabels != nil {
+			if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) {
 				return true
 			}
 
@@ -721,7 +751,8 @@ func isEnrichedWithOCIConfigInfo(container *Container) bool {
 		container.K8s.ContainerName != "" &&
 		container.K8s.PodName != "" &&
 		container.K8s.Namespace != "" &&
-		container.K8s.PodUID != ""
+		container.K8s.PodUID != "" &&
+		container.SandboxId != ""
 }
 
 // WithOCIConfigEnrichment enriches container using provided OCI config
@@ -765,6 +796,9 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			}
 			if imageName := resolver.ContainerImageName(container.OciConfig.Annotations); imageName != "" {
 				container.Runtime.ContainerImageName = imageName
+			}
+			if podSandboxId := resolver.PodSandboxId(container.OciConfig.Annotations); podSandboxId != "" {
+				container.SandboxId = podSandboxId
 			}
 
 			return true

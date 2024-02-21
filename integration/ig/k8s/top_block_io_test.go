@@ -29,10 +29,12 @@ import (
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 	validateOutputFn := func(t *testing.T, output string) {
 		isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+		isCrioRuntime := *containerRuntime == ContainerRuntimeCRIO
 		expectedEntry := &types.Stats{
 			CommonData: BuildCommonData(ns,
 				WithRuntimeMetadata(*containerRuntime),
 				WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				WithPodLabels("test-pod", ns, isCrioRuntime),
 			),
 			Comm:  "dd",
 			Write: true,

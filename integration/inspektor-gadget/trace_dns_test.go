@@ -67,7 +67,7 @@ func TestTraceDns(t *testing.T) {
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*tracednsTypes.Event{
 				{
-					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -81,7 +81,7 @@ func TestTraceDns(t *testing.T) {
 					SrcIP:      busyBoxIP,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -99,7 +99,7 @@ func TestTraceDns(t *testing.T) {
 					DstIP:      busyBoxIP,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -113,7 +113,7 @@ func TestTraceDns(t *testing.T) {
 					SrcIP:      busyBoxIP,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,

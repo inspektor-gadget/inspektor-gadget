@@ -154,8 +154,8 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 					Namespace:     pod.GetNamespace(),
 					PodName:       pod.GetName(),
 					ContainerName: s.Name,
+					PodLabels:     labels,
 				},
-				PodLabels: labels,
 			},
 		}
 		containers = append(containers, containerDef)

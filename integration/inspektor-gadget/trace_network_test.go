@@ -56,7 +56,7 @@ func TestTraceNetwork(t *testing.T) {
 
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
-					Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:     BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:      "wget",
 					Uid:       0,
 					Gid:       0,
@@ -83,6 +83,7 @@ func TestTraceNetwork(t *testing.T) {
 									Namespace:     ns,
 									PodName:       "nginx-pod",
 									ContainerName: "nginx-pod",
+									PodLabels:     map[string]string{"run": "nginx-pod"},
 								},
 							},
 							Runtime: eventtypes.BasicRuntimeMetadata{

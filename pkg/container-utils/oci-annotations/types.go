@@ -38,6 +38,8 @@ type Resolver interface {
 	PodUID(annotations map[string]string) string
 	// PodNamespace returns the namespace of the pod to which container belongs
 	PodNamespace(annotations map[string]string) string
+	// PodSandboxId returns the sandbox id of the pod to which container belongs
+	PodSandboxId(annotations map[string]string) string
 	// Runtime returns runtime in which the container is running
 	Runtime() types.RuntimeName
 }

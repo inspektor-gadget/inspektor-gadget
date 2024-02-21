@@ -26,21 +26,10 @@ const (
 	DefaultTimeout = 2 * time.Second
 )
 
-type CrioClient struct {
-	criclient.CRIClient
-}
-
 func NewCrioClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
 		socketPath = runtimeclient.CrioDefaultSocketPath
 	}
 
-	criClient, err := criclient.NewCRIClient(types.RuntimeNameCrio, socketPath, DefaultTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	return &CrioClient{
-		CRIClient: criClient,
-	}, nil
+	return criclient.NewCRIClient(types.RuntimeNameCrio, socketPath, DefaultTimeout)
 }

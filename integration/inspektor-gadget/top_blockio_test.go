@@ -28,7 +28,7 @@ import (
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &topblockioTypes.Stats{
-			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+			CommonData: BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Write:      true,
 			Comm:       "dd",
 		}
