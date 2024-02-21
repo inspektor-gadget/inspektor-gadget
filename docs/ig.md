@@ -308,9 +308,6 @@ $ docker run -ti --rm \
     --privileged \
     -v /run:/run \
     -v /:/host \
-    -v /sys/kernel/debug:/sys/kernel/debug \
-    -v /sys/kernel/tracing:/sys/kernel/tracing \
-    -v /sys/fs/bpf:/sys/fs/bpf \
     --pid=host \
     ghcr.io/inspektor-gadget/ig \
     trace exec
@@ -323,8 +320,6 @@ List of flags:
 - `-v /run:/run` gives access to the container runtimes sockets (docker, containerd, CRI-O).
 - `-v /:/host` gives access to the host filesystem. This is used to access the host processes via /host/proc, and access
   container runtime hooks (rootfs and config.json).
-- `-v` volumes for debugfs, tracefs and bpf filesystems. Alternatively, it is possible to pass the flag
-  `--auto-mount-filesystems` to ig to automatically mount those filesystems.
 - `--pid=host` runs in the host PID namespace. Optional on Linux. This is necessary on Docker Desktop on Windows because
   /host/proc does not give access to the host processes.
 

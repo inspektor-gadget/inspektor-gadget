@@ -18,7 +18,6 @@ spec:
       command:
         # CHANGEME: run the gadget of your choice
         - "ig"
-        - "--auto-mount-filesystems"
         - "trace"
         - "exec"
         - "--host"
@@ -30,8 +29,6 @@ spec:
           name: host
         - mountPath: /run
           name: run
-        - mountPath: /sys/kernel/debug
-          name: debugfs
   # CHANGEME: where do you want to run this pod?
   nodeName: minikube-containerd
   volumes:
@@ -41,6 +38,3 @@ spec:
     - name: run
       hostPath:
         path: /run
-    - name: debugfs
-      hostPath:
-        path: /sys/kernel/debug
