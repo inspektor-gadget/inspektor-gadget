@@ -22,13 +22,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/distribution/reference"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"gopkg.in/yaml.v2"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 )
 
 const (
@@ -123,11 +127,7 @@ func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, medi
 		return ocispec.Descriptor{}, fmt.Errorf("reading eBPF program file: %w", err)
 	}
 	progDesc := content.NewDescriptorFromBytes(mediaType, progBytes)
-	progDesc.Annotations = map[string]string{
-		ocispec.AnnotationTitle:       "TODO: title",
-		ocispec.AnnotationAuthors:     "TODO: authors",
-		ocispec.AnnotationDescription: "TODO: description",
-	}
+
 	err = pushDescriptorIfNotExists(ctx, target, progDesc, bytes.NewReader(progBytes))
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("pushing %q layer: %w", mediaType, err)
@@ -136,15 +136,40 @@ func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, medi
 	return progDesc, nil
 }
 
+func annotationsFromMetadata(metadataBytes []byte) (map[string]string, error) {
+	metadata := &types.GadgetMetadata{}
+	if err := yaml.NewDecoder(bytes.NewReader(metadataBytes)).Decode(&metadata); err != nil {
+		return nil, fmt.Errorf("decoding metadata file: %w", err)
+	}
+
+	// Suggested annotations for the OCI image
+	// https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+	annotations := map[string]string{
+		ocispec.AnnotationTitle:         metadata.Name,
+		ocispec.AnnotationDescription:   metadata.Description,
+		ocispec.AnnotationCreated:       time.Now().Format(time.RFC3339),
+		ocispec.AnnotationURL:           metadata.HomepageURL,
+		ocispec.AnnotationDocumentation: metadata.DocumentationURL,
+		ocispec.AnnotationSource:        metadata.SourceURL,
+	}
+
+	for k, v := range metadata.Annotations {
+		annotations[k] = v
+	}
+	return annotations, nil
+}
+
 func createMetadataDesc(ctx context.Context, target oras.Target, metadataFilePath string) (ocispec.Descriptor, error) {
 	metadataBytes, err := os.ReadFile(metadataFilePath)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("reading metadata file: %w", err)
 	}
 	defDesc := content.NewDescriptorFromBytes(metadataMediaType, metadataBytes)
-	defDesc.Annotations = map[string]string{
-		ocispec.AnnotationTitle: "config.yaml",
+	defDesc.Annotations, err = annotationsFromMetadata(metadataBytes)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("reading annotations from metadata file: %w", err)
 	}
+
 	err = pushDescriptorIfNotExists(ctx, target, defDesc, bytes.NewReader(metadataBytes))
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("pushing metadata file: %w", err)
@@ -189,9 +214,11 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		Versioned: specs.Versioned{
 			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 		},
-		Config: defDesc,
-		Layers: []ocispec.Descriptor{progDesc},
+		Config:      defDesc,
+		Layers:      []ocispec.Descriptor{progDesc},
+		Annotations: defDesc.Annotations,
 	}
+
 	if wasmFilePath != "" {
 		wasmDesc, err := createLayerDesc(ctx, target, wasmFilePath, wasmObjectMediaType)
 		if err != nil {
@@ -209,6 +236,7 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		Architecture: arch,
 		OS:           "linux",
 	}
+	manifestDesc.Annotations = manifest.Annotations
 
 	exists, err := target.Exists(ctx, manifestDesc)
 	if err != nil {
@@ -237,19 +265,26 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 		layers = append(layers, manifestDesc)
 	}
 
+	if len(layers) == 0 {
+		return ocispec.Descriptor{}, fmt.Errorf("no eBPF objects found")
+	}
+
 	// Create the index which combines the architectures and push it to the memory store
 	index := ocispec.Index{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 		},
-		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: layers,
+		MediaType:   ocispec.MediaTypeImageIndex,
+		Manifests:   layers,
+		Annotations: layers[0].Annotations,
 	}
 	indexJson, err := json.Marshal(index)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("marshalling manifest: %w", err)
 	}
 	indexDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexJson)
+	indexDesc.Annotations = index.Annotations
+
 	err = pushDescriptorIfNotExists(ctx, target, indexDesc, bytes.NewReader(indexJson))
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("pushing manifest index: %w", err)
