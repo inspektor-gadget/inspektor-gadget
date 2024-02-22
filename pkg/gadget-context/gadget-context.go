@@ -107,13 +107,19 @@ func NewSimple(
 	ctx context.Context,
 	url string,
 	logger logger.Logger,
+	ociParams *params.Params,
 ) *GadgetContext {
 	gCtx, cancel := context.WithCancel(ctx)
+
+	operatorsParamCollection := make(params.Collection)
+	operatorsParamCollection["oci"] = ociParams
+
 	return &GadgetContext{
-		ctx:    gCtx,
-		cancel: cancel,
-		args:   []string{url},
-		logger: logger,
+		ctx:                      gCtx,
+		cancel:                   cancel,
+		args:                     []string{url},
+		logger:                   logger,
+		operatorsParamCollection: operatorsParamCollection,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),

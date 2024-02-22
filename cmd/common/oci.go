@@ -37,6 +37,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	// Add operator global flags
 	operatorsGlobalParamsCollection := operators.GlobalParamsCollection()
 
+	ociParams := operators.OCIParamDescs().ToParams()
+
 	cmd := &cobra.Command{
 		Use:          "run-experimental",
 		Short:        "run gadget",
@@ -74,10 +76,10 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			// gadget's parameters.
 			actualArgs := cmd.Flags().Args()
 
-			gadgetCtx := gadgetcontext.NewSimple(context.Background(), actualArgs[0], logger.DefaultLogger())
+			gadgetCtx := gadgetcontext.NewSimple(context.Background(), actualArgs[0], logger.DefaultLogger(), ociParams)
 
 			// Fetch gadget information; TODO: this can potentially be cached
-			info, err := runtime.GetOCIGadgetInfo(gadgetCtx, nil, args)
+			info, err := runtime.GetOCIGadgetInfo(gadgetCtx, nil, nil)
 			if err != nil {
 				return fmt.Errorf("fetching gadget information: %w", err)
 			}
@@ -117,7 +119,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 			ctx := fe.GetContext()
 
-			gadgetCtx := gadgetcontext.NewSimple(ctx, args[0], logger.DefaultLogger())
+			gadgetCtx := gadgetcontext.NewSimple(ctx, args[0], logger.DefaultLogger(), ociParams)
 
 			err := runtime.RunOCIGadget(gadgetCtx)
 			if err != nil {
@@ -130,6 +132,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	for _, operatorParams := range operatorsGlobalParamsCollection {
 		AddFlags(cmd, operatorParams, nil, runtime)
 	}
+
+	AddFlags(cmd, ociParams, nil, runtime)
 
 	return cmd
 }

@@ -124,7 +124,7 @@ func (s *Service) GetOCIGadgetInfo(ctx context.Context, req *api.GetOCIGadgetInf
 		return nil, fmt.Errorf("invalid arguments")
 	}
 
-	gadgetCtx := gadgetcontext.NewSimple(ctx, req.Args[0], s.logger)
+	gadgetCtx := gadgetcontext.NewSimple(ctx, req.Args[0], s.logger, nil)
 	gi, err := s.runtime.GetOCIGadgetInfo(gadgetCtx, nil, req.Args)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
@@ -156,7 +156,7 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 
 	runtime := s.runtime
 
-	gadgetCtx := gadgetcontext.NewSimple(runGadget.Context(), ociRequest.Url, logger)
+	gadgetCtx := gadgetcontext.NewSimple(runGadget.Context(), ociRequest.Url, logger, nil)
 
 	// Create payload buffer
 	outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
