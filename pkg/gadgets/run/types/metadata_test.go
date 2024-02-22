@@ -18,8 +18,9 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/stretchr/testify/require"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 func TestValidate(t *testing.T) {
@@ -330,8 +331,11 @@ func TestPopulate(t *testing.T) {
 		"1_tracer_1_struct_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_1_tracer_1_struct_from_scratch.o",
 			expectedMetadata: &GadgetMetadata{
-				Name:        "TODO: Fill the gadget name",
-				Description: "TODO: Fill the gadget description",
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
 				Tracers: map[string]Tracer{
 					"test": {
 						MapName:    "events",
@@ -376,8 +380,14 @@ func TestPopulate(t *testing.T) {
 		"tracer_add_missing_field": {
 			objectPath: "../../../../testdata/populate_metadata_tracer_add_missing_field.o",
 			initialMetadata: &GadgetMetadata{
-				Name:        "foo",
-				Description: "bar",
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Annotations: map[string]string{
+					"io.inspektor-gadget.test": "test",
+				},
 				Tracers: map[string]Tracer{
 					"test": {
 						MapName:    "events",
@@ -412,8 +422,14 @@ func TestPopulate(t *testing.T) {
 				},
 			},
 			expectedMetadata: &GadgetMetadata{
-				Name:        "foo",
-				Description: "bar",
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Annotations: map[string]string{
+					"io.inspektor-gadget.test": "test",
+				},
 				Tracers: map[string]Tracer{
 					"test": {
 						MapName:    "events",
@@ -458,8 +474,11 @@ func TestPopulate(t *testing.T) {
 		"no_tracers_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_no_tracers_from_scratch.o",
 			expectedMetadata: &GadgetMetadata{
-				Name:        "TODO: Fill the gadget name",
-				Description: "TODO: Fill the gadget description",
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
 			},
 		},
 		"tracer_wrong_map_type": {
@@ -473,8 +492,11 @@ func TestPopulate(t *testing.T) {
 		"tracer_map_without_btf": {
 			objectPath: "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
 			expectedMetadata: &GadgetMetadata{
-				Name:        "TODO: Fill the gadget name",
-				Description: "TODO: Fill the gadget description",
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
 				Tracers: map[string]Tracer{
 					"test": {
 						MapName:    "events",
@@ -519,8 +541,11 @@ func TestPopulate(t *testing.T) {
 		"param_populate_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
 			expectedMetadata: &GadgetMetadata{
-				Name:        "TODO: Fill the gadget name",
-				Description: "TODO: Fill the gadget description",
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -536,8 +561,14 @@ func TestPopulate(t *testing.T) {
 		"param_dont_modify_values": {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
 			initialMetadata: &GadgetMetadata{
-				Name:        "foo",
-				Description: "bar",
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Annotations: map[string]string{
+					"io.inspektor-gadget.test": "test",
+				},
 				EBPFParams: map[string]EBPFParam{
 					"param": {
 						// Set desc and some attributes to be sure they aren't overwritten
@@ -550,8 +581,14 @@ func TestPopulate(t *testing.T) {
 				},
 			},
 			expectedMetadata: &GadgetMetadata{
-				Name:        "foo",
-				Description: "bar",
+				Name:             "foo",
+				Description:      "bar",
+				HomepageURL:      "url1",
+				DocumentationURL: "url2",
+				SourceURL:        "url3",
+				Annotations: map[string]string{
+					"io.inspektor-gadget.test": "test",
+				},
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -569,8 +606,11 @@ func TestPopulate(t *testing.T) {
 		"snapshotter_struct": {
 			objectPath: "../../../../testdata/populate_metadata_snapshotter_struct.o",
 			expectedMetadata: &GadgetMetadata{
-				Name:        "TODO: Fill the gadget name",
-				Description: "TODO: Fill the gadget description",
+				Name:             "TODO: Fill the gadget name",
+				Description:      "TODO: Fill the gadget description",
+				HomepageURL:      "TODO: Fill the gadget homepage URL",
+				DocumentationURL: "TODO: Fill the gadget documentation URL",
+				SourceURL:        "TODO: Fill the gadget source code URL",
 				Snapshotters: map[string]Snapshotter{
 					"events": {
 						StructName: "event",

@@ -346,6 +346,18 @@ func (m *GadgetMetadata) Populate(spec *ebpf.CollectionSpec) error {
 		m.Description = "TODO: Fill the gadget description"
 	}
 
+	if m.HomepageURL == "" {
+		m.HomepageURL = "TODO: Fill the gadget homepage URL"
+	}
+
+	if m.DocumentationURL == "" {
+		m.DocumentationURL = "TODO: Fill the gadget documentation URL"
+	}
+
+	if m.SourceURL == "" {
+		m.SourceURL = "TODO: Fill the gadget source code URL"
+	}
+
 	if err := m.populateTracers(spec); err != nil {
 		return fmt.Errorf("handling trace maps: %w", err)
 	}
