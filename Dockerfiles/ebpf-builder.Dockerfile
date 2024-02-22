@@ -1,5 +1,5 @@
 ARG CLANG_LLVM_VERSION=15
-ARG LIBBPF_VERSION=v1.2.2
+ARG LIBBPF_VERSION=v1.3.0
 ARG TINYGO_VERSION=0.30.0
 
 # Args need to be redefined on each stage
