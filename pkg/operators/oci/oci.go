@@ -82,6 +82,8 @@ func (o *OciHandler) ParamDescs() params.ParamDescs {
 }
 
 func (o *OciHandler) Instantiate(gadgetCtx operators.GadgetContext, params *params.Params, args []string) (*OciHandlerInstance, error) {
+	//panic("not to be called")
+
 	if len(args) != 1 {
 		return nil, fmt.Errorf("URL required as argument")
 	}
@@ -175,11 +177,11 @@ func (o *OciHandler) Instantiate(gadgetCtx operators.GadgetContext, params *para
 	return instance, nil
 }
 
-func (o *OciHandlerInstance) ParamDescs() params.ParamDescs {
-	return nil
-}
+//func (o *OciHandlerInstance) ParamDescs() params.ParamDescs {
+//	return nil
+//}
 
-func (o *OciHandlerInstance) Prepare() error {
+func (o *OciHandlerInstance) PrepareOps() error {
 	// Prepare
 	for _, opInst := range o.layerOperatorInstances {
 		err := opInst.Prepare(o.gadgetCtx)
@@ -196,7 +198,9 @@ func (o *OciHandlerInstance) Prepare() error {
 	return nil
 }
 
-func (o *OciHandlerInstance) PreGadgetRun() error {
+func (o *OciHandlerInstance) StartOps() error {
+	//panic("not to be called")
+
 	// Run
 	for _, opInst := range o.layerOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
@@ -213,7 +217,7 @@ func (o *OciHandlerInstance) PreGadgetRun() error {
 	return nil
 }
 
-func (o *OciHandlerInstance) PostGadgetRun() error {
+func (o *OciHandlerInstance) Stop() error {
 	return nil
 }
 

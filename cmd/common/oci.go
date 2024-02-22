@@ -37,6 +37,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	// Add operator global flags
 	operatorsGlobalParamsCollection := operators.GlobalParamsCollection()
 
+	// gadget parameters that are only available after contacting the server
+	gadgetParams := make(params.Params, 0)
 	ociParams := operators.OCIParamDescs().ToParams()
 
 	cmd := &cobra.Command{
@@ -68,21 +70,22 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 				return err
 			}
 
-			// gadget parameters that are only available after contacting the server
-			gadgetParams := make(params.Params, 0)
-
 			// Before running the gadget, we need to get the gadget info to perform
 			// different tasks like creating the parser and setting flags for the
 			// gadget's parameters.
 			actualArgs := cmd.Flags().Args()
 
-			gadgetCtx := gadgetcontext.NewSimple(context.Background(), actualArgs[0], logger.DefaultLogger(), ociParams)
+			gadgetCtx := gadgetcontext.NewSimple(
+				context.Background(), actualArgs[0], logger.DefaultLogger(), ociParams, nil,
+			)
 
 			// Fetch gadget information; TODO: this can potentially be cached
 			info, err := runtime.GetOCIGadgetInfo(gadgetCtx, nil, nil)
 			if err != nil {
 				return fmt.Errorf("fetching gadget information: %w", err)
 			}
+
+			fmt.Printf("PreRun: Params are: %+v\n", info.Params)
 
 			for _, p := range info.Params {
 				gadgetParams.Add(api.ParamToParamDesc(p).ToParam())
@@ -119,7 +122,14 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 			ctx := fe.GetContext()
 
-			gadgetCtx := gadgetcontext.NewSimple(ctx, args[0], logger.DefaultLogger(), ociParams)
+			gadgetCtx := gadgetcontext.NewSimple(
+				ctx, args[0], logger.DefaultLogger(), ociParams, &gadgetParams,
+			)
+
+			// parameters?
+
+			fmt.Printf("gadget params are: %+v\n", gadgetParams)
+			fmt.Printf("oci params are: %+v\n", ociParams)
 
 			err := runtime.RunOCIGadget(gadgetCtx)
 			if err != nil {

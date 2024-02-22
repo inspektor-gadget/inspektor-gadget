@@ -108,6 +108,7 @@ func NewSimple(
 	url string,
 	logger logger.Logger,
 	ociParams *params.Params,
+	gadgetParams *params.Params,
 ) *GadgetContext {
 	gCtx, cancel := context.WithCancel(ctx)
 
@@ -120,6 +121,7 @@ func NewSimple(
 		args:                     []string{url},
 		logger:                   logger,
 		operatorsParamCollection: operatorsParamCollection,
+		gadgetParams:             gadgetParams,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
@@ -247,6 +249,8 @@ func (c *GadgetContext) Params() []*api.Param {
 }
 
 func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
+	fmt.Printf("SerializeGadgetInfo\n")
+
 	// metadataBytes, err := yaml.Marshal(c.metadata)
 	// if err != nil {
 	// 	return nil, fmt.Errorf("marshaling metadata: %w", err)

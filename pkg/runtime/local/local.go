@@ -109,7 +109,7 @@ func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, params *para
 }
 
 func (r *Runtime) RunOCIGadget(gadgetCtx runtime.GadgetContext) error {
-	fmt.Printf("RunOCIGadget: params are %+v\n", gadgetCtx.Params())
+	fmt.Printf("RunOCIGadget: params are %+v\n", gadgetCtx.GadgetParams())
 
 	ociParams := gadgetCtx.OperatorsParamCollection()["oci"]
 	opInst, err := operators.NewOCIHandler(gadgetCtx, ociParams, gadgetCtx.Args())
