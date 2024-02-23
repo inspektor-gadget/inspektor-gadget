@@ -792,28 +792,24 @@ func calculateColumnsForClient(
 		return nil, fmt.Errorf("getting value struct: %w", err)
 	}
 
-	colNames := map[string]struct{}{}
-
 	eventStruct, ok := gadgetMetadata.Structs[eventType.Name]
 	if !ok {
 		return nil, fmt.Errorf("struct %s not found in gadget metadata", eventType.Name)
 	}
 
-	for _, field := range eventStruct.Fields {
-		colNames[field.Name] = struct{}{}
+	members := map[string]btf.Member{}
+	for _, member := range eventType.Members {
+		members[member.Name] = member
 	}
 
 	columns := []types.ColumnDesc{}
 
-	for _, member := range eventType.Members {
-		member := member
-
-		_, ok := colNames[member.Name]
+	for _, field := range eventStruct.Fields {
+		member, ok := members[field.Name]
 		if !ok {
-			logger.Debugf("field %q not present on metadata file, skipping", member.Name)
+			logger.Warnf("field %s not found in BTF", field.Name)
 			continue
 		}
-
 		switch member.Type.TypeName() {
 		case types.L3EndpointTypeName:
 			col := types.ColumnDesc{
