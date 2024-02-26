@@ -119,18 +119,12 @@ func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, e
 	bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
 	packetBytes := rawSample[unsafe.Sizeof(*bpfEvent):]
 
-	// The DNS layer starts after the ethernet, IP and UDP headers.
-	// This is hardcoded for now as the datapath assumes the DNS packet is UDP over IPv4
-	// without any options. Next iterations will fix this.
-	// This is the sum of the Ethernet, IP and UDP headers.
-	const dnsOff = 14 + 20 + 8
-
-	if len(packetBytes) < dnsOff {
+	if len(packetBytes) < int(bpfEvent.DnsOff) {
 		return nil, fmt.Errorf("packet too short")
 	}
 
 	dnsLayer := layers.DNS{}
-	err := dnsLayer.DecodeFromBytes(packetBytes[dnsOff:], gopacket.NilDecodeFeedback)
+	err := dnsLayer.DecodeFromBytes(packetBytes[bpfEvent.DnsOff:], gopacket.NilDecodeFeedback)
 	if err != nil {
 		return nil, fmt.Errorf("decoding dns layer: %w", err)
 	}

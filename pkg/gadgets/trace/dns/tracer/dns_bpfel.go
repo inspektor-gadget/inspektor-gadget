@@ -27,8 +27,10 @@ type dnsEventT struct {
 	Af        uint16
 	Sport     uint16
 	Dport     uint16
+	DnsOff    uint16
 	Proto     uint8
 	PktType   uint8
+	_         [6]byte
 	LatencyNs uint64
 }
 

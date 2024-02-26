@@ -17,8 +17,6 @@
 
 #include "dns-common.h"
 
-#define DNS_OFF (ETH_HLEN + sizeof(struct iphdr) + sizeof(struct udphdr))
-
 #ifndef PACKET_HOST
 #define PACKET_HOST 0x0
 #endif
@@ -109,23 +107,85 @@ SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
 	struct event_t event;
-	__u16 sport, dport;
-	__u16 id;
+	__u16 sport, dport, l4_off, dns_off, h_proto, id;
+	__u8 proto;
 	int i;
 
-	// Skip non-IP packets
-	if (load_half(skb, offsetof(struct ethhdr, h_proto)) != ETH_P_IP)
-		return 0;
+	// Do a first pass only to extract the port and drop the packet if it's not DNS
+	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
+	switch (h_proto) {
+	case ETH_P_IP:
+		proto = load_byte(skb,
+				  ETH_HLEN + offsetof(struct iphdr, protocol));
+		// An IPv4 header doesn't have a fixed size. The IHL field of a packet
+		// represents the size of the IP header in 32-bit words, so we need to
+		// multiply this value by 4 to get the header size in bytes.
+		__u8 ihl_byte = load_byte(skb, ETH_HLEN);
+		struct iphdr *iph = (struct iphdr *)&ihl_byte;
+		__u8 ip_header_len = iph->ihl * 4;
+		l4_off = ETH_HLEN + ip_header_len;
+		break;
 
-	// Skip non-UDP packets
-	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) !=
-	    IPPROTO_UDP)
-		return 0;
+	case ETH_P_IPV6:
+		proto = load_byte(skb,
+				  ETH_HLEN + offsetof(struct ipv6hdr, nexthdr));
+		l4_off = ETH_HLEN + sizeof(struct ipv6hdr);
 
-	sport = load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-				       offsetof(struct udphdr, source));
-	dport = load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-				       offsetof(struct udphdr, dest));
+// Parse IPv6 extension headers
+// Up to 6 extension headers can be chained. See ipv6_ext_hdr().
+#pragma unroll
+		for (i = 0; i < 6; i++) {
+			__u8 nextproto;
+
+			// TCP or UDP found
+			if (proto == NEXTHDR_TCP || proto == NEXTHDR_UDP)
+				break;
+
+			nextproto = load_byte(skb, l4_off);
+
+			// Unfortunately, each extension header has a different way to calculate the header length.
+			// Support the ones defined in ipv6_ext_hdr(). See ipv6_skip_exthdr().
+			switch (proto) {
+			case NEXTHDR_FRAGMENT:
+				// No hdrlen in the fragment header
+				l4_off += 8;
+				break;
+			case NEXTHDR_AUTH:
+				// See ipv6_authlen()
+				l4_off += 4 * (load_byte(skb, l4_off + 1) + 2);
+				break;
+			case NEXTHDR_HOP:
+			case NEXTHDR_ROUTING:
+			case NEXTHDR_DEST:
+				// See ipv6_optlen()
+				l4_off += 8 * (load_byte(skb, l4_off + 1) + 1);
+				break;
+			case NEXTHDR_NONE:
+				// Nothing more in the packet. Not even TCP or UDP.
+				return 0;
+			default:
+				// Unknown header
+				return 0;
+			}
+			proto = nextproto;
+		}
+		break;
+
+	default:
+		return 0;
+	}
+
+	switch (proto) {
+	case IPPROTO_UDP:
+		sport = load_half(skb,
+				  l4_off + offsetof(struct udphdr, source));
+		dport = load_half(skb, l4_off + offsetof(struct udphdr, dest));
+		dns_off = l4_off + sizeof(struct udphdr);
+		break;
+	// TODO: support TCP
+	default:
+		return 0;
+	}
 
 	if (!is_dns_port(sport) && !is_dns_port(dport))
 		return 0;
@@ -136,21 +196,37 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	event.timestamp = bpf_ktime_get_boot_ns();
+	event.proto = proto;
+	event.dns_off = dns_off;
 	event.pkt_type = skb->pkt_type;
-
-	event.af = AF_INET;
-	event.daddr_v4 =
-		load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-	event.saddr_v4 =
-		load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
-	// load_word converts from network to host endianness. Convert back to
-	// network endianness because inet_ntop() requires it.
-	event.daddr_v4 = bpf_htonl(event.daddr_v4);
-	event.saddr_v4 = bpf_htonl(event.saddr_v4);
-
-	event.proto = IPPROTO_UDP;
 	event.sport = sport;
 	event.dport = dport;
+
+	// The packet is DNS: Do a second pass to extract all the information we need
+	switch (h_proto) {
+	case ETH_P_IP:
+		event.af = AF_INET;
+		event.daddr_v4 = load_word(
+			skb, ETH_HLEN + offsetof(struct iphdr, daddr));
+		event.saddr_v4 = load_word(
+			skb, ETH_HLEN + offsetof(struct iphdr, saddr));
+		// load_word converts from network to host endianness. Convert back to
+		// network endianness because inet_ntop() requires it.
+		event.daddr_v4 = bpf_htonl(event.daddr_v4);
+		event.saddr_v4 = bpf_htonl(event.saddr_v4);
+		break;
+	case ETH_P_IPV6:
+		event.af = AF_INET6;
+		if (bpf_skb_load_bytes(
+			    skb, ETH_HLEN + offsetof(struct ipv6hdr, saddr),
+			    &event.saddr_v6, sizeof(event.saddr_v6)))
+			return 0;
+		if (bpf_skb_load_bytes(
+			    skb, ETH_HLEN + offsetof(struct ipv6hdr, daddr),
+			    &event.daddr_v6, sizeof(event.daddr_v6)))
+			return 0;
+		break;
+	}
 
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
@@ -183,9 +259,9 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// version IG injects always returns zero).
 	if (skb_val != NULL && event.timestamp > 0) {
 		union dnsflags flags;
-		flags.flags = load_half(skb, DNS_OFF + offsetof(struct dnshdr,
+		flags.flags = load_half(skb, dns_off + offsetof(struct dnshdr,
 								flags));
-		id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
+		id = load_half(skb, dns_off + offsetof(struct dnshdr, id));
 		__u8 qr = flags.qr;
 
 		struct query_key_t query_key = {

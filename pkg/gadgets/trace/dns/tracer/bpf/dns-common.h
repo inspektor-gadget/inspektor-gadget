@@ -28,6 +28,7 @@ struct event_t {
 	// Internet protocol and port numbers.
 	__u16 sport;
 	__u16 dport;
+	__u16 dns_off; // DNS offset in the packet
 	__u8 proto;
 
 	unsigned char pkt_type;

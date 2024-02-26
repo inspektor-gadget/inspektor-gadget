@@ -92,4 +92,4 @@ test-trace-dns                          38807      38808      isc-net-0000     R
 
 ### Limitations
 
-- Only DNS over UDP and IPv4 without options is supported.
+- Only DNS over UDP is supposed. See https://github.com/inspektor-gadget/inspektor-gadget/issues/1416.
