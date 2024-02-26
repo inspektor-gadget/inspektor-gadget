@@ -15,10 +15,10 @@ const volatile bool targ_per_disk = false;
 const volatile bool targ_per_flag = false;
 const volatile bool targ_queued = false;
 const volatile bool targ_ms = false;
+const volatile bool insert_arg_single = true;
+const volatile bool issue_arg_single = true;
 const volatile bool filter_dev = false;
 const volatile __u32 targ_dev = 0;
-
-extern int LINUX_KERNEL_VERSION __kconfig;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
@@ -75,7 +75,7 @@ int ig_profio_ins(u64 *ctx)
 	 * from TP_PROTO(struct request_queue *q, struct request *rq)
 	 * to TP_PROTO(struct request *rq)
 	 */
-	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
+	if (!insert_arg_single)
 		return trace_rq_start((void *)ctx[1], false);
 	else
 		return trace_rq_start((void *)ctx[0], false);
@@ -92,7 +92,7 @@ int ig_profio_iss(u64 *ctx)
 	 * from TP_PROTO(struct request_queue *q, struct request *rq)
 	 * to TP_PROTO(struct request *rq)
 	 */
-	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
+	if (!issue_arg_single)
 		return trace_rq_start((void *)ctx[1], true);
 	else
 		return trace_rq_start((void *)ctx[0], true);
