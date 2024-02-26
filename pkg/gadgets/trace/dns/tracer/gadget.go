@@ -25,7 +25,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
-const ParamDNSTimeout = "dns-timeout"
+const (
+	ParamDNSTimeout = "dns-timeout"
+	ParamPorts      = "ports"
+)
 
 type GadgetDesc struct{}
 
@@ -65,6 +68,13 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 
 				return nil
 			},
+		},
+		{
+			Key:          ParamPorts,
+			Alias:        "P",
+			DefaultValue: "53,5353",
+			Description:  "Ports to trace DNS requests on",
+			Validator:    params.ValidateSlice(params.ValidateUintRange(1, 65535)),
 		},
 	}
 }
