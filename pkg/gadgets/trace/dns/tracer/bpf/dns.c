@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-/* Copyright (c) 2021 The Inspektor Gadget authors */
+/* Copyright (c) 2024 The Inspektor Gadget authors */
 
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
@@ -7,6 +7,7 @@
 #include <linux/in.h>
 #include <linux/udp.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
@@ -17,12 +18,6 @@
 #include "dns-common.h"
 
 #define DNS_OFF (ETH_HLEN + sizeof(struct iphdr) + sizeof(struct udphdr))
-
-#define DNS_CLASS_IN \
-	1 // https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.4
-#define DNS_TYPE_A \
-	1 // https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
-#define DNS_TYPE_AAAA 28 // https://www.rfc-editor.org/rfc/rfc3596#section-2.1
 
 #ifndef PACKET_HOST
 #define PACKET_HOST 0x0
@@ -35,11 +30,26 @@
 #define DNS_QR_QUERY 0
 #define DNS_QR_RESP 1
 
+#define MAX_PORTS 16
+const volatile __u16 ports[MAX_PORTS] = { 53, 5353 };
+const volatile __u16 ports_len = 2;
+
+static __always_inline bool is_dns_port(__u16 port)
+{
+	for (int i = 0; i < ports_len; i++) {
+		if (ports[i] == port)
+			return true;
+	}
+	return false;
+}
+
 // we need this to make sure the compiler doesn't remove our struct
 const struct event_t *unusedevent __attribute__((unused));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
@@ -81,30 +91,11 @@ struct dnshdr {
 	__u16 arcount; // number of additional records
 };
 
-// DNS resource record
-// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
-#pragma pack(2)
-struct dnsrr {
-	__u16 name; // Two octets when using message compression, see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
-	__u16 type;
-	__u16 class;
-	__u32 ttl;
-	__u16 rdlength;
-	// Followed by rdata
-};
-
-// The stack is limited, so use a map to build the event
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, __u32);
-	__type(value, struct event_t);
-} tmp_event SEC(".maps");
-
 // Map of DNS query to timestamp so we can calculate latency from query sent to answer received.
 struct query_key_t {
 	__u64 pid_tgid;
 	__u16 id;
+	__u16 pad[3]; // this is needed, otherwise the verifier claims an invalid read from stack
 };
 
 struct {
@@ -114,158 +105,64 @@ struct {
 	__uint(max_entries, 1024);
 } query_map SEC(".maps");
 
-static __always_inline __u32 dns_name_length(struct __sk_buff *skb)
+SEC("socket1")
+int ig_trace_dns(struct __sk_buff *skb)
 {
-	// This loop iterates over the DNS labels to find the total DNS name
-	// length.
-	unsigned int i;
-	unsigned int skip = 0;
-	for (i = 0; i < MAX_DNS_NAME; i++) {
-		if (skip != 0) {
-			skip--;
-		} else {
-			int label_len = load_byte(
-				skb, DNS_OFF + sizeof(struct dnshdr) + i);
-			if (label_len == 0)
-				break;
-			// The simple solution "i += label_len" gives verifier
-			// errors, so work around with skip.
-			skip = label_len;
-		}
-	}
+	struct event_t event;
+	__u16 sport, dport;
+	__u16 id;
+	int i;
 
-	return i < MAX_DNS_NAME ? i : MAX_DNS_NAME;
-}
-
-// Save the IPv4 and IPv6 addresses in event->anaddr. Returns the number of saved addresses.
-static __always_inline int load_addresses(struct __sk_buff *skb, int ancount,
-					  int anoffset, struct event_t *event)
-{
-	int rroffset = anoffset;
-	int index = 0;
-	for (int i = 0; i < ancount && i < MAX_ADDR_ANSWERS; i++) {
-		__u16 rrname =
-			load_byte(skb, rroffset + offsetof(struct dnsrr, name));
-
-		// In most cases, the name will be compressed to two octets (indicated by first two bits 0b11).
-		// The offset calculations below assume compression, so exit early if the name isn't compressed.
-		if ((rrname & 0xf0) != 0xc0)
-			return 0;
-
-		// Safe to assume that all answers refer to the same domain name
-		// because we verified earlier that there's exactly one question.
-
-		__u16 rrtype =
-			load_half(skb, rroffset + offsetof(struct dnsrr, type));
-		__u16 rrclass = load_half(skb, rroffset + offsetof(struct dnsrr,
-								   class));
-		__u16 rdlength = load_half(
-			skb, rroffset + offsetof(struct dnsrr, rdlength));
-
-		if (rrtype == DNS_TYPE_A && rrclass == DNS_CLASS_IN &&
-		    rdlength == 4) {
-			// A record contains an IPv4 address.
-			// Encode this as IPv4-mapped-IPv6 in the BPF event (::ffff:<ipv4>)
-			// https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
-			__builtin_memset(&event->anaddr[index][0], 0x0, 10);
-			__builtin_memset(&event->anaddr[index][10], 0xff, 2);
-			bpf_skb_load_bytes(skb, rroffset + sizeof(struct dnsrr),
-					   &event->anaddr[index][12], rdlength);
-			index++;
-		} else if (rrtype == DNS_TYPE_AAAA && rrclass == DNS_CLASS_IN &&
-			   rdlength == 16) {
-			// AAAA record contains an IPv6 address.
-			bpf_skb_load_bytes(skb, rroffset + sizeof(struct dnsrr),
-					   &event->anaddr[index][0], rdlength);
-			index++;
-		}
-		rroffset += sizeof(struct dnsrr) + rdlength;
-	}
-	return index;
-}
-
-static __always_inline int output_dns_event(struct __sk_buff *skb,
-					    union dnsflags flags,
-					    __u32 name_len, __u16 ancount)
-{
-	__u32 zero = 0;
-	struct event_t *event = bpf_map_lookup_elem(&tmp_event, &zero);
-	if (!event)
+	// Skip non-IP packets
+	if (load_half(skb, offsetof(struct ethhdr, h_proto)) != ETH_P_IP)
 		return 0;
 
-	__builtin_memset(event, 0, sizeof(*event));
+	// Skip non-UDP packets
+	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) !=
+	    IPPROTO_UDP)
+		return 0;
 
-	event->netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
-	event->timestamp = bpf_ktime_get_boot_ns();
-	event->id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
-	event->af = AF_INET;
-	event->daddr_v4 =
+	sport = load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+				       offsetof(struct udphdr, source));
+	dport = load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+				       offsetof(struct udphdr, dest));
+
+	if (!is_dns_port(sport) && !is_dns_port(dport))
+		return 0;
+
+	// Initialize event here only after we know we're interested in this packet to avoid
+	// spending useless cycles.
+	__builtin_memset(&event, 0, sizeof(event));
+
+	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	event.timestamp = bpf_ktime_get_boot_ns();
+	event.pkt_type = skb->pkt_type;
+
+	event.af = AF_INET;
+	event.daddr_v4 =
 		load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-	event->saddr_v4 =
+	event.saddr_v4 =
 		load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
 	// load_word converts from network to host endianness. Convert back to
 	// network endianness because inet_ntop() requires it.
-	event->daddr_v4 = bpf_htonl(event->daddr_v4);
-	event->saddr_v4 = bpf_htonl(event->saddr_v4);
+	event.daddr_v4 = bpf_htonl(event.daddr_v4);
+	event.saddr_v4 = bpf_htonl(event.saddr_v4);
 
-	// Check network protocol.
-	// This only works with IPv4.
-	// For IPv6, gadget_socket_lookup() in sockets-map.h
-	// provides an example how to parse ip/ports on IPv6.
-	event->proto =
-		load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol));
-	if (event->proto == IPPROTO_TCP) {
-		event->sport =
-			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct tcphdr, source));
-		event->dport =
-			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct tcphdr, dest));
-	} else if (event->proto == IPPROTO_UDP) {
-		event->sport =
-			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct udphdr, source));
-		event->dport =
-			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct udphdr, dest));
-	}
-
-	event->qr = flags.qr;
-
-	if (flags.qr == 1) {
-		// Response code set only for replies.
-		event->rcode = flags.rcode;
-	}
-
-	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event->name,
-			   name_len);
-
-	event->pkt_type = skb->pkt_type;
-
-	// Read QTYPE right after the QNAME (name_len + the zero length octet)
-	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
-	event->qtype =
-		load_half(skb, DNS_OFF + sizeof(struct dnshdr) + name_len + 1);
+	event.proto = IPPROTO_UDP;
+	event.sport = sport;
+	event.dport = dport;
 
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
 	if (skb_val != NULL) {
-		event->mount_ns_id = skb_val->mntns;
-		event->pid = skb_val->pid_tgid >> 32;
-		event->tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event->task, skb_val->task,
-				 sizeof(event->task));
-		event->uid = (__u32)skb_val->uid_gid;
-		event->gid = (__u32)(skb_val->uid_gid >> 32);
+		event.mount_ns_id = skb_val->mntns;
+		event.pid = skb_val->pid_tgid >> 32;
+		event.tid = (__u32)skb_val->pid_tgid;
+		__builtin_memcpy(&event.task, skb_val->task,
+				 sizeof(event.task));
+		event.uid = (__u32)skb_val->uid_gid;
+		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
-
-	event->ancount = ancount;
-
-	// DNS answers start immediately after qname (name_len octets)
-	// + the zero length octet + qtype (2 octets) + qclass (2 octets).
-	int anoffset = DNS_OFF + sizeof(struct dnshdr) + name_len + 5;
-	int anaddrcount = load_addresses(skb, ancount, anoffset, event);
-	event->anaddrcount = anaddrcount;
 
 	// Calculate latency:
 	//
@@ -284,71 +181,40 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	// Skip this if skb_val == NULL (gadget_socket_lookup did not set pid_tgid we use in the query key)
 	// or if event->timestamp == 0 (kernels before 5.8 don't support bpf_ktime_get_boot_ns, and the patched
 	// version IG injects always returns zero).
-	if (skb_val != NULL && event->timestamp > 0) {
+	if (skb_val != NULL && event.timestamp > 0) {
+		union dnsflags flags;
+		flags.flags = load_half(skb, DNS_OFF + offsetof(struct dnshdr,
+								flags));
+		id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
+		__u8 qr = flags.qr;
+
 		struct query_key_t query_key = {
 			.pid_tgid = skb_val->pid_tgid,
-			.id = event->id,
+			.id = id,
 		};
-		if (event->qr == DNS_QR_QUERY &&
-		    event->pkt_type == PACKET_OUTGOING) {
+		if (qr == DNS_QR_QUERY && event.pkt_type == PACKET_OUTGOING) {
 			bpf_map_update_elem(&query_map, &query_key,
-					    &event->timestamp, BPF_NOEXIST);
-		} else if (event->qr == DNS_QR_RESP &&
-			   event->pkt_type == PACKET_HOST) {
+					    &event.timestamp, BPF_NOEXIST);
+		} else if (flags.qr == DNS_QR_RESP &&
+			   event.pkt_type == PACKET_HOST) {
 			__u64 *query_ts =
 				bpf_map_lookup_elem(&query_map, &query_key);
 			if (query_ts != NULL) {
 				// query ts should always be less than the event ts, but check anyway to be safe.
-				if (*query_ts < event->timestamp) {
-					event->latency_ns =
-						event->timestamp - *query_ts;
+				if (*query_ts < event.timestamp) {
+					event.latency_ns =
+						event.timestamp - *query_ts;
 				}
 				bpf_map_delete_elem(&query_map, &query_key);
 			}
 		}
 	}
 
-	// size of full structure - addresses + only used addresses
-	unsigned long long size =
-		sizeof(*event) - MAX_ADDR_ANSWERS * 16 + anaddrcount * 16;
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, event, size);
+	__u64 skb_len = skb->len;
+	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
+			      &event, sizeof(event));
 
 	return 0;
-}
-
-SEC("socket1")
-int ig_trace_dns(struct __sk_buff *skb)
-{
-	// Skip non-IP packets
-	if (load_half(skb, offsetof(struct ethhdr, h_proto)) != ETH_P_IP)
-		return 0;
-
-	// Skip non-UDP packets
-	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) !=
-	    IPPROTO_UDP)
-		return 0;
-
-	union dnsflags flags;
-	flags.flags = load_half(skb, DNS_OFF + offsetof(struct dnshdr, flags));
-
-	// Skip DNS packets with more than 1 question
-	if (load_half(skb, DNS_OFF + offsetof(struct dnshdr, qdcount)) != 1)
-		return 0;
-
-	__u16 ancount =
-		load_half(skb, DNS_OFF + offsetof(struct dnshdr, ancount));
-	__u16 nscount =
-		load_half(skb, DNS_OFF + offsetof(struct dnshdr, nscount));
-
-	// Skip DNS queries with answers
-	if ((flags.qr == 0) && (ancount + nscount != 0))
-		return 0;
-
-	__u32 name_len = dns_name_length(skb);
-	if (name_len == 0)
-		return 0;
-
-	return output_dns_event(skb, flags, name_len, ancount);
 }
 
 char _license[] SEC("license") = "GPL";

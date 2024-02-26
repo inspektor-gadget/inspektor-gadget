@@ -54,7 +54,7 @@ type Event struct {
 	PktType    string        `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
 	QType      string        `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
 	DNSName    string        `json:"name,omitempty" column:"name,width:30"`
-	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:8"`
+	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:12"`
 	Latency    time.Duration `json:"latency,omitempty" column:"latency,hide"`
 	NumAnswers int           `json:"numAnswers,omitempty" column:"numAnswers,width:8,maxWidth:8" columnDesc:"Number of addresses contained in the response."`
 	Addresses  []string      `json:"addresses,omitempty" column:"addresses,width:32,hide" columnDesc:"Addresses in the response. Maximum 8 are reported. Only available if the response is compressed."`
