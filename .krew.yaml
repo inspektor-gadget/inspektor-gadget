@@ -2,6 +2,53 @@ apiVersion: krew.googlecontainertools.github.com/v1alpha2
 kind: Plugin
 metadata:
   name: gadget
+  annotations:
+    # List of annotations for Artifact Hub
+    # https://artifacthub.io/docs/topics/annotations/krew/
+    # https://artifacthub.io/packages/krew/krew-index/gadget
+    artifacthub.io/category: monitoring-logging
+    artifacthub.io/displayName: Inspektor Gadget kubectl plugin
+    artifacthub.io/keywords: |
+      - ebpf
+      - tracing
+      - networking
+      - security
+    artifacthub.io/license: Apache-2.0
+    artifacthub.io/links: |
+      - name: homepage
+        url: https://inspektor-gadget.io/
+      - name: repository
+        url: https://github.com/inspektor-gadget/inspektor-gadget/
+      - name: support
+        url: https://github.com/inspektor-gadget/inspektor-gadget/issues
+    artifacthub.io/readme: |
+      Inspektor Gadget is a collection of tools (or gadgets) to debug and
+      inspect Kubernetes resources and applications.
+
+      ## Install
+
+      ```bash
+      $ kubectl krew install gadget
+      $ kubectl gadget deploy
+      ```
+
+      ## Run built-in gadgets
+
+      ```bash
+      $ kubectl gadget trace exec
+      ```
+
+      ## Run image-based gadgets
+
+      ```bash
+      $ kubectl gadget deploy --experimental
+      $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:latest
+      ```
+    # artifacthub.io/changes:
+    # artifacthub.io/maintainers:
+    # artifacthub.io/provider:
+    # artifacthub.io/recommendations:
+    # artifacthub.io/screenshots:
 spec:
   version: {{ .TagName }}
   homepage: https://github.com/inspektor-gadget/inspektor-gadget
