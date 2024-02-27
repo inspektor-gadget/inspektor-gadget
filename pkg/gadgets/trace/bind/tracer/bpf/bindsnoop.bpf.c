@@ -88,12 +88,10 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	if (filter_by_port && !port)
 		goto cleanup;
 
-	opts.fields.freebind =
-		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, freebind);
-	opts.fields.transparent =
-		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, transparent);
+	opts.fields.freebind = get_inet_sock_freebind(inet_sock);
+	opts.fields.transparent = get_inet_sock_transparent(inet_sock);
 	opts.fields.bind_address_no_port =
-		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, bind_address_no_port);
+		get_inet_sock_bind_address_no_port(inet_sock);
 	opts.fields.reuseaddress =
 		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuse);
 	opts.fields.reuseport =
