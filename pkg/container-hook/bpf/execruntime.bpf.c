@@ -87,7 +87,7 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 }
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
+int ig_execve_e(struct syscall_trace_enter *ctx)
 {
 	u64 pid_tgid;
 	u32 tgid;
@@ -148,7 +148,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 }
 
 SEC("tracepoint/syscalls/sys_exit_execve")
-int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
+int ig_execve_x(struct syscall_trace_exit *ctx)
 {
 	u64 pid_tgid;
 	u32 tgid;

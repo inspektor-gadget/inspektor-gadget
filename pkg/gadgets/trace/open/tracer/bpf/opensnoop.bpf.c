@@ -154,20 +154,20 @@ static __always_inline int trace_enter(const char *filename, int flags,
 }
 
 SEC("tracepoint/syscalls/sys_enter_open")
-int ig_open_e(struct trace_event_raw_sys_enter *ctx)
+int ig_open_e(struct syscall_trace_enter *ctx)
 {
 	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1],
 			   (__u16)ctx->args[2]);
 }
 
 SEC("tracepoint/syscalls/sys_enter_openat")
-int ig_openat_e(struct trace_event_raw_sys_enter *ctx)
+int ig_openat_e(struct syscall_trace_enter *ctx)
 {
 	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2],
 			   (__u16)ctx->args[3]);
 }
 
-static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
+static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 {
 	struct event *event;
 	int ret;
@@ -231,13 +231,13 @@ cleanup:
 }
 
 SEC("tracepoint/syscalls/sys_exit_open")
-int ig_open_x(struct trace_event_raw_sys_exit *ctx)
+int ig_open_x(struct syscall_trace_exit *ctx)
 {
 	return trace_exit(ctx);
 }
 
 SEC("tracepoint/syscalls/sys_exit_openat")
-int ig_openat_x(struct trace_event_raw_sys_exit *ctx)
+int ig_openat_x(struct syscall_trace_exit *ctx)
 {
 	return trace_exit(ctx);
 }

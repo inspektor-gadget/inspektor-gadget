@@ -123,7 +123,7 @@ cleanup:
 }
 
 SEC("tracepoint/syscalls/sys_enter_mount")
-int ig_mount_e(struct trace_event_raw_sys_enter *ctx)
+int ig_mount_e(struct syscall_trace_enter *ctx)
 {
 	const char *src = (const char *)ctx->args[0];
 	const char *dest = (const char *)ctx->args[1];
@@ -135,13 +135,13 @@ int ig_mount_e(struct trace_event_raw_sys_enter *ctx)
 }
 
 SEC("tracepoint/syscalls/sys_exit_mount")
-int ig_mount_x(struct trace_event_raw_sys_exit *ctx)
+int ig_mount_x(struct syscall_trace_exit *ctx)
 {
 	return probe_exit(ctx, (int)ctx->ret);
 }
 
 SEC("tracepoint/syscalls/sys_enter_umount")
-int ig_umount_e(struct trace_event_raw_sys_enter *ctx)
+int ig_umount_e(struct syscall_trace_enter *ctx)
 {
 	const char *dest = (const char *)ctx->args[0];
 	__u64 flags = (__u64)ctx->args[1];
@@ -150,7 +150,7 @@ int ig_umount_e(struct trace_event_raw_sys_enter *ctx)
 }
 
 SEC("tracepoint/syscalls/sys_exit_umount")
-int ig_umount_x(struct trace_event_raw_sys_exit *ctx)
+int ig_umount_x(struct syscall_trace_exit *ctx)
 {
 	return probe_exit(ctx, (int)ctx->ret);
 }
