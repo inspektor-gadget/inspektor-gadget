@@ -183,6 +183,10 @@ INFO[0000] Experimental features enabled
 Successfully built docker.io/library/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
+Take into account that it is possible to customize the build process by defining a `build.yaml` file.
+Check the [Customizing your build](../../docs/core-concepts/images.md#customizing-your-build)
+section for more details.
+
 ## (Optional) Pushing the gadget image to a container registry
 
 You could push the gadget to a remote container registry. If you're using the same machine for

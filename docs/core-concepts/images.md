@@ -144,9 +144,11 @@ Successfully built sha256:adf9a4c636421d09e038eefa15623176195b0de482b25972e09b8b
 ##### Customizing your build
 
 The building process is controlled by the `build.yaml` file. The following parameters are available:
+
 - `ebpfsource`: eBPF source code file. It defaults to `program.bpf.c`.
 - `metadata`: File containing metadata about the gadget. It defaults to `gadget.yaml`.
 - `wasm`: Wasm module. It is unset by default.
+- `cflags`: The C flags used to compile the eBPF program. It is unset by default.
 
 By default, the build command looks for `build.yaml` in PATH. It can be changed with the `--file` flag:
 
