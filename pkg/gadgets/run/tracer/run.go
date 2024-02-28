@@ -77,6 +77,7 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 		{
 			Key:          authfileParam,
 			Title:        "Auth file",
+			Description:  "Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     params.TypeString,
 		},
