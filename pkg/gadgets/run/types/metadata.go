@@ -152,6 +152,15 @@ type GadgetMetadata struct {
 	Name string `yaml:"name"`
 	// Gadget description
 	Description string `yaml:"description,omitempty"`
+	// HomepageURL is the URL to the gadget's homepage
+	HomepageURL string `yaml:"homepageURL,omitempty"`
+	// DocumentationURL is the URL to the gadget's documentation
+	DocumentationURL string `yaml:"documentationURL,omitempty"`
+	// SourceURL is the URL to the gadget's source code repository
+	SourceURL string `yaml:"sourceURL,omitempty"`
+	// Annotations is a map of key-value pairs that provide additional information about the gadget
+	Annotations map[string]string `yaml:"annotations,omitempty"`
+
 	// Tracers implemented by the gadget
 	// TODO: Rename this field to something that doesn't collide with the opentelemetry concept
 	Tracers map[string]Tracer `yaml:"tracers,omitempty"`
@@ -335,6 +344,18 @@ func (m *GadgetMetadata) Populate(spec *ebpf.CollectionSpec) error {
 
 	if m.Description == "" {
 		m.Description = "TODO: Fill the gadget description"
+	}
+
+	if m.HomepageURL == "" {
+		m.HomepageURL = "TODO: Fill the gadget homepage URL"
+	}
+
+	if m.DocumentationURL == "" {
+		m.DocumentationURL = "TODO: Fill the gadget documentation URL"
+	}
+
+	if m.SourceURL == "" {
+		m.SourceURL = "TODO: Fill the gadget source code URL"
 	}
 
 	if err := m.populateTracers(spec); err != nil {

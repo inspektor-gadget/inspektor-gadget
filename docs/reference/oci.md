@@ -49,6 +49,19 @@ Its content must be a valid ELF file.
 There must be at most one layer with the wasm media type. If present, it must
 not be empty and it must be a valid wasm file.
 
-## Image labels
+## Image annotations
 
-TODO
+OCI images can have annotations at different levels:
+- index
+- manifest
+- config
+- layer
+
+Inspektor Gadget automatically adds the following annotations at the manifest and config levels:
+- `org.opencontainers.image.*`: defined by [OCI Image Format](https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys)
+  - title
+  - description
+  - url
+  - documentation
+  - source
+  - created
