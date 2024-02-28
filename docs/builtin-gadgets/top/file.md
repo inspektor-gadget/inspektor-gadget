@@ -23,7 +23,7 @@ K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM
 
 The `T` column indicates the type of the file: `R` for regular files, `S` for
 sockets, and `O` for other (including pipes). By default only regular files are
-shown; use the `-a` option to show all file types.
+shown; use the `--all-files` option to show all file types.
 
 In another terminal, let's create our pod. It'll install `git` and then
 clone the linux source code.
@@ -64,25 +64,26 @@ them remove it:
 $ kubectl delete pod mypod
 ```
 
-By default the top file gadget prints a summary each second. It accepts a numeric argument to indicate the interval to use:
+By default the top file gadget prints a summary each second. It can be customized
+with the `--interval` flag. For example, to print a summary each 5 seconds:
 
 ```bash
-$ kubectl gadget top file 5 # will print a summary each 5 seconds
+$ kubectl gadget top file --interval 5
 ```
 
 This gadget also supports the following flags to customize the output:
 
 ```bash
 $ kubectl gadget top file --help
-Trace reads and writes by file
+Periodically report read/write activity by file
 
 Usage:
-  kubectl-gadget top file [interval] [flags]
+  kubectl-gadget top file [flags]
 
 Flags:
-  -a, --all-files              Include non-regular file types (sockets, FIFOs, etc)
+      --all-files              include non-regular file types (sockets, FIFOs, etc)
 ...
-  -r, --maxrows int            Maximum rows to print (default 20)
+  -m, --max-rows uint32        Maximum number of rows to return (default 50)
 ...
 ```
 
