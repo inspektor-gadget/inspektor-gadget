@@ -45,7 +45,7 @@ func TestTraceFsslower(t *testing.T) {
 				),
 				Comm: "cat",
 				File: "foo",
-				Op:   "R",
+				Op:   "O",
 			}
 
 			normalize := func(e *fsslowerTypes.Event) {

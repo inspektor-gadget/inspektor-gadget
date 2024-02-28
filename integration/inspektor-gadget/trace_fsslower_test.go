@@ -45,7 +45,7 @@ func TestTraceFsslower(t *testing.T) {
 				Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:  "cat",
 				File:  "foo",
-				Op:    "R",
+				Op:    "O",
 			}
 
 			normalize := func(e *tracefsslowerType.Event) {
