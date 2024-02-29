@@ -160,7 +160,7 @@ GADGET_TRACER(open, events, event);
 
 /* ... */
 
-static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
+static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 {
 	struct event *event;
 
@@ -196,7 +196,7 @@ GADGET_TRACER(exec, events, event);
 /* ... */
 
 SEC("tracepoint/syscalls/sys_exit_execve")
-int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
+int ig_execve_x(struct syscall_trace_exit *ctx)
 {
 	/* ... */
 	struct event *event;

@@ -51,7 +51,7 @@ struct {
 };
 
 SEC("tracepoint/syscalls/sys_enter_openat")
-int enter_openat(struct trace_event_raw_sys_enter *ctx)
+int enter_openat(struct syscall_trace_enter *ctx)
 {
 	struct event event = {};
 
