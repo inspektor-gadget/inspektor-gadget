@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -186,9 +187,36 @@ func parseJSONArrayOutputToObj(t *testing.T, output string, normalize func(map[s
 	return ret
 }
 
+func parseMultipleJSONArrayOutputToObj(t *testing.T, output string, normalize func(map[string]interface{})) []map[string]interface{} {
+	ret := []map[string]interface{}{}
+
+	sc := bufio.NewScanner(strings.NewReader(output))
+	// On ARO we saw arrays with charcounts of > 100,000. Lets just set 1 MB as the limit
+	sc.Buffer(make([]byte, 1024), 1024*1024)
+	for sc.Scan() {
+		entries := parseJSONArrayOutputToObj(t, sc.Text(), normalize)
+		ret = append(ret, entries...)
+	}
+	require.NoError(t, sc.Err(), "parsing multiple JSON arrays")
+
+	return ret
+}
+
 // ExpectEntriesInArrayToMatchObj verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (JSON array of JSON objects).
 func ExpectEntriesInArrayToMatchObj(t *testing.T, output string, normalize func(map[string]interface{}), expectedEntries ...map[string]interface{}) {
 	entries := parseJSONArrayOutputToObj(t, output, normalize)
+	expectEntriesToMatchObj(t, entries, expectedEntries...)
+}
+
+// ExpectEntriesInMultipleArrayToMatchObj verifies that all the entries in expectedEntries are
+// matched by at least one entry in the output (multiple JSON array of JSON objects separated by newlines).
+func ExpectEntriesInMultipleArrayToMatchObj(
+	t *testing.T,
+	output string,
+	normalize func(map[string]interface{}),
+	expectedEntries ...map[string]interface{},
+) {
+	entries := parseMultipleJSONArrayOutputToObj(t, output, normalize)
 	expectEntriesToMatchObj(t, entries, expectedEntries...)
 }

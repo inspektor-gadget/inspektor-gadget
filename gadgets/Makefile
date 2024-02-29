@@ -16,6 +16,7 @@ GADGETS = \
 	trace_tcpconnect \
 	trace_tcpdrop \
 	trace_tcpretrans \
+	top_file \
 	snapshot_process \
 	snapshot_socket \
 	ci/sched_cls_drop \

@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -102,6 +103,9 @@ type Tracer struct {
 
 	// Snapshotters related
 	linksSnapshotters []*linkSnapshotter
+
+	// Toppers related
+	topperMap *ebpf.Map
 
 	containers map[string]*containercollection.Container
 	links      []link.Link
@@ -307,6 +311,7 @@ func (t *Tracer) handleTracerMapDefinition(tracerMapName string) error {
 type loadingOptions struct {
 	collectionOptions ebpf.CollectionOptions
 	tracerMapName     string
+	topperMapName     string
 }
 
 func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
@@ -314,7 +319,7 @@ func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 
 	tracerMapName := opts.tracerMapName
 
-	if t.createdByTracerMapMacro(tracerMapName) {
+	if tracerMapName != "" && t.createdByTracerMapMacro(tracerMapName) {
 		err = t.handleTracerMapDefinition(tracerMapName)
 		if err != nil {
 			return fmt.Errorf("handling tracer map definition through GADGET_TRACER_MAP: %w", err)
@@ -340,6 +345,9 @@ func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 		if err != nil {
 			return fmt.Errorf("create BPF map reader: %w", err)
 		}
+	}
+	if opts.topperMapName != "" {
+		t.topperMap = t.collection.Maps[opts.topperMapName]
 	}
 
 	return err
@@ -437,7 +445,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 
 	var err error
-	var tracerMapName string
+	var tracerMapName, topperMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
 
@@ -454,6 +462,9 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("handling trace programs: %w", err)
 		}
+	case len(t.config.Metadata.Toppers) > 0:
+		_, topper := getAnyMapElem(t.config.Metadata.Toppers)
+		topperMapName = topper.MapName
 	}
 
 	t.setEBPFParameters(t.config.Metadata.EBPFParams, params)
@@ -484,6 +495,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 	err = t.loadeBPFObjects(loadingOptions{
 		collectionOptions: ebpf.CollectionOptions{MapReplacements: mapReplacements},
 		tracerMapName:     tracerMapName,
+		topperMapName:     topperMapName,
 	})
 	if err != nil {
 		return fmt.Errorf("loading eBPF objects: %w", err)
@@ -899,6 +911,147 @@ func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
 	return nil
 }
 
+func (t *Tracer) nextStats(gadgetCtx gadgets.GadgetContext, cb func(data []byte) *types.Event) ([]*types.Event, error) {
+	stats := []*types.Event{}
+	entries := t.topperMap
+
+	defer func() {
+		// Delete elements. TODO: We should ensure to delete only the elements
+		// we read to avoid deleting elements that are not read yet.
+		key, err := entries.NextKeyBytes(nil)
+		if err != nil {
+			gadgetCtx.Logger().Warnf("couldn't get first key to delete: %v", err)
+			return
+		}
+		if key == nil {
+			// Map is empty
+			return
+		}
+
+		for {
+			if err := entries.Delete(key); err != nil {
+				gadgetCtx.Logger().Warnf("couldn't delete value from key: %v", err)
+				return
+			}
+			key, err = entries.NextKeyBytes(key)
+			if err != nil {
+				return
+			}
+			if key == nil {
+				// No more keys
+				break
+			}
+		}
+	}()
+
+	// Gather elements: Start by getting the first key
+	key, err := entries.NextKeyBytes(nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting fist key: %w", err)
+	}
+	if key == nil {
+		// Map is empty
+		return stats, nil
+	}
+
+	// Now iterate over all keys
+	for {
+		var rawStat []byte
+		rawStat, err := entries.LookupBytes(key)
+		if err != nil {
+			return nil, fmt.Errorf("looking up value from key: %w", err)
+		}
+
+		stats = append(stats, cb(rawStat))
+
+		key, err = entries.NextKeyBytes(key)
+		if err != nil {
+			return nil, fmt.Errorf("getting next key: %w", err)
+		}
+		if key == nil {
+			// No more keys
+			break
+		}
+	}
+
+	// TODO: How can we sort? Data is still in a raw format by this point.
+	// top.SortStats(stats, t.config.SortBy, &t.colMap)
+
+	return stats, nil
+}
+
+// computeIterations returns the number of iterations a topper must perform to
+// get the desired timeout. It returns zero if timeout is zero.
+func computeIterations(interval, timeout time.Duration) (int, error) {
+	if timeout <= 0 {
+		return 0, nil
+	}
+	if interval <= 0 {
+		return 0, fmt.Errorf("interval must be greater than zero, got %s", interval)
+	}
+	if timeout < interval {
+		return 0, fmt.Errorf("timeout %s must be greater than interval %s", timeout, interval)
+	}
+	if timeout%interval != 0 {
+		return 0, fmt.Errorf("timeout %s must be a multiple of interval %s", timeout, interval)
+	}
+	return int(timeout / interval), nil
+}
+
+func (t *Tracer) runToppers(gadgetCtx gadgets.GadgetContext) {
+	cb := t.processEventFunc(gadgetCtx)
+	ctx := gadgetCtx.Context()
+	maxRows := gadgetCtx.GadgetParams().Get(gadgets.ParamMaxRows).AsInt()
+	interval := time.Second * time.Duration(gadgetCtx.GadgetParams().Get(gadgets.ParamInterval).AsInt())
+
+	// Don't use a context with a timeout but a counter to avoid having to deal
+	// with two timers: one for the timeout and another for the ticker.
+	iterations, err := computeIterations(interval, gadgetCtx.Timeout())
+	if err != nil {
+		gadgetCtx.Logger().Errorf("computing iterations: %s", err)
+		return
+	}
+
+	gadgetCtx.Logger().Debugf("running topper with params:")
+	for _, p := range *gadgetCtx.GadgetParams() {
+		gadgetCtx.Logger().Debugf("- %s: %s", p.Key, p.String())
+	}
+	gadgetCtx.Logger().Debugf("- timeout: %s", gadgetCtx.Timeout())
+	gadgetCtx.Logger().Debugf("- iterations: %d", iterations)
+
+	count := iterations
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			stats, err := t.nextStats(gadgetCtx, cb)
+			if err != nil {
+				gadgetCtx.Logger().Errorf("getting next stats: %s", err)
+				return
+			}
+
+			n := len(stats)
+			if n > maxRows {
+				n = maxRows
+			}
+
+			t.eventArrayCallback(stats[:n])
+
+			// Count down only if user requested a finite number of iterations
+			// by setting a timeout.
+			if iterations > 0 {
+				count--
+				if count == 0 {
+					return
+				}
+			}
+		}
+	}
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if err := t.installTracer(gadgetCtx); err != nil {
 		t.Close()
@@ -908,9 +1061,13 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if t.perfReader != nil || t.ringbufReader != nil {
 		go t.runTracers(gadgetCtx)
 	}
+	if t.topperMap != nil {
+		go t.runToppers(gadgetCtx)
+	}
 	if len(t.linksSnapshotters) > 0 {
 		return t.runSnapshotter(gadgetCtx)
 	}
+
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil

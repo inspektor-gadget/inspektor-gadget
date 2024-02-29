@@ -14,6 +14,12 @@
 	const void *gadget_tracer_##name##___##map_name##___##event_type __attribute__((unused)); \
 	const struct event_type *__gadget_tracer_type_##name __attribute__((unused));
 
+// GADGET_TOPPER is used to define a topper. Currently only one topper per eBPF object is allowed.
+// name is the topper's name
+// map_name is the name of the hash map used to send events to user space
+#define GADGET_TOPPER(name, map_name) \
+	const void *gadget_topper_##name##___##map_name __attribute__((unused));
+
 // GADGET_PARAM is used to indicate that a given variable is used as a parameter.
 // Users of Inspektor Gadget can set these values from userspace
 #define GADGET_PARAM(name) \
