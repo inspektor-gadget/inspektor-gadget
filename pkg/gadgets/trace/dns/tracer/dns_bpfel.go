@@ -35,7 +35,7 @@ type dnsEventT struct {
 type dnsQueryKeyT struct {
 	PidTgid uint64
 	Id      uint16
-	Pad     [3]uint16
+	_       [6]byte
 }
 
 type dnsSocketsKey struct {

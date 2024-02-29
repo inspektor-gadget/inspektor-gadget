@@ -95,7 +95,6 @@ struct dnshdr {
 struct query_key_t {
 	__u64 pid_tgid;
 	__u16 id;
-	__u16 pad[3]; // this is needed, otherwise the verifier claims an invalid read from stack
 };
 
 struct {
