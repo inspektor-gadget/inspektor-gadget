@@ -245,7 +245,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 					for n := 0; n < b.N; n++ {
 						// This benchmark only measure gadget startup time.
 						// Use a timeout of 0s, so it will immediately timeout
-						// and runtime.RunGadget() will be stopped immediately
+						// and runtime.RunBuiltInGadget() will be stopped immediately
 						// via '<-gadgetCtx.Context().Done()' once the gadget
 						// is started.
 						ctx, cancel := context.WithTimeout(context.TODO(), 0)
@@ -262,7 +262,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 
 						gadgetParams := paramDescs.ToParams()
 
-						gadgetCtx := gadgetcontext.New(
+						gadgetCtx := gadgetcontext.NewBuiltIn(
 							ctx,
 							"",
 							runtime,
@@ -276,7 +276,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							0,
 						)
 
-						_, err := runtime.RunGadget(gadgetCtx)
+						_, err := runtime.RunBuiltInGadget(gadgetCtx)
 						if err != nil {
 							b.Fatalf("running gadget: %s", err)
 						}

@@ -31,7 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
+func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
 	if runtimeParams == nil {
 		runtimeParams = r.ParamDescs().ToParams()
 	}
@@ -45,14 +45,14 @@ func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParam
 		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
 	defer conn.Close()
-	client := api.NewOCIGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 
-	in := &api.GetOCIGadgetInfoRequest{
+	in := &api.GetGadgetInfoRequest{
 		ParamValues: paramValues,
 		ImageName:   gadgetCtx.ImageName(),
 		Version:     api.VersionGadgetInfo,
 	}
-	out, err := client.GetOCIGadgetInfo(ctx, in)
+	out, err := client.GetGadgetInfo(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
@@ -65,7 +65,7 @@ func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParam
 	return gadgetCtx.SerializeGadgetInfo()
 }
 
-func (r *Runtime) RunOCIGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {
+func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {
 	if runtimeParams == nil {
 		runtimeParams = r.ParamDescs().ToParams()
 	}
@@ -79,11 +79,11 @@ func (r *Runtime) RunOCIGadget(gadgetCtx runtime.GadgetContext, runtimeParams *p
 	if err != nil {
 		return fmt.Errorf("getting target nodes: %w", err)
 	}
-	_, err = r.runOCIGadgetOnTargets(gadgetCtx, paramValues, targets)
+	_, err = r.runGadgetOnTargets(gadgetCtx, paramValues, targets)
 	return err
 }
 
-func (r *Runtime) runOCIGadgetOnTargets(
+func (r *Runtime) runGadgetOnTargets(
 	gadgetCtx runtime.GadgetContext,
 	paramMap map[string]string,
 	targets []target,
@@ -95,8 +95,8 @@ func (r *Runtime) runOCIGadgetOnTargets(
 	for _, t := range targets {
 		wg.Add(1)
 		go func(target target) {
-			gadgetCtx.Logger().Debugf("running oci gadget on node %q", target.node)
-			res, err := r.runOCIGadget(gadgetCtx, target, paramMap)
+			gadgetCtx.Logger().Debugf("running gadget on node %q", target.node)
+			res, err := r.runGadget(gadgetCtx, target, paramMap)
 			resultsLock.Lock()
 			results[target.node] = &runtime.GadgetResult{
 				Payload: res,
@@ -111,7 +111,7 @@ func (r *Runtime) runOCIGadgetOnTargets(
 	return results, results.Err()
 }
 
-func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
+func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
 	// Notice that we cannot use gadgetCtx.Context() here, as that would - when cancelled by the user - also cancel the
 	// underlying gRPC connection. That would then lead to results not being received anymore (mostly for profile
 	// gadgets.)
@@ -127,9 +127,9 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}
 	defer conn.Close()
-	client := api.NewOCIGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 
-	runRequest := &api.OCIGadgetRunRequest{
+	runRequest := &api.GadgetRunRequest{
 		ImageName:   gadgetCtx.ImageName(),
 		ParamValues: allParams,
 		Args:        gadgetCtx.Args(),
@@ -138,12 +138,12 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 		Version:     api.VersionGadgetRunProtocol,
 	}
 
-	runClient, err := client.RunOCIGadget(connCtx)
+	runClient, err := client.RunGadget(connCtx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		return nil, err
 	}
 
-	controlRequest := &api.OCIGadgetControlRequest{Event: &api.OCIGadgetControlRequest_OciRunRequest{OciRunRequest: runRequest}}
+	controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
 	err = runClient.Send(controlRequest)
 	if err != nil {
 		return nil, err
@@ -234,7 +234,7 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 	case <-gadgetCtx.Context().Done():
 		// Send stop request
 		gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
-		controlRequest := &api.OCIGadgetControlRequest{Event: &api.OCIGadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
+		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
 		runClient.Send(controlRequest)
 
 		// Wait for done or timeout

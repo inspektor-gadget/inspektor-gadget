@@ -67,7 +67,7 @@ type GadgetContext struct {
 	metadata         []byte
 }
 
-func New(
+func NewBuiltIn(
 	ctx context.Context,
 	id string,
 	runtime runtime.Runtime,
@@ -102,7 +102,7 @@ func New(
 	}
 }
 
-func NewOCI(
+func New(
 	ctx context.Context,
 	imageName string,
 	options ...Option,

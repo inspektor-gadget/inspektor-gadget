@@ -158,7 +158,7 @@ func handleMetric(
 		return nil, nil, fmt.Errorf("initializing operators: %w", err)
 	}
 
-	gadgetCtx := gadgetcontext.New(
+	gadgetCtx := gadgetcontext.NewBuiltIn(
 		ctx,
 		metricCommon.Name,
 		runtime,
@@ -279,7 +279,7 @@ func createCounter(
 	parser.SetEventCallback(cb)
 
 	go func() {
-		if _, err = runtime.RunGadget(gadgetCtx); err != nil {
+		if _, err = runtime.RunBuiltInGadget(gadgetCtx); err != nil {
 			gadgetCtx.Logger().Errorf("running gadget: %s", err)
 		}
 	}()
@@ -351,7 +351,7 @@ func createGauge(
 	callback := func(ctx context.Context, obs otelmetric.Observer) error {
 		// This is a one-shot gadget, hence we can run it here and wait for it to finish
 		// without having to create a new goroutine.
-		if _, err = runtime.RunGadget(gadgetCtx); err != nil {
+		if _, err = runtime.RunBuiltInGadget(gadgetCtx); err != nil {
 			return fmt.Errorf("running gadget: %w", err)
 		}
 
@@ -461,7 +461,7 @@ func createHistogram(
 	parser.SetEventCallback(cb)
 
 	go func() {
-		if _, err = runtime.RunGadget(gadgetCtx); err != nil {
+		if _, err = runtime.RunBuiltInGadget(gadgetCtx); err != nil {
 			gadgetCtx.Logger().Errorf("running gadget: %s", err)
 		}
 	}()

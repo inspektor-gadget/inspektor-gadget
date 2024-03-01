@@ -374,7 +374,7 @@ func buildCommandFromGadget(
 				timeoutDuration = time.Duration(timeout) * time.Second
 			}
 
-			gadgetCtx := gadgetcontext.New(
+			gadgetCtx := gadgetcontext.NewBuiltIn(
 				ctx,
 				"",
 				runtime,
@@ -444,7 +444,7 @@ func buildCommandFromGadget(
 				// This kind of gadgets return directly the result instead of
 				// using the parser. We allow partial results, so error is only
 				// returned after handling those results.
-				results, err := runtime.RunGadget(gadgetCtx)
+				results, err := runtime.RunBuiltInGadget(gadgetCtx)
 
 				for node, result := range results {
 					if result.Error != nil {
@@ -657,7 +657,7 @@ func buildCommandFromGadget(
 
 			// Gadgets with parser don't return anything, they provide the
 			// output via the parser
-			_, err = runtime.RunGadget(gadgetCtx)
+			_, err = runtime.RunBuiltInGadget(gadgetCtx)
 			if err != nil {
 				return fmt.Errorf("running gadget: %w", err)
 			}

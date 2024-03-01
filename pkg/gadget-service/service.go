@@ -54,8 +54,8 @@ type RunConfig struct {
 }
 
 type Service struct {
+	api.UnimplementedBuiltInGadgetManagerServer
 	api.UnimplementedGadgetManagerServer
-	api.UnimplementedOCIGadgetManagerServer
 	listener          net.Listener
 	runtime           runtime.Runtime
 	logger            logger.Logger
@@ -88,7 +88,7 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 	}, nil
 }
 
-func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
+func (s *Service) RunBuiltInGadget(runGadget api.BuiltInGadgetManager_RunBuiltInGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
@@ -201,7 +201,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}
 
 	// Create new Gadget Context
-	gadgetCtx := gadgetcontext.New(
+	gadgetCtx := gadgetcontext.NewBuiltIn(
 		runGadget.Context(),
 		runID,
 		runtime,
@@ -228,7 +228,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 				return
 			}
 			switch msg.Event.(type) {
-			case *api.GadgetControlRequest_StopRequest:
+			case *api.BuiltInGadgetControlRequest_StopRequest:
 				gadgetCtx.Cancel()
 				return
 			default:
@@ -238,7 +238,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}()
 
 	// Hand over to runtime
-	results, err := runtime.RunGadget(gadgetCtx)
+	results, err := runtime.RunBuiltInGadget(gadgetCtx)
 	if err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
@@ -321,8 +321,8 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 	}
 
 	server := grpc.NewServer(serverOptions...)
+	api.RegisterBuiltInGadgetManagerServer(server, s)
 	api.RegisterGadgetManagerServer(server, s)
-	api.RegisterOCIGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 
