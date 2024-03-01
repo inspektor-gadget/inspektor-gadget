@@ -18,12 +18,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"syscall"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"golang.org/x/sys/unix"
 )
 
 // Keep this aligned with include/gadget/types.h
@@ -36,6 +38,9 @@ const (
 
 	// Name of the type to store a timestamp
 	TimestampTypeName = "gadget_timestamp"
+
+	// Name of the type to store a signal
+	SignalTypeName = "gadget_signal"
 )
 
 type formattersOperator struct{}
@@ -84,6 +89,30 @@ type replacer struct {
 
 // careful: order and priority matter both!
 var replacers = []replacer{
+	{
+		name:      "signal",
+		selectors: []string{"type:" + SignalTypeName},
+		replace: func(ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			out, err := ds.AddField(in.Name() + "_str")
+			if err != nil {
+				return nil, nil
+			}
+
+			return func(data datasource.Data) error {
+				inBytes := in.Get(data)
+				switch len(inBytes) {
+				default:
+					return nil
+				case 4:
+					signal := ds.ByteOrder().Uint32(inBytes)
+					signalName := unix.SignalName(syscall.Signal(signal))
+					out.Set(data, []byte(signalName))
+				}
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
 	{
 		name:      "timestamp",
 		selectors: []string{"type:" + TimestampTypeName},
