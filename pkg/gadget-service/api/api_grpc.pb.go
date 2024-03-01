@@ -18,11 +18,166 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
+// BuiltInGadgetManagerClient is the client API for BuiltInGadgetManager service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type BuiltInGadgetManagerClient interface {
+	GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
+	RunBuiltInGadget(ctx context.Context, opts ...grpc.CallOption) (BuiltInGadgetManager_RunBuiltInGadgetClient, error)
+}
+
+type builtInGadgetManagerClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewBuiltInGadgetManagerClient(cc grpc.ClientConnInterface) BuiltInGadgetManagerClient {
+	return &builtInGadgetManagerClient{cc}
+}
+
+func (c *builtInGadgetManagerClient) GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
+	out := new(InfoResponse)
+	err := c.cc.Invoke(ctx, "/api.BuiltInGadgetManager/GetInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *builtInGadgetManagerClient) RunBuiltInGadget(ctx context.Context, opts ...grpc.CallOption) (BuiltInGadgetManager_RunBuiltInGadgetClient, error) {
+	stream, err := c.cc.NewStream(ctx, &BuiltInGadgetManager_ServiceDesc.Streams[0], "/api.BuiltInGadgetManager/RunBuiltInGadget", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &builtInGadgetManagerRunBuiltInGadgetClient{stream}
+	return x, nil
+}
+
+type BuiltInGadgetManager_RunBuiltInGadgetClient interface {
+	Send(*BuiltInGadgetControlRequest) error
+	Recv() (*GadgetEvent, error)
+	grpc.ClientStream
+}
+
+type builtInGadgetManagerRunBuiltInGadgetClient struct {
+	grpc.ClientStream
+}
+
+func (x *builtInGadgetManagerRunBuiltInGadgetClient) Send(m *BuiltInGadgetControlRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *builtInGadgetManagerRunBuiltInGadgetClient) Recv() (*GadgetEvent, error) {
+	m := new(GadgetEvent)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// BuiltInGadgetManagerServer is the server API for BuiltInGadgetManager service.
+// All implementations must embed UnimplementedBuiltInGadgetManagerServer
+// for forward compatibility
+type BuiltInGadgetManagerServer interface {
+	GetInfo(context.Context, *InfoRequest) (*InfoResponse, error)
+	RunBuiltInGadget(BuiltInGadgetManager_RunBuiltInGadgetServer) error
+	mustEmbedUnimplementedBuiltInGadgetManagerServer()
+}
+
+// UnimplementedBuiltInGadgetManagerServer must be embedded to have forward compatible implementations.
+type UnimplementedBuiltInGadgetManagerServer struct {
+}
+
+func (UnimplementedBuiltInGadgetManagerServer) GetInfo(context.Context, *InfoRequest) (*InfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
+}
+func (UnimplementedBuiltInGadgetManagerServer) RunBuiltInGadget(BuiltInGadgetManager_RunBuiltInGadgetServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunBuiltInGadget not implemented")
+}
+func (UnimplementedBuiltInGadgetManagerServer) mustEmbedUnimplementedBuiltInGadgetManagerServer() {}
+
+// UnsafeBuiltInGadgetManagerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BuiltInGadgetManagerServer will
+// result in compilation errors.
+type UnsafeBuiltInGadgetManagerServer interface {
+	mustEmbedUnimplementedBuiltInGadgetManagerServer()
+}
+
+func RegisterBuiltInGadgetManagerServer(s grpc.ServiceRegistrar, srv BuiltInGadgetManagerServer) {
+	s.RegisterService(&BuiltInGadgetManager_ServiceDesc, srv)
+}
+
+func _BuiltInGadgetManager_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BuiltInGadgetManagerServer).GetInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.BuiltInGadgetManager/GetInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BuiltInGadgetManagerServer).GetInfo(ctx, req.(*InfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BuiltInGadgetManager_RunBuiltInGadget_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(BuiltInGadgetManagerServer).RunBuiltInGadget(&builtInGadgetManagerRunBuiltInGadgetServer{stream})
+}
+
+type BuiltInGadgetManager_RunBuiltInGadgetServer interface {
+	Send(*GadgetEvent) error
+	Recv() (*BuiltInGadgetControlRequest, error)
+	grpc.ServerStream
+}
+
+type builtInGadgetManagerRunBuiltInGadgetServer struct {
+	grpc.ServerStream
+}
+
+func (x *builtInGadgetManagerRunBuiltInGadgetServer) Send(m *GadgetEvent) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *builtInGadgetManagerRunBuiltInGadgetServer) Recv() (*BuiltInGadgetControlRequest, error) {
+	m := new(BuiltInGadgetControlRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// BuiltInGadgetManager_ServiceDesc is the grpc.ServiceDesc for BuiltInGadgetManager service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var BuiltInGadgetManager_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "api.BuiltInGadgetManager",
+	HandlerType: (*BuiltInGadgetManagerServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetInfo",
+			Handler:    _BuiltInGadgetManager_GetInfo_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "RunBuiltInGadget",
+			Handler:       _BuiltInGadgetManager_RunBuiltInGadget_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "api/api.proto",
+}
+
 // GadgetManagerClient is the client API for GadgetManager service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GadgetManagerClient interface {
-	GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
+	GetGadgetInfo(ctx context.Context, in *GetGadgetInfoRequest, opts ...grpc.CallOption) (*GetGadgetInfoResponse, error)
 	RunGadget(ctx context.Context, opts ...grpc.CallOption) (GadgetManager_RunGadgetClient, error)
 }
 
@@ -34,9 +189,9 @@ func NewGadgetManagerClient(cc grpc.ClientConnInterface) GadgetManagerClient {
 	return &gadgetManagerClient{cc}
 }
 
-func (c *gadgetManagerClient) GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
-	out := new(InfoResponse)
-	err := c.cc.Invoke(ctx, "/api.GadgetManager/GetInfo", in, out, opts...)
+func (c *gadgetManagerClient) GetGadgetInfo(ctx context.Context, in *GetGadgetInfoRequest, opts ...grpc.CallOption) (*GetGadgetInfoResponse, error) {
+	out := new(GetGadgetInfoResponse)
+	err := c.cc.Invoke(ctx, "/api.GadgetManager/GetGadgetInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +233,7 @@ func (x *gadgetManagerRunGadgetClient) Recv() (*GadgetEvent, error) {
 // All implementations must embed UnimplementedGadgetManagerServer
 // for forward compatibility
 type GadgetManagerServer interface {
-	GetInfo(context.Context, *InfoRequest) (*InfoResponse, error)
+	GetGadgetInfo(context.Context, *GetGadgetInfoRequest) (*GetGadgetInfoResponse, error)
 	RunGadget(GadgetManager_RunGadgetServer) error
 	mustEmbedUnimplementedGadgetManagerServer()
 }
@@ -87,8 +242,8 @@ type GadgetManagerServer interface {
 type UnimplementedGadgetManagerServer struct {
 }
 
-func (UnimplementedGadgetManagerServer) GetInfo(context.Context, *InfoRequest) (*InfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
+func (UnimplementedGadgetManagerServer) GetGadgetInfo(context.Context, *GetGadgetInfoRequest) (*GetGadgetInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGadgetInfo not implemented")
 }
 func (UnimplementedGadgetManagerServer) RunGadget(GadgetManager_RunGadgetServer) error {
 	return status.Errorf(codes.Unimplemented, "method RunGadget not implemented")
@@ -106,20 +261,20 @@ func RegisterGadgetManagerServer(s grpc.ServiceRegistrar, srv GadgetManagerServe
 	s.RegisterService(&GadgetManager_ServiceDesc, srv)
 }
 
-func _GadgetManager_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InfoRequest)
+func _GadgetManager_GetGadgetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGadgetInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GadgetManagerServer).GetInfo(ctx, in)
+		return srv.(GadgetManagerServer).GetGadgetInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.GadgetManager/GetInfo",
+		FullMethod: "/api.GadgetManager/GetGadgetInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GadgetManagerServer).GetInfo(ctx, req.(*InfoRequest))
+		return srv.(GadgetManagerServer).GetGadgetInfo(ctx, req.(*GetGadgetInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -158,169 +313,14 @@ var GadgetManager_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*GadgetManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetInfo",
-			Handler:    _GadgetManager_GetInfo_Handler,
+			MethodName: "GetGadgetInfo",
+			Handler:    _GadgetManager_GetGadgetInfo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "RunGadget",
 			Handler:       _GadgetManager_RunGadget_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
-		},
-	},
-	Metadata: "api/api.proto",
-}
-
-// OCIGadgetManagerClient is the client API for OCIGadgetManager service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type OCIGadgetManagerClient interface {
-	GetOCIGadgetInfo(ctx context.Context, in *GetOCIGadgetInfoRequest, opts ...grpc.CallOption) (*GetOCIGadgetInfoResponse, error)
-	RunOCIGadget(ctx context.Context, opts ...grpc.CallOption) (OCIGadgetManager_RunOCIGadgetClient, error)
-}
-
-type oCIGadgetManagerClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewOCIGadgetManagerClient(cc grpc.ClientConnInterface) OCIGadgetManagerClient {
-	return &oCIGadgetManagerClient{cc}
-}
-
-func (c *oCIGadgetManagerClient) GetOCIGadgetInfo(ctx context.Context, in *GetOCIGadgetInfoRequest, opts ...grpc.CallOption) (*GetOCIGadgetInfoResponse, error) {
-	out := new(GetOCIGadgetInfoResponse)
-	err := c.cc.Invoke(ctx, "/api.OCIGadgetManager/GetOCIGadgetInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *oCIGadgetManagerClient) RunOCIGadget(ctx context.Context, opts ...grpc.CallOption) (OCIGadgetManager_RunOCIGadgetClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OCIGadgetManager_ServiceDesc.Streams[0], "/api.OCIGadgetManager/RunOCIGadget", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &oCIGadgetManagerRunOCIGadgetClient{stream}
-	return x, nil
-}
-
-type OCIGadgetManager_RunOCIGadgetClient interface {
-	Send(*OCIGadgetControlRequest) error
-	Recv() (*GadgetEvent, error)
-	grpc.ClientStream
-}
-
-type oCIGadgetManagerRunOCIGadgetClient struct {
-	grpc.ClientStream
-}
-
-func (x *oCIGadgetManagerRunOCIGadgetClient) Send(m *OCIGadgetControlRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *oCIGadgetManagerRunOCIGadgetClient) Recv() (*GadgetEvent, error) {
-	m := new(GadgetEvent)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// OCIGadgetManagerServer is the server API for OCIGadgetManager service.
-// All implementations must embed UnimplementedOCIGadgetManagerServer
-// for forward compatibility
-type OCIGadgetManagerServer interface {
-	GetOCIGadgetInfo(context.Context, *GetOCIGadgetInfoRequest) (*GetOCIGadgetInfoResponse, error)
-	RunOCIGadget(OCIGadgetManager_RunOCIGadgetServer) error
-	mustEmbedUnimplementedOCIGadgetManagerServer()
-}
-
-// UnimplementedOCIGadgetManagerServer must be embedded to have forward compatible implementations.
-type UnimplementedOCIGadgetManagerServer struct {
-}
-
-func (UnimplementedOCIGadgetManagerServer) GetOCIGadgetInfo(context.Context, *GetOCIGadgetInfoRequest) (*GetOCIGadgetInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetOCIGadgetInfo not implemented")
-}
-func (UnimplementedOCIGadgetManagerServer) RunOCIGadget(OCIGadgetManager_RunOCIGadgetServer) error {
-	return status.Errorf(codes.Unimplemented, "method RunOCIGadget not implemented")
-}
-func (UnimplementedOCIGadgetManagerServer) mustEmbedUnimplementedOCIGadgetManagerServer() {}
-
-// UnsafeOCIGadgetManagerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to OCIGadgetManagerServer will
-// result in compilation errors.
-type UnsafeOCIGadgetManagerServer interface {
-	mustEmbedUnimplementedOCIGadgetManagerServer()
-}
-
-func RegisterOCIGadgetManagerServer(s grpc.ServiceRegistrar, srv OCIGadgetManagerServer) {
-	s.RegisterService(&OCIGadgetManager_ServiceDesc, srv)
-}
-
-func _OCIGadgetManager_GetOCIGadgetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetOCIGadgetInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OCIGadgetManagerServer).GetOCIGadgetInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.OCIGadgetManager/GetOCIGadgetInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OCIGadgetManagerServer).GetOCIGadgetInfo(ctx, req.(*GetOCIGadgetInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OCIGadgetManager_RunOCIGadget_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(OCIGadgetManagerServer).RunOCIGadget(&oCIGadgetManagerRunOCIGadgetServer{stream})
-}
-
-type OCIGadgetManager_RunOCIGadgetServer interface {
-	Send(*GadgetEvent) error
-	Recv() (*OCIGadgetControlRequest, error)
-	grpc.ServerStream
-}
-
-type oCIGadgetManagerRunOCIGadgetServer struct {
-	grpc.ServerStream
-}
-
-func (x *oCIGadgetManagerRunOCIGadgetServer) Send(m *GadgetEvent) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *oCIGadgetManagerRunOCIGadgetServer) Recv() (*OCIGadgetControlRequest, error) {
-	m := new(OCIGadgetControlRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// OCIGadgetManager_ServiceDesc is the grpc.ServiceDesc for OCIGadgetManager service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var OCIGadgetManager_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.OCIGadgetManager",
-	HandlerType: (*OCIGadgetManagerServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetOCIGadgetInfo",
-			Handler:    _OCIGadgetManager_GetOCIGadgetInfo_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "RunOCIGadget",
-			Handler:       _OCIGadgetManager_RunOCIGadget_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
