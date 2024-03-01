@@ -18,7 +18,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -37,6 +40,9 @@ const (
 
 	// TimestampTypeName contains the name of the type to store a timestamp
 	TimestampTypeName = "gadget_timestamp"
+
+	// Name of the type to store a signal
+	SignalTypeName = "gadget_signal"
 )
 
 type formattersOperator struct{}
@@ -123,6 +129,36 @@ type replacer struct {
 
 // careful: order and priority matter both!
 var replacers = []replacer{
+	{
+		name:      "signal",
+		selectors: []string{"type:" + SignalTypeName},
+		replace: func(ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			oldName := in.Name()
+
+			if err := in.Rename(oldName + "_raw"); err != nil {
+				return nil, fmt.Errorf("renaming field: %w", err)
+			}
+			in.SetHidden(true, false)
+
+			signalField, err := ds.AddField(oldName)
+			if err != nil {
+				return nil, err
+			}
+			return func(data datasource.Data) error {
+				inBytes := in.Get(data)
+				switch len(inBytes) {
+				default:
+					return nil
+				case 4:
+					signalNumber := in.Uint32(data)
+					signalName := unix.SignalName(syscall.Signal(signalNumber))
+					signalField.Set(data, []byte(signalName))
+				}
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
 	{
 		name:      "timestamp",
 		selectors: []string{"type:" + TimestampTypeName},
