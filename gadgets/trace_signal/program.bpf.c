@@ -21,7 +21,7 @@ struct event {
 	gadget_timestamp timestamp;
 	__u32 uid;
 	__u32 gid;
-	int sig;
+	gadget_signal sig;
 	int ret;
 	__u8 comm[TASK_COMM_LEN];
 };
