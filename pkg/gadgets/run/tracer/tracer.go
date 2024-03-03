@@ -369,7 +369,7 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 			logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
 		}
-		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
+		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)
 	case ebpf.TracePoint:
 		logger.Debugf("Attaching tracepoint %q to %q", p.Name, p.AttachTo)
 		parts := strings.Split(p.AttachTo, "/")
@@ -405,7 +405,7 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 				AttachType: ebpf.AttachTraceFExit,
 			})
 		}
-		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
+		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)
 	case ebpf.RawTracepoint:
 		logger.Debugf("Attaching raw tracepoint %q to %q", p.Name, p.AttachTo)
 		return link.AttachRawTracepoint(link.RawTracepointOptions{
