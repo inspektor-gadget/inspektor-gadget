@@ -93,14 +93,14 @@ func getLocalOciStore() (*oci.Store, error) {
 // GetGadgetImage pulls the gadget image according to the pull policy and returns
 // a GadgetImage structure representing it.
 func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) (*GadgetImage, error) {
-	err := EnsureImage(ctx, image, authOpts, pullPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("ensuring image presence: %w", err)
-	}
-
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	err = ensureImage(ctx, imageStore, image, authOpts, pullPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("ensuring image presence: %w", err)
 	}
 
 	manifest, err := getManifestForHost(ctx, imageStore, image)
@@ -578,13 +578,7 @@ func getContentFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc
 	return bytes, nil
 }
 
-// EnsureImage ensures the image is present in the local store
-func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) error {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("getting local oci store: %w", err)
-	}
-
+func ensureImage(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions, pullPolicy string) error {
 	switch pullPolicy {
 	case PullImageAlways:
 		_, err := pullGadgetImageToStore(ctx, imageStore, image, authOpts)
@@ -606,6 +600,16 @@ func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullP
 		}
 	}
 	return nil
+}
+
+// EnsureImage ensures the image is present in the local store
+func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) error {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	return ensureImage(ctx, imageStore, image, authOpts, pullPolicy)
 }
 
 func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
