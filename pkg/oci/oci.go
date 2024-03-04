@@ -478,8 +478,8 @@ func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Reposi
 	return repo, nil
 }
 
-func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
-	imageListDescriptor, err := imageStore.Resolve(ctx, reference)
+func getImageListDescriptor(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	imageListDescriptor, err := target.Resolve(ctx, reference)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("resolving image %q: %w", reference, err)
 	}
@@ -487,7 +487,7 @@ func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget,
 		return ocispec.Index{}, fmt.Errorf("image %q is not an image index", reference)
 	}
 
-	reader, err := imageStore.Fetch(ctx, imageListDescriptor)
+	reader, err := target.Fetch(ctx, imageListDescriptor)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("fetching image index: %w", err)
 	}
@@ -609,7 +609,7 @@ func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullP
 }
 
 func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
-	index, err := GetIndex(ctx, image)
+	index, err := getIndex(ctx, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)
 	}
@@ -639,8 +639,8 @@ func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, e
 	return manifest, nil
 }
 
-// GetIndex gets an index for the given image
-func GetIndex(ctx context.Context, image string) (*ocispec.Index, error) {
+// getIndex gets an index for the given image
+func getIndex(ctx context.Context, image string) (*ocispec.Index, error) {
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
