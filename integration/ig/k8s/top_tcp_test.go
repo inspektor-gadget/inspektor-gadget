@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"syscall"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -36,7 +35,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 				WithPodLabels("test-pod", ns, isCrioRuntime),
 			),
 			Comm:      "curl",
-			IPVersion: syscall.AF_INET,
+			IPVersion: 4,
 			SrcEndpoint: eventtypes.L4Endpoint{
 				L3Endpoint: eventtypes.L3Endpoint{
 					Addr:    "127.0.0.1",
