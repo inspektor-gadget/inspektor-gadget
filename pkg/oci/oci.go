@@ -103,7 +103,7 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pu
 		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
 
-	manifest, err := GetManifestForHost(ctx, image)
+	manifest, err := getManifestForHost(ctx, imageStore, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
@@ -608,11 +608,12 @@ func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullP
 	return nil
 }
 
-func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
-	index, err := getIndex(ctx, image)
+func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
+	index, err := getIndex(ctx, target, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)
 	}
+
 	var manifestDesc *ocispec.Descriptor
 	for _, indexManifest := range index.Manifests {
 		// TODO: Check docker code
@@ -639,19 +640,22 @@ func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, e
 	return manifest, nil
 }
 
-// getIndex gets an index for the given image
-func getIndex(ctx context.Context, image string) (*ocispec.Index, error) {
+func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
+	return getManifestForHost(ctx, imageStore, image)
+}
 
+// getIndex gets an index for the given image
+func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Index, error) {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
 
-	index, err := getImageListDescriptor(ctx, imageStore, imageRef.String())
+	index, err := getImageListDescriptor(ctx, target, imageRef.String())
 	if err != nil {
 		return nil, fmt.Errorf("getting image list descriptor: %w", err)
 	}
