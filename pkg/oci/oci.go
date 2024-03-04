@@ -32,6 +32,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -525,13 +526,13 @@ func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocis
 	return &manifest, nil
 }
 
-func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
+func getMetadataFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest) ([]byte, error) {
 	// metadata is optional
 	if manifest.Config.Size == 0 {
 		return nil, nil
 	}
 
-	metadata, err := getContentFromDescriptor(ctx, target, manifest.Config)
+	metadata, err := getContentFromDescriptor(ctx, fetcher, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
 	}
@@ -539,7 +540,7 @@ func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *
 	return metadata, nil
 }
 
-func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
+func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
 	var layer ocispec.Descriptor
 	layerCount := 0
 	for _, l := range manifest.Layers {
@@ -554,7 +555,7 @@ func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *oci
 	if layerCount != 1 {
 		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
 	}
-	layerBytes, err := getContentFromDescriptor(ctx, target, layer)
+	layerBytes, err := getContentFromDescriptor(ctx, fetcher, layer)
 	if err != nil {
 		return nil, fmt.Errorf("getting layer %q from descriptor: %w", mediaType, err)
 	}
@@ -564,8 +565,8 @@ func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *oci
 	return layerBytes, nil
 }
 
-func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
-	reader, err := imageStore.Fetch(ctx, desc)
+func getContentFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
+	reader, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}
