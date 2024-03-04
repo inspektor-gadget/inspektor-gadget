@@ -1006,7 +1006,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Install Helm
-      uses: azure/setup-helm@v3
+      uses: azure/setup-helm@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     # chart version needs to be semver compliant so we remove the leading 'v'
