@@ -21,6 +21,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
+
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -126,6 +128,12 @@ func main() {
 
 	if !skipInfo {
 		grpcRuntime.InitDeployInfo()
+		info, err := deployinfo.Load()
+		if err != nil {
+			log.Warnf("Failed to load deploy info: %s", err)
+		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
+			log.Warnf(err.Error())
+		}
 	}
 
 	namespace, _ := utils.GetNamespace()

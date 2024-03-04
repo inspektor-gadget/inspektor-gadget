@@ -19,28 +19,26 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-
-	utils.KubectlGadgetVersion, _ = semver.New(common.Version()[1:])
 }
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Client version:", common.Version())
+		fmt.Println("Client version:", version.Version())
 
 		client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 		if err != nil {

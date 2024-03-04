@@ -43,6 +43,7 @@ import (
 	"github.com/blang/semver"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	clientset "github.com/inspektor-gadget/inspektor-gadget/pkg/client/clientset/versioned"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
@@ -55,8 +56,6 @@ const (
 	GlobalTraceID = "global-trace-id"
 	TraceTimeout  = 5 * time.Second
 )
-
-var KubectlGadgetVersion *semver.Version
 
 // TraceConfig is used to contain information used to manage a trace.
 type TraceConfig struct {
@@ -187,8 +186,9 @@ func getTraceClient() (*clientset.Clientset, error) {
 
 func printVersionSkewWarning(pods *corev1.PodList) {
 	// Do not print any warning if this is a prerelease to avoid
-	// annoyting developers.
-	if len(KubectlGadgetVersion.Pre) > 0 {
+	// annoying developers.
+	kubectlGadgetVersion := version.Version()
+	if len(kubectlGadgetVersion.Pre) > 0 {
 		return
 	}
 
@@ -204,15 +204,15 @@ func printVersionSkewWarning(pods *corev1.PodList) {
 		versionStr := parts[1]
 
 		// Use 1: to remove the v prefix
-		version, err := semver.Make(versionStr[1:])
+		serverSemver, err := semver.Make(versionStr[1:])
 		if err != nil {
 			continue
 		}
 
-		if !KubectlGadgetVersion.Equals(version) {
+		if !version.Version().Equals(serverSemver) {
 			fmt.Fprintf(os.Stderr,
 				"WARNING: version skew detected (gadget pods v%s vs kubectl-gadget v%s), use 'kubectl gadget deploy' to fix it.\n",
-				version, KubectlGadgetVersion,
+				serverSemver, kubectlGadgetVersion,
 			)
 			break
 		}

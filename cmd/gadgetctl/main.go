@@ -25,6 +25,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
@@ -76,6 +77,12 @@ func main() {
 			os.Exit(1)
 		}
 		runtime.InitDeployInfo()
+		info, err := deployinfo.Load()
+		if err != nil {
+			log.Warnf("Failed to load deploy info: %s", err)
+		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
+			log.Warnf(err.Error())
+		}
 	}
 
 	hiddenColumnTags := []string{"kubernetes"}
