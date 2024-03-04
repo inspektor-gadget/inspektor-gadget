@@ -8,6 +8,48 @@
 #include <bpf/bpf_core_read.h>
 
 /**
+ * commit 9fdc4273b8da ("libbpf: Fix up verifier log for unguarded failed CO-RE
+ * relos") explains the idea of BPF instruction "poisoning" for failed
+ * relocations:
+ *
+ *     While failing CO-RE relocation is expected, it is expected to be
+ *     property guarded in BPF code such that BPF verifier always eliminates
+ *     BPF instructions corresponding to such failed CO-RE relos as dead code.
+ *     In cases when user failed to take such precautions, BPF verifier
+ *     provides the best log it can:
+ *
+ *       123: (85) call unknown#195896080
+ *       invalid func unknown#195896080
+ *
+ *     Such incomprehensible log error is due to libbpf "poisoning" BPF
+ *     instruction that corresponds to failed CO-RE relocation by replacing it
+ *     with invalid `call 0xbad2310` instruction (195896080 == 0xbad2310 reads
+ *     "bad relo" if you squint hard enough).
+ *
+ * cilium/ebpf uses the same stategy with the same value (0xbad2310).
+ *
+ *     const badRelo = asm.BuiltinFunc(0xbad2310)
+ *
+ * bpf_unreachable() provides a way to trigger the bpf verifier to reject the
+ * program with the same error. This can be used in the following way:
+ *
+ *     typedef void (*btf_trace_block_rq_insert___new)(void *, struct request *);
+ *
+ *     if (bpf_core_type_matches(btf_trace_block_rq_issue___new)) {
+ *         // After commit a54895fa (v5.11-rc1)
+ *         return trace_rq_start((void *)ctx[0], true);
+ *     } else {
+ *         bpf_unreachable();
+ *     }
+ *
+ * See:
+ *     https://github.com/torvalds/linux/commit/9fdc4273b8da
+ *     https://github.com/cilium/ebpf/commit/b2df9e8f0042
+ *     https://github.com/cilium/ebpf/blob/v0.13.2/btf/core.go#L44
+ */
+static void (*bpf_unreachable)(void) = (void *) 0xbad2310;
+
+/**
  * commit 2f064a59a1 ("sched: Change task_struct::state") changes
  * the name of task_struct::state to task_struct::__state
  * see:

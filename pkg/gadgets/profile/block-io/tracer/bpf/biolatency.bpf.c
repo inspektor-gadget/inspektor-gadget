@@ -15,8 +15,6 @@ const volatile bool targ_per_disk = false;
 const volatile bool targ_per_flag = false;
 const volatile bool targ_queued = false;
 const volatile bool targ_ms = false;
-const volatile bool insert_arg_single = true;
-const volatile bool issue_arg_single = true;
 const volatile bool filter_dev = false;
 const volatile __u32 targ_dev = 0;
 
@@ -64,21 +62,33 @@ static __always_inline int trace_rq_start(struct request *rq, int issue)
 	return 0;
 }
 
+// https://github.com/torvalds/linux/commit/a54895fa057c67700270777f7661d8d3c7fda88a
+// -       TP_PROTO(struct request_queue *q, struct request *rq),
+// +       TP_PROTO(struct request *rq),
+typedef void (*btf_trace_block_rq_insert___new)(void *, struct request *);
+typedef void (*btf_trace_block_rq_insert___old)(void *, struct request_queue *q,
+						struct request *);
+typedef void (*btf_trace_block_rq_issue___new)(void *, struct request *);
+typedef void (*btf_trace_block_rq_issue___old)(void *, struct request_queue *q,
+					       struct request *);
+
 SEC("raw_tp/block_rq_insert")
 int ig_profio_ins(u64 *ctx)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-	/**
-	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
-	 * from TP_PROTO(struct request_queue *q, struct request *rq)
-	 * to TP_PROTO(struct request *rq)
-	 */
-	if (!insert_arg_single)
-		return trace_rq_start((void *)ctx[1], false);
-	else
+	if (bpf_core_type_matches(btf_trace_block_rq_insert___new)) {
+		// After commit a54895fa (v5.11-rc1)
 		return trace_rq_start((void *)ctx[0], false);
+	} else if (bpf_core_type_matches(btf_trace_block_rq_insert___old)) {
+		// Before commit a54895fa (v5.11-rc1)
+		return trace_rq_start((void *)ctx[1], false);
+	} else {
+		// Couldn't detect block/block_rq_insert tracepoint
+		bpf_unreachable();
+		return 0;
+	}
 }
 
 SEC("raw_tp/block_rq_issue")
@@ -87,15 +97,17 @@ int ig_profio_iss(u64 *ctx)
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-	/**
-	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
-	 * from TP_PROTO(struct request_queue *q, struct request *rq)
-	 * to TP_PROTO(struct request *rq)
-	 */
-	if (!issue_arg_single)
-		return trace_rq_start((void *)ctx[1], true);
-	else
+	if (bpf_core_type_matches(btf_trace_block_rq_issue___new)) {
+		// After commit a54895fa (v5.11-rc1)
 		return trace_rq_start((void *)ctx[0], true);
+	} else if (bpf_core_type_matches(btf_trace_block_rq_issue___old)) {
+		// Before commit a54895fa (v5.11-rc1)
+		return trace_rq_start((void *)ctx[1], true);
+	} else {
+		// Couldn't detect block/block_rq_issue tracepoint
+		bpf_unreachable();
+		return 0;
+	}
 }
 
 SEC("raw_tp/block_rq_complete")

@@ -140,7 +140,9 @@ int ig_tcpdrop(struct trace_event_raw_kfree_skb *ctx)
 	struct sock *sk = BPF_CORE_READ(skb, sk);
 	int reason = ctx->reason;
 
-	// If bpf_core_enum_value fails, it will return 0 and that will not be a silent failure
+	// If bpf_core_enum_value fails, the verifier will reject the program with
+	// invalid func unknown#195896080
+	// 195896080 == 0xbad2310 reads "bad relo"
 	int reason_not_specified = bpf_core_enum_value(
 		enum skb_drop_reason, SKB_DROP_REASON_NOT_SPECIFIED);
 

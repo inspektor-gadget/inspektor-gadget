@@ -204,3 +204,6 @@ require (
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
 
 replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20240123101058-64fedf45bfd3
+
+// https://github.com/cilium/ebpf/pull/1366
+replace github.com/cilium/ebpf => github.com/dylandreimerink/ebpf v0.8.1-0.20240303184803-9997f251ed0a

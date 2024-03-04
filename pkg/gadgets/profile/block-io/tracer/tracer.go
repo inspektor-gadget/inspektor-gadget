@@ -22,7 +22,6 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -94,61 +93,10 @@ func (t *Tracer) close() {
 	t.objs.Close()
 }
 
-// Highly inspired from:
-// https://github.com/iovisor/bcc/commit/952415e490bd#diff-2a74184cac5bad5399ebad3c47180658e27cca8070ddd28874017fbfdbb4690eR243
-func getTracepointArguments(tracepoint string) ([]btf.FuncParam, error) {
-	var typedef *btf.Typedef
-
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return nil, fmt.Errorf("loading kernel BTF information: %w", err)
-	}
-
-	if err := btfSpec.TypeByName(tracepoint, &typedef); err != nil {
-		return nil, fmt.Errorf("searching %q: %w", tracepoint, err)
-	}
-
-	ptr, ok := typedef.Type.(*btf.Pointer)
-	if !ok {
-		return nil, fmt.Errorf("expecting btf.Pointer, got: %v", typedef.Type)
-	}
-
-	funcProto, ok := ptr.Target.(*btf.FuncProto)
-	if !ok {
-		return nil, fmt.Errorf("expecting btf.FuncProto, got: %v", ptr.Target)
-	}
-
-	return funcProto.Params, nil
-}
-
 func (t *Tracer) install() error {
 	spec, err := loadBiolatency()
 	if err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
-	}
-
-	insertArguments, err := getTracepointArguments("btf_trace_block_rq_insert")
-	if err != nil {
-		return fmt.Errorf("getting btf_trace_block_rq_insert number of arguments: %w", err)
-	}
-
-	issueArguments, err := getTracepointArguments("btf_trace_block_rq_issue")
-	if err != nil {
-		return fmt.Errorf("getting btf_trace_block_rq_issue number of arguments: %w", err)
-	}
-
-	consts := map[string]interface{}{
-		// __DECLARE_TRACE always defines the ctx argument:
-		// https://github.com/torvalds/linux/blob/39133352cbed6626956d38ed72012f49b0421e7b/include/linux/tracepoint.h#L434
-		// And these tracepoint were modified to only have one argument in:
-		// https://github.com/torvalds/linux/commit/a54895fa057c67700270777f7661d8d3c7fda88a#diff-034de3e50b949df539bb3602057e4e9d529f3e465881560df959078cd02202e0R75
-		// So, we should test for two arguments, i.e. ctx and rq.
-		"insert_arg_single": len(insertArguments) == 2,
-		"issue_arg_single":  len(issueArguments) == 2,
-	}
-
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
