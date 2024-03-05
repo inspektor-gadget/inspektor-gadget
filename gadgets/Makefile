@@ -7,6 +7,7 @@ IG ?= ig
 GADGETS = \
 	trace_dns \
 	trace_exec \
+	trace_malloc \
 	trace_mount \
 	trace_oomkill \
 	trace_open \
