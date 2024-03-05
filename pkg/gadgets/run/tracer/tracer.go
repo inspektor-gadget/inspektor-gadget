@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -49,6 +50,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 // keep aligned with pkg/gadgets/common/types.h
@@ -376,6 +378,37 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 		case strings.HasPrefix(p.SectionName, "kretprobe/"):
 			logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
+		case strings.HasPrefix(p.SectionName, "uprobe/") || strings.HasPrefix(p.SectionName, "uretprobe/"):
+			captureHost := false
+			for _, container := range t.containers {
+				if container.Pid == 1 {
+					captureHost = true
+				}
+			}
+			if !captureHost {
+				return nil, fmt.Errorf("uprobe can only be used with --host at this moment")
+			}
+
+			parts := strings.Split(p.AttachTo, ":")
+			if len(parts) < 2 {
+				return nil, fmt.Errorf("invalid section name %q", p.AttachTo)
+			}
+			if !filepath.IsAbs(parts[0]) {
+				return nil, fmt.Errorf("section name is not an absolute path: %q", parts[0])
+			}
+			executablePath := filepath.Join(host.HostProcFs, "1/root", parts[0])
+			ex, err := link.OpenExecutable(executablePath)
+			if err != nil {
+				return nil, fmt.Errorf("opening executable: %q", executablePath)
+			}
+
+			logger.Debugf("Attaching uprobe %q to %q", p.Name, p.AttachTo)
+			switch strings.Split(p.SectionName, "/")[0] {
+			case "uprobe":
+				return ex.Uprobe(parts[1], prog, nil)
+			case "uretprobe":
+				return ex.Uretprobe(parts[1], prog, nil)
+			}
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.Name, p.SectionName)
 	case ebpf.TracePoint:
