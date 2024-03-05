@@ -6,6 +6,9 @@ FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 ARG TARGETARCH
 ARG BUILDARCH
 
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY}
+
 COPY go.mod go.sum /cache/
 RUN cd /cache && \
 	go mod download

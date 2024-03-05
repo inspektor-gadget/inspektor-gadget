@@ -9,6 +9,8 @@ ARG VERSION=undefined
 ENV VERSION=${VERSION}
 ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:latest
 ENV EBPF_BUILDER=${EBPF_BUILDER}
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY}
 
 COPY go.mod go.sum /cache/
 RUN cd /cache && go mod download

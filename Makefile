@@ -11,6 +11,7 @@ GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
+GOPROXY ?= $(shell go env GOPROXY)
 
 KUBERNETES_ARCHITECTURE ?= $(GOHOSTARCH)
 
@@ -117,7 +118,8 @@ ig-%: phony_explicit
 			ARCH=$(subst linux-,,$*) BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
-		--build-arg VERSION=$(VERSION) --build-arg EBPF_BUILDER=$(EBPF_BUILDER) .
+		--build-arg VERSION=$(VERSION) --build-arg EBPF_BUILDER=$(EBPF_BUILDER) \
+		--build-arg GOPROXY=$(GOPROXY) .
 	docker create --name ig-$*-container $@
 	docker cp ig-$*-container:/usr/bin/ig $@
 	docker rm ig-$*-container
@@ -191,6 +193,7 @@ gadget-container:
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
+		--build-arg GOPROXY=$(GOPROXY) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 .PHONY: cross-gadget-container
@@ -203,7 +206,7 @@ cross-gadget-container:
 			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
-		--push \
+		--push --build-arg GOPROXY=$(GOPROXY) \
 		-f Dockerfiles/gadget.Dockerfile .
 
 push-gadget-container:
@@ -213,12 +216,12 @@ push-gadget-container:
 .PHONY: kubectl-gadget-container
 kubectl-gadget-container:
 	docker buildx build --load -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
-	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
+	--build-arg IMAGE_TAG=$(IMAGE_TAG) --build-arg GOPROXY=$(GOPROXY) .
 
 .PHONY: cross-kubectl-gadget-container
 cross-kubectl-gadget-container:
 	docker buildx build --platform=$(PLATFORMS) -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
-	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
+	--build-arg IMAGE_TAG=$(IMAGE_TAG) --build-arg GOPROXY=$(GOPROXY) .
 
 # tests
 .PHONY: test

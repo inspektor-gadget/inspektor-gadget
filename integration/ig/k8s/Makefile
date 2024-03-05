@@ -1,6 +1,7 @@
 include $(shell pwd)/../../../minikube.mk
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+GOPROXY ?= $(shell go env GOPROXY)
 
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
@@ -16,7 +17,8 @@ build:
 
 .PHONY: build-tests
 build-tests:
-	docker buildx build --load -t ig-tests -f ./../../../Dockerfiles/ig-tests.Dockerfile ../../../
+	docker buildx build --load -t ig-tests -f ./../../../Dockerfiles/ig-tests.Dockerfile \
+		--build-arg GOPROXY=$(GOPROXY) ../../../
 	docker create --name ig-tests-container ig-tests
 	docker cp ig-tests-container:/usr/bin/ig-integration.test ig-integration.test
 	docker rm ig-tests-container

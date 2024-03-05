@@ -14,6 +14,9 @@ FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 ARG TARGETARCH
 ARG TARGETOS
 
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY}
+
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
