@@ -44,6 +44,9 @@ import (
 //go:embed Makefile.build
 var makefile []byte
 
+//go:embed Makefile.build.btfgen
+var makefileBtfgen []byte
+
 // It can be overridden at build time
 var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
 
@@ -70,6 +73,8 @@ type cmdOpts struct {
 	builderImage     string
 	updateMetadata   bool
 	validateMetadata bool
+	btfgen           bool
+	btfhubarchive    string
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -102,6 +107,9 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
 	cmd.Flags().BoolVar(&opts.validateMetadata, "validate-metadata", true, "Validate the metadata file before building the gadget image")
 
+	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
+	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+
 	return utils.MarkExperimental(cmd)
 }
 
@@ -126,6 +134,14 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("reading build file: %w", err)
 		}
+	}
+
+	if opts.btfgen && opts.btfhubarchive == "" {
+		return errors.New("btfgen requires --btfhub-archive")
+	}
+
+	if opts.btfgen {
+		cmd.Printf("btfgen is enabled, building will take a while...\n")
 	}
 
 	if err := yaml.Unmarshal(buildContent, conf); err != nil {
@@ -192,6 +208,15 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 			obj.Wasm = filepath.Join(opts.outputDir, "program.wasm")
 		}
 
+		if opts.btfgen {
+			archClean := arch
+			if arch == oci.ArchAmd64 {
+				archClean = "x86_64"
+			}
+
+			obj.Btfgen = filepath.Join(opts.outputDir, fmt.Sprintf("btfs-%s.tar.gz", archClean))
+		}
+
 		objectsPaths[arch] = obj
 	}
 
@@ -227,7 +252,19 @@ func buildLocal(opts *cmdOpts, conf *buildFile) error {
 		"WASM="+conf.Wasm,
 		"OUTPUTDIR="+opts.outputDir,
 		"CFLAGS="+conf.CFlags,
+		"all",
 	)
+
+	if opts.btfgen {
+		makefileBtfgenPath := filepath.Join(opts.outputDir, "Makefile.build.btfgen")
+		if err := os.WriteFile(makefileBtfgenPath, makefileBtfgen, 0o644); err != nil {
+			return fmt.Errorf("writing Makefile: %w", err)
+		}
+
+		buildCmd.Args = append(buildCmd.Args, "BTFHUB_ARCHIVE="+opts.btfhubarchive)
+		buildCmd.Args = append(buildCmd.Args, "btfgen")
+	}
+
 	if out, err := buildCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("build script: %w: %s", err, out)
 	}
@@ -285,33 +322,50 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	if conf.Wasm != "" {
 		wasmFullPath = filepath.Join("/work", conf.Wasm)
 	}
+
+	cmd := []string{
+		"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
+		"EBPFSOURCE=" + filepath.Join("/work", conf.EBPFSource),
+		"WASM=" + wasmFullPath,
+		"OUTPUTDIR=/out",
+		"CFLAGS=" + conf.CFlags,
+		"all",
+	}
+
+	mounts := []mount.Mount{
+		{
+			Type:     mount.TypeBind,
+			Target:   "/work",
+			Source:   cwd,
+			ReadOnly: true,
+		},
+		{
+			Type:   mount.TypeBind,
+			Target: "/out",
+			Source: opts.outputDir,
+		},
+	}
+
+	if opts.btfgen {
+		cmd = append(cmd, "BTFHUB_ARCHIVE=/btfhub-archive")
+		cmd = append(cmd, "btfgen")
+
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Target: "/btfhub-archive",
+			Source: opts.btfhubarchive,
+		})
+	}
+
 	resp, err := cli.ContainerCreate(
 		ctx,
 		&container.Config{
 			Image: opts.builderImage,
-			Cmd: []string{
-				"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
-				"EBPFSOURCE=" + filepath.Join("/work", conf.EBPFSource),
-				"WASM=" + wasmFullPath,
-				"OUTPUTDIR=/out",
-				"CFLAGS=" + conf.CFlags,
-			},
-			User: fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			Cmd:   cmd,
+			User:  fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		},
 		&container.HostConfig{
-			Mounts: []mount.Mount{
-				{
-					Type:     mount.TypeBind,
-					Target:   "/work",
-					Source:   cwd,
-					ReadOnly: true,
-				},
-				{
-					Type:   mount.TypeBind,
-					Target: "/out",
-					Source: opts.outputDir,
-				},
-			},
+			Mounts: mounts,
 		},
 		nil, nil, "",
 	)
