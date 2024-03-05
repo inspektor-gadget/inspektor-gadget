@@ -179,7 +179,6 @@ func createMetadataDesc(ctx context.Context, target oras.Target, metadataFilePat
 
 func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
 	emptyDesc := ocispec.DescriptorEmptyJSON
-	emptyDesc.ArtifactType = eBPFObjectMediaType
 	err := pushDescriptorIfNotExists(ctx, target, emptyDesc, bytes.NewReader(emptyDesc.Data))
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("pushing empty descriptor: %w", err)
@@ -193,6 +192,10 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
 	}
 
+	// artifactType must be only set when the config.mediaType is set to
+	// MediaTypeEmptyJSON. In our case, when the metadata file is not provided:
+	// https://github.com/opencontainers/image-spec/blob/f5f87016de46439ccf91b5381cf76faaae2bc28f/manifest.md?plain=1#L170
+	var artifactType string
 	var defDesc ocispec.Descriptor
 
 	if _, err := os.Stat(metadataFilePath); err == nil {
@@ -207,6 +210,7 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
 		}
+		artifactType = eBPFObjectMediaType
 	}
 
 	// Create the manifest which combines everything and push it to the memory store
@@ -214,9 +218,10 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		Versioned: specs.Versioned{
 			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 		},
-		Config:      defDesc,
-		Layers:      []ocispec.Descriptor{progDesc},
-		Annotations: defDesc.Annotations,
+		Config:       defDesc,
+		Layers:       []ocispec.Descriptor{progDesc},
+		Annotations:  defDesc.Annotations,
+		ArtifactType: artifactType,
 	}
 
 	if wasmFilePath != "" {
