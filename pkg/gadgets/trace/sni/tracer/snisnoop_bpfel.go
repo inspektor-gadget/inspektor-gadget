@@ -28,7 +28,8 @@ type snisnoopEventT struct {
 type snisnoopSocketsKey struct {
 	Netns  uint32
 	Family uint16
-	Proto  uint16
+	Proto  uint8
+	_      [1]byte
 	Port   uint16
 	_      [2]byte
 }
