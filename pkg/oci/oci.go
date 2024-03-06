@@ -527,11 +527,6 @@ func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocis
 }
 
 func getMetadataFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest) ([]byte, error) {
-	// metadata is optional
-	if manifest.Config.Size == 0 {
-		return nil, nil
-	}
-
 	metadataBytes, err := getContentBytesFromDescriptor(ctx, fetcher, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
