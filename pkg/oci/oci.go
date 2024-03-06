@@ -532,12 +532,12 @@ func getMetadataFromManifest(ctx context.Context, fetcher content.Fetcher, manif
 		return nil, nil
 	}
 
-	metadata, err := getContentFromDescriptor(ctx, fetcher, manifest.Config)
+	metadataBytes, err := getContentBytesFromDescriptor(ctx, fetcher, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
 	}
 
-	return metadata, nil
+	return metadataBytes, nil
 }
 
 func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
@@ -555,7 +555,7 @@ func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest
 	if layerCount != 1 {
 		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
 	}
-	layerBytes, err := getContentFromDescriptor(ctx, fetcher, layer)
+	layerBytes, err := getContentBytesFromDescriptor(ctx, fetcher, layer)
 	if err != nil {
 		return nil, fmt.Errorf("getting layer %q from descriptor: %w", mediaType, err)
 	}
@@ -565,7 +565,7 @@ func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest
 	return layerBytes, nil
 }
 
-func getContentFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
+func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
 	reader, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
@@ -630,14 +630,13 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
 	}
 
-	r, err := GetContentFromDescriptor(ctx, *manifestDesc)
+	manifestBytes, err := getContentBytesFromDescriptor(ctx, target, *manifestDesc)
 	if err != nil {
 		return nil, fmt.Errorf("getting content from descriptor: %w", err)
 	}
-	defer r.Close()
 
 	manifest := &ocispec.Manifest{}
-	err = json.NewDecoder(r).Decode(manifest)
+	err = json.Unmarshal(manifestBytes, manifest)
 	if err != nil {
 		return nil, fmt.Errorf("decoding manifest: %w", err)
 	}
