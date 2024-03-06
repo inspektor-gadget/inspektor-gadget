@@ -47,6 +47,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	// Blank import for some operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
