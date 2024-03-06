@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/stale@v9
         with:
+          operations-per-run: 500
+
           days-before-issue-stale: 60
           days-before-issue-close: 14
           stale-issue-message: |
