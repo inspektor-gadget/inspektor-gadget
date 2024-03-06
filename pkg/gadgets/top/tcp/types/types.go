@@ -49,7 +49,7 @@ type Stats struct {
 
 	Pid       int32  `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	IPVersion uint16 `json:"ipversion,omitempty" column:"ip,template:ipversion"`
+	IPVersion int    `json:"ipversion,omitempty" column:"ip,template:ipversion"`
 
 	SrcEndpoint eventtypes.L4Endpoint `json:"src,omitempty" column:"src"`
 	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
@@ -65,12 +65,6 @@ func (e *Stats) GetEndpoints() []*eventtypes.L3Endpoint {
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
-	cols.MustSetExtractor("ip", func(stats *Stats) any {
-		if stats.IPVersion == syscall.AF_INET {
-			return "4"
-		}
-		return "6"
-	})
 	cols.MustSetExtractor("sent", func(stats *Stats) any {
 		return fmt.Sprint(units.BytesSize(float64(stats.Sent)))
 	})

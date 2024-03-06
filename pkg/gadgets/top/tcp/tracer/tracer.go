@@ -187,7 +187,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 				},
 				Port: key.Dport,
 			},
-			IPVersion: key.Family,
+			IPVersion: ipversion,
 			Sent:      val.Sent,
 			Received:  val.Received,
 		}
