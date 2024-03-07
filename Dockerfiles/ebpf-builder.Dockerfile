@@ -1,4 +1,5 @@
 ARG CLANG_LLVM_VERSION=15
+ARG BPFTOOL_VERSION=v7.3.0
 ARG LIBBPF_VERSION=v1.3.0
 ARG TINYGO_VERSION=0.31.2
 
@@ -6,11 +7,21 @@ ARG TINYGO_VERSION=0.31.2
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
 FROM golang:1.22 as builder
+ARG BPFTOOL_VERSION
 ARG LIBBPF_VERSION
 
 # Let's install libbpf headers
 RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src && make install_headers
+
+	# Install bpftool
+RUN \
+	ARCH=$(dpkg --print-architecture) && \
+	wget --quiet https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_VERSION}/bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
+	wget --quiet https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_VERSION}/bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz.sha256sum && \
+	echo $(cat bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz.sha256sum) | sha256sum -c && \
+	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
+	chmod +x /usr/local/bin/bpftool
 
 FROM golang:1.22
 ARG CLANG_LLVM_VERSION
@@ -20,16 +31,19 @@ ARG TINYGO_VERSION
 # libc-dev-i386 is needed on amd64 to provide <gnu/stubs-32.h>.
 # We make clang aware of these files through CFLAGS in Makefile.
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script
+# xz-utils is needed by btfgen makefile
 RUN apt-get update \
-	&& apt-get install -y libc-dev lsb-release wget software-properties-common gnupg \
+	&& apt-get install -y libc-dev lsb-release wget software-properties-common gnupg xz-utils \
 	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
-# install clang 15
+# Install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \
 	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-$CLANG_LLVM_VERSION) 100
 
 COPY --from=builder /usr/include/bpf /usr/include/bpf
+COPY --from=builder /usr/local/bin/bpftool /usr/local/bin/bpftool
 
+# Install tinygo
 RUN \
 	DEB=tinygo.deb && \
 	ARCH=$(dpkg --print-architecture) && \
