@@ -163,24 +163,35 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		}
 	}
 
+	// TODO: make this configurable?
+	archs := []string{oci.ArchAmd64, oci.ArchArm64}
+	objectsPaths := map[string]*oci.ObjectPath{}
+
+	for _, arch := range archs {
+		obj := &oci.ObjectPath{
+			EBPF: filepath.Join(tmpDir, arch+".bpf.o"),
+		}
+
+		// TODO: the same wasm file is provided for all architectures. Should we allow per-arch
+		// wasm files?
+		if strings.HasSuffix(conf.Wasm, ".wasm") {
+			// User provided an already-built wasm file
+			obj.Wasm = conf.Wasm
+		} else if conf.Wasm != "" {
+			// User provided a source file to build wasm from
+			obj.Wasm = filepath.Join(tmpDir, "program.wasm")
+		}
+
+		objectsPaths[arch] = obj
+	}
+
 	buildOpts := &oci.BuildGadgetImageOpts{
-		EBPFSourcePath: conf.EBPFSource,
-		EBPFObjectPaths: map[string]string{
-			oci.ArchAmd64: filepath.Join(tmpDir, oci.ArchAmd64+".bpf.o"),
-			oci.ArchArm64: filepath.Join(tmpDir, oci.ArchArm64+".bpf.o"),
-		},
+		EBPFSourcePath:   conf.EBPFSource,
+		ObjectPaths:      objectsPaths,
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
 		CreatedDate:      time.Now().Format(time.RFC3339),
-	}
-
-	if strings.HasSuffix(conf.Wasm, ".wasm") {
-		// User provided an already-built wasm file
-		buildOpts.WasmObjectPath = conf.Wasm
-	} else if conf.Wasm != "" {
-		// User provided a source file to build wasm from
-		buildOpts.WasmObjectPath = filepath.Join(tmpDir, "program.wasm")
 	}
 
 	desc, err := oci.BuildGadgetImage(context.TODO(), buildOpts, opts.image)
