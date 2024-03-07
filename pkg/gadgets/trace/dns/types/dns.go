@@ -57,7 +57,7 @@ type Event struct {
 	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:12"`
 	Latency    time.Duration `json:"latency,omitempty" column:"latency,hide"`
 	NumAnswers int           `json:"numAnswers,omitempty" column:"numAnswers,width:8,maxWidth:8" columnDesc:"Number of addresses contained in the response."`
-	Addresses  []string      `json:"addresses,omitempty" column:"addresses,width:32,hide" columnDesc:"Addresses in the response. Maximum 8 are reported. Only available if the response is compressed."`
+	Addresses  []string      `json:"addresses,omitempty" column:"addresses,width:32,hide" columnDesc:"Addresses in the response."`
 }
 
 func GetColumns() *columns.Columns[Event] {
