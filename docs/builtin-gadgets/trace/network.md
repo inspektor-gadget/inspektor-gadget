@@ -1,5 +1,5 @@
 ---
-title: 'The "network" gadget'
+title: 'Using trace network'
 weight: 10
 ---
 
