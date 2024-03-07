@@ -7,7 +7,7 @@ require (
 	github.com/cilium/ebpf v0.13.2
 	github.com/containerd/containerd v1.7.13
 	github.com/containerd/nri v0.6.0
-	github.com/containers/common v0.57.4
+	github.com/containers/common v0.58.0
 	github.com/containers/image/v5 v5.30.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
