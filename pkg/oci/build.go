@@ -116,6 +116,10 @@ func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 		}
 	}
 
+	if err := fixGeneratedFilesOwner(opts); err != nil {
+		return nil, fmt.Errorf("fixing generated files owner: %w", err)
+	}
+
 	return imageDesc, nil
 }
 

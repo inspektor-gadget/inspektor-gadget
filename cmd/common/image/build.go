@@ -66,6 +66,7 @@ type cmdOpts struct {
 	fileChanged      bool
 	image            string
 	local            bool
+	outputDir        string
 	builderImage     string
 	updateMetadata   bool
 	validateMetadata bool
@@ -95,6 +96,7 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.file, "file", "f", "build.yaml", "Path to build.yaml")
 	cmd.Flags().BoolVarP(&opts.local, "local", "l", false, "Build using local tools")
+	cmd.Flags().StringVarP(&opts.outputDir, "output", "o", "", "Path to a folder to store generated files while building")
 	cmd.Flags().StringVarP(&opts.image, "tag", "t", "", "Name for the built image (format name:tag)")
 	cmd.Flags().StringVar(&opts.builderImage, "builder-image", builderImage, "Builder image to use")
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
@@ -130,12 +132,20 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		return fmt.Errorf("unmarshaling build.yaml: %w", err)
 	}
 
-	// make a temp folder to store the build results
-	tmpDir, err := os.MkdirTemp("", "gadget-build-")
-	if err != nil {
-		return fmt.Errorf("creating temp dir: %w", err)
+	if opts.outputDir != "" {
+		if _, err := os.Stat(opts.outputDir); err != nil {
+			return err
+		}
+	} else {
+		// make a temp folder to store the build results
+		tmpDir, err := os.MkdirTemp("", "gadget-build-")
+		if err != nil {
+			return fmt.Errorf("creating temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		opts.outputDir = tmpDir
 	}
-	defer os.RemoveAll(tmpDir)
 
 	if opts.path != "." {
 		cwd, err := os.Getwd()
@@ -154,11 +164,11 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	if opts.local {
-		if err := buildLocal(opts, conf, tmpDir); err != nil {
+		if err := buildLocal(opts, conf); err != nil {
 			return err
 		}
 	} else {
-		if err := buildInContainer(opts, conf, tmpDir); err != nil {
+		if err := buildInContainer(opts, conf); err != nil {
 			return err
 		}
 	}
@@ -169,7 +179,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 	for _, arch := range archs {
 		obj := &oci.ObjectPath{
-			EBPF: filepath.Join(tmpDir, arch+".bpf.o"),
+			EBPF: filepath.Join(opts.outputDir, arch+".bpf.o"),
 		}
 
 		// TODO: the same wasm file is provided for all architectures. Should we allow per-arch
@@ -179,7 +189,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 			obj.Wasm = conf.Wasm
 		} else if conf.Wasm != "" {
 			// User provided a source file to build wasm from
-			obj.Wasm = filepath.Join(tmpDir, "program.wasm")
+			obj.Wasm = filepath.Join(opts.outputDir, "program.wasm")
 		}
 
 		objectsPaths[arch] = obj
@@ -204,8 +214,8 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	return nil
 }
 
-func buildLocal(opts *cmdOpts, conf *buildFile, output string) error {
-	makefilePath := filepath.Join(output, "Makefile")
+func buildLocal(opts *cmdOpts, conf *buildFile) error {
+	makefilePath := filepath.Join(opts.outputDir, "Makefile")
 	if err := os.WriteFile(makefilePath, makefile, 0o644); err != nil {
 		return fmt.Errorf("writing Makefile: %w", err)
 	}
@@ -215,7 +225,7 @@ func buildLocal(opts *cmdOpts, conf *buildFile, output string) error {
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
 		"EBPFSOURCE="+conf.EBPFSource,
 		"WASM="+conf.Wasm,
-		"OUTPUTDIR="+output,
+		"OUTPUTDIR="+opts.outputDir,
 		"CFLAGS="+conf.CFlags,
 	)
 	if out, err := buildCmd.CombinedOutput(); err != nil {
@@ -225,7 +235,7 @@ func buildLocal(opts *cmdOpts, conf *buildFile, output string) error {
 	return nil
 }
 
-func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
+func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting current directory: %w", err)
@@ -299,7 +309,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 				{
 					Type:   mount.TypeBind,
 					Target: "/out",
-					Source: output,
+					Source: opts.outputDir,
 				},
 			},
 		},
