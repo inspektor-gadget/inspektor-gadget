@@ -24,7 +24,7 @@ jobs:
             This issue has been automatically closed due to inactivity.
             If you believe this was closed in error, please feel free to reopen it.
           stale-issue-label: lifecycle/stale
-          exempt-issue-labels: good-first-issue,lifecycle/staleproof
+          exempt-issue-labels: 'good first issue,lifecycle/staleproof'
           exempt-all-issue-assignees: true # do not close issues with assignees
 
           days-before-pr-stale: 60
