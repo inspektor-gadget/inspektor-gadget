@@ -52,3 +52,9 @@ Inspektor Gadget supports running multiple gadgets that use SchedCLS programs at
 Programs must return `TC_ACT_UNSPEC` in order to allow the packet to be processed by other gadgets.
 The order of execution of the programs is not deterministic, this is something we could visit later
 on.
+
+### Uprobes / Uretprobes (experimental)
+
+The section name must use the `uprobe/<file_path>:<symbol>` or `uretprobe/<file_path>:<symbol>` formats.
+`<file_path>` is the absolute path of an executable or a library, that the uprobe will be attached to.
+`<symbol>` is a debugging symbol that can be found in the file mentioned above.

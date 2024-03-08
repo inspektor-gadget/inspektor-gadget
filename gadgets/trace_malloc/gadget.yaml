@@ -1,0 +1,28 @@
+name: trace malloc
+description: use uprobe to trace malloc and free in libc.so
+tracers:
+  events:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: pid
+      attributes:
+        template: pid
+    - name: comm
+      description: command
+      attributes:
+        template: comm
+    - name: operation
+      description: memory operation type
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: addr
+      description: address of malloc/free
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
