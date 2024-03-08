@@ -46,7 +46,7 @@ func initialize() error {
 		return nil
 	}
 
-	info, err := getOSInfo()
+	info, err := GetOSInfo()
 	if err != nil {
 		return err
 	}
@@ -89,15 +89,15 @@ func GetBTFSpec() *btf.Spec {
 	return spec
 }
 
-type osInfo struct {
+type OsInfo struct {
 	ID        string
 	VersionID string
 	Arch      string
 	Kernel    string
 }
 
-func getOSInfo() (*osInfo, error) {
-	osInfo := &osInfo{}
+func GetOSInfo() (*OsInfo, error) {
+	osInfo := &OsInfo{}
 
 	file, err := os.Open(filepath.Join(host.HostRoot, "/etc/os-release"))
 	if err != nil {

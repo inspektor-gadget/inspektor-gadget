@@ -44,8 +44,8 @@ func getAnySpec(opts *BuildGadgetImageOpts) (*ebpf.CollectionSpec, error) {
 	// TODO: we could perform a sanity check to be sure different architectures generate the
 	// same metadata, but that's too much for now.
 	// We're validating the metadata at runtime, so a possible error will be caught there.
-	for _, path := range opts.EBPFObjectPaths {
-		progPath = path
+	for _, paths := range opts.ObjectPaths {
+		progPath = paths.EBPF
 		break
 	}
 

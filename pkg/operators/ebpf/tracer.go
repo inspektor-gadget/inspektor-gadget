@@ -38,6 +38,7 @@ type Tracer struct {
 	accessor datasource.FieldAccessor
 
 	mapType       ebpf.MapType
+	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array+
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
 }
@@ -102,6 +103,7 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 			MapName:    mapName,
 			StructName: btfStruct.Name,
 		},
+		eventSize: btfStruct.Size,
 	}
 
 	err := i.populateStructDirect(btfStruct)
@@ -150,7 +152,7 @@ func (t *Tracer) receiveEventsFromPerfReader() error {
 			return err
 		}
 		data := t.ds.NewData()
-		err = t.accessor.Set(data, rec.RawSample)
+		err = t.accessor.Set(data, rec.RawSample[:t.eventSize])
 		if err != nil {
 			log.Printf("error setting buffer: %v", err)
 			t.ds.Release(data)

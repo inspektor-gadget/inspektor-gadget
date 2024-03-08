@@ -21,3 +21,7 @@ import "fmt"
 func fixMetadataOwner(opts *BuildGadgetImageOpts) error {
 	return fmt.Errorf("fixMetadataOwner not implemented on this platform")
 }
+
+func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
+	return fmt.Errorf("fixGeneratedFilesOwner not implemented on this platform")
+}

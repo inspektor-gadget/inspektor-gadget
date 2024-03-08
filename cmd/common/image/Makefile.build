@@ -7,10 +7,8 @@ CFLAGS ?=
 OUTPUTDIR ?= /tmp
 EBPFSOURCE ?= program.bpf.c
 
-TARGETS = \
-	$(OUTPUTDIR)/amd64.bpf.o \
-	$(OUTPUTDIR)/arm64.bpf.o \
-	#
+ARCHS = amd64 arm64
+TARGETS = $(foreach ARCH,$(ARCHS),$(OUTPUTDIR)/$(ARCH).bpf.o)
 
 .PHONY: all
 all: $(TARGETS) wasm
@@ -34,3 +32,13 @@ else
 wasm:
 	$(error Unsupported wasm file type: $(notdir $(WASM)))
 endif
+
+# Get value of -f parameter
+ALT_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+MAKEFILE_DIR := $(dir $(ALT_MAKEFILE))
+
+.PHONY: btfgen
+btfgen: $(foreach ARCH,$(ARCHS),btfgen-$(ARCH))
+
+btfgen-%: $(OUTPUTDIR)/%.bpf.o
+	$(MAKE) -f $(MAKEFILE_DIR)/Makefile.build.btfgen BPF_OBJECT=$^ ARCH=$(subst amd64,x86_64,$*) btfs; \
