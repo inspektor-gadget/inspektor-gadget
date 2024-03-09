@@ -1,0 +1,162 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gadget-examples
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: container-network-tracer
+  namespace: gadget-examples
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: container-network-tracer-watch-pods
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: container-network-tracer-watch-services
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "services" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: container-network-tracer-can-watch-pods
+roleRef:
+  kind: ClusterRole
+  name: container-network-tracer-watch-pods
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: container-network-tracer
+    namespace: gadget-examples
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: container-network-tracer-can-watch-services
+roleRef:
+  kind: ClusterRole
+  name: container-network-tracer-watch-services
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: container-network-tracer
+    namespace: gadget-examples
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: container-network-tracer
+  namespace: gadget-examples
+spec:
+  selector:
+    matchLabels:
+      name: container-network-tracer
+  template:
+    metadata:
+      labels:
+        name: container-network-tracer
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/container-network-tracer: unconfined
+    spec:
+      serviceAccountName: container-network-tracer
+      automountServiceAccountToken: true
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: bin
+          hostPath:
+            path: /bin
+        - name: etc
+          hostPath:
+            path: /etc
+        - name: opt
+          hostPath:
+            path: /opt
+        - name: usr
+          hostPath:
+            path: /usr
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: run
+          hostPath:
+            path: /run
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+        - name: bpffs
+          hostPath:
+            path: /sys/fs/bpf
+        - name: debugfs
+          hostPath:
+            path: /sys/kernel/debug
+        - name: tracefs
+          hostPath:
+            path: /sys/kernel/tracing
+      containers:
+        - name: container-network-tracer
+          image: docker.io/gadget/container-network-tracer:v1alpha1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HOST_ROOT
+              value: /host
+          volumeMounts:
+            - name: bin
+              mountPath: /host/bin
+              readOnly: true
+            - name: etc
+              mountPath: /host/etc
+            - name: opt
+              mountPath: /host/opt
+            - name: usr
+              mountPath: /host/usr
+              readOnly: true
+            - name: run
+              mountPath: /host/run
+              readOnly: true
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: run
+              mountPath: /run
+            - name: debugfs
+              mountPath: /sys/kernel/debug
+            - name: tracefs
+              mountPath: /sys/kernel/tracing
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+            - name: bpffs
+              mountPath: /sys/fs/bpf
+          securityContext:
+            privileged: false
+            runAsUser: 0
+            seLinuxOptions:
+              type: super_t
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - SYSLOG
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - IPC_LOCK
+                - NET_ADMIN
+                - NET_RAW
+              drop:
+                - ALL

@@ -39,6 +39,8 @@ or `ig` directly.
     packages to filter events by container.
     - [trace/exec](gadgets/withfilter/trace/exec/): traces creation of
       new processes inside a particular container.
+    - [trace/network](gadgets/withfilter/trace/network): traces network
+      connections inside containers.
   - [formatter](gadgets/formatter/): Examples showing how to use a formatter to
     print events in a column format.
     - [trace/exec](gadgets/formatter/trace/exec/): traces creation of
