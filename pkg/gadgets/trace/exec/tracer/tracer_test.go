@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"sort"
 	"testing"
 	"time"
@@ -72,6 +73,10 @@ func TestExecTracer(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.Nil(t, err, "Failed to get current working directory: %s", err)
 
+	executable, err := os.Executable()
+	require.Nil(t, err, "Failed to get executable path: %s", err)
+	pcomm := path.Base(executable)
+
 	type testDefinition struct {
 		shouldSkip      func(t *testing.T)
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
@@ -102,6 +107,7 @@ func TestExecTracer(t *testing.T) {
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",
+					Pcomm:         pcomm,
 					Args:          []string{"/bin/cat", "/dev/null"},
 				}
 			}),
@@ -135,6 +141,7 @@ func TestExecTracer(t *testing.T) {
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",
+					Pcomm:         pcomm,
 					Args:          []string{"/bin/cat", "/dev/null"},
 				}
 			}),

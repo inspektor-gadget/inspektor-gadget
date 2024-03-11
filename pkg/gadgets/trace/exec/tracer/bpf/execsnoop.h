@@ -27,6 +27,7 @@ struct event {
 	bool upper_layer;
 	unsigned int args_size;
 	__u8 comm[TASK_COMM_LEN];
+	__u8 pcomm[TASK_COMM_LEN];
 #ifdef WITH_CWD
 	__u8 cwd[MAX_STRING_SIZE];
 #endif

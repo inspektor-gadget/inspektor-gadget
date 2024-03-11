@@ -48,9 +48,10 @@ func TestTraceExec(t *testing.T) {
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
-					Comm: "sh",
-					Args: shArgs,
-					Cwd:  "/",
+					Comm:  "sh",
+					Pcomm: "", // Not tested, see normalize()
+					Args:  shArgs,
+					Cwd:   "/",
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -59,6 +60,7 @@ func TestTraceExec(t *testing.T) {
 						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
 					Comm:       "date",
+					Pcomm:      "sh",
 					Args:       dateArgs,
 					Uid:        1000,
 					Gid:        1111,
@@ -71,11 +73,12 @@ func TestTraceExec(t *testing.T) {
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
-					Comm: "sleep",
-					Args: sleepArgs,
-					Uid:  1000,
-					Gid:  1111,
-					Cwd:  "/",
+					Comm:  "sleep",
+					Pcomm: "sh",
+					Args:  sleepArgs,
+					Uid:   1000,
+					Gid:   1111,
+					Cwd:   "/",
 				},
 			}
 
@@ -103,6 +106,12 @@ func TestTraceExec(t *testing.T) {
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
 					e.Runtime.ContainerImageName = ""
+				}
+
+				if e.Comm == "sh" {
+					// Not tested because it varies depending on container runtime:
+					// - containerd: "containerd-shim"
+					e.Pcomm = ""
 				}
 			}
 
@@ -139,15 +148,17 @@ func TestTraceExecHost(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Comm: "date",
-					Args: dateArgs,
+					Comm:  "date",
+					Pcomm: "sh",
+					Args:  dateArgs,
 				},
 				{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Comm: "sleep",
-					Args: sleepArgs,
+					Comm:  "sleep",
+					Pcomm: "sh",
+					Args:  sleepArgs,
 				},
 			}
 
