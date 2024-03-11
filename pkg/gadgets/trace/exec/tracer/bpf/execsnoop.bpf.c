@@ -252,6 +252,13 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 
 	event->retval = ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+	if (parent != NULL)
+		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
+				      parent->comm);
+
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
 		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,

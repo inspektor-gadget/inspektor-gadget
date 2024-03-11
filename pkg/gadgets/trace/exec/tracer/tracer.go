@@ -51,6 +51,7 @@ type execsnoopEventAbbrev struct {
 	_          [3]byte
 	ArgsSize   uint32
 	Comm       [16]uint8
+	Pcomm      [16]uint8
 }
 
 // needs to be kept in sync with execsnoopwithcwdEvent from execsnoopwithcwd_bpfel.go without the Args field
@@ -69,6 +70,7 @@ type execsnoopWithCwdEventAbbrev struct {
 	_          [3]byte
 	ArgsSize   uint32
 	Comm       [16]uint8
+	Pcomm      [16]uint8
 	Cwd        [4096]uint8
 }
 
@@ -204,6 +206,7 @@ func (t *Tracer) run() {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Retval:        int(bpfEvent.Retval),
 			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),
+			Pcomm:         gadgets.FromCString(bpfEvent.Pcomm[:]),
 		}
 
 		argsCount := 0
