@@ -86,9 +86,10 @@ type dataSource struct {
 	lock      sync.RWMutex
 }
 
-func newDataSource(t Type, name string) *dataSource {
+func newDataSource(t Type, name string, id uint32) *dataSource {
 	return &dataSource{
 		name:            name,
+		id:              id,
 		dType:           t,
 		requestedFields: make(map[string]bool),
 		fieldMap:        make(map[string]*field),
@@ -96,14 +97,14 @@ func newDataSource(t Type, name string) *dataSource {
 	}
 }
 
-func New(t Type, name string) DataSource {
-	ds := newDataSource(t, name)
+func New(t Type, name string, id uint32) DataSource {
+	ds := newDataSource(t, name, id)
 	ds.registerPool()
 	return ds
 }
 
-func NewFromAPI(in *api.DataSource) (DataSource, error) {
-	ds := newDataSource(Type(in.Type), in.Name)
+func NewFromAPI(in *api.DataSource, id uint32) (DataSource, error) {
+	ds := newDataSource(Type(in.Type), in.Name, id)
 	for _, f := range in.Fields {
 		ds.fields = append(ds.fields, (*field)(f))
 		ds.fieldMap[f.Name] = (*field)(f)
@@ -132,6 +133,10 @@ func (ds *dataSource) registerPool() {
 
 func (ds *dataSource) Name() string {
 	return ds.name
+}
+
+func (ds *dataSource) ID() uint32 {
+	return ds.id
 }
 
 func (ds *dataSource) Type() Type {

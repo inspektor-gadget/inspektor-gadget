@@ -140,26 +140,16 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 			return
 		}
 
-		// datasource mapping; we're sending an array of available DataSources including a
-		// DataSourceID; this ID will be used when sending actual data and needs to be remapped
-		// to the actual DataSource on the client later on
-		dsLookup := make(map[string]uint32)
-		for i, ds := range gi.DataSources {
-			ds.DataSourceID = uint32(i)
-			dsLookup[ds.Name] = ds.DataSourceID
-		}
-
 		// todo: skip DataSources we're not interested in
 
 		for _, ds := range gadgetCtx.GetDataSources() {
-			dsID := dsLookup[ds.Name()]
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
 				d, _ := proto.Marshal(data.Raw())
 
 				event := &api.GadgetEvent{
 					Type:         api.EventTypeGadgetPayload,
 					Payload:      d,
-					DataSourceID: dsID,
+					DataSourceID: ds.ID(),
 				}
 
 				seqLock.Lock()

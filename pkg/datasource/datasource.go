@@ -55,6 +55,9 @@ type DataSource interface {
 	// Name returns the name of the data source
 	Name() string
 
+	// ID returns the unique ID of the data source
+	ID() uint32
+
 	// Type returns the type of the data source
 	Type() Type
 

@@ -60,6 +60,7 @@ type GadgetContext struct {
 
 	lock                          sync.Mutex
 	router                        datasource.Router
+	dataSourceCounter             uint32 // Used to assign unique IDs to data sources
 	dataSources                   map[string]datasource.DataSource
 	vars                          map[string]any
 	params                        []*api.Param
@@ -193,7 +194,8 @@ func (c *GadgetContext) ImageName() string {
 }
 
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
-	ds := datasource.New(t, name)
+	ds := datasource.New(t, name, c.dataSourceCounter)
+	c.dataSourceCounter++
 	c.dataSources[name] = ds
 	return ds, nil
 }
@@ -277,8 +279,8 @@ func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 
 	for _, ds := range c.GetDataSources() {
 		di := &api.DataSource{
-			DataSourceID: 0,
 			Name:         ds.Name(),
+			DataSourceID: ds.ID(),
 			Fields:       ds.Fields(),
 			Tags:         nil,
 			Annotations:  nil,
@@ -302,11 +304,12 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo) error {
 
 	c.dataSources = make(map[string]datasource.DataSource)
 	for _, inds := range info.DataSources {
-		ds, err := datasource.NewFromAPI(inds)
+		ds, err := datasource.NewFromAPI(inds, c.dataSourceCounter)
 		if err != nil {
 			c.lock.Unlock()
 			return fmt.Errorf("creating DataSource from API: %w", err)
 		}
+		c.dataSourceCounter++
 		c.dataSources[inds.Name] = ds
 	}
 	c.params = info.Params
