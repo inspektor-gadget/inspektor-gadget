@@ -32,6 +32,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -92,17 +93,17 @@ func getLocalOciStore() (*oci.Store, error) {
 // GetGadgetImage pulls the gadget image according to the pull policy and returns
 // a GadgetImage structure representing it.
 func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) (*GadgetImage, error) {
-	err := EnsureImage(ctx, image, authOpts, pullPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("ensuring image presence: %w", err)
-	}
-
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
 
-	manifest, err := GetManifestForHost(ctx, image)
+	err = ensureImage(ctx, imageStore, image, authOpts, pullPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("ensuring image presence: %w", err)
+	}
+
+	manifest, err := getManifestForHost(ctx, imageStore, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
@@ -477,8 +478,8 @@ func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Reposi
 	return repo, nil
 }
 
-func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
-	imageListDescriptor, err := imageStore.Resolve(ctx, reference)
+func getImageListDescriptor(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	imageListDescriptor, err := target.Resolve(ctx, reference)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("resolving image %q: %w", reference, err)
 	}
@@ -486,7 +487,7 @@ func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget,
 		return ocispec.Index{}, fmt.Errorf("image %q is not an image index", reference)
 	}
 
-	reader, err := imageStore.Fetch(ctx, imageListDescriptor)
+	reader, err := target.Fetch(ctx, imageListDescriptor)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("fetching image index: %w", err)
 	}
@@ -525,21 +526,16 @@ func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocis
 	return &manifest, nil
 }
 
-func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
-	// metadata is optional
-	if manifest.Config.Size == 0 {
-		return nil, nil
-	}
-
-	metadata, err := getContentFromDescriptor(ctx, target, manifest.Config)
+func getMetadataFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest) ([]byte, error) {
+	metadataBytes, err := getContentBytesFromDescriptor(ctx, fetcher, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
 	}
 
-	return metadata, nil
+	return metadataBytes, nil
 }
 
-func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
+func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
 	var layer ocispec.Descriptor
 	layerCount := 0
 	for _, l := range manifest.Layers {
@@ -554,7 +550,7 @@ func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *oci
 	if layerCount != 1 {
 		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
 	}
-	layerBytes, err := getContentFromDescriptor(ctx, target, layer)
+	layerBytes, err := getContentBytesFromDescriptor(ctx, fetcher, layer)
 	if err != nil {
 		return nil, fmt.Errorf("getting layer %q from descriptor: %w", mediaType, err)
 	}
@@ -564,8 +560,8 @@ func getLayerFromManifest(ctx context.Context, target oras.Target, manifest *oci
 	return layerBytes, nil
 }
 
-func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
-	reader, err := imageStore.Fetch(ctx, desc)
+func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
+	reader, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}
@@ -577,13 +573,7 @@ func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarge
 	return bytes, nil
 }
 
-// EnsureImage ensures the image is present in the local store
-func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) error {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("getting local oci store: %w", err)
-	}
-
+func ensureImage(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions, pullPolicy string) error {
 	switch pullPolicy {
 	case PullImageAlways:
 		_, err := pullGadgetImageToStore(ctx, imageStore, image, authOpts)
@@ -607,11 +597,22 @@ func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullP
 	return nil
 }
 
-func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
-	index, err := GetIndex(ctx, image)
+// EnsureImage ensures the image is present in the local store
+func EnsureImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) error {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	return ensureImage(ctx, imageStore, image, authOpts, pullPolicy)
+}
+
+func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
+	index, err := getIndex(ctx, target, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)
 	}
+
 	var manifestDesc *ocispec.Descriptor
 	for _, indexManifest := range index.Manifests {
 		// TODO: Check docker code
@@ -624,33 +625,35 @@ func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, e
 		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
 	}
 
-	r, err := GetContentFromDescriptor(ctx, *manifestDesc)
+	manifestBytes, err := getContentBytesFromDescriptor(ctx, target, *manifestDesc)
 	if err != nil {
 		return nil, fmt.Errorf("getting content from descriptor: %w", err)
 	}
-	defer r.Close()
 
 	manifest := &ocispec.Manifest{}
-	err = json.NewDecoder(r).Decode(manifest)
+	err = json.Unmarshal(manifestBytes, manifest)
 	if err != nil {
 		return nil, fmt.Errorf("decoding manifest: %w", err)
 	}
 	return manifest, nil
 }
 
-// GetIndex gets an index for the given image
-func GetIndex(ctx context.Context, image string) (*ocispec.Index, error) {
+func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
+	return getManifestForHost(ctx, imageStore, image)
+}
 
+// getIndex gets an index for the given image
+func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Index, error) {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
 
-	index, err := getImageListDescriptor(ctx, imageStore, imageRef.String())
+	index, err := getImageListDescriptor(ctx, target, imageRef.String())
 	if err != nil {
 		return nil, fmt.Errorf("getting image list descriptor: %w", err)
 	}
