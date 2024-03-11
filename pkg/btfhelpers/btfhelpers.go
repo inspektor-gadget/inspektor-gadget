@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package btfhelpers provides a couple of helper functions to bridge Go's reflection system with
+// types from BTF
 package btfhelpers
 
 import (
@@ -20,78 +22,90 @@ import (
 	"github.com/cilium/ebpf/btf"
 )
 
+// GetType returns the reflect.Type for a given BTF type and the list of type names found while
+// resolving it.
 func GetType(typ btf.Type) (reflect.Type, []string) {
-	switch typedMember := typ.(type) {
+	var refType reflect.Type
+	typeNames := []string{}
+
+	if typ.TypeName() != "" {
+		typeNames = append(typeNames, typ.TypeName())
+	}
+
+	switch typed := typ.(type) {
 	case *btf.Array:
-		arrType, typeNames := getSimpleType(typedMember.Type)
+		arrType := getSimpleType(typed.Type)
 		if arrType == nil {
 			return nil, nil
 		}
-		return reflect.ArrayOf(int(typedMember.Nelems), arrType), append(typeNames, typ.TypeName())
-	default:
-		arrType, typeNames := getSimpleType(typ)
-		return arrType, append(typeNames, typ.TypeName())
-	}
-}
-
-func GetUnderlyingType(tf *btf.Typedef) (btf.Type, []string, error) {
-	switch typedMember := tf.Type.(type) {
+		if typed.Type.TypeName() != "" {
+			typeNames = append(typeNames, typed.Type.TypeName())
+		}
+		refType = reflect.ArrayOf(int(typed.Nelems), arrType)
 	case *btf.Typedef:
-		typ, typeNames, err := GetUnderlyingType(typedMember)
-		return typ, append(typeNames, tf.TypeName()), err
+		switch typed := typ.(type) {
+		case *btf.Typedef:
+			refType, typeNames2 := GetType(typed.Type)
+			typeNames = append(typeNames, typeNames2...)
+			return refType, typeNames
+		default:
+			return GetType(typed)
+		}
 	default:
-		return typedMember, []string{tf.TypeName()}, nil
+		refType = getSimpleType(typ)
+	}
+
+	return refType, typeNames
+}
+
+// GetUnderlyingType returns the underlying type of a typedef
+func GetUnderlyingType(tf *btf.Typedef) btf.Type {
+	switch typed := tf.Type.(type) {
+	case *btf.Typedef:
+		return GetUnderlyingType(typed)
+	default:
+		return typed
 	}
 }
 
-func getSimpleType(typ btf.Type) (reflect.Type, []string) {
-	switch typedMember := typ.(type) {
+func getSimpleType(typ btf.Type) reflect.Type {
+	switch typed := typ.(type) {
 	case *btf.Int:
-		switch typedMember.Encoding {
+		switch typed.Encoding {
 		case btf.Signed:
-			switch typedMember.Size {
+			switch typed.Size {
 			case 1:
-				return reflect.TypeOf(int8(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(int8(0))
 			case 2:
-				return reflect.TypeOf(int16(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(int16(0))
 			case 4:
-				return reflect.TypeOf(int32(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(int32(0))
 			case 8:
-				return reflect.TypeOf(int64(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(int64(0))
 			}
 		case btf.Unsigned:
-			switch typedMember.Size {
+			switch typed.Size {
 			case 1:
-				return reflect.TypeOf(uint8(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(uint8(0))
 			case 2:
-				return reflect.TypeOf(uint16(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(uint16(0))
 			case 4:
-				return reflect.TypeOf(uint32(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(uint32(0))
 			case 8:
-				return reflect.TypeOf(uint64(0)), []string{typ.TypeName()}
+				return reflect.TypeOf(uint64(0))
 			}
 		case btf.Bool:
-			return reflect.TypeOf(false), []string{typ.TypeName()}
+			return reflect.TypeOf(false)
 		case btf.Char:
-			return reflect.TypeOf(uint8(0)), []string{typ.TypeName()}
+			return reflect.TypeOf(uint8(0))
 		}
 	case *btf.Float:
-		switch typedMember.Size {
+		switch typed.Size {
 		case 4:
-			return reflect.TypeOf(float32(0)), []string{typ.TypeName()}
+			return reflect.TypeOf(float32(0))
 		case 8:
-			return reflect.TypeOf(float64(0)), []string{typ.TypeName()}
+			return reflect.TypeOf(float64(0))
 		}
-	case *btf.Typedef:
-		typ, typeNames, _ := GetUnderlyingType(typedMember)
-		refType, typeNames2 := getSimpleType(typ)
-		return refType, append(append(typeNames, typ.TypeName()), typeNames2...)
-	case *btf.Array: // TODO: this has to be supported here
-		arrType, typeNames := getSimpleType(typedMember.Type)
-		if arrType == nil {
-			return nil, nil
-		}
-		return reflect.ArrayOf(int(typedMember.Nelems), arrType), append(typeNames, typ.TypeName())
 	}
-	return nil, nil
+	return nil
 }

@@ -63,10 +63,7 @@ func getTypeHint(typ btf.Type) params.TypeHint {
 			return params.TypeFloat64
 		}
 	case *btf.Typedef:
-		typ, _, err := btfhelpers.GetUnderlyingType(typedMember)
-		if err != nil {
-			return params.TypeUnknown
-		}
+		typ := btfhelpers.GetUnderlyingType(typedMember)
 		return getTypeHint(typ)
 	case *btf.Volatile:
 		return getTypeHint(typedMember.Type)
