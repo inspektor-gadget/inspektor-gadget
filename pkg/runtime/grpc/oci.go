@@ -195,7 +195,6 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 
 	go func() {
 		dsMap := make(map[uint32]datasource.DataSource)
-		dsNameMap := make(map[string]uint32)
 		initialized := false
 		for {
 			ev, err := runClient.Recv()
@@ -238,9 +237,6 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 					gadgetCtx.Logger().Warnf("unmarshaling gadget info: %v", err)
 					continue
 				}
-				for _, ds := range gi.DataSources {
-					dsNameMap[ds.Name] = ds.DataSourceID
-				}
 
 				// Try to load gadget info; if gadget info has already been loaded and this one
 				// doesn't match, this will terminate this particular client session
@@ -250,9 +246,9 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 					continue
 				}
 				gadgetCtx.Logger().Debugf("loaded gadget info")
-				for _, ds := range gadgetCtx.GetDataSources() {
-					gadgetCtx.Logger().Debugf("registered ds %s", ds.Name())
-					dsMap[dsNameMap[ds.Name()]] = ds
+				dsMap = gadgetCtx.GetDataSources()
+				for _, ds := range dsMap {
+					gadgetCtx.Logger().Debugf("registered ds %s/%d", ds.Name(), ds.ID())
 				}
 				initialized = true
 			default:

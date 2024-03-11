@@ -60,8 +60,8 @@ type GadgetContext struct {
 
 	lock                          sync.Mutex
 	router                        datasource.Router
-	dataSourceCounter             uint32 // Used to assign unique IDs to data sources
-	dataSources                   map[string]datasource.DataSource
+	dataSourceCounter             uint32                           // Used to assign unique IDs to data sources
+	dataSources                   map[uint32]datasource.DataSource // map from ID to DataSource
 	vars                          map[string]any
 	params                        []*api.Param
 	prepareCallbacks              []func()
@@ -104,7 +104,7 @@ func New(
 		timeout:                  timeout,
 		gadgetInfo:               gadgetInfo,
 
-		dataSources: make(map[string]datasource.DataSource),
+		dataSources: make(map[uint32]datasource.DataSource),
 		vars:        make(map[string]any),
 	}
 }
@@ -124,7 +124,7 @@ func NewOCI(
 		localOperatorsParamCollection: params,
 
 		imageName:   imageName,
-		dataSources: make(map[string]datasource.DataSource),
+		dataSources: make(map[uint32]datasource.DataSource),
 		vars:        make(map[string]any),
 	}
 }
@@ -194,13 +194,19 @@ func (c *GadgetContext) ImageName() string {
 }
 
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
+	if _, ok := c.dataSources[c.dataSourceCounter]; ok {
+		return nil, fmt.Errorf("generating unique ID for DataSource %q", name)
+	}
+
 	ds := datasource.New(t, name, c.dataSourceCounter)
+	c.dataSources[ds.ID()] = ds
+	c.logger.Debugf("registered DataSource %q with ID %d", name, ds.ID())
+
 	c.dataSourceCounter++
-	c.dataSources[name] = ds
 	return ds, nil
 }
 
-func (c *GadgetContext) GetDataSources() map[string]datasource.DataSource {
+func (c *GadgetContext) GetDataSources() map[uint32]datasource.DataSource {
 	return maps.Clone(c.dataSources)
 }
 
@@ -302,7 +308,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo) error {
 		return nil
 	}
 
-	c.dataSources = make(map[string]datasource.DataSource)
+	c.dataSources = make(map[uint32]datasource.DataSource)
 	for _, inds := range info.DataSources {
 		ds, err := datasource.NewFromAPI(inds, c.dataSourceCounter)
 		if err != nil {
@@ -310,7 +316,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo) error {
 			return fmt.Errorf("creating DataSource from API: %w", err)
 		}
 		c.dataSourceCounter++
-		c.dataSources[inds.Name] = ds
+		c.dataSources[inds.DataSourceID] = ds
 	}
 	c.params = info.Params
 	c.lock.Unlock()
