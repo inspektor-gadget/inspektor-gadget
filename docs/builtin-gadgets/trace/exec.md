@@ -19,41 +19,34 @@ daemonset.apps/myapp1-pod created
 daemonset.apps/myapp2-pod created
 
 $ kubectl get pod --show-labels -o wide
-NAME               READY   STATUS    RESTARTS   AGE     IP           NODE             LABELS
-myapp1-pod-2gs5r   1/1     Running   0          2m24s   10.2.232.6   ip-10-0-30-247   myapp=app-one,name=myapp1-pod,role=demo
-myapp1-pod-qnj4d   1/1     Running   0          2m24s   10.2.249.6   ip-10-0-44-74    myapp=app-one,name=myapp1-pod,role=demo
-myapp2-pod-s5kvv   1/1     Running   0          2m24s   10.2.249.7   ip-10-0-44-74    myapp=app-two,name=myapp2-pod,role=demo
-myapp2-pod-mqfxv   1/1     Running   0          2m24s   10.2.232.5   ip-10-0-30-247   myapp=app-two,name=myapp2-pod,role=demo
-
+NAME               READY   STATUS    RESTARTS   AGE   IP               NODE              NOMINATED NODE   READINESS GATES   LABELS
+myapp1-pod-sbtvw   1/1     Running   0          9s    10.244.192.133   minikube-docker   <none>           <none>            controller-revision-hash=865c886d8f,myapp=app-one,name=myapp1-pod,pod-template-generation=1,role=demo
+myapp2-pod-5pg4w   1/1     Running   0          9s    10.244.192.132   minikube-docker   <none>           <none>            controller-revision-hash=677d884fc,myapp=app-two,name=myapp2-pod,pod-template-generation=1,role=demo
 ```
 
 Using the trace exec gadget, we can see which new processes are spawned on node
-ip-10-0-30-247 where myapp1-pod-2gs5r and myapp2-pod-mqfxv are running:
+minikube-docker where myapp1-pod-sbtvw and myapp2-pod-5pg4w are running:
 
 ```bash
-$ kubectl gadget trace exec --selector role=demo --node ip-10-0-30-247
-K8S.NODE            K8S.NAMESPACE    K8S.POD          K8S.CONTAINER   PID     PPID    COMM            RET ARGS
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728770  728166  date              0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728771  728166  cat               0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728772  728166  sleep             0 /bin/sleep 1
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728802  728166  true              0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728803  728166  date              0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728804  728166  cat               0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728805  728166  sleep             0 /bin/sleep 1
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728832  728052  true              0 /bin/true
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728833  728052  date              0 /bin/date
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728834  728052  echo              0 /bin/echo sleep-10
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728835  728052  sleep             0 /bin/sleep 10
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728836  728166  true              0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728837  728166  date              0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728838  728166  cat               0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728839  728166  sleep             0 /bin/sleep 1
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728880  728166  true              0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728881  728166  date              0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728882  728166  cat               0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728883  728166  sleep             0 /bin/sleep 1
+$ kubectl gadget trace exec --selector role=demo --node minikube-docker
+K8S.NODE        K8S.NAMESPACE K8S.POD          K8S.CONTAINER PID     PPID    COMM  PCOMM RET ARGS
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226276 2221571 true  sh    0   /bin/true
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226277 2221571 date  sh    0   /bin/date
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226278 2221571 cat   sh    0   /bin/cat /proc/version
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226279 2221571 true  sh    0   /bin/true
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226280 2221571 date  sh    0   /bin/date
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226281 2221571 cat   sh    0   /bin/cat /proc/version
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226282 2221571 true  sh    0   /bin/true
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226283 2221571 date  sh    0   /bin/date
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226284 2221571 cat   sh    0   /bin/cat /proc/version
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226286 2221571 true  sh    0   /bin/true
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226287 2221571 date  sh    0   /bin/date
+minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226288 2221571 cat   sh    0   /bin/cat /proc/version
+minikube-docker default       myapp2-pod-5pg4w myapp2-pod    2226289 2221280 true  sh    0   /bin/true
+minikube-docker default       myapp2-pod-5pg4w myapp2-pod    2226290 2221280 date  sh    0   /bin/date
+minikube-docker default       myapp2-pod-5pg4w myapp2-pod    2226291 2221280 echo  sh    0   /bin/echo sleep-10
+minikube-docker default       myapp2-pod-5pg4w myapp2-pod    2226292 2221280 sleep sh    0   /bin/sleep 10
 ^C
-Terminating...
 ```
 Processes of both pods are spawned: myapp1 spawns `cat /proc/version` and `sleep 1`,
 myapp2 spawns `echo sleep-10` and `sleep 10`, both spawn `true` and `date`.
@@ -71,7 +64,7 @@ Let's start the gadget in a terminal:
 
 ```bash
 $ sudo ig trace exec -c test-trace-exec
-RUNTIME.CONTAINERNAME                             PID        PPID       COMM             RET ARGS
+RUNTIME.CONTAINERNAME PID     PPID    COMM   PCOMM           RET ARGS
 ```
 
 Run a container that executes some binaries:
@@ -84,14 +77,18 @@ The tool will show the different processes executed by the container:
 
 ```bash
 $ sudo ig trace exec -c test-trace-exec
-RUNTIME.CONTAINERNAME                             PID        PPID       COMM             RET ARGS
-test-trace-exec                                   99081      99062      sh               0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 ; done
-test-trace-exec                                   99125      99081      true             0   /bin/true
-test-trace-exec                                   99126      99081      whoami           0   /bin/whoami
-test-trace-exec                                   99127      99081      sleep            0   /bin/sleep 3
-test-trace-exec                                   99128      99081      true             0   /bin/true
-test-trace-exec                                   99129      99081      whoami           0   /bin/whoami
-test-trace-exec                                   99130      99081      sleep            0   /bin/sleep 3
+RUNTIME.CONTAINERNAME PID     PPID    COMM   PCOMM           RET ARGS
+test-trace-exec       2233189 2233166 sh     containerd-shim 0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 ; done
+test-trace-exec       2233214 2233189 true   sh              0   /bin/true
+test-trace-exec       2233215 2233189 whoami sh              0   /bin/whoami
+test-trace-exec       2233567 2233189 true   sh              0   /bin/true
+test-trace-exec       2233570 2233189 whoami sh              0   /bin/whoami
+test-trace-exec       2233642 2233189 true   sh              0   /bin/true
+test-trace-exec       2233643 2233189 whoami sh              0   /bin/whoami
+test-trace-exec       2233757 2233189 true   sh              0   /bin/true
+test-trace-exec       2233758 2233189 whoami sh              0   /bin/whoami
+test-trace-exec       2233931 2233189 true   sh              0   /bin/true
+test-trace-exec       2233932 2233189 whoami sh              0   /bin/whoami
 ```
 
 ### `--cwd`
@@ -100,11 +97,11 @@ This gadget provides the current working directory of the process calling `exec(
 by default and can be enabled by passing the `--cwd` flag:
 
 ```bash
-$ sudo ig trace exec  --cwd
-
-RUNTIME.CONTAINERNAME           PID        PPID       COMM              RET ARGS                                      CWD
-mycontainer2                    287752     287360     mkdir             0   /bin/mkdir -p /tmp/bar/foo/               /
-mycontainer2                    287897     287360     cat               0   /bin/cat /dev/null                        /tmp/bar/foo
+$ sudo ig trace exec --cwd -c test-trace-exec
+RUNTIME.CONTAINERNAME PID     PPID    COMM   PCOMM           RET ARGS                                               CWD
+test-trace-exec       2238354 2238329 sh     containerd-shim 0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 … /
+test-trace-exec       2238380 2238354 true   sh              0   /bin/true                                          /
+test-trace-exec       2238381 2238354 whoami sh              0   /bin/whoami                                        /
 ```
 
 ### Overlay filesystem upper layer

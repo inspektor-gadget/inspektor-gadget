@@ -45,12 +45,14 @@ func TestTraceExec(t *testing.T) {
 				{
 					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sh",
+					Pcomm: "", // Not tested, see normalize()
 					Args:  shArgs,
 					Cwd:   "/",
 				},
 				{
 					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "date",
+					Pcomm:      "sh",
 					Args:       dateArgs,
 					Uid:        1000,
 					Gid:        1111,
@@ -60,6 +62,7 @@ func TestTraceExec(t *testing.T) {
 				{
 					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sleep",
+					Pcomm: "sh",
 					Args:  sleepArgs,
 					Uid:   1000,
 					Gid:   1111,
@@ -82,6 +85,12 @@ func TestTraceExec(t *testing.T) {
 				e.Runtime.ContainerName = ""
 				e.Runtime.ContainerID = ""
 				e.Runtime.ContainerImageDigest = ""
+
+				if e.Comm == "sh" {
+					// Not tested because it varies depending on container runtime:
+					// - containerd: "containerd-shim"
+					e.Pcomm = ""
+				}
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
