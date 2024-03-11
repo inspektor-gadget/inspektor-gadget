@@ -1367,7 +1367,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: azure/login@v1
+    - uses: azure/login@v2
       name: Login to Azure
       with:
         client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
@@ -1413,7 +1413,7 @@ jobs:
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         test_summary_suffix: "${{ matrix.os-sku }}-${{ matrix.arch }}"
     # This step ensures we get fresh credentials before removing the cluster
-    - uses: azure/login@v1
+    - uses: azure/login@v2
       if: always()
       name: Login to Azure
       with:
