@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
@@ -85,6 +86,9 @@ func (o *ebpfOperator) InstantiateImageOperator(gadgetCtx operators.GadgetContex
 
 		containers: make(map[string]*containercollection.Container),
 
+		enums:      make(map[string]*btf.Enum),
+		converters: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
+
 		vars: make(map[string]*ebpfVar),
 
 		networkTracers: make(map[string]*networktracer.Tracer[api.GadgetData]),
@@ -138,6 +142,9 @@ type ebpfInstance struct {
 	linksSnapshotters []*linkSnapshotter
 
 	containers map[string]*containercollection.Container
+
+	enums      map[string]*btf.Enum
+	converters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 
 	gadgetCtx operators.GadgetContext
 }
@@ -244,7 +251,17 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("analyzing: %w", err)
 	}
 
-	return i.register(gadgetCtx)
+	err = i.register(gadgetCtx)
+	if err != nil {
+		return fmt.Errorf("registering datasources: %w", err)
+	}
+
+	err = i.initConverters(gadgetCtx)
+	if err != nil {
+		return fmt.Errorf("initializing formatters: %w", err)
+	}
+
+	return nil
 }
 
 func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
@@ -290,6 +307,16 @@ func (i *ebpfInstance) Name() string {
 }
 
 func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
+	for ds, converters := range i.converters {
+		for _, converter := range converters {
+			converter := converter
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				return converter(ds, data)
+
+			}, 0)
+		}
+	}
+
 	// Create network tracers, one for each socket filter program
 	for _, p := range i.collectionSpec.Programs {
 		switch p.Type {
