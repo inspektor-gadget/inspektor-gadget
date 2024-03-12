@@ -788,8 +788,8 @@ jobs:
     name: helper images
     runs-on: ubuntu-latest
     outputs:
-      dnstester_image: ${{ steps.image-tag.outputs.dnstester || env.DEFAULT_DNSTESTER_IMAGE }}
-      ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder || env.DEFAULT_EBPF_BUILDER_IMAGE }}
+      dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
+      ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -855,9 +855,21 @@ jobs:
         platforms: ${{ matrix.image.platform }}
     - name: Save ${{ matrix.image.name }} image tag output
       id: image-tag
-      if: steps.build-image.outputs.digest != ''
       run: |
-        echo "${{ matrix.image.name }}=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}" >> $GITHUB_OUTPUT
+        if [ -n "${{ steps.build-image.outputs.digest }}" ]; then
+          image="${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}"
+        else
+          if [ ${{ matrix.image.name }} == "dnstester" ]; then
+            image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
+          elif [ ${{ matrix.image.name }} == "ebpf-builder" ]; then
+            image=${{ env.DEFAULT_EBPF_BUILDER_IMAGE }}
+          else
+            >&2 echo "No default image for ${{ matrix.image.name }}!"
+            exit 1
+          fi
+        fi
+
+        echo "${{ matrix.image.name }}=${image}" >> $GITHUB_OUTPUT
 
   build-examples:
     name: example
