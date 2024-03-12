@@ -45,6 +45,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	// Blank import for some operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
