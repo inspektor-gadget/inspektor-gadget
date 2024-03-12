@@ -272,6 +272,11 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		return
 	}
 
+	// Keep enums to convert them to strings
+	if enum, ok := member.Type.(*btf.Enum); ok {
+		i.enums[member.Name] = enum
+	}
+
 	field := newField(fsize, refType)
 	if refType != nil {
 		field.Field.Attributes.Width = uint(columns.GetWidthFromType(refType.Kind()))
