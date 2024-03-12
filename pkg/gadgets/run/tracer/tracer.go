@@ -38,6 +38,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -563,9 +564,9 @@ func verifyGadgetUint64Typedef(t btf.Type) error {
 		return fmt.Errorf("not a typedef")
 	}
 
-	underlying, err := getUnderlyingType(typDef)
-	if err != nil {
-		return err
+	underlying := btfhelpers.GetUnderlyingType(typDef)
+	if underlying == nil {
+		return errors.New("unknown type")
 	}
 
 	intM, ok := underlying.(*btf.Int)
