@@ -52,6 +52,12 @@ structs:
       description: 'Network namespace inode id'
       attributes:
         template: ns
+    - name: type
+      description: 'Type of the retransmission, either RETRANS or LOSS'
+      attributes:
+        width: 7
+        alignment: left
+        ellipsis: end
     - name: mntns_id
       description: 'Mount namespace inode id'
       attributes:

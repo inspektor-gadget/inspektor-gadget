@@ -23,6 +23,8 @@ type tcpretransEvent struct {
 	Tcpflags    uint8
 	Reason      uint32
 	Netns       uint32
+	Type        tcpretransType
+	_           [4]byte
 	ProcCurrent struct {
 		MountNsId uint64
 		Pid       uint32
@@ -39,8 +41,14 @@ type tcpretransEvent struct {
 		Gid       uint32
 		Task      [16]uint8
 	}
-	_ [8]byte
 }
+
+type tcpretransType uint32
+
+const (
+	tcpretransTypeRETRANS tcpretransType = 0
+	tcpretransTypeLOSS    tcpretransType = 1
+)
 
 // loadTcpretrans returns the embedded CollectionSpec for tcpretrans.
 func loadTcpretrans() (*ebpf.CollectionSpec, error) {
@@ -83,7 +91,8 @@ type tcpretransSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpretransProgramSpecs struct {
-	IgTcpretrans *ebpf.ProgramSpec `ebpf:"ig_tcpretrans"`
+	IgTcplossprobe *ebpf.ProgramSpec `ebpf:"ig_tcplossprobe"`
+	IgTcpretrans   *ebpf.ProgramSpec `ebpf:"ig_tcpretrans"`
 }
 
 // tcpretransMapSpecs contains maps before they are loaded into the kernel.
@@ -128,11 +137,13 @@ func (m *tcpretransMaps) Close() error {
 //
 // It can be passed to loadTcpretransObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpretransPrograms struct {
-	IgTcpretrans *ebpf.Program `ebpf:"ig_tcpretrans"`
+	IgTcplossprobe *ebpf.Program `ebpf:"ig_tcplossprobe"`
+	IgTcpretrans   *ebpf.Program `ebpf:"ig_tcpretrans"`
 }
 
 func (p *tcpretransPrograms) Close() error {
 	return _TcpretransClose(
+		p.IgTcplossprobe,
 		p.IgTcpretrans,
 	)
 }

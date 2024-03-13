@@ -37,6 +37,8 @@ type Event struct {
 
 	SrcEndpoint eventtypes.L4Endpoint `json:"src,omitempty" column:"src"`
 	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
+
+	Type string `json:"type,omitempty" column:"type,width:7,fixed,order:9000"`
 }
 
 func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {

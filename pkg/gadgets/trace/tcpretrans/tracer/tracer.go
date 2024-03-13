@@ -35,7 +35,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type event tcpretrans ./bpf/tcpretrans.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type event -type type tcpretrans ./bpf/tcpretrans.bpf.c -- -I./bpf/
 
 type Tracer struct {
 	socketEnricherMap *ebpf.Map
@@ -44,6 +44,7 @@ type Tracer struct {
 
 	objs              tcpretransObjects
 	retransmitSkbLink link.Link
+	lossSkbLink       link.Link
 	reader            *perf.Reader
 }
 
@@ -77,6 +78,7 @@ func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
 
 func (t *Tracer) close() {
 	t.retransmitSkbLink = gadgets.CloseLink(t.retransmitSkbLink)
+	t.lossSkbLink = gadgets.CloseLink(t.lossSkbLink)
 
 	if t.reader != nil {
 		t.reader.Close()
@@ -114,6 +116,11 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching tracepoint tcp_retransmit_skb: %w", err)
 	}
 
+	t.lossSkbLink, err = link.Kprobe("tcp_send_loss_probe", t.objs.IgTcplossprobe, nil)
+	if err != nil {
+		return fmt.Errorf("attaching kprobe tcp_send_loss_probe: %w", err)
+	}
+
 	reader, err := perf.NewReader(t.objs.tcpretransMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
@@ -147,6 +154,14 @@ func (t *Tracer) run() {
 
 		ipversion := gadgets.IPVerFromAF(bpfEvent.Af)
 
+		typ := "unknown"
+		switch bpfEvent.Type {
+		case tcpretransTypeRETRANS:
+			typ = "RETRANS"
+		case tcpretransTypeLOSS:
+			typ = "LOSS"
+		}
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type:      eventtypes.NORMAL,
@@ -175,6 +190,7 @@ func (t *Tracer) run() {
 			},
 			State:    tcpbits.TCPState(bpfEvent.State),
 			Tcpflags: tcpbits.TCPFlags(bpfEvent.Tcpflags),
+			Type:     typ,
 		}
 
 		t.eventCallback(&event)

@@ -14,6 +14,11 @@ struct proc_ctx {
 	__u8 task[TASK_COMM_LEN];
 };
 
+enum type {
+	RETRANS,
+	LOSS,
+};
+
 struct event {
 	union {
 		__u8 saddr[16];
@@ -33,6 +38,7 @@ struct event {
 	__u8 tcpflags;
 	__u32 reason;
 	__u32 netns;
+	enum type type;
 
 	struct proc_ctx proc_current;
 	struct proc_ctx proc_socket;
