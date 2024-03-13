@@ -15,15 +15,21 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/miekg/dns"
 )
 
+var uncompress = flag.Bool("uncompress", false, "Uncompress DNS messages")
+
 func main() {
+	flag.Parse()
+	log.Printf("Starting dns server with uncompress=%v\n", *uncompress)
+
 	dns.Handle(".", dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
 		m := new(dns.Msg)
-		m.Compress = true
+		m.Compress = !*uncompress
 		m.SetReply(r)
 
 		var rr dns.RR

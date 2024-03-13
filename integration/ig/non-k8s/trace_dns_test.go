@@ -24,10 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceDns(t *testing.T) {
-	t.Parallel()
-	cn := "test-trace-dns"
-
+func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("./ig trace dns -o json --runtimes=%s -c %s", *runtime, cn),
@@ -152,7 +149,7 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	dnsCmds := []string{
-		"/dnstester & sleep 2", // wait to ensure dns server is running
+		fmt.Sprintf("/dnstester %s & sleep 2", dnsServerArgs), // wait to ensure dns server is running
 		"nslookup -type=a fake.test.com. 127.0.0.1",
 		"nslookup -type=aaaa fake.test.com. 127.0.0.1",
 		"sleep 2", // give time to the tracer to capture events before the container is done
@@ -164,5 +161,21 @@ func TestTraceDns(t *testing.T) {
 		containerFactory.NewContainer(cn, strings.Join(dnsCmds, " ; "), WithContainerImage(*dnsTesterImage)),
 	}
 
+	return testSteps
+}
+
+func TestTraceDns(t *testing.T) {
+	t.Parallel()
+	cn := "test-trace-dns"
+
+	testSteps := newTraceDnsSteps(cn, "")
+	RunTestSteps(testSteps, t)
+}
+
+func TestTraceDnsUncompress(t *testing.T) {
+	t.Parallel()
+	cn := "test-trace-dns-uncompress"
+
+	testSteps := newTraceDnsSteps(cn, "-uncompress")
 	RunTestSteps(testSteps, t)
 }

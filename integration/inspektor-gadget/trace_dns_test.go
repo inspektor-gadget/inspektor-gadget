@@ -24,17 +24,13 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestTraceDns(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-trace-dns")
-
-	t.Parallel()
-
+func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("dnstester", *dnsTesterImage, ns, "", ""),
+		PodCommand("dnstester", *dnsTesterImage, ns, `["/dnstester"]`, dnsServerArgs),
 		WaitUntilPodReadyCommand(ns, "dnstester"),
 	}
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -60,6 +56,7 @@ func TestTraceDns(t *testing.T) {
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	busyBoxIP := GetTestPodIP(t, ns, "test-pod")
+
 	traceDNSCmd := &Command{
 		Name:         "StartTraceDnsGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s -o json", ns),
@@ -164,9 +161,33 @@ func TestTraceDns(t *testing.T) {
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
+	return traceDNSCmd
+}
+
+func TestTraceDns(t *testing.T) {
+	ns := GenerateTestNamespaceName("test-trace-dns")
+
+	t.Parallel()
+
+	traceDNSCmd := newTraceDnsCmd(t, ns, "")
 
 	// Start the trace gadget and verify the output.
-	commands = []*Command{
+	commands := []*Command{
+		traceDNSCmd,
+	}
+
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
+
+func TestTraceDnsUncompress(t *testing.T) {
+	ns := GenerateTestNamespaceName("test-trace-dns-uncompress")
+
+	t.Parallel()
+
+	traceDNSCmd := newTraceDnsCmd(t, ns, "-uncompress")
+
+	// Start the trace gadget and verify the output.
+	commands := []*Command{
 		traceDNSCmd,
 	}
 
