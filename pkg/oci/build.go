@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/distribution/reference"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -61,6 +60,8 @@ type BuildGadgetImageOpts struct {
 	UpdateMetadata bool
 	// If true, the metadata is validated before creating the image.
 	ValidateMetadata bool
+	// Date and time on which the image is built (date-time string as defined by RFC 3339).
+	CreatedDate string
 }
 
 // BuildGadgetImage creates an OCI image with the objects provided in opts. The image parameter in
@@ -147,7 +148,6 @@ func annotationsFromMetadata(metadataBytes []byte) (map[string]string, error) {
 	annotations := map[string]string{
 		ocispec.AnnotationTitle:         metadata.Name,
 		ocispec.AnnotationDescription:   metadata.Description,
-		ocispec.AnnotationCreated:       time.Now().Format(time.RFC3339),
 		ocispec.AnnotationURL:           metadata.HomepageURL,
 		ocispec.AnnotationDocumentation: metadata.DocumentationURL,
 		ocispec.AnnotationSource:        metadata.SourceURL,
@@ -186,7 +186,7 @@ func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descripto
 	return emptyDesc, nil
 }
 
-func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, progFilePath, wasmFilePath, arch string) (ocispec.Descriptor, error) {
+func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, progFilePath, wasmFilePath, arch, createdDate string) (ocispec.Descriptor, error) {
 	progDesc, err := createLayerDesc(ctx, target, progFilePath, eBPFObjectMediaType)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
@@ -204,6 +204,7 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
 		}
+		defDesc.Annotations[ocispec.AnnotationCreated] = createdDate
 	} else {
 		// Create an empty descriptor
 		defDesc, err = createEmptyDesc(ctx, target)
@@ -211,6 +212,11 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 			return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
 		}
 		artifactType = eBPFObjectMediaType
+
+		// Even without metadata, we can still set some annotations
+		defDesc.Annotations = map[string]string{
+			ocispec.AnnotationCreated: createdDate,
+		}
 	}
 
 	// Create the manifest which combines everything and push it to the memory store
@@ -263,7 +269,7 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 	layers := []ocispec.Descriptor{}
 
 	for arch, path := range o.EBPFObjectPaths {
-		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, path, o.WasmObjectPath, arch)
+		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, path, o.WasmObjectPath, arch, o.CreatedDate)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", arch, err)
 		}
