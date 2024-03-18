@@ -46,13 +46,13 @@ static __always_inline int submit_memop_event(struct pt_regs *ctx,
 	return 0;
 }
 
-SEC("uretprobe//usr/lib/libc.so.6:malloc")
+SEC("uretprobe/libc:malloc")
 int trace_uprobe_malloc(struct pt_regs *ctx)
 {
 	return submit_memop_event(ctx, MALLOC, PT_REGS_RC(ctx));
 }
 
-SEC("uprobe//usr/lib/libc.so.6:free")
+SEC("uprobe/libc:free")
 int trace_uprobe_free(struct pt_regs *ctx)
 {
 	return submit_memop_event(ctx, FREE, PT_REGS_PARM1(ctx));
