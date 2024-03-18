@@ -22,7 +22,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -48,9 +47,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 // keep aligned with pkg/gadgets/common/types.h
@@ -99,6 +98,8 @@ type Tracer struct {
 	// container.
 	ifaceName string
 
+	uprobeTracers map[string]*uprobetracer.Tracer[types.Event]
+
 	// Tracers related
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
@@ -128,6 +129,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.containers = make(map[string]*containercollection.Container)
 	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
 	t.tcHandlers = make(map[string]*tchandler.Handler)
+	t.uprobeTracers = make(map[string]*uprobetracer.Tracer[types.Event])
 
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
@@ -163,9 +165,20 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.config.Metadata = info.GadgetMetadata
 
 	// Create network tracers, one for each socket filter program.
+	// The same applies to uprobe / uretprobe as well.
 	// We need to make this in Init() because AttachContainer() is called before Run().
 	for _, p := range t.spec.Programs {
 		switch p.Type {
+		case ebpf.Kprobe:
+			if strings.HasPrefix(p.SectionName, "uprobe/") ||
+				strings.HasPrefix(p.SectionName, "uretprobe/") {
+				uprobeTracer, err := uprobetracer.NewTracer[types.Event]()
+				if err != nil {
+					t.Close()
+					return fmt.Errorf("creating uprobe tracer: %w", err)
+				}
+				t.uprobeTracers[p.Name] = uprobeTracer
+			}
 		case ebpf.SocketFilter:
 			if strings.HasPrefix(p.SectionName, "socket") {
 				networkTracer, err := networktracer.NewTracer[types.Event]()
@@ -230,6 +243,9 @@ func (t *Tracer) Close() {
 	}
 	for _, handler := range t.tcHandlers {
 		handler.Close()
+	}
+	for _, uprobeTracer := range t.uprobeTracers {
+		uprobeTracer.Close()
 	}
 }
 
@@ -378,36 +394,14 @@ func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramS
 		case strings.HasPrefix(p.SectionName, "kretprobe/"):
 			logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
-		case strings.HasPrefix(p.SectionName, "uprobe/") || strings.HasPrefix(p.SectionName, "uretprobe/"):
-			captureHost := false
-			for _, container := range t.containers {
-				if container.Pid == 1 {
-					captureHost = true
-				}
-			}
-			if !captureHost {
-				return nil, fmt.Errorf("uprobe can only be used with --host at this moment")
-			}
-
-			parts := strings.Split(p.AttachTo, ":")
-			if len(parts) < 2 {
-				return nil, fmt.Errorf("invalid section name %q", p.AttachTo)
-			}
-			if !filepath.IsAbs(parts[0]) {
-				return nil, fmt.Errorf("section name is not an absolute path: %q", parts[0])
-			}
-			executablePath := filepath.Join(host.HostProcFs, "1/root", parts[0])
-			ex, err := link.OpenExecutable(executablePath)
-			if err != nil {
-				return nil, fmt.Errorf("opening executable: %q", executablePath)
-			}
-
-			logger.Debugf("Attaching uprobe %q to %q", p.Name, p.AttachTo)
+		case strings.HasPrefix(p.SectionName, "uprobe/") ||
+			strings.HasPrefix(p.SectionName, "uretprobe/"):
+			uprobeTracer := t.uprobeTracers[p.Name]
 			switch strings.Split(p.SectionName, "/")[0] {
 			case "uprobe":
-				return ex.Uprobe(parts[1], prog, nil)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUprobe, p.AttachTo, prog)
 			case "uretprobe":
-				return ex.Uretprobe(parts[1], prog, nil)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUretprobe, p.AttachTo, prog)
 			}
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)
@@ -1128,6 +1122,12 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 		}
 	}
 
+	for _, handler := range t.uprobeTracers {
+		if err := handler.AttachContainer(container); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1148,6 +1148,12 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 
 	for _, handler := range t.tcHandlers {
 		if err := handler.DetachContainer(container); err != nil {
+			return err
+		}
+	}
+
+	for _, uTracer := range t.uprobeTracers {
+		if err := uTracer.DetachContainer(container); err != nil {
 			return err
 		}
 	}

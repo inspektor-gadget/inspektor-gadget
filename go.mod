@@ -10,6 +10,7 @@ require (
 	github.com/containers/common v0.58.0
 	github.com/containers/image/v5 v5.30.0
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/cyphar/filepath-securejoin v0.2.4
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.5.0
 	github.com/docker/cli v25.0.3+incompatible
