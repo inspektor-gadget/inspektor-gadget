@@ -4,8 +4,10 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+
 #include <gadget/buffer.h>
 #include <gadget/macros.h>
+#include <gadget/mntns.h>
 
 enum memop {
 	MALLOC,
@@ -13,6 +15,7 @@ enum memop {
 };
 
 struct event {
+	gadget_mntns_id mntns_id;
 	__u32 pid;
 	__u8 comm[TASK_COMM_LEN];
 	enum memop operation;
@@ -32,6 +35,7 @@ static __always_inline int submit_memop_event(struct pt_regs *ctx,
 	if (!event)
 		return 0;
 
+	event->mntns_id = gadget_get_mntns_id();
 	event->pid = bpf_get_current_pid_tgid() >> 32;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->operation = operation;
