@@ -21,7 +21,7 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+GADGET_TRACER(malloc, events, event);
 
 static __always_inline int submit_memop_event(struct pt_regs *ctx,
 					      enum memop operation, __u64 addr)
