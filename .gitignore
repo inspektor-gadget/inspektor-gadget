@@ -4,7 +4,10 @@
 *.dll
 *.so
 *.dylib
-/ig*
+/ig
+/ig-*-*
+/gadgetctl
+/gadgetctl-*-*
 /kubectl-gadget
 /kubectl-gadget-*-*
 /gadget-container/bin
