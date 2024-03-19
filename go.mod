@@ -25,7 +25,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v25.0.4+incompatible
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/gomega v1.32.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/prometheus/client_golang v1.19.0
