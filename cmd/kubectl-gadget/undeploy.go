@@ -20,14 +20,10 @@ import (
 	"strings"
 	"time"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -36,8 +32,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 var undeployCmd = &cobra.Command{
