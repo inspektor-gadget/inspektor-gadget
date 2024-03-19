@@ -13,6 +13,8 @@ GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
 GOPROXY ?= $(shell go env GOPROXY)
 
+DLV ?= dlv
+
 KUBERNETES_ARCHITECTURE ?= $(GOHOSTARCH)
 
 ENABLE_BTFGEN ?= false
@@ -105,6 +107,20 @@ ig-all: $(IG_TARGETS) ig
 
 ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
+
+# Compile ig with debug options and debug it using delve:
+# -N: disable optimization.
+# -l: disable inlining.
+# See: https://pkg.go.dev/cmd/compile
+debug-ig:
+	CGO_ENABLED=0 go build \
+		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=${VERSION} \
+		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+		-extldflags '-static'" \
+		-gcflags='all=-N -l' \
+		-o ig-debug \
+		./cmd/ig
+	sudo IG_EXPERIMENTAL=true $(DLV) exec ig-debug
 
 .PHONY: install/ig
 install/ig: ig
@@ -408,6 +424,7 @@ help:
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
+	@echo  '  debug-ig			- Build ig and start a debug session using delve'
 	@echo  '  install-headers		- Install headers used to build gadgets in /usr/include/gadget'
 	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'
 	@echo  '  testdata			- Build testdata'
