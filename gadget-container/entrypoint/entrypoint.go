@@ -27,11 +27,12 @@ import (
 	"syscall"
 
 	nriv1 "github.com/containerd/nri/types/v1"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 )
 
 const gadgetPullSecretPath = "/var/run/secrets/gadget/pull-secret/config.json"

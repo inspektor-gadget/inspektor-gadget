@@ -29,9 +29,10 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf/btf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (

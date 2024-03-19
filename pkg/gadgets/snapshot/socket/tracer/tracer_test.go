@@ -22,10 +22,11 @@ import (
 	"net"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSocketTracerCreate(t *testing.T) {

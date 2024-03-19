@@ -27,6 +27,7 @@ linters:
   - stylecheck
   - staticcheck
   - errorlint
+  - goimports
 
 linters-settings:
   gofumpt:
@@ -45,3 +46,8 @@ linters-settings:
     asserts: true
     # Check for plain error comparisons (errors.Is must be used)
     comparison: true
+  goimports:
+    # A comma-separated list of prefixes, which, if set, checks import paths
+    # with the given prefixes are grouped after 3rd-party packages.
+    # Default: ""
+    local-prefixes: github.com/inspektor-gadget/inspektor-gadget

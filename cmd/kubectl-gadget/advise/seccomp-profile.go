@@ -23,13 +23,14 @@ import (
 	"github.com/spf13/cobra"
 	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	commonadvise "github.com/inspektor-gadget/inspektor-gadget/cmd/common/advise"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var seccompAdvisorStartCmd = &cobra.Command{

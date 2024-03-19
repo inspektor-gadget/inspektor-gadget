@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
