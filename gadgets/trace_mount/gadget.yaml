@@ -17,7 +17,7 @@ structs:
       attributes:
         template: pid
     - name: mount_ns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
     - name: ret
@@ -41,7 +41,22 @@ structs:
         width: 32
         minWidth: 24
     - name: data
+      attributes:
+        width: 32
+        minWidth: 24
     - name: op
+      attributes:
+        width: 6
+        minWidth: 6
+    - name: flags
+      description: Mount flags such as MS_RDONLY
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
+    - name: timestamp
+      attributes:
+        template: timestamp
 ebpfParams:
   target_pid:
     key: pid

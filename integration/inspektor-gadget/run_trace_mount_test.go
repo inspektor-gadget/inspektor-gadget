@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 
@@ -37,6 +39,7 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 			})
 
 			expectedTraceMountJsonObj := map[string]interface{}{
+				"timestamp":   "",
 				"delta":       "",
 				"pid":         0,
 				"tid":         0,
@@ -50,6 +53,7 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 				"op":          "MOUNT",
 				// Needed due to op being an enum.
 				"op_raw": 0,
+				"flags":  unix.MS_SILENT,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceMountJsonObj)
@@ -62,6 +66,7 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeContainerID(m, "")
 				SetEventRuntimeContainerName(m, "")
 
+				m["timestamp"] = ""
 				m["delta"] = ""
 				m["pid"] = uint32(0)
 				m["tid"] = uint32(0)
