@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -53,6 +55,13 @@ func NewListCmd() *cobra.Command {
 					}
 					// Return the shortened digest and remove the sha256: prefix
 					return strings.TrimPrefix(i.Digest, "sha256:")[:12]
+				})
+				now := time.Now()
+				cols.MustSetExtractor("created", func(i *oci.GadgetImageDesc) any {
+					if t, err := time.Parse(time.RFC3339, i.Created); err == nil {
+						return fmt.Sprintf("%s ago", strings.ToLower(units.HumanDuration(now.Sub(t))))
+					}
+					return ""
 				})
 			}
 			formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(isTerm))

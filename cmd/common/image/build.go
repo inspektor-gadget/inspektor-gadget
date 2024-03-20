@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -171,6 +172,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
+		CreatedDate:      time.Now().Format(time.RFC3339),
 	}
 
 	if strings.HasSuffix(conf.Wasm, ".wasm") {

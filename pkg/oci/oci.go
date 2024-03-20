@@ -74,6 +74,7 @@ type GadgetImageDesc struct {
 	Repository string `column:"repository"`
 	Tag        string `column:"tag"`
 	Digest     string `column:"digest,width:12,fixed"`
+	Created    string `column:"created"`
 }
 
 func (d *GadgetImageDesc) String() string {
@@ -88,6 +89,11 @@ func getLocalOciStore() (*oci.Store, error) {
 		return nil, err
 	}
 	return oci.New(defaultOciStore)
+}
+
+func getTimeFromAnnotations(annotations map[string]string) string {
+	created, _ := annotations[ocispec.AnnotationCreated]
+	return created
 }
 
 // GetGadgetImage pulls the gadget image according to the pull policy and returns
@@ -162,7 +168,9 @@ func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image s
 	imageDesc := &GadgetImageDesc{
 		Repository: targetImage.Name(),
 		Digest:     desc.Digest.String(),
+		Created:    "", // Unfortunately, oras.Copy does not return annotations
 	}
+
 	if ref, ok := targetImage.(reference.Tagged); ok {
 		imageDesc.Tag = ref.Tag()
 	}
@@ -218,6 +226,7 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 	imageDesc := &GadgetImageDesc{
 		Repository: targetImage.Name(),
 		Digest:     desc.Digest.String(),
+		Created:    "", // Unfortunately, oras.Copy does not return annotations
 	}
 	if ref, ok := targetImage.(reference.Tagged); ok {
 		imageDesc.Tag = ref.Tag()
@@ -251,6 +260,7 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 	imageDesc := &GadgetImageDesc{
 		Repository: dst.Name(),
 		Digest:     targetDescriptor.Digest.String(),
+		Created:    getTimeFromAnnotations(targetDescriptor.Annotations),
 	}
 	if ref, ok := dst.(reference.Tagged); ok {
 		imageDesc.Tag = ref.Tag()
@@ -289,6 +299,15 @@ func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc
 				continue
 			}
 			image.Digest = desc.Digest.String()
+
+			manifest, err := getManifestForHost(ctx, store, fullTag)
+			if err != nil {
+				log.Debugf("Getting manifest for %q: %v", fullTag, err)
+				continue
+			}
+
+			image.Created = getTimeFromAnnotations(manifest.Annotations)
+
 			images = append(images, image)
 		}
 		return nil
