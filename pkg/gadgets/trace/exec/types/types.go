@@ -36,7 +36,8 @@ type Event struct {
 	UpperLayer bool     `json:"upperlayer" column:"upperlayer,width:10,fixed,hide"`
 	LoginUid   uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
 	SessionId  uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
-	Cwd        string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:cwd"`
+	Cwd        string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:paths"`
+	ExePath    string   `json:"exepath,omitempty" column:"exepath,width:40" columnTags:"param:paths"`
 }
 
 func GetColumns() *columns.Columns[Event] {

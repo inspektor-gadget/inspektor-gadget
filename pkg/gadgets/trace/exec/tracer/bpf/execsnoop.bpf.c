@@ -7,7 +7,7 @@
 #endif /* __TARGET_ARCH_arm64 */
 
 #include <gadget/mntns_filter.h>
-#ifdef WITH_CWD
+#ifdef WITH_LONG_PATHS
 #include <gadget/filesystem.h>
 #endif
 #include "execsnoop.h"
@@ -138,7 +138,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
 
-#ifdef WITH_CWD
+#ifdef WITH_LONG_PATHS
 	fs = BPF_CORE_READ(task, fs);
 	cwd = get_path_str(&fs->pwd);
 	bpf_probe_read_kernel_str(event->cwd, MAX_STRING_SIZE, cwd);
@@ -220,6 +220,8 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	u32 uid = (u32)bpf_get_current_uid_gid();
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+	struct file *exe_file;
+	char *exepath;
 
 	if (valid_uid(targ_uid) && targ_uid != uid)
 		return 0;
@@ -258,6 +260,12 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	if (parent != NULL)
 		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
 				      parent->comm);
+
+#ifdef WITH_LONG_PATHS
+	exe_file = BPF_CORE_READ(task, mm, exe_file);
+	exepath = get_path_str(&exe_file->f_path);
+	bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE, exepath);
+#endif
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))

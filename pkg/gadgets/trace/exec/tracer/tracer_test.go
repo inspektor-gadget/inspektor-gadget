@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,11 +184,11 @@ func TestExecTracer(t *testing.T) {
 				require.Equal(t, append([]string{"/bin/cat"}, manyArgs...), events[0].Args, "Event has bad args")
 			},
 		},
-		"event_has_correct_cwd": {
+		"event_has_correct_paths": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
-					GetCwd:     true,
+					GetPaths:   true,
 				}
 			},
 			generateEvent: func() (int, error) {
@@ -202,6 +203,9 @@ func TestExecTracer(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				require.Len(t, events, 1, "One event expected")
 				require.Equal(t, events[0].Cwd, cwd, "Event has bad cwd")
+				// Depending on the Linux distribution, /bin can be a symlink to /usr/bin
+				exepath := strings.TrimPrefix(events[0].ExePath, "/usr")
+				require.Equal(t, exepath, "/bin/cat", "Event has bad exe path")
 			},
 		},
 		"event_failed": {
