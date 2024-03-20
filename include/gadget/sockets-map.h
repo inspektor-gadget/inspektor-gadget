@@ -66,7 +66,7 @@ struct sockets_key {
 	__u16 family;
 
 	// proto is IPPROTO_TCP(6) or IPPROTO_UDP(17)
-	__u16 proto;
+	__u8 proto;
 	__u16 port;
 };
 
@@ -100,42 +100,61 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	int l4_off;
 	__u16 h_proto;
 	int i;
+	long err;
 
 	key.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
-	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
+	err = bpf_skb_load_bytes(skb, offsetof(struct ethhdr, h_proto),
+				 &h_proto, sizeof(h_proto));
+	if (err < 0)
+		return 0;
+
 	switch (h_proto) {
-	case ETH_P_IP:
+	case bpf_htons(ETH_P_IP):
 		key.family = AF_INET;
-		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct iphdr,
-							       protocol));
+		err = bpf_skb_load_bytes(
+			skb, ETH_HLEN + offsetof(struct iphdr, protocol),
+			&key.proto, sizeof(key.proto));
+		if (err < 0)
+			return 0;
 
 		// An IPv4 header doesn't have a fixed size. The IHL field of a packet
 		// represents the size of the IP header in 32-bit words, so we need to
 		// multiply this value by 4 to get the header size in bytes.
-		__u8 ihl_byte = load_byte(skb, ETH_HLEN);
+		__u8 ihl_byte;
+		err = bpf_skb_load_bytes(skb, ETH_HLEN, &ihl_byte,
+					 sizeof(ihl_byte));
+		if (err < 0)
+			return 0;
 		struct iphdr *iph = (struct iphdr *)&ihl_byte;
 		__u8 ip_header_len = iph->ihl * 4;
 		l4_off = ETH_HLEN + ip_header_len;
 		break;
 
-	case ETH_P_IPV6:
+	case bpf_htons(ETH_P_IPV6):
 		key.family = AF_INET6;
-		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr,
-							       nexthdr));
+		err = bpf_skb_load_bytes(
+			skb, ETH_HLEN + offsetof(struct ipv6hdr, nexthdr),
+			&key.proto, sizeof(key.proto));
+		if (err < 0)
+			return 0;
 		l4_off = ETH_HLEN + sizeof(struct ipv6hdr);
 
 // Parse IPv6 extension headers
 // Up to 6 extension headers can be chained. See ipv6_ext_hdr().
 #pragma unroll
 		for (i = 0; i < 6; i++) {
-			__u16 nextproto;
+			__u8 nextproto;
+			__u8 off;
 
 			// TCP or UDP found
 			if (key.proto == NEXTHDR_TCP ||
 			    key.proto == NEXTHDR_UDP)
 				break;
 
-			nextproto = load_byte(skb, l4_off);
+			err = bpf_skb_load_bytes(skb, l4_off, &nextproto,
+						 sizeof(nextproto));
+			if (err < 0)
+				return 0;
 
 			// Unfortunately, each extension header has a different way to calculate the header length.
 			// Support the ones defined in ipv6_ext_hdr(). See ipv6_skip_exthdr().
@@ -146,13 +165,21 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 				break;
 			case NEXTHDR_AUTH:
 				// See ipv6_authlen()
-				l4_off += 4 * (load_byte(skb, l4_off + 1) + 2);
+				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
+							 sizeof(off));
+				if (err < 0)
+					return 0;
+				l4_off += 4 * (off + 2);
 				break;
 			case NEXTHDR_HOP:
 			case NEXTHDR_ROUTING:
 			case NEXTHDR_DEST:
 				// See ipv6_optlen()
-				l4_off += 8 * (load_byte(skb, l4_off + 1) + 1);
+				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
+							 sizeof(off));
+				if (err < 0)
+					return 0;
+				l4_off += 8 * (off + 1);
 				break;
 			case NEXTHDR_NONE:
 				// Nothing more in the packet. Not even TCP or UDP.
@@ -169,26 +196,28 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return 0;
 	}
 
+	int off = l4_off;
 	switch (key.proto) {
 	case IPPROTO_TCP:
 		if (skb->pkt_type == PACKET_HOST)
-			key.port = load_half(
-				skb, l4_off + offsetof(struct tcphdr, dest));
+			off += offsetof(struct tcphdr, dest);
 		else
-			key.port = load_half(
-				skb, l4_off + offsetof(struct tcphdr, source));
+			off += offsetof(struct tcphdr, source);
 		break;
 	case IPPROTO_UDP:
 		if (skb->pkt_type == PACKET_HOST)
-			key.port = load_half(
-				skb, l4_off + offsetof(struct udphdr, dest));
+			off += offsetof(struct udphdr, dest);
 		else
-			key.port = load_half(
-				skb, l4_off + offsetof(struct udphdr, source));
+			off += offsetof(struct udphdr, source);
 		break;
 	default:
 		return 0;
 	}
+
+	err = bpf_skb_load_bytes(skb, off, &key.port, sizeof(key.port));
+	if (err < 0)
+		return 0;
+	key.port = bpf_ntohs(key.port);
 
 	ret = bpf_map_lookup_elem(&gadget_sockets, &key);
 	if (ret)
