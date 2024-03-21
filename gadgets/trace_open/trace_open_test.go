@@ -18,12 +18,13 @@ import (
 	"io/fs"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/command"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 type Event struct {
@@ -59,17 +60,12 @@ func TestTraceOpen(t *testing.T) {
 	containerFactory, err := integration.NewContainerFactory("docker")
 	require.NoError(t, err, "new container factory")
 
-	ig := igrunner.New(
+	traceOpenCmd := igrunner.New(
 		igrunner.WithPath("ig"),
 		igrunner.WithImage("ghcr.io/inspektor-gadget/gadget/trace_open:latest"),
 		igrunner.WithFlags("--runtimes=docker", "-o=json"),
 		igrunner.WithStartAndStop(),
-	)
-
-	traceOpenCmd := &command.Command{
-		IG:   *ig,
-		Name: "TraceOpen",
-		ValidateOutput: func(t *testing.T, output string) {
+		igrunner.WithValidateOutput(func(t *testing.T, output string) {
 			expectedEntry := &traceOpenEvent{
 				Event: Event{
 					Type: "",
@@ -101,8 +97,9 @@ func TestTraceOpen(t *testing.T) {
 			}
 
 			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-		},
-	}
+		}),
+	)
+
 	testSteps := []command.TestStep{
 		traceOpenCmd,
 		containerFactory.NewContainer(cn, "setuidgid 1000:1111 cat /dev/null"),

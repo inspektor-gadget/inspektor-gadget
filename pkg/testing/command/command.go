@@ -15,40 +15,51 @@
 package command
 
 import (
+	"bytes"
+	"errors"
+	"os"
+	"os/exec"
+	"syscall"
 	"testing"
 
-	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/stretchr/testify/require"
 )
 
 type Command struct {
-	// IG wrapper
-	igrunner.IG
-
 	// Name of the command to be run, used to give information.
 	Name string
 
 	// ValidateOutput is a function used to verify the output. It must make the test fail in
 	// case of error.
 	ValidateOutput func(t *testing.T, output string)
-}
 
-// verifyOutput verifies if the stdout match with the expected regular expression and the expected
-// string. If it doesn't, verifyOutput makes the test fail.
-func (c *Command) verifyOutput(t *testing.T) {
-	output := c.Stdout.String()
+	// StartAndStop indicates this command should first be started then stopped.
+	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
+	StartAndStop bool
 
-	if c.ValidateOutput != nil {
-		c.ValidateOutput(t, output)
-	}
+	// started indicates this command was started.
+	// It is only used by command which have StartAndStop set.
+	started bool
+
+	// Cmd is a Cmd object used when we want to start the Cmd, then other
+	// do stuff and wait for its completion.
+	Cmd *exec.Cmd
+
+	// stdout contains command standard output when started using Startcommand().
+	stdout bytes.Buffer
+
+	// stderr contains command standard output when started using Startcommand().
+	stderr bytes.Buffer
 }
 
 // Run runs the Command on the given as parameter test.
 func (c *Command) Run(t *testing.T) {
-	t.Logf("Run command(%s):\n", c.Name)
-	err := c.RunCmd()
+	c.initExecCmd()
+
+	t.Logf("Run command(%s):\n%s\n", c.Name, c.Cmd)
+	err := c.Cmd.Run()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.Name, c.Stderr.String(), c.Stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
 	c.verifyOutput(t)
@@ -57,21 +68,122 @@ func (c *Command) Run(t *testing.T) {
 // Start starts the Command on the given as parameter test, you need to
 // wait it using Stop().
 func (c *Command) Start(t *testing.T) {
-	t.Logf("Start command(%s)", c.Name)
-	err := c.StartCmd()
+	if c.started {
+		t.Logf("Warn(%s): trying to start command but it was already started\n", c.Name)
+		return
+	}
+
+	c.initExecCmd()
+
+	t.Logf("Start command(%s): %s\n", c.Name, c.Cmd)
+	err := c.Cmd.Start()
 	require.NoError(t, err, "failed to start command(%s)", c.Name)
+
+	c.started = true
 }
 
 // Stop stops a Command previously started with Start().
-// To do so, it Kill() the process corresponding to this cmd and then wait for
+// To do so, it Kill() the process corresponding to this Cmd and then wait for
 // its termination.
-// cmd output is then checked with regard to ExpectedString and ExpectedRegexp
+// Cmd output is then checked with regard to ExpectedString and ExpectedRegexp
 func (c *Command) Stop(t *testing.T) {
+	if !c.started {
+		t.Logf("Warn(%s): trying to stop command but it was not started\n", c.Name)
+		return
+	}
+
 	t.Logf("Stop command(%s)\n", c.Name)
-	err := c.StopCmd()
+	err := c.kill()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.Name, c.Stderr.String(), c.Stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to kill command(%s)", c.Name)
 
 	c.verifyOutput(t)
+
+	c.started = false
+}
+
+func (c *Command) IsStartAndStop() bool {
+	return c.StartAndStop
+}
+
+func (c *Command) Running() bool {
+	return c.started
+}
+
+// initExecCmd configures c.Cmd to store the stdout and stderr in c.stdout and c.stderr so that we
+// can use them on c.verifyOutput().
+func (c *Command) initExecCmd() {
+	c.Cmd.Stdin = os.Stdin // TODO: needed?
+	c.Cmd.Stdout = &c.stdout
+	c.Cmd.Stderr = &c.stderr
+
+	// To be able to kill the process of /bin/sh and its child (the process of
+	// c.Cmd), we need to send the termination signal to their process group ID
+	// (PGID). However, child processes get the same PGID as their parents by
+	// default, so in order to avoid killing also the integration tests process,
+	// we set the fields Setpgid and Pgid of syscall.SysProcAttr before
+	// executing /bin/sh. Doing so, the PGID of /bin/sh (and its children)
+	// will be set to its process ID, see:
+	// https://cs.opensource.google/go/go/+/refs/tags/go1.17.8:src/syscall/exec_linux.go;l=32-34.
+	c.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
+}
+
+// verifyOutput verifies if the stdout match with the expected regular expression and the expected
+// string. If it doesn't, verifyOutput makes the test fail.
+func (c *Command) verifyOutput(t *testing.T) {
+	if c.ValidateOutput != nil {
+		output := c.stdout.String()
+		c.ValidateOutput(t, output)
+	}
+}
+
+// kill kills a command by sending SIGKILL because we want to stop the process
+// immediatly and avoid that the signal is trapped.
+func (c *Command) kill() error {
+	const sig syscall.Signal = syscall.SIGKILL
+
+	// No need to kill, command has not been executed yet or it already exited
+	if c.Cmd == nil || (c.Cmd.ProcessState != nil && c.Cmd.ProcessState.Exited()) {
+		return nil
+	}
+
+	// Given that we set Setpgid, here we just need to send the PID of /bin/sh
+	// (which is the same PGID) as a negative number to syscall.Kill(). As a
+	// result, the signal will be received by all the processes with such PGID,
+	// in our case, the process of /bin/sh and c.Cmd.
+	err := syscall.Kill(-c.Cmd.Process.Pid, sig)
+	if err != nil {
+		return err
+	}
+
+	// In some cases, we do not have to wait here because the Cmd was executed
+	// with Run(), which already waits. On the contrary, in the case it was
+	// executed with Start() thus c.started is true, we need to wait indeed.
+	if c.started {
+		err = c.Cmd.Wait()
+		if err == nil {
+			return nil
+		}
+
+		// Verify if the error is about the signal we just sent. In that case,
+		// do not return error, it is what we were expecting.
+		var exiterr *exec.ExitError
+		if ok := errors.As(err, &exiterr); !ok {
+			return err
+		}
+
+		waitStatus, ok := exiterr.Sys().(syscall.WaitStatus)
+		if !ok {
+			return err
+		}
+
+		if waitStatus.Signal() != sig {
+			return err
+		}
+
+		return nil
+	}
+
+	return err
 }
