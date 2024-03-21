@@ -8,18 +8,23 @@ description: >
 > ⚠️ This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
 Check the installation guide to enable [experimental features](../getting-started/install-linux.md#experimental-features).
 
-The `run` command runs a gadget from an OCI image. Check the different gadgets available in https://github.com/orgs/inspektor-gadget/packages.
+The `run` command runs a gadget from an OCI image. By default, the `run` command will use following defaults to refer the OCI image:
+- `ghcr.io` as the registry
+- `inspektor-gadget/gadget` as the repository prefix
+- `latest` as the tag
+
+Check the different gadgets available in https://github.com/orgs/inspektor-gadget/packages.
 
 ## On Kubernetes
 
 ```bash
-$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpconnect:latest
+$ kubectl gadget run trace_tcpconnect
 INFO[0000] Experimental features enabled
 K8S.NODE               K8S.NAMESPACE         K8S.POD               K8S.CONTAINER         PID     TASK        SRC                      DST
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:37848   r/1.1.1.1:80
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:33150   r/1.1.1.1:443
 
-$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:latest
+$ kubectl gadget run trace_open
 INFO[0000] Experimental features enabled
 K8S.NODE               K8S.NAMESPACE          K8S.POD                K8S.CONTAINER          PID     COMM        UID      GID      RET FNAME
 ubuntu-hirsute         default                mypod2                 mypod2                 225071  sh          0        0        3   /
@@ -119,13 +124,13 @@ $ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest --pull-secret 
 ## With `ig`
 
 ``` bash
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpconnect:latest
+$ sudo ig run trace_tcpconnect
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME                                            PID     TASK             SRC                                DST
 mycontainer3                                                     1254254 wget             172.17.0.4:50072                   1.1.1.1:80
 mycontainer3                                                     1254254 wget             172.17.0.4:44408                   1.1.1.1:443
 
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:latest
+$ sudo ig run trace_open
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME                               PID     COMM             UID      GID      RET       FNAME
 mycontainer3                                        62162   sh               0        0        3         /
