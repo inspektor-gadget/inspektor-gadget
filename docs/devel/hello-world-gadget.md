@@ -298,7 +298,7 @@ It'll create a `gadget.yaml` file:
 name: 'TODO: Fill the gadget name'
 description: 'TODO: Fill the gadget description'
 tracers:
-  events:
+  open:
     mapName: events
     structName: event
 structs:
@@ -331,7 +331,7 @@ pid, comm, etc.
 name: mygadget
 description: Example gadget
 tracers:
-  events:
+  open:
     mapName: events
     structName: event
 structs:

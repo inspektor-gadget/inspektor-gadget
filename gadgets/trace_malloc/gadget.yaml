@@ -1,7 +1,7 @@
 name: trace malloc
 description: use uprobe to trace malloc and free in libc.so
 tracers:
-  events:
+  malloc:
     mapName: events
     structName: event
 structs:

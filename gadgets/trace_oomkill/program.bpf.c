@@ -27,7 +27,7 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+GADGET_TRACER(oomkill, events, event);
 
 SEC("kprobe/oom_kill_process")
 int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
