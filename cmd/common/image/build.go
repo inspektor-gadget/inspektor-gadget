@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -230,7 +230,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 	f := filters.NewArgs()
 	f.Add("reference", opts.builderImage)
 
-	images, err := cli.ImageList(ctx, types.ImageListOptions{Filters: f})
+	images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
 	if err != nil {
 		return fmt.Errorf("listing images: %w", err)
 	}
@@ -252,7 +252,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 
 	if !found {
 		fmt.Printf("Pulling builder image %s. It could take few minutes.\n", opts.builderImage)
-		reader, err := cli.ImagePull(ctx, opts.builderImage, types.ImagePullOptions{})
+		reader, err := cli.ImagePull(ctx, opts.builderImage, image.PullOptions{})
 		if err != nil {
 			return fmt.Errorf("pulling builder image: %w", err)
 		}
