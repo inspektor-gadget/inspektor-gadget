@@ -21,8 +21,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
@@ -62,7 +62,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 
 	_ = d.client.ContainerRemove(d.options.ctx, d.name, container.RemoveOptions{})
 
-	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, types.ImagePullOptions{})
+	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, image.PullOptions{})
 	if err != nil {
 		t.Fatalf("Failed to pull image container: %s", err)
 	}
