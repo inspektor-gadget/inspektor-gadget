@@ -156,7 +156,7 @@ The following snippet demonstrates how to use the code available in `<gadget/buf
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+GADGET_TRACER(exit, events, event);
 
 /* ... */
 
