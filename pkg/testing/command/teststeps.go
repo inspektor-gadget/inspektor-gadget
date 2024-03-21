@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ig
+package command
 
 import (
 	"testing"
@@ -33,10 +33,6 @@ type TestStep interface {
 
 	// Stop stops the step and waits its completion.
 	Stop(t *testing.T)
-
-	// IsCleanup returns true if the step is used to clean resource and
-	// should not be skipped even if previous commands failed.
-	IsCleanup() bool
 
 	// IsStartAndStop returns true if the step should first be started then
 	// stopped after some time.
@@ -68,16 +64,6 @@ func RunTestSteps[S TestStep](steps []S, t *testing.T, options ...Option) {
 		option(opts)
 	}
 
-	// Defer all cleanup steps so we are sure to exit clean whatever
-	// happened
-	defer func() {
-		for _, o := range steps {
-			if o.IsCleanup() {
-				o.Run(t)
-			}
-		}
-	}()
-
 	if opts.cbBeforeCleanup != nil {
 		defer opts.cbBeforeCleanup(t)
 	}
@@ -94,12 +80,8 @@ func RunTestSteps[S TestStep](steps []S, t *testing.T, options ...Option) {
 		}()
 	}
 
-	// Run all steps except cleanup ones
+	// Run or Start all steps
 	for _, step := range steps {
-		if step.IsCleanup() {
-			continue
-		}
-
 		if step.IsStartAndStop() {
 			step.Start(t)
 			continue

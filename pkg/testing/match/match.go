@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ig
+package match
 
 import (
 	"encoding/json"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -75,4 +76,19 @@ out:
 func ExpectEntriesToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
 	entries := parseMultiJSONOutput(t, output, normalize)
 	expectEntriesToMatch(t, entries, expectedEntries...)
+}
+
+func ExpectStringToMatch(t *testing.T, expectedString string) func(t *testing.T, output string) {
+	return func(t *testing.T, output string) {
+		require.Equal(t, expectedString, output, "output didn't match the expected string")
+	}
+}
+
+func ExpectRegexpToMatch(t *testing.T, expectedRegexp string) func(t *testing.T, output string) {
+	return func(t *testing.T, output string) {
+		r := regexp.MustCompile(expectedRegexp)
+		if !r.MatchString(output) {
+			t.Fatalf("output didn't match the expected regexp: %s", expectedRegexp)
+		}
+	}
 }

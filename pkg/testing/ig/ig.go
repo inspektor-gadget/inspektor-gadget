@@ -33,28 +33,20 @@ type IG struct {
 	cmd    *exec.Cmd
 	env    []string
 	flags  []string
-	stdout bytes.Buffer
-	stderr bytes.Buffer
+	Stdout bytes.Buffer
+	Stderr bytes.Buffer
 
 	// StartAndStop indicates this command should first be started then stopped.
 	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
-	StartAndStop bool
+	startAndStop bool
 
 	// started indicates this command was started.
 	// It is only used by command which have StartAndStop set.
 	started bool
-
-	// Cleanup indicates this command is used to clean resource and should not be
-	// skipped even if previous commands failed.
-	Cleanup bool
-}
-
-func (ig *IG) IsCleanup() bool {
-	return ig.Cleanup
 }
 
 func (ig *IG) IsStartAndStop() bool {
-	return ig.StartAndStop
+	return ig.startAndStop
 }
 
 func (ig *IG) Running() bool {
@@ -69,8 +61,8 @@ func (ig *IG) createCmd() {
 	cmd.Env = append(cmd.Env, ig.env...)
 
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = &ig.stdout
-	cmd.Stderr = &ig.stderr
+	cmd.Stdout = &ig.Stdout
+	cmd.Stderr = &ig.Stderr
 
 	// To be able to kill the process of ig.cmd,
 	// we need to send the termination signal to their process group ID
@@ -85,37 +77,23 @@ func (ig *IG) createCmd() {
 	ig.cmd = cmd
 }
 
-func (ig *IG) run() error {
+func (ig *IG) RunCmd() error {
 	ig.createCmd()
 	if err := ig.cmd.Run(); err != nil {
-		switch e := err.(type) {
-		case *exec.Error:
-			return fmt.Errorf("command execution: %w", err)
-		case *exec.ExitError:
-			return fmt.Errorf("command exit code = %d", e.ExitCode())
-		default:
-			return err
-		}
+		return err
 	}
 
 	return nil
 }
 
-func (ig *IG) start() error {
+func (ig *IG) StartCmd() error {
 	if ig.started {
 		return fmt.Errorf("Warn(%v): trying to start command but it was already started", ig.cmd)
 	}
 
 	ig.createCmd()
 	if err := ig.cmd.Start(); err != nil {
-		switch e := err.(type) {
-		case *exec.Error:
-			return fmt.Errorf("command execution: %w", err)
-		case *exec.ExitError:
-			return fmt.Errorf("command exit code = %d", e.ExitCode())
-		default:
-			return err
-		}
+		return err
 	}
 
 	ig.started = true
@@ -173,7 +151,7 @@ func (ig *IG) kill() error {
 	return err
 }
 
-func (ig *IG) stop() error {
+func (ig *IG) StopCmd() error {
 	if !ig.started {
 		return fmt.Errorf("Warn(%v): trying to stop command but it was not started", ig.cmd)
 	}
@@ -200,14 +178,14 @@ func WithImage(image string) option {
 	}
 }
 
-// Flags should be in the form: "--flag_name=value" or "-shorthand=value"
+// WithFlags should be in form: "--flag_name=value" or "-shorthand=value"
 func WithFlags(flags ...string) option {
 	return func(ig *IG) {
 		ig.flags = flags
 	}
 }
 
-// Elements of env should be in form: "ENV_VARIABLE_NAME=value"
+// WithEnv vars should be in form: "ENV_VARIABLE_NAME=value"
 func WithEnv(env ...string) option {
 	return func(ig *IG) {
 		ig.env = env
@@ -216,29 +194,30 @@ func WithEnv(env ...string) option {
 
 func WithStartAndStop() option {
 	return func(ig *IG) {
-		ig.StartAndStop = true
+		ig.startAndStop = true
 	}
 }
 
 // Runs "ig version" to get the version string
-func getIgVersionString(path string) (string, error) {
+func getIgVersionString(path string) string {
 	cmd := exec.Command(path, "version")
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
 	if err := cmd.Run(); err != nil {
-		return "", err
+		fmt.Printf("getting version from ig: %v", err)
+		return ""
 	}
-	return out.String(), nil
+	return out.String()
 }
 
-func extractIgVersion(str string) (semver.Version, error) {
+func extractIgVersion(str string) semver.Version {
 	parsedVersion, err := semver.ParseTolerant(str)
 	if err != nil {
-		return parsedVersion, fmt.Errorf("parsing version from string[%s]: %w]", str, err)
+		fmt.Printf("parsing version from string[%s]: %v]", str, err)
 	}
-	return parsedVersion, nil
+	return parsedVersion
 }
 
 // New creates a new IG configured with the options passed as parameters.
@@ -249,8 +228,7 @@ func extractIgVersion(str string) (semver.Version, error) {
 //	WithEnv(...string)
 //	WithFlags(...string)
 //	WithStartAndStop()
-func New(opts ...option) (*IG, error) {
-
+func New(opts ...option) *IG {
 	ig := &IG{
 		path: "ig",
 	}
@@ -259,15 +237,8 @@ func New(opts ...option) (*IG, error) {
 		opt(ig)
 	}
 
-	vstring, err := getIgVersionString(ig.path)
-	if err != nil {
-		return nil, fmt.Errorf("obtaining ig version: %w", err)
-	}
-	parsedVersion, err := extractIgVersion(vstring)
-	if err != nil {
-		return nil, fmt.Errorf("extracting ig version: %w", err)
-	}
-	ig.version = parsedVersion
+	vstring := getIgVersionString(ig.path)
+	ig.version = extractIgVersion(vstring)
 
-	return ig, nil
+	return ig
 }

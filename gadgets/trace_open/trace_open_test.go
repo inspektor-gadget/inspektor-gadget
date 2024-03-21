@@ -19,63 +19,54 @@ import (
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/integration"
-	IG "github.com/inspektor-gadget/inspektor-gadget/pkg/test-fw/ig"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/command"
+	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/stretchr/testify/require"
 )
-
-type EventType string
-
-const ImageName = "docker.io/pawarpranav83/trace_open:latest"
 
 type Event struct {
 	eventtypes.CommonData
 
 	// Type indicates the kind of this event
-	Type EventType `json:"type"`
+	Type string `json:"type"`
 
 	// Message when Type is ERR, WARN, DEBUG or INFO
 	Message string `json:"message,omitempty"`
 }
 
-// A user would have to implement their own event type as well, therefore not using this from ig repo
 type traceOpenEvent struct {
 	Event
-	eventtypes.WithMountNsID
 
-	Pid      uint32      `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Uid      uint32      `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
-	Gid      uint32      `json:"gid" column:"gid,template:gid,hide"`
-	Comm     string      `json:"comm,omitempty" column:"comm,maxWidth:16"`
-	Ret      int         `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
-	Err      int         `json:"err,omitempty" column:"err,width:3,fixed"`
-	Flags    int         `json:"flags,omitempty" column:"flags,width:24,hide"`
-	FlagsRaw int32       `json:"flagsRaw,omitempty"`
-	Mode     int         `json:"mode,omitempty" column:"mode,width:10,hide"`
-	ModeRaw  fs.FileMode `json:"modeRaw,omitempty"`
-	FName    string      `json:"fname,omitempty" column:"path,minWidth:24,width:32"`
-	FullPath string      `json:"fullPath,omitempty" column:"fullPath,minWidth:24,width:32" columnTags:"param:full-path"`
+	MountNsID uint64      `json:"mountnsid"`
+	Pid       uint32      `json:"pid"`
+	Uid       uint32      `json:"uid"`
+	Gid       uint32      `json:"gid"`
+	Comm      string      `json:"comm"`
+	Ret       int         `json:"ret"`
+	Err       int         `json:"err"`
+	Flags     int         `json:"flags"`
+	FlagsRaw  int32       `json:"flagsRaw"`
+	Mode      int         `json:"mode"`
+	ModeRaw   fs.FileMode `json:"modeRaw"`
+	FName     string      `json:"fname"`
+	FullPath  string      `json:"fullPath"`
 }
 
 func TestTraceOpen(t *testing.T) {
 	cn := "test-trace-open"
 	containerFactory, err := integration.NewContainerFactory("docker")
-	if err != nil {
-		t.Logf(err.Error())
-		return
-	}
+	require.NoError(t, err, "new container factory")
 
-	ig, err := IG.New(
-		IG.WithPath("ig"),
-		IG.WithImage("ghcr.io/inspektor-gadget/gadget/trace_open:latest"),
-		IG.WithFlags("--runtimes=docker", "-o=json"),
-		IG.WithStartAndStop(),
+	ig := igrunner.New(
+		igrunner.WithPath("ig"),
+		igrunner.WithImage("ghcr.io/inspektor-gadget/gadget/trace_open:latest"),
+		igrunner.WithFlags("--runtimes=docker", "-o=json"),
+		igrunner.WithStartAndStop(),
 	)
-	if err != nil {
-		t.Logf(err.Error())
-		return
-	}
 
-	traceOpenCmd := &IG.Command{
+	traceOpenCmd := &command.Command{
 		IG:   *ig,
 		Name: "TraceOpen",
 		ValidateOutput: func(t *testing.T, output string) {
@@ -109,14 +100,13 @@ func TestTraceOpen(t *testing.T) {
 				e.Runtime.ContainerImageDigest = ""
 			}
 
-			IG.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
-	testSteps := []IG.TestStep{
+	testSteps := []command.TestStep{
 		traceOpenCmd,
 		containerFactory.NewContainer(cn, "setuidgid 1000:1111 cat /dev/null"),
 	}
 
-	IG.RunTestSteps(testSteps, t)
+	command.RunTestSteps(testSteps, t)
 }
