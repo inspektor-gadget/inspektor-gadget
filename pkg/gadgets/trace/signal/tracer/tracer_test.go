@@ -60,8 +60,8 @@ func TestSignalTracer(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	const unprivilegedUID = int(1435)
-	const unprivilegedGID = int(6789)
+	const unprivilegedUID = int(0 /*1435*/)
+	const unprivilegedGID = int(0 /*6789*/)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config

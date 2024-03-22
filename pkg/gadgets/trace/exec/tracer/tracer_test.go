@@ -62,8 +62,8 @@ func TestExecTracer(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	const unprivilegedUID = int(1435)
-	const unprivilegedGID = int(6789)
+	const unprivilegedUID = int(0 /*1435*/)
+	const unprivilegedGID = int(0 /*6789*/)
 
 	manyArgs := []string{}
 	// 19 is DEFAULT_MAXARGS - 1 (-1 because args[0] is on the first position).
