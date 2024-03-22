@@ -16,6 +16,7 @@ package columns
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -25,6 +26,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/exp/constraints"
+
+	histogram "github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 )
 
 type ColumnMap[T any] map[string]*Column[T]
@@ -615,6 +618,20 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 					arr = arr[:i]
 				}
 				return string(arr)
+			}
+		}
+
+		// Specific case for profilers.
+		if column.(*Column[T]).Name == "slots" {
+			return func(entry *T) string {
+				hist, err := json.Marshal(histogram.Histogram{
+					Intervals: histogram.NewIntervalsFromExp2Slots(GetFieldAsArrayFunc[uint32, T](column)(entry)),
+				})
+				if err != nil {
+					return fmt.Sprintf("marshalling json: %v", err)
+				}
+
+				return string(hist)
 			}
 		}
 

@@ -42,6 +42,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -102,6 +103,8 @@ type Tracer struct {
 	// Tracers related
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
+
+	histMap *ebpf.Map
 
 	// Snapshotters related
 	linksSnapshotters []*linkSnapshotter
@@ -314,12 +317,14 @@ type loadingOptions struct {
 	collectionOptions ebpf.CollectionOptions
 	tracerMapName     string
 	topperMapName     string
+	histMapName       string
 }
 
 func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 	var err error
 
 	tracerMapName := opts.tracerMapName
+	histMapName := opts.histMapName
 
 	if tracerMapName != "" && t.createdByTracerMapMacro(tracerMapName) {
 		err = t.handleTracerMapDefinition(tracerMapName)
@@ -352,6 +357,10 @@ func (t *Tracer) loadeBPFObjects(opts loadingOptions) error {
 		t.topperMap = t.collection.Maps[opts.topperMapName]
 	}
 
+	if histMapName != "" {
+		t.histMap, _ = t.collection.Maps[histMapName]
+	}
+
 	return err
 }
 
@@ -364,6 +373,11 @@ func (t *Tracer) handleTracers() (string, error) {
 	}
 
 	return tracer.MapName, nil
+}
+
+func (t *Tracer) handleProfilers() (string, error) {
+	_, profiler := getAnyMapElem(t.config.Metadata.Profilers)
+	return profiler.MapName, nil
 }
 
 func (t *Tracer) attachProgram(gadgetCtx gadgets.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
@@ -478,7 +492,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 
 	var err error
-	var tracerMapName, topperMapName string
+	var tracerMapName, topperMapName, histMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
 
@@ -493,7 +507,12 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 	case len(t.config.Metadata.Tracers) > 0:
 		tracerMapName, err = t.handleTracers()
 		if err != nil {
-			return fmt.Errorf("handling trace programs: %w", err)
+			return fmt.Errorf("handling tracer programs: %w", err)
+		}
+	case len(t.config.Metadata.Profilers) > 0:
+		histMapName, err = t.handleProfilers()
+		if err != nil {
+			return fmt.Errorf("handling profiler programs: %w", err)
 		}
 	case len(t.config.Metadata.Toppers) > 0:
 		_, topper := getAnyMapElem(t.config.Metadata.Toppers)
@@ -529,6 +548,7 @@ func (t *Tracer) installTracer(gadgetCtx gadgets.GadgetContext) error {
 		collectionOptions: ebpf.CollectionOptions{MapReplacements: mapReplacements},
 		tracerMapName:     tracerMapName,
 		topperMapName:     topperMapName,
+		histMapName:       histMapName,
 	})
 	if err != nil {
 		return fmt.Errorf("loading eBPF objects: %w", err)
@@ -592,6 +612,8 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 
 	var mntNsIdstart uint32
 	mountNsIdFound := false
+	var slotsStart uint32
+	slotsFound := false
 
 	type endpointType int
 
@@ -619,7 +641,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		switch member.Type.TypeName() {
 		case types.MntNsIdTypeName:
 			if err := verifyGadgetUint64Typedef(member.Type); err != nil {
-				logger.Warn("%s is not a uint64: %s", member.Name, err)
+				logger.Warnf("%s is not a uint64: %s", member.Name, err)
 				continue
 			}
 			mntNsIdstart = member.Offset.Bytes()
@@ -627,12 +649,12 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		case types.L3EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
-				logger.Warn("%s is not a struct", member.Name)
+				logger.Warnf("%s is not a struct", member.Name)
 				continue
 			}
 			expectedSize := uint32(unsafe.Sizeof(l3EndpointT{}))
 			if typ.Size != expectedSize {
-				logger.Warn("%s has a wrong size, expected %d, got %d", member.Name,
+				logger.Warnf("%s has a wrong size, expected %d, got %d", member.Name,
 					expectedSize, typ.Size)
 				continue
 			}
@@ -641,7 +663,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		case types.L4EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
-				logger.Warn("%s is not a struct", member.Name)
+				logger.Warnf("%s is not a struct", member.Name)
 				continue
 			}
 			expectedSize := uint32(unsafe.Sizeof(l4EndpointT{}))
@@ -731,6 +753,43 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			enumSetters = append(enumSetters, enumSetter)
 		}
+
+		if member.Name == "slots" {
+			arrayType, ok := member.Type.(*btf.Array)
+			if !ok {
+				logger.Warnf("%s is not an array", member.Name)
+				continue
+			}
+			elemType, ok := arrayType.Type.(*btf.Typedef)
+			if !ok {
+				logger.Warn("element type is not a typedef")
+				continue
+			}
+			realElemType, ok := elemType.Type.(*btf.Int)
+			if !ok {
+				logger.Warn("element type is not an integer")
+				continue
+			}
+			if realElemType.Encoding != btf.Unsigned {
+				logger.Warn("element type is not unsigned")
+				continue
+			}
+			expectedUnsignedSize := 4
+			if realElemType.Size != 4 {
+				logger.Warnf("array type has a wrong size, expected %d, got %d",
+					expectedUnsignedSize, realElemType.Size)
+				continue
+			}
+			expectedSize := t.histMap.ValueSize()
+			arraySize := arrayType.Nelems * realElemType.Size
+			if arraySize != expectedSize {
+				logger.Warnf("%s has a wrong size, expected %d, got %d", member.Name,
+					expectedSize, arraySize)
+				continue
+			}
+			slotsStart = member.Offset.Bytes()
+			slotsFound = true
+		}
 	}
 
 	return func(data []byte) *types.Event {
@@ -738,6 +797,14 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		mntNsId := uint64(0)
 		if mountNsIdFound {
 			mntNsId = getAsInteger[uint64](data, mntNsIdstart)
+		}
+
+		hist := histogram.Histogram{}
+		if slotsFound {
+			size := len(data) / 4
+			ptr := (*uint32)(unsafe.Pointer(&data[slotsStart]))
+			slots := unsafe.Slice(ptr, size)
+			hist.Intervals = histogram.NewIntervalsFromExp2Slots(slots)
 		}
 
 		// enrich endpoints
@@ -801,6 +868,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		ev.L3Endpoints = l3endpoints
 		ev.L4Endpoints = l4endpoints
 		ev.Timestamps = timestamps
+		ev.Slots = hist
 
 		// handle enums
 		for _, setter := range enumSetters {
@@ -1085,6 +1153,26 @@ func (t *Tracer) runToppers(gadgetCtx gadgets.GadgetContext) {
 	}
 }
 
+func (t *Tracer) collectProfiler(gadgetCtx gadgets.GadgetContext) error {
+	cb := t.processEventFunc(gadgetCtx)
+	key := make([]byte, t.histMap.KeySize(), t.histMap.KeySize())
+	value := make([]byte, t.histMap.ValueSize(), t.histMap.ValueSize())
+
+	it := t.histMap.Iterate()
+	for it.Next(&key, &value) {
+		event := cb(value)
+		t.eventCallback(event)
+		fmt.Printf("%s\n", event.Slots.String())
+	}
+
+	err := it.Err()
+	if err != nil {
+		return fmt.Errorf("iterating over profiler map: %w", err)
+	}
+
+	return nil
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if err := t.installTracer(gadgetCtx); err != nil {
 		t.Close()
@@ -1102,6 +1190,10 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	}
 
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
+
+	if t.histMap != nil {
+		return t.collectProfiler(gadgetCtx)
+	}
 
 	return nil
 }

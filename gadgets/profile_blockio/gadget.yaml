@@ -1,0 +1,58 @@
+name: profile blockio
+description: profile block I/Os
+profilers:
+  blockio:
+    mapName: hists
+    structKeyName: hist_key
+    structValueName: hist_value
+structs:
+  hist_key:
+    fields:
+    - name: cmd_flags
+      description: The flags describing the I/O.
+      attributes:
+        width: 10
+        alignment: left
+        template: timestamp
+        ellipsis: end
+    - name: dev
+      description: Device where the I/O occurred.
+      attributes:
+        width: 10
+        alignment: left
+        template: timestamp
+        ellipsis: end
+  hist_value:
+    fields:
+    - name: slots
+      description: Histogram of I/O duration.
+      attributes:
+        width: 16
+        alignment: left
+        template: timestamp
+        ellipsis: end
+ebpfParams:
+  targ_per_disk:
+    key: per-disk
+    defaultValue: "false"
+    description: Generate one histogram per disk device.
+  targ_per_flag:
+    key: per-io-flags
+    defaultValue: "false"
+    description: Generate one histogram per set of I/O flags.
+  targ_queued:
+    key: time-queued
+    defaultValue: "false"
+    description: Include OS queued time in I/O time
+  targ_ms:
+    key: time-ms
+    defaultValue: "false"
+    description: Show times as ms.
+  filter_dev:
+    key: filter-dev
+    defaultValue: "false"
+    description: Filter our by device, should be used with --dev.
+  targ_dev:
+    key: dev
+    defaultValue: ""
+    description: Device number to trace

@@ -30,4 +30,23 @@
 	const void *gadget_snapshotter_##name##___##type __attribute__((unused)); \
 	const struct type *unusedevent_##name##___##type __attribute__((unused));
 
+#ifndef PROFILER_MAX_SLOTS
+#define PROFILER_MAX_SLOTS 27
+#endif /* !PROFILER_MAX_SLOTS */
+
+// hist_value is used as value for profiler hash map.
+struct hist_value {
+	__u32 slots[PROFILER_MAX_SLOTS];
+};
+
+const struct hist_value *unused___hist_value __attribute__((unused));
+
+// GADGET_PROFILER is used to define a profiler:
+// - name is the tracer name.
+// - hist_name is the name of the hash map used to send events to user space.
+// - hist_key_type is the type of map key.
+#define GADGET_PROFILER(name, hist_name, hist_key_type) \
+	const void *gadget_profiler_##name##___##hist_name##___##hist_key_type##___hist_value __attribute__((unused)); \
+	const struct hist_key_type *unusedevent_##name##___##hist_key_type __attribute__((unused));
+
 #endif /* __MACROS_H */
