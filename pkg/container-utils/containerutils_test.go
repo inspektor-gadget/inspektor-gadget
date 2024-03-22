@@ -27,9 +27,10 @@ import (
 )
 
 func newRuntimeClient(t *testing.T, runtime types.RuntimeName, sPath string) (runtimeclient.ContainerRuntimeClient, error) {
+	path := sPath
 	config := &containerutilsTypes.RuntimeConfig{
 		Name:       runtime,
-		SocketPath: sPath,
+		SocketPath: &path,
 	}
 	rc, err := NewContainerRuntimeClient(config)
 	t.Cleanup(func() {

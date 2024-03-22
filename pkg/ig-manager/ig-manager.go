@@ -134,13 +134,13 @@ func isDefaultContainerRuntimeConfig(runtimes []*containerutilsTypes.RuntimeConf
 	for _, runtime := range runtimes {
 		switch runtime.Name {
 		case types.RuntimeNameDocker:
-			customSocketPath = runtime.SocketPath != runtimeclient.DockerDefaultSocketPath
+			customSocketPath = *runtime.SocketPath != runtimeclient.DockerDefaultSocketPath
 		case types.RuntimeNameContainerd:
-			customSocketPath = runtime.SocketPath != runtimeclient.ContainerdDefaultSocketPath
+			customSocketPath = *runtime.SocketPath != runtimeclient.ContainerdDefaultSocketPath
 		case types.RuntimeNameCrio:
-			customSocketPath = runtime.SocketPath != runtimeclient.CrioDefaultSocketPath
+			customSocketPath = *runtime.SocketPath != runtimeclient.CrioDefaultSocketPath
 		case types.RuntimeNamePodman:
-			customSocketPath = runtime.SocketPath != runtimeclient.PodmanDefaultSocketPath
+			customSocketPath = *runtime.SocketPath != runtimeclient.PodmanDefaultSocketPath
 		default:
 			customSocketPath = true
 		}

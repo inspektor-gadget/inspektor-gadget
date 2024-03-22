@@ -39,4 +39,8 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 
 COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/ig-${TARGETOS}-${TARGETARCH} /usr/bin/ig
 ENV HOST_ROOT=/host
+ENV INSPEKTOR_GADGET_DOCKER_SOCKETPATH=/host/run/docker.sock
+ENV INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH=/host/run/containerd/containerd.sock
+ENV INSPEKTOR_GADGET_CRIO_SOCKETPATH=/host/run/crio/crio.sock
+ENV INSPEKTOR_GADGET_PODMAN_SOCKETPATH=/host/run/podman/podman.sock
 ENTRYPOINT ["/usr/bin/ig"]

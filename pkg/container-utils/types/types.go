@@ -27,7 +27,7 @@ type ExtraConfig struct {
 
 type RuntimeConfig struct {
 	Name            types.RuntimeName
-	SocketPath      string
+	SocketPath      *string
 	RuntimeProtocol string
 	Extra           ExtraConfig
 }
