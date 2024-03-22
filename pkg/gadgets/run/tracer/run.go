@@ -56,7 +56,7 @@ const (
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
-	return "run"
+	return "run-legacy"
 }
 
 func (g *GadgetDesc) Category() string {
