@@ -245,8 +245,8 @@ func TestExecTracer(t *testing.T) {
 				}
 			},
 			runnerConfig: &utilstest.RunnerConfig{
-				Uid: unprivilegedUID,
-				Gid: unprivilegedGID,
+				//Uid: unprivilegedUID,
+				//Gid: unprivilegedGID,
 			},
 			generateEvent: generateEventFromThread(true),
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
@@ -270,8 +270,8 @@ func TestExecTracer(t *testing.T) {
 				}
 			},
 			runnerConfig: &utilstest.RunnerConfig{
-				Uid: unprivilegedUID,
-				Gid: unprivilegedGID,
+				//Uid: unprivilegedUID,
+				//Gid: unprivilegedGID,
 			},
 			generateEvent: generateEventFromThread(false),
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {

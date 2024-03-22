@@ -132,6 +132,18 @@ func (r *Runner) runLoop() {
 		}
 	}
 
+	comm, err := os.Executable()
+	if err != nil {
+		r.replies <- fmt.Errorf("getting current executable aa: %w", err)
+		return
+	}
+
+	userNsID, err := getUserNamespaceInode()
+	if err != nil {
+		r.replies <- fmt.Errorf("getting user ns ID: %w", err)
+		return
+	}
+
 	if r.config.Uid != 0 {
 		var errno syscall.Errno
 		// syscall.Set{u,g}id() can't be used here because it'll
@@ -149,18 +161,6 @@ func (r *Runner) runLoop() {
 			r.replies <- fmt.Errorf("setting uid: %w", err)
 			return
 		}
-	}
-
-	comm, err := os.Executable()
-	if err != nil {
-		r.replies <- fmt.Errorf("getting current executable: %w", err)
-		return
-	}
-
-	userNsID, err := getUserNamespaceInode()
-	if err != nil {
-		r.replies <- fmt.Errorf("getting user ns ID: %w", err)
-		return
 	}
 
 	r.Info = &RunnerInfo{

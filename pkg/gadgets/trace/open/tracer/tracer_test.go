@@ -105,8 +105,8 @@ func TestOpenTracer(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	const unprivilegedUID = int(1435)
-	const unprivilegedGID = int(6789)
+	const unprivilegedUID = int(21435)
+	const unprivilegedGID = int(26789)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
@@ -611,7 +611,7 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 func generateEvent() (int, error) {
 	fd, err := unix.Open("/dev/null", 0, 0)
 	if err != nil {
-		return 0, fmt.Errorf("opening file: %w", err)
+		return 0, fmt.Errorf("opening fileaaa: %w", err)
 	}
 
 	unix.Close(fd)
