@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,17 @@
 package tests
 
 import (
+	"flag"
 	"io/fs"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/command"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 type Event struct {
@@ -54,55 +56,58 @@ type traceOpenEvent struct {
 	FullPath  string      `json:"fullPath"`
 }
 
+var gadgetTest = flag.Bool("gadgets-test", false, "run gadget tests")
+
 func TestTraceOpen(t *testing.T) {
+	if !*gadgetTest {
+		t.Skip("skipping gadget test")
+	}
+
 	cn := "test-trace-open"
 	containerFactory, err := integration.NewContainerFactory("docker")
 	require.NoError(t, err, "new container factory")
 
-	ig := igrunner.New(
-		igrunner.WithPath("ig"),
-		igrunner.WithImage("ghcr.io/inspektor-gadget/gadget/trace_open:latest"),
+	traceOpenCmd := igrunner.New(
+		igrunner.WithPathFromEnvVar(),
+		igrunner.WithImage("trace_open"),
 		igrunner.WithFlags("--runtimes=docker", "-o=json"),
 		igrunner.WithStartAndStop(),
-	)
-
-	traceOpenCmd := &command.Command{
-		IG:   *ig,
-		Name: "TraceOpen",
-		ValidateOutput: func(t *testing.T, output string) {
-			expectedEntry := &traceOpenEvent{
-				Event: Event{
-					Type: "",
-					CommonData: eventtypes.CommonData{
-						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:   eventtypes.String2RuntimeName("docker"),
-							ContainerName: cn,
+		igrunner.WithCommandName("TraceOpen"),
+		igrunner.WithValidateOutput(
+			func(t *testing.T, output string) {
+				expectedEntry := &traceOpenEvent{
+					Event: Event{
+						CommonData: eventtypes.CommonData{
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName("docker"),
+								ContainerName: cn,
+							},
 						},
 					},
-				},
-				Comm:     "cat",
-				Ret:      3,
-				Err:      0,
-				FName:    "/dev/null",
-				FullPath: "",
-				Uid:      1000,
-				Gid:      1111,
-				Flags:    0,
-				Mode:     0,
-			}
+					Comm:     "cat",
+					Ret:      3,
+					Err:      0,
+					FName:    "/dev/null",
+					FullPath: "",
+					Uid:      1000,
+					Gid:      1111,
+					Flags:    0,
+					Mode:     0,
+				}
 
-			normalize := func(e *traceOpenEvent) {
-				e.MountNsID = 0
-				e.Pid = 0
+				normalize := func(e *traceOpenEvent) {
+					e.MountNsID = 0
+					e.Pid = 0
 
-				e.Runtime.ContainerID = ""
-				e.Runtime.ContainerImageName = ""
-				e.Runtime.ContainerImageDigest = ""
-			}
+					e.Runtime.ContainerID = ""
+					e.Runtime.ContainerImageName = ""
+					e.Runtime.ContainerImageDigest = ""
+				}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-		},
-	}
+				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			}),
+	)
+
 	testSteps := []command.TestStep{
 		traceOpenCmd,
 		containerFactory.NewContainer(cn, "setuidgid 1000:1111 cat /dev/null"),
