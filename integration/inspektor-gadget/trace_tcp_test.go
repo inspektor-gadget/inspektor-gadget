@@ -79,7 +79,7 @@ func TestTraceTcp(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceTCPCmd,
 		// TODO: can't use setuidgid because it's not available on the nginx image

@@ -28,7 +28,7 @@ func TestTraceNetwork(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-network")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -142,7 +142,7 @@ func TestTraceNetwork(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceNetworkCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", nginxIP)),
 		WaitUntilTestPodReadyCommand(ns),

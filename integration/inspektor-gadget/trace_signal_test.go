@@ -61,7 +61,7 @@ func TestTraceSignal(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceSignalCmd,
 		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),

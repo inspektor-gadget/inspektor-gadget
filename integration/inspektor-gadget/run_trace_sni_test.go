@@ -70,7 +70,7 @@ func runTraceSni(t *testing.T, ns string, cmd string) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceSniCmd,
 		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -84,14 +84,14 @@ func TestRunTraceSni(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 	}
 
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

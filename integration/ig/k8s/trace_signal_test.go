@@ -73,7 +73,7 @@ func TestTraceSignal(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceSignalCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

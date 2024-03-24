@@ -26,45 +26,45 @@ func TestTraceloop(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		{
+		&Command{
 			Name: "StartTraceloopGadget",
 			Cmd:  "$KUBECTL_GADGET traceloop start",
 		},
-		{
+		&Command{
 			Name: "WaitForTraceloopStarted",
 			Cmd:  "sleep 15",
 		},
-		{
+		&Command{
 			Name: "RunTraceloopTestPod",
 			Cmd:  fmt.Sprintf("kubectl run --restart=Never -n %s --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'", ns),
 		},
-		{
+		&Command{
 			Name: "WaitForTraceloopTestPod",
 			Cmd:  fmt.Sprintf("sleep 5 ; kubectl wait -n %s --for=condition=ready pod/multiplication ; kubectl get pod -n %s ; sleep 2", ns, ns),
 		},
-		{
+		&Command{
 			Name:           "CheckTraceloopList",
 			Cmd:            "sleep 20; $KUBECTL_GADGET traceloop list | grep multiplication",
 			ExpectedRegexp: "multiplication",
 		},
-		{
+		&Command{
 			Name:           "CheckTraceloopShow",
 			Cmd:            "CONTAINER_ID=$($KUBECTL_GADGET traceloop list | grep multiplication | awk '{ print $5 }'); $KUBECTL_GADGET traceloop show $CONTAINER_ID | grep -C 5 write",
 			ExpectedRegexp: `bc\s+write\s+fd=\d+,\s+buf="42`,
 		},
-		{
+		&Command{
 			Name:    "PrintTraceloopList",
 			Cmd:     "$KUBECTL_GADGET traceloop list",
 			Cleanup: true,
 		},
-		{
+		&Command{
 			Name:    "StopTraceloopGadget",
 			Cmd:     "$KUBECTL_GADGET traceloop stop",
 			Cleanup: true,
 		},
-		{
+		&Command{
 			Name:    "WaitForTraceloopStopped",
 			Cmd:     "sleep 15",
 			Cleanup: true,

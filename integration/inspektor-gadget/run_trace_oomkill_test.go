@@ -92,9 +92,9 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceOOMKillCmd,
-		{
+		&Command{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
@@ -110,14 +110,14 @@ func TestRunTraceOOMKill(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 	}
 
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

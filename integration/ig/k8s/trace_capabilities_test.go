@@ -95,7 +95,7 @@ func TestTraceCapabilities(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		capabilitiesCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

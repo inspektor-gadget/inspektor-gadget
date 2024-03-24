@@ -89,7 +89,7 @@ func TestTopBlockIO(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		// Adding an additional sleep time to generate less events and avoid
 		// interference with other tests. See TestTopFile for more details.
@@ -99,7 +99,7 @@ func TestTopBlockIO(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -110,7 +110,7 @@ func TestTopBlockIO(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestTopBlockIO(t *testing.T) {
 		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s --timeout %d",
 			*containerRuntime, timeout)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -128,6 +128,6 @@ func TestTopBlockIO(t *testing.T) {
 		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

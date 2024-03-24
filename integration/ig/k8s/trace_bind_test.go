@@ -76,7 +76,7 @@ func TestTraceBind(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceBindCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

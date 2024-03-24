@@ -37,14 +37,14 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(nsServer),
 		BusyboxPodRepeatCommand(
 			nsServer,
 			// Dual stack socket
 			"nc -lk -p 9090 -e /bin/cat",
 		),
-		{
+		&Command{
 			Name:           "CreateService",
 			Cmd:            fmt.Sprintf("kubectl expose -n %s pod test-pod --port 9090", nsServer),
 			ExpectedRegexp: "service/test-pod exposed",
@@ -57,7 +57,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer),
 		),
 		WaitUntilTestPodReadyCommand(nsClient),
-		{
+		&Command{
 			Name: "RunNetworkPolicyMonitorClient",
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
 			ValidateOutput: func(t *testing.T, output string) {
@@ -103,7 +103,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
-		{
+		&Command{
 			Name: "RunNetworkPolicyMonitorServer",
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-server.log`, nsServer),
 			ValidateOutput: func(t *testing.T, output string) {
@@ -157,7 +157,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
-		{
+		&Command{
 			Name: "RunNetworkPolicyReportClient",
 			Cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-client.log",
 			ExpectedRegexp: fmt.Sprintf(`(?s)apiVersion: networking.k8s.io/v1
@@ -195,7 +195,7 @@ spec:
   - Ingress
   - Egress`, nsClient, nsServer),
 		},
-		{
+		&Command{
 			Name: "RunNetworkPolicyReportServer",
 			Cmd: `$KUBECTL_GADGET advise network-policy report --input ./networktrace-server.log
 				kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`,
@@ -226,7 +226,7 @@ spec:
 		},
 		DeleteTestNamespaceCommand(nsClient),
 		DeleteTestNamespaceCommand(nsServer),
-		{
+		&Command{
 			Name:    "CleanupLogFiles",
 			Cmd:     "rm -f networktrace-client.log networktrace-server.log",
 			Cleanup: true,

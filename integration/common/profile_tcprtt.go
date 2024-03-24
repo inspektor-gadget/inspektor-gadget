@@ -75,7 +75,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 	clientPodName := "test-pod"
 	ns := integration.GenerateTestNamespaceName("test-profile-tcprtt")
 
-	startServerCommands := []*integration.Command{
+	startServerCommands := []integration.TestStep{
 		integration.CreateTestNamespaceCommand(ns),
 		integration.PodCommand(serverPodName, "nginx", ns, "", ""),
 		integration.WaitUntilPodReadyCommand(ns, serverPodName),
@@ -83,7 +83,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 	integration.RunTestSteps(startServerCommands, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		cleanupCommands := []*integration.Command{
+		cleanupCommands := []integration.TestStep{
 			integration.DeleteTestNamespaceCommand(ns),
 		}
 		integration.RunTestSteps(cleanupCommands, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
@@ -91,7 +91,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 
 	serverIP := integration.GetTestPodIP(t, ns, serverPodName)
 
-	generateTrafficCommands := []*integration.Command{
+	generateTrafficCommands := []integration.TestStep{
 		integration.BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", serverIP)),
 		integration.WaitUntilTestPodReadyCommand(ns),
 	}
@@ -118,7 +118,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	// TODO: Why without timeout the topTCPCmd command doesn't generate any output?
@@ -134,7 +134,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 	// 		tcprttProfileTypes.AddressTypeAll,
 	// 		tcprttProfileTypes.WildcardAddress,
 	// 	)
-	// 	integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+	// 	integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	// })
 
 	t.Run("FilterRemotePort", func(t *testing.T) {
@@ -151,7 +151,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			80,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	t.Run("FilterRemoteAddr", func(t *testing.T) {
@@ -168,7 +168,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	t.Run("FilterLocalAddr", func(t *testing.T) {
@@ -185,7 +185,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	t.Run("ByRemoteAndFilterLocalAddr", func(t *testing.T) {
@@ -202,7 +202,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	t.Run("ByLocalAndFilterRemoteAddr", func(t *testing.T) {
@@ -219,7 +219,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
 	t.Run("MillisecondsAndFilterRemoteAndLocalAddr", func(t *testing.T) {
@@ -236,6 +236,6 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			0,
 			0,
 		)
-		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+		integration.RunTestSteps([]integration.TestStep{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 }

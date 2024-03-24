@@ -28,7 +28,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("dnstester", *dnsTesterImage, ns, `["/dnstester"]`, dnsServerArgs),
 		WaitUntilPodReadyCommand(ns, "dnstester"),
@@ -36,7 +36,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -49,7 +49,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	}
 
 	// Start the busybox pod so that we can get the IP address of the pod.
-	commands := []*Command{
+	commands := []TestStep{
 		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
 		WaitUntilTestPodReadyCommand(ns),
 	}
@@ -172,7 +172,7 @@ func TestTraceDns(t *testing.T) {
 	traceDNSCmd := newTraceDnsCmd(t, ns, "")
 
 	// Start the trace gadget and verify the output.
-	commands := []*Command{
+	commands := []TestStep{
 		traceDNSCmd,
 	}
 
@@ -187,7 +187,7 @@ func TestTraceDnsUncompress(t *testing.T) {
 	traceDNSCmd := newTraceDnsCmd(t, ns, "-uncompress")
 
 	// Start the trace gadget and verify the output.
-	commands := []*Command{
+	commands := []TestStep{
 		traceDNSCmd,
 	}
 

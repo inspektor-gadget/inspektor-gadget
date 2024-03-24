@@ -55,7 +55,7 @@ func TestTopEbpf(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		topebpfCmd,
 	}
 

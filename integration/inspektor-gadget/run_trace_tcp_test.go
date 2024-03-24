@@ -73,7 +73,7 @@ func runTraceTcp(t *testing.T, ns string, cmd string) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceTcpCmd,
 		// TODO: can't use setuidgid because it's not available on the nginx image
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
@@ -88,14 +88,14 @@ func TestRunTraceTcp(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 	}
 
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

@@ -139,18 +139,18 @@ spec:
           name: myseccompprofile
 `, ns)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		{
+		&Command{
 			Name:           "CreateSeccompProfile",
 			Cmd:            fmt.Sprintf("kubectl apply -f - <<EOF%sEOF", seccompInstallerYaml),
 			ExpectedRegexp: "daemonset.apps/seccomp-installer created",
 		},
-		{
+		&Command{
 			Name: "WaitForDaemonSet",
 			Cmd:  fmt.Sprintf("kubectl rollout -n %s status daemonset/seccomp-installer --timeout=120s", ns),
 		},
-		{
+		&Command{
 			Name: "RunSeccompAuditTestPod",
 			Cmd: fmt.Sprintf(`
 				kubectl apply -f - <<EOF
@@ -178,7 +178,7 @@ EOF
 			ExpectedRegexp: "pod/test-pod created",
 		},
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&Command{
 			Name: "RunAuditSeccompGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {
@@ -205,7 +205,7 @@ EOF
 				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
-		{
+		&Command{
 			Name:    "RemoveSeccompProfile",
 			Cmd:     fmt.Sprintf("kubectl delete -f - <<EOF%sEOF", seccompInstallerYaml),
 			Cleanup: true,

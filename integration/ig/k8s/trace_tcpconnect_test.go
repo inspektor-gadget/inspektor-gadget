@@ -86,7 +86,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		tcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
@@ -166,7 +166,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		tcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

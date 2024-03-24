@@ -26,7 +26,7 @@ func TestRunInsecure(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("registry", "docker.io/library/registry:2", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "registry"),
@@ -35,7 +35,7 @@ func TestRunInsecure(t *testing.T) {
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -44,7 +44,7 @@ func TestRunInsecure(t *testing.T) {
 	registryIP := GetTestPodIP(t, ns, "registry")
 
 	// copy gadget image to insecure registry
-	orasCpCmds := []*Command{
+	orasCpCmds := []TestStep{
 		JobCommand("copier", "ghcr.io/oras-project/oras:v1.1.0", ns,
 			"oras",
 			"copy",

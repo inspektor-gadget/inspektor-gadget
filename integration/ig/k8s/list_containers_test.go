@@ -100,13 +100,13 @@ func TestListContainers(t *testing.T) {
 	ns := GenerateTestNamespaceName(pod)
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
@@ -133,7 +133,7 @@ func TestListContainers(t *testing.T) {
 				ExpectEntriesInArrayToMatch(t, o, f, c)
 			},
 		)
-		RunTestSteps([]*Command{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("FilteredList", func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestListContainers(t *testing.T) {
 				ExpectAllInArrayToMatch(t, o, f, c)
 			},
 		)
-		RunTestSteps([]*Command{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }
 
@@ -232,7 +232,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
@@ -324,12 +324,12 @@ func TestWatchDeletedContainers(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand(pod, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
 		watchContainersCmd,
-		{
+		&Command{
 			Name: "DeletePod",
 			Cmd:  fmt.Sprintf("kubectl delete pod %s -n %s", pod, ns),
 		},
@@ -440,11 +440,11 @@ spec:
     command: ["sleep", "inf"]
 `, po, ns, po, cn)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		{
+		&Command{
 			Name:           "RunTestPodWithSecurityContext",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", securityContextPodYaml),
 			ExpectedRegexp: fmt.Sprintf("pod/%s created", po),

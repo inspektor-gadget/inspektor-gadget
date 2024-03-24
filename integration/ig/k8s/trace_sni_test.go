@@ -73,7 +73,7 @@ func TestTraceSni(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceSNICmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

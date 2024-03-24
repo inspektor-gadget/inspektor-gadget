@@ -35,7 +35,7 @@ func TestSnapshotSocket(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -43,7 +43,7 @@ func TestSnapshotSocket(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -51,8 +51,8 @@ func TestSnapshotSocket(t *testing.T) {
 
 	nodeName := GetPodNode(t, ns, "test-pod")
 
-	commands := []*Command{
-		{
+	commands := []TestStep{
+		&Command{
 			Name: "RunSnapshotSocketGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ValidateOutput: func(t *testing.T, output string) {

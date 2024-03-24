@@ -86,10 +86,10 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceOomkillCmd,
-		{
+		&Command{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
