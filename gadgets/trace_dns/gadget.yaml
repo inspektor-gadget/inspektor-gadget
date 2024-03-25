@@ -1,5 +1,8 @@
-name: dns
+name: trace dns
 description: trace dns requests and responses
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs/latest/
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
 tracers:
   dns:
     mapName: events
@@ -55,11 +58,11 @@ structs:
       attributes:
         width: 16
     - name: netns
-      description: 'Network namespace inode id'
+      description: Network namespace inode id
       attributes:
         template: ns
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
     - name: tid

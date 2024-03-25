@@ -1,5 +1,8 @@
-name: tcpretrans
+name: trace tcpretrans
 description: trace TCP retransmissions
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   tcpretrans:
     mapName: events
@@ -49,17 +52,17 @@ structs:
         alignment: left
         ellipsis: end
     - name: netns
-      description: 'Network namespace inode id'
+      description: Network namespace inode id
       attributes:
         template: ns
     - name: type
-      description: 'Type of the retransmission, either RETRANS or LOSS'
+      description: Type of the retransmission, either RETRANS or LOSS
       attributes:
         width: 7
         alignment: left
         ellipsis: end
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
     - name: state

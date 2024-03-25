@@ -1,5 +1,8 @@
 name: snapshot process
 description: Show running processes
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 snapshotters:
   processes:
     structName: process_entry
@@ -31,7 +34,7 @@ structs:
       attributes:
         template: uid
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
 ebpfParams:

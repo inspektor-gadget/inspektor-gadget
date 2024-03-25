@@ -1,5 +1,8 @@
-name: tcpconnect
+name: trace tcpconnect
 description: trace tcp connections
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   tcpconnect:
     mapName: events
@@ -37,6 +40,6 @@ structs:
         alignment: left
         hidden: true
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns

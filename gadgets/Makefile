@@ -28,11 +28,16 @@ all: build
 
 build: $(GADGETS)
 
+# GADGET_BUILD_PARAMS can be used to pass additional parameters e.g
+# GADGET_BUILD_PARAMS="--update-metadata" make build
 .PHONY: $(GADGETS)
 $(GADGETS):
 	@echo "Building $@"
-	@sudo -E IG_EXPERIMENTAL=true $(IG) image build --builder-image $(BUILDER_IMAGE) \
-		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) $@
+	@sudo -E IG_EXPERIMENTAL=true $(IG) image build \
+		--builder-image $(BUILDER_IMAGE) \
+		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) \
+		$$GADGET_BUILD_PARAMS \
+		$@
 
 .PHONY:
 push: build
