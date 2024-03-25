@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -155,6 +156,50 @@ func (i *SocketEnricherInstance) EnrichEvent(ev any) error {
 	return nil
 }
 
+func (s *SocketEnricher) GlobalParams() api.Params {
+	return nil
+}
+
+func (s *SocketEnricher) InstanceParams() api.Params {
+	return nil
+}
+
+func (s *SocketEnricher) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
+	if _, ok := gadgetCtx.GetVar(tracer.SocketsMapName); !ok {
+		return nil, nil
+	}
+
+	instance := &SocketEnricherInstance{
+		gadgetCtx: gadgetCtx,
+		manager:   s,
+	}
+	instance.gadgetInstance = instance
+	return instance, nil
+}
+
+func (s *SocketEnricher) Priority() int {
+	return 10
+}
+
+func (i *SocketEnricherInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	return i.PreGadgetRun()
+}
+
+func (i *SocketEnricherInstance) Start(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (i *SocketEnricherInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return i.PostGadgetRun()
+}
+
+func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map) {
+	i.gadgetCtx.Logger().Debugf("setting sockets map")
+	i.gadgetCtx.SetVar(tracer.SocketsMapName, m)
+}
+
 func init() {
-	operators.Register(&SocketEnricher{})
+	op := &SocketEnricher{}
+	operators.Register(op)
+	operators.RegisterDataOperator(op)
 }
