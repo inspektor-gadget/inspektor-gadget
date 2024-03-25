@@ -1,0 +1,7 @@
+# Artifact Hub repository metadata file
+# https://github.com/artifacthub/hub/blob/master/docs/metadata/artifacthub-repo.yml
+
+repositoryID: a4a4aff7-52f0-43f9-93a5-0749f53bc898
+owners:
+  - name: The Inspektor Gadget authors
+    email: hello@inspektor-gadget.io

@@ -1,0 +1,28 @@
+# Artifact Hub package metadata file
+version: 0.26.0
+name: "trace signal"
+category: monitoring-logging
+displayName: "trace signal"
+createdAt: "2024-03-25T14:32:05+01:00"
+description: "trace signal"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_signal:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+install: |
+    # Run
+    ```bash
+    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_signal:latest
+    ```
+provider:
+    name: Inspektor Gadget
