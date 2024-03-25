@@ -1,0 +1,10 @@
+name: sched_cls_drop
+description: gadget used by the CI
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs/latest/
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
+gadgetParams:
+  iface:
+    key: iface
+    defaultValue: ""
+    description: Network interface to attach to
