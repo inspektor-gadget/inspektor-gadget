@@ -129,7 +129,7 @@ func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts)
 
 	// fix owner of created metadata file
 	if !update {
-		if err := fixMetadataOwner(opts); err != nil {
+		if err := fixOwner(opts.MetadataPath, opts.EBPFSourcePath); err != nil {
 			log.Warnf("Failed to fix metadata file owner: %v", err)
 		}
 	}

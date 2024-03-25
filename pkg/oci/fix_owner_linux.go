@@ -12,12 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !linux
+//go:build linux
 
 package oci
 
-import "fmt"
+import (
+	"os"
+	"syscall"
+)
 
-func fixMetadataOwner(opts *BuildGadgetImageOpts) error {
-	return fmt.Errorf("fixMetadataOwner not implemented on this platform")
+func fixOwner(targetFile, modelFile string) error {
+	info, err := os.Stat(modelFile)
+	if err != nil {
+		return err
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		err := os.Chown(targetFile, int(stat.Uid), int(stat.Gid))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
