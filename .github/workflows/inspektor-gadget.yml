@@ -369,6 +369,18 @@ jobs:
       with:
         category: ig-linux-${{ matrix.platform }}
 
+  build-official-image-based-gadgets:
+    name: Build gadgets
+    # level: 1
+    needs: build-ig
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check if metadata files are updated
+      run: |
+        GADGET_BUILD_PARAMS="--update-metadata" make build-gadgets
+        git diff --exit-code HEAD --
+
   build-gadget-container-deps:
     # We only build this dependencies to check if they do not contain CWE.
     name: Build gadget-container-deps
