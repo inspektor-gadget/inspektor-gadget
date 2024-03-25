@@ -50,10 +50,10 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 				"src":         "/foo",
 				"dest":        "/bar",
 				"data":        "",
-				"op":          "MOUNT",
+				"op_str":      "MOUNT",
 				// Needed due to op being an enum.
-				"op_raw": 0,
-				"flags":  unix.MS_SILENT,
+				"op":    0,
+				"flags": unix.MS_SILENT,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceMountJsonObj)
