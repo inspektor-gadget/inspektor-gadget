@@ -21,6 +21,10 @@ If you want to create a new repository for your gadget, you can use the [gadget-
 repository](https://github.com/inspektor-gadget/gadget-template). This is a
 [GitHub tempate repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
 
+You can also look for examples in gadgets published on Artifact Hub:
+
+[![Artifact Hub: Gadgets](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/gadgets)](https://artifacthub.io/packages/search?repo=inspektor-gadgets)
+
 ## Starting from scratch
 
 If you already have a git repository for your project and want to add a gadget
