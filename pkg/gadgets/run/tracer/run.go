@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
@@ -243,8 +244,8 @@ func getTypeHint(typ btf.Type) params.TypeHint {
 			return params.TypeFloat64
 		}
 	case *btf.Typedef:
-		typ, err := getUnderlyingType(typedMember)
-		if err != nil {
+		typ := btfhelpers.GetUnderlyingType(typedMember)
+		if typ == nil {
 			return params.TypeUnknown
 		}
 		return getTypeHint(typ)
@@ -293,15 +294,6 @@ func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types
 		}
 	}
 	return getGadgetInfo(params, args, secretBytes, log.StandardLogger())
-}
-
-func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
-	switch typedMember := tf.Type.(type) {
-	case *btf.Typedef:
-		return getUnderlyingType(typedMember)
-	default:
-		return typedMember, nil
-	}
 }
 
 func loadSpec(progContent []byte) (*ebpf.CollectionSpec, error) {
@@ -753,7 +745,7 @@ func simpleTypeFromBTF(typ btf.Type) *types.Type {
 			return &types.Type{Kind: types.KindFloat64}
 		}
 	case *btf.Typedef:
-		typ, _ := getUnderlyingType(typedMember)
+		typ := btfhelpers.GetUnderlyingType(typedMember)
 		return simpleTypeFromBTF(typ)
 	case *btf.Enum:
 		if typedMember.Signed {

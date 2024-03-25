@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -475,15 +476,6 @@ func (m *GadgetMetadata) Populate(spec *ebpf.CollectionSpec) error {
 	return nil
 }
 
-func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
-	switch typedMember := tf.Type.(type) {
-	case *btf.Typedef:
-		return getUnderlyingType(typedMember)
-	default:
-		return typedMember, nil
-	}
-}
-
 func getColumnSize(typ btf.Type) uint {
 	switch typedMember := typ.(type) {
 	case *btf.Int:
@@ -517,7 +509,7 @@ func getColumnSize(typ btf.Type) uint {
 			return columns.MaxCharsChar
 		}
 	case *btf.Typedef:
-		typ, _ := getUnderlyingType(typedMember)
+		typ := btfhelpers.GetUnderlyingType(typedMember)
 		return getColumnSize(typ)
 	}
 
