@@ -52,7 +52,7 @@ func TestTraceFsslower(t *testing.T) {
 				Event: BuildBaseEvent(ns, commonDataOpts...),
 				Comm:  "cat",
 				File:  "foo",
-				Op:    "R",
+				Op:    "O",
 			}
 
 			normalize := func(e *tracefsslowerType.Event) {

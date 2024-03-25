@@ -28,7 +28,7 @@ func TestTraceTcp(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-tcp")
 
-	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)}
+	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)}
 
 	var extraArgs string
 	switch DefaultTestComponent {

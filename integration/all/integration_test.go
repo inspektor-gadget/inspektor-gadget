@@ -34,39 +34,32 @@ const (
 	ContainerRuntimeCRIO       = "cri-o"
 	timeout                    = 10
 
-	K8sDistroAKSAzureLinux = "aks-AzureLinux"
-	K8sDistroAKSUbuntu     = "aks-Ubuntu"
-	K8sDistroARO           = "aro"
-	K8sDistroMinikubeGH    = "minikube-github"
-
+	K8sDistroAKSAzureLinux           = "aks-AzureLinux"
+	K8sDistroAKSUbuntu               = "aks-Ubuntu"
+	K8sDistroARO                     = "aro"
+	K8sDistroMinikubeGH              = "minikube-github"
 	securityProfileOperatorNamespace = "security-profiles-operator"
 	topTimeoutInSeconds              = 10
 )
 
 var (
-	// supportedContainerRuntimes = []string{ContainerRuntimeDocker, ContainerRuntimeContainerd, ContainerRuntimeCRIO}
 	supportedK8sDistros = []string{K8sDistroAKSAzureLinux, K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
 
-	// containerRuntime = flag.String("container-runtime", "", "allows to do validation for expected runtime in the tests")
-	image          = flag.String("image", "", "gadget container image")
+	containerRuntime string
+	isDockerRuntime  bool
+)
+
+var (
 	integration    = flag.Bool("integration", false, "run integration tests")
 	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
 	testComponent  = flag.String("test-component", "", "run tests for specific component")
 
+	image          = flag.String("image", "", "gadget container image")
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
-
-	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
-	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
-
-	gadgetRepository = flag.String("gadget-repository", "ghcr.io/inspektor-gadget/gadget", "repository where gadget images are stored")
-	gadgetTag        = flag.String("gadget-tag", "latest", "tag used for gadgets's OCI images")
-)
-
-var (
-	containerRuntime string
-	isDockerRuntime  bool
+	k8sDistro      = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
+	k8sArch        = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
 )
 
 func cleanupFunc(cleanupCommands []*Command) {
@@ -101,22 +94,6 @@ func testMainInspektorGadget(m *testing.M) int {
 	if os.Getenv("KUBECTL_GADGET") == "" {
 		fmt.Fprintf(os.Stderr, "please set $KUBECTL_GADGET.")
 		return -1
-	}
-
-	if *k8sDistro != "" {
-		found := false
-		for _, val := range supportedK8sDistros {
-			if *k8sDistro == val {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			fmt.Fprintf(os.Stderr, "Error: invalid argument '-k8s-distro': %q. Valid values: %s\n",
-				*k8sDistro, strings.Join(supportedK8sDistros, ", "))
-			return -1
-		}
 	}
 
 	fmt.Printf("using random seed: %d\n", GetSeed())
@@ -257,6 +234,21 @@ func initialize() error {
 
 	if testComponent == nil {
 		return errors.New("-test-component' must be specified")
+	}
+
+	if *k8sDistro != "" {
+		found := false
+		for _, val := range supportedK8sDistros {
+			if *k8sDistro == val {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("Error: invalid argument '-k8s-distro': %q. Valid values: %s\n",
+				*k8sDistro, strings.Join(supportedK8sDistros, ", "))
+		}
 	}
 
 	return nil

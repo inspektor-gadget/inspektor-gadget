@@ -107,7 +107,7 @@ func TestTopTcp(t *testing.T) {
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)}
+	commonDataOpts := []CommonDataOption{WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)}
 
 	var extraArgs string
 	switch DefaultTestComponent {

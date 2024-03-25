@@ -281,8 +281,6 @@ integration-tests-all: kubectl-gadget
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
-			-gadget-repository $(GADGET_REPOSITORY) \
-			-gadget-tag $(GADGET_TAG) \
 			-test-component=inspektor-gadget \
 			$$INTEGRATION_TESTS_PARAMS
 
