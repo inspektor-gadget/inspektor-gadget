@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
 const (
@@ -138,7 +138,7 @@ func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, medi
 }
 
 func annotationsFromMetadata(metadataBytes []byte) (map[string]string, error) {
-	metadata := &types.GadgetMetadata{}
+	metadata := &metadatav1.GadgetMetadata{}
 	if err := yaml.NewDecoder(bytes.NewReader(metadataBytes)).Decode(&metadata); err != nil {
 		return nil, fmt.Errorf("decoding metadata file: %w", err)
 	}

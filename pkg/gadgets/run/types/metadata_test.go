@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,30 +20,31 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/stretchr/testify/require"
 
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 func TestValidate(t *testing.T) {
 	type testCase struct {
 		objectPath        string
-		metadata          *GadgetMetadata
+		metadata          *metadatav1.GadgetMetadata
 		expectedErrString string
 	}
 
 	tests := map[string]testCase{
 		"missing_name": {
 			objectPath:        "../../../../testdata/validate_metadata1.o",
-			metadata:          &GadgetMetadata{},
+			metadata:          &metadatav1.GadgetMetadata{},
 			expectedErrString: "gadget name is required",
 		},
 		"multiple_types": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {},
 				},
-				Snapshotters: map[string]Snapshotter{
+				Snapshotters: map[string]metadatav1.Snapshotter{
 					"bar": {},
 				},
 			},
@@ -51,9 +52,9 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_more_than_one": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {},
 					"bar": {},
 				},
@@ -62,9 +63,9 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_missing_map_name": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						StructName: "event",
 					},
@@ -74,9 +75,9 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_missing_struct_name": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName: "events",
 					},
@@ -86,9 +87,9 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_references_unknown_struct": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName:    "events",
 						StructName: "nonexistent",
@@ -99,15 +100,15 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_map_not_found": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName:    "nonexistent",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
@@ -115,15 +116,15 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_bad_map_type": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName:    "myhashmap",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
@@ -131,39 +132,39 @@ func TestValidate(t *testing.T) {
 		},
 		"tracers_map_without_btf": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName:    "map_without_btf",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
 		},
 		"tracers_good": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"foo": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
 		},
 		"toppers_more_than_one": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {},
 					"bar": {},
 				},
@@ -172,15 +173,15 @@ func TestValidate(t *testing.T) {
 		},
 		"toppers_bad_map_type": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
@@ -188,15 +189,15 @@ func TestValidate(t *testing.T) {
 		},
 		"toppers_bad_structure_name": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {
 						MapName:    "myhashmap",
 						StructName: "event2",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event2": {},
 				},
 			},
@@ -204,15 +205,15 @@ func TestValidate(t *testing.T) {
 		},
 		"toppers_wrong_value_type": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {
 						MapName:    "hash_wrong_value_map",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
@@ -220,15 +221,15 @@ func TestValidate(t *testing.T) {
 		},
 		"toppers_without_btf": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {
 						MapName:    "hash_without_btf",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
@@ -236,24 +237,24 @@ func TestValidate(t *testing.T) {
 		},
 		"toppers_good": {
 			objectPath: "../../../../testdata/validate_metadata_topper.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"foo": {
 						MapName:    "myhashmap",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
 		},
 		"structs_nonexistent": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"nonexistent": {},
 				},
 			},
@@ -261,11 +262,11 @@ func TestValidate(t *testing.T) {
 		},
 		"structs_field_nonexistent": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name: "nonexistent",
 							},
@@ -277,11 +278,11 @@ func TestValidate(t *testing.T) {
 		},
 		"structs_good": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name: "pid",
 							},
@@ -292,9 +293,9 @@ func TestValidate(t *testing.T) {
 		},
 		"param_nonexistent": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"bar": {},
 				},
 			},
@@ -302,9 +303,9 @@ func TestValidate(t *testing.T) {
 		},
 		"param_nokey": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"bar": {},
 				},
 			},
@@ -312,9 +313,9 @@ func TestValidate(t *testing.T) {
 		},
 		"param_good": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"param": {
 						ParamDesc: params.ParamDesc{
 							Key: "param",
@@ -325,9 +326,9 @@ func TestValidate(t *testing.T) {
 		},
 		"param2_not_volatile": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"param2": {},
 				},
 			},
@@ -335,9 +336,9 @@ func TestValidate(t *testing.T) {
 		},
 		"param3_not_const": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"param3": {},
 				},
 			},
@@ -345,9 +346,9 @@ func TestValidate(t *testing.T) {
 		},
 		"snapshotters_more_than_one": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Snapshotters: map[string]Snapshotter{
+				Snapshotters: map[string]metadatav1.Snapshotter{
 					"foo": {},
 					"bar": {},
 				},
@@ -356,9 +357,9 @@ func TestValidate(t *testing.T) {
 		},
 		"snapshotters_missing_struct_name": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Snapshotters: map[string]Snapshotter{
+				Snapshotters: map[string]metadatav1.Snapshotter{
 					"foo": {},
 				},
 			},
@@ -366,21 +367,21 @@ func TestValidate(t *testing.T) {
 		},
 		"snapshotters_good": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				Snapshotters: map[string]Snapshotter{
+				Snapshotters: map[string]metadatav1.Snapshotter{
 					"foo": {
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {},
 				},
 			},
 		},
 		"sched_cls": {
 			objectPath: "../../../../testdata/validate_metadata_sched_cls.o",
-			metadata: &GadgetMetadata{
+			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
 				GadgetParams: map[string]params.ParamDesc{
 					"iface": {
@@ -399,7 +400,7 @@ func TestValidate(t *testing.T) {
 			spec, err := ebpf.LoadCollectionSpec(test.objectPath)
 			require.NoError(t, err)
 
-			err = test.metadata.Validate(spec)
+			err = Validate(test.metadata, spec)
 			if test.expectedErrString == "" {
 				require.NoError(t, err)
 			} else {
@@ -410,46 +411,46 @@ func TestValidate(t *testing.T) {
 }
 
 func TestPopulate(t *testing.T) {
-	expectedTopperMetadataFromScratch := &GadgetMetadata{
+	expectedTopperMetadataFromScratch := &metadatav1.GadgetMetadata{
 		Name:             "TODO: Fill the gadget name",
 		Description:      "TODO: Fill the gadget description",
 		HomepageURL:      "TODO: Fill the gadget homepage URL",
 		DocumentationURL: "TODO: Fill the gadget documentation URL",
 		SourceURL:        "TODO: Fill the gadget source code URL",
-		Toppers: map[string]Topper{
+		Toppers: map[string]metadatav1.Topper{
 			"my_topper": {
 				MapName:    "events",
 				StructName: "event",
 			},
 		},
-		Structs: map[string]Struct{
+		Structs: map[string]metadatav1.Struct{
 			"event": {
-				Fields: []Field{
+				Fields: []metadatav1.Field{
 					{
 						Name:        "pid",
 						Description: "TODO: Fill field description",
-						Attributes: FieldAttributes{
+						Attributes: metadatav1.FieldAttributes{
 							Width:     10,
-							Alignment: AlignmentLeft,
-							Ellipsis:  EllipsisEnd,
+							Alignment: metadatav1.AlignmentLeft,
+							Ellipsis:  metadatav1.EllipsisEnd,
 						},
 					},
 					{
 						Name:        "comm",
 						Description: "TODO: Fill field description",
-						Attributes: FieldAttributes{
+						Attributes: metadatav1.FieldAttributes{
 							Width:     16,
-							Alignment: AlignmentLeft,
-							Ellipsis:  EllipsisEnd,
+							Alignment: metadatav1.AlignmentLeft,
+							Ellipsis:  metadatav1.EllipsisEnd,
 						},
 					},
 					{
 						Name:        "filename",
 						Description: "TODO: Fill field description",
-						Attributes: FieldAttributes{
+						Attributes: metadatav1.FieldAttributes{
 							Width:     16,
-							Alignment: AlignmentLeft,
-							Ellipsis:  EllipsisEnd,
+							Alignment: metadatav1.AlignmentLeft,
+							Ellipsis:  metadatav1.EllipsisEnd,
 						},
 					},
 				},
@@ -458,8 +459,8 @@ func TestPopulate(t *testing.T) {
 	}
 
 	type testCase struct {
-		initialMetadata   *GadgetMetadata
-		expectedMetadata  *GadgetMetadata
+		initialMetadata   *metadatav1.GadgetMetadata
+		expectedMetadata  *metadatav1.GadgetMetadata
 		objectPath        string
 		expectedErrString string
 	}
@@ -467,46 +468,46 @@ func TestPopulate(t *testing.T) {
 	tests := map[string]testCase{
 		"1_tracer_1_struct_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_1_tracer_1_struct_from_scratch.o",
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
 				SourceURL:        "TODO: Fill the gadget source code URL",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     10,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "filename",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 						},
@@ -516,7 +517,7 @@ func TestPopulate(t *testing.T) {
 		},
 		"tracer_add_missing_field": {
 			objectPath: "../../../../testdata/populate_metadata_tracer_add_missing_field.o",
-			initialMetadata: &GadgetMetadata{
+			initialMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
@@ -525,32 +526,32 @@ func TestPopulate(t *testing.T) {
 				Annotations: map[string]string{
 					"io.inspektor-gadget.test": "test",
 				},
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
 						// Set desc and some attributes to be sure they aren't overwritten
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "foo-pid",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     4747,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "bar-comm",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     1313,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							// missing filename field on purpose to check if it's added
@@ -558,7 +559,7 @@ func TestPopulate(t *testing.T) {
 					},
 				},
 			},
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
@@ -567,40 +568,40 @@ func TestPopulate(t *testing.T) {
 				Annotations: map[string]string{
 					"io.inspektor-gadget.test": "test",
 				},
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "foo-pid",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     4747,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "bar-comm",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     1313,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "filename",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 						},
@@ -610,7 +611,7 @@ func TestPopulate(t *testing.T) {
 		},
 		"no_tracers_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_no_tracers_from_scratch.o",
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
@@ -628,46 +629,46 @@ func TestPopulate(t *testing.T) {
 		},
 		"tracer_map_without_btf": {
 			objectPath: "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
 				SourceURL:        "TODO: Fill the gadget source code URL",
-				Tracers: map[string]Tracer{
+				Tracers: map[string]metadatav1.Tracer{
 					"test": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     10,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "filename",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 						},
@@ -677,13 +678,13 @@ func TestPopulate(t *testing.T) {
 		},
 		"param_populate_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
 				SourceURL:        "TODO: Fill the gadget source code URL",
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
 					"param": {
@@ -697,7 +698,7 @@ func TestPopulate(t *testing.T) {
 		},
 		"param_dont_modify_values": {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
-			initialMetadata: &GadgetMetadata{
+			initialMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
@@ -706,7 +707,7 @@ func TestPopulate(t *testing.T) {
 				Annotations: map[string]string{
 					"io.inspektor-gadget.test": "test",
 				},
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					"param": {
 						// Set desc and some attributes to be sure they aren't overwritten
 						ParamDesc: params.ParamDesc{
@@ -717,7 +718,7 @@ func TestPopulate(t *testing.T) {
 					},
 				},
 			},
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
@@ -726,7 +727,7 @@ func TestPopulate(t *testing.T) {
 				Annotations: map[string]string{
 					"io.inspektor-gadget.test": "test",
 				},
-				EBPFParams: map[string]EBPFParam{
+				EBPFParams: map[string]metadatav1.EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
 					"param": {
@@ -742,45 +743,45 @@ func TestPopulate(t *testing.T) {
 		},
 		"snapshotter_struct": {
 			objectPath: "../../../../testdata/populate_metadata_snapshotter_struct.o",
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
 				SourceURL:        "TODO: Fill the gadget source code URL",
-				Snapshotters: map[string]Snapshotter{
+				Snapshotters: map[string]metadatav1.Snapshotter{
 					"events": {
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     10,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 							{
 								Name:        "filename",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 						},
@@ -806,38 +807,38 @@ func TestPopulate(t *testing.T) {
 		},
 		"topper_add_missing_field": {
 			objectPath: "../../../../testdata/populate_metadata_topper_add_missing_field.o",
-			initialMetadata: &GadgetMetadata{
+			initialMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
 				DocumentationURL: "url2",
 				SourceURL:        "url3",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"my_topper": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
 						// Set desc and some attributes to be sure they aren't overwritten
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "foo-pid",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     4747,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "bar-comm",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     1313,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							// missing filename field on purpose to check if it's added
@@ -845,46 +846,46 @@ func TestPopulate(t *testing.T) {
 					},
 				},
 			},
-			expectedMetadata: &GadgetMetadata{
+			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
 				Description:      "bar",
 				HomepageURL:      "url1",
 				DocumentationURL: "url2",
 				SourceURL:        "url3",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"my_topper": {
 						MapName:    "events",
 						StructName: "event",
 					},
 				},
-				Structs: map[string]Struct{
+				Structs: map[string]metadatav1.Struct{
 					"event": {
-						Fields: []Field{
+						Fields: []metadatav1.Field{
 							{
 								Name:        "pid",
 								Description: "foo-pid",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     4747,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "comm",
 								Description: "bar-comm",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     1313,
-									Alignment: AlignmentRight,
-									Ellipsis:  EllipsisStart,
+									Alignment: metadatav1.AlignmentRight,
+									Ellipsis:  metadatav1.EllipsisStart,
 								},
 							},
 							{
 								Name:        "filename",
 								Description: "TODO: Fill field description",
-								Attributes: FieldAttributes{
+								Attributes: metadatav1.FieldAttributes{
 									Width:     16,
-									Alignment: AlignmentLeft,
-									Ellipsis:  EllipsisEnd,
+									Alignment: metadatav1.AlignmentLeft,
+									Ellipsis:  metadatav1.EllipsisEnd,
 								},
 							},
 						},
@@ -894,10 +895,10 @@ func TestPopulate(t *testing.T) {
 		},
 		"topper_invalid_struct_name": {
 			objectPath: "../../../../testdata/populate_metadata_1_topper_1_struct_from_scratch.o",
-			initialMetadata: &GadgetMetadata{
+			initialMetadata: &metadatav1.GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
-				Toppers: map[string]Topper{
+				Toppers: map[string]metadatav1.Topper{
 					"my_topper": {
 						MapName:    "events",
 						StructName: "event2",
@@ -938,10 +939,10 @@ func TestPopulate(t *testing.T) {
 
 			metadata := test.initialMetadata
 			if metadata == nil {
-				metadata = &GadgetMetadata{}
+				metadata = &metadatav1.GadgetMetadata{}
 			}
 
-			err = metadata.Populate(spec)
+			err = Populate(metadata, spec)
 			if test.expectedErrString != "" {
 				require.ErrorContains(t, err, test.expectedErrString)
 				return
