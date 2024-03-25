@@ -1,5 +1,8 @@
 name: trace exec
 description: trace process executions
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   exec:
     mapName: events

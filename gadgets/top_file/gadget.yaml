@@ -1,5 +1,8 @@
-name: file
+name: top file
 description: Periodically report read/write activity by file
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 toppers:
   file:
     mapName: stats

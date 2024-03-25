@@ -1,5 +1,8 @@
-name: tracetcp
+name: trace tcp
 description: monitor connect, accept and close events of TCP connections
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   tracetcp:
     mapName: events

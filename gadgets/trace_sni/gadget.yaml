@@ -1,10 +1,12 @@
-name: sni
+name: trace sni
 description: trace sni
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   sni:
     mapName: events
     structName: event_t
-
 structs:
   event_t:
     fields:
@@ -30,15 +32,15 @@ structs:
       attributes:
         width: 30
     - name: netns
-      description: 'Network namespace inode id'
+      description: Network namespace inode id
       attributes:
         template: ns
     - name: mntns_id
-      description: 'Mount namespace inode id'
+      description: Mount namespace inode id
       attributes:
         template: ns
     - name: tid
       description: TID of the thread sending the request
       attributes:
-        template: pid
         hidden: true
+        template: pid

@@ -1,5 +1,8 @@
-name: tcpdrop
+name: trace tcpdrop
 description: trace TCP packets dropped by the kernel
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
 tracers:
   tcpdrop:
     mapName: events
