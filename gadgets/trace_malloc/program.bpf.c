@@ -7,7 +7,7 @@
 
 #include <gadget/buffer.h>
 #include <gadget/macros.h>
-#include <gadget/mntns.h>
+#include <gadget/mntns_filter.h>
 
 enum memop {
 	MALLOC,
@@ -29,13 +29,18 @@ GADGET_TRACER(malloc, events, event);
 static __always_inline int submit_memop_event(struct pt_regs *ctx,
 					      enum memop operation, __u64 addr)
 {
+	u64 mntns_id;
 	struct event *event;
+
+	mntns_id = gadget_get_mntns_id();
+	if (gadget_should_discard_mntns_id(mntns_id))
+		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		return 0;
 
-	event->mntns_id = gadget_get_mntns_id();
+	event->mntns_id = mntns_id;
 	event->pid = bpf_get_current_pid_tgid() >> 32;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->operation = operation;
