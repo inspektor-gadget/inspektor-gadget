@@ -16,23 +16,13 @@ package integration
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer
-}
-
-type IntegrationTestsContainer interface {
-	Run(t *testing.T)
-	Start(t *testing.T)
-	Stop(t *testing.T)
-	IsCleanup() bool
-	IsStartAndStop() bool
-	Running() bool
+	NewContainer(name, cmd string, opts ...containerOption) TestStep
 }
 
 func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
