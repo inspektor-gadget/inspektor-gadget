@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,4 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/tracer"
-
-	// Run gadget
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/tracer"
 )

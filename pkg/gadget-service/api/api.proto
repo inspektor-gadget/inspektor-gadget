@@ -46,7 +46,29 @@ message GadgetRunRequest {
   uint32 logLevel = 12;
 
   // time that a gadget should run; use 0, if the gadget should run until it's being
-  // stopped or done
+  // stopped or done; time is in nanoseconds and directly converted to time.Duration
+  int64 timeout = 13;
+}
+
+message OCIGadgetRunRequest {
+  string imageName = 1;
+
+  // paramValues is a combined map of all params a gadget could need (including those
+  // of runtime and operators, which need specific prefixes, see implementation in
+  // pkg/runtime/grpc)
+  map<string, string> paramValues = 2;
+
+  // args are all parameters which were not specified with a flag
+  repeated string args = 3;
+
+  // used to inform the server about the expected protocol version
+  uint32 version = 4;
+
+  // sets the requested log level (see pkg/logger/logger.go)
+  uint32 logLevel = 12;
+
+  // time that a gadget should run; use 0, if the gadget should run until it's being
+  // stopped or done; time is in nanoseconds and directly converted to time.Duration
   int64 timeout = 13;
 }
 
@@ -58,11 +80,19 @@ message GadgetEvent {
   uint32 type = 1;
   uint32 seq = 2;
   bytes payload = 3;
+  uint32 dataSourceID = 4;
 }
 
 message GadgetControlRequest {
   oneof Event {
     GadgetRunRequest runRequest = 1;
+    GadgetStopRequest stopRequest = 2;
+  }
+}
+
+message OCIGadgetControlRequest {
+  oneof Event {
+    OCIGadgetRunRequest ociRunRequest = 1;
     GadgetStopRequest stopRequest = 2;
   }
 }
@@ -75,6 +105,113 @@ message InfoResponse {
   string version = 1;
   bytes catalog = 2;
   bool experimental = 3;
+}
+
+message GadgetData {
+  string node = 1;
+  uint32 seq = 2;
+  repeated bytes payload = 3;
+}
+
+message Param {
+  string key = 1;
+  string description = 2;
+  string defaultValue = 3;
+  string typeHint = 4;
+  string title = 5;
+  string alias = 6;
+  repeated string tags = 7;
+  string valueHint = 8;
+  repeated string possibleValues = 9;
+  bool isMandatory = 10;
+  string prefix = 11;
+}
+
+message GadgetInfo {
+  string name = 1;
+  string imageName = 2;
+  repeated DataSource dataSources = 4;
+  map<string, string> annotations = 5;
+  bytes metadata = 6;
+  repeated Param params = 7;
+}
+
+message DataSource {
+  uint32 id = 1;
+  string name = 2;
+  uint32 type = 3;
+  repeated Field fields = 4;
+  repeated string tags = 5;
+  map<string, string> annotations = 6;
+  uint32 flags = 7;
+}
+
+enum Kind {
+  Invalid = 0;
+  Bool = 1;
+  Int8 = 2;
+  Int16 = 3;
+  Int32 = 4;
+  Int64 = 5;
+  Uint8 = 6;
+  Uint16 = 7;
+  Uint32 = 8;
+  Uint64 = 9;
+  Float32 = 10;
+  Float64 = 11;
+  String = 12;
+  CString = 13;
+}
+
+message Field {
+  // name contains the plain field name
+  string name = 1;
+
+  // fullName contains a fully qualified field name
+  // e.g. when it is a sub field of another, it's called
+  // otherfieldsname.name
+  string fullName = 2;
+
+  // index holds the index to this field inside the
+  // field array of the DataSource
+  uint32 index = 3;
+
+  // payloadIndex describes in which payload this field
+  // is contained
+  uint32 payloadIndex = 4;
+
+  // offs is the offset of the fields' contents inside the
+  // payload specified by payloadIndex
+  uint32 offs = 5;
+
+  // size is (if fixed) the size of the fields' content
+  uint32 size = 6;
+
+  // flags describe different attributes of the field, like
+  // whether it has a parent, is virtual, etc.
+  uint32 flags = 7;
+
+  // kind describes how the content of the field should be
+  // handled
+  Kind kind = 8;
+
+  // tags can contain multiple tags that describe the contents
+  // of the field; they are used by operators to find
+  // interesting fields, for example
+  repeated string tags = 9;
+
+  // annotations are additional information that can be used
+  // by operators or third party consumers
+  map<string, string> annotations = 10;
+
+  // parent holds the index of the field that is considered
+  // this fields' parent; only true if the corresponding flag
+  // is set in flags
+  uint32 parent = 11;
+
+  // order determines the default position of this field when
+  // ordering multiple fields
+  int32 order = 12;
 }
 
 message GetGadgetInfoRequest {
@@ -92,8 +229,27 @@ message GetGadgetInfoResponse {
   bytes info = 1;
 }
 
+message GetOCIGadgetInfoRequest {
+  // params are the gadget's parameters
+  map<string, string> paramValues = 1;
+
+  string imageName = 2;
+
+  // can be used to inform about the expected version of GadgetInfo
+  uint32 version = 3;
+}
+
+message GetOCIGadgetInfoResponse {
+  GadgetInfo gadgetInfo = 1;
+}
+
 service GadgetManager {
   rpc GetInfo(InfoRequest) returns (InfoResponse) {}
   rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+}
+
+service OCIGadgetManager {
+  rpc GetOCIGadgetInfo(GetOCIGadgetInfoRequest) returns (GetOCIGadgetInfoResponse) {}
+  rpc RunOCIGadget(stream OCIGadgetControlRequest) returns (stream GadgetEvent) {}
 }

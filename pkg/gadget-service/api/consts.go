@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,20 @@
 package api
 
 const (
+	VersionGadgetInfo        = 1
+	VersionGadgetRunProtocol = 1
+)
+
+const (
 	EventTypeGadgetPayload uint32 = 0
 	EventTypeGadgetResult  uint32 = 1
 	EventTypeGadgetDone    uint32 = 2
 	EventTypeGadgetJobID   uint32 = 3
+
+	// EventTypeGadgetInfo is transmitted after a gadget has been initialized; while GetGadgetInfo() can return
+	// cached data, this payload will always be up-to-date and reflect the actual layout of the data that is
+	// expected / sent.
+	EventTypeGadgetInfo uint32 = 4
 
 	EventLogShift = 16
 )
@@ -26,4 +36,34 @@ const (
 const (
 	GadgetServicePort = 8080
 	DefaultDaemonPath = "unix:///var/run/ig/ig.socket"
+)
+
+const (
+	DataSourceFlagsBigEndian uint32 = 1 << iota
+)
+
+const (
+	TypeUnknown  = ""
+	TypeBool     = "bool"
+	TypeString   = "string"
+	TypeBytes    = "bytes"
+	TypeInt      = "int"
+	TypeInt8     = "int8"
+	TypeInt16    = "int16"
+	TypeInt32    = "int32"
+	TypeInt64    = "int64"
+	TypeUint     = "uint"
+	TypeUint8    = "uint8"
+	TypeUint16   = "uint16"
+	TypeUint32   = "uint32"
+	TypeUint64   = "uint64"
+	TypeFloat32  = "float32"
+	TypeFloat64  = "float64"
+	TypeDuration = "duration"
+	TypeIP       = "ip"
+)
+
+const (
+	// TagSrcEbpf defines that a field was extracted from eBPF
+	TagSrcEbpf = "src:ebpf"
 )

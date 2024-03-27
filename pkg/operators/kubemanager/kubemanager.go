@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -192,10 +196,12 @@ type KubeManagerInstance struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+
+	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
 }
 
 func (m *KubeManagerInstance) Name() string {
-	return "KubeManagerInstance"
+	return OperatorName
 }
 
 func (m *KubeManagerInstance) PreGadgetRun() error {
@@ -280,7 +286,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 
 		m.subscribed = true
 
-		log.Debugf("add subscription")
+		log.Debugf("add subscription to gadgetTracerManager")
 		containers := m.manager.gadgetTracerManager.Subscribe(
 			m.id,
 			containerSelector,
@@ -337,6 +343,145 @@ func (m *KubeManagerInstance) EnrichEvent(ev any) error {
 	return nil
 }
 
+func (k *KubeManager) GlobalParams() api.Params {
+	return apihelpers.ParamDescsToParams(k.GlobalParamDescs())
+}
+
+func (k *KubeManager) InstanceParams() api.Params {
+	return apihelpers.ParamDescsToParams(k.ParamDescs())
+}
+
+func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (
+	operators.DataOperatorInstance, error,
+) {
+	params := k.ParamDescs().ToParams()
+	err := params.CopyFromMap(paramValues, "")
+	if err != nil {
+		return nil, err
+	}
+
+	traceInstance := &KubeManagerInstance{
+		manager:            k,
+		enrichEvents:       false,
+		attachedContainers: make(map[string]*containercollection.Container),
+		params:             params,
+		gadgetCtx:          gadgetCtx,
+		id:                 uuid.New().String(),
+
+		eventWrappers: make(map[datasource.DataSource]*compat.EventWrapperBase),
+	}
+
+	// hack - this makes it possible to use the Attacher interface
+	var ok bool
+	traceInstance.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
+	if !ok {
+		return nil, fmt.Errorf("getting ebpfInstance")
+	}
+
+	activate := false
+
+	// Check, whether the gadget requested a map from us
+	if t, ok := gadgetCtx.GetVar(gadgets.MntNsFilterMapName); ok {
+		if _, ok := t.(*ebpf.Map); ok {
+			gadgetCtx.Logger().Debugf("gadget requested map %s", gadgets.MntNsFilterMapName)
+			activate = true
+		}
+	}
+
+	// Check for NeedContainerEvents; this is set for example for tchandlers, as they
+	// require the Attacher interface to be aware of containers
+	if val, ok := gadgetCtx.GetVar("NeedContainerEvents"); ok {
+		if b, ok := val.(bool); ok && b {
+			activate = true
+		}
+	}
+
+	wrappers, err := compat.GetEventWrappers(gadgetCtx)
+	if err != nil {
+		return nil, fmt.Errorf("getting event wrappers: %w", err)
+	}
+	traceInstance.eventWrappers = wrappers
+	if len(wrappers) > 0 {
+		activate = true
+	}
+
+	if !activate {
+		return nil, nil
+	}
+
+	return traceInstance, nil
+}
+
+func (k *KubeManager) Priority() int {
+	return -1
+}
+
+func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
+	return m.manager.ParamDescs()
+}
+
+func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	compat.Subscribe(
+		m.eventWrappers,
+		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs,
+		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByNetNs,
+		0,
+	)
+
+	labels := make(map[string]string)
+	selectorSlice := m.params.Get(ParamSelector).AsStringSlice()
+	for _, pair := range selectorSlice {
+		kv := strings.Split(pair, "=")
+		labels[kv[0]] = kv[1]
+	}
+
+	containerSelector := containercollection.ContainerSelector{
+		K8s: containercollection.K8sSelector{
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				Namespace:     m.params.Get(ParamNamespace).AsString(),
+				PodName:       m.params.Get(ParamPodName).AsString(),
+				ContainerName: m.params.Get(ParamContainerName).AsString(),
+				PodLabels:     labels,
+			},
+		},
+	}
+
+	if m.manager.gadgetTracerManager == nil {
+		return fmt.Errorf("container-collection isn't available")
+	}
+
+	// Create mount namespace map to filter by containers
+	err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
+	if err != nil {
+		return fmt.Errorf("adding tracer: %w", err)
+	}
+
+	mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
+	if err != nil {
+		m.manager.gadgetTracerManager.RemoveTracer(m.id)
+		return fmt.Errorf("creating mountnsmap: %w", err)
+	}
+
+	gadgetCtx.Logger().Debugf("set mountnsmap for gadget")
+	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
+	gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
+
+	m.mountnsmap = mountnsmap
+	// using PreGadgetRun() for the time being to register attacher funcs
+	return m.PreGadgetRun()
+}
+
+func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	m.manager.gadgetTracerManager.RemoveTracer(m.id)
+	return nil
+}
+
 func init() {
-	operators.Register(&KubeManager{})
+	km := &KubeManager{}
+	operators.Register(km)
+	operators.RegisterDataOperator(km)
 }

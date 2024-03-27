@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,10 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -38,7 +42,6 @@ import (
 
 const (
 	OperatorName         = "LocalManager"
-	OperatorInstanceName = "LocalManagerTrace"
 	Runtimes             = "runtimes"
 	ContainerName        = "containername"
 	Host                 = "host"
@@ -262,10 +265,12 @@ type localManagerTrace struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+
+	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
 }
 
 func (l *localManagerTrace) Name() string {
-	return OperatorInstanceName
+	return OperatorName
 }
 
 func (l *localManagerTrace) PreGadgetRun() error {
@@ -348,7 +353,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 		if l.manager.igManager != nil {
 			l.subscriptionKey = id.String()
-			log.Debugf("add subscription")
+			log.Debugf("add subscription to igManager")
 			containers = l.manager.igManager.Subscribe(
 				l.subscriptionKey,
 				containerSelector,
@@ -422,6 +427,156 @@ func (l *localManagerTrace) EnrichEvent(ev any) error {
 	return nil
 }
 
+type localManagerTraceWrapper struct {
+	localManagerTrace
+	runID string
+}
+
+func (l *LocalManager) GlobalParams() api.Params {
+	return apihelpers.ParamDescsToParams(l.GlobalParamDescs())
+}
+
+func (l *LocalManager) InstanceParams() api.Params {
+	return apihelpers.ParamDescsToParams(l.ParamDescs())
+}
+
+func (l *LocalManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (
+	operators.DataOperatorInstance, error,
+) {
+	params := l.ParamDescs().ToParams()
+	err := params.CopyFromMap(paramValues, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrapper is used to have ParamDescs() with the new signature
+	traceInstance := &localManagerTraceWrapper{
+		localManagerTrace: localManagerTrace{
+			manager:            l,
+			enrichEvents:       false,
+			attachedContainers: make(map[*containercollection.Container]struct{}),
+			params:             params,
+			gadgetCtx:          gadgetCtx,
+			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
+		},
+	}
+
+	activate := false
+
+	// Check, whether the gadget requested a map from us
+	if t, ok := gadgetCtx.GetVar(gadgets.MntNsFilterMapName); ok {
+		if _, ok := t.(*ebpf.Map); ok {
+			gadgetCtx.Logger().Debugf("gadget requested map %s", gadgets.MntNsFilterMapName)
+			activate = true
+		}
+	}
+
+	// Check for override - currently needed for tchandlers
+	if val, ok := gadgetCtx.GetVar("NeedContainerEvents"); ok {
+		if b, ok := val.(bool); ok && b {
+			activate = true
+		}
+	}
+
+	wrappers, err := compat.GetEventWrappers(gadgetCtx)
+	if err != nil {
+		return nil, fmt.Errorf("getting event wrappers: %w", err)
+	}
+	traceInstance.eventWrappers = wrappers
+	if len(wrappers) > 0 {
+		activate = true
+	}
+
+	if !activate {
+		return nil, nil
+	}
+
+	return traceInstance, nil
+}
+
+func (l *localManagerTrace) ParamDescs() params.ParamDescs {
+	return params.ParamDescs{
+		{
+			Key:         ContainerName,
+			Alias:       "c",
+			Description: "Show only data from containers with that name",
+			ValueHint:   gadgets.LocalContainer,
+		},
+		{
+			Key:          Host,
+			Description:  "Show data from both the host and containers",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+	}
+}
+
+func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
+	return l.localManagerTrace.ParamDescs()
+}
+
+func (l *LocalManager) Priority() int {
+	return -1
+}
+
+func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) error {
+	// hack - this makes it possible to use the Attacher interface
+	var ok bool
+	l.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
+	if !ok {
+		return fmt.Errorf("getting ebpfInstance")
+	}
+
+	compat.Subscribe(
+		l.eventWrappers,
+		l.manager.igManager.ContainerCollection.EnrichEventByMntNs,
+		l.manager.igManager.ContainerCollection.EnrichEventByNetNs,
+		0,
+	)
+
+	id := uuid.New()
+	host := l.params.Get(Host).AsBool()
+
+	containerSelector := containercollection.ContainerSelector{
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: l.params.Get(ContainerName).AsString(),
+		},
+	}
+
+	// mountnsmap will be handled differently than above
+	if !host {
+		if l.manager.igManager == nil {
+			return fmt.Errorf("container-collection isn't available")
+		}
+
+		// Create mount namespace map to filter by containers
+		mountnsmap, err := l.manager.igManager.CreateMountNsMap(id.String(), containerSelector)
+		if err != nil {
+			return commonutils.WrapInErrManagerCreateMountNsMap(err)
+		}
+
+		gadgetCtx.Logger().Debugf("set mountnsmap for gadget")
+		gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
+		gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
+
+		l.mountnsmap = mountnsmap
+	} else if l.manager.igManager == nil {
+		log.Warn("container-collection isn't available: container enrichment and filtering won't work")
+	}
+
+	return l.PreGadgetRun()
+}
+
+func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error {
+	return l.PostGadgetRun()
+}
+
 func init() {
-	operators.Register(&LocalManager{})
+	lm := &LocalManager{}
+	operators.Register(lm)
+	operators.RegisterDataOperator(lm)
 }

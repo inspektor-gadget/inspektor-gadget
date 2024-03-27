@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,6 +82,7 @@ func main() {
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	rootCmd.AddCommand(common.NewSyncCommand(runtime))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

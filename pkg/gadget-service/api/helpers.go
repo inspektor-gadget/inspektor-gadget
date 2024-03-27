@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,12 @@ package api
 import (
 	"fmt"
 	"net/url"
+	"strings"
+)
+
+type (
+	Params      []*Param
+	ParamValues map[string]string
 )
 
 func ParseSocketAddress(addr string) (string, string, error) {
@@ -35,4 +41,27 @@ func ParseSocketAddress(addr string) (string, string, error) {
 		socketPath = socketURL.Host
 	}
 	return socketType, socketPath, nil
+}
+
+func (p *Param) AddPrefix(prefix string) *Param {
+	p.Prefix = prefix + "." + p.Prefix
+	return p
+}
+
+func (pv Params) AddPrefix(prefix string) Params {
+	for _, p := range pv {
+		p.AddPrefix(prefix)
+	}
+	return pv
+}
+
+func (pv ParamValues) ExtractPrefixedValues(prefix string) ParamValues {
+	prefix = prefix + "."
+	res := make(ParamValues)
+	for k, v := range pv {
+		if strings.HasPrefix(k, prefix) {
+			res[strings.TrimPrefix(k, prefix)] = v
+		}
+	}
+	return res
 }

@@ -106,6 +106,30 @@ func getSimpleType(typ btf.Type) reflect.Type {
 		case 8:
 			return reflect.TypeOf(float64(0))
 		}
+	case *btf.Enum:
+		if typed.Signed {
+			switch typed.Size {
+			case 1:
+				return reflect.TypeOf(int8(0))
+			case 2:
+				return reflect.TypeOf(int16(0))
+			case 4:
+				return reflect.TypeOf(int32(0))
+			case 8:
+				return reflect.TypeOf(int64(0))
+			}
+		}
+
+		switch typed.Size {
+		case 1:
+			return reflect.TypeOf(uint8(0))
+		case 2:
+			return reflect.TypeOf(uint16(0))
+		case 4:
+			return reflect.TypeOf(uint32(0))
+		case 8:
+			return reflect.TypeOf(uint64(0))
+		}
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,12 +39,16 @@ import (
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	// Blank import for some operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 
@@ -265,6 +269,9 @@ func main() {
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
 		}
+
+		operators.RegisterDataOperator(ocihandler.OciHandler)
+
 		hostConfig := host.Config{
 			AutoMountFilesystems: true,
 		}
