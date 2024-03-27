@@ -37,3 +37,10 @@ func WithShowAll(val bool) Option {
 		formatter.useDefault = true
 	}
 }
+
+func WithPretty(val bool, indent string) Option {
+	return func(formatter *Formatter) {
+		formatter.pretty = val
+		formatter.indent = indent
+	}
+}

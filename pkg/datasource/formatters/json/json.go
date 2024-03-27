@@ -25,6 +25,14 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+var (
+	opener         = []byte("{")
+	closer         = []byte("}")
+	fieldSep       = []byte(",")
+	fieldSepPretty = []byte(",\n")
+	openerPretty   = []byte("{\n")
+)
+
 type Formatter struct {
 	ds                datasource.DataSource
 	fns               []func(e *encodeState, data datasource.Data)
@@ -34,6 +42,10 @@ type Formatter struct {
 	allRelativeFields bool
 	useDefault        bool
 	showAll           bool
+	pretty            bool
+	indent            string
+	opener            []byte
+	fieldSep          []byte
 }
 
 func New(ds datasource.DataSource, options ...Option) (*Formatter, error) {
@@ -54,6 +66,12 @@ func New(ds datasource.DataSource, options ...Option) (*Formatter, error) {
 }
 
 func (f *Formatter) init() error {
+	f.opener = opener
+	f.fieldSep = fieldSep
+	if f.pretty {
+		f.opener = openerPretty
+		f.fieldSep = fieldSepPretty
+	}
 	for _, field := range f.fields {
 		if len(field) == 0 {
 			continue
@@ -75,18 +93,23 @@ func (f *Formatter) init() error {
 		}
 	}
 
+	closer := closer
+	if f.pretty {
+		closer = append([]byte("\n"), closer...)
+	}
+
 	f.fns = append(f.fns, func(e *encodeState, data datasource.Data) {
-		e.Write([]byte("{"))
+		e.Write(f.opener)
 	})
-	subFieldFuncs, _ := f.addSubFields(nil, "")
+	subFieldFuncs, _ := f.addSubFields(nil, "", f.indent)
 	f.fns = append(f.fns, subFieldFuncs...)
 	f.fns = append(f.fns, func(e *encodeState, data datasource.Data) {
-		e.Write([]byte("}"))
+		e.Write(closer)
 	})
 	return nil
 }
 
-func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix string) (fns []func(*encodeState, datasource.Data), fieldCounter int) {
+func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix string, indent string) (fns []func(*encodeState, datasource.Data), fieldCounter int) {
 	if accessors == nil {
 		accessors = f.ds.Accessors(true)
 	}
@@ -106,7 +129,7 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		var subFieldCount int
 		subFields := accessor.SubFields()
 		if len(subFields) > 0 {
-			subFieldFuncs, subFieldCount = f.addSubFields(subFields, fullFieldName+".")
+			subFieldFuncs, subFieldCount = f.addSubFields(subFields, fullFieldName+".", indent+f.indent)
 			fieldCounter += subFieldCount
 		}
 
@@ -135,21 +158,29 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		ctr++
 		fieldCounter++
 		fieldName := []byte("\"" + accessor.Name() + "\":")
+		if f.pretty {
+			fieldName = append(append([]byte(indent), fieldName...), ' ')
+		}
 		if ctr > 0 {
 			fns = append(fns, func(e *encodeState, data datasource.Data) {
-				e.Write([]byte(","))
+				e.Write(f.fieldSep)
 			})
+		}
+
+		closer := closer
+		if f.pretty {
+			closer = append([]byte("\n"+indent), closer...)
 		}
 
 		// Field has subfields
 		if len(subFields) > 0 {
 			fns = append(fns, func(e *encodeState, data datasource.Data) {
 				e.Write(fieldName)
-				e.Write([]byte("{"))
+				e.Write(f.opener)
 			})
 			fns = append(fns, subFieldFuncs...)
 			fns = append(fns, func(e *encodeState, data datasource.Data) {
-				e.Write([]byte("}"))
+				e.Write(closer)
 			})
 			continue
 		}
