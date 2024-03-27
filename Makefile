@@ -287,6 +287,21 @@ integration-tests: kubectl-gadget
 			-gadget-tag $(GADGET_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
 
+# INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
+# INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-ig -no-deploy-spo" make integration-tests-all
+.PHONY: integration-tests-all
+integration-tests-all: kubectl-gadget
+	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
+		go test ./integration/all/... \
+			-v \
+			-integration \
+			-timeout 30m \
+			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
+			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
+			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
+			-dnstester-image $(DNSTESTER_IMAGE) \
+			-test-component=inspektor-gadget \
+			$$INTEGRATION_TESTS_PARAMS
 
 .PHONY: component-tests
 component-tests:
