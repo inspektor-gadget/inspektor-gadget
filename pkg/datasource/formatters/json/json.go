@@ -17,6 +17,7 @@ package json
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"unicode/utf8"
 	_ "unsafe"
@@ -115,6 +116,12 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 	}
 
 	ctr := -1
+
+	// sort alphabetically
+	sort.Slice(accessors, func(i, j int) bool {
+		return accessors[i].Name() < accessors[j].Name()
+	})
+
 	for _, acc := range accessors {
 		accessor := acc
 
