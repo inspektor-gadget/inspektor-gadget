@@ -665,7 +665,7 @@ func DeleteRemainingNamespacesCommand() *Command {
 func WaitUntilJobCompleteCommand(namespace string, jobname string) *Command {
 	return &Command{
 		Name:           fmt.Sprintf("WaitForJob: %s", jobname),
-		Cmd:            fmt.Sprintf("kubectl wait job --for condition=complete -n %s %s", namespace, jobname),
+		Cmd:            fmt.Sprintf("kubectl wait job --for condition=complete --timeout 45s -n %s %s", namespace, jobname),
 		ExpectedString: fmt.Sprintf("job.batch/%s condition met\n", jobname),
 	}
 }
@@ -675,7 +675,7 @@ func WaitUntilJobCompleteCommand(namespace string, jobname string) *Command {
 func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
 	return &Command{
 		Name:           "WaitForTestPod",
-		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname),
+		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready --timeout 45s -n %s %s", namespace, podname),
 		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
 	}
 }
