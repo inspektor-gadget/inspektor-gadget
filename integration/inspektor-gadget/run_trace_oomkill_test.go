@@ -99,7 +99,7 @@ spec:
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
 		},
-		WaitUntilTestPodReadyCommand(ns),
+		WaitUntilTestPodReadyOrOOMKilledCommand(ns),
 	}
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

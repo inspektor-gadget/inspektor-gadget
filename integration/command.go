@@ -680,10 +680,26 @@ func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
 	}
 }
 
+// WaitUntilPodReadyOrOOMKilledCommand returns a Command which waits until pod with the specified name in
+// the given as parameter namespace is ready or was oomkilled.
+func WaitUntilPodReadyOrOOMKilledCommand(namespace string, podname string) *Command {
+	return &Command{
+		Name:           "WaitForTestPod",
+		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s || kubectl wait pod --for jsonpath='{.status.containerStatuses[0].state.terminated.reason}'=OOMKilled -n %s %s", namespace, podname, namespace, podname),
+		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
+	}
+}
+
 // WaitUntilTestPodReadyCommand returns a Command which waits until test-pod in
 // the given as parameter namespace is ready.
 func WaitUntilTestPodReadyCommand(namespace string) *Command {
 	return WaitUntilPodReadyCommand(namespace, "test-pod")
+}
+
+// WaitUntilTestPodReadyOrOOMKilledCommand returns a Command which waits until test-pod in
+// the given as parameter namespace is ready or was oomkilled.
+func WaitUntilTestPodReadyOrOOMKilledCommand(namespace string) *Command {
+	return WaitUntilPodReadyOrOOMKilledCommand(namespace, "test-pod")
 }
 
 // SleepForSecondsCommand returns a Command which sleeps for given seconds
