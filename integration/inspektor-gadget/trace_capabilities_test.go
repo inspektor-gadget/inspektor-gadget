@@ -87,7 +87,7 @@ func TestTraceCapabilities(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceCapabilitiesCmd,
 		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),

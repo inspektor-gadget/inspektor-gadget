@@ -68,7 +68,7 @@ func TestTraceMount(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceMountCmd,
 		BusyboxPodRepeatCommand(ns, "mount /mnt /mnt"),

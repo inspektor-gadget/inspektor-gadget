@@ -65,7 +65,7 @@ func TestTopFile(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "echo date >> /tmp/date.txt"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -73,7 +73,7 @@ func TestTopFile(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -84,7 +84,7 @@ func TestTopFile(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns)
 		topFileCmd := newTopFileCmd(ns, cmd, true, isDockerRuntime)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestTopFile(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d", ns, topTimeoutInSeconds)
 		topFileCmd := newTopFileCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -100,6 +100,6 @@ func TestTopFile(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
 		topFileCmd := newTopFileCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

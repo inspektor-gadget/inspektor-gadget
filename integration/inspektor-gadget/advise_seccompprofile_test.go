@@ -26,11 +26,11 @@ func TestAdviseSeccompProfile(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "echo foo"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&Command{
 			Name:           "RunAdviseSeccompProfileGadget",
 			Cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET advise seccomp-profile start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET advise seccomp-profile stop $id", ns),
 			ExpectedRegexp: `write`,

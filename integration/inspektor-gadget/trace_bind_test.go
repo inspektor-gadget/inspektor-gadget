@@ -65,7 +65,7 @@ func TestTraceBind(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceBindCmd,
 		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 nc -l -p 9090 -w 1"),

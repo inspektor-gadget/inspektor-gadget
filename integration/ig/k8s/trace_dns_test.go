@@ -25,7 +25,7 @@ import (
 )
 
 func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("dnstester", *dnsTesterImage, ns, `["/dnstester"]`, dnsServerArgs),
 		WaitUntilPodReadyCommand(ns, "dnstester"),
@@ -34,7 +34,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -47,7 +47,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a nodomain.fake.test.com. %s", dnsServer),
 	}
 	// Start the busybox pod so that we can get the IP address of the pod.
-	commands := []*Command{
+	commands := []TestStep{
 		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
 		WaitUntilTestPodReadyCommand(ns),
 	}
@@ -234,7 +234,7 @@ func TestTraceDns(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
 	// Start the trace gadget and verify the output.
-	commands := []*Command{
+	commands := []TestStep{
 		newTraceDnsCmd(t, ns, ""),
 	}
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -245,7 +245,7 @@ func TestTraceDnsUncompress(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-trace-dns-uncompress")
 
 	// Start the trace gadget and verify the output.
-	commands := []*Command{
+	commands := []TestStep{
 		newTraceDnsCmd(t, ns, "-uncompress"),
 	}
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -255,7 +255,7 @@ func TestTraceDnsHost(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("dnstester", *dnsTesterImage, ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "dnstester"),
@@ -338,11 +338,11 @@ func TestTraceDnsHost(t *testing.T) {
 
 	cmd := fmt.Sprintf(`sh -c 'for i in $(seq 1 30); do nslookup -type=a fake.test.com. %s; nslookup -type=aaaa fake.test.com. %s; done'`, dnsServer, dnsServer)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		{
+		&Command{
 			Name:           cmd,
 			Cmd:            cmd,
 			ExpectedRegexp: dnsServer,

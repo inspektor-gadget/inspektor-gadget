@@ -31,11 +31,11 @@ func TestProfileCpu(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&Command{
 			Name: "RunProfileCpuGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {

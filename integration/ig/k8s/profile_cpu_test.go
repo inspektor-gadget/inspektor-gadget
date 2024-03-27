@@ -70,7 +70,7 @@ func TestProfileCpu(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
 		WaitUntilTestPodReadyCommand(ns),

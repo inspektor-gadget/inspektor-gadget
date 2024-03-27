@@ -80,7 +80,7 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := "$KUBECTL_GADGET top ebpf -o json -m 100"
 		topEbpfCmd := newTopEbpfCmd(cmd, true)
-		RunTestSteps([]*Command{topEbpfCmd}, t)
+		RunTestSteps([]TestStep{topEbpfCmd}, t)
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top ebpf -o json -m 999 --timeout %d", topTimeoutInSeconds)
 		topEbpfCmd := newTopEbpfCmd(cmd, false)
-		RunTestSteps([]*Command{topEbpfCmd}, t)
+		RunTestSteps([]TestStep{topEbpfCmd}, t)
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -96,6 +96,6 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top ebpf -o json -m 999 --timeout %d --interval %d", topTimeoutInSeconds, topTimeoutInSeconds)
 		topEbpfCmd := newTopEbpfCmd(cmd, false)
-		RunTestSteps([]*Command{topEbpfCmd}, t)
+		RunTestSteps([]TestStep{topEbpfCmd}, t)
 	})
 }

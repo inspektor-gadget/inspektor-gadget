@@ -31,13 +31,13 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 	ns := GenerateTestNamespaceName(pod)
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
@@ -110,7 +110,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 		},
 	}
 
-	RunTestSteps([]*Command{listContainersCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	RunTestSteps([]TestStep{listContainersCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
 
 func TestEnrichmentPodLabelNewPod(t *testing.T) {
@@ -194,7 +194,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		listContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

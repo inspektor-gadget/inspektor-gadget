@@ -82,7 +82,7 @@ func TestTopBlockIO(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -90,7 +90,7 @@ func TestTopBlockIO(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -101,7 +101,7 @@ func TestTopBlockIO(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true, isDockerRuntime)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestTopBlockIO(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d", ns, topTimeoutInSeconds)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -117,6 +117,6 @@ func TestTopBlockIO(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
 		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

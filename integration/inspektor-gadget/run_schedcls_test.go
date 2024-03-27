@@ -31,13 +31,13 @@ func TestRunSchedCLS(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-run-schedcls")
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -52,13 +52,13 @@ func TestRunSchedCLS(t *testing.T) {
 		StartAndStop: true,
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		runSchedCLSCmd,
 		// Wait until program is attached. TODO: How to avoid hardcoding a delay here?
 		SleepForSecondsCommand(5),
 		JobCommand("wget", "busybox", ns, "sh", "-c", fmt.Sprintf("wget -T 5 %s || true", nginxIP)),
 		WaitUntilJobCompleteCommand(ns, "wget"),
-		{
+		&Command{
 			Name: "ValidateOutput",
 			Cmd:  fmt.Sprintf("kubectl logs job.batch/wget -n %s", ns),
 			ValidateOutput: func(t *testing.T, output string) {

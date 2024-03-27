@@ -79,7 +79,7 @@ func runTraceMount(t *testing.T, ns string, cmd string) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceMountCmd,
 		BusyboxPodRepeatCommand(ns, "mount /foo /bar"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -93,14 +93,14 @@ func TestRunTraceMount(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 	}
 
 	RunTestSteps(commandsPreTest, t)
 
 	t.Cleanup(func() {
-		commands := []*Command{
+		commands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

@@ -80,7 +80,7 @@ func TestTopFile(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-file")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "echo foo > bar"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -88,7 +88,7 @@ func TestTopFile(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -105,7 +105,7 @@ func TestTopFile(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s", *containerRuntime)
 		topFileCmd := newTopFileCmd(ns, cmd, true)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestTopFile(t *testing.T) {
 		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s --timeout %d",
 			*containerRuntime, timeout)
 		topFileCmd := newTopFileCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -123,6 +123,6 @@ func TestTopFile(t *testing.T) {
 		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
 		topFileCmd := newTopFileCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

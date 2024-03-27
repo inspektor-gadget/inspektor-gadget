@@ -91,7 +91,7 @@ func TestTopTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -99,7 +99,7 @@ func TestTopTCP(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -110,7 +110,7 @@ func TestTopTCP(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s", *containerRuntime)
 		topTCPCmd := newTopTCPCmd(ns, cmd, true)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestTopTCP(t *testing.T) {
 		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s --timeout %d",
 			*containerRuntime, timeout)
 		topTCPCmd := newTopTCPCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -128,6 +128,6 @@ func TestTopTCP(t *testing.T) {
 		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
 		topTCPCmd := newTopTCPCmd(ns, cmd, false)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

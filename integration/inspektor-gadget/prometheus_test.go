@@ -89,22 +89,22 @@ EOF
 `, ns, scrapeTargets, ns),
 	}
 
-	RunTestSteps([]*Command{
+	RunTestSteps([]TestStep{
 		CreateTestNamespaceCommand(ns),
 		prometheusCmd,
 		WaitUntilPodReadyCommand(ns, "prometheus"),
 	}, t)
 
 	t.Cleanup(func() {
-		cleanupCommands := []*Command{
+		cleanupCommands := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(cleanupCommands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("CounterMetrics", func(t *testing.T) {
-		counterMetricsCommand := []*Command{
-			{
+		counterMetricsCommand := []TestStep{
+			&Command{
 				Name:         "RunPrometheusGadget",
 				Cmd:          "$KUBECTL_GADGET prometheus --config @testdata/prometheus/counter.yaml",
 				StartAndStop: true,
@@ -112,7 +112,7 @@ EOF
 			SleepForSecondsCommand(2),
 			BusyboxPodCommand(ns, "for i in $(seq 1 100); do cat /dev/null; done; sleep 2"),
 			SleepForSecondsCommand(10), // wait for prometheus to scrape
-			{
+			&Command{
 				Name: "ValidatePrometheusMetrics",
 				Cmd:  fmt.Sprintf("kubectl exec -n %s prometheus -- wget -qO- http://localhost:9090/api/v1/query?query=executed_processes_total", ns),
 				ValidateOutput: func(t *testing.T, output string) {

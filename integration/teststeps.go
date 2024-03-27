@@ -61,7 +61,7 @@ func WithCbBeforeCleanup(f func(t *testing.T)) func(opts *runTestStepsOpts) {
 // RunTestSteps is used to run a list of test steps with stopping/clean up logic.
 // executeBeforeCleanup is executed before calling the cleanup functions, it can be use for instance
 // to print extra logs when the test fails.
-func RunTestSteps[S TestStep](steps []S, t *testing.T, options ...Option) {
+func RunTestSteps(steps []TestStep, t *testing.T, options ...Option) {
 	opts := &runTestStepsOpts{}
 
 	for _, option := range options {

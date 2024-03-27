@@ -100,7 +100,7 @@ func TestTraceExec(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceExecCmd,
 		// Give time to kubectl-gadget to start the tracer

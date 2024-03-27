@@ -39,7 +39,7 @@ func TestProfileBio(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		profileBioCmd,
 	}
 

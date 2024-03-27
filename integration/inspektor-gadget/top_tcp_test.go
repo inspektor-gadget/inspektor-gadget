@@ -79,7 +79,7 @@ func TestTopTcp(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -87,7 +87,7 @@ func TestTopTcp(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -98,7 +98,7 @@ func TestTopTcp(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns)
 		topTCPCmd := newTopTCPCmd(ns, cmd, true, isDockerRuntime)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestTopTcp(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d", ns, topTimeoutInSeconds)
 		topTCPCmd := newTopTCPCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -114,6 +114,6 @@ func TestTopTcp(t *testing.T) {
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
 		topTCPCmd := newTopTCPCmd(ns, cmd, false, isDockerRuntime)
-		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+		RunTestSteps([]TestStep{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

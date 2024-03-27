@@ -31,7 +31,7 @@ func TestRunSnapshotProcess(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -39,14 +39,14 @@ func TestRunSnapshotProcess(t *testing.T) {
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
 	t.Cleanup(func() {
-		commandsPostTest := []*Command{
+		commandsPostTest := []TestStep{
 			DeleteTestNamespaceCommand(ns),
 		}
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	commands := []*Command{
-		{
+	commands := []TestStep{
+		&Command{
 			Name:         "StartRunSnapshotProcessGadget",
 			Cmd:          fmt.Sprintf("$KUBECTL_GADGET run %s/snapshot_process:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns),
 			StartAndStop: true,

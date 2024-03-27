@@ -39,7 +39,7 @@ func TestScript(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceOpenCmd,
 		BusyboxPodRepeatCommand(ns, "nc -l 127.0.0.1 -p 9090 -w 1"),

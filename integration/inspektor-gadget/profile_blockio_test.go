@@ -26,8 +26,8 @@ import (
 func TestProfileBlockIO(t *testing.T) {
 	t.Parallel()
 
-	commands := []*Command{
-		{
+	commands := []TestStep{
+		&Command{
 			Name: "RunProfileBlockIOGadget",
 			Cmd:  "$KUBECTL_GADGET profile block-io --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1) --timeout 15 -o json",
 			ValidateOutput: func(t *testing.T, output string) {

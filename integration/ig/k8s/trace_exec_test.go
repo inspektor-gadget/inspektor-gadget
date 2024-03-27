@@ -122,7 +122,7 @@ func TestTraceExec(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceExecCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
@@ -179,10 +179,10 @@ func TestTraceExecHost(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceExecCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		{
+		&Command{
 			Name:           cmd,
 			Cmd:            cmd,
 			ExpectedRegexp: fmt.Sprintf("%d", time.Now().Year()),

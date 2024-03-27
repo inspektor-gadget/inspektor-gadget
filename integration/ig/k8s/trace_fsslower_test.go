@@ -78,7 +78,7 @@ func TestTraceFsslower(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceFsslowerCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started

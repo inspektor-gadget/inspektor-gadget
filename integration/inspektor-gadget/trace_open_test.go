@@ -67,7 +67,7 @@ func TestTraceOpen(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceOpenCmd,
 		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 cat /dev/null"),

@@ -65,7 +65,7 @@ func TestTopEbpf(t *testing.T) {
 
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100", *containerRuntime)
 		topEbpfCmd := newTopEbpfCmd(cmd, true)
-		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
+		RunTestSteps([]TestStep{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestTopEbpf(t *testing.T) {
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100 --timeout %d",
 			*containerRuntime, timeout)
 		topEbpfCmd := newTopEbpfCmd(cmd, false)
-		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
+		RunTestSteps([]TestStep{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 
 	t.Run("Interval=Timeout", func(t *testing.T) {
@@ -83,6 +83,6 @@ func TestTopEbpf(t *testing.T) {
 		cmd := fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100 --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
 		topEbpfCmd := newTopEbpfCmd(cmd, false)
-		RunTestSteps([]*Command{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
+		RunTestSteps([]TestStep{topEbpfCmd}, t, WithCbBeforeCleanup(PrintLogsFn()))
 	})
 }

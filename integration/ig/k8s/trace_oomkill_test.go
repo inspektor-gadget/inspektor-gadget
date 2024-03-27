@@ -97,11 +97,11 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*Command{
+	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		traceOOMKillCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		{
+		&Command{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",

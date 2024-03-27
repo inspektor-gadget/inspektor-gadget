@@ -36,7 +36,7 @@ func TestTraceNetwork(t *testing.T) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -136,7 +136,7 @@ func TestTraceNetwork(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []TestStep{
 		traceNetworkCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", nginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
