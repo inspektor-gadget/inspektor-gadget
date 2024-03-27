@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,10 +88,10 @@ type Runtime interface {
 	Close() error
 	GlobalParamDescs() params.ParamDescs
 	ParamDescs() params.ParamDescs
-	// GetGadgetInfo returns information about the gadget that is being run. It only makes sense
+	// GetBuiltInGadgetInfo returns information about the gadget that is being run. It only makes sense
 	// for the run gadget.
-	GetGadgetInfo(context.Context, gadgets.GadgetDesc, *params.Params, []string) (*runTypes.GadgetInfo, error)
-	RunGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
+	GetBuiltInGadgetInfo(context.Context, gadgets.GadgetDesc, *params.Params, []string) (*runTypes.GadgetInfo, error)
+	RunBuiltInGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)

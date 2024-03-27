@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
 	defer conn.Close()
-	client := api.NewGadgetManagerClient(conn)
+	client := api.NewBuiltInGadgetManagerClient(conn)
 
 	info, err := client.GetInfo(ctx, &api.InfoRequest{Version: "1.0"})
 	if err != nil {

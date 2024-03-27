@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ type RunConfig struct {
 }
 
 type Service struct {
-	api.UnimplementedGadgetManagerServer
+	api.UnimplementedBuiltInGadgetManagerServer
 	listener          net.Listener
 	runtime           runtime.Runtime
 	logger            logger.Logger
@@ -88,7 +88,7 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 	}, nil
 }
 
-func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
+func (s *Service) GetRunGadgetInfo(ctx context.Context, req *api.GetRunGadgetInfoRequest) (*api.GetRunGadgetInfoResponse, error) {
 	gadgetDesc := gadgetregistry.Get(gadgets.CategoryNone, "run")
 	if gadgetDesc == nil {
 		return nil, errors.New("run gadget not found")
@@ -97,7 +97,7 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 	params := gadgetDesc.ParamDescs().ToParams()
 	params.CopyFromMap(req.Params, "")
 
-	ret, err := s.runtime.GetGadgetInfo(ctx, gadgetDesc, params, req.Args)
+	ret, err := s.runtime.GetBuiltInGadgetInfo(ctx, gadgetDesc, params, req.Args)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
@@ -107,12 +107,12 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		return nil, fmt.Errorf("marshal gadget info response: %w", err)
 	}
 
-	return &api.GetGadgetInfoResponse{
+	return &api.GetRunGadgetInfoResponse{
 		Info: retJSON,
 	}, nil
 }
 
-func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
+func (s *Service) RunBuiltInGadget(runGadget api.BuiltInGadgetManager_RunBuiltInGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	var gadgetInfo *runTypes.GadgetInfo
 
 	if c, ok := gadgetDesc.(runTypes.RunGadgetDesc); ok {
-		gadgetInfo, err = s.runtime.GetGadgetInfo(runGadget.Context(), gadgetDesc, gadgetParams, request.Args)
+		gadgetInfo, err = s.runtime.GetBuiltInGadgetInfo(runGadget.Context(), gadgetDesc, gadgetParams, request.Args)
 		if err != nil {
 			return fmt.Errorf("getting gadget info: %w", err)
 		}
@@ -282,7 +282,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 				return
 			}
 			switch msg.Event.(type) {
-			case *api.GadgetControlRequest_StopRequest:
+			case *api.BuiltInGadgetControlRequest_StopRequest:
 				gadgetCtx.Cancel()
 				return
 			default:
@@ -292,7 +292,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}()
 
 	// Hand over to runtime
-	results, err := runtime.RunGadget(gadgetCtx)
+	results, err := runtime.RunBuiltInGadget(gadgetCtx)
 	if err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
@@ -375,7 +375,7 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 	}
 
 	server := grpc.NewServer(serverOptions...)
-	api.RegisterGadgetManagerServer(server, s)
+	api.RegisterBuiltInGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 

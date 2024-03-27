@@ -65,7 +65,7 @@ func (g *GadgetDesc) Category() string {
 
 func (g *GadgetDesc) Type() gadgets.GadgetType {
 	// Placeholder for gadget type. The actual type is determined at runtime by using
-	// GetGadgetInfo()
+	// GetRunGadgetInfo()
 	return gadgets.TypeRun
 }
 

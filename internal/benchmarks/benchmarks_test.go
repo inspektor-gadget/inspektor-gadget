@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -245,7 +245,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 					for n := 0; n < b.N; n++ {
 						// This benchmark only measure gadget startup time.
 						// Use a timeout of 0s, so it will immediately timeout
-						// and runtime.RunGadget() will be stopped immediately
+						// and runtime.RunBuiltInGadget() will be stopped immediately
 						// via '<-gadgetCtx.Context().Done()' once the gadget
 						// is started.
 						ctx, cancel := context.WithTimeout(context.TODO(), 0)
@@ -277,7 +277,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							nil,
 						)
 
-						_, err := runtime.RunGadget(gadgetCtx)
+						_, err := runtime.RunBuiltInGadget(gadgetCtx)
 						if err != nil {
 							b.Fatalf("running gadget: %s", err)
 						}

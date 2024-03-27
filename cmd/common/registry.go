@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -255,7 +255,7 @@ func buildCommandFromGadget(
 			onlyArgs := cmd.Flags().Args()
 			if isRunGadget && len(onlyArgs) > 0 {
 				var err error
-				runGadgetInfo, err = runtime.GetGadgetInfo(context.TODO(), gadgetDesc, gadgetParams, onlyArgs)
+				runGadgetInfo, err = runtime.GetBuiltInGadgetInfo(context.TODO(), gadgetDesc, gadgetParams, onlyArgs)
 				if err != nil {
 					return fmt.Errorf("getting gadget info: %w", err)
 				}
@@ -489,7 +489,7 @@ func buildCommandFromGadget(
 				// This kind of gadgets return directly the result instead of
 				// using the parser. We allow partial results, so error is only
 				// returned after handling those results.
-				results, err := runtime.RunGadget(gadgetCtx)
+				results, err := runtime.RunBuiltInGadget(gadgetCtx)
 
 				for node, result := range results {
 					if result.Error != nil {
@@ -711,7 +711,7 @@ func buildCommandFromGadget(
 
 			// Gadgets with parser don't return anything, they provide the
 			// output via the parser
-			_, err = runtime.RunGadget(gadgetCtx)
+			_, err = runtime.RunBuiltInGadget(gadgetCtx)
 			if err != nil {
 				return fmt.Errorf("running gadget: %w", err)
 			}

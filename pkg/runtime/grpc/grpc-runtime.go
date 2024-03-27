@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -276,7 +276,7 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	return nil, fmt.Errorf("unsupported connection mode")
 }
 
-func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
+func (r *Runtime) GetBuiltInGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
 	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
 	ctx, cancelDial := context.WithTimeout(ctx, timeout)
 	defer cancelDial()
@@ -288,16 +288,16 @@ func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, ga
 		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
 	defer conn.Close()
-	client := api.NewGadgetManagerClient(conn)
+	client := api.NewBuiltInGadgetManagerClient(conn)
 
 	allParams := make(map[string]string)
 	gadgetParams.CopyToMap(allParams, "")
 
-	in := &api.GetGadgetInfoRequest{
+	in := &api.GetRunGadgetInfoRequest{
 		Params: allParams,
 		Args:   args,
 	}
-	out, err := client.GetGadgetInfo(ctx, in)
+	out, err := client.GetRunGadgetInfo(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
@@ -310,7 +310,7 @@ func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, ga
 	return ret, nil
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
+func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	paramMap := make(map[string]string)
 	gadgets.ParamsToMap(
 		paramMap,
@@ -385,7 +385,7 @@ func (r *Runtime) runGadgetOnTargets(
 		wg.Add(1)
 		go func(target target) {
 			gadgetCtx.Logger().Debugf("running gadget on node %q", target.node)
-			res, err := r.runGadget(gadgetCtx, target, paramMap)
+			res, err := r.runBuiltInGadget(gadgetCtx, target, paramMap)
 			resultsLock.Lock()
 			results[target.node] = &runtime.GadgetResult{
 				Payload: res,
@@ -422,7 +422,7 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 	return conn, nil
 }
 
-func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
+func (r *Runtime) runBuiltInGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
 	// Notice that we cannot use gadgetCtx.Context() here, as that would - when cancelled by the user - also cancel the
 	// underlying gRPC connection. That would then lead to results not being received anymore (mostly for profile
 	// gadgets.)
@@ -438,9 +438,9 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}
 	defer conn.Close()
-	client := api.NewGadgetManagerClient(conn)
+	client := api.NewBuiltInGadgetManagerClient(conn)
 
-	runRequest := &api.GadgetRunRequest{
+	runRequest := &api.BuiltInGadgetRunRequest{
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
@@ -451,12 +451,12 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		Timeout:        int64(gadgetCtx.Timeout()),
 	}
 
-	runClient, err := client.RunGadget(connCtx)
+	runClient, err := client.RunBuiltInGadget(connCtx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		return nil, err
 	}
 
-	controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+	controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_RunRequest{RunRequest: runRequest}}
 	err = runClient.Send(controlRequest)
 	if err != nil {
 		return nil, err
@@ -531,7 +531,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	case <-gadgetCtx.Context().Done():
 		// Send stop request
 		gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
-		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
+		controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_StopRequest{StopRequest: &api.BuiltInGadgetStopRequest{}}}
 		runClient.Send(controlRequest)
 
 		// Wait for done or timeout
