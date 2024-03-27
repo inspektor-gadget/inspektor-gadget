@@ -1,0 +1,78 @@
+name: "Run integration tests all"
+description: "Run Inspektor Gadget integration tests all"
+
+inputs:
+  container_repo:
+    description: 'The repository used as inspektor gadget deployment image repository.'
+    required: true
+  image_tag:
+    description: 'The image tag used as inspektor gadget deployment image tag.'
+    required: true
+  kubernetes_distribution:
+    description: 'The kubernetes distribution used to select distro specific config in tests.'
+    required: true
+  kubernetes_architecture:
+    description: 'The CPU architecture used to select arch specific config in tests.'
+    required: true
+  dnstester_image:
+    description: 'The image used for the dnstester.'
+    default: 'ghcr.io/inspektor-gadget/dnstester:latest'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@v3
+      with:
+        name: kubectl-gadget-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/inspektor-gadget/
+    - name: Integration tests all
+      id: integration-tests-all
+      shell: bash
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
+
+        cleanup() {
+            echo "IntegrationTestsJob: Workflow run is being cancelled: $1 was received"
+            trap - $1
+            if [[ $1 == "SIGINT" ]]; then
+              echo "IntegrationTestsJob: Start the clean-up..."
+            else
+              echo "IntegrationTestsJob: Just wait until the clean-up finishes..."
+              return
+            fi
+            # Forward the SIGINT directly to test process but wait for current
+            # active jobs since we can only wait for current shell child process.
+            echo "IntegrationTestsJob: Notifying the integration tests process about the cancellation"
+            kill -2 $(pidof inspektor-gadget.test) > /dev/null
+            echo "IntegrationTestsJob: Waiting for the integration tests process to finish"
+            wait $(jobs -p)
+            echo "IntegrationTestsJob: We are done with the clean-up. Let the job exit"
+            exit 0
+        }
+
+        # Capture the SIGINT to start the clean-up. Then, capture also the
+        # SIGTERM to have those 2.5 extra seconds before the runner kills the
+        # process tree:
+        # https://docs.github.com/en/actions/managing-workflow-runs/canceling-a-workflow#steps-github-takes-to-cancel-a-workflow-run
+        trap 'cleanup SIGINT' SIGINT
+        trap 'cleanup SIGTERM' SIGTERM
+
+        # https://mywiki.wooledge.org/SignalTrap#When_is_the_signal_handled.3F
+        echo "IntegrationTestsJob: Start"
+        set -o pipefail
+        make \
+          KUBERNETES_DISTRIBUTION=${{ inputs.kubernetes_distribution }} \
+          KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
+          CONTAINER_REPO=${{ inputs.container_repo }} \
+          IMAGE_TAG=${{ inputs.image_tag }} \
+          DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
+          -o kubectl-gadget integration-tests-all |& tee integration.log & wait $!
+        echo "IntegrationTestsJob: Done"
+    - name: Prepare and publish test reports
+      if: always()
+      continue-on-error: true
+      uses: ./.github/actions/prepare-and-publish-test-reports
+      with:
+        test-log-file: integration.log
+        test-step-conclusion: ${{ steps.integration-tests.conclusion }}

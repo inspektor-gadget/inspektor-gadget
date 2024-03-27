@@ -51,7 +51,6 @@ func newListContainerTestStep(
 			}
 
 			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
-			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			if isDockerRuntime {
 				expectedContainer.Runtime.ContainerImageName = ""
 			}
@@ -83,6 +82,10 @@ func newListContainerTestStep(
 }
 
 func TestListContainers(t *testing.T) {
+	if DefaultTestComponent == InspektorGadgetTestComponent {
+		t.Skip("Skip running list-containers")
+	}
+
 	t.Parallel()
 
 	cn := "test-list-containers"
@@ -108,7 +111,7 @@ func TestListContainers(t *testing.T) {
 	// Containerd name the container with the Kubernetes container name, while
 	// Docker and CRI-O use a composed name.
 	runtimeContainerName := cn
-	if *containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO {
+	if containerRuntime == ContainerRuntimeDocker || containerRuntime == ContainerRuntimeCRIO {
 		// Test container shouldn't have been restarted, so append "0".
 		runtimeContainerName = "k8s_" + cn + "_" + pod + "_" + ns + "_" + podUID + "_" + "0"
 	}
@@ -117,8 +120,8 @@ func TestListContainers(t *testing.T) {
 		t.Parallel()
 
 		listContainerTestStep := newListContainerTestStep(
-			fmt.Sprintf("ig list-containers -o json --runtimes=%s", *containerRuntime),
-			cn, pod, podUID, ns, *containerRuntime, runtimeContainerName,
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s", containerRuntime),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
 			func(t *testing.T, o string, f func(*containercollection.Container), c *containercollection.Container) {
 				ExpectEntriesInArrayToMatch(t, o, f, c)
 			},
@@ -130,8 +133,8 @@ func TestListContainers(t *testing.T) {
 		t.Parallel()
 
 		listContainerTestStep := newListContainerTestStep(
-			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, runtimeContainerName),
-			cn, pod, podUID, ns, *containerRuntime, runtimeContainerName,
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", containerRuntime, runtimeContainerName),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
 			func(t *testing.T, o string, f func(*containercollection.Container), c *containercollection.Container) {
 				ExpectAllInArrayToMatch(t, o, f, c)
 			},
@@ -141,6 +144,10 @@ func TestListContainers(t *testing.T) {
 }
 
 func TestWatchCreatedContainers(t *testing.T) {
+	if DefaultTestComponent == InspektorGadgetTestComponent {
+		t.Skip("Skip running created list-containers --watch")
+	}
+
 	t.Parallel()
 
 	cn := "test-created-containers"
@@ -150,10 +157,10 @@ func TestWatchCreatedContainers(t *testing.T) {
 	watchContainersCmd := &Command{
 		Name: "RunWatchContainers",
 		// TODO: Filter by namespace once we support it.
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", containerRuntime),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
-			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isDockerRuntime := containerRuntime == ContainerRuntimeDocker
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
@@ -166,7 +173,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
 							ContainerImageName: "docker.io/library/busybox:latest",
 						},
@@ -232,6 +239,10 @@ func TestWatchCreatedContainers(t *testing.T) {
 }
 
 func TestWatchDeletedContainers(t *testing.T) {
+	if DefaultTestComponent == InspektorGadgetTestComponent {
+		t.Skip("Skip running deleted list-containers --watch")
+	}
+
 	t.Parallel()
 
 	cn := "test-deleted-container"
@@ -240,7 +251,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 	watchContainersCmd := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", containerRuntime),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEvent := &containercollection.PubSubEvent{
@@ -255,7 +266,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
 							ContainerImageName: "docker.io/library/busybox:latest",
 						},
@@ -264,7 +275,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 			}
 
 			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
-			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isDockerRuntime := containerRuntime == ContainerRuntimeDocker
 			if isDockerRuntime {
 				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
@@ -326,6 +337,10 @@ func TestWatchDeletedContainers(t *testing.T) {
 }
 
 func TestPodWithSecurityContext(t *testing.T) {
+	if DefaultTestComponent == InspektorGadgetTestComponent {
+		t.Skip("Skip running security context list-containers --watch")
+	}
+
 	t.Parallel()
 	cn := "test-security-context"
 	po := cn
@@ -333,10 +348,10 @@ func TestPodWithSecurityContext(t *testing.T) {
 
 	watchContainersCmd := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", containerRuntime),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
-			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			isDockerRuntime := containerRuntime == ContainerRuntimeDocker
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
@@ -349,7 +364,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
 							ContainerImageName: "docker.io/library/busybox:latest",
 						},

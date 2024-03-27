@@ -35,7 +35,7 @@ test: test-$(CONTAINER_RUNTIME)
 
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/ig/k8s test
+# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/all test
 .PHONY: phony_explicit
 test-%: build build-tests
 	export MINIKUBE_PROFILE=minikube-$* && \
