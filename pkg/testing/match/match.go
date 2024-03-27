@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package match provides various helper functions for matching actual output to expected output.
 package match
 
 import (
@@ -78,12 +79,16 @@ func ExpectEntriesToMatch[T any](t *testing.T, output string, normalize func(*T)
 	expectEntriesToMatch(t, entries, expectedEntries...)
 }
 
+// ExpectStringToMatch verifies that the output string matches the expectedString.
+// This function can be directly used as ValidateOutput function.
 func ExpectStringToMatch(t *testing.T, expectedString string) func(t *testing.T, output string) {
 	return func(t *testing.T, output string) {
 		require.Equal(t, expectedString, output, "output didn't match the expected string")
 	}
 }
 
+// ExpectRegexpToMatch verifies that the output string matches the expected regular expression.
+// This function can be directly used as ValidateOutput function.
 func ExpectRegexpToMatch(t *testing.T, expectedRegexp string) func(t *testing.T, output string) {
 	return func(t *testing.T, output string) {
 		r := regexp.MustCompile(expectedRegexp)

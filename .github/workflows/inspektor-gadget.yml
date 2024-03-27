@@ -1308,7 +1308,11 @@ jobs:
       id: go
     - name: Gadgets tests
       run: |
-        make gadgets-test -C ./gadgets
+          make \
+          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
+          GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+          BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }} \
+          image-gadgets-test -o install/ig
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s

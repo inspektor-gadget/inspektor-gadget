@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package command provides a generic way for running testing commands.
 package command
 
 import (
@@ -40,8 +41,8 @@ type Command struct {
 	// It is only used by command which have StartAndStop set.
 	started bool
 
-	// command is a Cmd object used when we want to start the command, then other
-	// do stuff and wait for its completion.
+	// Cmd object is used when we want to start the command, then do
+	// other stuff and wait for its completion or just run the command.
 	Cmd *exec.Cmd
 
 	// stdout contains command standard output when started using Startcommand().
@@ -79,10 +80,8 @@ func (c *Command) initExecCmd() {
 // verifyOutput verifies if the stdout match with the expected regular expression and the expected
 // string. If it doesn't, verifyOutput makes the test fail.
 func (c *Command) verifyOutput(t *testing.T) {
-	output := c.stdout.String()
-
 	if c.ValidateOutput != nil {
-		c.ValidateOutput(t, output)
+		c.ValidateOutput(t, c.stdout.String())
 	}
 }
 
@@ -119,7 +118,7 @@ func (c *Command) Start(t *testing.T) {
 // Stop stops a Command previously started with Start().
 // To do so, it Kill() the process corresponding to this Cmd and then wait for
 // its termination.
-// Cmd output is then checked with regard to ExpectedString and ExpectedRegexp
+// Cmd output is then checked with regard to ExpectedString, ExpectedRegexp or ExpectedEntries.
 func (c *Command) Stop(t *testing.T) {
 	if !c.started {
 		t.Logf("Warn(%s): trying to stop command but it was not started\n", c.Name)
