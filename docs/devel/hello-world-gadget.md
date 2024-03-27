@@ -23,7 +23,7 @@ repository](https://github.com/inspektor-gadget/gadget-template). This is a
 
 You can also look for examples in gadgets published on Artifact Hub:
 
-[![Artifact Hub: Gadgets](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/gadgets)](https://artifacthub.io/packages/search?repo=inspektor-gadgets)
+[![Artifact Hub: Gadgets](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/gadgets)](https://artifacthub.io/packages/search?repo=gadgets)
 
 ## Starting from scratch
 
