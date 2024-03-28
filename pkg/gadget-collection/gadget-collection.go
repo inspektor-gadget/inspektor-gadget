@@ -17,56 +17,14 @@ package gadgetcollection
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	seccomp "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/advise/seccomp"
-	auditseccomp "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/audit/seccomp"
-	biolatency "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile/block-io"
-	profile "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile/cpu"
-	processcollector "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/snapshot/process"
-	socketcollector "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/snapshot/socket"
-	biotop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/block-io"
-	ebpftop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/ebpf"
-	filetop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/file"
-	tcptop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/tcp"
-	bindsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/bind"
-	capabilities "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/capabilities"
-	dns "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/dns"
-	execsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/exec"
-	fsslower "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/fsslower"
-	mountsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/mount"
 	networkgraph "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/network"
-	oomkill "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/oomkill"
-	opensnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/open"
-	sigsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/signal"
-	snisnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/sni"
-	tcptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/tcp"
-	tcpconnect "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/tcpconnect"
 	traceloop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/traceloop"
 )
 
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
-		"audit-seccomp":     auditseccomp.NewFactory(),
-		"bindsnoop":         bindsnoop.NewFactory(),
-		"biolatency":        biolatency.NewFactory(),
-		"biotop":            biotop.NewFactory(),
-		"capabilities":      capabilities.NewFactory(),
-		"dns":               dns.NewFactory(),
-		"ebpftop":           ebpftop.NewFactory(),
-		"execsnoop":         execsnoop.NewFactory(),
-		"filetop":           filetop.NewFactory(),
-		"fsslower":          fsslower.NewFactory(),
-		"opensnoop":         opensnoop.NewFactory(),
-		"mountsnoop":        mountsnoop.NewFactory(),
-		"network-graph":     networkgraph.NewFactory(),
-		"oomkill":           oomkill.NewFactory(),
-		"process-collector": processcollector.NewFactory(),
-		"profile":           profile.NewFactory(),
-		"seccomp":           seccomp.NewFactory(),
-		"sigsnoop":          sigsnoop.NewFactory(),
-		"snisnoop":          snisnoop.NewFactory(),
-		"socket-collector":  socketcollector.NewFactory(),
-		"tcpconnect":        tcpconnect.NewFactory(),
-		"tcptop":            tcptop.NewFactory(),
-		"tcptracer":         tcptracer.NewFactory(),
-		"traceloop":         traceloop.NewFactory(),
+		"seccomp":       seccomp.NewFactory(),
+		"network-graph": networkgraph.NewFactory(),
+		"traceloop":     traceloop.NewFactory(),
 	}
 }
