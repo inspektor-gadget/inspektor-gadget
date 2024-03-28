@@ -83,13 +83,15 @@ spec:
   terminationGracePeriodSeconds: 0
   containers:
   - name: test-pod
-    image: busybox
-    resources:
-      limits:
-        memory: "128Mi"
-    command: ["/bin/sh", "-c"]
-    args:
-    - while true; do tail /dev/zero; done
+    image: francisregistryregistry.azurecr.io/oomkilltester:latest
+    command: ["/oomkilltester"]
+    volumeMounts:
+      - mountPath: /sys/fs/cgroup
+        name: cgroup
+  volumes:
+  - name: cgroup
+    hostPath:
+      path: /sys/fs/cgroup
 `, ns)
 
 	commands := []TestStep{
