@@ -1,9 +1,11 @@
 SHELL := /bin/bash
 
-GADGET_TAG ?= $(shell ../tools/image-tag branch)
-GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
-IG ?= ig
+
+export GADGET_TAG ?= $(shell ../tools/image-tag branch)
+export GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
+export IG ?= ig
+
 GADGETS = \
 	trace_dns \
 	trace_exec \
@@ -51,3 +53,7 @@ clean:
 	for GADGET in $(GADGETS); do \
 		sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
+
+.PHONY: gadgets-test
+gadgets-test: build
+	CGO_ENABLED=0 IG_EXPERIMENTAL=true go test -exec 'sudo -E' -v ./... -gadgets-test

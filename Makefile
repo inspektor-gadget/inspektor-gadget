@@ -380,6 +380,10 @@ build-gadgets: install/ig
 push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
+.PHONY: image-gadgets-test
+image-gadgets-test: install/ig
+	$(MAKE) -C gadgets/ gadgets-test
+
 .PHONY: testdata
 testdata:
 	$(MAKE) -C testdata/
@@ -412,6 +416,7 @@ help:
 	@echo  '  ig-tests			- Run ig manager unit tests'
 	@echo  '  gadgets-unit-tests		- Run gadget unit tests'
 	@echo  '  integration-tests		- Run integration tests'
+	@echo  '  image-gadgets-test		- Run image-based gadgets test'
 	@echo  ''
 	@echo  'Installing targets:'
 	@echo  '  install/kubectl-gadget	- Build kubectl plugin and install it in ~/.local/bin'
