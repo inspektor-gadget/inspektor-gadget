@@ -19,8 +19,6 @@ package kubeipresolver
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -105,57 +103,25 @@ func (m *KubeIPResolverInstance) PostGadgetRun() error {
 }
 
 func (m *KubeIPResolverInstance) enrich(ev any) {
-	pods, err := m.k8sInventory.GetPods()
-	if err != nil {
-		log.Warnf("getting pods from k8s inventory: %v", err)
-		return
-	}
-
 	endpoints := ev.(KubeIPResolverInterface).GetEndpoints()
-	for j := range endpoints {
-		// initialize to this default value if we don't find a match
-		endpoints[j].Kind = types.EndpointKindRaw
-	}
+	for _, endpoint := range endpoints {
+		endpoint.Kind = types.EndpointKindRaw
 
-	found := 0
-	for _, pod := range pods {
-		if pod.Spec.HostNetwork {
+		pod := m.k8sInventory.GetPodByIp(endpoint.Addr)
+		if pod != nil {
+			endpoint.Kind = types.EndpointKindPod
+			endpoint.Name = pod.Name
+			endpoint.Namespace = pod.Namespace
+			endpoint.PodLabels = pod.Labels
 			continue
 		}
 
-		for _, endpoint := range endpoints {
-			if pod.Status.PodIP == endpoint.Addr {
-				endpoint.Kind = types.EndpointKindPod
-				endpoint.Name = pod.Name
-				endpoint.Namespace = pod.Namespace
-				endpoint.PodLabels = pod.Labels
-
-				found++
-				if found == len(endpoints) {
-					return
-				}
-			}
-		}
-	}
-
-	svcs, err := m.k8sInventory.GetSvcs()
-	if err != nil {
-		log.Warnf("getting services from k8s inventory: %v", err)
-		return
-	}
-	for _, svc := range svcs {
-		for _, endpoint := range endpoints {
-			if svc.Spec.ClusterIP == endpoint.Addr {
-				endpoint.Kind = types.EndpointKindService
-				endpoint.Name = svc.Name
-				endpoint.Namespace = svc.Namespace
-				endpoint.PodLabels = svc.Labels
-
-				found++
-				if found == len(endpoints) {
-					return
-				}
-			}
+		svc := m.k8sInventory.GetSvcByIp(endpoint.Addr)
+		if svc != nil {
+			endpoint.Kind = types.EndpointKindService
+			endpoint.Name = svc.Name
+			endpoint.Namespace = svc.Namespace
+			endpoint.PodLabels = svc.Labels
 		}
 	}
 }

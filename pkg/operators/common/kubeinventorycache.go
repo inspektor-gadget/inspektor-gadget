@@ -168,6 +168,42 @@ func (cache *K8sInventoryCache) GetPods() ([]*v1.Pod, error) {
 	return pods, nil
 }
 
+func (cache *K8sInventoryCache) GetPodByName(namespace string, name string) *v1.Pod {
+	cache.removeOldPods()
+
+	key := namespace + "/" + name
+	if value, ok := cache.pods.Load(key); ok {
+		return value.(*v1.Pod)
+	} else if value, ok := cache.oldPods.Load(key); ok {
+		return value.(oldResource[*v1.Pod]).obj
+	}
+	return nil
+}
+
+func (cache *K8sInventoryCache) GetPodByIp(ip string) *v1.Pod {
+	cache.removeOldPods()
+
+	var pod *v1.Pod
+	cache.pods.Range(func(_, value any) bool {
+		if value.(*v1.Pod).Status.PodIP == ip {
+			pod = value.(*v1.Pod)
+			return false
+		}
+		return true
+	})
+	if pod != nil {
+		return pod
+	}
+	cache.oldPods.Range(func(_, value any) bool {
+		if value.(oldResource[*v1.Pod]).obj.Status.PodIP == ip {
+			pod = value.(oldResource[*v1.Pod]).obj
+			return false
+		}
+		return true
+	})
+	return pod
+}
+
 func (cache *K8sInventoryCache) GetSvcs() ([]*v1.Service, error) {
 	cache.removeOldSvcs()
 
@@ -187,6 +223,43 @@ func (cache *K8sInventoryCache) GetSvcs() ([]*v1.Service, error) {
 		return true
 	})
 	return svcs, nil
+}
+
+func (cache *K8sInventoryCache) GetSvcByName(namespace string, name string) *v1.Service {
+	cache.removeOldSvcs()
+
+	key := namespace + "/" + name
+	if value, ok := cache.svcs.Load(key); ok {
+		return value.(*v1.Service)
+	}
+	if value, ok := cache.oldSvcs.Load(key); ok {
+		return value.(oldResource[*v1.Service]).obj
+	}
+	return nil
+}
+
+func (cache *K8sInventoryCache) GetSvcByIp(ip string) *v1.Service {
+	cache.removeOldSvcs()
+
+	var svc *v1.Service
+	cache.svcs.Range(func(_, value any) bool {
+		if value.(*v1.Service).Spec.ClusterIP == ip {
+			svc = value.(*v1.Service)
+			return false
+		}
+		return true
+	})
+	if svc != nil {
+		return svc
+	}
+	cache.oldSvcs.Range(func(_, value any) bool {
+		if value.(oldResource[*v1.Service]).obj.Spec.ClusterIP == ip {
+			svc = value.(oldResource[*v1.Service]).obj
+			return false
+		}
+		return true
+	})
+	return svc
 }
 
 func getObjectKey(obj any) string {
