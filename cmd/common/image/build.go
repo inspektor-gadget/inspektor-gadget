@@ -51,6 +51,8 @@ const (
 	DEFAULT_EBPF_SOURCE = "program.bpf.c"
 	DEFAULT_WASM        = "" // Wasm is optional; unset by default
 	DEFAULT_METADATA    = "gadget.yaml"
+
+	ARTIFACTHUB_PKG = "artifacthub-pkg.yml"
 )
 
 type buildFile struct {
@@ -61,14 +63,15 @@ type buildFile struct {
 }
 
 type cmdOpts struct {
-	path             string
-	file             string
-	fileChanged      bool
-	image            string
-	local            bool
-	builderImage     string
-	updateMetadata   bool
-	validateMetadata bool
+	path                 string
+	file                 string
+	fileChanged          bool
+	image                string
+	local                bool
+	builderImage         string
+	updateMetadata       bool
+	updateArtifactHubPkg bool
+	validateMetadata     bool
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -98,6 +101,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.image, "tag", "t", "", "Name for the built image (format name:tag)")
 	cmd.Flags().StringVar(&opts.builderImage, "builder-image", builderImage, "Builder image to use")
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
+	cmd.Flags().BoolVar(&opts.updateArtifactHubPkg, "update-artifacthub-pkg", false, "Update artifacthub-pkg.yml according to the gadget metadata")
 	cmd.Flags().BoolVar(&opts.validateMetadata, "validate-metadata", true, "Validate the metadata file before building the gadget image")
 
 	return utils.MarkExperimental(cmd)
@@ -169,10 +173,12 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 			oci.ArchAmd64: filepath.Join(tmpDir, oci.ArchAmd64+".bpf.o"),
 			oci.ArchArm64: filepath.Join(tmpDir, oci.ArchArm64+".bpf.o"),
 		},
-		MetadataPath:     conf.Metadata,
-		UpdateMetadata:   opts.updateMetadata,
-		ValidateMetadata: opts.validateMetadata,
-		CreatedDate:      time.Now().Format(time.RFC3339),
+		MetadataPath:         conf.Metadata,
+		ArtifactHubPkgPath:   ARTIFACTHUB_PKG,
+		UpdateMetadata:       opts.updateMetadata,
+		UpdateArtifactHubPkg: opts.updateArtifactHubPkg,
+		ValidateMetadata:     opts.validateMetadata,
+		CreatedDate:          time.Now().Format(time.RFC3339),
 	}
 
 	if strings.HasSuffix(conf.Wasm, ".wasm") {
