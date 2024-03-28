@@ -261,6 +261,9 @@ spec:
             - mountPath: /host/run
               name: run
               readOnly: true
+            - mountPath: /host/var
+              name: var
+              readOnly: true
             # WARNING Despite mounting host proc as readonly, it is possible to
             # write host file system using symlinks under /host/proc. The
             # following command, ran from gadget pod, will result in writing to
@@ -317,6 +320,9 @@ spec:
         - name: run
           hostPath:
             path: /run
+        - name: var
+          hostPath:
+            path: /var
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup
