@@ -156,8 +156,7 @@ type ebpfInstance struct {
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
 
-	links             []link.Link
-	linksSnapshotters []*linkSnapshotter
+	links []link.Link
 
 	containers map[string]*containercollection.Container
 
@@ -533,6 +532,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}(tracer)
 	}
 
+programs:
 	// Attach programs
 	for progName, p := range i.collectionSpec.Programs {
 		l, err := i.attachProgram(gadgetCtx, p, i.collection.Programs[progName])
@@ -544,13 +544,43 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			i.links = append(i.links, l)
 		}
 
-		// we need to store links to iterators on a separated list because we need them to run the programs.
+		// We need to store links to iterators because we need them to run the programs
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
 			lIter, ok := l.(*link.Iter)
 			if !ok {
 				return fmt.Errorf("link is not an iterator")
 			}
-			i.linksSnapshotters = append(i.linksSnapshotters, &linkSnapshotter{link: lIter, typ: p.AttachTo})
+
+			for _, snapshotter := range i.snapshotters {
+				if _, ok := snapshotter.iterators[progName]; ok {
+					snapshotter.links[progName] = &linkSnapshotter{
+						link: lIter,
+						typ:  p.AttachTo,
+					}
+					continue programs
+				}
+			}
+
+			// We have an iterator that was not associated with any snapshotter.
+			// If we have only one snapshotter and it was not associated with any
+			// iterator, we can associate all iterators with it.
+			if len(i.snapshotters) == 1 {
+				for sName, snapshotter := range i.snapshotters {
+					if len(snapshotter.iterators) > 0 {
+						i.Close()
+						return fmt.Errorf("iterator %q is not associated with any snapshotter", progName)
+					}
+
+					i.logger.Debugf("Automatically associating iterator %q with snapshotter %q", progName, sName)
+					snapshotter.links[progName] = &linkSnapshotter{
+						link: lIter,
+						typ:  p.AttachTo,
+					}
+				}
+			} else {
+				i.Close()
+				return fmt.Errorf("iterator %q is not associated with any snapshotter", progName)
+			}
 		}
 	}
 
