@@ -35,7 +35,12 @@ type K8sInventoryCache interface {
 	Stop()
 
 	GetPods() []*v1.Pod
+	GetPodByName(namespace string, name string) *v1.Pod
+	GetPodByIp(ip string) *v1.Pod
+
 	GetSvcs() []*v1.Service
+	GetSvcByName(namespace string, name string) *v1.Service
+	GetSvcByIp(ip string) *v1.Service
 }
 
 type oldResource[T any] struct {
@@ -103,6 +108,38 @@ func (c *resourceCache[T]) ToSlice() []*T {
 		}
 	}
 	return objs
+}
+
+func (c *resourceCache[T]) Get(key string) *T {
+	c.PruneOldObjects()
+	c.Lock()
+	defer c.Unlock()
+
+	if obj, ok := c.current[key]; ok {
+		return obj
+	}
+	if oldObj, ok := c.old[key]; ok {
+		return oldObj.obj
+	}
+	return nil
+}
+
+func (c *resourceCache[T]) GetCmp(cmp func(*T) bool) *T {
+	c.PruneOldObjects()
+	c.Lock()
+	defer c.Unlock()
+
+	for _, obj := range c.current {
+		if cmp(obj) {
+			return obj
+		}
+	}
+	for _, oldObj := range c.old {
+		if cmp(oldObj.obj) {
+			return oldObj.obj
+		}
+	}
+	return nil
 }
 
 type inventoryCache struct {
@@ -193,8 +230,28 @@ func (cache *inventoryCache) GetPods() []*v1.Pod {
 	return cache.pods.ToSlice()
 }
 
+func (cache *inventoryCache) GetPodByName(namespace string, name string) *v1.Pod {
+	return cache.pods.Get(namespace + "/" + name)
+}
+
+func (cache *inventoryCache) GetPodByIp(ip string) *v1.Pod {
+	return cache.pods.GetCmp(func(pod *v1.Pod) bool {
+		return pod.Status.PodIP == ip
+	})
+}
+
 func (cache *inventoryCache) GetSvcs() []*v1.Service {
 	return cache.svcs.ToSlice()
+}
+
+func (cache *inventoryCache) GetSvcByName(namespace string, name string) *v1.Service {
+	return cache.svcs.Get(namespace + "/" + name)
+}
+
+func (cache *inventoryCache) GetSvcByIp(ip string) *v1.Service {
+	return cache.svcs.GetCmp(func(svc *v1.Service) bool {
+		return svc.Spec.ClusterIP == ip
+	})
 }
 
 func (cache *inventoryCache) OnAdd(obj any, _ bool) {
