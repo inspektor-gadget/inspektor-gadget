@@ -376,7 +376,8 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 		switch p.Type {
 		case ebpf.Kprobe:
 			if strings.HasPrefix(p.SectionName, "uprobe/") ||
-				strings.HasPrefix(p.SectionName, "uretprobe/") {
+				strings.HasPrefix(p.SectionName, "uretprobe/") ||
+				strings.HasPrefix(p.SectionName, "usdt/") {
 				uprobeTracer, err := uprobetracer.NewTracer[api.GadgetData](gadgetCtx.Logger())
 				if err != nil {
 					i.Close()

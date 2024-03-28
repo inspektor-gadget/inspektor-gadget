@@ -56,7 +56,7 @@ on.
 ### Uprobes / Uretprobes (experimental)
 
 The section name must use the `<prog_type>/<file_path>:<symbol>` format.
-`<prog_type>` must be either `uprobe` or `uretprobe`.
+`<prog_type>` must be either `uprobe`, `uretprobe` or `usdt`.
 `<file_path>` is the absolute path of an executable or a library, that the uprobe will be attached to.
 For common libraries, `<file_path>` can also be the library's name, such as `libc`.
 `<symbol>` is a debugging symbol that can be found in the file mentioned above.
