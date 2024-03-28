@@ -1282,6 +1282,7 @@ jobs:
       - name: Setup minikube
         uses: ./.github/actions/setup-minikube
         with:
+          driver: 'docker'
           runtime: ${{ matrix.runtime }}
       - name: Run integration for container runtime ${{ matrix.runtime }}
         id: integration-tests
@@ -1789,6 +1790,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        driver: [docker, kvm2]
         runtime: [docker, containerd, cri-o]
     steps:
     - uses: actions/checkout@v4
@@ -1800,6 +1802,7 @@ jobs:
     - name: Setup minikube
       uses: ./.github/actions/setup-minikube
       with:
+        driver: ${{ matrix.driver }}
         runtime: ${{ matrix.runtime }}
         multi-node: true
     - name: Get gadget-container-image-linux-amd64.tar from artifact.
