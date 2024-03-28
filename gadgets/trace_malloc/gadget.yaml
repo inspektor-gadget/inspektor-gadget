@@ -29,3 +29,7 @@ structs:
         width: 20
         alignment: left
         ellipsis: end
+    - name: mntns_id
+      description: Mount namespace inode id
+      attributes:
+        template: ns

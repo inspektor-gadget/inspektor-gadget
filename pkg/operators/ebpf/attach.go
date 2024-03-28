@@ -17,14 +17,13 @@ package ebpfoperator
 import (
 	"fmt"
 	"net"
-	"path/filepath"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 )
 
 const (
@@ -45,37 +44,14 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		case strings.HasPrefix(p.SectionName, kretprobePrefix):
 			i.logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
-
-		case strings.HasPrefix(p.SectionName, "uprobe/") || strings.HasPrefix(p.SectionName, "uretprobe/"):
-			captureHost := false
-			for _, container := range i.containers {
-				if container.Pid == 1 {
-					captureHost = true
-				}
-			}
-			if !captureHost {
-				return nil, fmt.Errorf("uprobe can only be used with --host at this moment")
-			}
-
-			parts := strings.Split(p.AttachTo, ":")
-			if len(parts) < 2 {
-				return nil, fmt.Errorf("invalid section name %q", p.AttachTo)
-			}
-			if !filepath.IsAbs(parts[0]) {
-				return nil, fmt.Errorf("section name is not an absolute path: %q", parts[0])
-			}
-			executablePath := filepath.Join(host.HostProcFs, "1/root", parts[0])
-			ex, err := link.OpenExecutable(executablePath)
-			if err != nil {
-				return nil, fmt.Errorf("opening executable: %q", executablePath)
-			}
-
-			i.logger.Debugf("Attaching uprobe %q to %q", p.Name, p.AttachTo)
+		case strings.HasPrefix(p.SectionName, "uprobe/") ||
+			strings.HasPrefix(p.SectionName, "uretprobe/"):
+			uprobeTracer := i.uprobeTracers[p.Name]
 			switch strings.Split(p.SectionName, "/")[0] {
 			case "uprobe":
-				return ex.Uprobe(parts[1], prog, nil)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUprobe, p.AttachTo, prog)
 			case "uretprobe":
-				return ex.Uretprobe(parts[1], prog, nil)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUretprobe, p.AttachTo, prog)
 			}
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)

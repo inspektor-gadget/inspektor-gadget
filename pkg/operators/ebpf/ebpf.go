@@ -44,6 +44,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 )
 
 const (
@@ -112,6 +113,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 		networkTracers: make(map[string]*networktracer.Tracer[api.GadgetData]),
 		tcHandlers:     make(map[string]*tchandler.Handler),
+		uprobeTracers:  make(map[string]*uprobetracer.Tracer[api.GadgetData]),
 
 		paramValues: paramValues,
 	}
@@ -152,6 +154,7 @@ type ebpfInstance struct {
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
+	uprobeTracers  map[string]*uprobetracer.Tracer[api.GadgetData]
 
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
@@ -368,8 +371,19 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 	}
 
 	// Create network tracers, one for each socket filter program
+	// The same applies to uprobe / uretprobe as well.
 	for _, p := range i.collectionSpec.Programs {
 		switch p.Type {
+		case ebpf.Kprobe:
+			if strings.HasPrefix(p.SectionName, "uprobe/") ||
+				strings.HasPrefix(p.SectionName, "uretprobe/") {
+				uprobeTracer, err := uprobetracer.NewTracer[api.GadgetData](gadgetCtx.Logger())
+				if err != nil {
+					i.Close()
+					return fmt.Errorf("creating uprobe tracer: %w", err)
+				}
+				i.uprobeTracers[p.Name] = uprobeTracer
+			}
 		case ebpf.SocketFilter:
 			if strings.HasPrefix(p.SectionName, "socket") {
 				networkTracer, err := networktracer.NewTracer[api.GadgetData]()
@@ -584,6 +598,9 @@ func (i *ebpfInstance) Close() {
 	for _, handler := range i.tcHandlers {
 		handler.Close()
 	}
+	for _, uprobeTracer := range i.uprobeTracers {
+		uprobeTracer.Close()
+	}
 }
 
 // Using Attacher interface for network tracers for now
@@ -607,6 +624,12 @@ func (i *ebpfInstance) AttachContainer(container *containercollection.Container)
 		}
 	}
 
+	for _, handler := range i.uprobeTracers {
+		if err := handler.AttachContainer(container); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -626,6 +649,12 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 			if err := handler.DetachContainer(container); err != nil {
 				return err
 			}
+		}
+	}
+
+	for _, uTracer := range i.uprobeTracers {
+		if err := uTracer.DetachContainer(container); err != nil {
+			return err
 		}
 	}
 
