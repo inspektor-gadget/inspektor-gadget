@@ -19,14 +19,18 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	listersv1 "k8s.io/client-go/listers/core/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
+
+type oldResource[T any] struct {
+	deletionTimestamp time.Time
+	obj               T
+}
 
 // K8sInventoryCache is a cache of Kubernetes resources such as pods and services
 // that can be used by operators to enrich events.
@@ -34,8 +38,20 @@ type K8sInventoryCache struct {
 	clientset *kubernetes.Clientset
 
 	factory informers.SharedInformerFactory
-	pods    listersv1.PodLister
-	svcs    listersv1.ServiceLister
+
+	// key namespace/name
+	// value *v1.Pod
+	pods sync.Map
+	// key namespace/name
+	// value oldResource[*v1.Pod]
+	oldPods sync.Map
+
+	// key namespace/name
+	// value *v1.Service
+	svcs sync.Map
+	// key namespace/name
+	// value oldResource[*v1.Service]
+	oldSvcs sync.Map
 
 	exit chan struct{}
 
@@ -45,6 +61,7 @@ type K8sInventoryCache struct {
 
 const (
 	informerResync = 10 * time.Minute
+	oldObjectTTL   = 2 * time.Second
 )
 
 var (
@@ -89,8 +106,8 @@ func (cache *K8sInventoryCache) Start() {
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
 		cache.factory = informers.NewSharedInformerFactory(cache.clientset, informerResync)
-		cache.pods = cache.factory.Core().V1().Pods().Lister()
-		cache.svcs = cache.factory.Core().V1().Services().Lister()
+		cache.factory.Core().V1().Pods().Informer().AddEventHandler(cache)
+		cache.factory.Core().V1().Services().Informer().AddEventHandler(cache)
 
 		cache.exit = make(chan struct{})
 		cache.factory.Start(cache.exit)
@@ -110,10 +127,191 @@ func (cache *K8sInventoryCache) Stop() {
 	cache.useCount--
 }
 
+func (cache *K8sInventoryCache) removeOldPods() {
+	now := time.Now()
+	cache.oldPods.Range(func(key, value any) bool {
+		if now.Sub(value.(oldResource[*v1.Pod]).deletionTimestamp) > oldObjectTTL {
+			cache.oldPods.Delete(key)
+		}
+		return true
+	})
+}
+
+func (cache *K8sInventoryCache) removeOldSvcs() {
+	now := time.Now()
+	cache.oldSvcs.Range(func(key, value any) bool {
+		if now.Sub(value.(oldResource[*v1.Service]).deletionTimestamp) > oldObjectTTL {
+			cache.oldSvcs.Delete(key)
+		}
+		return true
+	})
+}
+
 func (cache *K8sInventoryCache) GetPods() ([]*v1.Pod, error) {
-	return cache.pods.List(labels.Everything())
+	cache.removeOldPods()
+
+	pods := make([]*v1.Pod, 0)
+	addedPods := make(map[string]any)
+	cache.pods.Range(func(_, value any) bool {
+		pods = append(pods, value.(*v1.Pod))
+		addedPods[getObjectKey(value)] = nil
+		return true
+	})
+	cache.oldPods.Range(func(_, value any) bool {
+		pod := value.(oldResource[*v1.Pod]).obj
+		if _, ok := addedPods[getObjectKey(pod)]; !ok {
+			pods = append(pods, pod)
+			// Not needed to add to addedPods, since there are no duplicate keys in a map
+		}
+		return true
+	})
+	return pods, nil
+}
+
+func (cache *K8sInventoryCache) GetPodByName(namespace string, name string) *v1.Pod {
+	cache.removeOldPods()
+
+	key := namespace + "/" + name
+	if value, ok := cache.pods.Load(key); ok {
+		return value.(*v1.Pod)
+	} else if value, ok := cache.oldPods.Load(key); ok {
+		return value.(oldResource[*v1.Pod]).obj
+	}
+	return nil
+}
+
+func (cache *K8sInventoryCache) GetPodByIp(ip string) *v1.Pod {
+	cache.removeOldPods()
+
+	var pod *v1.Pod
+	cache.pods.Range(func(_, value any) bool {
+		if value.(*v1.Pod).Status.PodIP == ip {
+			pod = value.(*v1.Pod)
+			return false
+		}
+		return true
+	})
+	if pod != nil {
+		return pod
+	}
+	cache.oldPods.Range(func(_, value any) bool {
+		if value.(oldResource[*v1.Pod]).obj.Status.PodIP == ip {
+			pod = value.(oldResource[*v1.Pod]).obj
+			return false
+		}
+		return true
+	})
+	return pod
 }
 
 func (cache *K8sInventoryCache) GetSvcs() ([]*v1.Service, error) {
-	return cache.svcs.List(labels.Everything())
+	cache.removeOldSvcs()
+
+	svcs := make([]*v1.Service, 0)
+	addedSvcs := make(map[string]any)
+	cache.svcs.Range(func(_, value any) bool {
+		svcs = append(svcs, value.(*v1.Service))
+		addedSvcs[getObjectKey(value)] = nil
+		return true
+	})
+	cache.oldSvcs.Range(func(_, value any) bool {
+		svc := value.(oldResource[*v1.Service]).obj
+		if _, ok := addedSvcs[getObjectKey(svc)]; !ok {
+			svcs = append(svcs, svc)
+			// Not needed to add to addedSvcs, since there are no duplicate keys in a map
+		}
+		return true
+	})
+	return svcs, nil
+}
+
+func (cache *K8sInventoryCache) GetSvcByName(namespace string, name string) *v1.Service {
+	cache.removeOldSvcs()
+
+	key := namespace + "/" + name
+	if value, ok := cache.svcs.Load(key); ok {
+		return value.(*v1.Service)
+	}
+	if value, ok := cache.oldSvcs.Load(key); ok {
+		return value.(oldResource[*v1.Service]).obj
+	}
+	return nil
+}
+
+func (cache *K8sInventoryCache) GetSvcByIp(ip string) *v1.Service {
+	cache.removeOldSvcs()
+
+	var svc *v1.Service
+	cache.svcs.Range(func(_, value any) bool {
+		if value.(*v1.Service).Spec.ClusterIP == ip {
+			svc = value.(*v1.Service)
+			return false
+		}
+		return true
+	})
+	if svc != nil {
+		return svc
+	}
+	cache.oldSvcs.Range(func(_, value any) bool {
+		if value.(oldResource[*v1.Service]).obj.Spec.ClusterIP == ip {
+			svc = value.(oldResource[*v1.Service]).obj
+			return false
+		}
+		return true
+	})
+	return svc
+}
+
+func getObjectKey(obj any) string {
+	switch o := obj.(type) {
+	case *v1.Pod:
+		return o.Namespace + "/" + o.Name
+	case *v1.Service:
+		return o.Namespace + "/" + o.Name
+	default:
+		log.Warnf("getObjectKey: unknown object type: %T", o)
+		return ""
+	}
+}
+
+func (cache *K8sInventoryCache) OnAdd(obj any, isInInitialList bool) {
+	switch o := obj.(type) {
+	case *v1.Pod:
+		key := getObjectKey(o)
+		// If the pod is an old pod still cached, remove it from there
+		cache.oldPods.Delete(key)
+		cache.pods.Store(key, o)
+	case *v1.Service:
+		key := getObjectKey(o)
+		cache.oldSvcs.Delete(key)
+		cache.svcs.Store(key, o)
+	default:
+		log.Warnf("OnAdd: unknown object type: %T", o)
+	}
+}
+
+func (cache *K8sInventoryCache) OnUpdate(oldObj, newObj any) {
+	switch o := newObj.(type) {
+	case *v1.Pod:
+		cache.pods.Store(getObjectKey(o), o)
+	case *v1.Service:
+		cache.svcs.Store(getObjectKey(o), o)
+	default:
+		log.Warnf("OnUpdate: unknown object type: %T", o)
+	}
+}
+
+func (cache *K8sInventoryCache) OnDelete(obj any) {
+	switch o := obj.(type) {
+	case *v1.Pod:
+		key := getObjectKey(o)
+		cache.oldPods.Store(key, oldResource[*v1.Pod]{deletionTimestamp: time.Now(), obj: o})
+		cache.pods.Delete(key)
+	case *v1.Service:
+		key := getObjectKey(o)
+		cache.oldSvcs.Store(key, oldResource[*v1.Service]{deletionTimestamp: time.Now(), obj: o})
+		cache.svcs.Delete(key)
+	default:
+		log.Warnf("OnDelete: unknown object type: %T", o)
+	}
 }
