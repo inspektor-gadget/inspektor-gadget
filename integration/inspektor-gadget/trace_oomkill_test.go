@@ -78,12 +78,17 @@ spec:
   containers:
   - name: test-pod-container
     image: busybox
-    resources:
-      limits:
-        memory: "128Mi"
     command: ["/bin/sh", "-c"]
     args:
-    - while true; do tail /dev/zero; done
+    - mkdir /sys/fs/cgroup/test; echo 128M > /sys/fs/cgroup/test/memory.max; while true; do sh -c 'echo $$$ > /sys/fs/cgroup/test/cgroup.procs; tail /dev/zero'; done
+    volumeMounts:
+      - mountPath: /sys/fs/cgroup
+        name: cgroup
+        readOnly: false
+  volumes:
+    - name: cgroup
+      hostPath:
+        path: /sys/fs/cgroup
 `, ns)
 
 	commands := []TestStep{
@@ -94,7 +99,7 @@ spec:
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
 		},
-		WaitUntilTestPodReadyOrOOMKilledCommand(ns),
+		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
