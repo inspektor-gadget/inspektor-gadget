@@ -427,8 +427,10 @@ Inspektor Gadget to get the current mount namespace.
 Finally, we need to discard events we're not interested in:
 
 ```c
-	if (gadget_should_discard_mntns_id(event.mntns_id))
+	if (gadget_should_discard_mntns_id(event.mntns_id)) {
+		gadget_discard_buf(event);
 		return 0;
+	}
 ```
 
 The `gadget_should_discard_mntns_id` function is provided to determine if a given event should be
