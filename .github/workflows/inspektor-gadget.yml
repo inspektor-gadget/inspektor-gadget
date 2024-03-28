@@ -420,6 +420,8 @@ jobs:
     outputs:
       digest-amd64: ${{ steps.published-gadget-container-images.outputs.amd64 }}
       digest-arm64: ${{ steps.published-gadget-container-images.outputs.arm64 }}
+      sbom-digest-amd64: ${{ steps.gadget-container-images-attach-sbom.outputs.sbom-amd64 }}
+      sbom-digest-arm64: ${{ steps.gadget-container-images-attach-sbom.outputs.sbom-arm64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -486,7 +488,7 @@ jobs:
         name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
-    - name: Generate SBOM for gadget ${{ matrix.os }} ${{ matrix.platform }} image as artifacts
+    - name: Generate SBOM for gadget ${{ matrix.os }} ${{ matrix.platform }} image
       uses: docker/build-push-action@v5
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
@@ -499,12 +501,6 @@ jobs:
         # The following permits to generate SBOM:
         # https://github.com/moby/buildkit/issues/2773#issue-1194754388
         build-args: BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
-    - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}-bom-json
-        path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json
-        retention-days: 1
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image to registry
@@ -517,6 +513,26 @@ jobs:
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+    - name: Setup oras
+      if: github.event_name != 'pull_request'
+      uses: oras-project/setup-oras@v1
+    - name: Attach SBOM to container image
+      if: github.event_name != 'pull_request'
+      id: gadget-container-images-attach-sbom
+      run: |
+        # We need to get the image digest from the manifest.
+        # Otherwise, we will attach the SBOM to the manifest and the SBOM will
+        # be lost when using imagetools as this command creates a new manifest
+        # and attaches only the images, not the existing manifests.
+        # This way, we are sure the new manifest will point to the images which
+        # have SBOM attached.
+        manifest=$(oras manifest fetch ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-gadget-container-images.outputs.digest }})
+        image_digest=$(echo $manifest | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
+        image_digest=$(echo "$image_digest" | tr -d '"')
+
+        sbom_digest=$(oras attach ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${image_digest} /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
+
+        echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
     - name: Save gadget ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
@@ -545,6 +561,8 @@ jobs:
     outputs:
       digest-amd64: ${{ steps.published-ig-container-images.outputs.amd64 }}
       digest-arm64: ${{ steps.published-ig-container-images.outputs.arm64 }}
+      sbom-digest-amd64: ${{ steps.ig-container-images-attach-sbom.outputs.sbom-amd64 }}
+      sbom-digest-arm64: ${{ steps.ig-container-images-attach-sbom.outputs.sbom-arm64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -611,7 +629,7 @@ jobs:
         name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
-    - name: Generate ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
+    - name: Generate ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM
       uses: docker/build-push-action@v5
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
@@ -625,12 +643,6 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
           BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
-    - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM as artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}-bom-json
-        path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json
-        retention-days: 1
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image to registry
@@ -646,6 +658,26 @@ jobs:
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+    - name: Setup oras
+      if: github.event_name != 'pull_request'
+      uses: oras-project/setup-oras@v1
+    - name: Attach SBOM to container image
+      if: github.event_name != 'pull_request'
+      id: ig-container-images-attach-sbom
+      run: |
+        # We need to get the image digest from the manifest.
+        # Otherwise, we will attach the SBOM to the manifest and the SBOM will
+        # be lost when using imagetools as this command creates a new manifest
+        # and attaches only the images, not the existing manifests.
+        # This way, we are sure the new manifest will point to the images which
+        # have SBOM attached.
+        manifest=$(oras manifest fetch ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-ig-container-images.outputs.digest }})
+        image_digest=$(echo $manifest | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
+        image_digest=$(echo "$image_digest" | tr -d '"')
+
+        sbom_digest=$(oras attach ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${image_digest} /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
+
+        echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
     - name: Save ig ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-ig-container-images
       if: github.event_name != 'pull_request'
@@ -737,7 +769,9 @@ jobs:
               --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-amd64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
 
           image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
@@ -788,7 +822,9 @@ jobs:
           docker buildx imagetools create \
             -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-amd64 }} \
+            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-arm64 }} \
+            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }} \
             --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
             --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
             --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
@@ -1893,12 +1929,6 @@ jobs:
         # Derivate public key from private key to publish it as release
         # artifact, so people can verify our signature.
         cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
-    - name: Rename containers SBOMs
-      shell: bash
-      run: |
-        for i in *-bom-json; do
-          mv $i/sbom_cyclonedx.json $(basename $i -bom-json)-${{ github.ref_name }}.bom.json
-        done
     - name: Login to Container Registry
       uses: docker/login-action@v3
       with:
@@ -1963,12 +1993,6 @@ jobs:
       uses: csexton/release-asset-action@v3
       with:
         pattern: "*.sig"
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Upload container images SBOMs
-      uses: csexton/release-asset-action@v3
-      with:
-        pattern: "*.bom.json"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload binaries SBOMs
