@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
@@ -112,11 +111,14 @@ func (i *ebpfInstance) runSnapshotters() error {
 				}
 			}
 		case "tcp", "udp":
-			namespacesToVisit := map[uint64]*containercollection.Container{}
-			for _, c := range i.containers {
-				namespacesToVisit[c.Netns] = c
-			}
-			for _, container := range namespacesToVisit {
+			visitedNetNs := make(map[uint64]struct{})
+			for _, container := range i.containers {
+				_, visited := visitedNetNs[container.Netns]
+				if visited {
+					continue
+				}
+				visitedNetNs[container.Netns] = struct{}{}
+
 				err := netnsenter.NetnsEnter(int(container.Pid), func() error {
 					reader, err := l.link.Open()
 					if err != nil {
