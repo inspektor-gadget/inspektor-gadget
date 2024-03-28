@@ -5,6 +5,9 @@ inputs:
   runtime:
     description: "The container runtime to use for minikube."
     required: true
+  runtime:
+    description: "The driver to use for minikube."
+    required: true
   multi-node:
     description: "Whether to run minikube with multiple nodes."
     required: false
@@ -16,7 +19,7 @@ runs:
     - name: Start minikube
       shell: bash
       run: |
-        make minikube-start-${{ inputs.runtime }}
+        MINIKUBE_DRIVER=${{ inputs.driver }} make minikube-start-${{ inputs.runtime }}
       env:
         # When using multi-node, run the integration tests on two nodes.
         # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
