@@ -1,9 +1,10 @@
 # Artifact Hub package metadata file
+# This file was automatically generated from gadget.yaml
 version: 0.27.0
 name: "trace tcpdrop"
 category: monitoring-logging
 displayName: "trace tcpdrop"
-createdAt: "2024-03-25T14:32:05+01:00"
+createdAt: "2024-04-04T17:25:42+02:00"
 description: "trace TCP packets dropped by the kernel"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
