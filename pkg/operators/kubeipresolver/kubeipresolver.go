@@ -19,8 +19,6 @@ package kubeipresolver
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -86,7 +84,7 @@ func (k *KubeIPResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetIn
 
 type KubeIPResolverInstance struct {
 	gadgetCtx      operators.GadgetContext
-	k8sInventory   *common.K8sInventoryCache
+	k8sInventory   common.K8sInventoryCache
 	gadgetInstance any
 }
 
@@ -105,12 +103,6 @@ func (m *KubeIPResolverInstance) PostGadgetRun() error {
 }
 
 func (m *KubeIPResolverInstance) enrich(ev any) {
-	pods, err := m.k8sInventory.GetPods()
-	if err != nil {
-		log.Warnf("getting pods from k8s inventory: %v", err)
-		return
-	}
-
 	endpoints := ev.(KubeIPResolverInterface).GetEndpoints()
 	for j := range endpoints {
 		// initialize to this default value if we don't find a match
@@ -118,7 +110,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 	}
 
 	found := 0
-	for _, pod := range pods {
+	for _, pod := range m.k8sInventory.GetPods() {
 		if pod.Spec.HostNetwork {
 			continue
 		}
@@ -138,12 +130,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		}
 	}
 
-	svcs, err := m.k8sInventory.GetSvcs()
-	if err != nil {
-		log.Warnf("getting services from k8s inventory: %v", err)
-		return
-	}
-	for _, svc := range svcs {
+	for _, svc := range m.k8sInventory.GetSvcs() {
 		for _, endpoint := range endpoints {
 			if svc.Spec.ClusterIP == endpoint.Addr {
 				endpoint.Kind = types.EndpointKindService

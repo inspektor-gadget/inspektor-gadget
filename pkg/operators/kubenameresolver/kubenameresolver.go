@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -93,7 +91,7 @@ func (k *KubeNameResolver) Instantiate(gadgetCtx operators.GadgetContext, gadget
 
 type KubeNameResolverInstance struct {
 	gadgetCtx      operators.GadgetContext
-	k8sInventory   *common.K8sInventoryCache
+	k8sInventory   common.K8sInventoryCache
 	gadgetInstance any
 }
 
@@ -115,12 +113,7 @@ func (m *KubeNameResolverInstance) enrich(ev any) {
 	kubeNameResolver, _ := ev.(KubeNameResolverInterface)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	pods, err := m.k8sInventory.GetPods()
-	if err != nil {
-		log.Warnf("getting pods from k8s inventory: %v", err)
-		return
-	}
-	for _, pod := range pods {
+	for _, pod := range m.k8sInventory.GetPods() {
 		if pod.Namespace == containerInfo.GetNamespace() && pod.Name == containerInfo.GetPod() {
 			owner := ""
 			// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
