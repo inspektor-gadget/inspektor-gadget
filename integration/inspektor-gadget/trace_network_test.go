@@ -25,10 +25,6 @@ import (
 )
 
 func TestTraceNetwork(t *testing.T) {
-	if *k8sDistro == K8sDistroGKECOS {
-		t.Skip("Skip running trace network on GKE COS: see pull request #2280")
-	}
-
 	ns := GenerateTestNamespaceName("test-trace-network")
 
 	t.Parallel()

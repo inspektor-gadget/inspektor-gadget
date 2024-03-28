@@ -26,6 +26,11 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 )
 
+func resetState() {
+	symbolsMap = map[string]uint64{}
+	triedGetAddr = map[string]error{}
+}
+
 func TestCustomKAllSyms(t *testing.T) {
 	kAllSymsStr := strings.Join([]string{
 		"0000000000000000 A fixed_percpu_data",
@@ -62,6 +67,8 @@ func TestCustomKAllSyms(t *testing.T) {
 
 func TestRealKAllSyms(t *testing.T) {
 	utilstest.RequireRoot(t)
+	utilstest.RequireFileContains(t, "/proc/kallsyms", "bpf_prog_fops")
+	utilstest.RequireFileContains(t, "/proc/kallsyms", "socket_file_ops")
 
 	kAllSyms, err := NewKAllSyms()
 	require.Nil(t, err, "NewKAllSyms failed: %v", err)
@@ -77,78 +84,174 @@ func TestRealKAllSyms(t *testing.T) {
 	require.NotEqual(t, 0, addr, "bpf_prog_fops has a zero address")
 }
 
-func TestSpecRewriteConstants(t *testing.T) {
-	kAllSymsFactory := func() (*KAllSyms, error) {
-		kAllSymsStr := strings.Join([]string{
-			"0000000000000000 A fixed_percpu_data",
-			"ffffffffb4231f40 D bpf_prog_fops",
-			"ffffffffb43723e0 d socket_file_ops",
-		}, "\n")
+var specTest = &ebpf.CollectionSpec{
+	Maps: map[string]*ebpf.MapSpec{
+		".rodata": {
+			Type:       ebpf.Array,
+			KeySize:    4,
+			ValueSize:  4,
+			MaxEntries: 1,
+			Value: &btf.Datasec{
+				Vars: []btf.VarSecinfo{
+					{
+						Type: &btf.Var{
+							Name: "bpf_prog_fops_addr",
+							Type: &btf.Int{Size: 8},
+						},
+						Offset: 0,
+						Size:   8,
+					},
+					{
+						Type: &btf.Var{
+							Name: "socket_file_ops_addr",
+							Type: &btf.Int{Size: 8},
+						},
+						Offset: 8,
+						Size:   8,
+					},
+				},
+			},
+			Contents: []ebpf.MapKV{
+				{Key: uint32(0), Value: []byte{
+					0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 0, 0, 0, 0, 0,
+				}},
+			},
+		},
+	},
+}
 
-		kAllSymsReader := strings.NewReader(kAllSymsStr)
-		kAllSyms, err := NewKAllSymsFromReader(kAllSymsReader)
-		require.Nil(t, err, "NewKAllSymsFromReader failed: %v", err)
-		return kAllSyms, nil
-	}
+func TestSpecRewriteConstants(t *testing.T) {
+	t.Cleanup(resetState)
+
+	var err error
+	kAllSymsStr := strings.Join([]string{
+		"0000000000000000 A fixed_percpu_data",
+		"ffffffffb4231f40 D bpf_prog_fops",
+		"ffffffffb43723e0 d socket_file_ops",
+	},
+		"\n")
+	kAllSymsReader := strings.NewReader(kAllSymsStr)
+	kAllSyms, err := NewKAllSymsFromReader(kAllSymsReader)
+	require.Nil(t, err, "NewKAllSymsFromReader failed: %v", err)
+	kSymbolResolver := newKAllSymsResolver()
+	kSymbolResolver.kAllSyms = kAllSyms
 
 	// Little endian representation of the addresses above:
 	bpfProgFopsAddr := []byte{0x40, 0x1f, 0x23, 0xb4, 0xff, 0xff, 0xff, 0xff}
 	socketFileOpsAddr := []byte{0xe0, 0x23, 0x37, 0xb4, 0xff, 0xff, 0xff, 0xff}
 
-	spec := &ebpf.CollectionSpec{
-		Maps: map[string]*ebpf.MapSpec{
-			".rodata": {
-				Type:       ebpf.Array,
-				KeySize:    4,
-				ValueSize:  4,
-				MaxEntries: 1,
-				Value: &btf.Datasec{
-					Vars: []btf.VarSecinfo{
-						{
-							Type: &btf.Var{
-								Name: "bpf_prog_fops_addr",
-								Type: &btf.Int{Size: 8},
-							},
-							Offset: 0,
-							Size:   8,
-						},
-						{
-							Type: &btf.Var{
-								Name: "socket_file_ops_addr",
-								Type: &btf.Int{Size: 8},
-							},
-							Offset: 8,
-							Size:   8,
-						},
-					},
-				},
-				Contents: []ebpf.MapKV{
-					{Key: uint32(0), Value: []byte{
-						0, 0, 0, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0,
-					}},
-				},
-			},
-		},
-	}
+	spec := specTest.Copy()
 
-	err := specUpdateAddresses(
-		kAllSymsFactory,
+	err = specUpdateAddresses(
+		[]symbolResolver{
+			kSymbolResolver,
+		},
 		spec,
 		[]string{"abcde_bad_name"},
 	)
-	require.ErrorIs(t, err, os.ErrNotExist, "specRewriteConstantsWithSymbolAddresses should have failed")
+	require.ErrorContainsf(t, err, "was not found in kallsyms", "specUpdateAddresses should have failed")
 
 	err = specUpdateAddresses(
-		kAllSymsFactory,
+		[]symbolResolver{
+			kSymbolResolver,
+		},
 		spec,
 		[]string{"bpf_prog_fops", "socket_file_ops"},
 	)
-	require.Nil(t, err, "specRewriteConstantsWithSymbolAddresses failed: %v", err)
+	require.Nil(t, err, "specUpdateAddresses failed: %v", err)
 
 	expectedContents := []byte{}
 	expectedContents = append(expectedContents, bpfProgFopsAddr...)
 	expectedContents = append(expectedContents, socketFileOpsAddr...)
 	contents := spec.Maps[".rodata"].Contents[0].Value
 	require.Equal(t, contents, expectedContents, "contents aren't equal")
+}
+
+func TestSpecRewriteConstantsRoot(t *testing.T) {
+	utilstest.RequireRoot(t)
+	utilstest.RequireFileContains(t, "/proc/kallsyms", "bpf_prog_fops")
+	utilstest.RequireFileContains(t, "/proc/kallsyms", "socket_file_ops")
+	t.Cleanup(resetState)
+
+	resetState()
+
+	spec1 := specTest.Copy()
+	err := specUpdateAddresses(
+		[]symbolResolver{
+			newKAllSymsResolver(),
+		},
+		spec1,
+		[]string{"bpf_prog_fops", "socket_file_ops"},
+	)
+	require.Nil(t, err, "specUpdateAddresses failed: %v", err)
+
+	resetState()
+
+	spec2 := specTest.Copy()
+	err = specUpdateAddresses(
+		[]symbolResolver{
+			newEbpfResolver(),
+		},
+		spec2,
+		[]string{"bpf_prog_fops", "socket_file_ops"},
+	)
+	require.Nil(t, err, "specUpdateAddresses failed: %v", err)
+
+	resetState()
+
+	spec3 := specTest.Copy()
+	err = specUpdateAddresses(
+		[]symbolResolver{
+			newKAllSymsResolver(),
+			newEbpfResolver(),
+		},
+		spec3,
+		[]string{"bpf_prog_fops", "socket_file_ops"},
+	)
+	require.Nil(t, err, "specUpdateAddresses failed: %v", err)
+
+	resetState()
+
+	spec4 := specTest.Copy()
+	err = specUpdateAddresses(
+		[]symbolResolver{},
+		spec4,
+		[]string{"bpf_prog_fops", "socket_file_ops"},
+	)
+	require.ErrorIs(t, err, os.ErrNotExist, "specUpdateAddresses should have failed")
+
+	t.Logf("spec1: %v", spec1.Maps[".rodata"].Contents[0].Value)
+	t.Logf("spec2: %v", spec2.Maps[".rodata"].Contents[0].Value)
+	t.Logf("spec3: %v", spec3.Maps[".rodata"].Contents[0].Value)
+
+	require.Equal(t,
+		spec1.Maps[".rodata"].Contents[0].Value,
+		spec3.Maps[".rodata"].Contents[0].Value,
+		"contents spec1 and spec3 aren't equal")
+	require.Equal(t,
+		spec1.Maps[".rodata"].Contents[0].Value,
+		spec2.Maps[".rodata"].Contents[0].Value,
+		"contents spec1 and spec2 aren't equal")
+}
+
+func TestSpecRewriteConstantsWithEbpf(t *testing.T) {
+	utilstest.RequireRoot(t)
+	t.Cleanup(resetState)
+
+	spec := specTest.Copy()
+	err := specUpdateAddresses(
+		[]symbolResolver{
+			newEbpfResolver(),
+		},
+		spec,
+		[]string{"bpf_prog_fops", "socket_file_ops"},
+	)
+	require.Nil(t, err, "SpecUpdateAddresses failed: %v", err)
+	require.Len(t, spec.Maps[".rodata"].Contents[0].Value, 16, "Contents should have 16 bytes")
+	values, ok := spec.Maps[".rodata"].Contents[0].Value.([]byte)
+	require.True(t, ok, "Contents should be a byte slice")
+	emptyBytes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	require.NotEqual(t, emptyBytes, values[:8], "First byte should not be zero")
+	require.NotEqual(t, emptyBytes, values[8:], "Last 8 bytes should be zero")
 }

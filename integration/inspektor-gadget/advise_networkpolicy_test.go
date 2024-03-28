@@ -25,10 +25,6 @@ import (
 )
 
 func TestAdviseNetworkpolicy(t *testing.T) {
-	if *k8sDistro == K8sDistroGKECOS {
-		t.Skip("Skip running advise network policy on GKE COS: see pull request #2280")
-	}
-
 	nsServer := GenerateTestNamespaceName("test-advise-networkpolicy-server")
 	nsClient := GenerateTestNamespaceName("test-advise-networkpolicy-client")
 

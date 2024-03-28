@@ -9,12 +9,18 @@ const volatile u64 socket_ino = 0;
 
 // initialized by this ebpf program
 volatile u64 tracer_pid_tgid = 0;
+
+struct file_fields {
+	u64 private_data;
+	u64 f_op;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, int); // index: zero
-	__type(value, u64); // private_data
-} ig_private_data SEC(".maps");
+	__type(value, struct file_fields); // value: file_fields
+} ig_file_fields SEC(".maps");
 
 // __scm_send() sends a file descriptor through a unix socket
 // using sendmsg() and SCM_RIGHTS. See man cmsg(3) for more details.
@@ -43,7 +49,7 @@ SEC("kretprobe/fget_raw")
 int BPF_KRETPROBE(ig_fget_x, struct file *ret)
 {
 	u64 current_pid_tgid;
-	u64 *private_data;
+	struct file_fields *ff;
 	int zero = 0;
 
 	if (tracer_pid_tgid == 0)
@@ -54,11 +60,12 @@ int BPF_KRETPROBE(ig_fget_x, struct file *ret)
 	if (current_pid_tgid != tracer_pid_tgid)
 		return 0;
 
-	private_data = bpf_map_lookup_elem(&ig_private_data, &zero);
-	if (!private_data)
+	ff = bpf_map_lookup_elem(&ig_file_fields, &zero);
+	if (!ff)
 		return 0;
 
-	*private_data = (u64)BPF_CORE_READ(ret, private_data);
+	ff->private_data = (u64)BPF_CORE_READ(ret, private_data);
+	ff->f_op = (u64)BPF_CORE_READ(ret, f_op);
 
 	// Initialize private_data for only one execution of __scm_send
 	tracer_pid_tgid = 0;

@@ -69,10 +69,6 @@ func TestTopEbpf(t *testing.T) {
 		t.Skip("Skip running top ebpf gadget on AKS Ubuntu amd64: see issue #931")
 	}
 
-	if *k8sDistro == K8sDistroGKECOS {
-		t.Skip("Skip running top ebpf gadget on GKE COS: see pull request #2280")
-	}
-
 	t.Parallel()
 
 	t.Run("StartAndStop", func(t *testing.T) {
