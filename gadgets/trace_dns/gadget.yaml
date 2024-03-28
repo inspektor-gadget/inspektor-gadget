@@ -3,6 +3,10 @@ description: trace dns requests and responses
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs/latest/
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
+annotations:
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/logoURL: https://inspektor-gadget.io/media/brand-icon.svg
+  artifacthub.io/provider: The Inspektor Gadget authors
 tracers:
   dns:
     mapName: events

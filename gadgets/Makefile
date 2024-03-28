@@ -28,12 +28,17 @@ all: build
 
 build: $(GADGETS)
 
-# GADGET_BUILD_PARAMS can be used to pass additional parameters e.g
-# GADGET_BUILD_PARAMS="--update-metadata" make build
+# GADGET_BUILD_PARAMS can be used to pass additional parameters:
+#     GADGET_BUILD_PARAMS="--update-metadata" make build
+# IG_ARTIFACTHUB_PKG_${FIELD} can be used to override custom fields:
+#     IG_ARTIFACTHUB_PKG_VERSION="0.26.0" make build
 .PHONY: $(GADGETS)
 $(GADGETS):
 	@echo "Building $@"
-	@sudo -E IG_EXPERIMENTAL=true $(IG) image build \
+	@sudo -E \
+		IG_EXPERIMENTAL=true \
+		IG_ARTIFACTHUB_PKG_IMAGE=$(GADGET_REPOSITORY)/$@:latest \
+		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
 		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) \
 		$$GADGET_BUILD_PARAMS \

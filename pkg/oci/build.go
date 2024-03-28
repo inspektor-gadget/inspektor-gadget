@@ -54,10 +54,14 @@ type BuildGadgetImageOpts struct {
 	EBPFObjectPaths map[string]string
 	// Path to the metadata file.
 	MetadataPath string
+	// Path to artifacthub-pkg.yml file.
+	ArtifactHubPkgPath string
 	// Optional path to the Wasm file
 	WasmObjectPath string
 	// If true, the metadata is updated to follow changes in the eBPF objects.
 	UpdateMetadata bool
+	// If true, the artifact hub package is updated to follow changes in the gadget metadata.
+	UpdateArtifactHubPkg bool
 	// If true, the metadata is validated before creating the image.
 	ValidateMetadata bool
 	// Date and time on which the image is built (date-time string as defined by RFC 3339).
@@ -76,6 +80,12 @@ func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 	if opts.UpdateMetadata {
 		if err := createOrUpdateMetadataFile(ctx, opts); err != nil {
 			return nil, fmt.Errorf("updating metadata file: %w", err)
+		}
+	}
+
+	if opts.UpdateArtifactHubPkg {
+		if err := createOrUpdateArtifactHubPkg(ctx, opts); err != nil {
+			return nil, fmt.Errorf("updating artifacthub-pkg.yml: %w", err)
 		}
 	}
 
