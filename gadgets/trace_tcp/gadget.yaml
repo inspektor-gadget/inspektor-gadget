@@ -3,6 +3,10 @@ description: monitor connect, accept and close events of TCP connections
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+annotations:
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/logoURL: https://inspektor-gadget.io/media/brand-icon.svg
+  artifacthub.io/provider: The Inspektor Gadget authors
 tracers:
   tracetcp:
     mapName: events
