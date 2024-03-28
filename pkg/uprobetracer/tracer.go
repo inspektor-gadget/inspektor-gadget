@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package uprobetracer handles how uprobe/uretprobe programs are attached
+// Package uprobetracer handles how uprobe/uretprobe/USDT programs are attached
 // to containers. It has two running modes: `pending` mode and `running` mode.
 //
 // Before `AttachProg` is called, uprobetracer runs in `pending` mode, only
@@ -55,6 +55,7 @@ type ProgType uint32
 const (
 	ProgUprobe ProgType = iota
 	ProgUretprobe
+	ProgUSDT
 )
 
 type inodeUUID struct {
@@ -118,7 +119,7 @@ func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 
 // AttachProg loads the ebpf program, and try attaching if there are pending containers
 func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo string, prog *ebpf.Program) error {
-	if progType != ProgUprobe && progType != ProgUretprobe {
+	if progType != ProgUprobe && progType != ProgUretprobe && progType != ProgUSDT {
 		return fmt.Errorf("unsupported uprobe prog type: %q", progType)
 	}
 
@@ -200,6 +201,16 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 		return ex.Uprobe(t.attachSymbol, t.prog, nil)
 	case ProgUretprobe:
 		return ex.Uretprobe(t.attachSymbol, t.prog, nil)
+	case ProgUSDT:
+		attachAddr, semaphoreAddr, err := getUsdtInfo()
+		if err != nil {
+			return nil, fmt.Errorf("reading USDT metadata: %w", err)
+		}
+		return ex.Uprobe(t.attachSymbol, t.prog,
+			&link.UprobeOptions{
+				Address:      attachAddr,
+				RefCtrOffset: semaphoreAddr,
+			})
 	default:
 		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %q", t.progType)
 	}
