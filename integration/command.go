@@ -478,10 +478,10 @@ func (c *Command) KillWithoutTest() error {
 func (c *Command) Run(t *testing.T) {
 	c.createExecCmd()
 
-	t.Logf("Run command(%s):\n%s\n", c.Name, c.Cmd)
+	t.Logf("[%s] Run command(%s):\n%s\n", time.Now().UTC(), c.Name, c.Cmd)
 	err := c.command.Run()
-	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.Name, c.stderr.String(), c.stdout.String())
+	t.Logf("[%s] Command returned(%s):\n%s\n%s\n",
+		time.Now().UTC(), c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
 	c.verifyOutput(t)
@@ -497,7 +497,7 @@ func (c *Command) Start(t *testing.T) {
 
 	c.createExecCmd()
 
-	t.Logf("Start command(%s): %s\n", c.Name, c.Cmd)
+	t.Logf("[%s] Start command(%s): %s\n", time.Now().UTC(), c.Name, c.Cmd)
 	err := c.command.Start()
 	require.NoError(t, err, "failed to start command(%s)", c.Name)
 
@@ -514,7 +514,7 @@ func (c *Command) Stop(t *testing.T) {
 		return
 	}
 
-	t.Logf("Stop command(%s)\n", c.Name)
+	t.Logf("[%s] Stop command(%s)\n", time.Now().UTC(), c.Name)
 	err := c.kill()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
 		c.Name, c.stderr.String(), c.stdout.String())
