@@ -19,6 +19,91 @@ Inspektor Gadget.
     - `git clone git@github.com:your_account/inspektor-gadget.git`.
 - Install [Docker](https://docs.docker.com/get-docker/), [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx) and [Golang](https://golang.org/doc/install).
 - To be able to cross build our different container images, you will also need [`qemu-user-static`](https://github.com/multiarch/qemu-user-static).
+- There are many possibilities for configuring a development environment. Without having official support of any of them, some examples are:
+    - Linux machine
+    - Mac machine with Linux VM
+    - Windows machine with Linux VM
+    - Windows machine with WSL is **NOT** ideal at the time of writing (March 2023). Because of networking issues, Docker is not properly working in WSL in the context of Inspektor Gadget.
+    - Windows machine with Multipass. Requirements: Windows with Hyper-V, VSCode with Remote SSH extension on Windows
+
+        1. [Install Multipass](https://multipass.run/install#:~:text=Install%20Multipass%20on%20Windows)
+
+        2. Launch multipass instance with default ubuntu image (Ubuntu 22.04 LTS) and specific config
+        `$ multipass launch --cpus 4 --disk 50G --memory 8G`
+
+        3. Get the name of the newly created VM
+        `$ multipass list`
+
+        4. Log into VM
+        `$ multipass shell <VM-name>`
+
+        5. Generate ssh Key...
+        `$ ssh-keygen`
+        ...and add it to you your GitHub account
+
+        6. Clone IG repo into the VM to ~/go/src/github.com/inspektor-gadget/
+
+        7. Configure VSCode remote SSH
+
+            7.1 Add new host into your user's ssh config on Windows. Edit .ssh\config (open via View -> Command Palette -> Remote-SSH: Open Configuration File) and add
+
+            ```
+            Host <VM-name>
+            HostName <VM-IPv4-address>
+            User ubuntu
+            ```
+            7.2 Create Windows ssh key via "ssh-keygen -t rsa -b 4096" and add `cat id_rsa.pub` (from Windows) to the VM ssh/authorized_keys file
+
+            7.3 Test connection is working. Open VSCode > Click "Open a Remote Window" button on the left corner down > chose "Connect to Host" from the menu > Select the Host you created earlier > Open IG directory
+
+        8. Install [Golang](https://go.dev/dl/). Choose the version first
+
+        ```
+        $ wget https://go.dev/dl/go<version>.linux-amd64.tar.gz
+        # as root
+        $ rm -rf /usr/local/go && tar -C /usr/local -xzf go<version>.linux-amd64.tar.gz
+        # verfiy version
+        $ /usr/local/go/bin/go version
+        go version go<version> linux/amd64
+        # add following line to /etc/profile
+        $ export PATH=$PATH:/usr/local/go/bin
+        # test installation
+        $ source /etc/profile
+        $ go version
+        ```
+        9. Install IG dependencies for building and testing locally: make, docker, docker buildx plugin, minikube, kubectl
+
+        ```
+        $ sudo apt update
+        $ sudo apt install make
+        # docker
+        $ sudo apt install docker.io
+        $ sudo usermod -aG docker $USER
+        $ sudo reboot
+        # log again into VM after rebooting
+        ```
+
+
+
+        ```
+        # install buildx plugin
+        $ wget -qO - https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/docker-archive-keyring.gpg
+        $ echo 'deb [ arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg ] https://download.docker.com/linux/ubuntu jammy stable' | sudo tee /etc/apt/sources.list.d/docker.list
+        $ sudo apt update
+        $ sudo apt install docker-buildx-plugin
+        ```
+
+
+        ```
+        # install minikube and kubectl
+        $ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        $ sudo install minikube-linux-amd64 /usr/local/bin/minikube
+        $ minikube version
+
+        $ curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+        $ chmod +x kubectl
+        $ sudo mv kubectl /usr/local/bin/
+        ```
 
 ## Building the code
 
