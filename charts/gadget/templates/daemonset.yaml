@@ -54,6 +54,7 @@ spec:
               command:
                 - /bin/gadgettracermanager
                 - -liveness
+                - -socketfile=/run/{{ include "gadget.namespace" . }}-gadgettracermanager.socket
             periodSeconds: 5
             timeoutSeconds: 2
           readinessProbe:
@@ -61,6 +62,7 @@ spec:
               command:
                 - /bin/gadgettracermanager
                 - -liveness
+                - -socketfile=/run/{{ include "gadget.namespace" . }}-gadgettracermanager.socket
             periodSeconds: 5
             timeoutSeconds: 2
           env:
@@ -74,6 +76,8 @@ spec:
                   fieldPath: metadata.uid
             - name: GADGET_IMAGE
               value: "{{ .Values.image.repository }}"
+            - name: GADGET_NAMESPACE
+              value: {{ include "gadget.namespace" . | quote }}
             - name: INSPEKTOR_GADGET_VERSION
               value: {{ include "gadget.image.tag" . | quote }}
             - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
