@@ -5,6 +5,7 @@ env:
   GO_VERSION: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
+  DEFAULT_OOMKILLTESTER_IMAGE: ghcr.io/inspektor-gadget/oomkilltester:latest
   DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
 concurrency:
   group: ${{ github.ref }}
@@ -801,6 +802,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
+      oomkilltester_image: ${{ steps.image-tag.outputs.dnstester }}
       ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
     permissions:
       # allow publishing container image
@@ -817,6 +819,12 @@ jobs:
             platform: "linux/amd64,linux/arm64"
             filter-patterns:
               - "tools/dnstester/*"
+          - name: "oomkilltester"
+            context: "tools/oomkilltester"
+            dockerfile: "tools/oomkilltester/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
+            filter-patterns:
+              - "tools/oomkilltester/*"
           - name: "ebpf-builder"
             context: "/home/runner/work/inspektor-gadget/inspektor-gadget"
             dockerfile: "Dockerfiles/ebpf-builder.Dockerfile"
@@ -875,6 +883,8 @@ jobs:
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
           elif [ ${{ matrix.image.name }} == "ebpf-builder" ]; then
             image=${{ env.DEFAULT_EBPF_BUILDER_IMAGE }}
+          elif [ ${{ matrix.image.name }} == "oomkilltester" ]; then
+            image=${{ env.DEFAULT_OOMKILLTESTER_IMAGE }}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
             exit 1
@@ -1255,6 +1265,7 @@ jobs:
           make -C integration/ig/k8s \
             CONTAINER_RUNTIME=${{ matrix.runtime }} \
             DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
+            OOMKILLTESTER_IMAGE=${{ needs.build-helper-images.outputs.oomkilltester_image }} \
             -o build test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
@@ -1343,6 +1354,7 @@ jobs:
           make -C integration/ig/non-k8s \
             CONTAINER_RUNTIME=${{ matrix.runtime }} \
             DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
+            OOMKILLTESTER_IMAGE=${{ needs.build-helper-images.outputs.oomkilltester_image }} \
             -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
@@ -1723,6 +1735,7 @@ jobs:
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         dnstester_image: ${{ needs.build-helper-images.outputs.dnstester_image }}
+        oomkilltester_image: ${{ needs.build-helper-images.outputs.oomkilltester_image }}
         gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         test_summary_suffix: ${{ matrix.runtime }}

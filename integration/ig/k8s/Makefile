@@ -1,6 +1,7 @@
 include $(shell pwd)/../../../minikube.mk
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+OOMKILLTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/oomkilltester:latest"
 GOPROXY ?= $(shell go env GOPROXY)
 
 # make does not allow implicit rules (with '%') to be phony so let's use
@@ -52,4 +53,4 @@ test-%: build build-tests
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /var/lib/minikube/binaries/$(KUBERNETES_VERSION)/kubectl /bin/kubectl" && \
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /etc/kubernetes/admin.conf /root/.kube/config" && \
 	echo "Running test in minikube with profile $${MINIKUBE_PROFILE} ..." && \
-	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -test.timeout 30m -integration -container-runtime $* -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}"
+	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -test.timeout 30m -integration -container-runtime $* -dnstester-image $(DNSTESTER_IMAGE) -oomkilltester-image $(OOMKILLTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}"

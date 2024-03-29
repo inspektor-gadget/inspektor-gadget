@@ -17,6 +17,9 @@ inputs:
   dnstester_image:
     description: 'The image used for the dnstester.'
     default: 'ghcr.io/inspektor-gadget/dnstester:latest'
+  oomkilltester_image:
+    description: 'The image used for the oomkilltester.'
+    default: 'ghcr.io/inspektor-gadget/oomkilltester:latest'
   gadget_repository:
     description: 'Repository where gadget images are stored.'
     required: true
@@ -76,6 +79,7 @@ runs:
           CONTAINER_REPO=${{ inputs.container_repo }} \
           IMAGE_TAG=${{ inputs.image_tag }} \
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
+          OOMKILLTESTER_IMAGE=${{ inputs.oomkilltester_image }} \
           GADGET_REPOSITORY=${{ inputs.gadget_repository }} \
           GADGET_TAG=${{ inputs.gadget_tag }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!

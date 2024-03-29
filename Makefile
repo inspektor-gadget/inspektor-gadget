@@ -28,6 +28,7 @@ LINTER_VERSION ?= v1.54.2
 EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+OOMKILLTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/oomkilltester:latest"
 
 PLATFORMS ?= "linux/amd64,linux/arm64"
 
@@ -283,6 +284,7 @@ integration-tests: kubectl-gadget
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
+			-oomkilltester-image $(OOMKILLTESTER_IMAGE) \
 			-gadget-repository $(GADGET_REPOSITORY) \
 			-gadget-tag $(GADGET_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
