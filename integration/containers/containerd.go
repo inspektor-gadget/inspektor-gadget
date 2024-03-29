@@ -40,11 +40,3 @@ type ContainerdContainer struct {
 	testutils.Container
 	cOptions
 }
-
-func (c *ContainerdContainer) IsCleanup() bool {
-	return c.cleanup
-}
-
-func (c *ContainerdContainer) IsStartAndStop() bool {
-	return c.startAndStop
-}

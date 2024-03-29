@@ -28,6 +28,14 @@ type cOptions struct {
 // few options from testutils.Option to the user.
 type containerOption func(opts *cOptions)
 
+func (o *cOptions) IsCleanup() bool {
+	return o.cleanup
+}
+
+func (o *cOptions) IsStartAndStop() bool {
+	return o.startAndStop
+}
+
 func WithContainerImage(image string) containerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithImage(image))

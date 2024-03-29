@@ -40,11 +40,3 @@ type DockerContainer struct {
 	testutils.Container
 	cOptions
 }
-
-func (d *DockerContainer) IsCleanup() bool {
-	return d.cleanup
-}
-
-func (d *DockerContainer) IsStartAndStop() bool {
-	return d.startAndStop
-}
