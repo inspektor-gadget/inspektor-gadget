@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -34,39 +33,5 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 		return &ContainerdManager{}, nil
 	default:
 		return nil, fmt.Errorf("unknown container runtime %q", containerRuntime)
-	}
-}
-
-type cOptions struct {
-	options      []testutils.Option
-	cleanup      bool
-	startAndStop bool
-}
-
-// containerOption is a function that modifies a ContainerSpec and exposes only
-// few options from testutils.Option to the user.
-type containerOption func(opts *cOptions)
-
-func WithContainerImage(image string) containerOption {
-	return func(opts *cOptions) {
-		opts.options = append(opts.options, testutils.WithImage(image))
-	}
-}
-
-func WithContainerSeccompProfile(profile string) containerOption {
-	return func(opts *cOptions) {
-		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))
-	}
-}
-
-func WithCleanup() containerOption {
-	return func(opts *cOptions) {
-		opts.cleanup = true
-	}
-}
-
-func WithStartAndStop() containerOption {
-	return func(opts *cOptions) {
-		opts.startAndStop = true
 	}
 }
