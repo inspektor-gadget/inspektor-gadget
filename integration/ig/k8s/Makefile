@@ -1,7 +1,7 @@
 include $(shell pwd)/../../../minikube.mk
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
-OOMKILLTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/oomkilltester:latest"
+OOMKILLTESTER_IMAGE ?= "francisregistryregistry.azurecr.io/oomkilltester:latest"
 GOPROXY ?= $(shell go env GOPROXY)
 
 # make does not allow implicit rules (with '%') to be phony so let's use

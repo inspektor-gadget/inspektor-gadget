@@ -37,7 +37,7 @@ var (
 	integration        = flag.Bool("integration", false, "run integration tests")
 	containerRuntime   = flag.String("container-runtime", "", "allows to do validation for expected runtime in the tests")
 	dnsTesterImage     = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
-	oomkillTesterImage = flag.String("oomkilltester-image", "ghcr.io/inspektor-gadget/oomkilltester:latest", "oomkilltester container image")
+	oomkillTesterImage = flag.String("oomkilltester-image", "francisregistryregistry.azurecr.io/oomkilltester:latest", "oomkilltester container image")
 )
 
 func init() {

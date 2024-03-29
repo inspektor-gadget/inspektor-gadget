@@ -28,7 +28,7 @@ LINTER_VERSION ?= v1.54.2
 EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
-OOMKILLTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/oomkilltester:latest"
+OOMKILLTESTER_IMAGE ?= "francisregistryregistry.azurecr.io/oomkilltester:latest"
 
 PLATFORMS ?= "linux/amd64,linux/arm64"
 

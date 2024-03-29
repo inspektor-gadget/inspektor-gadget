@@ -19,7 +19,7 @@ inputs:
     default: 'ghcr.io/inspektor-gadget/dnstester:latest'
   oomkilltester_image:
     description: 'The image used for the oomkilltester.'
-    default: 'ghcr.io/inspektor-gadget/oomkilltester:latest'
+    default: 'francisregistryregistry.azurecr.io/oomkilltester:latest'
   gadget_repository:
     description: 'Repository where gadget images are stored.'
     required: true

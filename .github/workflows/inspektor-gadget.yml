@@ -5,7 +5,7 @@ env:
   GO_VERSION: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
-  DEFAULT_OOMKILLTESTER_IMAGE: ghcr.io/inspektor-gadget/oomkilltester:latest
+  DEFAULT_OOMKILLTESTER_IMAGE: francisregistryregistry.azurecr.io/oomkilltester:latest
   DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
 concurrency:
   group: ${{ github.ref }}
@@ -870,7 +870,7 @@ jobs:
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
-        push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
+        push: false
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         platforms: ${{ matrix.image.platform }}
     - name: Save ${{ matrix.image.name }} image tag output

@@ -28,7 +28,7 @@ var (
 	// flags
 	integration        = flag.Bool("integration", false, "run integration tests")
 	dnsTesterImage     = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
-	oomkillTesterImage = flag.String("oomkilltester-image", "ghcr.io/inspektor-gadget/oomkilltester:latest", "oomkilltester container image")
+	oomkillTesterImage = flag.String("oomkilltester-image", "francisregistryregistry.azurecr.io/oomkilltester:latest", "oomkilltester container image")
 	runtime            = flag.String("runtime", "docker", "which runtime to use (docker, containerd)")
 )
 

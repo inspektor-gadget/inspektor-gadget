@@ -58,7 +58,7 @@ var (
 	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
 	image              = flag.String("image", "", "gadget container image")
 	dnsTesterImage     = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
-	oomkillTesterImage = flag.String("oomkilltester-image", "ghcr.io/inspektor-gadget/oomkilltester:latest", "oomkilltester container image")
+	oomkillTesterImage = flag.String("oomkilltester-image", "francisregistryregistry.azurecr.io/oomkilltester:latest", "oomkilltester container image")
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
 	doNotDeploySPO = flag.Bool("no-deploy-spo", true, "don't deploy the Security Profiles Operator (SPO)")
