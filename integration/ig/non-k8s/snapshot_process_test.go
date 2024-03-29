@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -61,7 +62,7 @@ func TestSnapshotProcess(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		containerFactory.NewContainer(cn, "nc -l -p 9090", WithStartAndStop()),
+		containerFactory.NewContainer(cn, "nc -l -p 9090", containers.WithStartAndStop()),
 		snapshotProcessCmd,
 	}
 

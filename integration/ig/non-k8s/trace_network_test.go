@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -99,7 +100,7 @@ func TestTraceNetwork(t *testing.T) {
 	testSteps := []TestStep{
 		traceNetworkCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		containerFactory.NewContainer(cn, "nginx && curl 127.0.0.1", WithContainerImage("docker.io/library/nginx")),
+		containerFactory.NewContainer(cn, "nginx && curl 127.0.0.1", containers.WithContainerImage("docker.io/library/nginx")),
 	}
 
 	RunTestSteps(testSteps, t)

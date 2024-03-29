@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -158,7 +159,7 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 	testSteps := []TestStep{
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		containerFactory.NewContainer(cn, strings.Join(dnsCmds, " ; "), WithContainerImage(*dnsTesterImage)),
+		containerFactory.NewContainer(cn, strings.Join(dnsCmds, " ; "), containers.WithContainerImage(*dnsTesterImage)),
 	}
 
 	return testSteps

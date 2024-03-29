@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package containers
 
 import (
 	"fmt"
 
+	"github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) TestStep
+	NewContainer(name, cmd string, opts ...containerOption) integration.TestStep
 }
 
 func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {

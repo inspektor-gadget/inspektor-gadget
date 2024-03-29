@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 )
 
 var (
-	containerFactory ContainerFactory
+	containerFactory containers.ContainerFactory
 	// flags
 	integration    = flag.Bool("integration", false, "run integration tests")
 	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
@@ -43,7 +44,7 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	containerFactory, err = NewContainerFactory(*runtime)
+	containerFactory, err = containers.NewContainerFactory(*runtime)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -64,7 +65,7 @@ func TestFilterByContainerName(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		containerFactory.NewContainer(cn, "sleep inf", WithStartAndStop()),
+		containerFactory.NewContainer(cn, "sleep inf", containers.WithStartAndStop()),
 		SleepForSecondsCommand(2),
 		listContainersCmd,
 	}
