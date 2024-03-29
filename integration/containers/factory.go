@@ -17,14 +17,17 @@ package containers
 import (
 	"fmt"
 
-	"github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) integration.TestStep
+	NewContainer(name, cmd string, opts ...containerOption) *TestContainer
 }
 
+// NewContainerFactory returns a new instance of a ContainerFactory based on the
+// container runtime. The returned factory can be used to create new container
+// instances which can be used in tests.
 func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	switch types.String2RuntimeName(containerRuntime) {
 	case types.RuntimeNameDocker:
@@ -34,4 +37,12 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	default:
 		return nil, fmt.Errorf("unknown container runtime %q", containerRuntime)
 	}
+}
+
+// TestContainer is a wrapper around testutils.Container that implements the
+// missing functions from the TestStep interface. This allows to use the
+// container as a step in a test.
+type TestContainer struct {
+	testutils.Container
+	cOptions
 }

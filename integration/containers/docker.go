@@ -17,14 +17,13 @@ package containers
 import (
 	"context"
 
-	"github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
 
 type DockerManager struct{}
 
-func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) integration.TestStep {
-	c := &DockerContainer{}
+func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) *TestContainer {
+	c := &TestContainer{}
 
 	for _, o := range opts {
 		o(&c.cOptions)
@@ -33,10 +32,4 @@ func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption)
 
 	c.Container = testutils.NewDockerContainer(name, cmd, c.options...)
 	return c
-}
-
-// DockerContainer implements TestStep for docker containers
-type DockerContainer struct {
-	testutils.Container
-	cOptions
 }
