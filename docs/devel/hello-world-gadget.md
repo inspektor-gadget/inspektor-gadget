@@ -184,7 +184,7 @@ build` by default uses docker to run a container with all dependencies to compil
 $ cd mygadget
 $ sudo -E ig image build -t mygadget:latest .
 INFO[0000] Experimental features enabled
-Successfully built docker.io/library/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
+Successfully built ghcr.io/inspektor-gadget/gadget/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
 Take into account that it is possible to customize the build process by defining a `build.yaml` file.
@@ -214,25 +214,24 @@ We're now all set to run our gadget for the first time.
 ```bash
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME                                                          PID
-WARN[0000] The gadget doesn't provide metadata
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1219
-                                                                               220121
+PID
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1113
+1219
+220121
 ```
 
 Great, our program already shows the PID! Can we improve it further?
@@ -268,16 +267,15 @@ $ sudo -E ig image build -t mygadget:latest .
 ....
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME                         PID                      COMM                     FILENAME
-WARN[0000] The gadget doesn't provide metadata
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              1349                     containerd               /var/lib/containerd/io.…
-                                              1349                     containerd               /var/lib/containerd/io.…
-                                              1349                     containerd               /var/lib/containerd/io.…
+PID                      COMM                     FILENAME
+11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
+11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
+11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
+11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
+11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
+1349                     containerd               /var/lib/containerd/io.…
+1349                     containerd               /var/lib/containerd/io.…
+1349                     containerd               /var/lib/containerd/io.…
 ```
 
 ## Creating a metadata file
@@ -301,6 +299,9 @@ It'll create a `gadget.yaml` file:
 ```yaml
 name: 'TODO: Fill the gadget name'
 description: 'TODO: Fill the gadget description'
+homepageURL: 'TODO: Fill the gadget homepage URL'
+documentationURL: 'TODO: Fill the gadget documentation URL'
+sourceURL: 'TODO: Fill the gadget source code URL'
 tracers:
   open:
     mapName: events
@@ -334,6 +335,9 @@ pid, comm, etc.
 ```yaml
 name: mygadget
 description: Example gadget
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
 tracers:
   open:
     mapName: events
@@ -365,27 +369,27 @@ $ sudo -E ig image build . -t mygadget
 
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
-                             224707          git             .git/objects/cd/4968fd25e0b4d597f93993a29a9821c1a263d6
-                             224707          git             .git/objects/57/d7fb78a6f22dbfcf66d3175d06ce49d0e0dff5
-                             224707          git             .git/objects/03/5159622b915b7f55f64b6c0a30536531d08c5f
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.5pbSUV
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.96jgiV
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.3tqlBS
-                             224708          Sandbox Forked  /proc/self/uid_map
-                             224708          Sandbox Forked  /proc/self/setgroups
-                             224708          Sandbox Forked  /proc/self/gid_map
-                             3830            firefox-bin     /proc/224708/oom_score_adj
-                             224708          Sandbox Forked
-                             224710          Chroot Helper
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/libmozsandbox.so
+PID             COMM            FILENAME
+224707          git             .git/objects/cd/4968fd25e0b4d597f93993a29a9821c1a263d6
+224707          git             .git/objects/57/d7fb78a6f22dbfcf66d3175d06ce49d0e0dff5
+224707          git             .git/objects/03/5159622b915b7f55f64b6c0a30536531d08c5f
+19463           CompositorTileW /dev/shm/.org.chromium.Chromium.5pbSUV
+19463           CompositorTileW /dev/shm/.org.chromium.Chromium.96jgiV
+19463           CompositorTileW /dev/shm/.org.chromium.Chromium.3tqlBS
+224708          Sandbox Forked  /proc/self/uid_map
+224708          Sandbox Forked  /proc/self/setgroups
+224708          Sandbox Forked  /proc/self/gid_map
+3830            firefox-bin     /proc/224708/oom_score_adj
+224708          Sandbox Forked
+224710          Chroot Helper
+224708          firefox-bin     /usr/lib/firefox/tls/x86_64/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/tls/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/x86_64/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
+224708          firefox-bin     /usr/lib/firefox/libmozsandbox.so
 ```
 
 Now the output is much better.
@@ -400,7 +404,10 @@ Inspektor Gadget provides the logic to filter and enrich events with container i
 The first step is to include these two addional header files:
 
 ```c
+// Inspektor Gadget filtering
 #include <gadget/mntns_filter.h>
+
+// Inspektor Gadget types
 #include <gadget/types.h>
 ```
 
@@ -421,30 +428,41 @@ And then, on the program, set this field. `gadget_get_mntns_id` is a helper func
 Inspektor Gadget to get the current mount namespace.
 
 ```c
-	event.mntns_id = gadget_get_mntns_id();
+	struct event *event;
+	u64 mntns_id;
+
+	mntns_id = gadget_get_mntns_id();
 ```
 
-Finally, we need to discard events we're not interested in:
+Finally, we need to discard the events we're not interested in:
 
 ```c
-	if (gadget_should_discard_mntns_id(event.mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id)) {
 		return 0;
+	}
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return 0;
+
+	event->mntns_id = mntns_id;
+	...
 ```
 
 The `gadget_should_discard_mntns_id` function is provided to determine if a given event should be
-traced or not, this call should be placed as soon as possible on the program to avoid doing useless
-work.
+traced or not. This function should be called as early as possible in the program to avoid unnecessary work.
 
-After compiling and running again, this is the result:
+After adding the `gadget_mntns_id` field to the event structure, compiling and running again,
+Inspektor Gadget will automatically add the container name column to the output:
 
 ```bash
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
+RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
 ```
 
-Nothing is shown because now the gadget is filtering only events generated by containers, create a
-container and run some commands there:
+However, the output is empty. It's because now the gadget is filtering only events generated by containers.
+Create a container and run some commands there:
 
 ```bash
 $ docker run --rm -ti --name=mycontainer busybox cat /dev/null
@@ -454,25 +472,27 @@ Only events generated in containers are now printed, and they include the name o
 generating them.
 
 ```bash
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
-...
-mycontainer                  225805          cat             /lib/tls/libm.so.6
-mycontainer                  225805          cat             /lib/x86_64/x86_64/libm.so.6
-mycontainer                  225805          cat             /lib/x86_64/libm.so.6
-mycontainer                  225805          cat             /lib/x86_64/libm.so.6
-mycontainer                  225805          cat             /lib/libm.so.6
-mycontainer                  225805          cat             /lib/libresolv.so.2
-mycontainer                  225805          cat             /lib/libc.so.6
-mycontainer                  225805          cat             /dev/null
+RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
+mycontainer                  225805          cat             /lib/tls/libm.so.6              4026532256
+mycontainer                  225805          cat             /lib/x86_64/x86_64/libm.so.6    4026532256
+mycontainer                  225805          cat             /lib/x86_64/libm.so.6           4026532256
+mycontainer                  225805          cat             /lib/x86_64/libm.so.6           4026532256
+mycontainer                  225805          cat             /lib/libm.so.6                  4026532256
+mycontainer                  225805          cat             /lib/libresolv.so.2             4026532256
+mycontainer                  225805          cat             /lib/libc.so.6                  4026532256
+mycontainer                  225805          cat             /dev/null                       4026532256
 ```
 
-It's now possible to filter by container name. The following command doesn't show any event as there
-is no container with the specified name.
+Additionally, after adding the `gadget_mntns_id` field to the event structure, Inspektor Gadget will
+automatically add the flag `--containername`/`-c` to the gadget. This flag allows filtering
+events by container name.
+
+The following command doesn't show any event as there is no container with the specified name:
 
 ```bash
 $ sudo -E ig run mygadget:latest -c non_existing_container
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
+RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
 ```
 
 ## Updating the gadget
@@ -503,17 +523,21 @@ to the metadata file. Notice the -v option is used to get debugging messages.
 ```bash
 $ sudo -E ig image build . -t mygadget --update-metadata -v
 INFO[0000] Experimental features enabled
-DEBU[0000] Metadata file found, updating it
-DEBU[0000] Tracer using map "events" already defined, skipping
-DEBU[0000] Adding column "uid"
-DEBU[0000] Adding column "gid"
-DEBU[0000] Column "pid" already exists, skipping
-DEBU[0000] Column "comm" already exists, skipping
-DEBU[0000] Column "filename" already exists, skipping
-Successfully built docker.io/library/mygadget:latest@sha256:faa54348214b5dbbedea866cf3b683e77df07c799deb43ab2a1443fa436c6828
+...
+DEBU[0001] Metadata file found, updating it
+DEBU[0001] Tracer "open" already defined, skipping
+DEBU[0001] Field "pid" already exists, skipping
+DEBU[0001] Field "comm" already exists, skipping
+DEBU[0001] Adding field "uid"
+DEBU[0001] Adding field "gid"
+DEBU[0001] Field "filename" already exists, skipping
+DEBU[0001] Adding field "mntns_id"
+...
 ```
 
-The uid and gid fields were added to the metadata file:
+The uid, gid and mntns_id (added in the [previous
+step](#filtering-and-container-enrichement) fields were added to the metadata
+file:
 
 ```yaml
     - name: uid
@@ -526,6 +550,12 @@ The uid and gid fields were added to the metadata file:
       description: 'TODO: Fill field description'
       attributes:
         width: 16
+        alignment: left
+        ellipsis: end
+    - name: mntns_id
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 20
         alignment: left
         ellipsis: end
 ```
@@ -541,6 +571,10 @@ Edit them, build and run the gadget again:
       description: Group ID opening the file
       attributes:
         template: uid
+    - name: mntns_id
+      description: Mount namespace inode id
+      attributes:
+        template: ns
 ```
 
 ```bash
@@ -552,7 +586,8 @@ INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME  PID          COMM         FILENAME                                        UID         GID
 ```
 
-Now the UID and GID fields are also printed.
+Now, the UID and GID columns have the expected format. Notice also that the MNTNS_ID column is
+not showed because the template `ns` hides it by default.
 
 ### Closing
 
