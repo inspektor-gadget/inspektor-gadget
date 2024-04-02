@@ -181,19 +181,19 @@ func (i *ebpfInstance) loadSpec() error {
 }
 
 func (i *ebpfInstance) analyze() error {
-	prefixLookups := []populateEntry{
+	lookups := []populateEntry{
 		{
-			prefixFunc:   hasPrefix(tracerInfoPrefix),
+			matchFunc:    hasPrefix(tracerInfoPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateTracer,
 		},
 		{
-			prefixFunc:   hasPrefix(snapshottersPrefix),
+			matchFunc:    hasPrefix(snapshottersPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateSnapshotter,
 		},
 		{
-			prefixFunc:   hasPrefix(paramPrefix),
+			matchFunc:    hasPrefix(paramPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateParam,
 		},
@@ -203,7 +203,7 @@ func (i *ebpfInstance) analyze() error {
 		// 	populateFunc: i.populateMap,
 		// },
 		{
-			prefixFunc: func(s string) (string, bool) {
+			matchFunc: func(s string) (string, bool) {
 				// Exceptions for backwards-compatibility
 				if s == gadgets.MntNsFilterMapName {
 					return gadgets.MntNsFilterMapName, true
@@ -216,7 +216,7 @@ func (i *ebpfInstance) analyze() error {
 			populateFunc: i.populateMap,
 		},
 		{
-			prefixFunc: func(s string) (string, bool) {
+			matchFunc: func(s string) (string, bool) {
 				// Exceptions for backwards-compatibility
 				if s == gadgets.FilterByMntNsName {
 					return gadgets.FilterByMntNsName, true
@@ -231,8 +231,8 @@ func (i *ebpfInstance) analyze() error {
 	// Iterate over types and populate the gadget
 	it := i.collectionSpec.Types.Iterate()
 	for it.Next() {
-		for _, entry := range prefixLookups {
-			typeName, ok := entry.prefixFunc(it.Type.TypeName())
+		for _, entry := range lookups {
+			typeName, ok := entry.matchFunc(it.Type.TypeName())
 			if !ok {
 				continue
 			}
@@ -245,7 +245,7 @@ func (i *ebpfInstance) analyze() error {
 			}
 			err := entry.populateFunc(it.Type, typeName)
 			if err != nil {
-				return fmt.Errorf("handling type by prefix %q: %w", typeName, err)
+				return fmt.Errorf("handling type %q: %w", typeName, err)
 			}
 		}
 	}

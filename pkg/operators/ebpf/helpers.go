@@ -30,7 +30,7 @@ type (
 	btfPopulateFunc  func(btf.Type, string) error
 	prefixFunc       func(string) (string, bool)
 	populateEntry    struct {
-		prefixFunc   prefixFunc
+		matchFunc    prefixFunc
 		validator    btfTypeValidator
 		populateFunc btfPopulateFunc
 	}
