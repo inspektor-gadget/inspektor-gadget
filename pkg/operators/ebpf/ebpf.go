@@ -237,7 +237,7 @@ func (i *ebpfInstance) analyze() error {
 				continue
 			}
 			if entry.validator != nil {
-				err := entry.validator(it.Type, strings.TrimPrefix(it.Type.TypeName(), typeName))
+				err := entry.validator(it.Type)
 				if err != nil {
 					i.logger.Debugf("type %q error: %v", it.Type.TypeName(), err)
 					continue

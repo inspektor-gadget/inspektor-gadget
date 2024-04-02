@@ -26,7 +26,7 @@ import (
 )
 
 type (
-	btfTypeValidator func(btf.Type, string) error
+	btfTypeValidator func(btf.Type) error
 	btfPopulateFunc  func(btf.Type, string) error
 	prefixFunc       func(string) (string, bool)
 	populateEntry    struct {
@@ -62,7 +62,7 @@ func isRingbufAvailable() bool {
 	return ringbufAvailable
 }
 
-func (i *ebpfInstance) validateGlobalConstVoidPtrVar(t btf.Type, varName string) error {
+func (i *ebpfInstance) validateGlobalConstVoidPtrVar(t btf.Type) error {
 	btfVar, ok := t.(*btf.Var)
 	if !ok {
 		return errors.New("not of type btf.Var")
