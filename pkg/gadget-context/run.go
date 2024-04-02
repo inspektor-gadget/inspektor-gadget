@@ -53,8 +53,6 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
-		params = append(params, instanceParams...)
-
 		err = apihelpers.Validate(instanceParams, opParamValues)
 		if err != nil {
 			return nil, fmt.Errorf("validating params for operator %q: %w", op.Name(), err)
@@ -69,6 +67,9 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 			continue
 		}
 		dataOperatorInstances = append(dataOperatorInstances, opInst)
+
+		// Add instance params only if operator was actually instantiated (i.e., activated)
+		params = append(params, instanceParams...)
 	}
 
 	for _, opInst := range dataOperatorInstances {
