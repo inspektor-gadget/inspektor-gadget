@@ -30,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
 
 const (
@@ -38,6 +39,8 @@ const (
 	insecureParam         = "insecure"
 	pullParam             = "pull"
 	pullSecret            = "pull-secret"
+	verifyImage           = "verify-image"
+	publicKey             = "public-key"
 )
 
 type ociHandler struct{}
@@ -95,6 +98,20 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:       "Pull secret",
 			Description: "Secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
+		},
+		{
+			Key:          verifyImage,
+			Title:        "Verify image",
+			Description:  "Verify image using the provided public key",
+			DefaultValue: "true",
+			TypeHint:     api.TypeBool,
+		},
+		{
+			Key:          publicKey,
+			Title:        "Public key",
+			Description:  "Public key used to verify the image based gadget",
+			DefaultValue: resources.InspektorGadgetPublicKey,
+			TypeHint:     api.TypeString,
 		},
 	}
 }
@@ -159,15 +176,21 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
-	authOpts := &oci.AuthOptions{
-		AuthFile:    o.ociParams.Get(authfileParam).AsString(),
-		SecretBytes: secretBytes,
-		Insecure:    o.ociParams.Get(insecureParam).AsBool(),
+	imgOpts := &oci.ImageOptions{
+		AuthOptions: oci.AuthOptions{
+			AuthFile:    o.ociParams.Get(authfileParam).AsString(),
+			SecretBytes: secretBytes,
+			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
+		},
+		VerifyOptions: oci.VerifyOptions{
+			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
+			PublicKey:       o.ociParams.Get(publicKey).AsString(),
+		},
 	}
 
 	// Make sure the image is available, either through pulling or by just accessing a local copy
 	// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
-	err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), authOpts, o.ociParams.Get(pullParam).AsString())
+	err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), imgOpts, o.ociParams.Get(pullParam).AsString())
 	if err != nil {
 		return fmt.Errorf("ensuring image: %w", err)
 	}
