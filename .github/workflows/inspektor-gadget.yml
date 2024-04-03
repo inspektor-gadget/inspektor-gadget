@@ -1603,7 +1603,7 @@ jobs:
         if [ ${{ matrix.arch }} = 'arm64' ]; then
           node_type='a1.xlarge'
         fi
-        eksctl create cluster --name ${{ env.CLUSTER_NAME }} --tags ig-ci=true --node-type $node_type
+        eksctl create cluster --name ${{ env.CLUSTER_NAME }} --tags ig-ci=true,ig-ci-timestamp=$(date -u --rfc-3339=seconds) --node-type $node_type
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
