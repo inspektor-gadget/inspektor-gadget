@@ -57,7 +57,21 @@ struct {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(exec, events, event);
+#define __ds_type(type) u8 (*ds_type)[type]
+#define __data_type(type) typeof(type) *data_type
+#define __map(name) void *map___##name
+#define __program(name) void *program___##name
+
+enum ig_datasource_type {
+	IG_DS_TYPE_TRACER = 0,
+	IG_DS_TYPE_SNAPSHOTTER = 1,
+};
+
+struct {
+	__ds_type(IG_DS_TYPE_TRACER);
+	__data_type(struct event);
+	__map(events);
+} exec SEC("ig/datasources");
 
 // man clone(2):
 //   If any of the threads in a thread group performs an

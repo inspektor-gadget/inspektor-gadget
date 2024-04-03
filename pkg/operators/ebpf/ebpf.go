@@ -183,14 +183,13 @@ func (i *ebpfInstance) loadSpec() error {
 func (i *ebpfInstance) analyze() error {
 	lookups := []populateEntry{
 		{
-			matchFunc:    hasPrefix(tracerInfoPrefix),
-			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateTracer,
-		},
-		{
-			matchFunc:    hasPrefix(snapshottersPrefix),
-			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateSnapshotter,
+			matchFunc: func(s string) (string, bool) {
+				if s == "ig/datasources" {
+					return s, true
+				}
+				return "", false
+			},
+			populateFunc: i.populateDataSources,
 		},
 		{
 			matchFunc:    hasPrefix(paramPrefix),

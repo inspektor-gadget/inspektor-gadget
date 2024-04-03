@@ -53,7 +53,25 @@ struct socket_entry {
 	__u32 ino;
 };
 
-GADGET_SNAPSHOTTER(sockets, socket_entry);
+// we need this to make sure the compiler doesn't remove our struct
+const struct socket_entry *unused __attribute__((unused));
+
+#define __ds_type(type) int (*ds_type)[type]
+#define __data_type(type) typeof(type) *data_type
+#define __map(name) void *map___##name
+#define __program(name) void *program___##name
+
+enum ig_datasource_type {
+	IG_DS_TYPE_TRACER = 0,
+	IG_DS_TYPE_SNAPSHOTTER = 1,
+};
+
+struct {
+	__ds_type(IG_DS_TYPE_SNAPSHOTTER);
+	__data_type(struct socket_entry);
+	__program(ig_snap_udp);
+	__program(ig_snap_tcp);
+} sockets SEC("ig/datasources");
 
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.

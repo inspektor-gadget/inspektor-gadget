@@ -15,9 +15,9 @@
 package ebpfoperator
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -50,31 +50,30 @@ func validateTracerMap(traceMap *ebpf.MapSpec) error {
 	return nil
 }
 
-func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
-	i.logger.Debugf("populating tracer %q", varName)
+func (i *ebpfInstance) populateTracer(name string, ds *dataSource) error {
+	i.logger.Debugf("populating tracer %q", name)
 
-	parts := strings.Split(varName, typeSplitter)
-	if len(parts) != 3 {
-		return fmt.Errorf("invalid tracer info: %q", varName)
+	if ds.eMap == "" {
+		return errors.New("missing map name")
+	}
+	if ds.dataType == "" {
+		return errors.New("missing data type")
 	}
 
-	name := parts[0]
-	mapName := parts[1]
-	structName := parts[2]
-
-	i.logger.Debugf("> name       : %q", name)
+	mapName := ds.eMap
+	structName := ds.dataType
 	i.logger.Debugf("> map name   : %q", mapName)
 	i.logger.Debugf("> struct name: %q", structName)
 
 	tracerConfig := i.config.Sub("tracers." + name)
 	if tracerConfig != nil {
 		if configMapName := tracerConfig.GetString("mapName"); configMapName != "" && configMapName != mapName {
-			return fmt.Errorf("validating tracer %q: mapName %q in eBPF program does not match %q from metadata file",
-				name, configMapName, mapName)
+			return fmt.Errorf("mapName %q in eBPF program does not match %q from metadata file",
+				configMapName, mapName)
 		}
 		if configStructName := tracerConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating tracer %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
+			return fmt.Errorf("structName %q in eBPF program does not match %q from metadata file",
+				configStructName, structName)
 		}
 		i.logger.Debugf("> successfully validated with metadata")
 	}
@@ -109,7 +108,7 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 
 	err := i.populateStructDirect(btfStruct)
 	if err != nil {
-		return fmt.Errorf("populating struct %q for tracer %q: %w", btfStruct.Name, name, err)
+		return fmt.Errorf("populating struct %q: %w", btfStruct.Name, err)
 	}
 
 	return nil

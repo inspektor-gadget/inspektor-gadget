@@ -15,9 +15,9 @@
 package ebpfoperator
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
@@ -42,25 +42,25 @@ type Snapshotter struct {
 	netns    datasource.FieldAccessor
 }
 
-func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
-	i.logger.Debugf("populating snapshotter %q", varName)
+func (i *ebpfInstance) populateSnapshotter(name string, ds *dataSource) error {
+	i.logger.Debugf("populating snapshotter %q", name)
 
-	parts := strings.Split(varName, typeSplitter)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid snapshotter info: %q", varName)
+	if ds.dataType == "" {
+		return errors.New("missing data type")
+	}
+	if len(ds.programs) == 0 {
+		return errors.New("missing programs")
 	}
 
-	name := parts[0]
-	structName := parts[1]
-
-	i.logger.Debugf("> name       : %q", name)
+	structName := ds.dataType
 	i.logger.Debugf("> struct name: %q", structName)
+	i.logger.Debugf("> programs: %v", ds.programs)
 
 	snapConfig := i.config.Sub("snapshotters." + name)
 	if snapConfig != nil {
 		if configStructName := snapConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating tracer %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
+			return fmt.Errorf("structName %q in eBPF program does not match %q from metadata file",
+				configStructName, structName)
 		}
 		i.logger.Debugf("> successfully validated with metadata")
 	}
@@ -84,7 +84,7 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 
 	err := i.populateStructDirect(btfStruct)
 	if err != nil {
-		return fmt.Errorf("populating struct %q for snapshotter %q: %w", btfStruct.Name, name, err)
+		return fmt.Errorf("populating struct %q: %w", btfStruct.Name, err)
 	}
 
 	return nil
