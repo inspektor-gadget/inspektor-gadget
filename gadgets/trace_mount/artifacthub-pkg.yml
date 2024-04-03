@@ -1,5 +1,5 @@
 # Artifact Hub package metadata file
-version: 0.26.0
+version: 0.27.0
 name: "trace mount"
 category: monitoring-logging
 displayName: "trace mount"
