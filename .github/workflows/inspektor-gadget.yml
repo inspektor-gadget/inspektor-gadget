@@ -1297,7 +1297,11 @@ jobs:
   build-and-push-gadgets:
     name: Build and push gadgets
     # level: 2
-    needs: [ build-ig, build-helper-images ]
+    needs:
+      - build-ig
+      - build-helper-images
+      - check-secrets
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -1340,6 +1344,16 @@ jobs:
 
           # Avoid building the gadgets again
           make -C gadgets/ push -o build
+      - name: Install Cosign
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: sigstore/cosign-installer@main
+      - name: Sign the gadgets
+        if: needs.check-secrets.outputs.cosign == 'true'
+        env:
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        run: |
+          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} make -C gadgets/ sign -o push
 
   test-gadgets:
     name: Test gadgets
