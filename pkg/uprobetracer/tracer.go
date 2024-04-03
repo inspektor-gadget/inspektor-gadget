@@ -43,9 +43,9 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"golang.org/x/sys/unix"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -57,16 +57,6 @@ const (
 	ProgUretprobe
 	ProgUSDT
 )
-
-type inodeUUID struct {
-	token uint64
-}
-
-func getInodeUUID(file *os.File) (inodeUUID, error) {
-	// TODO: use `kfilefields` to get a unique token for each inode,
-	// here we just use `fd` as token, making each file has a distinct token.
-	return inodeUUID{uint64(file.Fd())}, nil
-}
 
 // inodeKeeper holds a file object, with the counter representing its
 // reference count. The link is not nil only when the file is attached.
@@ -94,9 +84,22 @@ type Tracer[Event any] struct {
 	// when users write library names in ebpf section names, it's possible to
 	// find multiple libraries of different archs within the same container,
 	// making this a one-to-many mapping
-	containerPid2Inodes map[uint32][]inodeUUID
-	// keeps the fd and refCount for each inodeUUID
-	inodeRefCount map[inodeUUID]*inodeKeeper
+	containerPid2Inodes map[uint32][]uint64
+	// keeps the fd and refCount for each realInodePtr
+	//
+	// we are using `realInodePtr` (the address of real inode in kernel) to identify a file
+	// instead of just the inode number.
+	// Since overlayFS overwrites the FsID of files and provides its own inode implementation,
+	// we cannot uniquely identify a file on disk using `<FsID, inode>` pairs.
+	//
+	// Meanwhile, uprobe is using kernel function `d_real_inode` to get the underlying inode,
+	// and attaching onto it. That means if we are attaching to one container, other containers
+	// sharing the same image will also be attached. If we are attaching to multiple containers,
+	// the underlying inode might be attached multiple times, leading to duplicate records.
+	//
+	// To deduplicate, we need to identify the underlying inode hidden by overlayFS,
+	// and use it as a unique identifier. For each realInodePtr, we only attach to it once.
+	inodeRefCount map[uint64]*inodeKeeper
 	// used as a set, keeps PIDs of the pending containers
 	pendingContainerPids map[uint32]bool
 
@@ -108,8 +111,8 @@ type Tracer[Event any] struct {
 
 func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 	t := &Tracer[Event]{
-		containerPid2Inodes:  make(map[uint32][]inodeUUID),
-		inodeRefCount:        make(map[inodeUUID]*inodeKeeper),
+		containerPid2Inodes:  make(map[uint32][]uint64),
+		inodeRefCount:        make(map[uint64]*inodeKeeper),
 		pendingContainerPids: make(map[uint32]bool),
 		logger:               logger,
 		closed:               false,
@@ -221,7 +224,7 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 
 // try attaching to a container, will update `containerPid2Inodes`
 func (t *Tracer[Event]) attach(containerPid uint32) {
-	var attachedUUIDs []inodeUUID
+	var attachedRealInodes []uint64
 	attachFilePaths, err := t.searchForLibrary(containerPid)
 	if err != nil {
 		t.logger.Debugf("attaching to container %d: %s", containerPid, err.Error())
@@ -232,12 +235,15 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 	}
 
 	for _, filePath := range attachFilePaths {
-		file, err := os.OpenFile(filePath, unix.O_PATH, 0)
+		// Do not use `O_PATH` flag here, because `ReadRealInodeFromFd` needs the `private_data` field
+		// in kernel "struct file", to access the underlying inode through overlayFS.
+		// Using `O_PATH` flag will cause the `private_data` field to be zero.
+		file, err := os.Open(filePath)
 		if err != nil {
 			t.logger.Debugf("opening file '%q' for uprobe: %s", filePath, err.Error())
 			continue
 		}
-		fileUUID, err := getInodeUUID(file)
+		realInodePtr, err := kfilefields.ReadRealInodeFromFd(int(file.Fd()))
 		if err != nil {
 			t.logger.Debugf("getting inode info for '%q': %s", filePath, err.Error())
 			file.Close()
@@ -245,22 +251,22 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 		}
 
 		t.logger.Debugf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
-		attachedUUIDs = append(attachedUUIDs, fileUUID)
+		attachedRealInodes = append(attachedRealInodes, realInodePtr)
 
-		inode, exists := t.inodeRefCount[fileUUID]
+		inode, exists := t.inodeRefCount[realInodePtr]
 		if !exists {
 			progLink, err := t.attachUprobe(file)
 			if err != nil {
 				t.logger.Debugf("failed to attach uprobe %q: %s", t.progName, err.Error())
 			}
-			t.inodeRefCount[fileUUID] = &inodeKeeper{1, file, progLink}
+			t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink}
 		} else {
 			inode.counter++
 			file.Close()
 		}
 	}
 
-	t.containerPid2Inodes[containerPid] = attachedUUIDs
+	t.containerPid2Inodes[containerPid] = attachedRealInodes
 }
 
 // AttachContainer will attach now if the prog is ready, otherwise it will add container into the pending list
@@ -305,21 +311,21 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 		delete(t.pendingContainerPids, container.Pid)
 	} else {
 		// detach from container if attached
-		attachedUUIDs, exist := t.containerPid2Inodes[container.Pid]
+		attachedRealInodes, exist := t.containerPid2Inodes[container.Pid]
 		if !exist {
 			return errors.New("container has not been attached")
 		}
 		delete(t.containerPid2Inodes, container.Pid)
 
-		for _, attachedUUID := range attachedUUIDs {
-			keeper, exist := t.inodeRefCount[attachedUUID]
+		for _, realInodePtr := range attachedRealInodes {
+			keeper, exist := t.inodeRefCount[realInodePtr]
 			if !exist {
-				return errors.New("internal error: finding inodeKeeper with inodeUUID")
+				return errors.New("internal error: finding inodeKeeper with realInodePtr")
 			}
 			keeper.counter--
 			if keeper.counter == 0 {
 				keeper.close()
-				delete(t.inodeRefCount, attachedUUID)
+				delete(t.inodeRefCount, realInodePtr)
 			}
 		}
 	}

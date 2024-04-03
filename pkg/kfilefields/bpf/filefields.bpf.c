@@ -4,6 +4,11 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
+// include/uapi/linux/magic.h
+#ifndef OVERLAYFS_SUPER_MAGIC
+#define OVERLAYFS_SUPER_MAGIC 0x794c7630
+#endif
+
 // configured by userspace
 const volatile u64 socket_ino = 0;
 
@@ -13,6 +18,7 @@ volatile u64 tracer_pid_tgid = 0;
 struct file_fields {
 	u64 private_data;
 	u64 f_op;
+	u64 real_inode;
 };
 
 struct {
@@ -50,6 +56,7 @@ int BPF_KRETPROBE(ig_fget_x, struct file *ret)
 {
 	u64 current_pid_tgid;
 	struct file_fields *ff;
+	struct file *real_file;
 	int zero = 0;
 
 	if (tracer_pid_tgid == 0)
@@ -66,6 +73,13 @@ int BPF_KRETPROBE(ig_fget_x, struct file *ret)
 
 	ff->private_data = (u64)BPF_CORE_READ(ret, private_data);
 	ff->f_op = (u64)BPF_CORE_READ(ret, f_op);
+
+	real_file = ret;
+	if (BPF_CORE_READ(ret, f_inode, i_sb, s_magic) ==
+	    OVERLAYFS_SUPER_MAGIC) {
+		real_file = (struct file *)ff->private_data;
+	}
+	ff->real_inode = (u64)BPF_CORE_READ(real_file, f_inode);
 
 	// Initialize private_data for only one execution of __scm_send
 	tracer_pid_tgid = 0;

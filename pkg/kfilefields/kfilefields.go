@@ -58,3 +58,23 @@ func ReadFOpForFdType(ft FdType) (uint64, error) {
 	}
 	return ff.FOp, nil
 }
+
+// ReadRealInodeFromFd uses ebpf to read the f_inode pointer from the
+// kernel "struct file" associated with the given fd.
+// Specifically, if fd belongs to overlayFS, it will return the underlying, real inode.
+//
+// This feature makes it possible to check if two fds come from the same
+// underlying file, even if they come from two different overlay filesystems.
+// This is useful for uprobes because they get attached to the underlying file.
+func ReadRealInodeFromFd(fd int) (uint64, error) {
+	t, err := creatAndInstallTracer()
+	if err != nil {
+		return 0, fmt.Errorf("creating and installing tracer: %w", err)
+	}
+	defer t.close()
+	ff, err := t.readStructFileFields(fd)
+	if err != nil {
+		return 0, fmt.Errorf("reading file fields: %w", err)
+	}
+	return ff.RealInode, nil
+}

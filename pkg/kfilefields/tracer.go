@@ -56,6 +56,7 @@ func (fd FdType) String() string {
 type fileFields struct {
 	PrivateData uint64
 	FOp         uint64
+	RealInode   uint64
 }
 
 type Tracer struct {
