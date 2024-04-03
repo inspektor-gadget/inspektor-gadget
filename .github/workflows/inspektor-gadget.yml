@@ -714,6 +714,7 @@ jobs:
     needs:
       - build-gadget-container-images
       - public-key-check
+      - check-secrets
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -765,8 +766,10 @@ jobs:
           image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Install Cosign
+        if: needs.check-secrets.outputs.cosign == 'true'
         uses: sigstore/cosign-installer@main
       - name: Sign the manifest list
+        if: needs.check-secrets.outputs.cosign == 'true'
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
@@ -1228,7 +1231,7 @@ jobs:
     # fork.
     # We still need to run this job on push, otherwise it will not be run when
     # we merge something on main.
-    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') && needs.check-secrets.outputs.cosign == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Cosign
@@ -1869,7 +1872,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.cosign == 'true'
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - uses: actions/checkout@v4
     - id: set-repo-determine-image-tag
@@ -1958,8 +1961,10 @@ jobs:
           rm -fr $temp_dir
         done
     - name: Install Cosign
+      if: needs.check-secrets.outputs.cosign == 'true'
       uses: sigstore/cosign-installer@main
     - name: Sign checksums file
+      if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
       env:
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
