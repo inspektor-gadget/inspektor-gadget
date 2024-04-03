@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoF
 		container = lookupContainerByMntns(cc.cachedContainers, mountNsId)
 	}
 	if container != nil {
-		event.SetContainerMetadata(&container.K8s.BasicK8sMetadata, &container.Runtime.BasicRuntimeMetadata)
+		event.SetContainerMetadata(container)
 	}
 }
 
@@ -43,12 +43,12 @@ func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoF
 		return
 	}
 	if len(containers) == 1 {
-		event.SetContainerMetadata(&containers[0].K8s.BasicK8sMetadata, &containers[0].Runtime.BasicRuntimeMetadata)
+		event.SetContainerMetadata(containers[0])
 		return
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
-		event.SetPodMetadata(&containers[0].K8s.BasicK8sMetadata, &containers[0].Runtime.BasicRuntimeMetadata)
+		event.SetPodMetadata(containers[0])
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.
