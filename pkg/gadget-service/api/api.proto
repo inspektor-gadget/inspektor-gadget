@@ -214,21 +214,6 @@ message Field {
   int32 order = 12;
 }
 
-message GetGadgetInfoRequest {
-  // params are the gadget's parameters
-  map<string, string> params = 1;
-
-  // args are all parameters which were not specified with a flag
-  repeated string args = 2;
-}
-
-message GetGadgetInfoResponse {
-  // This is the GadgetInfo structure defined in pkg/gadgets/run/types/types.go encoded in json.
-  // TODO: Ideally we should define the message here, but the implementation is changing too fast.
-  // We'll make it once the implementation is more stable.
-  bytes info = 1;
-}
-
 message GetOCIGadgetInfoRequest {
   // params are the gadget's parameters
   map<string, string> paramValues = 1;
@@ -245,7 +230,6 @@ message GetOCIGadgetInfoResponse {
 
 service GadgetManager {
   rpc GetInfo(InfoRequest) returns (InfoResponse) {}
-  rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
 }
 
