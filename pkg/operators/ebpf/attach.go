@@ -45,13 +45,16 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			i.logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
 		case strings.HasPrefix(p.SectionName, "uprobe/") ||
-			strings.HasPrefix(p.SectionName, "uretprobe/"):
+			strings.HasPrefix(p.SectionName, "uretprobe/") ||
+			strings.HasPrefix(p.SectionName, "usdt/"):
 			uprobeTracer := i.uprobeTracers[p.Name]
 			switch strings.Split(p.SectionName, "/")[0] {
 			case "uprobe":
 				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUprobe, p.AttachTo, prog)
 			case "uretprobe":
 				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUretprobe, p.AttachTo, prog)
+			case "usdt":
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUSDT, p.AttachTo, prog)
 			}
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)

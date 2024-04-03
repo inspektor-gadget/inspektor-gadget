@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package uprobetracer handles how uprobe/uretprobe programs are attached
+// Package uprobetracer handles how uprobe/uretprobe/USDT programs are attached
 // to containers. It has two running modes: `pending` mode and `running` mode.
 //
 // Before `AttachProg` is called, uprobetracer runs in `pending` mode, only
@@ -55,6 +55,7 @@ type ProgType uint32
 const (
 	ProgUprobe ProgType = iota
 	ProgUretprobe
+	ProgUSDT
 )
 
 type inodeUUID struct {
@@ -118,7 +119,7 @@ func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 
 // AttachProg loads the ebpf program, and try attaching if there are pending containers
 func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo string, prog *ebpf.Program) error {
-	if progType != ProgUprobe && progType != ProgUretprobe {
+	if progType != ProgUprobe && progType != ProgUretprobe && progType != ProgUSDT {
 		return fmt.Errorf("unsupported uprobe prog type: %q", progType)
 	}
 
@@ -129,12 +130,15 @@ func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo 
 		return errors.New("loading uprobe program twice")
 	}
 
-	parts := strings.Split(attachTo, ":")
+	parts := strings.SplitN(attachTo, ":", 2)
 	if len(parts) < 2 {
 		return fmt.Errorf("invalid section name %q", attachTo)
 	}
 	if !filepath.IsAbs(parts[0]) && strings.Contains(parts[0], "/") {
 		return fmt.Errorf("section name must be either an absolute path or a library name: %q", parts[0])
+	}
+	if progType == ProgUSDT && len(strings.Split(parts[1], ":")) != 2 {
+		return fmt.Errorf("invalid USDT section name: %q", attachTo)
 	}
 
 	t.mu.Lock()
@@ -180,7 +184,7 @@ func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) 
 	for _, targetPath := range targetPaths {
 		securedTargetPath, err := securejoin.SecureJoin(filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "root"), targetPath)
 		if err != nil {
-			t.logger.Debugf("path %q in ld cache is not available: %q", filePath, err.Error())
+			t.logger.Debugf("path %q in ld cache is not available: %s", filePath, err.Error())
 			continue
 		}
 		securedTargetPaths = append(securedTargetPaths, securedTargetPath)
@@ -200,6 +204,16 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 		return ex.Uprobe(t.attachSymbol, t.prog, nil)
 	case ProgUretprobe:
 		return ex.Uretprobe(t.attachSymbol, t.prog, nil)
+	case ProgUSDT:
+		attachInfo, err := getUsdtInfo(attachPath, t.attachSymbol)
+		if err != nil {
+			return nil, fmt.Errorf("reading USDT metadata: %w", err)
+		}
+		return ex.Uprobe(t.attachSymbol, t.prog,
+			&link.UprobeOptions{
+				Address:      attachInfo.attachAddress,
+				RefCtrOffset: attachInfo.semaphoreAddress,
+			})
 	default:
 		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %q", t.progType)
 	}
@@ -210,7 +224,7 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 	var attachedUUIDs []inodeUUID
 	attachFilePaths, err := t.searchForLibrary(containerPid)
 	if err != nil {
-		t.logger.Debugf("attaching to container %d: %q", containerPid, err.Error())
+		t.logger.Debugf("attaching to container %d: %s", containerPid, err.Error())
 	}
 
 	if len(attachFilePaths) == 0 {
@@ -220,22 +234,25 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 	for _, filePath := range attachFilePaths {
 		file, err := os.OpenFile(filePath, unix.O_PATH, 0)
 		if err != nil {
-			t.logger.Debugf("opening file '%q' for uprobe: %q", filePath, err.Error())
+			t.logger.Debugf("opening file '%q' for uprobe: %s", filePath, err.Error())
 			continue
 		}
 		fileUUID, err := getInodeUUID(file)
 		if err != nil {
-			t.logger.Debugf("getting inode info for '%q': %q", filePath, err.Error())
+			t.logger.Debugf("getting inode info for '%q': %s", filePath, err.Error())
 			file.Close()
 			continue
 		}
 
-		t.logger.Debugf("attaching uprobe %q to container %d: %q", t.attachSymbol, containerPid, filePath)
+		t.logger.Debugf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
 		attachedUUIDs = append(attachedUUIDs, fileUUID)
 
 		inode, exists := t.inodeRefCount[fileUUID]
 		if !exists {
-			progLink, _ := t.attachUprobe(file)
+			progLink, err := t.attachUprobe(file)
+			if err != nil {
+				t.logger.Debugf("failed to attach uprobe %q: %s", t.progName, err.Error())
+			}
 			t.inodeRefCount[fileUUID] = &inodeKeeper{1, file, progLink}
 		} else {
 			inode.counter++
