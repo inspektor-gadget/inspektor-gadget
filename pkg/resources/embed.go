@@ -23,3 +23,6 @@ var TracesCustomResource string
 
 //go:embed manifests/deploy.yaml
 var GadgetDeployment string
+
+//go:embed inspektor-gadget.pub
+var InspektorGadgetPublicKey string
