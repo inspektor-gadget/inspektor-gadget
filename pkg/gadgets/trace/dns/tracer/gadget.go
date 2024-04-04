@@ -28,6 +28,7 @@ import (
 const (
 	ParamDNSTimeout = "dns-timeout"
 	ParamPorts      = "ports"
+	ParamPaths      = "paths"
 )
 
 type GadgetDesc struct{}
@@ -50,6 +51,13 @@ func (g *GadgetDesc) Description() string {
 
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
+		{
+			Key:          ParamPaths,
+			Title:        "Additional paths",
+			Description:  "Show current working directory and executable path",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
 		{
 			Key:          ParamDNSTimeout,
 			Title:        "dns-timeout",

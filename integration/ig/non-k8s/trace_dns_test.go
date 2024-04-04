@@ -27,9 +27,13 @@ import (
 )
 
 func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
+	// dnsTesterImage (image dnstester) has the following symlink:
+	// /usr/bin/nslookup -> /bin/busybox
+	exepath := "/bin/busybox"
+
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
-		Cmd:          fmt.Sprintf("./ig trace dns -o json --runtimes=%s -c %s", *runtime, cn),
+		Cmd:          fmt.Sprintf("./ig trace dns --paths -o json --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*dnsTypes.Event{
@@ -44,6 +48,9 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
@@ -63,6 +70,9 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
@@ -86,6 +96,9 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
@@ -105,6 +118,9 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
@@ -124,6 +140,7 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.NetNsID = 0
+				e.Ppid = 0
 				e.Pid = 0
 				e.Tid = 0
 

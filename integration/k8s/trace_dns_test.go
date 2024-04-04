@@ -47,6 +47,13 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=aaaa fake.test.com. %s", dnsServer),
 	}
 
+	// Image from BusyboxPodRepeatCommand (image "busybox") has the
+	// following files:
+	// - /bin/busybox
+	// - /bin/nslookup
+	// They are hard links (they share the same inode)
+	exepath := "/bin/nslookup"
+
 	var extraArgs string
 	var expectedEvent eventtypes.Event
 
@@ -74,12 +81,15 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	busyBoxIP := GetTestPodIP(t, ns, "test-pod")
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
-		Cmd:          fmt.Sprintf("%s trace dns -o json %s", DefaultTestComponent, extraArgs),
+		Cmd:          fmt.Sprintf("%s trace dns --paths -o json %s", DefaultTestComponent, extraArgs),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*dnsTypes.Event{
 				{
 					Event:      expectedEvent,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -94,6 +104,9 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				},
 				{
 					Event:      expectedEvent,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -112,6 +125,9 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				},
 				{
 					Event:      expectedEvent,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -126,6 +142,9 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				},
 				{
 					Event:      expectedEvent,
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -148,6 +167,9 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				expectedEntries = append(expectedEntries,
 					&dnsTypes.Event{
 						Event:      expectedEvent,
+						Cwd:        "/",
+						Pcomm:      "sh",
+						Exepath:    exepath,
 						Comm:       "nslookup",
 						Qr:         dnsTypes.DNSPktTypeQuery,
 						Nameserver: dnsServer,
@@ -162,6 +184,9 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 					},
 					&dnsTypes.Event{
 						Event:      expectedEvent,
+						Cwd:        "/",
+						Pcomm:      "sh",
+						Exepath:    exepath,
 						Comm:       "nslookup",
 						Qr:         dnsTypes.DNSPktTypeResponse,
 						Nameserver: dnsServer,
@@ -185,6 +210,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				e.ID = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
+				e.Ppid = 0
 				e.Pid = 0
 				e.Tid = 0
 
@@ -250,9 +276,12 @@ func TestTraceDnsHost(t *testing.T) {
 	RunTestSteps(commandsPreTest, t)
 	dnsServer := GetTestPodIP(t, ns, "dnstester")
 
+	// On the host, nslookup is in /usr/bin.
+	exepath := "/usr/bin/nslookup"
+
 	traceDNSCmd := &Command{
 		Name:         "TraceDnsHost",
-		Cmd:          "ig trace dns -o json --host",
+		Cmd:          "ig trace dns --paths -o json --host",
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*dnsTypes.Event{
@@ -260,6 +289,9 @@ func TestTraceDnsHost(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
+					Cwd:     "/",
+					Pcomm:   "sh",
+					Exepath: exepath,
 					// nslookup has several threads and isc-net-0000 will do the DNS
 					// request.
 					Comm:       "isc-net-0000",
@@ -275,6 +307,9 @@ func TestTraceDnsHost(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "isc-net-0000",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -288,6 +323,9 @@ func TestTraceDnsHost(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
+					Cwd:        "/",
+					Pcomm:      "sh",
+					Exepath:    exepath,
 					Comm:       "isc-net-0000",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -304,6 +342,7 @@ func TestTraceDnsHost(t *testing.T) {
 				e.ID = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
+				e.Ppid = 0
 				e.Pid = 0
 				e.Tid = 0
 
@@ -322,7 +361,7 @@ func TestTraceDnsHost(t *testing.T) {
 		},
 	}
 
-	cmd := fmt.Sprintf(`sh -c 'for i in $(seq 1 30); do nslookup -type=a fake.test.com. %s; nslookup -type=aaaa fake.test.com. %s; done'`, dnsServer, dnsServer)
+	cmd := fmt.Sprintf(`sh -c 'cd / ; for i in $(seq 1 30); do nslookup -type=a fake.test.com. %s; nslookup -type=aaaa fake.test.com. %s; done'`, dnsServer, dnsServer)
 
 	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
