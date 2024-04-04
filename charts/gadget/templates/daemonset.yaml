@@ -204,6 +204,7 @@ spec:
               name: debugfs
             - mountPath: /sys/fs/cgroup
               name: cgroup
+              readOnly: true
             - mountPath: /sys/fs/bpf
               name: bpffs
             {{- if .Values.config.mountPullSecret }}

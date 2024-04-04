@@ -91,6 +91,7 @@ spec:
           mountPath: /sys/kernel/debug
         - name: cgroup
           mountPath: /sys/fs/cgroup
+          readOnly: true
         - name: bpffs
           mountPath: /sys/fs/bpf
       tolerations:
