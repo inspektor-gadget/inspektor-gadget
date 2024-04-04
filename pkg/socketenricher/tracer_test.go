@@ -20,6 +20,7 @@ package socketenricher
 import (
 	"fmt"
 	"net"
+	"os"
 	"reflect"
 	"testing"
 	"unsafe"
@@ -27,6 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func TestSocketEnricherCreate(t *testing.T) {
@@ -74,14 +76,35 @@ func TestSocketEnricherBind(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Cannot get current working directory: %v", err)
+	}
+	exepath, err := os.Readlink("/proc/self/exe")
+	if err != nil {
+		t.Fatalf("Cannot get current executable path: %v", err)
+	}
+	ptask := host.GetProcComm(os.Getppid())
+
 	type testDefinition struct {
 		runnerConfig  *utilstest.RunnerConfig
 		generateEvent func() (uint16, int, error)
 		expectedEvent func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry
 	}
 
+	// Golang generics cannot parameterize array sizes
+	// https://github.com/golang/go/issues/44253
 	stringToSlice := func(s string) (ret [16]int8) {
 		for i := 0; i < 16; i++ {
+			if i >= len(s) {
+				break
+			}
+			ret[i] = int8(s[i])
+		}
+		return
+	}
+	stringToSlice4096 := func(s string) (ret [4096]int8) {
+		for i := 0; i < 4096; i++ {
 			if i >= len(s) {
 				break
 			}
@@ -104,7 +127,11 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
+						Ptask:   stringToSlice(ptask),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -122,7 +149,11 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
+						Ptask:   stringToSlice(ptask),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -145,8 +176,12 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:    info.MountNsID,
 						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:     uint32(os.Getppid()),
 						Task:     stringToSlice("socketenricher."),
+						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -164,7 +199,11 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
+						Ptask:   stringToSlice(ptask),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -182,7 +221,11 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
+						Ptask:   stringToSlice(ptask),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -205,8 +248,12 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:    info.MountNsID,
 						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:     uint32(os.Getppid()),
 						Task:     stringToSlice("socketenricher."),
+						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -225,8 +272,12 @@ func TestSocketEnricherBind(t *testing.T) {
 					Value: socketenricherSocketsValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Ppid:    uint32(os.Getppid()),
 						UidGid:  uint64(1111)<<32 + uint64(1000),
 						Task:    stringToSlice("socketenricher."),
+						Ptask:   stringToSlice(ptask),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},

@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type socketsiterBufT struct{ Buf [32768]uint8 }
+
 type socketsiterSocketsKey struct {
 	Netns  uint32
 	Family uint16
@@ -26,10 +28,14 @@ type socketsiterSocketsValue struct {
 	PidTgid           uint64
 	UidGid            uint64
 	Task              [16]int8
+	Ptask             [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
+	Cwd               [4096]int8
+	Exepath           [4096]int8
+	Ppid              uint32
 	Ipv6only          int8
-	_                 [7]byte
+	_                 [3]byte
 }
 
 // loadSocketsiter returns the embedded CollectionSpec for socketsiter.
@@ -81,6 +87,7 @@ type socketsiterProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketsiterMapSpecs struct {
+	Bufs          *ebpf.MapSpec `ebpf:"bufs"`
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
@@ -103,11 +110,13 @@ func (o *socketsiterObjects) Close() error {
 //
 // It can be passed to loadSocketsiterObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketsiterMaps struct {
+	Bufs          *ebpf.Map `ebpf:"bufs"`
 	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
 }
 
 func (m *socketsiterMaps) Close() error {
 	return _SocketsiterClose(
+		m.Bufs,
 		m.GadgetSockets,
 	)
 }
