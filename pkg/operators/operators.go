@@ -172,8 +172,8 @@ type ContainerInfoFromNetNSID interface {
 
 type ContainerInfoSetters interface {
 	NodeSetter
-	SetPodMetadata(*types.BasicK8sMetadata, *types.BasicRuntimeMetadata)
-	SetContainerMetadata(*types.BasicK8sMetadata, *types.BasicRuntimeMetadata)
+	SetPodMetadata(types.Container)
+	SetContainerMetadata(types.Container)
 }
 
 type NodeSetter interface {

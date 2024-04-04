@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -711,7 +711,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 			return
 		}
 		for _, ev := range evs {
-			ev.SetContainerMetadata(&container.K8s.BasicK8sMetadata, &container.Runtime.BasicRuntimeMetadata)
+			ev.SetContainerMetadata(container)
 			t.eventCallback(ev)
 		}
 	}()

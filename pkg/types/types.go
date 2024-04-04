@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,6 +105,12 @@ func String2RuntimeName(name string) RuntimeName {
 	return RuntimeNameUnknown
 }
 
+type Container interface {
+	K8sMetadata() *BasicK8sMetadata
+	RuntimeMetadata() *BasicRuntimeMetadata
+	UsesHostNetwork() bool
+}
+
 type BasicRuntimeMetadata struct {
 	// RuntimeName is the name of the container runtime. It is useful to distinguish
 	// who is the "owner" of each container in a list of containers collected
@@ -172,7 +178,10 @@ func (c *CommonData) SetNode(node string) {
 	c.K8s.Node = node
 }
 
-func (c *CommonData) SetPodMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata) {
+func (c *CommonData) SetPodMetadata(container Container) {
+	k8s := container.K8sMetadata()
+	runtime := container.RuntimeMetadata()
+
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace
 	c.K8s.PodLabels = k8s.PodLabels
@@ -181,7 +190,10 @@ func (c *CommonData) SetPodMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntime
 	c.Runtime.RuntimeName = runtime.RuntimeName
 }
 
-func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata) {
+func (c *CommonData) SetContainerMetadata(container Container) {
+	k8s := container.K8sMetadata()
+	runtime := container.RuntimeMetadata()
+
 	c.K8s.ContainerName = k8s.ContainerName
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace

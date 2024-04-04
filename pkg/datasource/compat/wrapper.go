@@ -251,7 +251,8 @@ func (ev *EventWrapper) GetNetNSID() uint64 {
 	return getUint64(ev.NetnsidAccessor, ev.Data)
 }
 
-func (ev *EventWrapper) SetPodMetadata(k8s *types.BasicK8sMetadata, rt *types.BasicRuntimeMetadata) {
+func (ev *EventWrapper) SetPodMetadata(container types.Container) {
+	k8s := container.K8sMetadata()
 	if k8s != nil {
 		if ev.namespaceAccessor.IsRequested() {
 			ev.namespaceAccessor.Set(ev.Data, []byte(k8s.Namespace))
@@ -264,9 +265,12 @@ func (ev *EventWrapper) SetPodMetadata(k8s *types.BasicK8sMetadata, rt *types.Ba
 		}
 		if ev.hostNetworkAccessor.IsRequested() {
 			ev.hostNetworkAccessor.Set(ev.Data, make([]byte, 1))
-			ev.hostNetworkAccessor.PutInt8(ev.Data, 0) // TODO
+			if container.UsesHostNetwork() {
+				ev.hostNetworkAccessor.PutInt8(ev.Data, 1)
+			}
 		}
 	}
+	rt := container.RuntimeMetadata()
 	if rt != nil {
 		if ev.containernameAccessor.IsRequested() {
 			ev.containernameAccessor.Set(ev.Data, []byte(rt.ContainerName))
@@ -286,8 +290,8 @@ func (ev *EventWrapper) SetPodMetadata(k8s *types.BasicK8sMetadata, rt *types.Ba
 	}
 }
 
-func (ev *EventWrapper) SetContainerMetadata(k8s *types.BasicK8sMetadata, rt *types.BasicRuntimeMetadata) {
-	ev.SetPodMetadata(k8s, rt)
+func (ev *EventWrapper) SetContainerMetadata(container types.Container) {
+	ev.SetPodMetadata(container)
 }
 
 func (ev *EventWrapper) SetNode(node string) {
