@@ -130,8 +130,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/dev/null",
 					Flags:         []string{"O_RDONLY"},
@@ -164,8 +163,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/dev/null",
 					FullPath:      "",
@@ -202,8 +200,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/tmp/test_flags_and_mode",
 					FullPath:      "",
@@ -244,8 +241,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          relPath,
 					FullPath:      "/tmp/test_relative_path",
@@ -289,8 +285,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/tmp/test_symbolic_links",
 					FullPath:      "/dev/null",
@@ -333,8 +328,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          longPath[:254],
 					FullPath:      longPath,
@@ -382,8 +376,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/tmp/foo/bar.test",
 					Flags:         []string{"O_RDONLY", "O_CREAT"},
@@ -423,8 +416,7 @@ func TestOpenTracer(t *testing.T) {
 					Pid:           uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
-					Fd:            fd,
-					Ret:           fd,
+					Fd:            uint32(fd),
 					Err:           0,
 					Path:          "/tmp/foo.test",
 					Flags:         []string{"O_RDONLY", "O_CREAT"},
@@ -475,31 +467,8 @@ func TestOpenTracer(t *testing.T) {
 					t.Fatalf("One event expected")
 				}
 
-				utilstest.Equal(t, int(unix.ENOENT), events[0].Err,
+				utilstest.Equal(t, int(unix.ENOENT), int(events[0].Err),
 					"Captured event has bad Err")
-			},
-		},
-		"event_has_correct_ret_on_error": {
-			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
-				return &tracer.Config{
-					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
-				}
-			},
-			generateEvent: func() (int, error) {
-				_, err := unix.Open("non-existing-file", 0, 0)
-				if err == nil {
-					return 0, fmt.Errorf("error was expected")
-				}
-
-				return -1, nil
-			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
-				if len(events) != 1 {
-					t.Fatalf("One event expected")
-				}
-
-				utilstest.Equal(t, -int(unix.ENOENT), events[0].Ret,
-					"Captured event has bad Ret")
 			},
 		},
 	} {
@@ -550,7 +519,7 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 	// struct with only fields we want to check on this test
 	type expectedEvent struct {
 		mntNsID uint64
-		fd      int
+		fd      uint32
 	}
 
 	const n int = 5
@@ -573,8 +542,8 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		utilstest.RunWithRunner(t, runners[i], func() error {
-			var err error
-			expectedEvents[i].fd, err = generateEvent()
+			fd, err := generateEvent()
+			expectedEvents[i].fd = uint32(fd)
 			return err
 		})
 	}

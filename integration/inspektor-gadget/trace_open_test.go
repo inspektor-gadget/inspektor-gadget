@@ -40,7 +40,6 @@ func TestTraceOpen(t *testing.T) {
 				Event:    BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:     "cat",
 				Fd:       3,
-				Ret:      3,
 				Err:      0,
 				Path:     "/dev/null",
 				FullPath: "",

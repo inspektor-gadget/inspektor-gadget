@@ -21,7 +21,8 @@ struct event {
 	__u32 uid;
 	__u32 gid;
 	__u64 mntns_id;
-	int ret;
+	__s32 err;
+	__u32 fd;
 	int flags;
 	__u16 mode;
 	__u8 comm[TASK_COMM_LEN];
