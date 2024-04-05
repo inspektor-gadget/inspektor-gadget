@@ -1706,7 +1706,17 @@ jobs:
           test_summary_suffix: "GKE-${{ matrix.flavor.arch }}"
       - name: Delete GKE cluster
         if: always()
+        # default shell is "bash -e {0}" which will fail-fast if the command returns a non-zero exit code
+        # See: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsshell
+        shell: bash {0}
         run: |
+          while [ "$(gcloud container operations list \
+            --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} \
+            --filter="status=RUNNING AND targetLink~${{ env.CLUSTER_NAME }}" --format="value(name)")" ]
+          do
+            echo "cluster has an ongoing operation, waiting for all operations to finish"
+            sleep 15
+          done
           gcloud container clusters delete --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} ${{ env.CLUSTER_NAME }} --async --quiet
 
   test-integration-minikube:
