@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package containers
 
 import (
 	"context"
@@ -20,30 +20,16 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
 
-type ContainerdManager struct{}
+type DockerManager struct{}
 
-func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOption) TestStep {
-	c := &ContainerdContainer{}
+func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) *TestContainer {
+	c := &TestContainer{}
 
 	for _, o := range opts {
 		o(&c.cOptions)
 	}
 	c.options = append(c.options, testutils.WithContext(context.Background()))
 
-	c.Container = testutils.NewContainerdContainer(name, cmd, c.options...)
+	c.Container = testutils.NewDockerContainer(name, cmd, c.options...)
 	return c
-}
-
-// ContainerdContainer implements TestStep for containerd containers
-type ContainerdContainer struct {
-	testutils.Container
-	cOptions
-}
-
-func (c *ContainerdContainer) IsCleanup() bool {
-	return c.cleanup
-}
-
-func (c *ContainerdContainer) IsStartAndStop() bool {
-	return c.startAndStop
 }

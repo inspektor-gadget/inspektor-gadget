@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package containers
 
 import (
 	"fmt"
@@ -22,9 +22,12 @@ import (
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) TestStep
+	NewContainer(name, cmd string, opts ...containerOption) *TestContainer
 }
 
+// NewContainerFactory returns a new instance of a ContainerFactory based on the
+// container runtime. The returned factory can be used to create new container
+// instances which can be used in tests.
 func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	switch types.String2RuntimeName(containerRuntime) {
 	case types.RuntimeNameDocker:
@@ -36,36 +39,10 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	}
 }
 
-type cOptions struct {
-	options      []testutils.Option
-	cleanup      bool
-	startAndStop bool
-}
-
-// containerOption is a function that modifies a ContainerSpec and exposes only
-// few options from testutils.Option to the user.
-type containerOption func(opts *cOptions)
-
-func WithContainerImage(image string) containerOption {
-	return func(opts *cOptions) {
-		opts.options = append(opts.options, testutils.WithImage(image))
-	}
-}
-
-func WithContainerSeccompProfile(profile string) containerOption {
-	return func(opts *cOptions) {
-		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))
-	}
-}
-
-func WithCleanup() containerOption {
-	return func(opts *cOptions) {
-		opts.cleanup = true
-	}
-}
-
-func WithStartAndStop() containerOption {
-	return func(opts *cOptions) {
-		opts.startAndStop = true
-	}
+// TestContainer is a wrapper around testutils.Container that implements the
+// missing functions from the TestStep interface. This allows to use the
+// container as a step in a test.
+type TestContainer struct {
+	testutils.Container
+	cOptions
 }
