@@ -60,7 +60,7 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 		opInst, err := op.InstantiateDataOperator(c, opParamValues)
 		if err != nil {
-			log.Errorf("instantiating operator %q: %v", op.Name(), err)
+			return nil, fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
 		}
 		if opInst == nil {
 			log.Debugf("> skipped %s", op.Name())
