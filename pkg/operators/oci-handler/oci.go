@@ -222,6 +222,10 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		o.imageOperatorInstances = append(o.imageOperatorInstances, opInst)
 	}
 
+	if len(o.imageOperatorInstances) == 0 {
+		return fmt.Errorf("image doesn't contain valid gadget layers")
+	}
+
 	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Prepare(o.gadgetCtx)
