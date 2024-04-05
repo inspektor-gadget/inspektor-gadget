@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"sigs.k8s.io/yaml"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -35,8 +37,10 @@ const (
 	ParamFields = "fields"
 	ParamMode   = "output"
 
-	ModeJSON    = "json"
-	ModeColumns = "columns"
+	ModeJSON       = "json"
+	ModeJSONPretty = "jsonpretty"
+	ModeColumns    = "columns"
+	ModeYAML       = "yaml"
 )
 
 type cliOperator struct{}
@@ -161,7 +165,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		DefaultValue:   ModeColumns,
 		Description:    "output mode",
 		Alias:          "o",
-		PossibleValues: []string{ModeJSON, ModeColumns},
+		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML},
 	}
 
 	return api.Params{fields, mode}
@@ -232,24 +236,40 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				handler(datasource.NewDataTuple(ds, data))
 				return nil
 			}, Priority)
-		case ModeJSON:
-			var opts []json.Option
+		case ModeJSON, ModeJSONPretty, ModeYAML:
+			// var opts []json.Option
 			// if hasFields {
 			// 	opts = append(opts, json.WithFields(strings.Split(fields, ",")))
 			// }
 
-			// TODO: compatiblity for now: add all; remove me later on and use the commented version above
-			opts = []json.Option{json.WithShowAll(true)}
-
-			jsonFormatter, err := json.New(ds, opts...)
+			jsonFormatter, err := json.New(ds,
+				// TODO: compatiblity for now: add all; remove me later on and use the commented version above
+				json.WithShowAll(true),
+				json.WithPretty(o.mode == ModeJSONPretty, "  "),
+			)
 			if err != nil {
 				return fmt.Errorf("initializing JSON formatter: %w", err)
 			}
 
-			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			df := func(ds datasource.DataSource, data datasource.Data) error {
 				fmt.Println(string(jsonFormatter.Marshal(data)))
 				return nil
-			}, Priority)
+			}
+
+			if o.mode == ModeYAML {
+				// For the time being, this uses a slow approach to marshal to YAML, by first
+				// converting to JSON and then to YAML. This should get a dedicated formatter sooner or later.
+				df = func(ds datasource.DataSource, data datasource.Data) error {
+					yml, err := yaml.JSONToYAML(jsonFormatter.Marshal(data))
+					if err != nil {
+						return fmt.Errorf("serializing yaml: %w", err)
+					}
+					fmt.Println("---")
+					fmt.Print(string(yml))
+					return nil
+				}
+			}
+			ds.Subscribe(df, Priority)
 		}
 	}
 	return nil
