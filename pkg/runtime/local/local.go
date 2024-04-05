@@ -15,7 +15,6 @@
 package local
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -25,7 +24,6 @@ import (
 
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -80,14 +78,6 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
 	return nil
-}
-
-func (r *Runtime) GetGadgetInfo(_ context.Context, desc gadgets.GadgetDesc, pars *params.Params, args []string) (*runTypes.GadgetInfo, error) {
-	runDesc, ok := desc.(runTypes.RunGadgetDesc)
-	if !ok {
-		return nil, fmt.Errorf("GetGadgetInfo not supported for gadget %s", desc.Name())
-	}
-	return runDesc.GetGadgetInfo(pars, args)
 }
 
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {

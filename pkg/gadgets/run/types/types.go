@@ -16,11 +16,7 @@ package types
 
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -135,21 +131,4 @@ type ColumnDesc struct {
 	BlobIndex int // -1: virtual, 0: ebpf, 1: fixed length, 1+ strings
 	Type      Type
 	Offset    uintptr
-}
-
-type GadgetInfo struct {
-	GadgetMetadata *metadatav1.GadgetMetadata
-	Columns        []ColumnDesc
-	ProgContent    []byte
-	GadgetType     gadgets.GadgetType
-	EventFactory   *EventFactory
-}
-
-// RunGadgetDesc represents the different methods implemented by the run gadget descriptor.
-type RunGadgetDesc interface {
-	GetGadgetInfo(params *params.Params, args []string) (*GadgetInfo, error)
-	CustomParser(info *GadgetInfo) (parser.Parser, error)
-	JSONConverter(info *GadgetInfo, p Printer) func(ev any)
-	JSONPrettyConverter(info *GadgetInfo, p Printer) func(ev any)
-	YAMLConverter(info *GadgetInfo, p Printer) func(ev any)
 }

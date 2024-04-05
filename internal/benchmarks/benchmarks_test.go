@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -274,7 +274,6 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							parser,
 							logger.DefaultLogger(),
 							0,
-							nil,
 						)
 
 						_, err := runtime.RunGadget(gadgetCtx)

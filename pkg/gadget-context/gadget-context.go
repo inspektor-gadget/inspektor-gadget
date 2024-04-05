@@ -30,7 +30,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -56,7 +55,6 @@ type GadgetContext struct {
 	result                   []byte
 	resultError              error
 	timeout                  time.Duration
-	gadgetInfo               *runTypes.GadgetInfo
 
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
@@ -81,7 +79,6 @@ func New(
 	parser parser.Parser,
 	logger logger.Logger,
 	timeout time.Duration,
-	gadgetInfo *runTypes.GadgetInfo,
 ) *GadgetContext {
 	gCtx, cancel := context.WithCancel(ctx)
 
@@ -99,7 +96,6 @@ func New(
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
 		timeout:                  timeout,
-		gadgetInfo:               gadgetInfo,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
@@ -179,10 +175,6 @@ func (c *GadgetContext) OperatorsParamCollection() params.Collection {
 
 func (c *GadgetContext) Timeout() time.Duration {
 	return c.timeout
-}
-
-func (c *GadgetContext) GadgetInfo() *runTypes.GadgetInfo {
-	return c.gadgetInfo
 }
 
 func (c *GadgetContext) ImageName() string {
