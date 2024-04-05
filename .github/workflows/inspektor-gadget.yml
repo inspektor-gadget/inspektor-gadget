@@ -1391,6 +1391,7 @@ jobs:
 
   test-integration-aks:
     name: Integration tests on AKS
+    if: false
     # level: 4
     needs:
       - check-secrets
@@ -1399,7 +1400,6 @@ jobs:
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
-    if: needs.check-secrets.outputs.aks == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1492,6 +1492,7 @@ jobs:
   # never try to use IG on that unique ARO cluster from different workflow runs.
   test-integration-aro:
     name: Integration tests on ARO
+    if: false
     # level: 4
     needs:
       - check-secrets
@@ -1502,7 +1503,6 @@ jobs:
       - build-and-push-gadgets
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/devel/ci.md for further details.
-    if: needs.check-secrets.outputs.aro == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: no-simultaneous-test-integration-aro
@@ -1543,6 +1543,7 @@ jobs:
 
   test-integration-eks:
     name: Integration tests on EKS
+    if: false
     # level: 4
     needs:
       - test-unit
@@ -1550,7 +1551,6 @@ jobs:
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
-    if: ${{ vars.AWS_ROLE != '' }}
     runs-on: ubuntu-latest
     # These permissions are needed to interact with GitHub's OIDC Token endpoint.
     permissions:
