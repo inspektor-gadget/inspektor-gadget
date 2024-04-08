@@ -106,6 +106,7 @@ jobs:
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
         args: "--out-${NO_FUTURE}format colored-line-number"
+        skip-pkg-cache: true
 
   semgrep:
     name: semgrep
