@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/distribution/reference"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -92,10 +95,33 @@ var (
 	eventBufferLength   uint64
 	daemonLogLevel      string
 	appArmorprofile     string
+	verifyImage         bool
+	publicKey           string
 	strLevels           []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
+
+var clusterImagePolicyKind = schema.GroupVersionKind{
+	Group:   "policy.sigstore.dev",
+	Version: "v1beta1",
+	Kind:    "ClusterImagePolicy",
+}
+
+var admissionControllerFormat = `
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: %s-image-policy
+spec:
+  images:
+  - glob: "%s"
+  authorities:
+    - key:
+        hashAlgorithm: sha256
+        data: !!binary |
+          %s
+`
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
@@ -185,6 +211,14 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&appArmorprofile,
 		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
+	deployCmd.PersistentFlags().BoolVarP(
+		&verifyImage,
+		"verify-image", "",
+		true,
+		"verify container image if policy-controller is installed on the cluster")
+	deployCmd.PersistentFlags().StringVarP(
+		&publicKey,
+		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -207,6 +241,8 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 
 	// For CustomResourceDefinition kind.
 	apiextv1.AddToScheme(sch)
+	// For ClusterImagePolicy kind, this avoid including all sigstore dependencies.
+	sch.AddKnownTypeWithName(clusterImagePolicyKind, &unstructured.Unstructured{})
 	// For all the other kinds (e.g. Namespace).
 	scheme.AddToScheme(sch)
 
@@ -219,7 +255,7 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 		decode := serializer.NewCodecFactory(sch).UniversalDeserializer().Decode
 		obj, _, err := decode([]byte(f), nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("decoding YAML object: %w", err)
+			return nil, fmt.Errorf("decoding YAML object %v: %w", f, err)
 		}
 
 		retVal = append(retVal, obj)
@@ -430,6 +466,51 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		isPullSecretPresent = true
 	}
 
+	var isPolicyControllerPresent bool
+	if verifyImage {
+		if _, err = k8sClient.CoreV1().Namespaces().Get(context.TODO(), "cosign-system", metav1.GetOptions{}); err == nil {
+			isPolicyControllerPresent = true
+		} else {
+			log.Warnf("No policy controller found, the container image will not be verified")
+		}
+
+		if isPolicyControllerPresent {
+			encodedKey := base64.StdEncoding.EncodeToString([]byte(publicKey))
+
+			ref, err := reference.Parse(image)
+			if err != nil {
+				return fmt.Errorf("parsing image name %q: %w", image, err)
+			}
+
+			// We cannot use tag as image for admission controller, as the tested image
+			// will use digest:
+			// Error: problem while creating resource: creating "DaemonSet": admission webhook "policy.sigstore.dev" denied the request: validation failed: no matching policies: spec.template.spec.containers[0].image
+			// ghcr.io/inspektor-gadget/inspektor-gadget@sha256:a6c2b00174013789d4af0cc48ba5e269426ff44f27dcb9b84f489537280e0871
+			// So, if users gave a digest, we use it directly.
+			// Otherwise, i.e. user gave a tag or the image itself, we extract the
+			// repository from it and add "**" to glob it.
+			admissionImage := ""
+			if digested, ok := ref.(reference.Digested); ok {
+				admissionImage = digested.String()
+			} else if named, ok := ref.(reference.Named); ok {
+				admissionImage = fmt.Sprintf("%s**", reference.TrimNamed(named).String())
+			} else {
+				return fmt.Errorf("reference is neither reference.Digested nor reference.Named but %T", ref)
+			}
+
+			admissionControllerYAML := fmt.Sprintf(admissionControllerFormat, gadgetNamespace, admissionImage, encodedKey)
+
+			admissionControllerObject, err := parseK8sYaml(admissionControllerYAML)
+			if err != nil {
+				return err
+			}
+
+			objects = append(admissionControllerObject, objects...)
+		}
+	} else {
+		log.Warnf("You used --verify-image=false, the container image will not be verified")
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -548,6 +629,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		if ns, isNs := object.(*v1.Namespace); isNs {
 			ns.Name = gadgetNamespace
+
+			if verifyImage && isPolicyControllerPresent {
+				if ns.Labels != nil {
+					ns.Labels["policy.sigstore.dev/include"] = "true"
+				} else {
+					ns.Labels = map[string]string{"policy.sigstore.dev/include": "true"}
+				}
+			}
 		}
 		if sa, isSa := object.(*v1.ServiceAccount); isSa {
 			sa.Namespace = gadgetNamespace
