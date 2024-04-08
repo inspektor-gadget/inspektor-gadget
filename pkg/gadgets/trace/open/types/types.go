@@ -30,9 +30,8 @@ type Event struct {
 	Uid      uint32      `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
 	Gid      uint32      `json:"gid" column:"gid,template:gid,hide"`
 	Comm     string      `json:"comm,omitempty" column:"comm,maxWidth:16"`
-	Fd       int         `json:"fd,omitempty" column:"fd,minWidth:2,width:3"`
-	Ret      int         `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
-	Err      int         `json:"err,omitempty" column:"err,width:3,fixed"`
+	Fd       uint32      `json:"fd,omitempty" column:"fd,minWidth:2,width:3"`
+	Err      int32       `json:"err,omitempty" column:"err,width:3,fixed"`
 	Flags    []string    `json:"flags,omitempty" column:"flags,width:24,hide"`
 	FlagsRaw int32       `json:"flagsRaw,omitempty"`
 	Mode     string      `json:"mode,omitempty" column:"mode,width:10,hide"`

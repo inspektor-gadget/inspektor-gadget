@@ -19,13 +19,14 @@ type opensnoopEvent struct {
 	Gid       uint32
 	_         [4]byte
 	MntnsId   uint64
-	Ret       int32
+	Err       int32
+	Fd        uint32
 	Flags     int32
 	Mode      uint16
 	Comm      [16]uint8
 	Fname     [255]uint8
 	FullFname [4096]uint8
-	_         [7]byte
+	_         [3]byte
 }
 
 type opensnoopPrefixKey struct {

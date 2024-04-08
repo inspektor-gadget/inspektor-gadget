@@ -170,7 +170,9 @@ int ig_openat_e(struct syscall_trace_enter *ctx)
 static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 {
 	struct event *event;
-	int ret;
+	long int ret;
+	__u32 fd;
+	__s32 errval;
 	u32 pid = bpf_get_current_pid_tgid();
 	u64 uid_gid = bpf_get_current_uid_gid();
 	u64 mntns_id;
@@ -194,12 +196,21 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	if (targ_failed && ret >= 0)
 		goto cleanup; /* want failed only */
 
+	fd = 0;
+	errval = 0;
+	if (ret >= 0) {
+		fd = ret;
+	} else {
+		errval = -ret;
+	}
+
 	/* event data */
 	event->pid = bpf_get_current_pid_tgid() >> 32;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-	event->ret = ret;
+	event->err = errval;
+	event->fd = fd;
 	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp = bpf_ktime_get_boot_ns();
 

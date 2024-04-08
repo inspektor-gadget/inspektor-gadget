@@ -28,7 +28,8 @@ struct event {
 	__u32 uid;
 	__u32 gid;
 	gadget_mntns_id mntns_id;
-	int ret;
+	__s32 err;
+	__u32 fd;
 	int flags;
 	__u16 mode;
 	__u8 comm[TASK_COMM_LEN];
@@ -124,7 +125,9 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 {
 	struct event *event;
 	struct args_t *ap;
-	int ret;
+	long int ret;
+	__u32 fd;
+	__s32 errval;
 	u32 pid = bpf_get_current_pid_tgid();
 	u64 uid_gid = bpf_get_current_uid_gid();
 
@@ -139,6 +142,14 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	if (!event)
 		goto cleanup;
 
+	fd = 0;
+	errval = 0;
+	if (ret >= 0) {
+		fd = ret;
+	} else {
+		errval = -ret;
+	}
+
 	/* event data */
 	event->pid = bpf_get_current_pid_tgid() >> 32;
 	event->uid = (u32)uid_gid;
@@ -147,7 +158,8 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags = ap->flags;
 	event->mode = ap->mode;
-	event->ret = ret;
+	event->err = errval;
+	event->fd = fd;
 	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp = bpf_ktime_get_boot_ns();
 

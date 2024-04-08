@@ -25,20 +25,27 @@ structs:
     - name: gid
       attributes:
         template: uid
-    - name: ret
-      attributes:
-        width: 5
     - name: flags
       attributes:
         width: 5
         hidden: true
     - name: mode
-      description: 'TODO: Fill field description'
+      description: File access mode
       attributes:
         width: 16
         alignment: left
         hidden: true
         ellipsis: end
+    - name: err
+      description: Error code
+      attributes:
+        width: 3
+        alignment: right
+    - name: fd
+      description: File descriptor. 0 in case of error
+      attributes:
+        minWidth: 2
+        maxWidth: 3
     - name: fname
       attributes:
         width: 32

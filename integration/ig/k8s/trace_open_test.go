@@ -42,7 +42,6 @@ func TestTraceOpen(t *testing.T) {
 				),
 				Comm:     "cat",
 				Fd:       3,
-				Ret:      3,
 				Err:      0,
 				Path:     "/dev/null",
 				FullPath: "",

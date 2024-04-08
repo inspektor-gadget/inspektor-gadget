@@ -51,7 +51,8 @@ type opensnoopEventAbbrev struct {
 	Gid       uint32
 	_         [4]byte
 	MntnsId   uint64
-	Ret       int32
+	Err       int32
+	Fd        uint32
 	Flags     int32
 	Mode      uint16
 	Comm      [16]uint8
@@ -214,16 +215,6 @@ func (t *Tracer) run() {
 
 		bpfEvent := (*opensnoopEventAbbrev)(unsafe.Pointer(&record.RawSample[0]))
 
-		ret := int(bpfEvent.Ret)
-		fd := 0
-		errval := 0
-
-		if ret >= 0 {
-			fd = ret
-		} else {
-			errval = -ret
-		}
-
 		mode := fs.FileMode(bpfEvent.Mode)
 
 		event := types.Event{
@@ -236,9 +227,8 @@ func (t *Tracer) run() {
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),
-			Ret:           ret,
-			Fd:            fd,
-			Err:           errval,
+			Fd:            bpfEvent.Fd,
+			Err:           bpfEvent.Err,
 			FlagsRaw:      bpfEvent.Flags,
 			Flags:         DecodeFlags(bpfEvent.Flags),
 			ModeRaw:       mode,
