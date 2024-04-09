@@ -1342,6 +1342,43 @@ jobs:
           BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }} \
           push-gadgets -o install/ig
 
+  test-gadgets:
+    name: Test gadgets
+    #level 2
+    needs:
+      - build-ig
+      - build-helper-images
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+    - name: Get ig-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@v3
+      with:
+        name: ig-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/
+    - name: Unpack ig-linux-amd64.tar.gz
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+        sudo mv ig /usr/bin/ig
+    - name: Setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Gadgets tests
+      run: |
+          make \
+          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
+          GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+          test-gadgets -o install/ig
+
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
     # level: 3
