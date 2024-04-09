@@ -105,12 +105,12 @@ type Runtime interface {
 	GlobalParamDescs() params.ParamDescs
 	ParamDescs() params.ParamDescs
 
-	// GetOCIGadgetInfo returns information about the gadget and used operators; this info potentially comes
+	// GetGadgetInfo returns information about the gadget and used operators; this info potentially comes
 	// from a cache
-	GetOCIGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error)
+	GetGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error)
 
-	RunGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
-	RunOCIGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
+	RunBuiltInGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
+	RunGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)

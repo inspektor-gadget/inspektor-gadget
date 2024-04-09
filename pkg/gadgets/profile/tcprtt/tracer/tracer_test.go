@@ -977,7 +977,7 @@ func connectTCPClient(t *testing.T, clientIP net.IP, remoteIP net.IP, remotePort
 }
 
 func newGadgetCtx(gadgetParams *params.Params, timeout time.Duration) *gadgetcontext.GadgetContext {
-	return gadgetcontext.New(
+	return gadgetcontext.NewBuiltIn(
 		context.Background(),
 		"",
 		nil,

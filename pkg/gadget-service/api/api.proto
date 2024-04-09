@@ -18,7 +18,7 @@ option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-ser
 
 package api;
 
-message GadgetRunRequest {
+message BuiltInGadgetRunRequest {
   // name of the gadget as returned by gadgetDesc.Name()
   string gadgetName = 1;
 
@@ -50,7 +50,7 @@ message GadgetRunRequest {
   int64 timeout = 13;
 }
 
-message OCIGadgetRunRequest {
+message GadgetRunRequest {
   string imageName = 1;
 
   // paramValues is a combined map of all params a gadget could need (including those
@@ -72,7 +72,7 @@ message OCIGadgetRunRequest {
   int64 timeout = 13;
 }
 
-message GadgetStopRequest {
+message BuiltInGadgetStopRequest {
 }
 
 message GadgetEvent {
@@ -83,16 +83,19 @@ message GadgetEvent {
   uint32 dataSourceID = 4;
 }
 
-message GadgetControlRequest {
+message BuiltInGadgetControlRequest {
   oneof Event {
-    GadgetRunRequest runRequest = 1;
-    GadgetStopRequest stopRequest = 2;
+    BuiltInGadgetRunRequest runRequest = 1;
+    BuiltInGadgetStopRequest stopRequest = 2;
   }
 }
 
-message OCIGadgetControlRequest {
+message GadgetStopRequest {
+}
+
+message GadgetControlRequest {
   oneof Event {
-    OCIGadgetRunRequest ociRunRequest = 1;
+    GadgetRunRequest runRequest = 1;
     GadgetStopRequest stopRequest = 2;
   }
 }
@@ -214,7 +217,7 @@ message Field {
   int32 order = 12;
 }
 
-message GetOCIGadgetInfoRequest {
+message GetGadgetInfoRequest {
   // params are the gadget's parameters
   map<string, string> paramValues = 1;
 
@@ -224,16 +227,16 @@ message GetOCIGadgetInfoRequest {
   uint32 version = 3;
 }
 
-message GetOCIGadgetInfoResponse {
+message GetGadgetInfoResponse {
   GadgetInfo gadgetInfo = 1;
 }
 
-service GadgetManager {
+service BuiltInGadgetManager {
   rpc GetInfo(InfoRequest) returns (InfoResponse) {}
-  rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+  rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
 }
 
-service OCIGadgetManager {
-  rpc GetOCIGadgetInfo(GetOCIGadgetInfoRequest) returns (GetOCIGadgetInfoResponse) {}
-  rpc RunOCIGadget(stream OCIGadgetControlRequest) returns (stream GadgetEvent) {}
+service GadgetManager {
+  rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
+  rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
 }

@@ -278,7 +278,7 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	return nil, fmt.Errorf("unsupported connection mode")
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
+func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	paramMap := make(map[string]string)
 	gadgets.ParamsToMap(
 		paramMap,
@@ -296,7 +296,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 	if err != nil {
 		return nil, fmt.Errorf("getting target nodes: %w", err)
 	}
-	return r.runGadgetOnTargets(gadgetCtx, paramMap, targets)
+	return r.runBuiltInGadgetOnTargets(gadgetCtx, paramMap, targets)
 }
 
 func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *params.Params) (*grpc.ClientConn, error) {
@@ -318,7 +318,7 @@ func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *para
 	return conn, nil
 }
 
-func (r *Runtime) runGadgetOnTargets(
+func (r *Runtime) runBuiltInGadgetOnTargets(
 	gadgetCtx runtime.GadgetContext,
 	paramMap map[string]string,
 	targets []target,
@@ -347,7 +347,7 @@ func (r *Runtime) runGadgetOnTargets(
 		wg.Add(1)
 		go func(target target) {
 			gadgetCtx.Logger().Debugf("running gadget on node %q", target.node)
-			res, err := r.runGadget(gadgetCtx, target, paramMap)
+			res, err := r.runBuiltInGadget(gadgetCtx, target, paramMap)
 			resultsLock.Lock()
 			results[target.node] = &runtime.GadgetResult{
 				Payload: res,
@@ -384,7 +384,7 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 	return conn, nil
 }
 
-func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
+func (r *Runtime) runBuiltInGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
 	// Notice that we cannot use gadgetCtx.Context() here, as that would - when cancelled by the user - also cancel the
 	// underlying gRPC connection. That would then lead to results not being received anymore (mostly for profile
 	// gadgets.)
@@ -400,9 +400,9 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}
 	defer conn.Close()
-	client := api.NewGadgetManagerClient(conn)
+	client := api.NewBuiltInGadgetManagerClient(conn)
 
-	runRequest := &api.GadgetRunRequest{
+	runRequest := &api.BuiltInGadgetRunRequest{
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
@@ -413,12 +413,12 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		Timeout:        int64(gadgetCtx.Timeout()),
 	}
 
-	runClient, err := client.RunGadget(connCtx)
+	runClient, err := client.RunBuiltInGadget(connCtx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		return nil, err
 	}
 
-	controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+	controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_RunRequest{RunRequest: runRequest}}
 	err = runClient.Send(controlRequest)
 	if err != nil {
 		return nil, err
@@ -493,7 +493,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	case <-gadgetCtx.Context().Done():
 		// Send stop request
 		gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
-		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
+		controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_StopRequest{StopRequest: &api.BuiltInGadgetStopRequest{}}}
 		runClient.Send(controlRequest)
 
 		// Wait for done or timeout

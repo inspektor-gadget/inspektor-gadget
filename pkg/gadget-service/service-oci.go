@@ -29,7 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 )
 
-func (s *Service) GetOCIGadgetInfo(ctx context.Context, req *api.GetOCIGadgetInfoRequest) (*api.GetOCIGadgetInfoResponse, error) {
+func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
 	if req.Version != api.VersionGadgetInfo {
 		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
 	}
@@ -40,22 +40,22 @@ func (s *Service) GetOCIGadgetInfo(ctx context.Context, req *api.GetOCIGadgetInf
 		ops = append(ops, op)
 	}
 
-	gadgetCtx := gadgetcontext.NewOCI(ctx, req.ImageName, gadgetcontext.WithDataOperators(ops...))
+	gadgetCtx := gadgetcontext.New(ctx, req.ImageName, gadgetcontext.WithDataOperators(ops...))
 
-	gi, err := s.runtime.GetOCIGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)
+	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
-	return &api.GetOCIGadgetInfoResponse{GadgetInfo: gi}, nil
+	return &api.GetGadgetInfoResponse{GadgetInfo: gi}, nil
 }
 
-func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer) error {
+func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
 	}
 
-	ociRequest := ctrl.GetOciRunRequest()
+	ociRequest := ctrl.GetRunRequest()
 	if ociRequest == nil {
 		return fmt.Errorf("expected first control message to be gadget run request")
 	}
@@ -99,7 +99,7 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 						return
 					}
 					switch msg.Event.(type) {
-					case *api.OCIGadgetControlRequest_StopRequest:
+					case *api.GadgetControlRequest_StopRequest:
 						log.Debugf("received stop request")
 						gadgetCtx.Cancel()
 						return
@@ -187,7 +187,7 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 	}
 	ops = append(ops, svc)
 
-	gadgetCtx := gadgetcontext.NewOCI(
+	gadgetCtx := gadgetcontext.New(
 		runGadget.Context(),
 		ociRequest.ImageName,
 		gadgetcontext.WithLogger(logger),
@@ -197,7 +197,7 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 	runtimeParams := s.runtime.ParamDescs().ToParams()
 	runtimeParams.CopyFromMap(ociRequest.ParamValues, "runtime.")
 
-	err = s.runtime.RunOCIGadget(gadgetCtx, runtimeParams, ociRequest.ParamValues)
+	err = s.runtime.RunGadget(gadgetCtx, runtimeParams, ociRequest.ParamValues)
 	if err != nil {
 		return err
 	}

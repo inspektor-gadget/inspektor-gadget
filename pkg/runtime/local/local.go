@@ -80,7 +80,7 @@ func (r *Runtime) ParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
+func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	log := gadgetCtx.Logger()
 
 	log.Debugf("running with local runtime")

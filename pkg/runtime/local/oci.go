@@ -22,7 +22,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
+func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
 	err := gadgetCtx.PrepareGadgetInfo(paramValues)
 	if err != nil {
 		return nil, fmt.Errorf("initializing and preparing operators: %w", err)
@@ -31,6 +31,6 @@ func (r *Runtime) GetOCIGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParam
 	return gadgetCtx.SerializeGadgetInfo()
 }
 
-func (r *Runtime) RunOCIGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {
+func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {
 	return gadgetCtx.Run(paramValues)
 }

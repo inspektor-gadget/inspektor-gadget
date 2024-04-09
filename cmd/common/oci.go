@@ -90,7 +90,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			ops = append(ops, clioperator.CLIOperator)
 
-			gadgetCtx := gadgetcontext.NewOCI(
+			gadgetCtx := gadgetcontext.New(
 				context.Background(),
 				actualArgs[0], // imageName
 				gadgetcontext.WithDataOperators(ops...),
@@ -101,7 +101,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
 			// Fetch gadget information; TODO: this can potentially be cached
-			info, err = runtime.GetOCIGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+			info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
 			if err != nil {
 				return fmt.Errorf("fetching gadget information: %w", err)
 			}
@@ -155,7 +155,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			ops = append(ops, clioperator.CLIOperator)
 
-			gadgetCtx := gadgetcontext.NewOCI(
+			gadgetCtx := gadgetcontext.New(
 				ctx,
 				args[0],
 				gadgetcontext.WithDataOperators(ops...),
@@ -171,7 +171,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			// Also copy special oci params
 			ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
-			err := runtime.RunOCIGadget(gadgetCtx, runtimeParams, paramValueMap)
+			err := runtime.RunGadget(gadgetCtx, runtimeParams, paramValueMap)
 			if err != nil {
 				return err
 			}
