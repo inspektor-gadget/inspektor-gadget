@@ -51,3 +51,12 @@ clean:
 	for GADGET in $(GADGETS); do \
 		sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
+
+.PHONY:
+test: build
+	CGO_ENABLED=0 \
+	IG_EXPERIMENTAL=true \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	GADGET_TAG=$(GADGET_TAG) \
+	IG=$(IG) \
+	go test -exec 'sudo -E' -v ./...
