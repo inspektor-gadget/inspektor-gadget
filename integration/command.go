@@ -95,6 +95,10 @@ func GetSeed() int64 {
 	return seed
 }
 
+func (c *Command) DisplayName() string {
+	return c.Name
+}
+
 func (c *Command) IsCleanup() bool {
 	return c.Cleanup
 }
