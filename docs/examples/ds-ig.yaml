@@ -19,8 +19,7 @@ spec:
     spec:
       containers:
       - name: ig
-        # CHANGEME: use your own image
-        image: mycontainerimage:latest
+        image: ubuntu
         securityContext:
           # CHANGEME: see comment at the top of this file
           privileged: true
