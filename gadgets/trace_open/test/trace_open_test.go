@@ -50,11 +50,9 @@ func TestTraceOpen(t *testing.T) {
 
 	traceOpenCmd := igrunner.New(
 		"trace_open",
-		igrunner.WithPathFromEnvVar(),
-		igrunner.WithFlags("--runtimes=docker"),
-		igrunner.WithStartAndStop(),
-		igrunner.WithValidateOutput(
-			func(t *testing.T, output string) {
+		igrunner.Opts{
+			Flags: []string{"--runtimes=docker"},
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &traceOpenEvent{
 					CommonData: eventtypes.CommonData{
 						Runtime: eventtypes.BasicRuntimeMetadata{
@@ -81,7 +79,9 @@ func TestTraceOpen(t *testing.T) {
 				}
 
 				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-			}),
+			},
+			StartAndStop: true,
+		},
 	)
 
 	testSteps := []igtesting.TestStep{

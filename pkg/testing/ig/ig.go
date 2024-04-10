@@ -18,81 +18,50 @@
 package ig
 
 import (
-	"fmt"
-	"os"
 	"os/exec"
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/command"
 )
 
+type Opts struct {
+	Path           string
+	Flags          []string
+	StartAndStop   bool
+	ValidateOutput func(t *testing.T, output string)
+}
+
 // IGTestConfiguration is responsible for storing configuration of ig executable and provide methods to interact with.
 type IGTestConfiguration struct {
-	path  string
-	image string
-
 	// command.Command contains *exec.Cmd and additional properties and methods for the same.
 	command.Command
-	flags []string
+	opts  Opts
+	image string
 }
 
 func (ig *IGTestConfiguration) createCmd() {
-	ig.flags = append(ig.flags, "-o=json")
-	args := append([]string{"run", ig.image}, ig.flags...)
-	cmd := exec.Command(ig.path, args...)
+	ig.opts.Flags = append(ig.opts.Flags, "-o=json")
+	args := append([]string{"run", ig.image}, ig.opts.Flags...)
+	cmd := exec.Command(ig.opts.Path, args...)
+
+	ig.StartAndStop = ig.opts.StartAndStop
+	ig.ValidateOutput = ig.opts.ValidateOutput
 
 	ig.Cmd = cmd
 }
 
-type option func(*IGTestConfiguration)
-
-// WithPath used for providing custom path to ig executable.
-func WithPath(path string) option {
-	return func(ig *IGTestConfiguration) {
-		ig.path = path
-	}
-}
-
-// WithPathFromEnvVar used for reading custom path for ig executable from IG env var.
-func WithPathFromEnvVar() option {
-	return func(ig *IGTestConfiguration) {
-		ig.path = os.Getenv("IG")
-	}
-}
-
-// WithFlags args should be in form: "--flag_name=value" or "-shorthand=value".
-func WithFlags(flags ...string) option {
-	return func(ig *IGTestConfiguration) {
-		ig.flags = flags
-	}
-}
-
-// WithStartAndStop used to set StartAndStop value to true.
-func WithStartAndStop() option {
-	return func(ig *IGTestConfiguration) {
-		ig.StartAndStop = true
-	}
-}
-
-// WithValidateOutput used to compare the actual output with expected output.
-func WithValidateOutput(validateOutput func(t *testing.T, output string)) option {
-	return func(ig *IGTestConfiguration) {
-		ig.ValidateOutput = validateOutput
-	}
-}
-
 // New creates a new IG configured with the options passed as parameters.
-func New(image string, opts ...option) *IGTestConfiguration {
+func New(image string, opts Opts) *IGTestConfiguration {
+	if opts.Path == "" {
+		opts.Path = "ig"
+	}
+
 	ig := &IGTestConfiguration{
-		path:  "ig",
-		image: fmt.Sprintf("%s/%s:%s", os.Getenv("GADGET_REPOSITORY"), image, os.Getenv("GADGET_TAG")),
 		Command: command.Command{
 			Name: "Run_" + image,
 		},
-	}
-
-	for _, opt := range opts {
-		opt(ig)
+		opts:  opts,
+		image: image,
 	}
 
 	ig.createCmd()
