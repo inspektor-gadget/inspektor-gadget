@@ -31,41 +31,15 @@ container image was signed using our private key.
 
 ## Verify the container image while deploying
 
-You can also verify the container image at runtime by using `policy-controller`.
-To do so, you first need to [install](https://docs.sigstore.dev/policy-controller/installation/) this component on your kubernetes cluster.
-We will then deploy an `admission-controller` using the following YAML file:
-
-```yaml
-apiVersion: policy.sigstore.dev/v1beta1
-kind: ClusterImagePolicy
-metadata:
-  name: image-policy
-spec:
-  images:
-  - glob: "ghcr.io/inspektor-gadget/inspektor-gadget**"
-  authorities:
-    - key:
-        hashAlgorithm: sha256
-        data: |
-          # content of inspektor-gadget.pub
-```
-
-This `admission-controller` will only accept the image if it was signed with the given public key.
-By default, this `admission-controller` does nothing, we need to activate it on namespaces of interests:
+When deploying Inspektor Gadget using `kubectl gadget deploy`, the image will be automatically verified if the `policy-controller` is deployed on your Kubernetes cluster.
+To do so, you first need to [install](https://docs.sigstore.dev/policy-controller/installation/) this component.
+Now, let's deploy Inspektor Gadget in a cluster where the `policy-controller` is present:
 
 ```bash
-$ kubectl apply -f admission.yaml
-clusterimagepolicy.policy.sigstore.dev/image-policy created
-$ kubectl create ns gadget
-namespace/gadget created
-$ kubectl label namespace gadget policy.sigstore.dev/include=true
-namespace/gadget labeled
-```
-
-The `admission-controller` is now activated on the `gadget` namespace, let's try to deploy Inspektor Gadget:
-
-```bash
-$ kubectl-gadget deploy
+$ kubectl get pod -n cosign-system
+NAME                                         READY   STATUS    RESTARTS   AGE
+policy-controller-webhook-7c7f55dfcf-qkpw4   1/1     Running   0          10s
+$ kubectl gadget deploy
 ...
 1/1 gadget pod(s) ready
 ...
@@ -79,18 +53,45 @@ Now, let's undeploy Inspektor Gadget and try to deploy an old release which was 
 $ kubectl gadget undeploy
 ...
 Inspektor Gadget successfully removed
-$ kubectl create ns gadget
-namespace/gadget created
-$ kubectl label namespace gadget policy.sigstore.dev/include=true
-namespace/gadget labeled
 $ kubectl gadget deploy --image 'ghcr.io/inspektor-gadget/inspektor-gadget:v0.22.0'
 ...
 Creating DaemonSet/gadget...
-Error: problem while creating resource: creating "DaemonSet": admission webhook "policy.sigstore.dev" denied the request: validation failed: failed policy: image-policy: spec.template.spec.containers[0].image
+Error: problem while creating resource: creating "DaemonSet": admission webhook "policy.sigstore.dev" denied the request: validation failed: failed policy: gadget-image-policy: spec.template.spec.containers[0].image
 ghcr.io/inspektor-gadget/inspektor-gadget@sha256:9272c2be979a9857971fc8b6f7226e609cadec8352f97e9769081930121ef27f signature key validation failed for authority authority-0 for ghcr.io/inspektor-gadget/inspektor-gadget@sha256:9272c2be979a9857971fc8b6f7226e609cadec8352f97e9769081930121ef27f: no matching signatures
 ```
 
 As this image is not signed, the verification failed and the container was not deployed to the cluster.
+
+In case the `policy-controller` is not present, a warning message will be printed to inform you the verification will not take place:
+
+```bash
+$ kubectl get pod -n cosign-system
+No resources found in cosign-system namespace.
+$ kubectl gadget deploy
+WARN[0000] No policy controller found, the container image will not be verified
+...
+Inspektor Gadget successfully deployed
+```
+
+### Skipping verification
+
+You can also decide to not verify the image, using `--verify-image=false`.
+We definitely do not recommend this and you will use this option at your own risk:
+
+```bash
+$ kubectl gadget deploy --verify-image=false
+WARN[0000] You used --verify-image=false, the container image will not be verified
+...
+Inspektor Gadget successfully deployed
+```
+
+### Using custom public key for verification
+
+To verify the image with a specific key, you can use the `--public-key` flag:
+
+```bash
+$ kubectl gadget deploy --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
+```
 
 ## Verify the container Source Code Bill Of Materials (SBOMs)
 
