@@ -70,7 +70,6 @@ type dataSource struct {
 	id   uint32
 
 	dType Type
-	dPool sync.Pool
 
 	// keeps information on registered fields
 	fields   []*field
@@ -104,9 +103,7 @@ func newDataSource(t Type, name string) *dataSource {
 }
 
 func New(t Type, name string) DataSource {
-	ds := newDataSource(t, name)
-	ds.registerPool()
-	return ds
+	return newDataSource(t, name)
 }
 
 func NewFromAPI(in *api.DataSource) (DataSource, error) {
@@ -122,21 +119,8 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 	} else {
 		ds.byteOrder = binary.LittleEndian
 	}
-	ds.registerPool()
 	// TODO: add more checks / validation
 	return ds, nil
-}
-
-func (ds *dataSource) registerPool() {
-	ds.dPool.New = func() any {
-		d := &data{
-			Payload: make([][]byte, ds.payloadCount),
-		}
-		for i := range d.Payload {
-			d.Payload[i] = make([]byte, 0)
-		}
-		return d
-	}
 }
 
 func (ds *dataSource) Name() string {
@@ -148,7 +132,13 @@ func (ds *dataSource) Type() Type {
 }
 
 func (ds *dataSource) NewData() Data {
-	return ds.dPool.Get().(Data)
+	d := &data{
+		Payload: make([][]byte, ds.payloadCount),
+	}
+	for i := range d.Payload {
+		d.Payload[i] = make([]byte, 0)
+	}
+	return d
 }
 
 func (ds *dataSource) ByteOrder() binary.ByteOrder {
@@ -336,7 +326,6 @@ func (ds *dataSource) Subscribe(fn DataFunc, priority int) {
 }
 
 func (ds *dataSource) EmitAndRelease(d Data) error {
-	defer ds.dPool.Put(d)
 	for _, sub := range ds.subscriptions {
 		err := sub.fn(ds, d)
 		if err != nil {
@@ -347,7 +336,6 @@ func (ds *dataSource) EmitAndRelease(d Data) error {
 }
 
 func (ds *dataSource) Release(d Data) {
-	ds.dPool.Put(d)
 }
 
 func (ds *dataSource) ReportLostData(ctr uint64) {
