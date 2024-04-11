@@ -8,6 +8,7 @@ MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
 GADGET_TAG ?= $(shell ./tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
+TEST_COMPONENT ?= inspektor-gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
@@ -275,7 +276,7 @@ ig-tests:
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
-		go test ./integration/inspektor-gadget/... \
+		go test ./integration/k8s/... \
 			-v \
 			-integration \
 			-timeout 30m \
@@ -285,8 +286,8 @@ integration-tests: kubectl-gadget
 			-dnstester-image $(DNSTESTER_IMAGE) \
 			-gadget-repository $(GADGET_REPOSITORY) \
 			-gadget-tag $(GADGET_TAG) \
+			-test-component $(TEST_COMPONENT) \
 			$$INTEGRATION_TESTS_PARAMS
-
 
 .PHONY: component-tests
 component-tests:
