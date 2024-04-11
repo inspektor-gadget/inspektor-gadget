@@ -16,6 +16,7 @@ package gadgetcontext
 
 import (
 	"slices"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -32,5 +33,11 @@ func WithLogger(logger logger.Logger) Option {
 func WithDataOperators(ops ...operators.DataOperator) Option {
 	return func(gadgetCtx *GadgetContext) {
 		gadgetCtx.dataOperators = slices.Clone(ops)
+	}
+}
+
+func WithTimeout(timeout time.Duration) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.timeout = timeout
 	}
 }
