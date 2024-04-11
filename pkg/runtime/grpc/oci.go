@@ -36,11 +36,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		runtimeParams = r.ParamDescs().ToParams()
 	}
 
-	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	ctx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
-	defer cancelDial()
-
-	conn, err := r.getConnToRandomTarget(ctx, runtimeParams)
+	conn, err := r.getConnToRandomTarget(gadgetCtx.Context(), runtimeParams)
 	if err != nil {
 		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
@@ -52,7 +48,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		ImageName:   gadgetCtx.ImageName(),
 		Version:     api.VersionGadgetInfo,
 	}
-	out, err := client.GetGadgetInfo(ctx, in)
+	out, err := client.GetGadgetInfo(gadgetCtx.Context(), in)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
