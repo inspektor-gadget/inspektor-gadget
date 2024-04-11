@@ -370,18 +370,6 @@ jobs:
       with:
         category: ig-linux-${{ matrix.platform }}
 
-  build-official-image-based-gadgets:
-    name: Build gadgets
-    # level: 1
-    needs: build-ig
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Check if metadata files are updated
-      run: |
-        GADGET_BUILD_PARAMS="--update-metadata" make build-gadgets
-        git diff --exit-code HEAD --
-
   build-gadget-container-deps:
     # We only build this dependencies to check if they do not contain CWE.
     name: Build gadget-container-deps
@@ -1337,11 +1325,17 @@ jobs:
           sudo mv ig /usr/bin/ig
       - name: Build gadgets
         run: |
-          make \
-          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
-          GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-          BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }} \
-          push-gadgets -o install/ig
+          export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+          export BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+
+          make GADGET_BUILD_PARAMS="--update-metadata" build-gadgets -o install/ig
+
+          # Check that metadata files are updated
+          git diff --exit-code HEAD --
+
+          # Avoid building the gadgets again
+          make -C gadgets/ push -o build
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
