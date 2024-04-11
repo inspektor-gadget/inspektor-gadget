@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -192,6 +193,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		ociRequest.ImageName,
 		gadgetcontext.WithLogger(logger),
 		gadgetcontext.WithDataOperators(ops...),
+		gadgetcontext.WithTimeout(time.Duration(ociRequest.Timeout)),
 	)
 
 	runtimeParams := s.runtime.ParamDescs().ToParams()
