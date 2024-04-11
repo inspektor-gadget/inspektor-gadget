@@ -15,11 +15,8 @@ Note that, You would need to have `cosign` [v2.0](https://github.com/sigstore/co
 Verifying the container image is pretty straightforward:
 
 ```bash
-$ RELEASE='v0.23.0'
-$ URL="https://github.com/inspektor-gadget/inspektor-gadget/blob/main/inspektor-gadget.pub"
-# We first need to get the public key.
-$ wget $URL
-$ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/inspektor-gadget:${RELEASE}
+$ RELEASE='v0.27.0'
+$ cosign verify --key https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/${RELEASE}/inspektor-gadget.pub ghcr.io/inspektor-gadget/inspektor-gadget:${RELEASE}
 The following checks were performed on each of these signatures:
   - The cosign claims were validated
   - Existence of the claims in the transparency log was verified offline
