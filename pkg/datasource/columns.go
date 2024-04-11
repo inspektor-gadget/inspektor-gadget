@@ -31,7 +31,7 @@ import (
 
 type DataTuple struct {
 	ds   DataSource
-	data *data
+	data Data
 }
 
 func NewDataTuple(ds DataSource, d Data) *DataTuple {
@@ -158,10 +158,10 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 		idx := f.PayloadIndex
 
 		err := cols.AddFields([]columns.DynamicField{df}, func(d *DataTuple) unsafe.Pointer {
-			if len(d.data.Payload[idx]) == 0 {
+			if len(d.data.payloads()[idx]) == 0 {
 				return nil
 			}
-			return unsafe.Pointer(&d.data.Payload[idx][0])
+			return unsafe.Pointer(&d.data.payloads()[idx][0])
 		})
 		if err != nil {
 			return nil, fmt.Errorf("creating columns: %w", err)

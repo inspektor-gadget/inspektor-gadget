@@ -140,28 +140,38 @@ func (s *Service) RunOCIGadget(runGadget api.OCIGadgetManager_RunOCIGadgetServer
 
 			// todo: skip DataSources we're not interested in
 
+			send := func(dsID uint32, t uint32, d []byte) {
+				event := &api.GadgetEvent{
+					Type:         t,
+					Payload:      d,
+					DataSourceID: dsID,
+				}
+
+				seqLock.Lock()
+				seq++
+				event.Seq = seq
+
+				// Try to send event; if outputBuffer is full, it will be dropped by taking
+				// the default path.
+				select {
+				case outputBuffer <- event:
+				default:
+				}
+				seqLock.Unlock()
+			}
+
 			for _, ds := range gadgetCtx.GetDataSources() {
 				dsID := dsLookup[ds.Name()]
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					d, _ := proto.Marshal(data.Raw())
-
-					event := &api.GadgetEvent{
-						Type:         api.EventTypeGadgetPayload,
-						Payload:      d,
-						DataSourceID: dsID,
-					}
-
-					seqLock.Lock()
-					seq++
-					event.Seq = seq
-
-					// Try to send event; if outputBuffer is full, it will be dropped by taking
-					// the default path.
-					select {
-					case outputBuffer <- event:
-					default:
-					}
-					seqLock.Unlock()
+					p := data.(datasource.Packet) // TODO
+					d, _ := proto.Marshal(p.Packet())
+					send(dsID, api.EventTypeGadgetPayload, d)
+					return nil
+				}, 1000000) // TODO: static int?
+				ds.SubscribeArray(func(ds datasource.DataSource, data datasource.DataArray) error {
+					p := data.(datasource.Packet) // TODO
+					d, _ := proto.Marshal(p.Packet())
+					send(dsID, api.EventTypeGadgetPayloadArray, d)
 					return nil
 				}, 1000000) // TODO: static int?
 			}

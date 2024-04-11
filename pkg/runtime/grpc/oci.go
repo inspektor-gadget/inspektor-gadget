@@ -170,7 +170,7 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 				return
 			}
 			switch ev.Type {
-			case api.EventTypeGadgetPayload:
+			case api.EventTypeGadgetPayload, api.EventTypeGadgetPayloadArray:
 				if !initialized {
 					gadgetCtx.Logger().Warnf("%-20s | received payload without being initialized", target.node)
 					continue
@@ -180,8 +180,14 @@ func (r *Runtime) runOCIGadget(gadgetCtx runtime.GadgetContext, target target, a
 				}
 				expectedSeq = ev.Seq + 1
 				if ds, ok := dsMap[ev.DataSourceID]; ok && ds != nil {
-					d := ds.NewData()
-					err := proto.Unmarshal(ev.Payload, d.Raw())
+					var d datasource.Packet
+					switch ev.Type {
+					case api.EventTypeGadgetPayload:
+						d = ds.NewData()
+					case api.EventTypeGadgetPayloadArray:
+						d = ds.NewDataArray()
+					}
+					err := proto.Unmarshal(ev.Payload, d.Packet())
 					if err != nil {
 						gadgetCtx.Logger().Debugf("error unmarshaling payload: %v", err)
 						continue

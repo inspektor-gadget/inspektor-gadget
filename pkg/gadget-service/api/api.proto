@@ -110,7 +110,17 @@ message InfoResponse {
 message GadgetData {
   string node = 1;
   uint32 seq = 2;
-  repeated bytes payload = 3;
+  repeated bytes payloads = 3;
+}
+
+message GadgetDataArray {
+  string node = 1;
+  uint32 seq = 2;
+  repeated Element elements = 3;
+}
+
+message Element {
+  repeated bytes payloads = 1;
 }
 
 message Param {

@@ -18,3 +18,8 @@ type subscription struct {
 	priority int
 	fn       DataFunc
 }
+
+type subscriptionArray struct {
+	priority int
+	fn       DataArrayFunc
+}

@@ -29,12 +29,31 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+type data api.GadgetData
+
+type dataElement [][]byte
+
+type dataArray struct {
+	ds *dataSource
+	*api.GadgetDataArray
+}
+
 type (
-	data  api.GadgetData
 	field api.Field
 )
 
 func (*data) private() {}
+
+func (d *data) payloads() [][]byte {
+	return d.Payloads
+}
+
+func (d dataElement) private() {
+}
+
+func (d dataElement) payloads() [][]byte {
+	return d
+}
 
 func (f *field) ReflectType() reflect.Type {
 	switch f.Kind {
@@ -83,7 +102,9 @@ type dataSource struct {
 
 	requestedFields map[string]bool
 
-	subscriptions []*subscription
+	subscriptionsSingle   []*subscription
+	subscriptionsElements []*subscription
+	subscriptionsArray    []*subscriptionArray
 
 	requested bool
 
@@ -129,13 +150,8 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 
 func (ds *dataSource) registerPool() {
 	ds.dPool.New = func() any {
-		d := &data{
-			Payload: make([][]byte, ds.payloadCount),
-		}
-		for i := range d.Payload {
-			d.Payload[i] = make([]byte, 0)
-		}
-		return d
+		d := &api.GadgetData{}
+		return (*data)(d)
 	}
 }
 
@@ -147,8 +163,21 @@ func (ds *dataSource) Type() Type {
 	return ds.dType
 }
 
-func (ds *dataSource) NewData() Data {
-	return ds.dPool.Get().(Data)
+func (ds *dataSource) NewData() DataSingle {
+	d := ds.dPool.Get().(*data)
+	(*api.GadgetData)(d).Reset()
+	d.Payloads = make([][]byte, ds.payloadCount)
+	for i := uint32(0); i < ds.payloadCount; i++ {
+		d.Payloads[i] = make([]byte, 0)
+	}
+	return d
+}
+
+func (ds *dataSource) NewDataArray() DataArray {
+	return dataArray{
+		ds:              ds,
+		GadgetDataArray: &api.GadgetDataArray{},
+	}
 }
 
 func (ds *dataSource) ByteOrder() binary.ByteOrder {
@@ -326,28 +355,94 @@ func (ds *dataSource) Subscribe(fn DataFunc, priority int) {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	ds.subscriptions = append(ds.subscriptions, &subscription{
+	ds.subscriptionsSingle = append(ds.subscriptionsSingle, &subscription{
 		priority: priority,
 		fn:       fn,
 	})
-	sort.SliceStable(ds.subscriptions, func(i, j int) bool {
-		return ds.subscriptions[i].priority < ds.subscriptions[j].priority
+	sort.SliceStable(ds.subscriptionsSingle, func(i, j int) bool {
+		return ds.subscriptionsSingle[i].priority < ds.subscriptionsSingle[j].priority
 	})
 }
 
-func (ds *dataSource) EmitAndRelease(d Data) error {
-	defer ds.dPool.Put(d)
-	for _, sub := range ds.subscriptions {
-		err := sub.fn(ds, d)
-		if err != nil {
-			return err
+func (ds *dataSource) SubscribeAny(fn DataFunc, priority int) {
+	if fn == nil {
+		return
+	}
+
+	ds.lock.Lock()
+	defer ds.lock.Unlock()
+
+	ds.subscriptionsElements = append(ds.subscriptionsElements, &subscription{
+		priority: priority,
+		fn:       fn,
+	})
+	sort.SliceStable(ds.subscriptionsElements, func(i, j int) bool {
+		return ds.subscriptionsElements[i].priority < ds.subscriptionsElements[j].priority
+	})
+
+	ds.subscriptionsSingle = append(ds.subscriptionsSingle, &subscription{
+		priority: priority,
+		fn:       fn,
+	})
+	sort.SliceStable(ds.subscriptionsSingle, func(i, j int) bool {
+		return ds.subscriptionsSingle[i].priority < ds.subscriptionsSingle[j].priority
+	})
+}
+
+func (ds *dataSource) SubscribeArray(fn DataArrayFunc, priority int) {
+	if fn == nil {
+		return
+	}
+
+	ds.lock.Lock()
+	defer ds.lock.Unlock()
+
+	ds.subscriptionsArray = append(ds.subscriptionsArray, &subscriptionArray{
+		priority: priority,
+		fn:       fn,
+	})
+	sort.SliceStable(ds.subscriptionsArray, func(i, j int) bool {
+		return ds.subscriptionsArray[i].priority < ds.subscriptionsArray[j].priority
+	})
+}
+
+func (ds *dataSource) EmitAndRelease(d Packet) error {
+	switch t := d.(type) {
+	case *data:
+		defer ds.dPool.Put(d)
+		for _, sub := range ds.subscriptionsSingle {
+			err := sub.fn(ds, t)
+			if err != nil {
+				return err
+			}
+		}
+	case *dataArray:
+		for _, sub := range ds.subscriptionsArray {
+			err := sub.fn(ds, t)
+			if err != nil {
+				return err
+			}
+			if len(ds.subscriptionsElements) > 0 {
+				for i := 0; i < t.Len(); i++ {
+					for _, sub := range ds.subscriptionsElements {
+						err := sub.fn(ds, t.Get(i))
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
 		}
 	}
+
 	return nil
 }
 
-func (ds *dataSource) Release(d Data) {
-	ds.dPool.Put(d)
+func (ds *dataSource) Release(d Packet) {
+	switch t := d.(type) {
+	case *data:
+		defer ds.dPool.Put(t)
+	}
 }
 
 func (ds *dataSource) ReportLostData(ctr uint64) {
@@ -361,21 +456,31 @@ func (ds *dataSource) IsRequestedField(fieldName string) bool {
 	return ds.requestedFields[fieldName]
 }
 
-func (ds *dataSource) Dump(xd Data, wr io.Writer) {
-	ds.lock.RLock()
-	defer ds.lock.RUnlock()
-
-	d := xd.(*data)
+func (ds *dataSource) dumpEntry(wr io.Writer, payloads [][]byte) {
 	for _, f := range ds.fields {
-		if f.Offs+f.Size > uint32(len(d.Payload[f.PayloadIndex])) {
+		if f.Offs+f.Size > uint32(len(payloads[f.PayloadIndex])) {
 			fmt.Fprintf(wr, "%s (%d): ! invalid size\n", f.Name, f.Size)
 			continue
 		}
 		fmt.Fprintf(wr, "%s (%d) [%s]: ", f.Name, f.Size, strings.Join(f.Tags, " "))
 		if f.Offs > 0 || f.Size > 0 {
-			fmt.Fprintf(wr, "%v\n", d.Payload[f.PayloadIndex][f.Offs:f.Offs+f.Size])
+			fmt.Fprintf(wr, "%v\n", payloads[f.PayloadIndex][f.Offs:f.Offs+f.Size])
 		} else {
-			fmt.Fprintf(wr, "%v\n", d.Payload[f.PayloadIndex])
+			fmt.Fprintf(wr, "%v\n", payloads[f.PayloadIndex])
+		}
+	}
+}
+
+func (ds *dataSource) Dump(xd Packet, wr io.Writer) {
+	ds.lock.RLock()
+	defer ds.lock.RUnlock()
+
+	switch nd := xd.(type) {
+	case *data:
+		ds.dumpEntry(wr, nd.Payloads)
+	case *dataArray:
+		for i := 0; i < nd.Len(); i++ {
+			ds.dumpEntry(wr, nd.Elements[i].Payloads)
 		}
 	}
 }

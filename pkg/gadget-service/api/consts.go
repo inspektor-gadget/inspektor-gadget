@@ -20,10 +20,11 @@ const (
 )
 
 const (
-	EventTypeGadgetPayload uint32 = 0
-	EventTypeGadgetResult  uint32 = 1
-	EventTypeGadgetDone    uint32 = 2
-	EventTypeGadgetJobID   uint32 = 3
+	EventTypeGadgetPayload      uint32 = 0
+	EventTypeGadgetResult       uint32 = 1
+	EventTypeGadgetDone         uint32 = 2
+	EventTypeGadgetJobID        uint32 = 3
+	EventTypeGadgetPayloadArray uint32 = 5
 
 	// EventTypeGadgetInfo is transmitted after a gadget has been initialized; while GetGadgetInfo() can return
 	// cached data, this payload will always be up-to-date and reflect the actual layout of the data that is
