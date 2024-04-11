@@ -144,9 +144,9 @@ $ make MINIKUBE_DRIVER=kvm2 minikube-start
 And run the test using:
 
 ```bash
-$ make -C integration/ig/k8s test-all
+$ make -C integration/k8s test-all
 # for single container runtime e.g containerd
-$ make -C integration/ig/k8s CONTAINER_RUNTIME=containerd test
+$ make -C integration/k8s CONTAINER_RUNTIME=containerd test
 ```
 
 if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtime.

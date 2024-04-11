@@ -1289,7 +1289,7 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/ig/k8s \
+          make -C integration/k8s \
             CONTAINER_RUNTIME=${{ matrix.runtime }} \
             DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
             -o build test |& tee integration.log
@@ -1781,7 +1781,6 @@ jobs:
       shell: bash
       run: |
         perl tools/check-readme.pl ./kubectl-gadget README.md
-
 
   publish-test-reports:
     name: Publish test reports

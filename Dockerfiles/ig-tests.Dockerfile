@@ -13,7 +13,7 @@ COPY go.mod go.sum /cache/
 RUN cd /cache && \
 	go mod download
 ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
-WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget/integration/ig/k8s
+WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget/integration/k8s
 RUN CGO_ENABLED=0 GOARCH=${TARGETARCH} go test -c -o ig-integration-${TARGETARCH}.test ./...
 
 FROM ${BASE_IMAGE}
@@ -26,5 +26,5 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 
 ARG TARGETARCH
 
-COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/integration/ig/k8s/ig-integration-${TARGETARCH}.test /usr/bin/ig-integration.test
+COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/integration/k8s/ig-integration-${TARGETARCH}.test /usr/bin/ig-integration.test
 ENTRYPOINT ["/usr/bin/ig-integration.test"]
