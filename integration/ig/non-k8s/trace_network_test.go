@@ -21,6 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -93,7 +94,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Runtime.ContainerImageDigest = ""
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

@@ -21,6 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -127,7 +128,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.Runtime.ContainerImageDigest = ""
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEvents...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEvents...)
 		},
 	}
 

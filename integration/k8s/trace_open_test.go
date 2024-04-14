@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	traceopenTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -68,7 +69,7 @@ func TestTraceOpen(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

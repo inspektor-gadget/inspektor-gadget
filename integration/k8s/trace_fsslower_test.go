@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tracefsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -71,7 +72,7 @@ func TestTraceFsslower(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

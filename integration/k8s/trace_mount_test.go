@@ -22,6 +22,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tracemountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -72,7 +73,7 @@ func TestTraceMount(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

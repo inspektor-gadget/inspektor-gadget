@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -203,7 +204,7 @@ EOF
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		&Command{

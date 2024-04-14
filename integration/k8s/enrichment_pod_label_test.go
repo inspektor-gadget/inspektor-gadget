@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -196,7 +197,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 			// Watching containers is a command that needs to be started before
 			// the container is created, so we can't filter by container name
 			// neither use ExpectAllInArrayToMatch here.
-			ExpectEntriesToMatch(t, output, normalize, expectedEvent)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEvent)
 		},
 	}
 
