@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 )
 
 var (

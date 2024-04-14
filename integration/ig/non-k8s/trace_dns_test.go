@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
