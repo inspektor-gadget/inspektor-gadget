@@ -108,7 +108,7 @@ func (p *BaseParser[E]) Transform(element *E, toColumns func(*E) string) string 
 		}
 
 		return string(b)
-	case OutputModeCustomColumns:
+	case OutputModeColumns:
 		return toColumns(element)
 	}
 

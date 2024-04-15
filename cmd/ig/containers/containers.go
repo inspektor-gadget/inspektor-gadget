@@ -144,7 +144,7 @@ func printContainers(parser *commonutils.GadgetParser[containercollection.Contai
 		}
 
 		fmt.Printf("%s\n", b)
-	case commonutils.OutputModeCustomColumns:
+	case commonutils.OutputModeColumns:
 		fmt.Println(parser.TransformIntoTable(containers))
 	}
 
@@ -159,7 +159,7 @@ func printPubSubEvent(parser *commonutils.GadgetParser[containercollection.PubSu
 			return commonutils.WrapInErrMarshalOutput(err)
 		}
 		fmt.Printf("%s\n", b)
-	case commonutils.OutputModeCustomColumns:
+	case commonutils.OutputModeColumns:
 		fmt.Println(parser.TransformIntoColumns(event))
 	}
 
