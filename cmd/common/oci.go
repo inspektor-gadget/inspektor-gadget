@@ -17,6 +17,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -47,6 +48,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 	var info *api.GadgetInfo
 	paramLookup := map[string]*params.Param{}
+
+	var timeoutSeconds int
 
 	cmd := &cobra.Command{
 		Use:          "run",
@@ -155,10 +158,13 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			ops = append(ops, clioperator.CLIOperator)
 
+			timeoutDuration := time.Duration(timeoutSeconds) * time.Second
+
 			gadgetCtx := gadgetcontext.New(
 				ctx,
 				args[0],
 				gadgetcontext.WithDataOperators(ops...),
+				gadgetcontext.WithTimeout(timeoutDuration),
 			)
 
 			paramValueMap := make(map[string]string)
@@ -178,6 +184,14 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			return nil
 		},
 	}
+
+	cmd.PersistentFlags().IntVarP(
+		&timeoutSeconds,
+		"timeout",
+		"t",
+		0,
+		"Number of seconds that the gadget will run for, 0 to run indefinitely",
+	)
 
 	AddFlags(cmd, ociParams, nil, runtime)
 	AddFlags(cmd, runtimeGlobalParams, nil, runtime)

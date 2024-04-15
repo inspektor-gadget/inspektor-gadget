@@ -15,6 +15,7 @@
 package gadgetcontext
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -106,6 +107,13 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 		}
 	}
 
+	ctx := c.Context()
+	if c.timeout > 0 {
+		newContext, cancel := context.WithTimeout(ctx, c.timeout)
+		defer cancel()
+		ctx = newContext
+	}
+
 	for _, opInst := range dataOperatorInstances {
 		log.Debugf("starting op %q", opInst.Name())
 		err := opInst.Start(c)
@@ -117,7 +125,7 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 
 	log.Debugf("running...")
 
-	<-c.Context().Done()
+	<-ctx.Done()
 
 	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
