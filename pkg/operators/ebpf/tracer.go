@@ -172,18 +172,22 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 		}
 		data := t.ds.NewData()
 		sample := rec.RawSample
-		if uint32(len(rec.RawSample)) < t.eventSize {
+		sampleLen := len(rec.RawSample)
+		if uint32(sampleLen) < t.eventSize {
 			// event is truncated; we need to copy
 			copy(slowBuf, rec.RawSample)
 
 			// zero difference; TODO: improve
-			if len(rec.RawSample) < lastSlowLen {
-				for i := len(rec.RawSample); i < lastSlowLen; i++ {
+			if sampleLen < lastSlowLen {
+				for i := sampleLen; i < lastSlowLen; i++ {
 					slowBuf[i] = 0
 				}
 			}
-			lastSlowLen = len(rec.RawSample)
+			lastSlowLen = sampleLen
 			sample = slowBuf
+		} else if uint32(sampleLen) > t.eventSize {
+			// event has trailing garbage, remove it
+			sample = sample[:t.eventSize]
 		}
 		err = t.accessor.Set(data, sample)
 		if err != nil {
