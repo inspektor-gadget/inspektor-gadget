@@ -21,6 +21,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tracenetworkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -171,7 +172,7 @@ func TestTraceNetwork(t *testing.T) {
 				}
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

@@ -197,14 +197,14 @@ You could push the gadget to a remote container registry. If you're using the sa
 building and running the gadget, this step can be skipped.
 
 ```bash
-$ sudo -E ig image tag mygadget:latest ghcr.io/mauriciovasquezbernal/mygadget:latest
+$ sudo -E ig image tag mygadget:latest ghcr.io/my-org/mygadget:latest
 INFO[0000] Experimental features enabled
-Successfully tagged with ghcr.io/mauriciovasquezbernal/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
+Successfully tagged with ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 
-$ sudo -E ig image push ghcr.io/mauriciovasquezbernal/mygadget:latest
+$ sudo -E ig image push ghcr.io/my-org/mygadget:latest
 INFO[0000] Experimental features enabled
-Pushing ghcr.io/mauriciovasquezbernal/mygadget:latest...
-Successfully pushed ghcr.io/mauriciovasquezbernal/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
+Pushing ghcr.io/my-org/mygadget:latest...
+Successfully pushed ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
 ## Running the gadget
@@ -588,6 +588,126 @@ RUNTIME.CONTAINERNAME  PID          COMM         FILENAME                       
 
 Now, the UID and GID columns have the expected format. Notice also that the MNTNS_ID column is
 not showed because the template `ns` hides it by default.
+
+## Adding tests for the gadget
+
+In order to ensure the gadget works as expected, you can create a corresponding test file.
+To do so, you need to call it `mygadget_test.go` and import some packages, like:
+
+```golang
+package main
+
+import (
+  "testing"
+
+  "github.com/stretchr/testify/require"
+
+  // helper functions for creating and running commands in a container.
+  "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
+
+  igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
+
+  // wrapper function for ig binary
+  igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
+
+  // helper functions for parsing and comparing output.
+  "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
+
+  // Event struct for fields enriched by ig.
+  eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+)
+```
+
+Then, we create a structure with all the information the gadget provides.
+
+```golang
+type mygadgetEvent struct {
+  eventtypes.Event
+
+  MountNsID uint64 `json:"mountnsid"`
+  Pid       uint32 `json:"pid"`
+  Uid       uint32 `json:"uid"`
+  Gid       uint32 `json:"gid"`
+  Comm      string `json:"comm"`
+  Filename  string `json:"filename"`
+}
+```
+
+Later we create a test function called `TestMyGadget()`. 
+In this, we first create a container manager (can be either `docker` or `containerd`). After that, we create a command to run the gadget with various options. 
+Finally, these commands are used as arguments in `RunTestSteps()`:
+
+```golang
+func TestMyGadget(t *testing.T) {
+  cn := "test-mygadget"
+
+  // returns a container manager which implements an interface with methods for creating new container
+  // and running commands within that container.
+  containerFactory, err := containers.NewContainerFactory("docker")
+  require.NoError(t, err, "new container factory")
+
+  mygadgetCmd := igrunner.New(
+    // gadget repository and tag can be added with the following environment variables:
+    // - $GADGET_REPOSITORY
+    // - $GADGET_TAG
+    "mygadget",
+    igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
+    igrunner.WithValidateOutput(
+      func(t *testing.T, output string) {
+        expectedEntry := &mygadgetEvent{
+          Event: eventtypes.Event{
+            CommonData: eventtypes.CommonData{
+              Runtime: eventtypes.BasicRuntimeMetadata{
+                RuntimeName:   eventtypes.String2RuntimeName("docker"),
+                ContainerName: cn,
+              },
+            },
+          },
+          Comm:     "cat",
+          Filename: "/dev/null",
+          Uid:      1000,
+          Gid:      1111,
+        }
+
+        // used to "normalize" the output, sets random value fields to a default value
+        // so that it only includes non-default values for the fields we can verify.
+        normalize := func(e *mygadgetEvent) {
+          e.MountNsID = 0
+          e.Pid = 0
+
+          e.Runtime.ContainerID = ""
+          e.Runtime.ContainerImageName = ""
+          e.Runtime.ContainerImageDigest = ""
+        }
+
+        // parses the output and matches it to expectedEntry.
+        match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+      },
+    ),
+  )
+
+  testSteps := []igtesting.TestStep{
+    // WithStartAndStop used to start the container command, then, wait for other commands to run
+    // and stop later and verify the output. 
+    containerFactory.NewContainer(cn, "while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done", containers.WithStartAndStop()),
+    mygadgetCmd,
+  }
+
+  igtesting.RunTestSteps(testSteps, t)
+}
+```
+
+(Optional) If running the test for a gadget whose image resides in a remote container registry, you can define environment variables for the gadget repository and tag.
+
+```bash
+$ export GADGET_REPOSITORY=ghcr.io/my-org GADGET_TAG=latest
+```
+
+We are all set now to run the test.
+
+```bash
+$ go test -exec 'sudo -E' -v ./mygadget_test.go
+```
 
 ### Closing
 

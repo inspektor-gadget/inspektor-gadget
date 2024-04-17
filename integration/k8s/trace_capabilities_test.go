@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestTraceCapabilities(t *testing.T) {
@@ -85,7 +86,7 @@ func TestTraceCapabilities(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

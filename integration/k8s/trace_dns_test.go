@@ -21,6 +21,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -203,7 +204,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 
@@ -317,7 +318,7 @@ func TestTraceDnsHost(t *testing.T) {
 				e.Runtime.ContainerImageDigest = ""
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

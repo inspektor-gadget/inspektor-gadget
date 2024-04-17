@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tracebindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestTraceBind(t *testing.T) {
@@ -66,7 +67,7 @@ func TestTraceBind(t *testing.T) {
 
 			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
 			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

@@ -21,6 +21,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	traceexecTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -103,7 +104,7 @@ func TestTraceExec(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 
@@ -164,7 +165,7 @@ func TestTraceExecHost(t *testing.T) {
 				e.MountNsID = 0
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

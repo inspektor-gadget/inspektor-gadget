@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -97,7 +98,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		&Command{
@@ -151,7 +152,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		&Command{

@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 

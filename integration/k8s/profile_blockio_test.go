@@ -21,6 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestProfileBlockIO(t *testing.T) {
@@ -41,7 +42,7 @@ func TestProfileBlockIO(t *testing.T) {
 				e.Intervals = nil
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

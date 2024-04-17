@@ -21,6 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tcprttProfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/tcprtt/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestProfileTCPRTT(t *testing.T) {
@@ -237,7 +238,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 				}
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -30,6 +29,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -37,28 +37,6 @@ var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(
 	containercollection.Container{},
 	containercollection.K8sMetadata{},
 )
-
-func parseMultiJSONOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
-	ret := []*T{}
-
-	decoder := json.NewDecoder(strings.NewReader(output))
-	for decoder.More() {
-		var entry T
-		if err := decoder.Decode(&entry); err != nil {
-			require.NoError(t, err, "decoding json")
-		}
-		// To be able to use reflect.DeepEqual and cmp.Diff, we need to
-		// "normalize" the output so that it only includes non-default values
-		// for the fields we are able to verify.
-		if normalize != nil {
-			normalize(&entry)
-		}
-
-		ret = append(ret, &entry)
-	}
-
-	return ret
-}
 
 func parseJSONArrayOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
 	entries := []*T{}
@@ -104,7 +82,7 @@ func expectAllToMatch[T any](t *testing.T, entries []*T, expectedEntry *T) {
 // ExpectAllToMatch verifies that the expectedEntry is matched by all the
 // entries in the output (Lines of independent JSON objects).
 func ExpectAllToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntry *T) {
-	entries := parseMultiJSONOutput(t, output, normalize)
+	entries := match.ParseMultiJSONOutput(t, output, normalize)
 	expectAllToMatch(t, entries, expectedEntry)
 }
 
@@ -122,50 +100,18 @@ func ExpectAllInMultipleArrayToMatch[T any](t *testing.T, output string, normali
 	expectAllToMatch(t, entries, expectedEntry)
 }
 
-func expectEntriesToMatch[T any](t *testing.T, entries []*T, expectedEntries ...*T) {
-out:
-	for _, expectedEntry := range expectedEntries {
-		for _, entry := range entries {
-			if reflect.DeepEqual(expectedEntry, entry) {
-				continue out
-			}
-		}
-
-		var str strings.Builder
-
-		str.WriteString("output doesn't contain the expected entry\n")
-		str.WriteString("captured:\n")
-		for _, entry := range entries {
-			entryJson, _ := json.Marshal(entry)
-			str.WriteString(string(entryJson))
-			str.WriteString("\n")
-		}
-		expectedEntryJson, _ := json.Marshal(expectedEntry)
-		str.WriteString("expected:\n")
-		str.WriteString(string(expectedEntryJson))
-		t.Fatal(str.String())
-	}
-}
-
-// ExpectEntriesToMatch verifies that all the entries in expectedEntries are
-// matched by at least one entry in the output (Lines of independent JSON objects).
-func ExpectEntriesToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
-	entries := parseMultiJSONOutput(t, output, normalize)
-	expectEntriesToMatch(t, entries, expectedEntries...)
-}
-
 // ExpectEntriesInArrayToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (JSON array of JSON objects).
 func ExpectEntriesInArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
 	entries := parseJSONArrayOutput(t, output, normalize)
-	expectEntriesToMatch(t, entries, expectedEntries...)
+	match.ExpectNormalizedEntriesToMatch(t, entries, expectedEntries...)
 }
 
 // ExpectEntriesInMultipleArrayToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (multiple JSON array of JSON objects separated by newlines).
 func ExpectEntriesInMultipleArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
 	entries := parseMultipleJSONArrayOutput(t, output, normalize)
-	expectEntriesToMatch(t, entries, expectedEntries...)
+	match.ExpectNormalizedEntriesToMatch(t, entries, expectedEntries...)
 }
 
 type CommonDataOption func(commonData *eventtypes.CommonData)

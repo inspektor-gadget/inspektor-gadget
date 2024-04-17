@@ -20,8 +20,9 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/integration/containers"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -145,7 +146,7 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 				}
 			}
 
-			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 
