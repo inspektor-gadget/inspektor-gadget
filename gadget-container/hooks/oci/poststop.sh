@@ -1,5 +1,7 @@
 #!/bin/bash
+# $1 is the gadget namespace name
+
 read JSON
-pidof gadgettracermanager > /dev/null || exit 0
-echo $JSON | /opt/hooks/oci/ocihookgadget -hook poststop >> /var/log/gadget.log 2>&1
+test -S /run/$1-gadgettracermanager.socket || exit 0
+echo $JSON | /opt/hooks/oci/$1-gadget/ocihookgadget -hook poststop -socketfile /run/$1-gadgettracermanager.socket >> /var/log/$1-gadget.log 2>&1
 exit 0

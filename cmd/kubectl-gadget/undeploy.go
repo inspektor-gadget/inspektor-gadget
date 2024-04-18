@@ -46,7 +46,10 @@ var undeployCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
-var undeployWait bool
+var (
+	undeployWait bool
+	skipCRD      bool
+)
 
 const (
 	timeout int = 30
@@ -59,6 +62,12 @@ func init() {
 		"wait", "",
 		true,
 		"wait for all resources to be deleted before returning",
+	)
+	undeployCmd.PersistentFlags().BoolVarP(
+		&skipCRD,
+		"skip-crd", "",
+		false,
+		"Skips the deletion of the CRDs. Needed when runnig multiple deployments of Inspektor Gadget in parallel",
 	)
 }
 
@@ -98,6 +107,8 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	n := 7
 
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+	clusterRoleName := gadgetNamespace + utils.GadgetClusterRoleSuffix
+	clusterRoleBindingName := gadgetNamespace + utils.GadgetClusterRoleBindingSuffix
 
 again:
 	fmt.Println("Removing traces...")
@@ -136,35 +147,37 @@ again:
 	}
 
 	// 2. remove crd
-	fmt.Println("Removing CRD...")
-	err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
-		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
-		errs = append(
-			errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+	if !skipCRD {
+		fmt.Println("Removing CRD...")
+		err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
+			context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
 		)
+		if err != nil && !errors.IsNotFound(err) {
+			errs = append(
+				errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+			)
+		}
 	}
 
 	// 3. gadget cluster role binding
 	fmt.Println("Removing cluster role binding...")
 	err = k8sClient.RbacV1().ClusterRoleBindings().Delete(
-		context.TODO(), "gadget-cluster-role-binding", metav1.DeleteOptions{},
+		context.TODO(), clusterRoleBindingName, metav1.DeleteOptions{},
 	)
 	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
-			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role bindings: %s", err),
+			errs, fmt.Sprintf("failed to remove %q cluster role bindings: %s", clusterRoleBindingName, err),
 		)
 	}
 
 	// 4. gadget cluster role
 	fmt.Println("Removing cluster role...")
 	err = k8sClient.RbacV1().ClusterRoles().Delete(
-		context.TODO(), "gadget-cluster-role", metav1.DeleteOptions{},
+		context.TODO(), clusterRoleName, metav1.DeleteOptions{},
 	)
 	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
-			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role: %s", err),
+			errs, fmt.Sprintf("failed to remove %q cluster role: %s", clusterRoleName, err),
 		)
 	}
 

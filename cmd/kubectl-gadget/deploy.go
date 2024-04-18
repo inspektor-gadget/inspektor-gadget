@@ -377,17 +377,6 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
-	if !printOnly {
-		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
-		if err != nil {
-			return fmt.Errorf("searching for running Inspektor Gadget instances: %w", err)
-		}
-		if len(gadgetNamespaces) != 0 && gadgetNamespaces[0] != gadgetNamespace {
-			// Inspektor Gadget is the program name and therefore capitalized (Lint error ST1005)
-			//nolint:all
-			return fmt.Errorf("Inspektor Gadget is already deployed to the following namespaces: %v. Only a single instance is allowed", gadgetNamespaces)
-		}
-	}
 
 	found := false
 	for _, supportedHook := range supportedHooks {
@@ -463,6 +452,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if _, err = k8sClient.CoreV1().Secrets(gadgetNamespace).Get(context.TODO(), gadgetPullSecret, metav1.GetOptions{}); err == nil {
 		isPullSecretPresent = true
 	}
+	clusterRoleName := gadgetNamespace + utils.GadgetClusterRoleSuffix
+	clusterRoleBindingName := gadgetNamespace + utils.GadgetClusterRoleBindingSuffix
 
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
@@ -513,14 +504,20 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 			gadgetContainer.ImagePullPolicy = policy
 
+			socketArg := fmt.Sprintf("-socketfile=/run/%s-gadgettracermanager.socket", gadgetNamespace)
 			if !livenessProbe {
 				gadgetContainer.LivenessProbe = nil
+			} else {
+				gadgetContainer.LivenessProbe.Exec.Command = append(gadgetContainer.LivenessProbe.Exec.Command, socketArg)
 			}
+			gadgetContainer.ReadinessProbe.Exec.Command = append(gadgetContainer.ReadinessProbe.Exec.Command, socketArg)
 
 			for i := range gadgetContainer.Env {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
+				case "GADGET_NAMESPACE":
+					gadgetContainer.Env[i].Value = gadgetNamespace
 				case "INSPEKTOR_GADGET_VERSION":
 					gadgetContainer.Env[i].Value = common.Version()
 				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
@@ -590,22 +587,26 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if ns, isNs := object.(*v1.Namespace); isNs {
-			ns.Name = gadgetNamespace
-		}
-		if sa, isSa := object.(*v1.ServiceAccount); isSa {
-			sa.Namespace = gadgetNamespace
-		}
-		if crBinding, isCrBinding := object.(*rbacv1.ClusterRoleBinding); isCrBinding {
-			if len(crBinding.Subjects) == 1 {
-				crBinding.Subjects[0].Namespace = gadgetNamespace
+		switch o := object.(type) {
+		case *v1.Namespace:
+			o.Name = gadgetNamespace
+		case *v1.ServiceAccount:
+			o.Namespace = gadgetNamespace
+		case *rbacv1.ClusterRole:
+			o.Name = clusterRoleName
+		case *rbacv1.ClusterRoleBinding:
+			for i := range o.Subjects {
+				if o.Subjects[i].Kind == "ServiceAccount" && o.Subjects[i].Name == "gadget" {
+					o.Name = clusterRoleBindingName
+					o.RoleRef.Name = clusterRoleName
+					o.Subjects[i].Namespace = gadgetNamespace
+					break
+				}
 			}
-		}
-		if role, isRole := object.(*rbacv1.Role); isRole {
-			role.Namespace = gadgetNamespace
-		}
-		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
-			rBinding.Namespace = gadgetNamespace
+		case *rbacv1.Role:
+			o.Namespace = gadgetNamespace
+		case *rbacv1.RoleBinding:
+			o.Namespace = gadgetNamespace
 		}
 
 		if printOnly {

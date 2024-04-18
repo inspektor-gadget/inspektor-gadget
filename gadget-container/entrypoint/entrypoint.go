@@ -16,15 +16,18 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
+	"text/template"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
@@ -100,38 +103,68 @@ func copyFile(destination, source string, filemode fs.FileMode) error {
 	return nil
 }
 
+func applyTemplate(filepath string, data map[string]string) error {
+	hookContent, err := os.ReadFile(filepath)
+	if err != nil {
+		return fmt.Errorf("reading %q: %w", filepath, err)
+	}
+	tmpl, err := template.New("").Parse(string(hookContent))
+	if err != nil {
+		return fmt.Errorf("parsing template: %w", err)
+	}
+
+	var templateResult bytes.Buffer
+	err = tmpl.Execute(&templateResult, data)
+	if err != nil {
+		return fmt.Errorf("executing template: %w", err)
+	}
+
+	err = os.WriteFile(filepath, templateResult.Bytes(), 0o640)
+	if err != nil {
+		return fmt.Errorf("writing %q: %w", filepath, err)
+	}
+	return nil
+}
+
 func installCRIOHooks() error {
 	log.Info("Installing hooks scripts on host...")
 
-	path := filepath.Join(host.HostRoot, "opt/hooks/oci")
-	err := os.MkdirAll(path, 0o755)
+	namespace := os.Getenv("GADGET_NAMESPACE")
+	instanceDirname := namespace + "-gadget"
+	optHookPath := filepath.Join(host.HostRoot, "opt/hooks/oci", instanceDirname)
+	err := os.MkdirAll(optHookPath, 0o755)
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", path, err)
+		return fmt.Errorf("creating %s: %w", optHookPath, err)
 	}
 
 	for _, file := range []string{"ocihookgadget", "prestart.sh", "poststop.sh"} {
 		log.Infof("Installing %s", file)
 
-		path := filepath.Join("/opt/hooks/oci", file)
-		destinationPath := filepath.Join(host.HostRoot, path)
-		err := copyFile(destinationPath, path, 0o750)
+		srcPath := filepath.Join("/opt/hooks/oci", file)
+		err := copyFile(optHookPath, srcPath, 0o750)
 		if err != nil {
 			return fmt.Errorf("copying: %w", err)
 		}
 	}
 
-	for _, file := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d/"} {
-		hookPath := filepath.Join(host.HostRoot, file)
+	for _, folder := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d"} {
+		hookPath := filepath.Join(host.HostRoot, folder)
 
 		log.Infof("Installing OCI hooks configuration in %s", hookPath)
 		os.MkdirAll(hookPath, 0o755)
 		if err != nil {
-			return fmt.Errorf("creating hook path %s: %w", path, err)
+			return fmt.Errorf("creating hook path %s: %w", hookPath, err)
 		}
 
 		errCount := 0
 		for _, config := range []string{"/opt/hooks/crio/gadget-prestart.json", "/opt/hooks/crio/gadget-poststop.json"} {
-			err := copyFile(hookPath, config, 0o640)
+			err = applyTemplate(config, map[string]string{"namespace": namespace})
+			if err != nil {
+				return fmt.Errorf("modifying %q: %w", config, err)
+			}
+
+			dstFilepath := filepath.Join(hookPath, fmt.Sprintf("%s-%s", instanceDirname, filepath.Base(config)))
+			err = copyFile(dstFilepath, config, 0o640)
 			if err != nil {
 				errCount++
 			}
@@ -156,9 +189,17 @@ func installNRIHooks() error {
 		return fmt.Errorf("creating %s: %w", destinationPath, err)
 	}
 
-	err = copyFile(destinationPath, "/opt/hooks/nri/nrigadget", 0o640)
+	namespace := os.Getenv("GADGET_NAMESPACE")
+	nriGadgetName := fmt.Sprintf("%s-nrigadget", namespace)
+
+	err = copyFile(path.Join(destinationPath, nriGadgetName), "/opt/hooks/nri/nrigadget", 0o640)
 	if err != nil {
 		return fmt.Errorf("copying: %w", err)
+	}
+
+	err = applyTemplate("/opt/hooks/nri/conf.json", map[string]string{"namespace": namespace})
+	if err != nil {
+		return fmt.Errorf("modifying \"/opt/hooks/nri/conf.json\": %w", err)
 	}
 
 	hostConfigPath := filepath.Join(host.HostRoot, "etc/nri/conf.json")
@@ -171,7 +212,14 @@ func installNRIHooks() error {
 			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
 		}
 
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"})
+		nriGadgetPluginConf := fmt.Sprintf(`{"socketFile": "/run/%s-gadgettracermanager.socket"}`, namespace)
+
+		nriGadgetPlugin := &nriv1.Plugin{
+			Type: nriGadgetName,
+			Conf: json.RawMessage(nriGadgetPluginConf),
+		}
+
+		configList.Plugins = append(configList.Plugins, nriGadgetPlugin)
 
 		content, err = json.Marshal(configList)
 		if err != nil {
@@ -306,9 +354,10 @@ func main() {
 		log.Fatalf("changing directory: %v", err)
 	}
 
-	for _, socket := range []string{"/run/gadgettracermanager.socket", "/run/gadgetservice.socket"} {
-		os.Remove(socket)
-	}
+	gadgetNamespace := os.Getenv("GADGET_NAMESPACE")
+
+	instanceSocket := fmt.Sprintf("/run/%s-gadgettracermanager.socket", gadgetNamespace)
+	os.Remove(instanceSocket)
 
 	args := []string{
 		"gadgettracermanager",
@@ -316,6 +365,7 @@ func main() {
 		fmt.Sprintf("-hook-mode=%s", gadgetTracerManagerHookMode),
 		"-controller",
 		fmt.Sprintf("-fallback-podinformer=%s", os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")),
+		fmt.Sprintf("-socketfile=%s", instanceSocket),
 	}
 
 	err = syscall.Exec("/bin/gadgettracermanager", args, os.Environ())
