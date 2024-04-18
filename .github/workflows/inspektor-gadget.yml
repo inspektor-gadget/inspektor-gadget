@@ -860,7 +860,8 @@ jobs:
           pattern: ${{ toJson(matrix.image.filter-patterns) }}
     - name: Check if we should build helpers
       id: check-build-helpers
-      if: steps.filter.outputs.pattern == 'true' || startsWith(github.ref_name, 'v')
+      # always build the images on release, merge to main or to a release branch
+      if: steps.filter.outputs.pattern == 'true' || startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'release-') || github.ref_name == 'main'
       run: |
           echo "build=true" >> $GITHUB_OUTPUT
     - name: Set up Docker Buildx
