@@ -2,7 +2,9 @@ name: Inspektor Gadget CI
 env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
-  GO_VERSION: 1.21.3
+  GO_VERSION: 1.22.0
+  # controller-gen with go >1.21 panics, but we can't update controller-gen itself
+  GO_VERSION_DOC_CHECK: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
   DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
@@ -37,7 +39,7 @@ jobs:
     - name: Setup go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ env.GO_VERSION }}
+        go-version: ${{ env.GO_VERSION_DOC_CHECK }}
         cache: true
       id: go
     - name: Check if generated files are updated

@@ -1,18 +1,18 @@
 ARG CLANG_LLVM_VERSION=15
 ARG LIBBPF_VERSION=v1.3.0
-ARG TINYGO_VERSION=0.30.0
+ARG TINYGO_VERSION=0.31.2
 
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM golang:1.21 as builder
+FROM golang:1.22 as builder
 ARG LIBBPF_VERSION
 
 # Let's install libbpf headers
 RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src && make install_headers
 
-FROM golang:1.21
+FROM golang:1.22
 ARG CLANG_LLVM_VERSION
 ARG TINYGO_VERSION
 # libc-dev is needed for various headers, among others
@@ -35,9 +35,9 @@ RUN \
 	ARCH=$(dpkg --print-architecture) && \
 	wget --quiet https://github.com/tinygo-org/tinygo/releases/download/v${TINYGO_VERSION}/tinygo_${TINYGO_VERSION}_${ARCH}.deb -O $DEB && \
 	if [ "${ARCH}" = 'amd64' ] ; then \
-		SHA='abcef56b2ae04e27253df409b32d0b7abb5ae76ed493db75b2f80659cbf59363c85919836116780adcad051c652e991dc46fa6ae7cec31a4fa3bdb68d2123621'; \
+		SHA='315ecb11bdf20813f9f9e04e875b1e1dbedfec150284782db50f747b1d3a477b8eeebb686fe32995bddfc1d6b4db2135f3d15ddeabcffc1c93884b0d11ad1bc9'; \
 	elif [ "${ARCH}" = 'arm64' ] ; then \
-		SHA='d121940aa1cd366c865f1600c88decf2a9db6891234f738024702891ecff94958848ce6bb3191b3a34250ab7091bc3e35b27cc612d7324f48a4d148869fa306f'; \
+		SHA='d41ded645a2a7cce466a4228d7308a56fc8503759b67aff38cb044ed7636a98e5d83f11b312fcf5f1508c90d5ac5e38ca3e3ae89f866467dc406fbd0fd700ae1'; \
 	else \
 		echo "${ARCH} is not supported" 2>&1 ; \
 		exit 1; \
