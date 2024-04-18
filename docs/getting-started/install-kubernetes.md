@@ -153,6 +153,32 @@ $ kubectl gadget deploy --apparmor-profile 'localhost/inspektor-gadget-profile'
 
 Note that, the AppArmor profile should already exists in the cluster to be used.
 
+### Deploying with a seccomp profile
+
+By default, Inspektor Gadget syscalls are not restricted.
+If the seccomp profile operator is [installed](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#install-operator), you can use the `--seccomp-profile` flag to deploy Inspektor Gadget with a custom seccomp profile.
+Note that, the profile should follow the [`SeccompProfile` format](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#create-a-seccomp-profile):
+
+```bash
+$ cat 'gadget-profile.yaml'
+apiVersion: security-profiles-operator.x-k8s.io/v1beta1
+kind: SeccompProfile
+metadata:
+  namespace: gadget
+  name: profile
+spec:
+  defaultAction: SCMP_ACT_ERRNO
+  syscalls:
+    - action: SCMP_ACT_ALLOW
+      names:
+        - accept4
+        - access
+        - arch_prctl
+        - bind
+...
+$ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
+```
+
 ### Specific Information for Different Platforms
 
 This section explains the additional steps that are required to run Inspektor
