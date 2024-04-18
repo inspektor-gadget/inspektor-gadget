@@ -49,26 +49,6 @@ const (
 	TracerMapPrefix = "gadget_map_tracer_"
 )
 
-// Keep this aligned with include/gadget/types.h
-const (
-	// Name of the type that gadgets should use to store an L3 endpoint.
-	L3EndpointTypeName = "gadget_l3endpoint_t"
-
-	// Name of the type that gadgets should use to store an L4 endpoint.
-	L4EndpointTypeName = "gadget_l4endpoint_t"
-
-	// Name of the type to store a mount namespace inode id
-	MntNsIdTypeName = "gadget_mntns_id"
-
-	// Name of the type to store a timestamp
-	TimestampTypeName = "gadget_timestamp"
-)
-
-// Keep this aligned with include/gadget/buffer.h
-const (
-	GadgetHeapMapName = "gadget_heap"
-)
-
 const (
 	// Name of the parameter that defins the network interface a TC program is attached to.
 	IfaceParam = "iface"
