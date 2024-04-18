@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -38,6 +39,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -276,6 +278,20 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// TODO: the metadata is already present on i.config, but it's not possible
+	// to get the raw yaml there. Attempts to use WriteConfigAs() failed because
+	// yaml keys are stored in lower case, but we define some of them in
+	// camelCase in the metadata structure.
+	metadataBytes := gadgetCtx.GetMetadata()
+	metadata := &metadatav1.GadgetMetadata{}
+	if err := yaml.Unmarshal(metadataBytes, metadata); err != nil {
+		return err
+	}
+	if err := metadata.Validate(i.collectionSpec); err != nil {
+		return fmt.Errorf("validating metadata: %w", err)
+	}
+
 	err = i.analyze()
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)

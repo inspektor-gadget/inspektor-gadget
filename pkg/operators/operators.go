@@ -46,6 +46,7 @@ type GadgetContext interface {
 	Params() []*api.Param
 	SetParams([]*api.Param)
 	SetMetadata([]byte)
+	GetMetadata() []byte
 }
 
 type (

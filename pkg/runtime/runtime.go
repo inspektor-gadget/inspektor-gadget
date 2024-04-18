@@ -50,6 +50,7 @@ type GadgetContext interface {
 	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool) error
 	Params() []*api.Param
 	SetMetadata([]byte)
+	GetMetadata() []byte
 	SetParams([]*api.Param)
 	DataOperators() []operators.DataOperator
 

@@ -226,6 +226,10 @@ func (c *GadgetContext) SetMetadata(m []byte) {
 	c.metadata = m
 }
 
+func (c *GadgetContext) GetMetadata() []byte {
+	return c.metadata
+}
+
 func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 	gi := &api.GadgetInfo{
 		Name:      "",
