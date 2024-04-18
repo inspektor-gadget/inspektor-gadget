@@ -69,7 +69,7 @@ var deployCmd = &cobra.Command{
 	Use:          "deploy",
 	Short:        "Deploy Inspektor Gadget on the cluster",
 	SilenceUsage: true,
-	RunE:         runDeploy,
+	RunE:         func(cmd *cobra.Command, args []string) error { return runDeploy(os.Stdout) },
 }
 
 // This is set during build.
@@ -102,15 +102,13 @@ var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", 
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
+	addGeneralDeployFlags(deployCmd)
+
 	strLevels = make([]string, len(log.AllLevels))
 	for i, level := range log.AllLevels {
 		strLevels[i] = level.String()
 	}
-	deployCmd.PersistentFlags().StringVarP(
-		&image,
-		"image", "",
-		gadgetimage,
-		"container image")
+	// These flags are only usefull for the deploy command itself
 	deployCmd.PersistentFlags().StringVarP(
 		&imagePullPolicy,
 		"image-pull-policy", "",
@@ -193,14 +191,23 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&appArmorprofile,
 		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
+
 	rootCmd.AddCommand(deployCmd)
 }
 
-func info(format string, args ...any) {
+func addGeneralDeployFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(
+		&image,
+		"image", "",
+		gadgetimage,
+		"container image")
+}
+
+func info(outFile *os.File, format string, args ...any) {
 	if quiet {
 		return
 	}
-	fmt.Printf(format, args...)
+	fmt.Fprintf(outFile, format, args...)
 }
 
 // parseK8sYaml parses a k8s YAML deployment file content and returns the
@@ -262,7 +269,7 @@ func stringToPullPolicy(imagePullPolicy string) (v1.PullPolicy, error) {
 // to get the corresponding resource.
 // It is inspired from:
 // https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Dynamic-client
-func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, object runtime.Object) (*unstructured.Unstructured, error) {
+func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, object runtime.Object, outFile *os.File) (*unstructured.Unstructured, error) {
 	groupVersionKind := object.GetObjectKind().GroupVersionKind()
 	mapping, err := mapper.RESTMapping(groupVersionKind.GroupKind(), groupVersionKind.Version)
 	if err != nil {
@@ -283,7 +290,7 @@ func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, ob
 		dynamicInterface = client.Resource(mapping.Resource)
 	}
 
-	info("Creating %s/%s...\n", unstruct.GetKind(), unstruct.GetName())
+	info(outFile, "Creating %s/%s...\n", unstruct.GetKind(), unstruct.GetName())
 
 	data, err := json.Marshal(unstruct)
 	if err != nil {
@@ -375,7 +382,7 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 	return affinity, nil
 }
 
-func runDeploy(cmd *cobra.Command, args []string) error {
+func runDeploy(outFile *os.File) error {
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 	if !printOnly {
 		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
@@ -617,7 +624,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		obj, err := createOrUpdateResource(dynamicClient, mapper, object)
+		obj, err := createOrUpdateResource(dynamicClient, mapper, object, outFile)
 		if err != nil {
 			return fmt.Errorf("problem while creating resource: %w", err)
 		}
@@ -631,7 +638,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			// If the spec of the DaemonSet is the same just return
 			if reflect.DeepEqual(currentGadgetDS.Spec, appliedGadgetDS.Spec) {
-				info("The gadget pod(s) weren't modified!\n")
+				info(outFile, "The gadget pod(s) weren't modified!\n")
 				return nil
 			}
 		}
@@ -641,11 +648,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if !wait {
-		info("Inspektor Gadget is being deployed\n")
+		info(outFile, "Inspektor Gadget is being deployed\n")
 		return nil
 	}
 
-	info("Waiting for gadget pod(s) to be ready...\n")
+	info(outFile, "Waiting for gadget pod(s) to be ready...\n")
 
 	// The below code (particularly how to use UntilWithSync) is highly
 	// inspired from kubectl wait source code:
@@ -680,7 +687,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				ready = status.UpdatedNumberScheduled
 			}
 
-			info("%d/%d gadget pod(s) ready\n", ready, status.DesiredNumberScheduled)
+			info(outFile, "%d/%d gadget pod(s) ready\n", ready, status.DesiredNumberScheduled)
 
 			return (status.DesiredNumberScheduled == status.NumberReady) &&
 				(status.DesiredNumberScheduled == status.UpdatedNumberScheduled), nil
@@ -703,13 +710,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	info("Retrieving Gadget Catalog...\n")
+	info(outFile, "Retrieving Gadget Catalog...\n")
 	err = grpcRuntime.UpdateDeployInfo()
 	if err != nil {
 		fmt.Printf("> failed: %v\n", err)
 	}
 
-	info("Inspektor Gadget successfully deployed\n")
+	info(outFile, "Inspektor Gadget successfully deployed\n")
 
 	return nil
 }
