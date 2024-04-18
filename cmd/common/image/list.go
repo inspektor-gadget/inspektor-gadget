@@ -64,7 +64,7 @@ func NewListCmd() *cobra.Command {
 					return ""
 				})
 			}
-			formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(isTerm))
+			formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(!noTrunc && isTerm))
 			formatter.WriteTable(cmd.OutOrStdout(), images)
 			return nil
 		},
