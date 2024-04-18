@@ -17,11 +17,28 @@ package metadatav1
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/hashicorp/go-multierror"
+	"gopkg.in/yaml.v2"
 )
+
+func ValidateMetadataFile(path string, spec *ebpf.CollectionSpec) error {
+	metadataFile, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("opening metadata file: %w", err)
+	}
+	defer metadataFile.Close()
+
+	metadata := &GadgetMetadata{}
+	if err := yaml.NewDecoder(metadataFile).Decode(metadata); err != nil {
+		return fmt.Errorf("decoding metadata file: %w", err)
+	}
+
+	return metadata.Validate(spec)
+}
 
 func (m *GadgetMetadata) Validate(spec *ebpf.CollectionSpec) error {
 	var result error

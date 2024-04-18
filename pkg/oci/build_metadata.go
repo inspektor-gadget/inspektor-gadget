@@ -62,23 +62,12 @@ func getAnySpec(opts *BuildGadgetImageOpts) (*ebpf.CollectionSpec, error) {
 }
 
 func validateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error {
-	metadataFile, err := os.Open(opts.MetadataPath)
-	if err != nil {
-		return fmt.Errorf("opening metadata file: %w", err)
-	}
-	defer metadataFile.Close()
-
-	metadata := &metadatav1.GadgetMetadata{}
-	if err := yaml.NewDecoder(metadataFile).Decode(metadata); err != nil {
-		return fmt.Errorf("decoding metadata file: %w", err)
-	}
-
 	spec, err := getAnySpec(opts)
 	if err != nil {
 		return fmt.Errorf("loading spec: %w", err)
 	}
 
-	return metadata.Validate(spec)
+	return metadatav1.ValidateMetadataFile(opts.MetadataPath, spec)
 }
 
 func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error {
