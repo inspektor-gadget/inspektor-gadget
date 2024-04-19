@@ -1238,7 +1238,7 @@ jobs:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         run: |
-          cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
+          cosign public-key --key env://COSIGN_PRIVATE_KEY > pkg/resources/inspektor-gadget.pub
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
             >&2 echo "$changes"

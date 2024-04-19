@@ -32,6 +32,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
@@ -51,6 +54,12 @@ var undeployWait bool
 const (
 	timeout int = 30
 )
+
+var clusterImagePolicyResource = schema.GroupVersionResource{
+	Group:    "policy.sigstore.dev",
+	Version:  "v1beta1",
+	Resource: "clusterimagepolicies",
+}
 
 func init() {
 	rootCmd.AddCommand(undeployCmd)
@@ -83,6 +92,11 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("setting up CRD client: %w", err)
 	}
 
+	dynClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("setting up dynamic client: %w", err)
+	}
+
 	errs := []string{}
 
 	// 1. remove traces
@@ -98,6 +112,7 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	n := 7
 
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+	imagePolicyName := fmt.Sprintf("%s-image-policy", gadgetNamespace)
 
 again:
 	fmt.Println("Removing traces...")
@@ -241,6 +256,16 @@ again:
 		_, err := watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("failed waiting for %q namespace to be removed: %s", gadgetNamespace, err))
+		}
+	}
+
+	// 6. delete associated image policy if present
+	_, err = dynClient.Resource(clusterImagePolicyResource).Get(context.TODO(), imagePolicyName, metav1.GetOptions{})
+	if err == nil {
+		fmt.Println("Removing image policy...")
+		err = dynClient.Resource(clusterImagePolicyResource).Delete(context.TODO(), imagePolicyName, metav1.DeleteOptions{})
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("failed removing image policy: %v", err))
 		}
 	}
 
