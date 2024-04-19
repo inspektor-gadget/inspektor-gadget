@@ -7,7 +7,7 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -o /out/container-network-tracer examples/gadgets/withfilter/trace/network/network.go
+    go build -o /out/container-network-tracer examples/builtin-gadgets/withfilter/trace/network/network.go
 
 FROM gcr.io/distroless/static-debian11:latest
 COPY --from=builder /out/container-network-tracer /usr/bin/container-network-tracer

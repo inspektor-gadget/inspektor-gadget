@@ -18,30 +18,30 @@ or `ig` directly.
   ("github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection") in
   order to be notified when a new container is started and to attach the
   OCI config.json as a Kubernetes event.
-- gadgets:
-  - [basic](gadgets/basic/): Examples showing how to create a tracer
+- built-in gadgets:
+  - [basic](builtin-gadgets/basic/): Examples showing how to create a tracer
     without any filtering capabilities.
-    - [trace/dns](gadgets/basic/trace/dns/): shows how to use
+    - [trace/dns](builtin-gadgets/basic/trace/dns/): shows how to use
       [trace/dns](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/trace/dns)
       package to trace DNS requests in the host.
-    - [trace/exec](gadgets/basic/trace/exec/): shows how to use
+    - [trace/exec](builtin-gadgets/basic/trace/exec/): shows how to use
       [trace/exec](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
       package to trace the creation of new processes in the host.
-    - [top/file](gadgets/basic/top/file/): shows how to use
+    - [top/file](builtin-gadgets/basic/top/file/): shows how to use
       [top/file](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/top/file)
       package to get a list of the files with a higher number of write
       operations on the host.
-    - [snapshot/basic/process](gadgets/basic/snapshot/process/): shows how to use
+    - [snapshot/basic/process](builtin-gadgets/basic/snapshot/process/): shows how to use
       [snapshot/process](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
       package to get a list the running processes on the host.
-  - [withfilter](gadgets/withfilter/): Examples showing how to create a
+  - [withfilter](builtin-gadgets/withfilter/): Examples showing how to create a
     tracer that uses the container collection and trace collection
     packages to filter events by container.
-    - [trace/exec](gadgets/withfilter/trace/exec/): traces creation of
+    - [trace/exec](builtin-gadgets/withfilter/trace/exec/): traces creation of
       new processes inside a particular container.
-    - [trace/network](gadgets/withfilter/trace/network): traces network
+    - [trace/network](builtin-gadgets/withfilter/trace/network): traces network
       connections inside containers.
-  - [formatter](gadgets/formatter/): Examples showing how to use a formatter to
+  - [formatter](builtin-gadgets/formatter/): Examples showing how to use a formatter to
     print events in a column format.
-    - [trace/exec](gadgets/formatter/trace/exec/): traces creation of
+    - [trace/exec](builtin-gadgets/formatter/trace/exec/): traces creation of
       new processes inside a particular container.
