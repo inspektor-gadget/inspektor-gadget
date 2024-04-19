@@ -18,6 +18,8 @@ or `ig` directly.
   ("github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection") in
   order to be notified when a new container is started and to attach the
   OCI config.json as a Kubernetes event.
+- (image-based) gadgets:
+  - Check list of examples in [gadgets](gadgets)
 - built-in gadgets:
   - [basic](builtin-gadgets/basic/): Examples showing how to create a tracer
     without any filtering capabilities.
