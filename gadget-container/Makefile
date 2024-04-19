@@ -3,6 +3,7 @@ gadget-container-deps: entrypoint cleanup ocihookgadget gadgettracermanager nrig
 
 
 TARGET_ARCH ?= $(shell go env GOHOSTARCH)
+VERSION ?= $(shell git describe --tags --always --dirty)
 
 # Entrypoint
 
@@ -26,6 +27,7 @@ cleanup:
 gadgettracermanager:
 	mkdir -p bin
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
+	 -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=$(VERSION)" \
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/
 

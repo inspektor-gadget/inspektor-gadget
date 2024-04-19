@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
-	"github.com/blang/semver"
+	log "github.com/sirupsen/logrus"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
@@ -55,8 +55,6 @@ const (
 	GlobalTraceID = "global-trace-id"
 	TraceTimeout  = 5 * time.Second
 )
-
-var KubectlGadgetVersion *semver.Version
 
 // TraceConfig is used to contain information used to manage a trace.
 type TraceConfig struct {
@@ -186,16 +184,9 @@ func getTraceClient() (*clientset.Clientset, error) {
 }
 
 func printVersionSkewWarning(pods *corev1.PodList) {
-	// Do not print any warning if this is a prerelease to avoid
-	// annoyting developers.
-	if len(KubectlGadgetVersion.Pre) > 0 {
-		return
-	}
-
 	for _, pod := range pods.Items {
 		image := pod.Spec.Containers[0].Image
 
-		// Verify that version matches
 		parts := strings.Split(image, ":")
 		if len(parts) != 2 {
 			continue
@@ -204,16 +195,8 @@ func printVersionSkewWarning(pods *corev1.PodList) {
 		versionStr := parts[1]
 
 		// Use 1: to remove the v prefix
-		version, err := semver.Make(versionStr[1:])
-		if err != nil {
-			continue
-		}
-
-		if !KubectlGadgetVersion.Equals(version) {
-			fmt.Fprintf(os.Stderr,
-				"WARNING: version skew detected (gadget pods v%s vs kubectl-gadget v%s), use 'kubectl gadget deploy' to fix it.\n",
-				version, KubectlGadgetVersion,
-			)
+		if err := commonutils.CheckServerVersionSkew(versionStr[1:]); err != nil {
+			log.Warnf(err.Error())
 			break
 		}
 	}

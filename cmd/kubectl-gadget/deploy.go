@@ -57,9 +57,9 @@ import (
 	seccompprofileapi "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 	"sigs.k8s.io/yaml"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
@@ -603,7 +603,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
 				case "INSPEKTOR_GADGET_VERSION":
-					gadgetContainer.Env[i].Value = common.Version()
+					gadgetContainer.Env[i].Value = version.Version().String()
 				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
 					gadgetContainer.Env[i].Value = hookMode
 				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":

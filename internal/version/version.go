@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+// Package version stores the semver of this binary. It is filled out by the Makefile at build time
+// by using "-ldflags github.com/inspektor-gadget/inspektor-gadget/internal/version.version".
+package version
 
 import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/blang/semver"
 )
 
-func NewVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Show version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("v%s\n", version.Version().String())
-		},
-	}
+// version is filled out by the Makefile at build
+var (
+	version       = "v0.0.0"
+	parsedVersion semver.Version
+)
+
+func init() {
+	parsedVersion, _ = semver.ParseTolerant(version)
+}
+
+func Version() semver.Version {
+	return parsedVersion
 }
