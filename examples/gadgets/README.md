@@ -17,3 +17,10 @@ Examples showing how to use some gadgets in their simplest configuration.
   events to the terminal in json format.
 - [trace_dns](./simple/trace_dns/): Run the `trace_dns` gadget with some of the
   operators it requires.
+
+### Operators
+
+Examples showing how to use some of the operators.
+
+- [local_manager](./operators/local_manager/): Use the local manager operator
+to filter and enrich events with container data.
