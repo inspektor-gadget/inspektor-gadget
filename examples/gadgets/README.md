@@ -24,3 +24,9 @@ Examples showing how to use some of the operators.
 
 - [local_manager](./operators/local_manager/): Use the local manager operator
 to filter and enrich events with container data.
+
+### Datasource
+
+Examples showing how to use `datasource`
+
+- [fields](./datasource/fields/): Show how to access specific fields from the datasource.
