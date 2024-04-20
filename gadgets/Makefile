@@ -13,6 +13,7 @@ GADGETS = \
 	trace_open \
 	trace_signal \
 	trace_sni \
+	trace_ssl \
 	trace_tcp \
 	trace_tcpconnect \
 	trace_tcpdrop \

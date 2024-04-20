@@ -1,0 +1,68 @@
+name: trace ssl
+description: Captures data on read/recv or write/send functions of OpenSSL, GnuTLS,
+  NSS and Libcrypto
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+tracers:
+  ssl:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: mntns_id
+      description: mount namespace inode id
+      attributes:
+        template: ns
+    - name: operation
+      description: type of SSL operations
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: timestamp
+      attributes:
+        template: timestamp
+    - name: latency_ns
+      attributes:
+        template: timestamp
+    - name: pid
+      attributes:
+        template: pid
+    - name: tid
+      attributes:
+        template: pid
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      attributes:
+        template: uid
+    - name: len
+      description: data length
+      attributes:
+        width: 10
+        alignment: left
+        ellipsis: end
+    - name: comm
+      description: command
+      attributes:
+        template: comm
+    - name: buf
+      description: unencrypted buffer
+      attributes:
+        width: 32
+        alignment: left
+        ellipsis: end
+    - name: retval
+      description: return value
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
+ebpfParams:
+  record_data:
+    key: record-data
+    defaultValue: "true"
+    description: controls whether the gadget will send data to userspace
