@@ -13,6 +13,9 @@ structs:
     - name: pid
       attributes:
         template: pid
+    - name: tid
+      attributes:
+        template: pid
     - name: comm
       description: command
       attributes:
@@ -24,7 +27,7 @@ structs:
         alignment: left
         ellipsis: end
     - name: addr
-      description: address of malloc/free
+      description: address of malloc/free operations
       attributes:
         width: 20
         alignment: left
@@ -33,3 +36,12 @@ structs:
       description: Mount namespace inode id
       attributes:
         template: ns
+    - name: size
+      description: size of malloc operations
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
+    - name: timestamp_ns
+      attributes:
+        template: timestamp
