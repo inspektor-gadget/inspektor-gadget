@@ -65,3 +65,7 @@ For common libraries, `<file_path>` can also be the library's name, such as `lib
 The section name must use the `usdt/<file_path>:<providerName>:<probeName>` format.
 `<file_path>` can be either an absolute path or a library name, same as the field in Uprobe.
 `<providerName>` and `<probeName>` are two fields that can jointly identify a USDT trace point.
+
+### Tracing with Linux Security Modules (LSM)
+The section name must use the `lsm/<hook>` format.
+The hook points could be found in [`<include/linux/lsm_hook_defs.h>`](https://elixir.bootlin.com/linux/latest/source/include/linux/lsm_hook_defs.h).

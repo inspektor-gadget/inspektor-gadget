@@ -117,6 +117,11 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 
 		i.logger.Debugf("Attaching sched_cls %q", p.Name)
 		return nil, handler.AttachProg(prog)
+	case ebpf.LSM:
+		i.logger.Debugf("Attaching LSM %q to %q", p.Name, p.AttachTo)
+		return link.AttachLSM(link.LSMOptions{
+			Program: prog,
+		})
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
