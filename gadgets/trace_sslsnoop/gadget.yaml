@@ -1,0 +1,47 @@
+name: trace sslsnoop
+description: use uprobe to show SSL handshake latency and retval
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+tracers:
+  sslsnoop:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: mntns_id
+      description: Mount namespace inode id
+      attributes:
+        template: ns
+    - name: time
+      attributes:
+        template: timestamp
+    - name: pid
+      attributes:
+        template: pid
+    - name: tid
+      attributes:
+        template: pid
+    - name: comm
+      description: command
+      attributes:
+        template: comm
+    - name: operation
+      description: libssl/libcrypto operation type
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: retval
+      description: return value
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
+    - name: latency_us
+      description: latency of the operation
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
