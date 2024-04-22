@@ -51,6 +51,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
