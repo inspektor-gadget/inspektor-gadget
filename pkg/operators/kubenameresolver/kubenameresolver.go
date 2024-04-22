@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -93,7 +91,7 @@ func (k *KubeNameResolver) Instantiate(gadgetCtx operators.GadgetContext, gadget
 
 type KubeNameResolverInstance struct {
 	gadgetCtx      operators.GadgetContext
-	k8sInventory   *common.K8sInventoryCache
+	k8sInventory   common.K8sInventoryCache
 	gadgetInstance any
 }
 
@@ -115,26 +113,19 @@ func (m *KubeNameResolverInstance) enrich(ev any) {
 	kubeNameResolver, _ := ev.(KubeNameResolverInterface)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	pods, err := m.k8sInventory.GetPods()
-	if err != nil {
-		log.Warnf("getting pods from k8s inventory: %v", err)
-		return
-	}
-	for _, pod := range pods {
-		if pod.Namespace == containerInfo.GetNamespace() && pod.Name == containerInfo.GetPod() {
-			owner := ""
-			// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
-			// shorter name without the random suffix. That will be used to
-			// generate the network policy name.
-			if pod.OwnerReferences != nil {
-				nameItems := strings.Split(pod.Name, "-")
-				if len(nameItems) > 2 {
-					owner = strings.Join(nameItems[:len(nameItems)-2], "-")
-				}
+	pod := m.k8sInventory.GetPodByName(containerInfo.GetNamespace(), containerInfo.GetPod())
+	if pod != nil {
+		owner := ""
+		// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
+		// shorter name without the random suffix. That will be used to
+		// generate the network policy name.
+		if pod.OwnerReferences != nil {
+			nameItems := strings.Split(pod.Name, "-")
+			if len(nameItems) > 2 {
+				owner = strings.Join(nameItems[:len(nameItems)-2], "-")
 			}
-			kubeNameResolver.SetLocalPodDetails(owner, pod.Status.HostIP, pod.Status.PodIP, pod.Labels)
-			return
 		}
+		kubeNameResolver.SetLocalPodDetails(owner, pod.Status.HostIP, pod.Status.PodIP, pod.Labels)
 	}
 }
 
