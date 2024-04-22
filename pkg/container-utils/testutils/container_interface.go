@@ -36,6 +36,7 @@ type containerSpec struct {
 }
 
 type Container interface {
+	DisplayName() string
 	Run(t *testing.T)
 	Start(t *testing.T)
 	Stop(t *testing.T)
@@ -59,6 +60,10 @@ func (c *containerSpec) Running() bool {
 
 func (c *containerSpec) PortBindings() nat.PortMap {
 	return c.portBindings
+}
+
+func (c *containerSpec) DisplayName() string {
+	return c.name + ": " + c.cmd
 }
 
 var SupportedContainerRuntimes = []types.RuntimeName{

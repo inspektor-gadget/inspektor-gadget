@@ -24,6 +24,9 @@ const stepWaitDuration = 10 * time.Second
 // TestStep allows combining different steps (e.g command, container creation)
 // to allow simplified/consistent flow for tests via RunTestSteps
 type TestStep interface {
+	// DisplayName returns a short descriptive name for the step.
+	DisplayName() string
+
 	// Run runs the step and wait its completion.
 	Run(t *testing.T)
 
@@ -90,6 +93,7 @@ func RunTestSteps(steps []TestStep, t *testing.T, options ...Option) {
 				// Wait a bit before stopping the step.
 				time.Sleep(stepWaitDuration)
 				step.Stop(t)
+				t.Logf("[%s] Stopped %q\n", time.Now().UTC(), step.DisplayName())
 			}
 		}()
 	}
@@ -100,11 +104,13 @@ func RunTestSteps(steps []TestStep, t *testing.T, options ...Option) {
 			continue
 		}
 
+		t.Logf("[%s] Starting %q\n", time.Now().UTC(), step.DisplayName())
 		if step.IsStartAndStop() {
 			step.Start(t)
 			continue
 		}
 
 		step.Run(t)
+		t.Logf("[%s] Stopped %q\n", time.Now().UTC(), step.DisplayName())
 	}
 }
