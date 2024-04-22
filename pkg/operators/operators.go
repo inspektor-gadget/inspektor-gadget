@@ -21,6 +21,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
+	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -91,7 +92,9 @@ type ImageOperator interface {
 	// InstantiateImageOperator will be run to load information about a gadget and also to _possibly_
 	// run the gadget afterward. It should only do things that are required to populate
 	// DataSources and Params. It could use caching to speed things up, if necessary.
-	InstantiateImageOperator(gadgetCtx GadgetContext, descriptor ocispec.Descriptor,
+	InstantiateImageOperator(gadgetCtx GadgetContext,
+		target oras.ReadOnlyTarget,
+		descriptor ocispec.Descriptor,
 		paramValues api.ParamValues) (ImageOperatorInstance, error)
 }
 

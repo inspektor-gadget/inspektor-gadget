@@ -78,6 +78,10 @@ func (d *GadgetImageDesc) String() string {
 	return fmt.Sprintf("%s:%s@%s", d.Repository, d.Tag, d.Digest)
 }
 
+func GetLocalOciStore() (*oci.Store, error) {
+	return getLocalOciStore()
+}
+
 func getLocalOciStore() (*oci.Store, error) {
 	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
 		return nil, err
@@ -633,12 +637,8 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 	return manifest, nil
 }
 
-func GetManifestForHost(ctx context.Context, image string) (*ocispec.Manifest, error) {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting local oci store: %w", err)
-	}
-	return getManifestForHost(ctx, imageStore, image)
+func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
+	return getManifestForHost(ctx, target, image)
 }
 
 // getIndex gets an index for the given image
@@ -656,13 +656,8 @@ func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*o
 	return &index, nil
 }
 
-func GetContentFromDescriptor(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting local oci store: %w", err)
-	}
-
-	reader, err := imageStore.Fetch(ctx, desc)
+func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	reader, err := target.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}

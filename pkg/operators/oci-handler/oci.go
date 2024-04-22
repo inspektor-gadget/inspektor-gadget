@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"oras.land/oras-go/v2"
+	orasoci "oras.land/oras-go/v2/content/oci"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
@@ -38,6 +40,7 @@ const (
 	insecureParam         = "insecure"
 	pullParam             = "pull"
 	pullSecret            = "pull-secret"
+	bundleParam           = "bundle"
 )
 
 type ociHandler struct{}
@@ -94,6 +97,12 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Key:         pullSecret,
 			Title:       "Pull secret",
 			Description: "Secret to use when pulling the gadget image",
+			TypeHint:    api.TypeString,
+		},
+		{
+			Key:         bundleParam,
+			Title:       "Gadget Images Bundle",
+			Description: "Path to file containing the gadget images",
 			TypeHint:    api.TypeString,
 		},
 	}
@@ -165,21 +174,37 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		Insecure:    o.ociParams.Get(insecureParam).AsBool(),
 	}
 
-	// Make sure the image is available, either through pulling or by just accessing a local copy
-	// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
-	err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), authOpts, o.ociParams.Get(pullParam).AsString())
-	if err != nil {
-		return fmt.Errorf("ensuring image: %w", err)
+	var target oras.ReadOnlyTarget
+	var err error
+
+	bundle := o.ociParams.Get(bundleParam).AsString()
+	if bundle != "" {
+		target, err = orasoci.NewFromTar(gadgetCtx.Context(), bundle)
+		if err != nil {
+			return fmt.Errorf("getting oci store from bundle: %w", err)
+		}
+	} else {
+		target, err = oci.GetLocalOciStore()
+		if err != nil {
+			return err
+		}
+
+		// Make sure the image is available, either through pulling or by just accessing a local copy
+		// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
+		err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), authOpts, o.ociParams.Get(pullParam).AsString())
+		if err != nil {
+			return fmt.Errorf("ensuring image: %w", err)
+		}
 	}
 
-	manifest, err := oci.GetManifestForHost(gadgetCtx.Context(), gadgetCtx.ImageName())
+	manifest, err := oci.GetManifestForHost(gadgetCtx.Context(), target, gadgetCtx.ImageName())
 	if err != nil {
 		return fmt.Errorf("getting manifest: %w", err)
 	}
 
 	log := gadgetCtx.Logger()
 
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), manifest.Config)
+	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, manifest.Config)
 	if err != nil {
 		return fmt.Errorf("getting metadata: %w", err)
 	}
@@ -211,7 +236,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 
 		log.Debugf("found image op %q", op.Name())
-		opInst, err := op.InstantiateImageOperator(gadgetCtx, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
+		opInst, err := op.InstantiateImageOperator(gadgetCtx, target, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
 		if err != nil {
 			log.Errorf("instantiating operator %q: %v", op.Name(), err)
 		}
