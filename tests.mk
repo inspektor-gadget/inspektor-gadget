@@ -31,10 +31,10 @@ ifeq (, $(wildcard $(TEST_ASSETS)/kube-apiserver))
 	set -xe ;\
 	INSTALL_TMP_DIR=$$(mktemp -d) ;\
 	cd $$INSTALL_TMP_DIR ;\
-	VER=v1.21.2 ;\
+	VER=v1.30.0 ;\
 	DOWNLOAD_URL=https://dl.k8s.io/$$VER/bin/$(GOHOSTOS)/$(GOHOSTARCH)/kube-apiserver ;\
 	wget $${DOWNLOAD_URL} ;\
-	SHA256SUM=04de7369c4e80eaaf8da440dcf62e050e908d786ac8b3248585dbe659c06d769 ;\
+	SHA256SUM=d2ade134a8a3c74c585bdba35ce60ce7462b97465015be0923aa62096ec4d281 ;\
 	sha256sum kube-apiserver | grep -q $$SHA256SUM ;\
 	mkdir -p $(TEST_ASSETS) ;\
 	chmod +x kube-apiserver ;\
