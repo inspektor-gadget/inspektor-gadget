@@ -563,6 +563,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
 			lIter, ok := l.(*link.Iter)
 			if !ok {
+				i.Close()
 				return fmt.Errorf("link is not an iterator")
 			}
 			i.linksSnapshotters = append(i.linksSnapshotters, &linkSnapshotter{link: lIter, typ: p.AttachTo})
