@@ -319,11 +319,11 @@ func Populate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 	}
 
 	if err := populateTracers(m, spec); err != nil {
-		return fmt.Errorf("handling trace maps: %w", err)
+		return fmt.Errorf("handling tracers: %w", err)
 	}
 
 	if err := populateToppers(m, spec); err != nil {
-		return fmt.Errorf("handling snapshotters: %w", err)
+		return fmt.Errorf("handling toppers: %w", err)
 	}
 
 	if err := populateSnapshotters(m, spec); err != nil {

@@ -116,7 +116,7 @@ func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts)
 	}
 
 	if err := types.Populate(metadata, spec); err != nil {
-		return fmt.Errorf("handling trace maps: %w", err)
+		return fmt.Errorf("populating metadata: %w", err)
 	}
 
 	marshalled, err := yaml.Marshal(metadata)
