@@ -15,10 +15,12 @@
 package ebpfoperator
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 
@@ -39,14 +41,52 @@ type Snapshotter struct {
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
 	netns    datasource.FieldAccessor
+
+	// iterators is a list of iterators that this snapshotter needs to run to
+	// get the data. This information is gathered from the snapshotter
+	// definition in the eBPF program.
+	iterators map[string]struct{}
+
+	// links is a map of iterators to their links. Links are created when the
+	// iterator is attached to the kernel.
+	links map[string]*linkSnapshotter
+}
+
+func (i *ebpfInstance) parseSnapshotterPrograms(programs []string) (map[string]struct{}, error) {
+	iterators := make(map[string]struct{}, len(programs))
+
+	for _, program := range programs {
+		if program == "" {
+			return nil, errors.New("empty program name")
+		}
+
+		i.logger.Debugf("> program %q", program)
+
+		// Check if the program is in the eBPF object
+		p, ok := i.collectionSpec.Programs[program]
+		if !ok {
+			return nil, fmt.Errorf("program %q not found in eBPF object", program)
+		}
+
+		if p.Type != ebpf.Tracing || !strings.HasPrefix(p.SectionName, "iter/") {
+			return nil, fmt.Errorf("invalid program %q: expecting type %q and section name prefix \"iter/\", got %q and %q",
+				program, ebpf.Tracing, p.Type, p.SectionName)
+		}
+
+		iterators[program] = struct{}{}
+	}
+
+	return iterators, nil
 }
 
 func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	i.logger.Debugf("populating snapshotter %q", varName)
 
 	parts := strings.Split(varName, typeSplitter)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid snapshotter info: %q", varName)
+	if len(parts) < 3 {
+		// At least one program is required
+		return fmt.Errorf("invalid snapshotter definition, expected format: <name>___<structName>___<program1>___...___<programN>, got %q",
+			varName)
 	}
 
 	name := parts[0]
@@ -64,6 +104,11 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 		i.logger.Debugf("> successfully validated with metadata")
 	}
 
+	iterators, err := i.parseSnapshotterPrograms(parts[2:])
+	if err != nil {
+		return fmt.Errorf("parsing snapshotter %q programs: %w", name, err)
+	}
+
 	if _, ok := i.snapshotters[name]; ok {
 		i.logger.Debugf("snapshotter %q already defined, skipping", name)
 		return nil
@@ -79,9 +124,11 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 		Snapshotter: metadatav1.Snapshotter{
 			StructName: btfStruct.Name,
 		},
+		iterators: iterators,
+		links:     make(map[string]*linkSnapshotter),
 	}
 
-	err := i.populateStructDirect(btfStruct)
+	err = i.populateStructDirect(btfStruct)
 	if err != nil {
 		return fmt.Errorf("populating struct %q for snapshotter %q: %w", btfStruct.Name, name, err)
 	}
@@ -90,67 +137,74 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 }
 
 func (i *ebpfInstance) runSnapshotters() error {
-	for _, l := range i.linksSnapshotters {
-		i.logger.Debugf("starting snapshotter")
-		switch l.typ {
-		case "task":
-			buf, err := bpfiterns.Read(l.link)
-			if err != nil {
-				return fmt.Errorf("reading iterator: %w", err)
-			}
-			// TODO: we need a link from iter to map
-			for _, snapshotter := range i.snapshotters {
-				// We'll for now use the first one that matches
-				size := snapshotter.accessor.Size()
-				if uint32(len(buf))%size == 0 {
-					for i := uint32(0); i < uint32(len(buf)); i += size {
-						data := snapshotter.ds.NewData()
-						snapshotter.accessor.Set(data, buf[i:i+size])
-						snapshotter.ds.EmitAndRelease(data)
-					}
-				}
-			}
-		case "tcp", "udp":
-			visitedNetNs := make(map[uint64]struct{})
-			for _, container := range i.containers {
-				_, visited := visitedNetNs[container.Netns]
-				if visited {
-					continue
-				}
-				visitedNetNs[container.Netns] = struct{}{}
+	for sName, snapshotter := range i.snapshotters {
+		i.logger.Debugf("Running snapshotter %q", sName)
 
-				err := netnsenter.NetnsEnter(int(container.Pid), func() error {
-					reader, err := l.link.Open()
-					if err != nil {
-						return err
-					}
-					defer reader.Close()
-					buf, err := io.ReadAll(reader)
-					if err != nil {
-						return fmt.Errorf("reading iterator: %w", err)
-					}
-					// TODO: we need a link from iter to map
-					for _, snapshotter := range i.snapshotters {
-						// We'll for now use the first one that matches
-						size := snapshotter.accessor.Size()
-						if uint32(len(buf))%size == 0 {
-							for i := uint32(0); i < uint32(len(buf)); i += size {
-								data := snapshotter.ds.NewData()
-								snapshotter.accessor.Set(data, buf[i:i+size])
-
-								// TODO: this isn't ideal; make DS reserve memory / clean on demand
-								// instead of allocating in here - or: reserve those 8 bytes in eBPF
-								snapshotter.netns.Set(data, make([]byte, 8))
-								snapshotter.netns.PutUint64(data, container.Netns)
-
-								snapshotter.ds.EmitAndRelease(data)
-							}
-						}
-					}
-					return nil
-				})
+		for pName, l := range snapshotter.links {
+			i.logger.Debugf("Running iterator %q", pName)
+			switch l.typ {
+			case "task":
+				buf, err := bpfiterns.Read(l.link)
 				if err != nil {
-					return fmt.Errorf("iterating: %w", err)
+					return fmt.Errorf("reading iterator %q: %w", pName, err)
+				}
+
+				size := snapshotter.accessor.Size()
+				if uint32(len(buf))%size != 0 {
+					return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+						pName, len(buf), size)
+				}
+
+				for i := uint32(0); i < uint32(len(buf)); i += size {
+					data := snapshotter.ds.NewData()
+					snapshotter.accessor.Set(data, buf[i:i+size])
+					snapshotter.ds.EmitAndRelease(data)
+				}
+			case "tcp", "udp":
+				visitedNetNs := make(map[uint64]struct{})
+				for _, container := range i.containers {
+					_, visited := visitedNetNs[container.Netns]
+					if visited {
+						continue
+					}
+					visitedNetNs[container.Netns] = struct{}{}
+
+					err := netnsenter.NetnsEnter(int(container.Pid), func() error {
+						reader, err := l.link.Open()
+						if err != nil {
+							return err
+						}
+						defer reader.Close()
+
+						buf, err := io.ReadAll(reader)
+						if err != nil {
+							return fmt.Errorf("reading iterator %q: %w", pName, err)
+						}
+
+						size := snapshotter.accessor.Size()
+						if uint32(len(buf))%size != 0 {
+							return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+								pName, len(buf), size)
+						}
+
+						for i := uint32(0); i < uint32(len(buf)); i += size {
+							data := snapshotter.ds.NewData()
+							snapshotter.accessor.Set(data, buf[i:i+size])
+
+							// TODO: this isn't ideal; make DS reserve memory / clean on demand
+							// instead of allocating in here - or: reserve those 8 bytes in eBPF
+							snapshotter.netns.Set(data, make([]byte, 8))
+							snapshotter.netns.PutUint64(data, container.Netns)
+
+							snapshotter.ds.EmitAndRelease(data)
+						}
+
+						return nil
+					})
+					if err != nil {
+						return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
+							container.Runtime.RuntimeName, pName, err)
+					}
 				}
 			}
 		}

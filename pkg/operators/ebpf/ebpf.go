@@ -159,8 +159,7 @@ type ebpfInstance struct {
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
 
-	links             []link.Link
-	linksSnapshotters []*linkSnapshotter
+	links []link.Link
 
 	containers map[string]*containercollection.Container
 
@@ -555,18 +554,33 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			i.Close()
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
 		}
+
 		if l != nil {
 			i.links = append(i.links, l)
 		}
 
-		// we need to store links to iterators on a separated list because we need them to run the programs.
+		// We need to store iterators' links because we need them to run the programs
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
 			lIter, ok := l.(*link.Iter)
 			if !ok {
 				i.Close()
 				return fmt.Errorf("link is not an iterator")
 			}
-			i.linksSnapshotters = append(i.linksSnapshotters, &linkSnapshotter{link: lIter, typ: p.AttachTo})
+
+			found := false
+			for _, snapshotter := range i.snapshotters {
+				if _, ok := snapshotter.iterators[progName]; ok {
+					snapshotter.links[progName] = &linkSnapshotter{
+						link: lIter,
+						typ:  p.AttachTo,
+					}
+					found = true
+					break
+				}
+			}
+			if !found {
+				i.logger.Warnf("None snapshotter will run iterator %q", progName)
+			}
 		}
 	}
 

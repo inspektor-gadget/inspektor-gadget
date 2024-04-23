@@ -704,29 +704,56 @@ func checkParamVar(spec *ebpf.CollectionSpec, name string) error {
 	return result
 }
 
+func validateSnapshotterPrograms(spec *ebpf.CollectionSpec, programs []string) error {
+	for _, program := range programs {
+		if program == "" {
+			return errors.New("empty program name")
+		}
+
+		// Check if the program is in the eBPF object
+		p, ok := spec.Programs[program]
+		if !ok {
+			return fmt.Errorf("program %q not found in eBPF object", program)
+		}
+
+		if p.Type != ebpf.Tracing || !strings.HasPrefix(p.SectionName, "iter/") {
+			return fmt.Errorf("invalid program %q: expecting type %q and section name prefix \"iter/\", got %q and %q",
+				program, ebpf.Tracing, p.Type, p.SectionName)
+		}
+	}
+	return nil
+}
+
 func populateSnapshotters(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
-	snapshottersNameAndType, _ := GetGadgetIdentByPrefix(spec, snapshottersPrefix)
-	if len(snapshottersNameAndType) == 0 {
+	snapshottersDef, _ := GetGadgetIdentByPrefix(spec, snapshottersPrefix)
+	if len(snapshottersDef) == 0 {
 		log.Debug("No snapshotters found")
 		return nil
 	}
 
-	if len(snapshottersNameAndType) > 1 {
-		log.Warnf("Multiple snapshotters found, using %q", snapshottersNameAndType[0])
+	if len(snapshottersDef) > 1 {
+		log.Warnf("Multiple snapshotters found, using %q", snapshottersDef[0])
 	}
 
-	snapshotterNameAndType := snapshottersNameAndType[0]
+	snapshotterDef := snapshottersDef[0]
 
 	if m.Snapshotters == nil {
 		m.Snapshotters = make(map[string]metadatav1.Snapshotter)
 	}
 
-	parts := strings.Split(snapshotterNameAndType, "___")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid snapshotter annotation: %q", snapshotterNameAndType)
+	parts := strings.Split(snapshotterDef, "___")
+	if len(parts) < 3 {
+		// At least one program is required
+		return fmt.Errorf("invalid snapshotter definition, expected format: <name>___<structName>___<program1>___...___<programN>, got %q",
+			snapshotterDef)
 	}
+
 	sname := parts[0]
 	stype := parts[1]
+
+	if err := validateSnapshotterPrograms(spec, parts[2:]); err != nil {
+		return fmt.Errorf("validating snapshotter %q programs: %w", sname, err)
+	}
 
 	var btfStruct *btf.Struct
 	spec.Types.TypeByName(stype, &btfStruct)
