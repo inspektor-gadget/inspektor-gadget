@@ -36,8 +36,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
-	// The script is not included in the all gadgets package.
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 )
 
 // common params for all gadgets

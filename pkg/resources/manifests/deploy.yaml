@@ -189,8 +189,8 @@ spec:
               drop:
                 - ALL
               add:
-                # We need CAP_SYS_ADMIN for both gadgettracermanager and
-                # bpftrace due to several syscalls:
+                # We need CAP_SYS_ADMIN for gadgettracermanager due to several
+                # syscalls:
                 # - bpf(): It often checks if SYS_ADMIN is set, among others
                 #   there:
                 #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/kernel/bpf/syscall.c#L2602
@@ -226,8 +226,8 @@ spec:
                 # https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/proc/namespaces.c#L58
                 - SYS_PTRACE
 
-                # Needed by setrlimit in bpftrace:
-                # https://github.com/iovisor/bpftrace/blob/ab863ef93ac1/src/main.cpp#L154
+                # Needed by RemoveMemlock in gadgettracermanager:
+                # https://github.com/inspektor-gadget/inspektor-gadget/blob/f2b9826fc4ae046415cdee30ee4a25322fd3f0c0/pkg/gadgettracermanager/gadgettracermanager.go#L258
                 - SYS_RESOURCE
 
                 # Needed by mmap() called by gadgettracermanager:

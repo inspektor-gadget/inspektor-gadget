@@ -3,10 +3,6 @@
 ARG BUILDER_IMAGE=golang:1.22-bullseye
 ARG BASE_IMAGE=gcr.io/distroless/base-debian12
 
-# bpftrace upstream image
-ARG BPFTRACE="ghcr.io/inspektor-gadget/bpftrace"
-
-FROM ${BPFTRACE} as bpftrace
 # Prepare and build gadget artifacts in a container
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
@@ -55,5 +51,3 @@ COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
 COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 ## Hooks Ends
-
-COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace

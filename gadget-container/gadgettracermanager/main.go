@@ -43,9 +43,6 @@ import (
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
-	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
-
 	// Blank import for some operators
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"

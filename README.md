@@ -66,7 +66,6 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcpconnect`](docs/builtin-gadgets/trace/tcpconnect.md)
 	- [`tcpdrop`](docs/builtin-gadgets/trace/tcpdrop.md)
 	- [`tcpretrans`](docs/builtin-gadgets/trace/tcpretrans.md)
-- [`script`](docs/builtin-gadgets/script.md)
 - [`traceloop`](docs/builtin-gadgets/traceloop.md)
 
 ## Installation
@@ -107,7 +106,6 @@ Available Commands:
   profile     Profile different subsystems
   prometheus  Expose metrics using prometheus
   run         Run a gadget (experimental)
-  script      Run a bpftrace-compatible scripts
   snapshot    Take a snapshot of a subsystem and print it
   sync        Synchronize gadget information with server
   top         Gather, sort and periodically report events according to a given criteria
