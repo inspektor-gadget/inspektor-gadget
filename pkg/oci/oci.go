@@ -62,13 +62,6 @@ const (
 	localhost = "localhost"
 )
 
-// GadgetImage is the representation of a gadget packaged in an OCI image.
-type GadgetImage struct {
-	EbpfObject []byte
-	WasmObject []byte
-	Metadata   []byte
-}
-
 // GadgetImageDesc is the description of a gadget image.
 type GadgetImageDesc struct {
 	Repository string `column:"repository"`
@@ -94,49 +87,6 @@ func getLocalOciStore() (*oci.Store, error) {
 func getTimeFromAnnotations(annotations map[string]string) string {
 	created, _ := annotations[ocispec.AnnotationCreated]
 	return created
-}
-
-// GetGadgetImage pulls the gadget image according to the pull policy and returns
-// a GadgetImage structure representing it.
-func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) (*GadgetImage, error) {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting local oci store: %w", err)
-	}
-
-	err = ensureImage(ctx, imageStore, image, authOpts, pullPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("ensuring image presence: %w", err)
-	}
-
-	manifest, err := getManifestForHost(ctx, imageStore, image)
-	if err != nil {
-		return nil, fmt.Errorf("getting arch manifest: %w", err)
-	}
-
-	prog, err := getLayerFromManifest(ctx, imageStore, manifest, eBPFObjectMediaType)
-	if err != nil {
-		return nil, fmt.Errorf("getting ebpf program: %w", err)
-	}
-	if prog == nil {
-		return nil, fmt.Errorf("no ebpf program found")
-	}
-
-	wasm, err := getLayerFromManifest(ctx, imageStore, manifest, wasmObjectMediaType)
-	if err != nil {
-		return nil, fmt.Errorf("getting wasm program: %w", err)
-	}
-
-	metadata, err := getMetadataFromManifest(ctx, imageStore, manifest)
-	if err != nil {
-		return nil, fmt.Errorf("getting metadata: %w", err)
-	}
-
-	return &GadgetImage{
-		EbpfObject: prog,
-		WasmObject: wasm,
-		Metadata:   metadata,
-	}, nil
 }
 
 // PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
@@ -517,66 +467,6 @@ func getImageListDescriptor(ctx context.Context, target oras.ReadOnlyTarget, ref
 		return ocispec.Index{}, fmt.Errorf("unmarshalling image index: %w", err)
 	}
 	return index, nil
-}
-
-func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocispec.Manifest, error) {
-	var manifestDesc ocispec.Descriptor
-	for _, indexManifest := range index.Manifests {
-		// TODO: Check docker code
-		if indexManifest.Platform.Architecture == runtime.GOARCH {
-			manifestDesc = indexManifest
-			break
-		}
-	}
-	if manifestDesc.Digest == "" {
-		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
-	}
-
-	reader, err := imageStore.Fetch(context.TODO(), manifestDesc)
-	if err != nil {
-		return nil, fmt.Errorf("fetching manifest: %w", err)
-	}
-	defer reader.Close()
-
-	var manifest ocispec.Manifest
-	if err = json.NewDecoder(reader).Decode(&manifest); err != nil {
-		return nil, fmt.Errorf("unmarshalling manifest: %w", err)
-	}
-	return &manifest, nil
-}
-
-func getMetadataFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest) ([]byte, error) {
-	metadataBytes, err := getContentBytesFromDescriptor(ctx, fetcher, manifest.Config)
-	if err != nil {
-		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
-	}
-
-	return metadataBytes, nil
-}
-
-func getLayerFromManifest(ctx context.Context, fetcher content.Fetcher, manifest *ocispec.Manifest, mediaType string) ([]byte, error) {
-	var layer ocispec.Descriptor
-	layerCount := 0
-	for _, l := range manifest.Layers {
-		if l.MediaType == mediaType {
-			layer = l
-			layerCount++
-		}
-	}
-	if layerCount == 0 {
-		return nil, nil
-	}
-	if layerCount != 1 {
-		return nil, fmt.Errorf("expected exactly one layer with media type %q, got %d", mediaType, layerCount)
-	}
-	layerBytes, err := getContentBytesFromDescriptor(ctx, fetcher, layer)
-	if err != nil {
-		return nil, fmt.Errorf("getting layer %q from descriptor: %w", mediaType, err)
-	}
-	if len(layerBytes) == 0 {
-		return nil, errors.New("layer is empty")
-	}
-	return layerBytes, nil
 }
 
 func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
