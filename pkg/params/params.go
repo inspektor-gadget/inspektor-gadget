@@ -244,7 +244,7 @@ func (p *Params) ValidateStringMap(cfg map[string]string) error {
 	return nil
 }
 
-func compressAndB64Encode(s string) string {
+func CompressAndB64Encode(s string) string {
 	// Create a new zlib.Writer, which will write to a bytes.Buffer
 	var b bytes.Buffer
 	w := zlib.NewWriter(&b)
@@ -280,7 +280,7 @@ func b64DecodeAndDecompress(s string) ([]byte, error) {
 func (p *Params) CopyToMap(target map[string]string, prefix string) {
 	for _, param := range *p {
 		if param.TypeHint == TypeBytes {
-			target[prefix+param.Key] = compressAndB64Encode(param.String())
+			target[prefix+param.Key] = CompressAndB64Encode(param.String())
 		} else {
 			target[prefix+param.Key] = param.String()
 		}

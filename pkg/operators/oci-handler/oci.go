@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/quay/claircore/pkg/tarfs"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +42,7 @@ const (
 	pullParam             = "pull"
 	pullSecret            = "pull-secret"
 	bundleParam           = "bundle"
+	bundleBytesParam      = "bundle-bytes"
 )
 
 type ociHandler struct{}
@@ -104,6 +106,12 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:       "Gadget Images Bundle",
 			Description: "Path to file containing the gadget images",
 			TypeHint:    api.TypeString,
+		},
+		{
+			Key:         bundleBytesParam,
+			Title:       "Gadget Images Bundle bytes",
+			Description: "Bytes that contain the gadget images",
+			TypeHint:    api.TypeBytes,
 		},
 	}
 }
@@ -177,11 +185,30 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	var target oras.ReadOnlyTarget
 	var err error
 
-	bundle := o.ociParams.Get(bundleParam).AsString()
-	if bundle != "" {
+	bundleParamSet := o.ociParams.Get(bundleParam).IsSet()
+	bundleBytesParamSet := o.ociParams.Get(bundleBytesParam).IsSet()
+
+	if bundleParamSet && bundleBytesParamSet {
+		return fmt.Errorf("both bundle and bundle-bytes parameters are set")
+	}
+
+	if bundleParamSet {
+		bundle := o.ociParams.Get(bundleParam).AsString()
 		target, err = orasoci.NewFromTar(gadgetCtx.Context(), bundle)
 		if err != nil {
 			return fmt.Errorf("getting oci store from bundle: %w", err)
+		}
+	} else if bundleBytesParamSet {
+		bundleBytes := o.ociParams.Get(bundleBytesParam).AsBytes()
+		reader := bytes.NewReader(bundleBytes)
+		fs, err := tarfs.New(reader)
+		if err != nil {
+			return err
+		}
+
+		target, err = orasoci.NewFromFS(gadgetCtx.Context(), fs)
+		if err != nil {
+			return fmt.Errorf("getting oci store from bytes: %w", err)
 		}
 	} else {
 		target, err = oci.GetLocalOciStore()
