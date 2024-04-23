@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto"
@@ -232,6 +233,88 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 		imageDesc.Tag = ref.Tag()
 	}
 	return imageDesc, nil
+}
+
+func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) error {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return fmt.Errorf("getting oci store: %w", err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "gadget-export-")
+	if err != nil {
+		return fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dstStore, err := oci.New(tmpDir)
+	if err != nil {
+		return fmt.Errorf("creating oci storage: %w", err)
+	}
+
+	for _, image := range images {
+		targetImage, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image: %w", err)
+		}
+		_, err = oras.Copy(ctx, ociStore, targetImage.String(), dstStore,
+			targetImage.String(), oras.DefaultCopyOptions)
+		if err != nil {
+			return fmt.Errorf("copying to remote repository: %w", err)
+		}
+	}
+
+	if err := tarFolderToFile(tmpDir, dstFile); err != nil {
+		return fmt.Errorf("creating tar for gadget image: %w", err)
+	}
+
+	return nil
+}
+
+// based on https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
+func tarFolderToFile(src, filePath string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("opening file: %w", err)
+	}
+
+	tw := tar.NewWriter(file)
+	defer tw.Close()
+
+	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !fi.Mode().IsRegular() {
+			return nil
+		}
+
+		header, err := tar.FileInfoHeader(fi, fi.Name())
+		if err != nil {
+			return err
+		}
+
+		// update the name to correctly reflect the desired destination when untaring
+		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		f, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+
+		if _, err := io.Copy(tw, f); err != nil {
+			return err
+		}
+
+		f.Close()
+
+		return nil
+	})
 }
 
 func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc, error) {

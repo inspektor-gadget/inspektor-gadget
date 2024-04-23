@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,33 @@
 package image
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-func NewImageCmd() *cobra.Command {
+func NewExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "image",
-		Short: "Manage gadget images",
+		Use:          "export SRC_IMAGE [SRC_IMAGE n] DST_FILE",
+		Short:        "Export the SRC_IMAGE images to DST_FILE",
+		SilenceUsage: true,
+		Args:         cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			l := len(args)
+			srcImages := args[:l-1]
+			dstFile := args[l-1]
+			err := oci.ExportGadgetImages(context.TODO(), dstFile, srcImages...)
+			if err != nil {
+				return fmt.Errorf("exporting images: %w", err)
+			}
+			cmd.Printf("Successfully exported images to %s\n", dstFile)
+			return nil
+		},
 	}
-
-	cmd.AddCommand(NewBuildCmd())
-	cmd.AddCommand(NewExportCmd())
-	cmd.AddCommand(NewPushCmd())
-	cmd.AddCommand(NewPullCmd())
-	cmd.AddCommand(NewTagCmd())
-	cmd.AddCommand(NewListCmd())
-	cmd.AddCommand(NewRemoveCmd())
 
 	return utils.MarkExperimental(cmd)
 }

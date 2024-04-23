@@ -304,11 +304,41 @@ Usage:
   ig image tag SRC_IMAGE DST_IMAGE [flags]
 
 Flags:
-  -h, --help   help for ta
+  -h, --help   help for tag
 ```
 
 ```bash
 $ sudo ig image tag mygadget:latest ghcr.io/mauriciovasquezbernal/mygadget:latest
 INFO[0000] Experimental features enabled
 Successfully tagged with ghcr.io/mauriciovasquezbernal/mygadget:latest@sha256:adf9a4c636421d09e038eefa15623176195b0de482b25972e09b8bb3390bd3e9
+```
+
+#### `export`
+
+Export the SRC_IMAGE images to DST_FILE.
+
+```bash
+$ sudo ig image export -h
+INFO[0000] Experimental features enabled
+Export the SRC_IMAGE images to DST_FILE (experimental)
+
+Usage:
+  ig image export SRC_IMAGE [SRC_IMAGE n] DST_FILE [flags]
+
+Flags:
+  -h, --help   help for export
+```
+
+```bash
+# Pull an image
+$ sudo -E ig image pull ghcr.io/inspektor-gadget/gadget/trace_open
+INFO[0000] Experimental features enabled
+
+# Export it to a file
+$ sudo -E ig image export ghcr.io/inspektor-gadget/gadget/trace_open trace_open.tar
+INFO[0000] Experimental features enabled
+Successfully exported images to trace_open.tar
+
+$ ls -lnh trace_open.tar
+-rw-r--r-- 1 0 0 181K abr 24 17:35 trace_open.tar
 ```
