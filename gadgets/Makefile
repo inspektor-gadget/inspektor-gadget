@@ -4,6 +4,7 @@ GADGET_TAG ?= $(shell ../tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 IG ?= ig
+COSIGN ?= cosign
 GADGETS = \
 	trace_dns \
 	trace_exec \
@@ -44,6 +45,13 @@ push: build
 	@echo "Pushing all gadgets"
 	for GADGET in $(GADGETS); do \
 		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
+	done
+
+sign: push
+	@echo "Signing all gadgets"
+	for GADGET in $(GADGETS); do \
+		digest=$$(sudo -E IG_EXPERIMENTAL=true $(IG) image list --no-trunc | grep "$$GADGET " | awk '{ print $$3 }') ; \
+		cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$$GADGET@$$digest || exit 1 ; \
 	done
 
 .PHONY:

@@ -168,6 +168,22 @@ $ jq '' /tmp/gadget-container-image-linux-amd64/sbom_cyclonedx.json
 
 As the SBOM was signed with our private key, you can now inspect it to track down every dependencies we use to build our container image.
 
+## Verify image-based gadgets
+
+Like our container image, we sign all our image-based gadgets.
+The instructions to verify them are similar to the container image:
+
+```bash
+$ cosign verify --key https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/main/pkg/resources/inspektor-gadget.pub ghcr.io/inspektor-gadget/gadget/trace_exec:latest
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+
+[{"critical":{"identity":{"docker-reference":"ghcr.io/inspektor-gadget/gadget/trace_exec"}, ...
+]
+```
+
 ## Verify an asset
 
 Rather than signing all the assets, we only sign the checksums file.

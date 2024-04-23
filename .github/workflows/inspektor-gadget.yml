@@ -716,6 +716,7 @@ jobs:
     needs:
       - build-gadget-container-images
       - public-key-check
+      - check-secrets
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -767,8 +768,10 @@ jobs:
           image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Install Cosign
+        if: needs.check-secrets.outputs.cosign == 'true'
         uses: sigstore/cosign-installer@main
       - name: Sign the manifest list
+        if: needs.check-secrets.outputs.cosign == 'true'
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
@@ -1230,7 +1233,7 @@ jobs:
     # fork.
     # We still need to run this job on push, otherwise it will not be run when
     # we merge something on main.
-    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') && needs.check-secrets.outputs.cosign == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Cosign
@@ -1296,7 +1299,11 @@ jobs:
   build-and-push-gadgets:
     name: Build and push gadgets
     # level: 2
-    needs: [ build-ig, build-helper-images ]
+    needs:
+      - build-ig
+      - build-helper-images
+      - check-secrets
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -1339,6 +1346,16 @@ jobs:
 
           # Avoid building the gadgets again
           make -C gadgets/ push -o build
+      - name: Install Cosign
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: sigstore/cosign-installer@main
+      - name: Sign the gadgets
+        if: needs.check-secrets.outputs.cosign == 'true'
+        env:
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        run: |
+          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} make -C gadgets/ sign -o push
 
   test-gadgets:
     name: Test gadgets
@@ -1871,7 +1888,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.cosign == 'true'
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - uses: actions/checkout@v4
     - id: set-repo-determine-image-tag
@@ -1960,8 +1977,10 @@ jobs:
           rm -fr $temp_dir
         done
     - name: Install Cosign
+      if: needs.check-secrets.outputs.cosign == 'true'
       uses: sigstore/cosign-installer@main
     - name: Sign checksums file
+      if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
       env:
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
