@@ -180,7 +180,7 @@ installed.
 In this case it's possible to control some of the tools used by setting some env variables:
 
 ```bash
-$ sudo CLANG=clang-15 LLVM-STRIP=llvm-strip-15 ig image build . -f mybuild.yaml --local
+$ sudo CLANG=clang-15 LLVM_STRIP=llvm-strip-15 ig image build . -f mybuild.yaml --local
 ```
 
 ##### Wasm module

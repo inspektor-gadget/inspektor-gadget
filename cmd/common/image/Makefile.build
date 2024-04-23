@@ -1,7 +1,7 @@
 # This makefile is used by the build command, don't execute it manually
 
 CLANG ?= clang
-LLVM-STRIP ?= llvm-strip
+LLVM_STRIP ?= llvm-strip
 BASECFLAGS = -target bpf -Wall -g -O2
 CFLAGS ?=
 OUTPUTDIR ?= /tmp
@@ -18,7 +18,7 @@ all: $(TARGETS) wasm
 $(OUTPUTDIR)/%.bpf.o: $(EBPFSOURCE)
 	$(CLANG) $(BASECFLAGS) $(CFLAGS) -D __TARGET_ARCH_$(subst amd64,x86,$*) \
 		-c $< -I /usr/include/gadget/$*/ -o $@
-	$(LLVM-STRIP) -g $@
+	$(LLVM_STRIP) -g $@
 
 .PHONY: wasm
 ifeq ($(WASM),)
