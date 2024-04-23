@@ -50,6 +50,15 @@ func TestTraceOpen(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory("docker")
 	require.NoError(t, err, "new container factory")
 
+	testContainer := containerFactory.NewContainer(
+		cn,
+		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+	)
+	testContainer.Start(t)
+	t.Cleanup(func() {
+		testContainer.Stop(t)
+	})
+
 	traceOpenCmd := igrunner.New(
 		"trace_open",
 		igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
@@ -59,6 +68,7 @@ func TestTraceOpen(t *testing.T) {
 					CommonData: eventtypes.CommonData{
 						Runtime: eventtypes.BasicRuntimeMetadata{
 							RuntimeName:   eventtypes.String2RuntimeName("docker"),
+							ContainerID:   testContainer.ID(),
 							ContainerName: cn,
 						},
 					},
@@ -76,7 +86,6 @@ func TestTraceOpen(t *testing.T) {
 					e.MountNsID = 0
 					e.Pid = 0
 
-					e.Runtime.ContainerID = ""
 					e.Runtime.ContainerImageName = ""
 					e.Runtime.ContainerImageDigest = ""
 				}
@@ -85,10 +94,5 @@ func TestTraceOpen(t *testing.T) {
 			}),
 	)
 
-	testSteps := []igtesting.TestStep{
-		containerFactory.NewContainer(cn, "while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done", containers.WithStartAndStop()),
-		traceOpenCmd,
-	}
-
-	igtesting.RunTestSteps(testSteps, t)
+	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
 }
