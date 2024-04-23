@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,8 @@ type traceOpenEvent struct {
 func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 
-	containerFactory, err := containers.NewContainerFactory("docker")
+	runtime := "docker"
+	containerFactory, err := containers.NewContainerFactory(runtime)
 	require.NoError(t, err, "new container factory")
 
 	containerName := "test-trace-open"
@@ -65,13 +67,13 @@ func TestTraceOpen(t *testing.T) {
 
 	traceOpenCmd := igrunner.New(
 		"trace_open",
-		igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
+		igrunner.WithFlags(fmt.Sprintf("--runtimes=%s", runtime), "--timeout=5"),
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &traceOpenEvent{
 					CommonData: eventtypes.CommonData{
 						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:        eventtypes.String2RuntimeName("docker"),
+							RuntimeName:        eventtypes.String2RuntimeName(runtime),
 							ContainerName:      containerName,
 							ContainerID:        testContainer.ID(),
 							ContainerImageName: containerImage,
@@ -91,7 +93,11 @@ func TestTraceOpen(t *testing.T) {
 					e.MountNsID = 0
 					e.Pid = 0
 
-					e.Runtime.ContainerImageDigest = ""
+					// The container image digest is not currently enriched for Docker containers:
+					// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
+					if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
+						e.Runtime.ContainerImageDigest = ""
+					}
 				}
 
 				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
