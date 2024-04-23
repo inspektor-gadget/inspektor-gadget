@@ -46,14 +46,18 @@ type traceOpenEvent struct {
 func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 
-	cn := "test-trace-open"
 	containerFactory, err := containers.NewContainerFactory("docker")
 	require.NoError(t, err, "new container factory")
 
+	containerName := "test-trace-open"
+	containerImage := "docker.io/library/busybox"
+
 	testContainer := containerFactory.NewContainer(
-		cn,
+		containerName,
 		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+		containers.WithContainerImage(containerImage),
 	)
+
 	testContainer.Start(t)
 	t.Cleanup(func() {
 		testContainer.Stop(t)
@@ -67,9 +71,10 @@ func TestTraceOpen(t *testing.T) {
 				expectedEntry := &traceOpenEvent{
 					CommonData: eventtypes.CommonData{
 						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:   eventtypes.String2RuntimeName("docker"),
-							ContainerID:   testContainer.ID(),
-							ContainerName: cn,
+							RuntimeName:        eventtypes.String2RuntimeName("docker"),
+							ContainerName:      containerName,
+							ContainerID:        testContainer.ID(),
+							ContainerImageName: containerImage,
 						},
 					},
 					Comm:  "cat",
@@ -86,7 +91,6 @@ func TestTraceOpen(t *testing.T) {
 					e.MountNsID = 0
 					e.Pid = 0
 
-					e.Runtime.ContainerImageName = ""
 					e.Runtime.ContainerImageDigest = ""
 				}
 
