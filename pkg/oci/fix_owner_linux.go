@@ -35,3 +35,32 @@ func fixOwner(targetFile, modelFile string) error {
 
 	return nil
 }
+
+func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
+	info, err := os.Stat(opts.EBPFSourcePath)
+	if err != nil {
+		return err
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil
+	}
+
+	allPaths := []string{}
+
+	for _, paths := range opts.ObjectPaths {
+		allPaths = append(allPaths, paths.EBPF, paths.Wasm)
+	}
+
+	for _, path := range allPaths {
+		if path == "" {
+			continue
+		}
+		err := os.Chown(path, int(stat.Uid), int(stat.Gid))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
