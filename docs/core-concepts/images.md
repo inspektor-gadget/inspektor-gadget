@@ -342,3 +342,39 @@ Successfully exported images to trace_open.tar
 $ ls -lnh trace_open.tar
 -rw-r--r-- 1 0 0 181K abr 24 17:35 trace_open.tar
 ```
+
+#### `import`
+
+```bash
+$ sudo -E ig image import -h
+INFO[0000] Experimental features enabled
+Import images from SRC_FILE (experimental)
+
+Usage:
+  ig image import SRC_FILE [flags]
+
+Flags:
+  -h, --help   help for import
+```
+
+```bash
+# Remove image if existing
+$ sudo -E ig image remove trace_open
+INFO[0000] Experimental features enabled
+Successfully removed trace_open
+
+$ sudo -E ig image list
+INFO[0000] Experimental features enabled
+REPOSITORY                     TAG                           DIGEST       CREATED
+
+# Import image exported above
+$ sudo -E ig image import trace_open.tar
+INFO[0000] Experimental features enabled
+Successfully imported images:
+  ghcr.io/inspektor-gadget/gadget/trace_open:latest
+
+$ sudo -E ig image list
+INFO[0000] Experimental features enabled
+REPOSITORY                     TAG                           DIGEST       CREATED
+trace_open                     latest                        19ea8377298f 30 minutes ago
+```

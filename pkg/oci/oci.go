@@ -271,6 +271,35 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 	return nil
 }
 
+// ImportGadgetImages imports all the tagged gadget images from the src file.
+func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
+	src, err := oci.NewFromTar(ctx, srcFile)
+	if err != nil {
+		return nil, fmt.Errorf("loading src bundle: %w", err)
+	}
+
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	ret := []string{}
+
+	err = src.Tags(ctx, "", func(tags []string) error {
+		for _, tag := range tags {
+			_, err := oras.Copy(ctx, src, tag, ociStore, tag, oras.DefaultCopyOptions)
+			if err != nil {
+				return fmt.Errorf("copying to local repository: %w", err)
+			}
+
+			ret = append(ret, tag)
+		}
+		return nil
+	})
+
+	return ret, err
+}
+
 // based on https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
 func tarFolderToFile(src, filePath string) error {
 	file, err := os.Create(filePath)
