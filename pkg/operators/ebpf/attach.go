@@ -32,6 +32,9 @@ const (
 	iterPrefix      = "iter/"
 	fentryPrefix    = "fentry/"
 	fexitPrefix     = "fexit/"
+	uprobePrefix    = "uprobe/"
+	uretprobePrefix = "uretprobe/"
+	usdtPrefix      = "usdt/"
 )
 
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
@@ -44,9 +47,9 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		case strings.HasPrefix(p.SectionName, kretprobePrefix):
 			i.logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
 			return link.Kretprobe(p.AttachTo, prog, nil)
-		case strings.HasPrefix(p.SectionName, "uprobe/") ||
-			strings.HasPrefix(p.SectionName, "uretprobe/") ||
-			strings.HasPrefix(p.SectionName, "usdt/"):
+		case strings.HasPrefix(p.SectionName, uprobePrefix) ||
+			strings.HasPrefix(p.SectionName, uretprobePrefix) ||
+			strings.HasPrefix(p.SectionName, usdtPrefix):
 			uprobeTracer := i.uprobeTracers[p.Name]
 			switch strings.Split(p.SectionName, "/")[0] {
 			case "uprobe":
@@ -114,6 +117,11 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 
 		i.logger.Debugf("Attaching sched_cls %q", p.Name)
 		return nil, handler.AttachProg(prog)
+	case ebpf.LSM:
+		i.logger.Debugf("Attaching LSM %q to %q", p.Name, p.AttachTo)
+		return link.AttachLSM(link.LSMOptions{
+			Program: prog,
+		})
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
