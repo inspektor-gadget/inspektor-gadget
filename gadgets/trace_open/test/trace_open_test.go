@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,20 +47,36 @@ type traceOpenEvent struct {
 func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 
-	cn := "test-trace-open"
-	containerFactory, err := containers.NewContainerFactory("docker")
+	runtime := "docker"
+	containerFactory, err := containers.NewContainerFactory(runtime)
 	require.NoError(t, err, "new container factory")
+
+	containerName := "test-trace-open"
+	containerImage := "docker.io/library/busybox"
+
+	testContainer := containerFactory.NewContainer(
+		containerName,
+		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+		containers.WithContainerImage(containerImage),
+	)
+
+	testContainer.Start(t)
+	t.Cleanup(func() {
+		testContainer.Stop(t)
+	})
 
 	traceOpenCmd := igrunner.New(
 		"trace_open",
-		igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
+		igrunner.WithFlags(fmt.Sprintf("--runtimes=%s", runtime), "--timeout=5"),
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &traceOpenEvent{
 					CommonData: eventtypes.CommonData{
 						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:   eventtypes.String2RuntimeName("docker"),
-							ContainerName: cn,
+							RuntimeName:        eventtypes.String2RuntimeName(runtime),
+							ContainerName:      containerName,
+							ContainerID:        testContainer.ID(),
+							ContainerImageName: containerImage,
 						},
 					},
 					Comm:  "cat",
@@ -76,19 +93,16 @@ func TestTraceOpen(t *testing.T) {
 					e.MountNsID = 0
 					e.Pid = 0
 
-					e.Runtime.ContainerID = ""
-					e.Runtime.ContainerImageName = ""
-					e.Runtime.ContainerImageDigest = ""
+					// The container image digest is not currently enriched for Docker containers:
+					// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
+					if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
+						e.Runtime.ContainerImageDigest = ""
+					}
 				}
 
 				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			}),
 	)
 
-	testSteps := []igtesting.TestStep{
-		containerFactory.NewContainer(cn, "while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done", containers.WithStartAndStop()),
-		traceOpenCmd,
-	}
-
-	igtesting.RunTestSteps(testSteps, t)
+	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
 }
