@@ -47,13 +47,13 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	securejoin "github.com/cyphar/filepath-securejoin"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
+	runtimefinder "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/runtime-finder"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -137,24 +137,10 @@ type ContainerNotifier struct {
 	wg sync.WaitGroup
 }
 
-// runtimePaths is the list of paths where the container runtime runc or crun
-// could be installed. Depending on the Linux distribution, it could be in
-// different locations.
-//
-// When this package is executed in a container, it prepends the
-// HOST_ROOT env variable to the path.
-var runtimePaths = []string{
-	"/bin/runc",
-	"/usr/bin/runc",
-	"/usr/sbin/runc",
-	"/usr/local/bin/runc",
-	"/usr/local/sbin/runc",
-	"/usr/lib/cri-o-runc/sbin/runc",
-	"/run/torcx/unpack/docker/bin/runc",
-	"/usr/bin/crun",
+var runtimePaths []string = append(
+	runtimefinder.RuntimePaths,
 	"/usr/bin/conmon",
-	"/var/lib/rancher/k3s/data/current/bin/runc",
-}
+)
 
 // initFanotify initializes the fanotify API with the flags we need
 func initFanotify() (*fanotify.NotifyFD, error) {
@@ -273,52 +259,31 @@ func (n *ContainerNotifier) install() error {
 	if runtimePath != "" {
 		log.Debugf("container-hook: trying runtime from RUNTIME_PATH env variable at %s", runtimePath)
 
-		// Check if we have to prepend the host root to the runtime path
-		if !strings.HasPrefix(runtimePath, host.HostRoot) {
-			// SecureJoin will resolve symlinks according to the host root
-			runtimePath, err = securejoin.SecureJoin(host.HostRoot, runtimePath)
-			if err != nil {
-				return fmt.Errorf("container-hook: securejoin failed: %w", err)
-			}
+		notifiedPath, err := runtimefinder.Notify(runtimePath, host.HostRoot, runtimeBinaryNotify)
+		if err != nil {
+			return fmt.Errorf("container-hook: notifying %s: %w", runtimePath, err)
 		}
 
-		if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-
-		if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
-			return fmt.Errorf("fanotify marking of %s: %w", runtimePath, err)
-		}
-		log.Debugf("container-hook: monitoring runtime at %s", runtimePath)
+		log.Debugf("container-hook: monitoring runtime at %s (originally %s)", notifiedPath, runtimePath)
 		runtimeFound = true
 	} else {
 		for _, r := range runtimePaths {
-			// SecureJoin will resolve symlinks according to the host root
-			runtimePath, err := securejoin.SecureJoin(host.HostRoot, r)
+			log.Debugf("container-hook: trying runtime at %s", r)
+
+			notifiedPath, err := runtimefinder.Notify(r, host.HostRoot, runtimeBinaryNotify)
 			if err != nil {
-				log.Debugf("container-hook: securejoin failed: %s", err)
+				log.Debugf("container-hook: notifying %s: %v", runtimePath, err)
 				continue
 			}
 
-			log.Debugf("container-hook: trying runtime at %s", runtimePath)
-
-			if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
-				log.Debugf("container-hook: runc at %s not found", runtimePath)
-				continue
-			}
-
-			if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
-				log.Warnf("container-hook: failed to fanotify mark: %s", err)
-				continue
-			}
-			log.Debugf("container-hook: monitoring runtime at %s", runtimePath)
+			log.Debugf("container-hook: monitoring runtime at %s (originally %s)", notifiedPath, r)
 			runtimeFound = true
 		}
 	}
 
 	if !runtimeFound {
 		runtimeBinaryNotify.File.Close()
-		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ","))
+		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ", "))
 	}
 
 	n.wg.Add(2)
