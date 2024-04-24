@@ -49,7 +49,7 @@ func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
 	allPaths := []string{}
 
 	for _, paths := range opts.ObjectPaths {
-		allPaths = append(allPaths, paths.EBPF, paths.Wasm)
+		allPaths = append(allPaths, paths.EBPF, paths.Wasm, paths.Btfgen)
 	}
 
 	for _, path := range allPaths {
