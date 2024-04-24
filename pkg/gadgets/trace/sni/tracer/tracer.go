@@ -50,12 +50,19 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
+	return t, nil
+}
+
+// RunWorkaround is used by pkg/gadget-collection/gadgets/trace/sni/gadget.go to run the gadget
+// after calling NewTracer()
+func (t *Tracer) RunWorkaround() error {
 	if err := t.run(); err != nil {
 		t.Close()
-		return nil, fmt.Errorf("running tracer: %w", err)
+
+		return fmt.Errorf("running tracer: %w", err)
 	}
 
-	return t, nil
+	return nil
 }
 
 func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {

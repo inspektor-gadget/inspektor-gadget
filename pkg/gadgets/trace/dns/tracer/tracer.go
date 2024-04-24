@@ -57,13 +57,18 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
+	return t, nil
+}
+
+// RunWorkaround is used by pkg/gadget-collection/gadgets/trace/dns/gadget.go to run the gadget
+// after calling NewTracer()
+func (t *Tracer) RunWorkaround() error {
 	// timeout nor ports configurable in this case
 	if err := t.run(context.TODO(), log.StandardLogger(), time.Minute, []uint16{53, 5353}); err != nil {
 		t.Close()
-		return nil, fmt.Errorf("running tracer: %w", err)
+		return fmt.Errorf("running tracer: %w", err)
 	}
-
-	return t, nil
+	return nil
 }
 
 // pkt_type definitions:
