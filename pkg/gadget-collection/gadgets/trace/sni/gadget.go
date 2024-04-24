@@ -130,6 +130,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	if err := t.tracer.RunWorkaround(); err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to start sni tracer: %s", err)
+		return
+	}
+
 	t.started = true
 
 	trace.Status.State = gadgetv1alpha1.TraceStateStarted
