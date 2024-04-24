@@ -53,7 +53,7 @@ struct socket_entry {
 	__u32 ino;
 };
 
-GADGET_SNAPSHOTTER(sockets, socket_entry);
+GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
 
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.
