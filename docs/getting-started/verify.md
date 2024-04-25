@@ -164,6 +164,7 @@ $ jq '' /tmp/gadget-container-image-linux-amd64/sbom_cyclonedx.json
       "publisher": "Santiago Vila <sanvila@debian.org>",
       "name": "base-files",
 ...
+}
 ```
 
 As the SBOM was signed with our private key, you can now inspect it to track down every dependencies we use to build our container image.
@@ -171,17 +172,44 @@ As the SBOM was signed with our private key, you can now inspect it to track dow
 ## Verify image-based gadgets
 
 Like our container image, we sign all our image-based gadgets.
-The instructions to verify them are similar to the container image:
+The signature are verified by default using Inspektor Gadget public key:
 
 ```bash
-$ cosign verify --key https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/main/pkg/resources/inspektor-gadget.pub ghcr.io/inspektor-gadget/gadget/trace_exec:latest
-The following checks were performed on each of these signatures:
-  - The cosign claims were validated
-  - Existence of the claims in the transparency log was verified offline
-  - The signatures were verified against the specified public key
+$ sudo -E ig run ghcr.io/inspektor-gadget/gadget/trace_open:latest
+RUNTIME.CONTAINERNA… PID         UID         GID         MNTNS_ID E… FD         FL… MODE       COMM       FNAME                TIMESTAMP
+```
 
-[{"critical":{"identity":{"docker-reference":"ghcr.io/inspektor-gadget/gadget/trace_exec"}, ...
-]
+Let's try to run an image-based gadget which was not signed:
+
+```bash
+$ sudo -E ig run ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0": getting signing information: getting signature: getting signature bytes: ghcr.io/inspektor-gadget/gadget/trace_open:sha256-0c0e2fa72ae70e65351ab7a48a1cd5a68752a94d9c36e7b51e8764a1b7be3d7a.sig: not found
+```
+
+As the image was not signed, no signature was found in the repository, so the execution is denied.
+
+You can set your own public key with `--public-key`:
+
+```bash
+$ sudo -E ig run --public-key="$(cat your-key.pub)" ghcr.io/your-repo/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+```
+
+If you forget to set your public key, the image-based gadget will be verified using Inspektor Gadget public key and you will get the following error:
+
+```bash
+$ sudo -E ig run ghcr.io/your-repo/gadget/trace_open
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your-repo/gadget/trace_open": verifying signature: invalid signature when validating ASN.1 encoded signature
+```
+
+You can also skip verifying image-based gadget signature with `--verify-image=false`.
+Note that we do not recommend using this:
+
+```bash
+$ sudo -E ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
+WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] you set --verify-image=false, image will not be verified
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
 ## Verify an asset
