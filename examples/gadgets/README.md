@@ -24,6 +24,7 @@ Examples showing how to use some of the operators.
 
 - [local_manager](./operators/local_manager/): Use the local manager operator
 to filter and enrich events with container data.
+- [cli](./operators/cli/): Use the CLI operator to print data to the terminal.
 
 ### Datasource
 
