@@ -31,3 +31,4 @@ to filter and enrich events with container data.
 Examples showing how to use `datasource`
 
 - [fields](./datasource/fields/): Show how to access specific fields from the datasource.
+- [mutate](./datasource/mutate/): Mutate and add fields to a datasource.
