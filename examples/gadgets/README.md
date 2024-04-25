@@ -15,3 +15,5 @@ Examples showing how to use some gadgets in their simplest configuration.
 
 - [trace_open](./simple/trace_open/): Run the `trace_open` gadget and print the
   events to the terminal in json format.
+- [trace_dns](./simple/trace_dns/): Run the `trace_dns` gadget with some of the
+  operators it requires.
