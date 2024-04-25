@@ -18,6 +18,7 @@ import (
 	"github.com/Shopify/go-lua"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
 func (l *luaOperatorInstance) fieldAccessorGetString(s *lua.State) int {
@@ -52,5 +53,54 @@ func (l *luaOperatorInstance) fieldAccessorSetString(s *lua.State) int {
 		return 0
 	}
 	acc.Set(data, []byte(strval))
+	return 0
+}
+
+func (l *luaOperatorInstance) fieldAccessorSetInt(s *lua.State) int {
+	acc, ok := s.ToUserData(-3).(datasource.FieldAccessor)
+	if !ok {
+		l.gadgetCtx.Logger().Warnf("first parameter not an accessor: %T", s.ToUserData(1))
+		return 0
+	}
+	data, ok := s.ToUserData(-2).(datasource.Data)
+	if !ok {
+		l.gadgetCtx.Logger().Warnf("second parameter not data: %T", s.ToUserData(2))
+		return 0
+	}
+	val, ok := s.ToInteger(-1)
+	if !ok {
+		l.gadgetCtx.Logger().Warn("third parameter not int")
+		return 0
+	}
+	switch acc.Type() {
+	case api.Kind_Int8:
+		acc.Set(data, []byte{byte(int8(val))})
+	case api.Kind_Int16:
+		d := make([]byte, 2)
+		acc.Set(data, d)
+		acc.PutInt16(data, int16(val))
+	case api.Kind_Int32:
+		d := make([]byte, 4)
+		acc.Set(data, d)
+		acc.PutInt32(data, int32(val))
+	case api.Kind_Int64:
+		d := make([]byte, 8)
+		acc.Set(data, d)
+		acc.PutInt64(data, int64(val))
+	case api.Kind_Uint8:
+		acc.Set(data, []byte{byte(val)})
+	case api.Kind_Uint16:
+		d := make([]byte, 2)
+		acc.Set(data, d)
+		acc.PutUint16(data, uint16(val))
+	case api.Kind_Uint32:
+		d := make([]byte, 4)
+		acc.Set(data, d)
+		acc.PutUint32(data, uint32(val))
+	case api.Kind_Uint64:
+		d := make([]byte, 8)
+		acc.Set(data, d)
+		acc.PutUint64(data, uint64(val))
+	}
 	return 0
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/Shopify/go-lua"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
 func (l *luaOperatorInstance) dataSourceNewData(s *lua.State) int {
@@ -29,6 +30,18 @@ func (l *luaOperatorInstance) dataSourceNewData(s *lua.State) int {
 	data := ds.NewData()
 	s.PushUserData(data)
 	return 1
+}
+
+func (l *luaOperatorInstance) dataSourceAddAnnotation(s *lua.State) int {
+	ds, ok := s.ToUserData(-3).(datasource.DataSource)
+	if !ok {
+		l.gadgetCtx.Logger().Warnf("first parameter not a datasource: %T", s.ToUserData(-1))
+		return 0
+	}
+	key, _ := s.ToString(-2) // TODO
+	val, _ := s.ToString(-1) // TODO
+	ds.AddAnnotation(key, val)
+	return 0
 }
 
 func (l *luaOperatorInstance) dataSourceEmitAndRelease(s *lua.State) int {
@@ -89,20 +102,24 @@ func (l *luaOperatorInstance) dataSourceGetAccessor(s *lua.State) int {
 }
 
 func (l *luaOperatorInstance) dataSourceAddField(s *lua.State) int {
-	ds, ok := s.ToUserData(-2).(datasource.DataSource)
+	ds, ok := s.ToUserData(-3).(datasource.DataSource)
 	if !ok {
 		l.gadgetCtx.Logger().Warnf("first parameter not a datasource: %T", s.ToUserData(-2))
 		return 0
 	}
-	fieldName, ok := s.ToString(-1)
+	fieldName, ok := s.ToString(-2)
 	if !ok {
 		return 0
 	}
-	acc, err := ds.AddField(fieldName)
+
+	fType, _ := s.ToInteger(-1)
+
+	acc, err := ds.AddField(fieldName, datasource.WithKind(api.Kind(fType)))
 	if err != nil {
 		l.gadgetCtx.Logger().Warnf("could not add field: %v", err)
 		return 0
 	}
+
 	l.gadgetCtx.Logger().Debugf("field %q added from lua", fieldName)
 	s.PushUserData(acc)
 	l.lua.Global("FieldAccessor")
