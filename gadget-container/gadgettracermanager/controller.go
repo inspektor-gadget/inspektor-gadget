@@ -28,6 +28,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	gadgetkinvolkiov1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/controllers"
@@ -54,8 +55,10 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
+		},
 	})
 	if err != nil {
 		log.Errorf("unable to start manager: %s", err)
