@@ -53,7 +53,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 	cmd := &cobra.Command{
 		Use:          "run",
-		Short:        "Run a gadget (experimental)",
+		Short:        "Run a gadget",
 		SilenceUsage: true, // do not print usage when there is an error
 		// We have to disable flag parsing in here to be able to handle certain
 		// flags more dynamically and have `--help` also react to those changes.
@@ -201,5 +201,5 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		AddFlags(cmd, operatorParams, nil, runtime)
 	}
 
-	return cmd
+	return utils.MarkExperimental(cmd)
 }
