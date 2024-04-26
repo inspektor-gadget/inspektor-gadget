@@ -199,7 +199,7 @@ func (c *sConn) startGadget(ctx context.Context, request *GadgetStartRequest) er
 	// Build a simple operator that subscribes to all events and forwards them
 	svc := simple.New("svc",
 		simple.WithPriority(50000),
-		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+		simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
 			// Create payload buffer
 			outputBuffer := make(chan *GadgetEvent, 1024) // TODO
 
