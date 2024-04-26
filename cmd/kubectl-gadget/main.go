@@ -21,8 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -50,8 +48,6 @@ var rootCmd = &cobra.Command{
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
-var infoSkipCommands = []string{"deploy", "undeploy", "version"}
-
 func init() {
 	utils.FlagInit(rootCmd)
 }
@@ -63,24 +59,23 @@ func main() {
 
 	common.AddVerboseFlag(rootCmd)
 
-	// grpcruntime.New() will try to fetch the info from the cluster by
-	// default. Make sure we don't do this when certain commands are run
-	// (as they just don't need it or imply that there are no nodes to
-	// contact, yet).
-	skipInfo := false
+	// Some commands don't need the gadget namespace. Run then before to avoid
+	// printing warnings about gadget namespace not found.
+	needGadgetNamespace := true
 	isHelp := false
-	isVersion := false
-	isDeployUndeploy := false
-	for _, arg := range os.Args[1:] {
-		for _, skipCmd := range infoSkipCommands {
-			if arg == skipCmd {
-				skipInfo = true
-			}
-		}
 
-		isVersion = isVersion || arg == "version"
-		isDeployUndeploy = isDeployUndeploy || arg == "deploy" || arg == "undeploy"
-		isHelp = isHelp || arg == "--help" || arg == "-h"
+	if len(os.Args) == 1 {
+		isHelp = true
+	}
+
+	// Need to loop through all arguments to skip flags...
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "completion", "deploy", "version":
+			needGadgetNamespace = false
+		case "--help", "-h", "help":
+			isHelp = true
+		}
 	}
 
 	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
@@ -104,38 +99,46 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !isHelp && !isDeployUndeploy && !runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).IsSet() {
-		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
-		if err != nil {
-			log.Fatalf("Searching for running Inspektor Gadget instances: %s", err)
-		}
-
-		switch len(gadgetNamespaces) {
-		case 0:
-			if !isVersion {
-				log.Fatalf("No running Inspektor Gadget instances found")
-			}
-		case 1:
-			// Exactly one running gadget instance found, use it
-			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
-		default:
-			// Multiple running gadget instances found, error out
-			log.Fatalf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
-		}
-	}
-
-	if !skipInfo {
-		grpcRuntime.InitDeployInfo()
-		info, err := deployinfo.Load()
-		if err != nil {
-			log.Warnf("Failed to load deploy info: %s", err)
-		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
-			log.Warnf(err.Error())
-		}
-	}
-
 	namespace, _ := utils.GetNamespace()
 	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)
+
+	// Execute commands that don't need the namespace early
+	if !needGadgetNamespace {
+		if err := rootCmd.Execute(); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if !runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).IsSet() {
+		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+		if err != nil {
+			log.Warnf("Failed to get gadget namespace, using \"gadget\" by default.")
+		} else {
+			switch len(gadgetNamespaces) {
+			case 0:
+				log.Warn("No running Inspektor Gadget instances found.")
+			case 1:
+				// Exactly one running gadget instance found, use it
+				runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+			default:
+				// Multiple running gadget instances found, error out
+				log.Warnf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
+				// avoid using wrong gadget namespace
+				if !isHelp {
+					os.Exit(1)
+				}
+			}
+		}
+	}
+
+	info, err := grpcRuntime.InitDeployInfo()
+	if err != nil {
+		log.Warnf("Failed to load deploy info: %s", err)
+	} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
+		log.Warnf(err.Error())
+	}
+
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 
 	hiddenColumnTags := []string{"runtime"}
