@@ -20,6 +20,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+const (
+	EventHandshake = 10000
+)
+
 type GadgetEvent struct {
 	ID           string          `json:"id"`
 	Type         uint32          `json:"type,omitempty"`
@@ -36,6 +40,10 @@ type Command struct {
 	ID      string          `json:"id"`
 	Action  string          `json:"action"`
 	Payload json.RawMessage `json:"payload"`
+}
+
+type Handshake struct {
+	Version string `json:"version"`
 }
 
 type GadgetStartRequest struct {

@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	dsjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -67,6 +68,13 @@ type sConn struct {
 func (c *sConn) handle() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Send handshake
+	h := &Handshake{
+		Version: common.Version(),
+	}
+	hjson, _ := json.Marshal(h)
+	c.WriteJSON(&GadgetEvent{Type: EventHandshake, Payload: hjson})
 
 	for {
 		command := &Command{}
