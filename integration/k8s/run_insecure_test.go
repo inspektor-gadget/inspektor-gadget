@@ -61,6 +61,7 @@ func TestRunInsecure(t *testing.T) {
 	RunTestSteps(orasCpCmds, t)
 
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s:5000/trace_open:%s -n %s -o json --insecure", registryIP, *gadgetTag, ns)
+	// As the image was not signed, we need to set --verify-image=false.
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run --verify-image=false %s:5000/trace_open:%s -n %s -o json --insecure", registryIP, *gadgetTag, ns)
 	runTraceOpen(t, ns, cmd)
 }
