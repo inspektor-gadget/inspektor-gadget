@@ -38,7 +38,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
-	github.com/tklauser/numcpus v0.7.0
+	github.com/tklauser/numcpus v0.8.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
 	go.opentelemetry.io/otel v1.26.0
