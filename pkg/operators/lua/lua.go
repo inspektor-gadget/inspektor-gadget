@@ -117,6 +117,26 @@ func (l *luaOperatorInstance) init() {
 	l.lua.SetField(-2, "__index")
 	l.lua.SetGlobal("FieldAccessor")
 
+	// Consts
+	l.lua.PushInteger(int(api.Kind_Int8))
+	l.lua.SetGlobal("Kind_Int8")
+	l.lua.PushInteger(int(api.Kind_Int16))
+	l.lua.SetGlobal("Kind_Int16")
+	l.lua.PushInteger(int(api.Kind_Int32))
+	l.lua.SetGlobal("Kind_Int32")
+	l.lua.PushInteger(int(api.Kind_Int64))
+	l.lua.SetGlobal("Kind_Int64")
+	l.lua.PushInteger(int(api.Kind_Uint8))
+	l.lua.SetGlobal("Kind_Uint8")
+	l.lua.PushInteger(int(api.Kind_Uint16))
+	l.lua.SetGlobal("Kind_Uint16")
+	l.lua.PushInteger(int(api.Kind_Uint32))
+	l.lua.SetGlobal("Kind_Uint32")
+	l.lua.PushInteger(int(api.Kind_Uint64))
+	l.lua.SetGlobal("Kind_Uint64")
+	l.lua.PushInteger(int(api.Kind_String))
+	l.lua.SetGlobal("Kind_String")
+
 	lua.DoString(ls, luatest)
 }
 
