@@ -1832,7 +1832,7 @@ jobs:
       # necessary to check it more than once.
       shell: bash
       run: |
-        perl tools/check-readme.pl ./kubectl-gadget README.md
+        go run ./tools/check-readme/ ./kubectl-gadget README.md
 
   publish-test-reports:
     name: Publish test reports
