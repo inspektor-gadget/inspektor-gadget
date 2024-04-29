@@ -69,7 +69,7 @@ require (
 
 require (
 	github.com/google/gopacket v1.1.19
-	github.com/sigstore/sigstore v1.8.2
+	github.com/sigstore/sigstore v1.8.3
 )
 
 require (
