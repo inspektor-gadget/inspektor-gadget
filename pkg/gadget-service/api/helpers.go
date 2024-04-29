@@ -38,6 +38,9 @@ func ParseSocketAddress(addr string) (string, string, error) {
 	case "unix":
 		socketPath = socketURL.Path
 	case "tcp":
+		if socketURL.Host == "" {
+			return "", "", fmt.Errorf("invalid tcp socket address '%s'. Use something like 'tcp://127.0.0.1:1234'", addr)
+		}
 		socketPath = socketURL.Host
 	}
 	return socketType, socketPath, nil
