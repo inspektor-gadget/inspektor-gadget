@@ -73,6 +73,9 @@ type FieldAccessor interface {
 	// tbd: name
 	RemoveReference(recurse bool)
 
+	// Rename changes the name of the field. Currently it's not supported for subfields.
+	Rename(string) error
+
 	Uint8(Data) uint8
 	Uint16(Data) uint16
 	Uint32(Data) uint32
@@ -105,6 +108,27 @@ type fieldAccessor struct {
 
 func (a *fieldAccessor) Name() string {
 	return a.f.Name
+}
+
+func (a *fieldAccessor) Rename(name string) error {
+	a.ds.lock.Lock()
+	defer a.ds.lock.Unlock()
+
+	if _, ok := a.ds.fieldMap[name]; ok {
+		return fmt.Errorf("field with name %q already exists", name)
+	}
+
+	if a.f.Name != a.f.FullName {
+		return errors.New("Rename() not supported for subfields")
+	}
+
+	delete(a.ds.fieldMap, a.f.FullName)
+
+	a.f.Name = name
+	a.f.FullName = name
+	a.ds.fieldMap[name] = a.f
+
+	return nil
 }
 
 func (a *fieldAccessor) Size() uint32 {

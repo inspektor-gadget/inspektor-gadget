@@ -35,7 +35,8 @@ func runTraceSignal(t *testing.T, ns string, cmd string) {
 
 			expectedTraceSignalJsonObj := map[string]interface{}{
 				"comm":      "sh",
-				"sig":       15,
+				"sig":       "SIGTERM",
+				"sig_raw":   15,
 				"ret":       0,
 				"uid":       0,
 				"gid":       0,
