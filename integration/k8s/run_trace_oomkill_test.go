@@ -91,6 +91,9 @@ spec:
 
 	commands := []TestStep{
 		traceOOMKillCmd,
+		// Wait to ensure ig or kubectl-gadget has downloaded the image and started it
+		// before we start the test pod, which only gives us 1 event to trace (oneshot)
+		SleepForSecondsCommand(10),
 		&Command{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
