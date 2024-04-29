@@ -358,7 +358,7 @@ func do() error {
 				StackName: aws.String(name),
 			}); err != nil {
 			cancel()
-			return fmt.Errorf("waiting for stack to be deleted: %w", err)
+			fmt.Printf("waiting for stack to be deleted: %v", err)
 		}
 		cancel()
 	}
@@ -372,7 +372,7 @@ func do() error {
 	for _, vpc := range vpcs {
 		fmt.Printf("deleting VPC: %s\n", aws.StringValue(vpc.VpcId))
 		if err := deleteVpc(ec2Svc, aws.StringValue(vpc.VpcId)); err != nil {
-			return fmt.Errorf("deleting VPC: %w", err)
+			fmt.Printf("deleting VPC: %s", err)
 		}
 	}
 
