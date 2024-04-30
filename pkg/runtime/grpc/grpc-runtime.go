@@ -375,6 +375,10 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
+	} else {
+		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
+		defer cancel()
+		dialCtx = newCtx
 	}
 
 	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
