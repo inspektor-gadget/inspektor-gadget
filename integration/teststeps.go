@@ -92,8 +92,8 @@ func RunTestSteps(steps []TestStep, t *testing.T, options ...Option) {
 			if step.IsStartAndStop() && step.Running() {
 				// Wait a bit before stopping the step.
 				time.Sleep(stepWaitDuration)
+				t.Logf("[%s] Stopping %q\n", time.Now().UTC(), step.DisplayName())
 				step.Stop(t)
-				t.Logf("[%s] Stopped %q\n", time.Now().UTC(), step.DisplayName())
 			}
 		}()
 	}
