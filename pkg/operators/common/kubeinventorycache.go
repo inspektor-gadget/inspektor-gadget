@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8sCache "k8s.io/client-go/tools/cache"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/cachedmap"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
@@ -43,112 +44,13 @@ type K8sInventoryCache interface {
 	GetSvcByIp(ip string) *v1.Service
 }
 
-type oldResource[T any] struct {
-	deletionTimestamp time.Time
-	obj               T
-}
-
-type resourceCache[T any] struct {
-	sync.Mutex
-	current map[string]*T
-	old     map[string]oldResource[*T]
-}
-
-func newResourceCache[T any]() *resourceCache[T] {
-	return &resourceCache[T]{current: make(map[string]*T), old: make(map[string]oldResource[*T])}
-}
-
-func (c *resourceCache[T]) Add(obj *T) {
-	key, err := k8sCache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		log.Warnf("resourceCache: add resource: %v", err)
-		return
-	}
-	c.Lock()
-	defer c.Unlock()
-	c.current[key] = obj
-	delete(c.old, key)
-}
-
-func (c *resourceCache[T]) Remove(obj *T) {
-	key, err := k8sCache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		log.Warnf("resourceCache: remove resource: %v", err)
-		return
-	}
-	c.Lock()
-	defer c.Unlock()
-	delete(c.current, key)
-	c.old[key] = oldResource[*T]{deletionTimestamp: time.Now(), obj: obj}
-}
-
-func (c *resourceCache[T]) PruneOldObjects() {
-	c.Lock()
-	defer c.Unlock()
-	now := time.Now()
-	for key, oldObj := range c.old {
-		if now.Sub(oldObj.deletionTimestamp) > oldObjectTTL {
-			delete(c.old, key)
-		}
-	}
-}
-
-func (c *resourceCache[T]) ToSlice() []*T {
-	c.PruneOldObjects()
-	c.Lock()
-	defer c.Unlock()
-
-	objs := make([]*T, 0, len(c.current)+len(c.old))
-	for _, obj := range c.current {
-		objs = append(objs, obj)
-	}
-	for key, oldObj := range c.old {
-		if _, ok := c.current[key]; !ok {
-			objs = append(objs, oldObj.obj)
-		}
-	}
-	return objs
-}
-
-func (c *resourceCache[T]) Get(key string) *T {
-	c.PruneOldObjects()
-	c.Lock()
-	defer c.Unlock()
-
-	if obj, ok := c.current[key]; ok {
-		return obj
-	}
-	if oldObj, ok := c.old[key]; ok {
-		return oldObj.obj
-	}
-	return nil
-}
-
-func (c *resourceCache[T]) GetCmp(cmp func(*T) bool) *T {
-	c.PruneOldObjects()
-	c.Lock()
-	defer c.Unlock()
-
-	for _, obj := range c.current {
-		if cmp(obj) {
-			return obj
-		}
-	}
-	for _, oldObj := range c.old {
-		if cmp(oldObj.obj) {
-			return oldObj.obj
-		}
-	}
-	return nil
-}
-
 type inventoryCache struct {
 	clientset *kubernetes.Clientset
 
 	factory informers.SharedInformerFactory
 
-	pods *resourceCache[v1.Pod]
-	svcs *resourceCache[v1.Service]
+	pods cachedmap.CachedMap[string, *v1.Pod]
+	svcs cachedmap.CachedMap[string, *v1.Service]
 
 	exit chan struct{}
 
@@ -158,20 +60,19 @@ type inventoryCache struct {
 
 const (
 	informerResync = 10 * time.Minute
-	oldObjectTTL   = 2 * time.Second
 )
 
 var (
-	cache *inventoryCache
-	err   error
-	once  sync.Once
+	k8sInventorySingleton *inventoryCache
+	k8sInventoryErr       error
+	k8sInventoryOnce      sync.Once
 )
 
 func GetK8sInventoryCache() (K8sInventoryCache, error) {
-	once.Do(func() {
-		cache, err = newCache()
+	k8sInventoryOnce.Do(func() {
+		k8sInventorySingleton, k8sInventoryErr = newCache()
 	})
-	return cache, err
+	return k8sInventorySingleton, k8sInventoryErr
 }
 
 func newCache() (*inventoryCache, error) {
@@ -182,8 +83,8 @@ func newCache() (*inventoryCache, error) {
 
 	return &inventoryCache{
 		clientset: clientset,
-		pods:      newResourceCache[v1.Pod](),
-		svcs:      newResourceCache[v1.Service](),
+		pods:      cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second),
+		svcs:      cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second),
 	}, nil
 }
 
@@ -227,39 +128,65 @@ func (cache *inventoryCache) Stop() {
 }
 
 func (cache *inventoryCache) GetPods() []*v1.Pod {
-	return cache.pods.ToSlice()
+	return cache.pods.Values()
 }
 
 func (cache *inventoryCache) GetPodByName(namespace string, name string) *v1.Pod {
-	return cache.pods.Get(namespace + "/" + name)
+	pod, found := cache.pods.Get(namespace + "/" + name)
+	if !found {
+		return nil
+	}
+	return pod
 }
 
 func (cache *inventoryCache) GetPodByIp(ip string) *v1.Pod {
-	return cache.pods.GetCmp(func(pod *v1.Pod) bool {
+	pod, found := cache.pods.GetCmp(func(pod *v1.Pod) bool {
 		return pod.Status.PodIP == ip
 	})
+	if !found {
+		return nil
+	}
+	return pod
 }
 
 func (cache *inventoryCache) GetSvcs() []*v1.Service {
-	return cache.svcs.ToSlice()
+	return cache.svcs.Values()
 }
 
 func (cache *inventoryCache) GetSvcByName(namespace string, name string) *v1.Service {
-	return cache.svcs.Get(namespace + "/" + name)
+	svc, found := cache.svcs.Get(namespace + "/" + name)
+	if !found {
+		return nil
+	}
+	return svc
 }
 
 func (cache *inventoryCache) GetSvcByIp(ip string) *v1.Service {
-	return cache.svcs.GetCmp(func(svc *v1.Service) bool {
+	svc, found := cache.svcs.GetCmp(func(svc *v1.Service) bool {
 		return svc.Spec.ClusterIP == ip
 	})
+	if !found {
+		return nil
+	}
+	return svc
 }
 
 func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 	switch o := obj.(type) {
 	case *v1.Pod:
-		cache.pods.Add(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnAdd: error getting key for pod: %v", err)
+			return
+		}
+		cache.pods.Add(key, o)
 	case *v1.Service:
-		cache.svcs.Add(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnAdd: error getting key for service: %v", err)
+			return
+		}
+		cache.svcs.Add(key, o)
 	default:
 		log.Warnf("OnAdd: unknown object type: %T", o)
 	}
@@ -268,9 +195,19 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 func (cache *inventoryCache) OnUpdate(_, newObj any) {
 	switch o := newObj.(type) {
 	case *v1.Pod:
-		cache.pods.Add(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnUpdate: error getting key for pod: %v", err)
+			return
+		}
+		cache.pods.Add(key, o)
 	case *v1.Service:
-		cache.svcs.Add(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnUpdate: error getting key for service: %v", err)
+			return
+		}
+		cache.svcs.Add(key, o)
 	default:
 		log.Warnf("OnUpdate: unknown object type: %T", o)
 	}
@@ -279,9 +216,19 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 func (cache *inventoryCache) OnDelete(obj any) {
 	switch o := obj.(type) {
 	case *v1.Pod:
-		cache.pods.Remove(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnDelete: error getting key for pod: %v", err)
+			return
+		}
+		cache.pods.Remove(key)
 	case *v1.Service:
-		cache.svcs.Remove(o)
+		key, err := k8sCache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Warnf("OnDelete: error getting key for service: %v", err)
+			return
+		}
+		cache.svcs.Remove(key)
 	case k8sCache.DeletedFinalStateUnknown:
 		cache.OnDelete(o.Obj)
 	default:

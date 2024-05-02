@@ -94,6 +94,8 @@ func TestTraceExec(t *testing.T) {
 				e.SessionId = 0
 				e.Retval = 0
 				e.MountNsID = 0
+				e.Username = ""
+				e.Groupname = ""
 
 				if e.Comm == "sh" {
 					// Not tested because it varies depending on container runtime:
@@ -163,6 +165,8 @@ func TestTraceExecHost(t *testing.T) {
 				e.SessionId = 0
 				e.Retval = 0
 				e.MountNsID = 0
+				e.Username = ""
+				e.Groupname = ""
 			}
 
 			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
