@@ -16,6 +16,7 @@ package filter
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +47,7 @@ func TestFilters(t *testing.T) {
 		Time             int64         `column:"time,align:right,width:24,group:sum"`
 		Float32          float32       `column:"float32"`
 		Float64          float64       `column:"float64"`
+		Duration         time.Duration `column:"duration"`
 		Unsupported      struct{}      `column:"unsupported"`
 		EmbeddedDirect   embeddedData  `column:"embeddedDirectStruct"`
 		EmbeddedPtr      *embeddedData `column:"embeddedPtrStruct"`
@@ -77,6 +79,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         7,
 			Float32:        7,
 			Float64:        7,
+			Duration:       7 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 7, Uint: 7},
 			EmbeddedPtr:    &embeddedData{Int: 7, Uint: 7},
 		},
@@ -97,6 +100,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         1,
 			Float32:        1,
 			Float64:        1,
+			Duration:       1 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 1, Uint: 1},
 			EmbeddedPtr:    &embeddedData{Int: 1, Uint: 1},
 		},
@@ -117,6 +121,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         2,
 			Float32:        2,
 			Float64:        2,
+			Duration:       20 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
 			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
@@ -137,6 +142,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         3,
 			Float32:        3,
 			Float64:        3,
+			Duration:       30 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 3, Uint: 3},
 			EmbeddedPtr:    &embeddedData{Int: 3, Uint: 3},
 		},
@@ -157,6 +163,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         2,
 			Float32:        2,
 			Float64:        2,
+			Duration:       2 * time.Second,
 			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
 			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
@@ -177,6 +184,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         2,
 			Float32:        2,
 			Float64:        2,
+			Duration:       20 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
 			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
@@ -197,6 +205,7 @@ func TestFilters(t *testing.T) {
 			Uint64:         2,
 			Float32:        2,
 			Float64:        2,
+			Duration:       20 * time.Millisecond,
 			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
 			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
@@ -354,6 +363,20 @@ func TestFilters(t *testing.T) {
 		{filterString: "float32:~1", expectedCount: 1, expectError: false, description: "regular expression search on float32"},
 		{filterString: "float32:!~1", expectedCount: 6, expectError: false, description: "regular expression search on float32, negated"},
 
+		{filterString: "duration:", expectedCount: 0, expectError: true, description: "match on duration, empty string"},
+		{filterString: "duration:1ms", expectedCount: 1, expectError: false, description: "match on duration, exact match"},
+		{filterString: "duration:30ms", expectedCount: 1, expectError: false, description: "match on duration, exact match"},
+		{filterString: "duration:2s", expectedCount: 1, expectError: false, description: "match on duration, exact match"},
+		{filterString: "duration:!1ms", expectedCount: 6, expectError: false, description: "match on duration, negated"},
+		{filterString: "duration:<2ms", expectedCount: 1, expectError: false, description: "match on duration, lt"},
+		{filterString: "duration:<=1ms", expectedCount: 1, expectError: false, description: "match on duration, lte"},
+		{filterString: "duration:>1ms", expectedCount: 6, expectError: false, description: "match on duration, gt"},
+		{filterString: "duration:>=1ms", expectedCount: 7, expectError: false, description: "match on duration, gte"},
+		{filterString: "duration:~1ms", expectedCount: 1, expectError: false, description: "regular expression search on duration"},
+		{filterString: "duration:!~1ms", expectedCount: 6, expectError: false, description: "regular expression search on duration, negated"},
+		{filterString: "duration:~2s", expectedCount: 1, expectError: false, description: "regular expression search on duration"},
+		{filterString: "duration:!~2s", expectedCount: 6, expectError: false, description: "regular expression search on duration, negated"},
+
 		{filterString: "embeddedDirectStruct.embeddedInt:", expectedCount: 0, expectError: true, description: "match on embedded int, empty string"},
 		{filterString: "embeddedDirectStruct.embeddedInt:1", expectedCount: 1, expectError: false, description: "match on embedded int, exact match"},
 		{filterString: "embeddedDirectStruct.embeddedInt:!1", expectedCount: 6, expectError: false, description: "match on embedded int, negated"},
@@ -386,6 +409,7 @@ func TestFilters(t *testing.T) {
 	cols.MustAddColumn(columns.Attributes{Name: "virtual"}, func(t *testData) any {
 		return t.Dummy
 	})
+	cols.MustSetExtractor("duration", func(t *testData) any { return t.Duration.String() })
 
 	cmap := cols.GetColumnMap()
 

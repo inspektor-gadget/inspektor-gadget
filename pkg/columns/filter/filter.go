@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 
@@ -37,6 +38,8 @@ const (
 	comparisonTypeGte
 )
 
+var durationType = reflect.TypeOf(time.Duration(0))
+
 type FilterSpecs[T any] []*FilterSpec[T]
 
 type FilterSpec[T any] struct {
@@ -51,6 +54,14 @@ type FilterSpec[T any] struct {
 }
 
 func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T]) (value reflect.Value, err error) {
+	if column.RawType() == durationType {
+		duration, err := time.ParseDuration(fs.value)
+		if err != nil {
+			return value, fmt.Errorf("invalid duration format: %w", err)
+		}
+		value = reflect.ValueOf(int64(duration))
+		return value, nil
+	}
 	switch fs.column.Kind() {
 	case reflect.Int,
 		reflect.Int8,
@@ -188,7 +199,12 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 		}
 	}
 
-	switch fs.column.Kind() {
+	kind := fs.column.Kind()
+	if fs.column.RawType() == durationType {
+		kind = reflect.Int64
+	}
+
+	switch kind {
 	case reflect.Int:
 		return getComparisonFuncForComparisonType[int, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Int8:
@@ -264,6 +280,10 @@ func getComparisonFuncForComparisonTypeWithFieldFunc[OT constraints.Ordered, T a
 
 func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any) func(a *T) bool {
 	ff := columns.GetFieldFunc[OT, T](column)
+	// If column has been flagged as duration, use that value instead of the string for comparison
+	if column.RawType() == durationType {
+		ff = columns.GetFieldFuncExt[OT, T](column, true)
+	}
 	return getComparisonFuncForComparisonTypeWithFieldFunc[OT, T](ct, negate, column, refValue, ff)
 }
 
