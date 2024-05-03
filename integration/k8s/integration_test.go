@@ -72,7 +72,7 @@ func normalizeCommonData(e *eventtypes.CommonData, ns string) {
 			strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
 			e.Runtime.ContainerName = cn
 		}
-		// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+		// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 		if isDockerRuntime {
 			e.Runtime.ContainerImageName = ""
 		}

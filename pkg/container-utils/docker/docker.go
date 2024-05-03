@@ -256,9 +256,9 @@ func DockerContainerToContainerData(container *dockertypes.Container) *runtimecl
 		container.Labels)
 }
 
-// getContainerImageNamefromImage is a helper to parse the image string we get from Docker API
-// and retrieve the image name if provided.
-func getContainerImageNamefromImage(image string) string {
+// getContainerImageInfoFromImage is a helper to parse the image string we get from Docker API
+// and retrieve image name and image digest (if available).
+func getContainerImageInfoFromImage(image string) (string, string) {
 	// Image filed provided by Docker API may looks like e.g.
 	// 1. gcr.io/k8s-minikube/kicbase:v0.0.37@sha256:8bf7a0e8a062bc5e2b71d28b35bfa9cc862d9220e234e86176b3785f685d8b15
 	// OR
@@ -273,24 +273,28 @@ func getContainerImageNamefromImage(image string) string {
 
 	// Case 1 or 2
 	if strings.Contains(image, "@") {
-		return strings.Split(image, "@")[0]
+		parts := strings.Split(image, "@")
+		return parts[0], parts[1]
 	}
 
 	// Case 3 or 4
-	return image
+	return image, ""
 }
 
 // `buildContainerData` takes in basic metadata about a Docker container and
 // constructs a `runtimeclient.ContainerData` struct with this information. I also
 // enriches containers with the data and returns a pointer the created struct.
 func buildContainerData(containerID string, containerName string, containerImage string, state string, labels map[string]string) *runtimeclient.ContainerData {
+	imageName, imageDigest := getContainerImageInfoFromImage(containerImage)
+
 	containerData := runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:        containerID,
-				ContainerName:      strings.TrimPrefix(containerName, "/"),
-				RuntimeName:        types.RuntimeNameDocker,
-				ContainerImageName: getContainerImageNamefromImage(containerImage),
+				ContainerID:          containerID,
+				ContainerName:        strings.TrimPrefix(containerName, "/"),
+				RuntimeName:          types.RuntimeNameDocker,
+				ContainerImageName:   imageName,
+				ContainerImageDigest: imageDigest,
 			},
 			State: containerStatusStateToRuntimeClientState(state),
 		},

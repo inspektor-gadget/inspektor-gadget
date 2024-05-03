@@ -254,7 +254,7 @@ func (c *ContainerdContainer) stop(t *testing.T) {
 }
 
 func getFullImage(options *containerOptions) string {
-	if strings.Contains(options.image, ":") {
+	if strings.Contains(options.image, ":") || strings.Contains(options.image, "@") {
 		return options.image
 	}
 	return options.image + ":" + options.imageTag
