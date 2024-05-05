@@ -13,7 +13,7 @@ the most block device input/output.
 First, we need to create one pod for us to play with:
 
 ```bash
-$ kubectl run test-pod --image busybox:latest sleep inf
+$ kubectl run  --generator=run-pod/v1 test-pod --image busybox:latest sleep inf
 ```
 
 You can now use the gadget, but output will be empty:
