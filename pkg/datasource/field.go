@@ -94,12 +94,6 @@ type ParentedField interface {
 
 type FieldOption func(*field)
 
-func WithKind(kind api.Kind) FieldOption {
-	return func(f *field) {
-		f.Kind = kind
-	}
-}
-
 func WithTags(tags ...string) FieldOption {
 	return func(f *field) {
 		f.Tags = append(f.Tags, tags...)

@@ -46,7 +46,7 @@ type FieldAccessor interface {
 
 	// AddSubField adds a new field as member of the current field; be careful when doing this on an existing
 	// non-empty field, as that might be dropped on serialization // TODO
-	AddSubField(name string, opts ...FieldOption) (FieldAccessor, error)
+	AddSubField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error)
 
 	// GetSubFieldsWithTag returns all SubFields matching any given tag
 	GetSubFieldsWithTag(tag ...string) []FieldAccessor
@@ -207,7 +207,7 @@ func (a *fieldAccessor) RemoveReference(recurse bool) {
 	a.removeReference(recurse)
 }
 
-func (a *fieldAccessor) AddSubField(name string, opts ...FieldOption) (FieldAccessor, error) {
+func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error) {
 	a.ds.lock.Lock()
 	defer a.ds.lock.Unlock()
 
@@ -219,7 +219,7 @@ func (a *fieldAccessor) AddSubField(name string, opts ...FieldOption) (FieldAcce
 	nf := &field{
 		Name:     name,
 		FullName: parentFullName + "." + name,
-		Kind:     api.Kind_Invalid,
+		Kind:     kind,
 		Parent:   a.f.Index,
 		Index:    uint32(len(a.ds.fields)),
 	}

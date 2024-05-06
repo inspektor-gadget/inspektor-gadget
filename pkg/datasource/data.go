@@ -252,7 +252,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}}, nil
 }
 
-func (ds *dataSource) AddField(name string, opts ...FieldOption) (FieldAccessor, error) {
+func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error) {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
@@ -264,7 +264,7 @@ func (ds *dataSource) AddField(name string, opts ...FieldOption) (FieldAccessor,
 		Name:     name,
 		FullName: name,
 		Index:    uint32(len(ds.fields)),
-		Kind:     api.Kind_Invalid,
+		Kind:     kind,
 	}
 	for _, opt := range opts {
 		opt(nf)
