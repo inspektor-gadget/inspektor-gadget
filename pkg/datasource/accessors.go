@@ -391,6 +391,9 @@ func (a *fieldAccessor) Float64(data Data) float64 {
 }
 
 func (a *fieldAccessor) String(data Data) string {
+	if a.f.Kind == api.Kind_CString {
+		return gadgets.FromCString(a.Get(data))
+	}
 	return string(a.Get(data))
 }
 

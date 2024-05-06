@@ -62,6 +62,8 @@ func (f *field) ReflectType() reflect.Type {
 		return reflect.TypeOf(float64(0))
 	case api.Kind_Bool:
 		return reflect.TypeOf(false)
+	case api.Kind_String, api.Kind_CString:
+		return reflect.TypeOf("")
 	}
 }
 

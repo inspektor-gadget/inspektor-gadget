@@ -17,6 +17,7 @@ package ebpfoperator
 import (
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/cilium/ebpf/btf"
 	"gopkg.in/yaml.v3"
@@ -30,11 +31,11 @@ import (
 type Field struct {
 	metadatav1.Field
 	Tags   []string
-	Type   reflect.Type
 	Offset uint32
 	Size   uint32
 	parent int
 	name   string
+	kind   api.Kind
 }
 
 type Struct struct {
@@ -59,34 +60,7 @@ func (f *Field) FieldTags() []string {
 }
 
 func (f *Field) FieldType() api.Kind {
-	if f.Type == nil {
-		return api.Kind_Invalid
-	}
-	switch f.Type.Kind() {
-	case reflect.Bool:
-		return api.Kind_Bool
-	case reflect.Int8:
-		return api.Kind_Int8
-	case reflect.Int16:
-		return api.Kind_Int16
-	case reflect.Int32:
-		return api.Kind_Int32
-	case reflect.Int64:
-		return api.Kind_Int64
-	case reflect.Uint8:
-		return api.Kind_Uint8
-	case reflect.Uint16:
-		return api.Kind_Uint16
-	case reflect.Uint32:
-		return api.Kind_Uint32
-	case reflect.Uint64:
-		return api.Kind_Uint64
-	case reflect.Float32:
-		return api.Kind_Float32
-	case reflect.Float64:
-		return api.Kind_Float64
-	}
-	return api.Kind_Invalid
+	return f.kind
 }
 
 func (f *Field) FieldAnnotations() map[string]string {
@@ -187,6 +161,45 @@ func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
 	return nil
 }
 
+func getFieldKind(typ reflect.Type, tags []string) api.Kind {
+	if typ == nil {
+		return api.Kind_Invalid
+	}
+
+	switch typ.Kind() {
+	case reflect.Bool:
+		return api.Kind_Bool
+	case reflect.Int8:
+		return api.Kind_Int8
+	case reflect.Int16:
+		return api.Kind_Int16
+	case reflect.Int32:
+		return api.Kind_Int32
+	case reflect.Int64:
+		return api.Kind_Int64
+	case reflect.Uint8:
+		return api.Kind_Uint8
+	case reflect.Uint16:
+		return api.Kind_Uint16
+	case reflect.Uint32:
+		return api.Kind_Uint32
+	case reflect.Uint64:
+		return api.Kind_Uint64
+	case reflect.Float32:
+		return api.Kind_Float32
+	case reflect.Float64:
+		return api.Kind_Float64
+	case reflect.Array:
+		// Special case to handle char arrays as strings
+		// TODO: Handle other cases once we support arrays
+		if typ.Elem().Kind() == reflect.Int8 && slices.Contains(tags, "type:char") {
+			return api.Kind_CString
+		}
+	}
+
+	return api.Kind_Invalid
+}
+
 func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32, parent int) {
 	refType, tags := btfhelpers.GetType(member.Type)
 	for i := range tags {
@@ -200,7 +213,7 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		Ellipsis:  metadatav1.EllipsisEnd,
 	}
 
-	newField := func(size uint32, reflectType reflect.Type) *Field {
+	newField := func(size uint32, kind api.Kind) *Field {
 		return &Field{
 			Field: metadatav1.Field{
 				Name:       prefix + member.Name,
@@ -208,17 +221,17 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 			},
 			Size:   size,
 			Tags:   tags,
-			Type:   reflectType,
 			Offset: offset + member.Offset.Bytes(),
 			parent: parent,
 			name:   member.Name,
+			kind:   kind,
 		}
 	}
 
 	// Flatten embedded structs
 	if t, ok := member.Type.(*btf.Struct); ok {
 		// Add outer struct as well
-		field := newField(t.Size, reflect.ArrayOf(int(t.Size), reflect.TypeOf(uint8(0))))
+		field := newField(t.Size, api.Kind_Bytes)
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
@@ -229,7 +242,7 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	if t, ok := member.Type.(*btf.Union); ok {
 		// Add outer struct as well
-		field := newField(t.Size, reflect.ArrayOf(int(t.Size), reflect.TypeOf(uint8(0))))
+		field := newField(t.Size, api.Kind_Bytes)
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
@@ -238,34 +251,13 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		return
 	}
 
-	fsize := uint32(0)
-	fieldType := "raw bytes"
-	if refType != nil {
-		fsize = uint32(refType.Size())
-		fieldType = refType.String()
+	if refType == nil {
+		i.logger.Debugf(" skipping field %q (%T)", prefix+member.Name, member.Type)
+		return
 	}
 
-	// handling arrays as raw data
-	if arr, ok := member.Type.(*btf.Array); ok {
-		// make sure type
-		arrType := arr.Type
-
-		// Resolve
-		if typedef, ok := arrType.(*btf.Typedef); ok {
-			arrType = btfhelpers.GetUnderlyingType(typedef)
-		}
-
-		intType, ok := arrType.(*btf.Int)
-		if !ok {
-			i.logger.Debugf(" skipping field %q (%T) (array of non-int %T)", prefix+member.Name, member.Type, arr.Type)
-			return
-		}
-		if intType.Size != 1 {
-			i.logger.Debugf(" skipping field %q (%T) (array of elements with size != 1)", prefix+member.Name, member.Type)
-			return
-		}
-		fsize = intType.Size * arr.Nelems
-	}
+	fsize := uint32(refType.Size())
+	fieldType := refType.String()
 
 	if fsize == 0 {
 		i.logger.Debugf(" skipping field %q (%T)", prefix+member.Name, member.Type)
@@ -277,12 +269,13 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		i.enums[member.Name] = enum
 	}
 
-	field := newField(fsize, refType)
-	if refType != nil {
-		field.Field.Attributes.Width = uint(columns.GetWidthFromType(refType.Kind()))
-	}
+	kind := getFieldKind(refType, tags)
 
-	i.logger.Debugf(" adding field %q (%s) at %d (parent %d) (%v)", field.Name, fieldType, field.Offset, parent, tags)
+	field := newField(fsize, kind)
+	field.Field.Attributes.Width = uint(columns.GetWidthFromType(refType.Kind()))
+
+	i.logger.Debugf(" adding field %q (%s) (kind: %s) at %d (parent %d) (%v)",
+		field.Name, fieldType, kind.String(), field.Offset, parent, tags)
 	*fields = append(*fields, field)
 }
 
