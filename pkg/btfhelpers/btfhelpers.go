@@ -34,13 +34,11 @@ func GetType(typ btf.Type) (reflect.Type, []string) {
 
 	switch typed := typ.(type) {
 	case *btf.Array:
-		arrType := getSimpleType(typed.Type)
+		arrType, arrayTypeNames := GetType(typed.Type)
 		if arrType == nil {
 			return nil, nil
 		}
-		if typed.Type.TypeName() != "" {
-			typeNames = append(typeNames, typed.Type.TypeName())
-		}
+		typeNames = append(typeNames, arrayTypeNames...)
 		refType = reflect.ArrayOf(int(typed.Nelems), arrType)
 	case *btf.Typedef:
 		switch typed := typ.(type) {
