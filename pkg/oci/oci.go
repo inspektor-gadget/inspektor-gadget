@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
@@ -79,6 +80,15 @@ const (
 	localhost = "localhost"
 )
 
+// getLocalOciStore returns a single local oci store. oci.Store is concurrently safe only
+// against its own instance inside the same go program
+var getLocalOciStore = sync.OnceValues(func() (*oci.Store, error) {
+	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
+		return nil, err
+	}
+	return oci.New(defaultOciStore)
+})
+
 // GadgetImageDesc is the description of a gadget image.
 type GadgetImageDesc struct {
 	Repository string `column:"repository"`
@@ -92,13 +102,6 @@ func (d *GadgetImageDesc) String() string {
 		return fmt.Sprintf("@%s", d.Digest)
 	}
 	return fmt.Sprintf("%s:%s@%s", d.Repository, d.Tag, d.Digest)
-}
-
-func getLocalOciStore() (*oci.Store, error) {
-	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
-		return nil, err
-	}
-	return oci.New(defaultOciStore)
 }
 
 func getTimeFromAnnotations(annotations map[string]string) string {
