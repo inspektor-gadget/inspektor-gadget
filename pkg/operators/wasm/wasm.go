@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,6 +37,8 @@ import (
 
 const (
 	wasmObjectMediaType = "application/vnd.gadget.wasm.program.v1+binary"
+	// Maximum number of handles a gadget can have opened at the same time
+	maxHandles = 4 * 1024
 )
 
 type wasmOperator struct{}
@@ -60,6 +63,7 @@ func (w *wasmOperator) InstantiateImageOperator(
 		target:    target,
 		desc:      desc,
 		gadgetCtx: gadgetCtx,
+		handleMap: map[uint32]any{},
 		logger:    gadgetCtx.Logger(),
 	}, nil
 }
@@ -75,6 +79,13 @@ type wasmOperatorInstance struct {
 
 	// malloc function exported by the guest
 	guestMalloc wapi.Function
+
+	dsCallback wapi.Function
+
+	// Golang objects are exposed to the wasm module by using a handleID
+	handleMap       map[uint32]any
+	lastHandleIndex uint32
+	handleLock      sync.RWMutex
 }
 
 func (i *wasmOperatorInstance) Name() string {
@@ -99,6 +110,68 @@ func (i *wasmOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) ap
 	return nil
 }
 
+func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
+	if obj == nil {
+		return 0
+	}
+
+	i.handleLock.Lock()
+	defer i.handleLock.Unlock()
+
+	if len(i.handleMap) == maxHandles {
+		i.logger.Warnf("too many open handles")
+		return 0
+	}
+
+	handleIndex := i.lastHandleIndex
+	handleIndex++
+
+	// look for a free index in the map
+	for {
+		// zero is reserved, handle overflow
+		if handleIndex == 0 {
+			handleIndex++
+		}
+
+		if _, ok := i.handleMap[handleIndex]; !ok {
+			// register new entry
+			i.handleMap[handleIndex] = obj
+			i.lastHandleIndex = handleIndex
+			return handleIndex
+		}
+		handleIndex++
+	}
+}
+
+// getHandleTyped returns the handle with the given ID, casted to the given type.
+// It can't be implemented as a generic method because it's not supported by Go yet.
+func getHandle[T any](i *wasmOperatorInstance, handleID uint32) (T, bool) {
+	i.handleLock.RLock()
+	defer i.handleLock.RUnlock()
+
+	var empty T // zero value
+
+	val, ok := i.handleMap[handleID]
+	if !ok {
+		i.logger.Warnf("handle %d not found", handleID)
+		return empty, false
+	}
+
+	t, ok := val.(T)
+	if !ok {
+		i.logger.Warnf("bad handle type for %d", handleID)
+		return empty, false
+	}
+
+	return t, true
+}
+
+func (i *wasmOperatorInstance) delHandle(handleID uint32) {
+	i.handleLock.Lock()
+	defer i.handleLock.Unlock()
+	delete(i.handleMap, handleID)
+}
+
 func (i *wasmOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 	ctx := gadgetCtx.Context()
 	rtConfig := wazero.NewRuntimeConfig().
@@ -107,6 +180,10 @@ func (i *wasmOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
 
 	env := i.rt.NewHostModuleBuilder("env")
+
+	i.addLogFuncs(env)
+	i.addDataSourceFuncs(env)
+	i.addFieldFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
@@ -141,6 +218,8 @@ func (i *wasmOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		return errors.New("wasm module doesn't export malloc")
 	}
 
+	i.dsCallback = mod.ExportedFunction("dsCallback")
+
 	return err
 }
 
@@ -164,6 +243,12 @@ func (i *wasmOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	defer func() {
+		i.handleLock.Lock()
+		i.handleMap = nil
+		i.handleLock.Unlock()
+	}()
+
 	// We need a new context in here, as gadgetCtx has already been cancelled
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
