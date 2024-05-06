@@ -279,7 +279,7 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Stop(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("starting operator %q: %v", opInst.Name(), err)
+			o.gadgetCtx.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
 	return nil
