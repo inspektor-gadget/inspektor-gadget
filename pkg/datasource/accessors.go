@@ -87,7 +87,6 @@ type FieldAccessor interface {
 	Float32(Data) float32
 	Float64(Data) float64
 	String(Data) string
-	CString(Data) string
 	Bytes(Data) []byte
 
 	PutUint8(Data, uint8)
@@ -395,10 +394,6 @@ func (a *fieldAccessor) String(data Data) string {
 		return gadgets.FromCString(a.Get(data))
 	}
 	return string(a.Get(data))
-}
-
-func (a *fieldAccessor) CString(data Data) string {
-	return gadgets.FromCString(a.Get(data))
 }
 
 func (a *fieldAccessor) Bytes(data Data) []byte {
