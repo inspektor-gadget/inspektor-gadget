@@ -35,8 +35,8 @@ struct event {
 	int args_count;
 	bool upper_layer;
 	unsigned int args_size;
-	__u8 comm[TASK_COMM_LEN];
-	__u8 args[FULL_MAX_ARGS_ARR];
+	char comm[TASK_COMM_LEN];
+	char args[FULL_MAX_ARGS_ARR];
 };
 
 const volatile bool ignore_failed = true;

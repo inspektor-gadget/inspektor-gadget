@@ -32,8 +32,8 @@ struct event {
 	__u32 fd;
 	int flags;
 	__u16 mode;
-	__u8 comm[TASK_COMM_LEN];
-	__u8 fname[NAME_MAX];
+	char comm[TASK_COMM_LEN];
+	char fname[NAME_MAX];
 };
 
 const volatile pid_t targ_pid = 0;

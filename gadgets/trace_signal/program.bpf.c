@@ -23,7 +23,7 @@ struct event {
 	__u32 gid;
 	gadget_signal sig;
 	int ret;
-	__u8 comm[TASK_COMM_LEN];
+	char comm[TASK_COMM_LEN];
 };
 
 const volatile pid_t filtered_pid = 0;

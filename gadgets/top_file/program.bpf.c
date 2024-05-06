@@ -42,8 +42,8 @@ struct file_stat {
 	__u64 wbytes;
 	__u32 pid;
 	__u32 tid;
-	__u8 file[PATH_MAX];
-	__u8 comm[TASK_COMM_LEN];
+	char file[PATH_MAX];
+	char comm[TASK_COMM_LEN];
 	enum type t;
 };
 

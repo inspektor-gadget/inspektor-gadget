@@ -26,7 +26,7 @@ struct process_entry {
 	__u32 ppid;
 	__u32 uid;
 	__u32 gid;
-	__u8 comm[TASK_COMM_LEN];
+	char comm[TASK_COMM_LEN];
 };
 
 GADGET_SNAPSHOTTER(processes, process_entry, ig_snap_proc);
