@@ -121,6 +121,12 @@ message GadgetData {
   DataElement data = 3;
 }
 
+message GadgetDataArray {
+  string node = 1;
+  uint32 seq = 2;
+  repeated DataElement dataArray = 3;
+}
+
 message Param {
   string key = 1;
   string description = 2;
