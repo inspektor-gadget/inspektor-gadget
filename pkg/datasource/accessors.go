@@ -84,9 +84,11 @@ type FieldAccessor interface {
 	Int16(Data) int16
 	Int32(Data) int32
 	Int64(Data) int64
-
 	Float32(Data) float32
 	Float64(Data) float64
+	String(Data) string
+	CString(Data) string
+	Bytes(Data) []byte
 
 	PutUint8(Data, uint8)
 	PutUint16(Data, uint16)
@@ -96,9 +98,7 @@ type FieldAccessor interface {
 	PutInt16(Data, int16)
 	PutInt32(Data, int32)
 	PutInt64(Data, int64)
-
-	String(Data) string
-	CString(Data) string
+	PutBytes(Data, []byte)
 }
 
 type fieldAccessor struct {
@@ -398,6 +398,10 @@ func (a *fieldAccessor) CString(data Data) string {
 	return gadgets.FromCString(a.Get(data))
 }
 
+func (a *fieldAccessor) Bytes(data Data) []byte {
+	return a.Get(data)
+}
+
 func (a *fieldAccessor) PutUint8(data Data, val uint8) {
 	a.Get(data)[0] = val
 }
@@ -428,4 +432,8 @@ func (a *fieldAccessor) PutInt32(data Data, val int32) {
 
 func (a *fieldAccessor) PutInt64(data Data, val int64) {
 	a.ds.byteOrder.PutUint64(a.Get(data), uint64(val))
+}
+
+func (a *fieldAccessor) PutBytes(data Data, val []byte) {
+	a.Set(data, val)
 }
