@@ -32,7 +32,7 @@ import (
 func TestDataSourceDuplicatedField(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	_, err := ds.AddField("foo", api.Kind_Int8)
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestDataSourceDuplicatedField(t *testing.T) {
 func TestDataSourceNonExistingField(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	acc := ds.GetField("foo")
 	require.Nil(t, acc)
@@ -53,7 +53,7 @@ func TestDataSourceNonExistingField(t *testing.T) {
 func TestDataSourceEmptyField(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	// See https://github.com/inspektor-gadget/inspektor-gadget/issues/2817
 	acc, err := ds.AddField("foo", api.Kind_Invalid, WithFlags(FieldFlagEmpty))
@@ -97,7 +97,7 @@ func TestDataSourceAddFields(t *testing.T) {
 		t.Run(f.name, func(t *testing.T) {
 			t.Parallel()
 
-			ds := New(TypeEvent, "event")
+			ds := New(TypeSingle, "event")
 			acc, err := ds.AddField(f.name, f.typ)
 			require.NoError(t, err)
 
@@ -168,7 +168,7 @@ func TestBadAccesors(t *testing.T) {
 		t.Run(f.name, func(t *testing.T) {
 			t.Parallel()
 
-			ds := New(TypeEvent, "event")
+			ds := New(TypeSingle, "event")
 			acc, err := ds.AddField(f.name, f.typ)
 			require.NoError(t, err)
 
@@ -195,7 +195,7 @@ func TestBadAccesors(t *testing.T) {
 func TestDataSourceStaticFields(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	fields := []StaticField{
 		&dummyField{
@@ -266,7 +266,7 @@ func TestDataSourceStaticFields(t *testing.T) {
 func TestDataSourceStaticFieldsTooBig(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	_, err := ds.AddStaticFields(2, []StaticField{
 		&dummyField{
@@ -286,7 +286,7 @@ func TestDataSourceStaticFieldsTooBig(t *testing.T) {
 func TestDataSourceSubscribe(t *testing.T) {
 	t.Parallel()
 
-	ds := New(TypeEvent, "event")
+	ds := New(TypeSingle, "event")
 
 	// no-op
 	ds.Subscribe(nil, 50)

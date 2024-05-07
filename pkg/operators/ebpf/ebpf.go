@@ -322,7 +322,7 @@ func (i *ebpfInstance) addDataSource(
 func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 	// register datasources
 	for name, m := range i.tracers {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeEvent, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
@@ -330,7 +330,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.ds = ds
 	}
 	for name, m := range i.snapshotters {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeEvent, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}

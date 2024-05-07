@@ -26,7 +26,7 @@ type Type uint32
 
 const (
 	TypeUndefined Type = iota
-	TypeEvent
+	TypeSingle
 	TypeMetrics
 )
 
