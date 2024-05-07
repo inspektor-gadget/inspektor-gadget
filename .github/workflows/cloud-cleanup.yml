@@ -8,6 +8,7 @@ on:
 jobs:
   eks-cleanup:
     runs-on: ubuntu-latest
+    if: ${{ vars.AWS_ROLE != '' }}
     # These permissions are needed to interact with GitHub's OIDC Token endpoint.
     permissions:
       id-token: write
