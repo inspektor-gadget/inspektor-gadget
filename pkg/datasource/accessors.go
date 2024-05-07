@@ -148,9 +148,9 @@ func (a *fieldAccessor) Get(d Data) []byte {
 	}
 	if a.f.Size > 0 {
 		// size and offset must be valid here; checks take place on initialization
-		return d.(*data).Payload[a.f.PayloadIndex][a.f.Offs : a.f.Offs+a.f.Size]
+		return d.payload()[a.f.PayloadIndex][a.f.Offs : a.f.Offs+a.f.Size]
 	}
-	return d.(*data).Payload[a.f.PayloadIndex]
+	return d.payload()[a.f.PayloadIndex]
 }
 
 func (a *fieldAccessor) setHidden(hidden bool, recurse bool) {
@@ -181,7 +181,7 @@ func (a *fieldAccessor) Set(d Data, b []byte) error {
 			return fmt.Errorf("invalid size, static member expected %d, got %d", a.f.Size, len(b))
 		}
 		// When accessing a member of a statically sized field, copy memory
-		copy(d.Raw().Payload[a.f.PayloadIndex][a.f.Offs:a.f.Offs+a.f.Size], b)
+		copy(d.payload()[a.f.PayloadIndex][a.f.Offs:a.f.Offs+a.f.Size], b)
 		return nil
 	}
 	if FieldFlagContainer.In(a.f.Flags) {
@@ -189,7 +189,7 @@ func (a *fieldAccessor) Set(d Data, b []byte) error {
 			return fmt.Errorf("invalid size, container expected %d, got %d", a.f.Size, len(b))
 		}
 	}
-	d.(*data).Payload[a.f.PayloadIndex] = b
+	d.payload()[a.f.PayloadIndex] = b
 	return nil
 }
 

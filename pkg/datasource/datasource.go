@@ -32,16 +32,9 @@ const (
 
 type Data interface {
 	private()
+	payload() [][]byte
 	SetSeq(uint32)
 	Raw() *api.GadgetData
-}
-
-func (d *data) SetSeq(seq uint32) {
-	d.Seq = seq
-}
-
-func (d *data) Raw() *api.GadgetData {
-	return (*api.GadgetData)(d)
 }
 
 // DataFunc is the callback that will be called for Data emitted by a DataSource. Data has to be consumed

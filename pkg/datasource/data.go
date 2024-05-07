@@ -31,12 +31,31 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
-type (
-	data  api.GadgetData
-	field api.Field
-)
+type dataElement api.DataElement
 
-func (*data) private() {}
+func (d *dataElement) private() {}
+
+func (d *dataElement) payload() [][]byte {
+	return d.Payload
+}
+
+type data api.GadgetData
+
+func (d *data) private() {}
+
+func (d *data) payload() [][]byte {
+	return d.Data.Payload
+}
+
+func (d *data) SetSeq(seq uint32) {
+	d.Seq = seq
+}
+
+func (d *data) Raw() *api.GadgetData {
+	return (*api.GadgetData)(d)
+}
+
+type field api.Field
 
 func (f *field) ReflectType() reflect.Type {
 	switch f.Kind {
@@ -136,7 +155,9 @@ func (ds *dataSource) Type() Type {
 
 func (ds *dataSource) NewData() Data {
 	d := &data{
-		Payload: make([][]byte, ds.payloadCount),
+		Data: &api.DataElement{
+			Payload: make([][]byte, ds.payloadCount),
+		},
 	}
 
 	// Allocate memory for fixed size fields added with Add{Sub}Field
@@ -150,13 +171,13 @@ func (ds *dataSource) NewData() Data {
 
 		switch f.Kind {
 		case api.Kind_Bool, api.Kind_Int8, api.Kind_Uint8:
-			d.Payload[f.PayloadIndex] = make([]byte, 1)
+			d.payload()[f.PayloadIndex] = make([]byte, 1)
 		case api.Kind_Int16, api.Kind_Uint16:
-			d.Payload[f.PayloadIndex] = make([]byte, 2)
+			d.payload()[f.PayloadIndex] = make([]byte, 2)
 		case api.Kind_Int32, api.Kind_Uint32, api.Kind_Float32:
-			d.Payload[f.PayloadIndex] = make([]byte, 4)
+			d.payload()[f.PayloadIndex] = make([]byte, 4)
 		case api.Kind_Int64, api.Kind_Uint64, api.Kind_Float64:
-			d.Payload[f.PayloadIndex] = make([]byte, 8)
+			d.payload()[f.PayloadIndex] = make([]byte, 8)
 		}
 	}
 
@@ -390,15 +411,15 @@ func (ds *dataSource) Dump(xd Data, wr io.Writer) {
 
 	d := xd.(*data)
 	for _, f := range ds.fields {
-		if f.Offs+f.Size > uint32(len(d.Payload[f.PayloadIndex])) {
+		if f.Offs+f.Size > uint32(len(d.payload()[f.PayloadIndex])) {
 			fmt.Fprintf(wr, "%s (%d): ! invalid size\n", f.Name, f.Size)
 			continue
 		}
 		fmt.Fprintf(wr, "%s (%d) [%s]: ", f.Name, f.Size, strings.Join(f.Tags, " "))
 		if f.Offs > 0 || f.Size > 0 {
-			fmt.Fprintf(wr, "%v\n", d.Payload[f.PayloadIndex][f.Offs:f.Offs+f.Size])
+			fmt.Fprintf(wr, "%v\n", d.payload()[f.PayloadIndex][f.Offs:f.Offs+f.Size])
 		} else {
-			fmt.Fprintf(wr, "%v\n", d.Payload[f.PayloadIndex])
+			fmt.Fprintf(wr, "%v\n", d.payload()[f.PayloadIndex])
 		}
 	}
 }
