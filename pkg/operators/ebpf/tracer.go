@@ -134,7 +134,11 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 		if err != nil {
 			return err
 		}
-		data := t.ds.NewData()
+		pSingle, err := t.ds.NewPacketSingle()
+		if err != nil {
+			gadgetCtx.Logger().Warnf("error creating new packet: %v", err)
+			continue
+		}
 		sample := rec.RawSample
 		if uint32(len(rec.RawSample)) < t.eventSize {
 			// event is truncated; we need to copy
@@ -149,13 +153,13 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 			lastSlowLen = len(rec.RawSample)
 			sample = slowBuf
 		}
-		err = t.accessor.Set(data, sample)
+		err = t.accessor.Set(pSingle, sample)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
-			t.ds.Release(data)
+			t.ds.Release(pSingle)
 			continue
 		}
-		err = t.ds.EmitAndRelease(data)
+		err = t.ds.EmitAndRelease(pSingle)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
 		}
@@ -170,7 +174,11 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 		if err != nil {
 			return err
 		}
-		data := t.ds.NewData()
+		pSingle, err := t.ds.NewPacketSingle()
+		if err != nil {
+			gadgetCtx.Logger().Warnf("error creating new packet: %v", err)
+			continue
+		}
 		sample := rec.RawSample
 		sampleLen := len(rec.RawSample)
 		if uint32(sampleLen) < t.eventSize {
@@ -189,13 +197,13 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 			// event has trailing garbage, remove it
 			sample = sample[:t.eventSize]
 		}
-		err = t.accessor.Set(data, sample)
+		err = t.accessor.Set(pSingle, sample)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
-			t.ds.Release(data)
+			t.ds.Release(pSingle)
 			continue
 		}
-		err = t.ds.EmitAndRelease(data)
+		err = t.ds.EmitAndRelease(pSingle)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
 		}

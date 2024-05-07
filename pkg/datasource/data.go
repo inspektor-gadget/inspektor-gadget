@@ -51,8 +51,44 @@ func (d *data) SetSeq(seq uint32) {
 	d.Seq = seq
 }
 
-func (d *data) Raw() *api.GadgetData {
+func (d *data) Raw() proto.Message {
 	return (*api.GadgetData)(d)
+}
+
+type dataArray struct {
+	*api.GadgetDataArray
+
+	ds *dataSource
+}
+
+func (d *dataArray) SetSeq(seq uint32) {
+	d.Seq = seq
+}
+
+func (d *dataArray) Raw() proto.Message {
+	return (*api.GadgetDataArray)(d.GadgetDataArray)
+}
+
+func (d *dataArray) Get(index int) Data {
+	if index < 0 || index >= len(d.DataArray) {
+		return nil
+	}
+	return (*dataElement)(d.DataArray[index])
+}
+
+func (d *dataArray) New() Data {
+	return d.ds.newDataElement()
+}
+
+func (d *dataArray) Append(data Data) {
+	d.DataArray = append(d.DataArray, (*api.DataElement)(data.(*dataElement)))
+}
+
+func (d *dataArray) Len() int {
+	return len(d.DataArray)
+}
+
+func (d *dataArray) Release(data Data) {
 }
 
 type field api.Field
@@ -104,7 +140,9 @@ type dataSource struct {
 
 	requestedFields map[string]bool
 
-	subscriptions []*subscription
+	subscriptionsData   []*subscriptionData
+	subscriptionsArray  []*subscriptionArray
+	subscriptionsPacket []*subscriptionPacket
 
 	requested bool
 
@@ -153,11 +191,9 @@ func (ds *dataSource) Type() Type {
 	return ds.dType
 }
 
-func (ds *dataSource) NewData() Data {
-	d := &data{
-		Data: &api.DataElement{
-			Payload: make([][]byte, ds.payloadCount),
-		},
+func (ds *dataSource) newDataElement() *dataElement {
+	d := &dataElement{
+		Payload: make([][]byte, ds.payloadCount),
 	}
 
 	// Allocate memory for fixed size fields added with Add{Sub}Field
@@ -184,7 +220,21 @@ func (ds *dataSource) NewData() Data {
 	return d
 }
 
-func (ds *dataSource) NewDataFromRaw(b []byte) (Data, error) {
+func (ds *dataSource) NewPacketSingle() (PacketSingle, error) {
+	if ds.dType != TypeSingle {
+		return nil, errors.New("only single data sources can create single packets")
+	}
+
+	return &data{
+		Data: (*api.DataElement)(ds.newDataElement()),
+	}, nil
+}
+
+func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
+	if ds.dType != TypeSingle {
+		return nil, errors.New("only single data sources can create single packets")
+	}
+
 	data := &data{}
 	err := proto.Unmarshal(b, data.Raw())
 	if err != nil {
@@ -195,6 +245,38 @@ func (ds *dataSource) NewDataFromRaw(b []byte) (Data, error) {
 	// DataSource
 
 	return data, nil
+}
+
+func (ds *dataSource) NewPacketArray() (PacketArray, error) {
+	if ds.dType != TypeArray {
+		return nil, errors.New("only array data sources can create array packets")
+	}
+
+	return &dataArray{
+		GadgetDataArray: &api.GadgetDataArray{
+			DataArray: make([]*api.DataElement, 0),
+		},
+		ds: ds,
+	}, nil
+}
+
+func (ds *dataSource) NewPacketArrayFromRaw(b []byte) (PacketArray, error) {
+	if ds.dType != TypeArray {
+		return nil, errors.New("only array data sources can create array packets")
+	}
+
+	dataArray := &dataArray{
+		GadgetDataArray: &api.GadgetDataArray{},
+	}
+	err := proto.Unmarshal(b, dataArray.Raw())
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling payload: %w", err)
+	}
+
+	// TODO: check that size fields matches the size of the fields in the
+	// DataSource
+
+	return dataArray, nil
 }
 
 func (ds *dataSource) ByteOrder() binary.ByteOrder {
@@ -364,35 +446,107 @@ func (ds *dataSource) GetFieldsWithTag(tag ...string) []FieldAccessor {
 	return res
 }
 
-func (ds *dataSource) Subscribe(fn DataFunc, priority int) {
+func (ds *dataSource) Subscribe(fn DataFunc, priority int) error {
 	if fn == nil {
-		return
+		return errors.New("missing callback")
 	}
 
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	ds.subscriptions = append(ds.subscriptions, &subscription{
+	ds.subscriptionsData = append(ds.subscriptionsData, &subscriptionData{
 		priority: priority,
 		fn:       fn,
 	})
-	sort.SliceStable(ds.subscriptions, func(i, j int) bool {
-		return ds.subscriptions[i].priority < ds.subscriptions[j].priority
+	sort.SliceStable(ds.subscriptionsData, func(i, j int) bool {
+		return ds.subscriptionsData[i].priority < ds.subscriptionsData[j].priority
 	})
+
+	return nil
 }
 
-func (ds *dataSource) EmitAndRelease(d Data) error {
-	defer ds.Release(d)
-	for _, sub := range ds.subscriptions {
-		err := sub.fn(ds, d)
+func (ds *dataSource) SubscribeArray(fn ArrayFunc, priority int) error {
+	if ds.dType != TypeArray {
+		return errors.New("only array data sources can subscribe to array data")
+	}
+
+	if fn == nil {
+		return errors.New("missing callback")
+	}
+
+	ds.lock.Lock()
+	defer ds.lock.Unlock()
+
+	ds.subscriptionsArray = append(ds.subscriptionsArray, &subscriptionArray{
+		priority: priority,
+		fn:       fn,
+	})
+	sort.SliceStable(ds.subscriptionsArray, func(i, j int) bool {
+		return ds.subscriptionsArray[i].priority < ds.subscriptionsArray[j].priority
+	})
+
+	return nil
+}
+
+func (ds *dataSource) SubscribePacket(fn PacketFunc, priority int) error {
+	if fn == nil {
+		return errors.New("missing callback")
+	}
+
+	ds.lock.Lock()
+	defer ds.lock.Unlock()
+
+	ds.subscriptionsPacket = append(ds.subscriptionsPacket, &subscriptionPacket{
+		priority: priority,
+		fn:       fn,
+	})
+	sort.SliceStable(ds.subscriptionsPacket, func(i, j int) bool {
+		return ds.subscriptionsPacket[i].priority < ds.subscriptionsPacket[j].priority
+	})
+
+	return nil
+}
+
+func (ds *dataSource) EmitAndRelease(p Packet) error {
+	defer ds.Release(p)
+
+	switch ds.dType {
+	case TypeSingle:
+		for _, sub := range ds.subscriptionsData {
+			err := sub.fn(ds, p.(*data))
+			if err != nil {
+				return err
+			}
+		}
+	case TypeArray:
+		for _, sub := range ds.subscriptionsData {
+			for _, d := range p.(*dataArray).GetDataArray() {
+				err := sub.fn(ds, (*dataElement)(d))
+				if err != nil {
+					return err
+				}
+			}
+		}
+		for _, sub := range ds.subscriptionsArray {
+			err := sub.fn(ds, p.(*dataArray))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Finally, send packet to packet-subscribers no matter the datasource type
+	for _, sub := range ds.subscriptionsPacket {
+		err := sub.fn(ds, p)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func (ds *dataSource) Release(d Data) {
+func (ds *dataSource) Release(p Packet) {
 }
 
 func (ds *dataSource) ReportLostData(ctr uint64) {
@@ -406,21 +560,31 @@ func (ds *dataSource) IsRequestedField(fieldName string) bool {
 	return ds.requestedFields[fieldName]
 }
 
-func (ds *dataSource) Dump(xd Data, wr io.Writer) {
-	ds.lock.RLock()
-	defer ds.lock.RUnlock()
-
-	d := xd.(*data)
+func (ds *dataSource) dumpData(wr io.Writer, data Data) {
 	for _, f := range ds.fields {
-		if f.Offs+f.Size > uint32(len(d.payload()[f.PayloadIndex])) {
+		if f.Offs+f.Size > uint32(len(data.payload()[f.PayloadIndex])) {
 			fmt.Fprintf(wr, "%s (%d): ! invalid size\n", f.Name, f.Size)
 			continue
 		}
 		fmt.Fprintf(wr, "%s (%d) [%s]: ", f.Name, f.Size, strings.Join(f.Tags, " "))
 		if f.Offs > 0 || f.Size > 0 {
-			fmt.Fprintf(wr, "%v\n", d.payload()[f.PayloadIndex][f.Offs:f.Offs+f.Size])
+			fmt.Fprintf(wr, "%v\n", data.payload()[f.PayloadIndex][f.Offs:f.Offs+f.Size])
 		} else {
-			fmt.Fprintf(wr, "%v\n", d.payload()[f.PayloadIndex])
+			fmt.Fprintf(wr, "%v\n", data.payload()[f.PayloadIndex])
+		}
+	}
+}
+
+func (ds *dataSource) Dump(p Packet, wr io.Writer) {
+	ds.lock.RLock()
+	defer ds.lock.RUnlock()
+
+	switch ds.dType {
+	case TypeSingle:
+		ds.dumpData(wr, p.(Data))
+	case TypeArray:
+		for _, d := range p.(*dataArray).GetDataArray() {
+			ds.dumpData(wr, (*dataElement)(d))
 		}
 	}
 }

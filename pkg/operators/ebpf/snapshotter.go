@@ -155,7 +155,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 				}
 
 				for i := uint32(0); i < uint32(len(buf)); i += size {
-					data := snapshotter.ds.NewData()
+					data := snapshotter.ds.NewPacketSingle()
 					snapshotter.accessor.Set(data, buf[i:i+size])
 					snapshotter.ds.EmitAndRelease(data)
 				}
@@ -187,7 +187,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 						}
 
 						for i := uint32(0); i < uint32(len(buf)); i += size {
-							data := snapshotter.ds.NewData()
+							data := snapshotter.ds.NewPacketSingle()
 							snapshotter.accessor.Set(data, buf[i:i+size])
 							snapshotter.ds.EmitAndRelease(data)
 						}

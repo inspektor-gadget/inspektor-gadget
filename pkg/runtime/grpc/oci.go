@@ -176,12 +176,21 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 				}
 				expectedSeq = ev.Seq + 1
 				if ds, ok := dsMap[ev.DataSourceID]; ok && ds != nil {
-					d, err := ds.NewDataFromRaw(ev.Payload)
+					var p datasource.Packet
+					switch ds.Type() {
+					case datasource.TypeSingle:
+						p, err = ds.NewPacketSingleFromRaw(ev.Payload)
+					case datasource.TypeArray:
+						p, err = ds.NewPacketArrayFromRaw(ev.Payload)
+					default:
+						gadgetCtx.Logger().Warnf("unknown datasource type %d", ds.Type())
+						continue
+					}
 					if err != nil {
 						gadgetCtx.Logger().Debugf("error unmarshaling payload: %v", err)
 						continue
 					}
-					ds.EmitAndRelease(d)
+					ds.EmitAndRelease(p)
 				}
 			case api.EventTypeGadgetResult:
 				gadgetCtx.Logger().Debugf("%-20s | got result from server", target.node)

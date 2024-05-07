@@ -59,7 +59,9 @@ func TestDataSourceEmptyField(t *testing.T) {
 	acc, err := ds.AddField("foo", api.Kind_Invalid, WithFlags(FieldFlagEmpty))
 	require.NoError(t, err)
 
-	d := ds.NewData()
+	d, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	defer ds.Release(d)
 
 	err = acc.Set(d, []byte{0x01, 0x02, 0x03})
 	require.Error(t, err)
@@ -101,7 +103,9 @@ func TestDataSourceAddFields(t *testing.T) {
 			acc, err := ds.AddField(f.name, f.typ)
 			require.NoError(t, err)
 
-			data := ds.NewData()
+			data, err := ds.NewPacketSingle()
+			require.NoError(t, err)
+			defer ds.Release(data)
 
 			switch f.typ {
 			case api.Kind_Bool:
@@ -172,7 +176,9 @@ func TestBadAccesors(t *testing.T) {
 			acc, err := ds.AddField(f.name, f.typ)
 			require.NoError(t, err)
 
-			data := ds.NewData()
+			data, err := ds.NewPacketSingle()
+			require.NoError(t, err)
+			defer ds.Release(data)
 
 			// Test that it doesn't explode by setting the wrong type
 			acc.PutBool(data, bool(true))
@@ -231,7 +237,9 @@ func TestDataSourceStaticFields(t *testing.T) {
 	acc, err := ds.AddStaticFields(totalSize, fields)
 	require.NoError(t, err)
 
-	d := ds.NewData()
+	d, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	defer ds.Release(d)
 
 	// Try to write full blob with smaller data
 	err = acc.Set(d, randBytes(3))
@@ -283,13 +291,11 @@ func TestDataSourceStaticFieldsTooBig(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestDataSourceSubscribe(t *testing.T) {
+// TODO(Jose): Repeat this for all the types
+func TestDataSourceSubscribePriorities(t *testing.T) {
 	t.Parallel()
 
 	ds := New(TypeSingle, "event")
-
-	// no-op
-	ds.Subscribe(nil, 50)
 
 	// random list of priorities
 	priorities := []int{30, 90, 54, 78, 71, 67, 90, 7, 92, 87}
@@ -299,19 +305,235 @@ func TestDataSourceSubscribe(t *testing.T) {
 		priority := priority
 
 		// subscribe saves priority in the called slice
-		ds.Subscribe(func(fs DataSource, d Data) error {
+		err := ds.Subscribe(func(fs DataSource, d Data) error {
 			called = append(called, priority)
 			return nil
 		}, priority)
+		require.NoError(t, err)
 	}
 
 	slices.Sort(priorities)
 
 	// allocate and emit a data
-	d := ds.NewData()
-	ds.EmitAndRelease(d)
+	d, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	defer ds.Release(d)
+
+	err = ds.EmitAndRelease(d)
+	require.NoError(t, err)
 
 	require.Equal(t, priorities, called)
+}
+
+func TestDataSourceSubscribeTypes(t *testing.T) {
+	t.Parallel()
+
+	ds := New(TypeSingle, "event")
+
+	err := ds.Subscribe(func(ds DataSource, d Data) error { return nil }, 50)
+	require.NoError(t, err)
+
+	err = ds.SubscribeArray(func(ds DataSource, da DataArray) error { return nil }, 50)
+	require.Error(t, err)
+
+	err = ds.SubscribePacket(func(ds DataSource, p Packet) error { return nil }, 50)
+	require.NoError(t, err)
+
+	ds = New(TypeArray, "events")
+
+	err = ds.Subscribe(func(ds DataSource, d Data) error { return nil }, 50)
+	require.NoError(t, err)
+
+	err = ds.SubscribeArray(func(ds DataSource, da DataArray) error { return nil }, 50)
+	require.NoError(t, err)
+
+	err = ds.SubscribePacket(func(ds DataSource, p Packet) error { return nil }, 50)
+	require.NoError(t, err)
+}
+
+func TestDataSourceSubscribeNilCb(t *testing.T) {
+	t.Parallel()
+
+	ds := New(TypeSingle, "event")
+
+	err := ds.Subscribe(nil, 50)
+	require.Error(t, err)
+
+	err = ds.SubscribeArray(nil, 50)
+	require.Error(t, err)
+
+	err = ds.SubscribePacket(nil, 50)
+	require.Error(t, err)
+
+	ds = New(TypeArray, "events")
+
+	err = ds.Subscribe(nil, 50)
+	require.Error(t, err)
+
+	err = ds.SubscribeArray(nil, 50)
+	require.Error(t, err)
+
+	err = ds.SubscribePacket(nil, 50)
+	require.Error(t, err)
+}
+
+func TestDataSourceNewPacket(t *testing.T) {
+	t.Parallel()
+
+	ds := New(TypeSingle, "event")
+
+	data, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	ds.Release(data)
+
+	dataArray, err := ds.NewPacketArray()
+	require.Error(t, err)
+	ds.Release(dataArray)
+
+	ds = New(TypeArray, "events")
+
+	data, err = ds.NewPacketSingle()
+	require.Error(t, err)
+	ds.Release(data)
+
+	dataArray, err = ds.NewPacketArray()
+	require.NoError(t, err)
+	ds.Release(dataArray)
+}
+
+func TestDataSourcePacketArray(t *testing.T) {
+	t.Parallel()
+
+	const val = int8(123)
+
+	ds := New(TypeArray, "events")
+	acc, err := ds.AddField("foo", api.Kind_Int8)
+	require.NoError(t, err)
+
+	pArray, err := ds.NewPacketArray()
+	require.NoError(t, err)
+	defer ds.Release(pArray)
+
+	require.Equal(t, 0, pArray.Len())
+
+	// It's not possible to add a single packet to an array
+	pSingle, err := ds.NewPacketSingle()
+	require.Error(t, err)
+	ds.Release(pSingle)
+
+	data := pArray.New()
+
+	acc.PutInt8(data, val)
+
+	pArray.Append(data)
+	require.Equal(t, 1, pArray.Len())
+
+	getData := pArray.Get(0)
+	require.NotNil(t, getData)
+
+	require.Equal(t, val, acc.Int8(getData))
+}
+
+func TestDataSourceSubscribeSingle(t *testing.T) {
+	t.Parallel()
+
+	const value = int8(123)
+
+	ds := New(TypeSingle, "event")
+
+	acc, err := ds.AddField("foo", api.Kind_Int8)
+	require.NoError(t, err)
+
+	pSingle, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	defer ds.Release(pSingle)
+
+	acc.PutInt8(pSingle, value)
+
+	// Subscribe to the single data
+	var valueFromData int8
+	err = ds.Subscribe(func(fs DataSource, d Data) error {
+		valueFromData = acc.Int8(d)
+		return nil
+	}, 50)
+	require.NoError(t, err)
+
+	// Subscribe to the packet
+	var valuesFromPacket int8
+	err = ds.SubscribePacket(func(fs DataSource, p Packet) error {
+		// We know that the packet is a PacketSingle because the ds is TypeArray
+		valuesFromPacket = acc.Int8(p.(PacketSingle))
+		return nil
+	}, 50)
+	require.NoError(t, err)
+
+	// Emit the packet
+	err = ds.EmitAndRelease(pSingle)
+	require.NoError(t, err)
+
+	// Check that all the callbacks received the same value
+	require.Equal(t, value, valueFromData)
+	require.Equal(t, value, valuesFromPacket)
+}
+
+func TestDataSourceSubscribeArray(t *testing.T) {
+	t.Parallel()
+
+	ds := New(TypeArray, "events")
+
+	pArray, err := ds.NewPacketArray()
+	require.NoError(t, err)
+	defer ds.Release(pArray)
+
+	acc, err := ds.AddField("foo", api.Kind_Int8)
+	require.NoError(t, err)
+
+	// Add some values to the array
+	values := []int8{30, 54, 90}
+	for _, val := range values {
+		data := pArray.New()
+		acc.PutInt8(data, val)
+		pArray.Append(data)
+	}
+
+	// Subscribe to the single data
+	valuesFromData := []int8{}
+	err = ds.Subscribe(func(fs DataSource, d Data) error {
+		valuesFromData = append(valuesFromData, acc.Int8(d))
+		return nil
+	}, 50)
+	require.NoError(t, err)
+
+	// Subscribe to the array
+	valuesFromArray := []int8{}
+	err = ds.SubscribeArray(func(fs DataSource, da DataArray) error {
+		for i := 0; i < da.Len(); i++ {
+			valuesFromArray = append(valuesFromArray, acc.Int8(da.Get(i)))
+		}
+		return nil
+	}, 50)
+	require.NoError(t, err)
+
+	// Subscribe to the packet
+	valuesFromPacket := []int8{}
+	err = ds.SubscribePacket(func(fs DataSource, p Packet) error {
+		// We know that the packet is a PacketArray because the ds is TypeArray
+		pa := p.(PacketArray)
+		for i := 0; i < pa.Len(); i++ {
+			valuesFromPacket = append(valuesFromPacket, acc.Int8(pa.Get(i)))
+		}
+		return nil
+	}, 50)
+	require.NoError(t, err)
+
+	// Emit the packet
+	err = ds.EmitAndRelease(pArray)
+	require.NoError(t, err)
+
+	// Check that all the callbacks received the same values
+	require.Equal(t, values, valuesFromData)
+	require.Equal(t, values, valuesFromArray)
+	require.Equal(t, values, valuesFromPacket)
 }
 
 type dummyField struct {

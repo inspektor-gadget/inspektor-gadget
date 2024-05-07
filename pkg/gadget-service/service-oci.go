@@ -143,8 +143,8 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 
 			for _, ds := range gadgetCtx.GetDataSources() {
 				dsID := dsLookup[ds.Name()]
-				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					d, _ := proto.Marshal(data.Raw())
+				ds.SubscribePacket(func(ds datasource.DataSource, packet datasource.Packet) error {
+					d, _ := proto.Marshal(packet.Raw())
 
 					event := &api.GadgetEvent{
 						Type:         api.EventTypeGadgetPayload,
