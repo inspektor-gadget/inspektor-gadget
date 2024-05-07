@@ -198,6 +198,11 @@ func (t *Trace) stop() {
 	if t.conn != nil {
 		t.conn.Close()
 	}
+
+	t.tracer.Close()
+	t.tracer = nil
+	t.started = false
+
 	if t.kubeIPInst != nil {
 		t.kubeIPInst.PostGadgetRun()
 		t.kubeIPInst = nil
@@ -210,8 +215,4 @@ func (t *Trace) stop() {
 		t.socketEnricherInst.PostGadgetRun()
 		t.socketEnricherInst = nil
 	}
-
-	t.tracer.Close()
-	t.tracer = nil
-	t.started = false
 }
