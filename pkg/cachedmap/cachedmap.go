@@ -62,6 +62,7 @@ func NewCachedMap[Key comparable, T any](oldEntryTTL time.Duration) CachedMap[Ke
 
 func (c *cachedMap[Key, T]) Close() {
 	close(c.exit)
+	c.Clear()
 }
 
 func (c *cachedMap[Key, T]) Clear() {
