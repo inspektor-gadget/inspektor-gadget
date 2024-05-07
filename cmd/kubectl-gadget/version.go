@@ -15,17 +15,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
@@ -40,26 +35,24 @@ var versionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Client version: v%s\n", version.Version())
 
-		client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
 		if err != nil {
-			return commonutils.WrapInErrSetupK8sClient(err)
+			return fmt.Errorf("searching for running Inspektor Gadget instances: %w", err)
 		}
 
-		gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
-
-		opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
-		pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), opts)
-		if err != nil {
-			return commonutils.WrapInErrListPods(err)
-		}
-
-		if len(pods.Items) == 0 {
+		switch len(gadgetNamespaces) {
+		case 0:
 			fmt.Println("Server version:", "not installed")
 			return nil
+		case 1:
+			// Exactly one running gadget instance found, use it
+			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+		default:
+			// Multiple running gadget instances found, error out
+			return fmt.Errorf("multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
 		}
 
-		grpcRuntime.InitDeployInfo()
-		info, err := deployinfo.Load()
+		info, err := grpcRuntime.InitDeployInfo()
 		if err != nil {
 			return fmt.Errorf("loading deploy info: %w", err)
 		}

@@ -21,8 +21,6 @@ import (
 	"math"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
@@ -30,26 +28,27 @@ import (
 // InitDeployInfo loads the locally stored deploy info. If no deploy info is stored locally,
 // it will try to fetch it from one of the remotes and store it locally. It will issue warnings on
 // failures.
-func (r *Runtime) InitDeployInfo() {
+func (r *Runtime) InitDeployInfo() (*deployinfo.DeployInfo, error) {
 	// Initialize info
 	info, err := deployinfo.Load()
 	if err == nil {
 		r.info = info
-		return
+		return info, nil
 	}
 
 	info, err = r.loadRemoteDeployInfo()
 	if err != nil {
-		log.Warnf("could not load gadget info from remote: %v", err)
-		return
+		return nil, fmt.Errorf("loading gadget info from remote: %w", err)
 	}
 
 	r.info = info
 
 	err = deployinfo.Store(info)
 	if err != nil {
-		log.Warnf("could not store gadget info: %v", err)
+		return nil, fmt.Errorf("storing gadget info: %w", err)
 	}
+
+	return info, nil
 }
 
 func (r *Runtime) UpdateDeployInfo() error {
