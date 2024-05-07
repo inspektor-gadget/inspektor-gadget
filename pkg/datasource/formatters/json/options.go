@@ -44,3 +44,9 @@ func WithPretty(val bool, indent string) Option {
 		formatter.indent = indent
 	}
 }
+
+func WithArray(val bool) Option {
+	return func(formatter *Formatter) {
+		formatter.array = val
+	}
+}
