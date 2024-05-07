@@ -246,20 +246,16 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				// TODO: compatiblity for now: add all; remove me later on and use the commented version above
 				json.WithShowAll(true),
 				json.WithPretty(o.mode == ModeJSONPretty, "  "),
+				json.WithArray(ds.Type() == datasource.TypeArray),
 			)
 			if err != nil {
 				return fmt.Errorf("initializing JSON formatter: %w", err)
 			}
 
-			df := func(ds datasource.DataSource, data datasource.Data) error {
-				fmt.Println(string(jsonFormatter.Marshal(data)))
-				return nil
-			}
-
 			if o.mode == ModeYAML {
 				// For the time being, this uses a slow approach to marshal to YAML, by first
 				// converting to JSON and then to YAML. This should get a dedicated formatter sooner or later.
-				df = func(ds datasource.DataSource, data datasource.Data) error {
+				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
 					yml, err := yaml.JSONToYAML(jsonFormatter.Marshal(data))
 					if err != nil {
 						return fmt.Errorf("serializing yaml: %w", err)
@@ -267,9 +263,22 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					fmt.Println("---")
 					fmt.Print(string(yml))
 					return nil
-				}
+				}, Priority)
+				return nil
 			}
-			ds.Subscribe(df, Priority)
+
+			switch ds.Type() {
+			case datasource.TypeSingle:
+				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+					fmt.Println(string(jsonFormatter.Marshal(data)))
+					return nil
+				}, Priority)
+			case datasource.TypeArray:
+				ds.SubscribeArray(func(ds datasource.DataSource, dataArray datasource.DataArray) error {
+					fmt.Println(string(jsonFormatter.MarshalArray(dataArray)))
+					return nil
+				}, Priority)
+			}
 		}
 	}
 	return nil
