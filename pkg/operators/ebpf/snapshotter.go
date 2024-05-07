@@ -139,6 +139,11 @@ func (i *ebpfInstance) runSnapshotters() error {
 	for sName, snapshotter := range i.snapshotters {
 		i.logger.Debugf("Running snapshotter %q", sName)
 
+		pArray, err := snapshotter.ds.NewPacketArray()
+		if err != nil {
+			return fmt.Errorf("creating new packet: %w", err)
+		}
+
 		for pName, l := range snapshotter.links {
 			i.logger.Debugf("Running iterator %q", pName)
 			switch {
@@ -155,9 +160,12 @@ func (i *ebpfInstance) runSnapshotters() error {
 				}
 
 				for i := uint32(0); i < uint32(len(buf)); i += size {
-					data := snapshotter.ds.NewPacketSingle()
-					snapshotter.accessor.Set(data, buf[i:i+size])
-					snapshotter.ds.EmitAndRelease(data)
+					data := pArray.New()
+					if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+						pArray.Release(data)
+						return fmt.Errorf("setting data element %d: %w", i, err)
+					}
+					pArray.Append(data)
 				}
 			case isIteratorKindPerNetNs(l.typ):
 				visitedNetNs := make(map[uint64]struct{})
@@ -187,9 +195,12 @@ func (i *ebpfInstance) runSnapshotters() error {
 						}
 
 						for i := uint32(0); i < uint32(len(buf)); i += size {
-							data := snapshotter.ds.NewPacketSingle()
-							snapshotter.accessor.Set(data, buf[i:i+size])
-							snapshotter.ds.EmitAndRelease(data)
+							data := pArray.New()
+							if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+								pArray.Release(data)
+								return fmt.Errorf("setting data element %d: %w", i, err)
+							}
+							pArray.Append(data)
 						}
 
 						return nil
@@ -200,6 +211,10 @@ func (i *ebpfInstance) runSnapshotters() error {
 					}
 				}
 			}
+		}
+
+		if err := snapshotter.ds.EmitAndRelease(pArray); err != nil {
+			return fmt.Errorf("emitting snapshotter %q data: %w", sName, err)
 		}
 	}
 	return nil
