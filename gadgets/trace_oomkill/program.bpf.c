@@ -21,8 +21,8 @@ struct event {
 	__u64 pages;
 	gadget_mntns_id mntns_id;
 	gadget_timestamp timestamp;
-	__u8 fcomm[TASK_COMM_LEN];
-	__u8 tcomm[TASK_COMM_LEN];
+	char fcomm[TASK_COMM_LEN];
+	char tcomm[TASK_COMM_LEN];
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);

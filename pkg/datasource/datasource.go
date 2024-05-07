@@ -63,7 +63,7 @@ type DataSource interface {
 	AddStaticFields(totalSize uint32, fields []StaticField) (FieldAccessor, error)
 
 	// AddField adds a field as a new payload
-	AddField(fieldName string, options ...FieldOption) (FieldAccessor, error)
+	AddField(fieldName string, kind api.Kind, options ...FieldOption) (FieldAccessor, error)
 
 	// NewData builds a new data structure that can be written to
 	NewData() Data

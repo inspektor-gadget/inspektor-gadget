@@ -15,6 +15,7 @@
 package json
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"slices"
@@ -244,9 +245,9 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			fn = func(e *encodeState, data datasource.Data) {
 				floatEncoder(64).writeFloat(e, accessor.Float64(data))
 			}
-		case api.Kind_String:
+		case api.Kind_String, api.Kind_CString:
 			fn = func(e *encodeState, data datasource.Data) {
-				writeString(e, string(accessor.Get(data)))
+				writeString(e, accessor.String(data))
 			}
 		case api.Kind_Bool:
 			fn = func(e *encodeState, data datasource.Data) {
@@ -261,7 +262,7 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			}
 		default:
 			fn = func(e *encodeState, data datasource.Data) {
-				writeString(e, accessor.CString(data))
+				writeString(e, hex.EncodeToString(accessor.Get(data)))
 			}
 		}
 		fns = append(fns, func(e *encodeState, data datasource.Data) {
@@ -348,8 +349,8 @@ func writeString(e *encodeState, s string) {
 				// user-controlled strings are rendered into JSON
 				// and served to some browsers.
 				e.WriteString(`u00`)
-				e.WriteByte(hex[b>>4])
-				e.WriteByte(hex[b&0xF])
+				e.WriteByte(hexChars[b>>4])
+				e.WriteByte(hexChars[b&0xF])
 			}
 			i++
 			start = i
@@ -377,7 +378,7 @@ func writeString(e *encodeState, s string) {
 				e.WriteString(s[start:i])
 			}
 			e.WriteString(`\u202`)
-			e.WriteByte(hex[c&0xF])
+			e.WriteByte(hexChars[c&0xF])
 			i += size
 			start = i
 			continue
@@ -390,7 +391,7 @@ func writeString(e *encodeState, s string) {
 	e.WriteByte('"')
 }
 
-var hex = "0123456789abcdef"
+const hexChars = "0123456789abcdef"
 
 // use safeSet from encoding/json directly
 //

@@ -140,7 +140,7 @@ var replacers = []replacer{
 			}
 			in.SetHidden(true, false)
 
-			signalField, err := ds.AddField(oldName)
+			signalField, err := ds.AddField(oldName, api.Kind_String)
 			if err != nil {
 				return nil, err
 			}
@@ -179,7 +179,7 @@ var replacers = []replacer{
 				outName = out
 			}
 
-			out, err := ds.AddField(outName)
+			out, err := ds.AddField(outName, api.Kind_String)
 			if err != nil {
 				return nil, nil
 			}
@@ -218,7 +218,7 @@ var replacers = []replacer{
 			if len(versions) != 1 {
 				return nil, fmt.Errorf("expected exactly 1 version field")
 			}
-			out, err := in.AddSubField("string", datasource.WithTags("l3string"))
+			out, err := in.AddSubField("string", api.Kind_String, datasource.WithTags("l3string"))
 			if err != nil {
 				return nil, fmt.Errorf("adding string field: %w", err)
 			}
@@ -272,7 +272,7 @@ var replacers = []replacer{
 
 			// Hide l3 & subfields of l3
 			l3[0].SetHidden(true, true)
-			out, err := in.AddSubField("address")
+			out, err := in.AddSubField("address", api.Kind_String)
 			if err != nil {
 				return nil, fmt.Errorf("adding string field: %w", err)
 			}

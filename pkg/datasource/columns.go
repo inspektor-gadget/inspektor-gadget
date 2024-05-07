@@ -17,14 +17,12 @@ package datasource
 import (
 	"fmt"
 	"reflect"
-	"slices"
 	"strconv"
 	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
@@ -126,6 +124,25 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 			}
 		}
 
+		if f.Kind == api.Kind_CString || f.Kind == api.Kind_String {
+			acc := &fieldAccessor{
+				ds: ds,
+				f:  f,
+			}
+
+			err := cols.AddColumn(*df.Attributes, func(d *DataTuple) any {
+				if d.data == nil {
+					return ""
+				}
+				return acc.String(d.data)
+			})
+			if err != nil {
+				return nil, fmt.Errorf("creating columns: %w", err)
+			}
+
+			continue
+		}
+
 		if f.ReflectType() == nil {
 			df.Type = reflect.TypeOf([]byte{})
 
@@ -133,16 +150,12 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				ds: ds,
 				f:  f,
 			}
-			fromC := slices.Contains(f.Tags, api.TagSrcEbpf)
 			err := cols.AddColumn(*df.Attributes, func(d *DataTuple) any {
 				if d.data == nil {
 					return ""
 				}
-
-				if fromC {
-					return gadgets.FromCString(acc.Get(d.data))
-				}
-				return string(acc.Get(d.data))
+				data := acc.Get(d.data)
+				return fmt.Sprintf("<%d bytes>", len(data))
 			})
 			if err != nil {
 				return nil, fmt.Errorf("creating columns: %w", err)

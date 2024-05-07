@@ -46,7 +46,7 @@ type FieldAccessor interface {
 
 	// AddSubField adds a new field as member of the current field; be careful when doing this on an existing
 	// non-empty field, as that might be dropped on serialization // TODO
-	AddSubField(name string, opts ...FieldOption) (FieldAccessor, error)
+	AddSubField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error)
 
 	// GetSubFieldsWithTag returns all SubFields matching any given tag
 	GetSubFieldsWithTag(tag ...string) []FieldAccessor
@@ -84,9 +84,10 @@ type FieldAccessor interface {
 	Int16(Data) int16
 	Int32(Data) int32
 	Int64(Data) int64
-
 	Float32(Data) float32
 	Float64(Data) float64
+	String(Data) string
+	Bytes(Data) []byte
 
 	PutUint8(Data, uint8)
 	PutUint16(Data, uint16)
@@ -96,9 +97,7 @@ type FieldAccessor interface {
 	PutInt16(Data, int16)
 	PutInt32(Data, int32)
 	PutInt64(Data, int64)
-
-	String(Data) string
-	CString(Data) string
+	PutBytes(Data, []byte)
 }
 
 type fieldAccessor struct {
@@ -207,7 +206,7 @@ func (a *fieldAccessor) RemoveReference(recurse bool) {
 	a.removeReference(recurse)
 }
 
-func (a *fieldAccessor) AddSubField(name string, opts ...FieldOption) (FieldAccessor, error) {
+func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error) {
 	a.ds.lock.Lock()
 	defer a.ds.lock.Unlock()
 
@@ -219,7 +218,7 @@ func (a *fieldAccessor) AddSubField(name string, opts ...FieldOption) (FieldAcce
 	nf := &field{
 		Name:     name,
 		FullName: parentFullName + "." + name,
-		Kind:     api.Kind_Invalid,
+		Kind:     kind,
 		Parent:   a.f.Index,
 		Index:    uint32(len(a.ds.fields)),
 	}
@@ -391,11 +390,14 @@ func (a *fieldAccessor) Float64(data Data) float64 {
 }
 
 func (a *fieldAccessor) String(data Data) string {
+	if a.f.Kind == api.Kind_CString {
+		return gadgets.FromCString(a.Get(data))
+	}
 	return string(a.Get(data))
 }
 
-func (a *fieldAccessor) CString(data Data) string {
-	return gadgets.FromCString(a.Get(data))
+func (a *fieldAccessor) Bytes(data Data) []byte {
+	return a.Get(data)
 }
 
 func (a *fieldAccessor) PutUint8(data Data, val uint8) {
@@ -428,4 +430,8 @@ func (a *fieldAccessor) PutInt32(data Data, val int32) {
 
 func (a *fieldAccessor) PutInt64(data Data, val int64) {
 	a.ds.byteOrder.PutUint64(a.Get(data), uint64(val))
+}
+
+func (a *fieldAccessor) PutBytes(data Data, val []byte) {
+	a.Set(data, val)
 }

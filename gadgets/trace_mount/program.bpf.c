@@ -37,11 +37,11 @@ struct event {
 	gadget_mntns_id mount_ns_id;
 	__u64 timestamp;
 	int ret;
-	__u8 comm[TASK_COMM_LEN];
-	__u8 fs[FS_NAME_LEN];
-	__u8 src[PATH_MAX];
-	__u8 dest[PATH_MAX];
-	__u8 data[DATA_LEN];
+	char comm[TASK_COMM_LEN];
+	char fs[FS_NAME_LEN];
+	char src[PATH_MAX];
+	char dest[PATH_MAX];
+	char data[DATA_LEN];
 	enum op op;
 };
 

@@ -120,37 +120,55 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		NetnsidAccessor: netnsidAccessor,
 	}
 
-	k8s, err := source.AddField("k8s", datasource.WithFlags(datasource.FieldFlagEmpty))
+	k8s, err := source.AddField("k8s", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
 	if err != nil {
 		return nil, err
 	}
 
-	ev.nodeAccessor, err = k8s.AddSubField("node", datasource.WithTags("kubernetes"))
+	ev.nodeAccessor, err = k8s.AddSubField("node", api.Kind_String, datasource.WithTags("kubernetes"))
 	if err != nil {
 		return nil, err
 	}
-	ev.namespaceAccessor, err = k8s.AddSubField("namespace", datasource.WithTags("kubernetes"), datasource.WithAnnotations(map[string]string{
-		"columns.template": "namespace",
-	}), datasource.WithOrder(-30))
+	ev.namespaceAccessor, err = k8s.AddSubField(
+		"namespace",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithAnnotations(map[string]string{
+			"columns.template": "namespace",
+		}),
+		datasource.WithOrder(-30),
+	)
 	if err != nil {
 		return nil, err
 	}
-	ev.podnameAccessor, err = k8s.AddSubField("pod", datasource.WithTags("kubernetes"), datasource.WithAnnotations(map[string]string{
-		"columns.template": "pod",
-	}), datasource.WithOrder(-29))
+	ev.podnameAccessor, err = k8s.AddSubField(
+		"pod",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithAnnotations(map[string]string{
+			"columns.template": "pod",
+		}),
+		datasource.WithOrder(-29),
+	)
 	if err != nil {
 		return nil, err
 	}
-	ev.containernameAccessorK8s, err = k8s.AddSubField("container", datasource.WithTags("kubernetes"), datasource.WithAnnotations(map[string]string{
-		"columns.template": "container",
-	}), datasource.WithOrder(-28))
+	ev.containernameAccessorK8s, err = k8s.AddSubField(
+		"container",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithAnnotations(map[string]string{
+			"columns.template": "container",
+		}),
+		datasource.WithOrder(-28),
+	)
 	if err != nil {
 		return nil, err
 	}
 	ev.hostNetworkAccessor, err = k8s.AddSubField(
 		"hostnetwork",
+		api.Kind_Bool,
 		datasource.WithTags("kubernetes"),
-		datasource.WithKind(api.Kind_Bool),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-27),
 	)
@@ -164,12 +182,13 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		k8s.SetHidden(true, true)
 	}
 
-	runtime, err := source.AddField("runtime", datasource.WithFlags(datasource.FieldFlagEmpty))
+	runtime, err := source.AddField("runtime", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
 	if err != nil {
 		return nil, err
 	}
 	ev.containernameAccessor, err = runtime.AddSubField(
 		"containerName",
+		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
 			"columns.template": "container",
 		}),
@@ -180,6 +199,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	}
 	ev.runtimenameAccessor, err = runtime.AddSubField(
 		"runtimeName",
+		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
 			"columns.width": "19",
 			"columns.fixed": "true",
@@ -192,17 +212,20 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	}
 	ev.containeridAccessor, err = runtime.AddSubField(
 		"containerId",
+		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
 			"columns.width":    "13",
 			"columns.maxWidth": "64",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
-		datasource.WithOrder(-24))
+		datasource.WithOrder(-24),
+	)
 	if err != nil {
 		return nil, err
 	}
 	ev.containerimagenameAccessor, err = runtime.AddSubField(
 		"containerImageName",
+		api.Kind_String,
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-23),
 	)
@@ -211,6 +234,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	}
 	ev.containerimagedigestAccessor, err = runtime.AddSubField(
 		"containerImageDigest",
+		api.Kind_String,
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-22),
 	)

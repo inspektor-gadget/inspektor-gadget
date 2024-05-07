@@ -247,8 +247,8 @@ Add the fields in the event structure.
 
 struct event {
 	__u32 pid;
-	__u8 comm[TASK_COMM_LEN];
-	__u8 filename[NAME_MAX];
+	char comm[TASK_COMM_LEN];
+	char filename[NAME_MAX];
 };
 ```
 
@@ -633,8 +633,8 @@ type mygadgetEvent struct {
 }
 ```
 
-Later we create a test function called `TestMyGadget()`. 
-In this, we first create a container manager (can be either `docker` or `containerd`). After that, we create a command to run the gadget with various options. 
+Later we create a test function called `TestMyGadget()`.
+In this, we first create a container manager (can be either `docker` or `containerd`). After that, we create a command to run the gadget with various options.
 Finally, these commands are used as arguments in `RunTestSteps()`:
 
 ```golang
@@ -688,7 +688,7 @@ func TestMyGadget(t *testing.T) {
 
   testSteps := []igtesting.TestStep{
     // WithStartAndStop used to start the container command, then, wait for other commands to run
-    // and stop later and verify the output. 
+    // and stop later and verify the output.
     containerFactory.NewContainer(cn, "while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done", containers.WithStartAndStop()),
     mygadgetCmd,
   }

@@ -65,8 +65,8 @@ struct event_t {
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	__u8 task[TASK_COMM_LEN];
-	__u8 name[TLS_MAX_SERVER_NAME_LEN];
+	char task[TASK_COMM_LEN];
+	char name[TLS_MAX_SERVER_NAME_LEN];
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);

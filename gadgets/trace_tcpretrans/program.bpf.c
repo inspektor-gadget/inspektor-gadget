@@ -47,7 +47,7 @@ struct event {
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	__u8 task[TASK_COMM_LEN];
+	char task[TASK_COMM_LEN];
 };
 
 /* Define here, because there are conflicts with include files */

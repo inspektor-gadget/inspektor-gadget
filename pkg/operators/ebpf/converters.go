@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/ebpf/btf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
@@ -75,7 +76,7 @@ func (i *ebpfInstance) initEnumConverter(gadgetCtx operators.GadgetContext) erro
 				}
 			}
 
-			out, err := ds.AddField(name + "_str")
+			out, err := ds.AddField(name+"_str", api.Kind_String)
 			if err != nil {
 				return err
 			}

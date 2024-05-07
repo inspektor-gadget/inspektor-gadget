@@ -42,7 +42,7 @@ struct event_t {
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	__u8 task[TASK_COMM_LEN];
+	char task[TASK_COMM_LEN];
 
 	__u16 id;
 	unsigned short qtype;

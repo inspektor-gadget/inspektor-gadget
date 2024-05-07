@@ -198,8 +198,20 @@ func TestGetType(t *testing.T) {
 				},
 				Nelems: 10,
 			},
-			expectedType:  nil,
-			expectedNames: nil,
+			expectedType:  reflect.ArrayOf(10, reflect.ArrayOf(10, reflect.TypeOf(int32(0)))),
+			expectedNames: []string{"int32"},
+		},
+		{
+			name: "array of typedefs",
+			typ: &btf.Array{
+				Type: &btf.Typedef{
+					Type: int32Type,
+					Name: "typedef1",
+				},
+				Nelems: 10,
+			},
+			expectedType:  reflect.ArrayOf(10, reflect.TypeOf(int32(0))),
+			expectedNames: []string{"typedef1", "int32"},
 		},
 		{
 			name:          "unknown",

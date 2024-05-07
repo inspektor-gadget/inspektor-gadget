@@ -17,7 +17,7 @@ enum memop {
 struct event {
 	gadget_mntns_id mntns_id;
 	__u32 pid;
-	__u8 comm[TASK_COMM_LEN];
+	char comm[TASK_COMM_LEN];
 	enum memop operation;
 	__u64 addr;
 };

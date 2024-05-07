@@ -165,6 +165,7 @@ enum Kind {
   Float64 = 11;
   String = 12;
   CString = 13;
+  Bytes = 14;
 }
 
 message Field {
