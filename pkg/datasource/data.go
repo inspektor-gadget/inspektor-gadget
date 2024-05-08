@@ -69,7 +69,6 @@ func (f *field) ReflectType() reflect.Type {
 
 type dataSource struct {
 	name string
-	id   uint32
 
 	dType Type
 
