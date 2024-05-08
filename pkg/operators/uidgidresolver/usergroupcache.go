@@ -57,15 +57,12 @@ const (
 )
 
 var (
-	fullPasswdPath = filepath.Join(host.HostRoot, baseDirPath, passwdFileName)
-	fullGroupPath  = filepath.Join(host.HostRoot, baseDirPath, groupFileName)
-)
-
-func GetUserGroupCache() UserGroupCache {
-	return sync.OnceValue(func() *userGroupCache {
+	fullPasswdPath    = filepath.Join(host.HostRoot, baseDirPath, passwdFileName)
+	fullGroupPath     = filepath.Join(host.HostRoot, baseDirPath, groupFileName)
+	GetUserGroupCache = sync.OnceValue(func() *userGroupCache {
 		return &userGroupCache{}
-	})()
-}
+	})
+)
 
 func (cache *userGroupCache) Start() error {
 	cache.useCountMutex.Lock()
