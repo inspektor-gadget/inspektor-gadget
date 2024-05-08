@@ -288,7 +288,6 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 			ev.containernameAccessorK8s.Set(ev.Data, []byte(k8s.ContainerName))
 		}
 		if ev.hostNetworkAccessor.IsRequested() {
-			ev.hostNetworkAccessor.Set(ev.Data, make([]byte, 1))
 			if container.UsesHostNetwork() {
 				ev.hostNetworkAccessor.PutInt8(ev.Data, 1)
 			}

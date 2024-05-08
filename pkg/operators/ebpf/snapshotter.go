@@ -190,10 +190,6 @@ func (i *ebpfInstance) runSnapshotters() error {
 						for i := uint32(0); i < uint32(len(buf)); i += size {
 							data := snapshotter.ds.NewData()
 							snapshotter.accessor.Set(data, buf[i:i+size])
-
-							// TODO: this isn't ideal; make DS reserve memory / clean on demand
-							// instead of allocating in here - or: reserve those 8 bytes in eBPF
-							snapshotter.netns.Set(data, make([]byte, 8))
 							snapshotter.netns.PutUint64(data, container.Netns)
 
 							snapshotter.ds.EmitAndRelease(data)
