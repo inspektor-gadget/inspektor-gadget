@@ -98,6 +98,9 @@ type FieldAccessor interface {
 	PutInt16(Data, int16)
 	PutInt32(Data, int32)
 	PutInt64(Data, int64)
+	PutFloat32(Data, float32)
+	PutFloat64(Data, float64)
+	PutString(Data, string)
 	PutBytes(Data, []byte)
 	PutBool(Data, bool)
 }
@@ -440,6 +443,18 @@ func (a *fieldAccessor) PutInt32(data Data, val int32) {
 
 func (a *fieldAccessor) PutInt64(data Data, val int64) {
 	a.ds.byteOrder.PutUint64(a.Get(data), uint64(val))
+}
+
+func (a *fieldAccessor) PutFloat32(data Data, val float32) {
+	a.PutUint32(data, math.Float32bits(val))
+}
+
+func (a *fieldAccessor) PutFloat64(data Data, val float64) {
+	a.PutUint64(data, math.Float64bits(val))
+}
+
+func (a *fieldAccessor) PutString(data Data, val string) {
+	a.Set(data, []byte(val))
 }
 
 func (a *fieldAccessor) PutBytes(data Data, val []byte) {
