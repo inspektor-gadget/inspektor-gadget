@@ -266,11 +266,20 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
+	started := []operators.ImageOperatorInstance{}
+
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("starting operator %q: %v", opInst.Name(), err)
+			// Stop all started operators
+			for _, startedOp := range started {
+				startedOp.Stop(o.gadgetCtx)
+			}
+
+			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
+
+		started = append(started, opInst)
 	}
 	return nil
 }
