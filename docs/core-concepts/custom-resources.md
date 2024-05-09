@@ -5,7 +5,8 @@ description: >
   Basic usage of the Trace resource
 ---
 
-> ⚠️ We are currently removing the Trace resource and using a [gRPC
+> [!WARNING]
+> We are currently removing the Trace resource and using a [gRPC
 > API](../reference/grpc.md) instead. Once done, the Trace resource will be
 > deprecated.
 
@@ -38,7 +39,7 @@ The possible values for `outputMode` also depend on the gadget. The
 `seccomp` gadget, for example, can create seccomp policies as an external
 resource when `ExternalResource` is selected. If `outputMode` is set to
 `Status`, the output of the trace will be stored in the status field of the
-trace resource. 
+trace resource.
 
 See the corresponding [gadgets specs](../crds/gadgets/_index.md) to
 find out what's available.
