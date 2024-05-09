@@ -414,35 +414,67 @@ func (a *fieldAccessor) Bool(data Data) bool {
 }
 
 func (a *fieldAccessor) PutUint8(data Data, val uint8) {
-	a.Get(data)[0] = val
+	b := a.Get(data)
+	if len(b) < 1 {
+		return
+	}
+	b[0] = val
 }
 
 func (a *fieldAccessor) PutUint16(data Data, val uint16) {
-	a.ds.byteOrder.PutUint16(a.Get(data), val)
+	b := a.Get(data)
+	if len(b) < 2 {
+		return
+	}
+	a.ds.byteOrder.PutUint16(b, val)
 }
 
 func (a *fieldAccessor) PutUint32(data Data, val uint32) {
-	a.ds.byteOrder.PutUint32(a.Get(data), val)
+	b := a.Get(data)
+	if len(b) < 4 {
+		return
+	}
+	a.ds.byteOrder.PutUint32(b, val)
 }
 
 func (a *fieldAccessor) PutUint64(data Data, val uint64) {
+	b := a.Get(data)
+	if len(b) < 8 {
+		return
+	}
 	a.ds.byteOrder.PutUint64(a.Get(data), val)
 }
 
 func (a *fieldAccessor) PutInt8(data Data, val int8) {
-	a.Get(data)[0] = uint8(val)
+	b := a.Get(data)
+	if len(b) < 1 {
+		return
+	}
+	b[0] = uint8(val)
 }
 
 func (a *fieldAccessor) PutInt16(data Data, val int16) {
-	a.ds.byteOrder.PutUint16(a.Get(data), uint16(val))
+	b := a.Get(data)
+	if len(b) < 2 {
+		return
+	}
+	a.ds.byteOrder.PutUint16(b, uint16(val))
 }
 
 func (a *fieldAccessor) PutInt32(data Data, val int32) {
-	a.ds.byteOrder.PutUint32(a.Get(data), uint32(val))
+	b := a.Get(data)
+	if len(b) < 4 {
+		return
+	}
+	a.ds.byteOrder.PutUint32(b, uint32(val))
 }
 
 func (a *fieldAccessor) PutInt64(data Data, val int64) {
-	a.ds.byteOrder.PutUint64(a.Get(data), uint64(val))
+	b := a.Get(data)
+	if len(b) < 8 {
+		return
+	}
+	a.ds.byteOrder.PutUint64(b, uint64(val))
 }
 
 func (a *fieldAccessor) PutFloat32(data Data, val float32) {
@@ -462,9 +494,14 @@ func (a *fieldAccessor) PutBytes(data Data, val []byte) {
 }
 
 func (a *fieldAccessor) PutBool(data Data, val bool) {
+	b := a.Get(data)
+	if len(b) < 1 {
+		return
+	}
+
 	if val {
-		a.Get(data)[0] = 1
+		b[0] = 1
 	} else {
-		a.Get(data)[0] = 0
+		b[0] = 0
 	}
 }

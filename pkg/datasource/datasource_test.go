@@ -161,6 +161,37 @@ func TestDataSourceAddFields(t *testing.T) {
 	}
 }
 
+func TestBadAccesors(t *testing.T) {
+	t.Parallel()
+
+	for _, f := range fields {
+		t.Run(f.name, func(t *testing.T) {
+			t.Parallel()
+
+			ds := New(TypeEvent, "event")
+			acc, err := ds.AddField(f.name, f.typ)
+			require.NoError(t, err)
+
+			data := ds.NewData()
+
+			// Test that it doesn't explode by setting the wrong type
+			acc.PutBool(data, bool(true))
+			acc.PutInt8(data, int8(-123))
+			acc.PutInt16(data, int16(-25647))
+			acc.PutInt32(data, int32(-535245564))
+			acc.PutInt64(data, int64(-1234567890))
+			acc.PutUint8(data, uint8(56))
+			acc.PutUint16(data, uint16(12345))
+			acc.PutUint32(data, uint32(1234567890))
+			acc.PutUint64(data, uint64(123456789012345))
+			acc.PutFloat32(data, float32(3.14159))
+			acc.PutFloat64(data, float64(3.14159265359))
+			acc.PutString(data, string("Hello, World!"))
+			acc.PutBytes(data, []byte{0x01, 0x02, 0x03, 0x04, 0x05})
+		})
+	}
+}
+
 func TestDataSourceStaticFields(t *testing.T) {
 	t.Parallel()
 
