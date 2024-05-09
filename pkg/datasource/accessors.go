@@ -88,6 +88,7 @@ type FieldAccessor interface {
 	Float64(Data) float64
 	String(Data) string
 	Bytes(Data) []byte
+	Bool(Data) bool
 
 	PutUint8(Data, uint8)
 	PutUint16(Data, uint16)
@@ -98,6 +99,7 @@ type FieldAccessor interface {
 	PutInt32(Data, int32)
 	PutInt64(Data, int64)
 	PutBytes(Data, []byte)
+	PutBool(Data, bool)
 }
 
 type fieldAccessor struct {
@@ -400,6 +402,14 @@ func (a *fieldAccessor) Bytes(data Data) []byte {
 	return a.Get(data)
 }
 
+func (a *fieldAccessor) Bool(data Data) bool {
+	val := a.Get(data)
+	if len(val) < 1 {
+		return false
+	}
+	return val[0] == 1
+}
+
 func (a *fieldAccessor) PutUint8(data Data, val uint8) {
 	a.Get(data)[0] = val
 }
@@ -434,4 +444,12 @@ func (a *fieldAccessor) PutInt64(data Data, val int64) {
 
 func (a *fieldAccessor) PutBytes(data Data, val []byte) {
 	a.Set(data, val)
+}
+
+func (a *fieldAccessor) PutBool(data Data, val bool) {
+	if val {
+		a.Get(data)[0] = 1
+	} else {
+		a.Get(data)[0] = 0
+	}
 }

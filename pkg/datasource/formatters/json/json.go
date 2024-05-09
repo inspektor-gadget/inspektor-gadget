@@ -251,14 +251,11 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			}
 		case api.Kind_Bool:
 			fn = func(e *encodeState, data datasource.Data) {
-				// handle arbitrary length bools
-				for b := range accessor.Get(data) {
-					if b != 0 {
-						e.WriteString("true")
-						return
-					}
+				if accessor.Bool(data) {
+					e.WriteString("true")
+				} else {
+					e.WriteString("false")
 				}
-				e.WriteString("false")
 			}
 		default:
 			fn = func(e *encodeState, data datasource.Data) {
