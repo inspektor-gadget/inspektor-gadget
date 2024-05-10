@@ -332,6 +332,59 @@ func TestDataSourceStaticFieldsTooBig(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDataSourceStaticFieldsStrings(t *testing.T) {
+	t.Parallel()
+
+	const strSize = 16
+
+	ds := New(TypeSingle, "event")
+
+	fieldsAcc, err := ds.AddStaticFields(strSize, []StaticField{
+		&dummyField{
+			name:   "f1",
+			size:   strSize,
+			offset: 0,
+			kind:   api.Kind_CString,
+		},
+	})
+	require.NoError(t, err)
+
+	f1Acc := ds.GetField("f1")
+	require.NotNil(t, f1Acc)
+
+	type test struct {
+		name        string
+		str         string
+		expectedErr bool
+	}
+
+	tests := []test{
+		{"full", "0123456789abcdef", false},
+		{"short", "short", false},
+		{"large", "this is a string longer than 16 bytes for sure", true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			d, err := ds.NewPacketSingle()
+			require.NoError(t, err)
+
+			// Before trying to read / write the string, we need to set the data of the
+			// static container
+			valf := randBytes(strSize)
+			err = fieldsAcc.Set(d, valf)
+			require.NoError(t, err)
+
+			err = f1Acc.PutString(d, test.str)
+			if test.expectedErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 // TODO(Jose): Repeat this for all the types
 func TestDataSourceSubscribePriorities(t *testing.T) {
 	t.Parallel()
@@ -593,6 +646,7 @@ type dummyField struct {
 	name   string
 	size   uint32
 	offset uint32
+	kind   api.Kind
 }
 
 func (d *dummyField) FieldName() string {
@@ -605,6 +659,10 @@ func (d *dummyField) FieldSize() uint32 {
 
 func (d *dummyField) FieldOffset() uint32 {
 	return d.offset
+}
+
+func (d *dummyField) FieldType() api.Kind {
+	return d.kind
 }
 
 func randBytes(n int) []byte {

@@ -193,6 +193,16 @@ func (a *fieldAccessor) Set(d Data, b []byte) error {
 		return errors.New("field cannot contain a value")
 	}
 	if FieldFlagStaticMember.In(a.f.Flags) {
+		// If it's a short string copy it and clean the rest with 0s
+		if (a.f.Kind == api.Kind_String || a.f.Kind == api.Kind_CString) && uint32(len(b)) < a.f.Size {
+			copy(d.payload()[a.f.PayloadIndex][a.f.Offs:a.f.Offs+a.f.Size], b)
+
+			for i := uint32(len(b)); i < a.f.Size; i++ {
+				d.payload()[a.f.PayloadIndex][a.f.Offs+i] = 0
+			}
+			return nil
+		}
+
 		if uint32(len(b)) != a.f.Size {
 			return invalidFieldLengthErr(len(b), int(a.f.Size))
 		}
