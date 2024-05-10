@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
@@ -140,6 +142,19 @@ func (ds *dataSource) NewData() Data {
 		d.Payload[i] = make([]byte, 0)
 	}
 	return d
+}
+
+func (ds *dataSource) NewDataFromRaw(b []byte) (Data, error) {
+	data := &data{}
+	err := proto.Unmarshal(b, data.Raw())
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling payload: %w", err)
+	}
+
+	// TODO: check that size fields matches the size of the fields in the
+	// DataSource
+
+	return data, nil
 }
 
 func (ds *dataSource) ByteOrder() binary.ByteOrder {
