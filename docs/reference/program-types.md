@@ -29,9 +29,19 @@ Currently we support some iterators and fentry/fexit programs.
 
 #### Iterators
 
-The section name must use `iter/<iter_type>`. `<iter_type>` is one of `task`, `tcp` or `udp`. `tcp`
-and `udp` iterators are invoked in different network namespaces matching the filter configuration
-when running the gadget.
+The section name must use `iter/<iter_type>`. ig supports the following `<iter_type>`:
+- `ksym`
+- `task`
+- `task_file`
+- `tcp`
+- `udp`
+
+`tcp` and `udp` iterators are invoked in different network namespaces matching
+the filter configuration when running the gadget.
+
+You can find the list of iterator types supported by Linux with:
+- `git grep -w ^DEFINE_BPF_ITER_FUNC` in the Linux sources (16 types as of Linux 6.9)
+- `sudo bpftool btf dump id 1 format c |grep 'struct bpf_iter__'` in the current kernel
 
 #### Fentry / Fexit
 
