@@ -5,6 +5,7 @@ GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 IG ?= ig
 KUBECTL_GADGET ?= kubectl-gadget
+IG_FLAGS ?=
 COSIGN ?= cosign
 GADGETS = \
 	trace_dns \
@@ -71,6 +72,7 @@ test-ig-local: build
 	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
+	IG_FLAGS=$(IG_FLAGS) \
 	go test -exec 'sudo -E' -v ./...
 
 .PHONY:
@@ -81,4 +83,5 @@ test-k8s: build
 	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
+	IG_FLAGS=$(IG_FLAGS) \
 	go test -exec 'sudo -E' -v ./...

@@ -102,6 +102,12 @@ func New(image string, opts ...Option) igtesting.TestStep {
 		opt(factoryRunner)
 	}
 
+	// append IG_FLAGS flags separately to ensure
+	// one from the option aren't overwritten
+	if flags, ok := os.LookupEnv("IG_FLAGS"); ok {
+		factoryRunner.flags = append(factoryRunner.flags, flags)
+	}
+
 	factoryRunner.createCmd()
 
 	return factoryRunner

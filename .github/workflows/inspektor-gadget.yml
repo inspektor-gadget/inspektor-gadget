@@ -1392,6 +1392,7 @@ jobs:
       - build-ig
       - build-helper-images
       - build-and-push-gadgets
+      - check-secrets
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -1421,6 +1422,7 @@ jobs:
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+          IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
           -C gadgets/ test-ig-local -o build
 
   test-gadgets-k8s:
@@ -1477,6 +1479,7 @@ jobs:
         GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
         GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
         KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
+        IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
         -C gadgets/ test-k8s -o build
     - name: Undeploy Inspektor Gadget
       id: undeploy-ig
