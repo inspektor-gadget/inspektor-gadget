@@ -23,11 +23,11 @@ static const struct event empty_event = {};
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-#ifdef WITH_CWD
+#ifdef WITH_LONG_PATHS
 	__uint(max_entries, 1024);
-#else /* !WITH_CWD */
+#else /* !WITH_LONG_PATHS */
 	__uint(max_entries, 10240);
-#endif /* !WITH_CWD */
+#endif /* !WITH_LONG_PATHS */
 	__type(key, pid_t);
 	__type(value, struct event);
 } execs SEC(".maps");
