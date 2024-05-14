@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
@@ -69,7 +71,6 @@ func (f *field) ReflectType() reflect.Type {
 
 type dataSource struct {
 	name string
-	id   uint32
 
 	dType Type
 
@@ -137,10 +138,42 @@ func (ds *dataSource) NewData() Data {
 	d := &data{
 		Payload: make([][]byte, ds.payloadCount),
 	}
-	for i := range d.Payload {
-		d.Payload[i] = make([]byte, 0)
+
+	// Allocate memory for fixed size fields added with Add{Sub}Field
+	for _, f := range ds.fields {
+		// Skip all fields that don't need memory allocated: empty, static
+		// members and containers
+		if FieldFlagEmpty.In(f.Flags) || FieldFlagStaticMember.In(f.Flags) ||
+			FieldFlagContainer.In(f.Flags) {
+			continue
+		}
+
+		switch f.Kind {
+		case api.Kind_Bool, api.Kind_Int8, api.Kind_Uint8:
+			d.Payload[f.PayloadIndex] = make([]byte, 1)
+		case api.Kind_Int16, api.Kind_Uint16:
+			d.Payload[f.PayloadIndex] = make([]byte, 2)
+		case api.Kind_Int32, api.Kind_Uint32, api.Kind_Float32:
+			d.Payload[f.PayloadIndex] = make([]byte, 4)
+		case api.Kind_Int64, api.Kind_Uint64, api.Kind_Float64:
+			d.Payload[f.PayloadIndex] = make([]byte, 8)
+		}
 	}
+
 	return d
+}
+
+func (ds *dataSource) NewDataFromRaw(b []byte) (Data, error) {
+	data := &data{}
+	err := proto.Unmarshal(b, data.Raw())
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling payload: %w", err)
+	}
+
+	// TODO: check that size fields matches the size of the fields in the
+	// DataSource
+
+	return data, nil
 }
 
 func (ds *dataSource) ByteOrder() binary.ByteOrder {

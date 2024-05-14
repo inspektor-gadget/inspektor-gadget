@@ -176,8 +176,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 				}
 				expectedSeq = ev.Seq + 1
 				if ds, ok := dsMap[ev.DataSourceID]; ok && ds != nil {
-					d := ds.NewData()
-					err := proto.Unmarshal(ev.Payload, d.Raw())
+					d, err := ds.NewDataFromRaw(ev.Payload)
 					if err != nil {
 						gadgetCtx.Logger().Debugf("error unmarshaling payload: %v", err)
 						continue

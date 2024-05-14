@@ -67,6 +67,10 @@ type DataSource interface {
 
 	// NewData builds a new data structure that can be written to
 	NewData() Data
+
+	// NewDataFromRaw builds a new data structure from a raw bytes slice coming from protobuf
+	NewDataFromRaw(b []byte) (Data, error)
+
 	GetField(fieldName string) FieldAccessor
 	GetFieldsWithTag(tag ...string) []FieldAccessor
 
