@@ -719,7 +719,6 @@ jobs:
     if: github.event_name != 'pull_request'
     needs:
       - build-gadget-container-images
-      - public-key-check
       - check-secrets
     runs-on: ubuntu-latest
     permissions:
@@ -786,7 +785,6 @@ jobs:
     needs:
       - build-ig-container-images
       - check-secrets
-      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -847,7 +845,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - check-secrets
-      - public-key-check
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
       ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
@@ -1261,15 +1258,11 @@ jobs:
     # level: 1
     needs: check-secrets
     runs-on: ubuntu-latest
-    # When this job is run by a PR coming from a fork, it will not have access
-    # to secrets.
-    # Also, unless specified in the secrets configuration, dependabot cannot access
-    # to secrets.
-    # So, we skip this job when run by dependabot and from a PR coming from a
-    # fork.
-    # We still need to run this job on push, otherwise it will not be run when
-    # we merge something on main.
-    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') && needs.check-secrets.outputs.cosign == 'true'
+    # The first check means that job will only run if the secrets are present. So it will be skipped
+    # for forks, PRs from forks and dependabot PRs (if no dependabot secret are configured).
+    # The second check ensures if we forgot configuring the secrets in main repo
+    # (inspektor-gadget/inspektor-gadget) so we can catch it early.
+    if: needs.check-secrets.outputs.cosign == 'true' || (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget')
     steps:
       - uses: actions/checkout@v4
       - name: Install Cosign
@@ -1339,7 +1332,6 @@ jobs:
       - build-ig
       - build-helper-images
       - check-secrets
-      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -1982,6 +1974,7 @@ jobs:
       - check-secrets
       - scan-gadget-container-images
       - publish-gadget-images-manifest
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       contents: write
