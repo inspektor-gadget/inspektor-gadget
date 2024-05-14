@@ -7,7 +7,7 @@ require (
 	github.com/cilium/ebpf v0.15.0
 	github.com/containerd/containerd v1.7.16
 	github.com/containerd/nri v0.6.1
-	github.com/containers/common v0.58.2
+	github.com/containers/common v0.58.3
 	github.com/containers/image/v5 v5.30.1
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.5
