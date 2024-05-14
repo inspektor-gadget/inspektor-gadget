@@ -382,6 +382,7 @@ func (ds *dataSource) Subscribe(fn DataFunc, priority int) {
 }
 
 func (ds *dataSource) EmitAndRelease(d Data) error {
+	defer ds.Release(d)
 	for _, sub := range ds.subscriptions {
 		err := sub.fn(ds, d)
 		if err != nil {
