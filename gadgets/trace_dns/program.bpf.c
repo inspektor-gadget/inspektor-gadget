@@ -54,7 +54,7 @@ struct event_t {
 
 	__u64 latency_ns; // Set only if qr is 1 (response) and pkt_type is 0 (Host).
 
-	__u8 name[MAX_DNS_NAME];
+	char name[MAX_DNS_NAME];
 
 	__u16 ancount;
 	__u16 anaddrcount;
@@ -342,6 +342,27 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 
 	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event->name,
 			   name_len);
+
+	// Convert DNS string to dot notation
+	// "\u0003www\u0009wikipedia\u0003org\u0000"
+	// "www.wikipedia.org"
+	unsigned int i;
+	unsigned int remaining = event->name[0];
+	if (remaining == 0)
+		goto out;
+	for (i = 0; i < MAX_DNS_NAME - 1; i++) {
+		if (remaining == 0) {
+			remaining = event->name[i + 1];
+			if (remaining == 0) {
+				event->name[i] = '\0';
+				break;
+			}
+			event->name[i] = '.';
+			continue;
+		}
+		event->name[i] = event->name[i + 1];
+		remaining--;
+	}
 
 	event->pkt_type = skb->pkt_type;
 
