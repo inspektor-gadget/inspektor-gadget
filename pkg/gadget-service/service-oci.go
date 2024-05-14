@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -50,6 +52,17 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
 	}
 
+	p, ok := peer.FromContext(ctx)
+	if ok && p.AuthInfo != nil {
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if !ok {
+			return nil, fmt.Errorf("authentication information is not TLS: %v", p.AuthInfo)
+		}
+
+		subject := tlsInfo.State.VerifiedChains[0][0].Subject
+		s.logger.Infof("[%s] GetGadgetInfo(%q)", subject, req.ImageName)
+	}
+
 	// Get all available operators
 	ops := make([]operators.DataOperator, 0)
 	for op := range s.operators {
@@ -74,6 +87,17 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ociRequest := ctrl.GetRunRequest()
 	if ociRequest == nil {
 		return fmt.Errorf("expected first control message to be gadget run request")
+	}
+
+	p, ok := peer.FromContext(runGadget.Context())
+	if ok && p.AuthInfo != nil {
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if !ok {
+			return fmt.Errorf("authentication information are not TLS: %v", p.AuthInfo)
+		}
+
+		subject := tlsInfo.State.VerifiedChains[0][0].Subject
+		s.logger.Infof("[%s] RunGadget(%q)", subject, ociRequest.ImageName)
 	}
 
 	if ociRequest.Version != api.VersionGadgetRunProtocol {
