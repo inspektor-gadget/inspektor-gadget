@@ -142,8 +142,8 @@ func (i *ebpfInstance) runSnapshotters() error {
 
 		for pName, l := range snapshotter.links {
 			i.logger.Debugf("Running iterator %q", pName)
-			switch l.typ {
-			case "task":
+			switch {
+			case l.typ == "task":
 				buf, err := bpfiterns.Read(l.link)
 				if err != nil {
 					return fmt.Errorf("reading iterator %q: %w", pName, err)
@@ -160,7 +160,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 					snapshotter.accessor.Set(data, buf[i:i+size])
 					snapshotter.ds.EmitAndRelease(data)
 				}
-			case "tcp", "udp":
+			case isIteratorKindPerNetNs(l.typ):
 				visitedNetNs := make(map[uint64]struct{})
 				for _, container := range i.containers {
 					_, visited := visitedNetNs[container.Netns]
@@ -206,4 +206,13 @@ func (i *ebpfInstance) runSnapshotters() error {
 		}
 	}
 	return nil
+}
+
+// isIteratorKindPerNetNs returns true if the iterator kind needs to be run per
+// network namespace.
+func isIteratorKindPerNetNs(kind string) bool {
+	if kind == "tcp" || kind == "udp" {
+		return true
+	}
+	return false
 }
