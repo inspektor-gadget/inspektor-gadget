@@ -23,6 +23,9 @@ inputs:
   gadget_tag:
     description: 'Tag used for gadgets OCI images'
     required: true
+  gadget_verify_image:
+    description: 'Whether to verify the gadget image.'
+    default: 'true'
   test_summary_suffix:
     description: 'Suffix of the test summary file'
     required: true
@@ -84,6 +87,7 @@ runs:
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
           GADGET_REPOSITORY=${{ inputs.gadget_repository }} \
           GADGET_TAG=${{ inputs.gadget_tag }} \
+          GADGET_VERIFY_IMAGE=${{ inputs.gadget_verify_image }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Undeploy Inspektor Gadget

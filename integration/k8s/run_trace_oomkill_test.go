@@ -127,7 +127,7 @@ func TestRunTraceOOMKill(t *testing.T) {
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_oomkill:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_oomkill:%s --verify-image=%t -n %s -o json", *gadgetRepository, *gadgetTag, *gadgetVerifyImage, ns)
 
 	runTraceOOMKill(t, ns, cmd)
 }
