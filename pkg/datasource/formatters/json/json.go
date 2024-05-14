@@ -212,59 +212,71 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		switch accessor.Type() {
 		case api.Kind_Int8:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendInt(e.scratch[:0], int64(accessor.Int8(data)), 10)
+				v, _ := accessor.Int8(data)
+				b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Int16:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendInt(e.scratch[:0], int64(accessor.Int16(data)), 10)
+				v, _ := accessor.Int16(data)
+				b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Int32:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendInt(e.scratch[:0], int64(accessor.Int32(data)), 10)
+				v, _ := accessor.Int32(data)
+				b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Int64:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendInt(e.scratch[:0], accessor.Int64(data), 10)
+				v, _ := accessor.Int64(data)
+				b := strconv.AppendInt(e.scratch[:0], v, 10)
 				e.Write(b)
 			}
 		case api.Kind_Uint8:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendUint(e.scratch[:0], uint64(accessor.Uint8(data)), 10)
+				v, _ := accessor.Uint8(data)
+				b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Uint16:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendUint(e.scratch[:0], uint64(accessor.Uint16(data)), 10)
+				v, _ := accessor.Uint16(data)
+				b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Uint32:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendUint(e.scratch[:0], uint64(accessor.Uint32(data)), 10)
+				v, _ := accessor.Uint32(data)
+				b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
 				e.Write(b)
 			}
 		case api.Kind_Uint64:
 			fn = func(e *encodeState, data datasource.Data) {
-				b := strconv.AppendUint(e.scratch[:0], accessor.Uint64(data), 10)
+				v, _ := accessor.Uint64(data)
+				b := strconv.AppendUint(e.scratch[:0], v, 10)
 				e.Write(b)
 			}
 		case api.Kind_Float32:
 			fn = func(e *encodeState, data datasource.Data) {
-				floatEncoder(32).writeFloat(e, float64(accessor.Float32(data)))
+				v, _ := accessor.Float32(data)
+				floatEncoder(32).writeFloat(e, float64(v))
 			}
 		case api.Kind_Float64:
 			fn = func(e *encodeState, data datasource.Data) {
-				floatEncoder(64).writeFloat(e, accessor.Float64(data))
+				v, _ := accessor.Float64(data)
+				floatEncoder(64).writeFloat(e, v)
 			}
 		case api.Kind_String, api.Kind_CString:
 			fn = func(e *encodeState, data datasource.Data) {
-				writeString(e, accessor.String(data))
+				v, _ := accessor.String(data)
+				writeString(e, v)
 			}
 		case api.Kind_Bool:
 			fn = func(e *encodeState, data datasource.Data) {
-				if accessor.Bool(data) {
+				v, _ := accessor.Bool(data)
+				if v {
 					e.WriteString("true")
 				} else {
 					e.WriteString("false")

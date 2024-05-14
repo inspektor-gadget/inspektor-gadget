@@ -96,6 +96,7 @@ func TestDataSourceAddFields(t *testing.T) {
 	t.Parallel()
 
 	for _, f := range fields {
+		f := f
 		t.Run(f.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -109,56 +110,95 @@ func TestDataSourceAddFields(t *testing.T) {
 
 			switch f.typ {
 			case api.Kind_Bool:
-				acc.PutBool(data, f.val.(bool))
-				val := acc.Bool(data)
+				err := acc.PutBool(data, f.val.(bool))
+				require.NoError(t, err)
+
+				val, err := acc.Bool(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Int8:
-				acc.PutInt8(data, f.val.(int8))
-				val := acc.Int8(data)
+				err := acc.PutInt8(data, f.val.(int8))
+				require.NoError(t, err)
+
+				val, err := acc.Int8(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Int16:
-				acc.PutInt16(data, f.val.(int16))
-				val := acc.Int16(data)
+				err := acc.PutInt16(data, f.val.(int16))
+				require.NoError(t, err)
+
+				val, err := acc.Int16(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Int32:
-				acc.PutInt32(data, f.val.(int32))
-				val := acc.Int32(data)
+				err := acc.PutInt32(data, f.val.(int32))
+				require.NoError(t, err)
+
+				val, err := acc.Int32(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Int64:
-				acc.PutInt64(data, f.val.(int64))
-				val := acc.Int64(data)
+				err := acc.PutInt64(data, f.val.(int64))
+				require.NoError(t, err)
+
+				val, err := acc.Int64(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Uint8:
-				acc.PutUint8(data, f.val.(uint8))
-				val := acc.Uint8(data)
+				err := acc.PutUint8(data, f.val.(uint8))
+				require.NoError(t, err)
+
+				val, err := acc.Uint8(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Uint16:
-				acc.PutUint16(data, f.val.(uint16))
-				val := acc.Uint16(data)
+				err := acc.PutUint16(data, f.val.(uint16))
+				require.NoError(t, err)
+
+				val, err := acc.Uint16(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Uint32:
-				acc.PutUint32(data, f.val.(uint32))
-				val := acc.Uint32(data)
+				err := acc.PutUint32(data, f.val.(uint32))
+				require.NoError(t, err)
+
+				val, err := acc.Uint32(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Uint64:
-				acc.PutUint64(data, f.val.(uint64))
-				val := acc.Uint64(data)
+				err := acc.PutUint64(data, f.val.(uint64))
+				require.NoError(t, err)
+
+				val, err := acc.Uint64(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Float32:
-				acc.PutFloat32(data, f.val.(float32))
-				val := acc.Float32(data)
+				err := acc.PutFloat32(data, f.val.(float32))
+				require.NoError(t, err)
+
+				val, err := acc.Float32(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Float64:
-				acc.PutFloat64(data, f.val.(float64))
-				val := acc.Float64(data)
+				err := acc.PutFloat64(data, f.val.(float64))
+				require.NoError(t, err)
+
+				val, err := acc.Float64(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_String:
-				acc.PutString(data, f.val.(string))
-				val := acc.String(data)
+				err := acc.PutString(data, f.val.(string))
+				require.NoError(t, err)
+
+				val, err := acc.String(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			case api.Kind_Bytes:
-				acc.PutBytes(data, f.val.([]byte))
-				val := acc.Bytes(data)
+				err := acc.PutBytes(data, f.val.([]byte))
+				require.NoError(t, err)
+
+				val, err := acc.Bytes(data)
+				require.NoError(t, err)
 				assert.Equal(t, f.val, val)
 			}
 		})
@@ -169,6 +209,7 @@ func TestBadAccesors(t *testing.T) {
 	t.Parallel()
 
 	for _, f := range fields {
+		f := f
 		t.Run(f.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -431,7 +472,9 @@ func TestDataSourcePacketArray(t *testing.T) {
 	getData := pArray.Get(0)
 	require.NotNil(t, getData)
 
-	require.Equal(t, val, acc.Int8(getData))
+	ret, err := acc.Int8(getData)
+	require.NoError(t, err)
+	require.Equal(t, val, ret)
 }
 
 func TestDataSourceSubscribeSingle(t *testing.T) {
@@ -453,7 +496,9 @@ func TestDataSourceSubscribeSingle(t *testing.T) {
 	// Subscribe to the single data
 	var valueFromData int8
 	err = ds.Subscribe(func(fs DataSource, d Data) error {
-		valueFromData = acc.Int8(d)
+		var err error
+		valueFromData, err = acc.Int8(d)
+		require.NoError(t, err)
 		return nil
 	}, 50)
 	require.NoError(t, err)
@@ -461,8 +506,10 @@ func TestDataSourceSubscribeSingle(t *testing.T) {
 	// Subscribe to the packet
 	var valuesFromPacket int8
 	err = ds.SubscribePacket(func(fs DataSource, p Packet) error {
+		var err error
 		// We know that the packet is a PacketSingle because the ds is TypeArray
-		valuesFromPacket = acc.Int8(p.(PacketSingle))
+		valuesFromPacket, err = acc.Int8(p.(PacketSingle))
+		require.NoError(t, err)
 		return nil
 	}, 50)
 	require.NoError(t, err)
@@ -499,7 +546,9 @@ func TestDataSourceSubscribeArray(t *testing.T) {
 	// Subscribe to the single data
 	valuesFromData := []int8{}
 	err = ds.Subscribe(func(fs DataSource, d Data) error {
-		valuesFromData = append(valuesFromData, acc.Int8(d))
+		ret, err := acc.Int8(d)
+		require.NoError(t, err)
+		valuesFromData = append(valuesFromData, ret)
 		return nil
 	}, 50)
 	require.NoError(t, err)
@@ -508,7 +557,9 @@ func TestDataSourceSubscribeArray(t *testing.T) {
 	valuesFromArray := []int8{}
 	err = ds.SubscribeArray(func(fs DataSource, da DataArray) error {
 		for i := 0; i < da.Len(); i++ {
-			valuesFromArray = append(valuesFromArray, acc.Int8(da.Get(i)))
+			ret, err := acc.Int8(da.Get(i))
+			require.NoError(t, err)
+			valuesFromArray = append(valuesFromArray, ret)
 		}
 		return nil
 	}, 50)
@@ -520,7 +571,9 @@ func TestDataSourceSubscribeArray(t *testing.T) {
 		// We know that the packet is a PacketArray because the ds is TypeArray
 		pa := p.(PacketArray)
 		for i := 0; i < pa.Len(); i++ {
-			valuesFromPacket = append(valuesFromPacket, acc.Int8(pa.Get(i)))
+			ret, err := acc.Int8(pa.Get(i))
+			require.NoError(t, err)
+			valuesFromPacket = append(valuesFromPacket, ret)
 		}
 		return nil
 	}, 50)

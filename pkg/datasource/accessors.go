@@ -24,6 +24,22 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+type InvalidFieldLengthErr struct {
+	Expected int
+	Actual   int
+}
+
+func (e *InvalidFieldLengthErr) Error() string {
+	return fmt.Sprintf("invalid field length, expected %d, got %d", e.Expected, e.Actual)
+}
+
+func invalidFieldLengthErr(size, expected int) error {
+	return &InvalidFieldLengthErr{
+		Expected: expected,
+		Actual:   size,
+	}
+}
+
 // FieldAccessor grants access to the underlying buffer of a field
 type FieldAccessor interface {
 	Name() string
@@ -75,33 +91,33 @@ type FieldAccessor interface {
 	// Rename changes the name of the field. Currently it's not supported for subfields.
 	Rename(string) error
 
-	Uint8(Data) uint8
-	Uint16(Data) uint16
-	Uint32(Data) uint32
-	Uint64(Data) uint64
-	Int8(Data) int8
-	Int16(Data) int16
-	Int32(Data) int32
-	Int64(Data) int64
-	Float32(Data) float32
-	Float64(Data) float64
-	String(Data) string
-	Bytes(Data) []byte
-	Bool(Data) bool
+	Uint8(Data) (uint8, error)
+	Uint16(Data) (uint16, error)
+	Uint32(Data) (uint32, error)
+	Uint64(Data) (uint64, error)
+	Int8(Data) (int8, error)
+	Int16(Data) (int16, error)
+	Int32(Data) (int32, error)
+	Int64(Data) (int64, error)
+	Float32(Data) (float32, error)
+	Float64(Data) (float64, error)
+	String(Data) (string, error)
+	Bytes(Data) ([]byte, error)
+	Bool(Data) (bool, error)
 
-	PutUint8(Data, uint8)
-	PutUint16(Data, uint16)
-	PutUint32(Data, uint32)
-	PutUint64(Data, uint64)
-	PutInt8(Data, int8)
-	PutInt16(Data, int16)
-	PutInt32(Data, int32)
-	PutInt64(Data, int64)
-	PutFloat32(Data, float32)
-	PutFloat64(Data, float64)
-	PutString(Data, string)
-	PutBytes(Data, []byte)
-	PutBool(Data, bool)
+	PutUint8(Data, uint8) error
+	PutUint16(Data, uint16) error
+	PutUint32(Data, uint32) error
+	PutUint64(Data, uint64) error
+	PutInt8(Data, int8) error
+	PutInt16(Data, int16) error
+	PutInt32(Data, int32) error
+	PutInt64(Data, int64) error
+	PutFloat32(Data, float32) error
+	PutFloat64(Data, float64) error
+	PutString(Data, string) error
+	PutBytes(Data, []byte) error
+	PutBool(Data, bool) error
 }
 
 type fieldAccessor struct {
@@ -178,7 +194,7 @@ func (a *fieldAccessor) Set(d Data, b []byte) error {
 	}
 	if FieldFlagStaticMember.In(a.f.Flags) {
 		if uint32(len(b)) != a.f.Size {
-			return fmt.Errorf("invalid size, static member expected %d, got %d", a.f.Size, len(b))
+			return invalidFieldLengthErr(len(b), int(a.f.Size))
 		}
 		// When accessing a member of a statically sized field, copy memory
 		copy(d.payload()[a.f.PayloadIndex][a.f.Offs:a.f.Offs+a.f.Size], b)
@@ -186,7 +202,7 @@ func (a *fieldAccessor) Set(d Data, b []byte) error {
 	}
 	if FieldFlagContainer.In(a.f.Flags) {
 		if uint32(len(b)) != a.f.Size {
-			return fmt.Errorf("invalid size, container expected %d, got %d", a.f.Size, len(b))
+			return invalidFieldLengthErr(len(b), int(a.f.Size))
 		}
 	}
 	d.payload()[a.f.PayloadIndex] = b
@@ -321,187 +337,203 @@ func (a *fieldAccessor) Annotations() map[string]string {
 	return maps.Clone(a.f.Annotations)
 }
 
-func (a *fieldAccessor) Uint8(data Data) uint8 {
+func (a *fieldAccessor) Uint8(data Data) (uint8, error) {
 	val := a.Get(data)
-	if len(val) < 1 {
-		return 0
+	if len(val) != 1 {
+		return 0, invalidFieldLengthErr(len(val), 1)
 	}
-	return val[0]
+	return val[0], nil
 }
 
-func (a *fieldAccessor) Uint16(data Data) uint16 {
+func (a *fieldAccessor) Uint16(data Data) (uint16, error) {
 	val := a.Get(data)
-	if len(val) < 2 {
-		return 0
+	if len(val) != 2 {
+		return 0, invalidFieldLengthErr(len(val), 2)
 	}
-	return a.ds.byteOrder.Uint16(val)
+	return a.ds.byteOrder.Uint16(val), nil
 }
 
-func (a *fieldAccessor) Uint32(data Data) uint32 {
+func (a *fieldAccessor) Uint32(data Data) (uint32, error) {
 	val := a.Get(data)
-	if len(val) < 4 {
-		return 0
+	if len(val) != 4 {
+		return 0, invalidFieldLengthErr(len(val), 4)
 	}
-	return a.ds.byteOrder.Uint32(val)
+	return a.ds.byteOrder.Uint32(val), nil
 }
 
-func (a *fieldAccessor) Uint64(data Data) uint64 {
+func (a *fieldAccessor) Uint64(data Data) (uint64, error) {
 	val := a.Get(data)
-	if len(val) < 8 {
-		return 0
+	if len(val) != 8 {
+		return 0, invalidFieldLengthErr(len(val), 8)
 	}
-	return a.ds.byteOrder.Uint64(val)
+	return a.ds.byteOrder.Uint64(val), nil
 }
 
-func (a *fieldAccessor) Int8(data Data) int8 {
+func (a *fieldAccessor) Int8(data Data) (int8, error) {
 	val := a.Get(data)
-	if len(val) < 1 {
-		return 0
+	if len(val) != 1 {
+		return 0, invalidFieldLengthErr(len(val), 1)
 	}
-	return int8(val[0])
+	return int8(val[0]), nil
 }
 
-func (a *fieldAccessor) Int16(data Data) int16 {
+func (a *fieldAccessor) Int16(data Data) (int16, error) {
 	val := a.Get(data)
-	if len(val) < 2 {
-		return 0
+	if len(val) != 2 {
+		return 0, invalidFieldLengthErr(len(val), 2)
 	}
-	return int16(a.ds.byteOrder.Uint16(val))
+	return int16(a.ds.byteOrder.Uint16(val)), nil
 }
 
-func (a *fieldAccessor) Int32(data Data) int32 {
+func (a *fieldAccessor) Int32(data Data) (int32, error) {
 	val := a.Get(data)
-	if len(val) < 4 {
-		return 0
+	if len(val) != 4 {
+		return 0, invalidFieldLengthErr(len(val), 4)
 	}
-	return int32(a.ds.byteOrder.Uint32(val))
+	return int32(a.ds.byteOrder.Uint32(val)), nil
 }
 
-func (a *fieldAccessor) Int64(data Data) int64 {
+func (a *fieldAccessor) Int64(data Data) (int64, error) {
 	val := a.Get(data)
-	if len(val) < 8 {
-		return 0
+	if len(val) != 8 {
+		return 0, invalidFieldLengthErr(len(val), 8)
 	}
-	return int64(a.ds.byteOrder.Uint64(val))
+	return int64(a.ds.byteOrder.Uint64(val)), nil
 }
 
-func (a *fieldAccessor) Float32(data Data) float32 {
-	return math.Float32frombits(a.Uint32(data))
+func (a *fieldAccessor) Float32(data Data) (float32, error) {
+	i, err := a.Uint32(data)
+	if err != nil {
+		return 0.0, err
+	}
+	return math.Float32frombits(i), nil
 }
 
-func (a *fieldAccessor) Float64(data Data) float64 {
-	return math.Float64frombits(a.Uint64(data))
+func (a *fieldAccessor) Float64(data Data) (float64, error) {
+	i, err := a.Uint64(data)
+	if err != nil {
+		return 0.0, err
+	}
+	return math.Float64frombits(i), nil
 }
 
-func (a *fieldAccessor) String(data Data) string {
+func (a *fieldAccessor) String(data Data) (string, error) {
 	if a.f.Kind == api.Kind_CString {
 		in := a.Get(data)
 		for i := 0; i < len(in); i++ {
 			if in[i] == 0 {
-				return string(in[:i])
+				return string(in[:i]), nil
 			}
 		}
-		return string(in)
+		return string(in), nil
 	}
-	return string(a.Get(data))
+	return string(a.Get(data)), nil
 }
 
-func (a *fieldAccessor) Bytes(data Data) []byte {
-	return a.Get(data)
+func (a *fieldAccessor) Bytes(data Data) ([]byte, error) {
+	return a.Get(data), nil
 }
 
-func (a *fieldAccessor) Bool(data Data) bool {
+func (a *fieldAccessor) Bool(data Data) (bool, error) {
 	val := a.Get(data)
-	if len(val) < 1 {
-		return false
+	if len(val) != 1 {
+		return false, invalidFieldLengthErr(len(val), 1)
 	}
-	return val[0] == 1
+	return val[0] == 1, nil
 }
 
-func (a *fieldAccessor) PutUint8(data Data, val uint8) {
+func (a *fieldAccessor) PutUint8(data Data, val uint8) error {
 	b := a.Get(data)
-	if len(b) < 1 {
-		return
+	if len(b) != 1 {
+		return invalidFieldLengthErr(len(b), 1)
 	}
 	b[0] = val
+	return nil
 }
 
-func (a *fieldAccessor) PutUint16(data Data, val uint16) {
+func (a *fieldAccessor) PutUint16(data Data, val uint16) error {
 	b := a.Get(data)
-	if len(b) < 2 {
-		return
+	if len(b) != 2 {
+		return invalidFieldLengthErr(len(b), 2)
 	}
 	a.ds.byteOrder.PutUint16(b, val)
+	return nil
 }
 
-func (a *fieldAccessor) PutUint32(data Data, val uint32) {
+func (a *fieldAccessor) PutUint32(data Data, val uint32) error {
 	b := a.Get(data)
-	if len(b) < 4 {
-		return
+	if len(b) != 4 {
+		return invalidFieldLengthErr(len(b), 4)
 	}
 	a.ds.byteOrder.PutUint32(b, val)
+	return nil
 }
 
-func (a *fieldAccessor) PutUint64(data Data, val uint64) {
+func (a *fieldAccessor) PutUint64(data Data, val uint64) error {
 	b := a.Get(data)
-	if len(b) < 8 {
-		return
+	if len(b) != 8 {
+		return invalidFieldLengthErr(len(b), 8)
 	}
 	a.ds.byteOrder.PutUint64(a.Get(data), val)
+	return nil
 }
 
-func (a *fieldAccessor) PutInt8(data Data, val int8) {
+func (a *fieldAccessor) PutInt8(data Data, val int8) error {
 	b := a.Get(data)
-	if len(b) < 1 {
-		return
+	if len(b) != 1 {
+		return invalidFieldLengthErr(len(b), 1)
 	}
 	b[0] = uint8(val)
+	return nil
 }
 
-func (a *fieldAccessor) PutInt16(data Data, val int16) {
+func (a *fieldAccessor) PutInt16(data Data, val int16) error {
 	b := a.Get(data)
-	if len(b) < 2 {
-		return
+	if len(b) != 2 {
+		return invalidFieldLengthErr(len(b), 2)
 	}
 	a.ds.byteOrder.PutUint16(b, uint16(val))
+	return nil
 }
 
-func (a *fieldAccessor) PutInt32(data Data, val int32) {
+func (a *fieldAccessor) PutInt32(data Data, val int32) error {
 	b := a.Get(data)
-	if len(b) < 4 {
-		return
+	if len(b) != 4 {
+		return invalidFieldLengthErr(len(b), 4)
 	}
 	a.ds.byteOrder.PutUint32(b, uint32(val))
+	return nil
 }
 
-func (a *fieldAccessor) PutInt64(data Data, val int64) {
+func (a *fieldAccessor) PutInt64(data Data, val int64) error {
 	b := a.Get(data)
-	if len(b) < 8 {
-		return
+	if len(b) != 8 {
+		return invalidFieldLengthErr(len(b), 8)
 	}
 	a.ds.byteOrder.PutUint64(b, uint64(val))
+	return nil
 }
 
-func (a *fieldAccessor) PutFloat32(data Data, val float32) {
-	a.PutUint32(data, math.Float32bits(val))
+func (a *fieldAccessor) PutFloat32(data Data, val float32) error {
+	return a.PutUint32(data, math.Float32bits(val))
 }
 
-func (a *fieldAccessor) PutFloat64(data Data, val float64) {
-	a.PutUint64(data, math.Float64bits(val))
+func (a *fieldAccessor) PutFloat64(data Data, val float64) error {
+	return a.PutUint64(data, math.Float64bits(val))
 }
 
-func (a *fieldAccessor) PutString(data Data, val string) {
-	a.Set(data, []byte(val))
+func (a *fieldAccessor) PutString(data Data, val string) error {
+	return a.Set(data, []byte(val))
 }
 
-func (a *fieldAccessor) PutBytes(data Data, val []byte) {
-	a.Set(data, val)
+func (a *fieldAccessor) PutBytes(data Data, val []byte) error {
+	return a.Set(data, val)
 }
 
-func (a *fieldAccessor) PutBool(data Data, val bool) {
+func (a *fieldAccessor) PutBool(data Data, val bool) error {
 	b := a.Get(data)
-	if len(b) < 1 {
-		return
+	if len(b) != 1 {
+		return invalidFieldLengthErr(len(b), 1)
 	}
 
 	if val {
@@ -509,4 +541,5 @@ func (a *fieldAccessor) PutBool(data Data, val bool) {
 	} else {
 		b[0] = 0
 	}
+	return nil
 }
