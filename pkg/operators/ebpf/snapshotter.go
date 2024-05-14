@@ -40,7 +40,6 @@ type Snapshotter struct {
 
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
-	netns    datasource.FieldAccessor
 
 	// iterators is a list of iterators that this snapshotter needs to run to
 	// get the data. This information is gathered from the snapshotter
@@ -190,8 +189,6 @@ func (i *ebpfInstance) runSnapshotters() error {
 						for i := uint32(0); i < uint32(len(buf)); i += size {
 							data := snapshotter.ds.NewData()
 							snapshotter.accessor.Set(data, buf[i:i+size])
-							snapshotter.netns.PutUint64(data, container.Netns)
-
 							snapshotter.ds.EmitAndRelease(data)
 						}
 

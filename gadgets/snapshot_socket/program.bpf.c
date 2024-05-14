@@ -13,6 +13,7 @@
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
+#include <bpf/bpf_core_read.h>
 
 #include <gadget/macros.h>
 #include <gadget/types.h>
@@ -51,6 +52,7 @@ struct socket_entry {
 	struct gadget_l4endpoint_t dst;
 	__u32 state;
 	__u32 ino;
+	__u32 netns;
 };
 
 GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
@@ -86,7 +88,7 @@ static __always_inline void
 socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 		     __be32 src_v4, struct in6_addr *src_v6, __u16 srcp,
 		     __be32 dest_v4, struct in6_addr *dest_v6, __u16 destp,
-		     __u8 state, __u64 ino)
+		     __u8 state, __u64 ino, __u32 netns)
 {
 	struct socket_entry entry = {};
 
@@ -112,11 +114,12 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.dst.port = bpf_htons(destp);
 	entry.state = state;
 	entry.ino = ino;
+	entry.netns = netns;
 
 	bpf_seq_write(seq, &entry, sizeof(entry));
 }
 
-static int dump_tcp_sock(struct seq_file *seq, struct tcp_sock *tp)
+static int dump_tcp_sock(struct seq_file *seq, __u32 netns, struct tcp_sock *tp)
 {
 	struct inet_connection_sock *icsk = &tp->inet_conn;
 	struct inet_sock *inet = &icsk->icsk_inet;
@@ -126,12 +129,13 @@ static int dump_tcp_sock(struct seq_file *seq, struct tcp_sock *tp)
 			     inet->inet_rcv_saddr, &sp->sk_v6_rcv_saddr,
 			     inet->inet_sport, inet->inet_daddr,
 			     &sp->sk_v6_daddr, inet->inet_dport, sp->sk_state,
-			     sock_i_ino(sp));
+			     sock_i_ino(sp), netns);
 
 	return 0;
 }
 
-static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
+static int dump_tw_sock(struct seq_file *seq, __u32 netns,
+			struct tcp_timewait_sock *ttw)
 {
 	struct inet_timewait_sock *tw = &ttw->tw_sk;
 
@@ -151,13 +155,14 @@ static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
 
 	socket_bpf_seq_write(seq, tw->tw_family, IPPROTO_TCP, tw->tw_rcv_saddr,
 			     &tw->tw_v6_rcv_saddr, tw->tw_sport, tw->tw_daddr,
-			     &tw->tw_v6_daddr, tw->tw_dport, tw->tw_substate,
-			     0);
+			     &tw->tw_v6_daddr, tw->tw_dport, tw->tw_substate, 0,
+			     netns);
 
 	return 0;
 }
 
-static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
+static int dump_req_sock(struct seq_file *seq, __u32 netns,
+			 struct tcp_request_sock *treq)
 {
 	struct inet_request_sock *irsk = &treq->req;
 
@@ -165,7 +170,7 @@ static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
 			     irsk->ir_loc_addr, &irsk->ir_v6_loc_addr,
 			     irsk->ir_num, irsk->ir_rmt_addr,
 			     &irsk->ir_v6_rmt_addr, irsk->ir_rmt_port,
-			     TCP_SYN_RECV, sock_i_ino(treq->req.req.sk));
+			     TCP_SYN_RECV, sock_i_ino(treq->req.req.sk), netns);
 
 	return 0;
 }
@@ -178,21 +183,24 @@ int ig_snap_tcp(struct bpf_iter__tcp *ctx)
 	struct tcp_timewait_sock *tw;
 	struct tcp_request_sock *req;
 	struct tcp_sock *tp;
+	__u32 netns;
 
 	if (sk_common == (void *)0)
 		return 0;
 
+	BPF_CORE_READ_INTO(&netns, sk_common, skc_net.net, ns.inum);
+
 	tp = bpf_skc_to_tcp_sock(sk_common);
 	if (tp)
-		return dump_tcp_sock(seq, tp);
+		return dump_tcp_sock(seq, netns, tp);
 
 	tw = bpf_skc_to_tcp_timewait_sock(sk_common);
 	if (tw)
-		return dump_tw_sock(seq, tw);
+		return dump_tw_sock(seq, netns, tw);
 
 	req = bpf_skc_to_tcp_request_sock(sk_common);
 	if (req)
-		return dump_req_sock(seq, req);
+		return dump_req_sock(seq, netns, req);
 
 	return 0;
 }
@@ -211,11 +219,12 @@ int ig_snap_udp(struct bpf_iter__udp *ctx)
 	inet = &udp_sk->inet;
 	sp = &inet->sk;
 
-	socket_bpf_seq_write(seq, sp->sk_family, IPPROTO_UDP,
-			     inet->inet_rcv_saddr, &sp->sk_v6_rcv_saddr,
-			     inet->inet_sport, inet->inet_daddr,
-			     &sp->sk_v6_daddr, inet->inet_dport, sp->sk_state,
-			     sock_i_ino(sp));
+	socket_bpf_seq_write(
+		seq, sp->sk_family, IPPROTO_UDP, inet->inet_rcv_saddr,
+		&sp->sk_v6_rcv_saddr, inet->inet_sport, inet->inet_daddr,
+		&sp->sk_v6_daddr, inet->inet_dport, sp->sk_state,
+		sock_i_ino(sp),
+		BPF_CORE_READ(sp, __sk_common.skc_net.net, ns.inum));
 
 	return 0;
 }
