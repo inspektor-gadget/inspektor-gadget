@@ -6,6 +6,8 @@
 #include <linux/ip.h>
 #include <linux/in.h>
 #include <linux/in6.h>
+#include <linux/tcp.h>
+#include <linux/types.h>
 #include <linux/udp.h>
 #include <sys/socket.h>
 

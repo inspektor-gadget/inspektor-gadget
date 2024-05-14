@@ -3,63 +3,46 @@
 #ifndef SOCKETS_MAP_H
 #define SOCKETS_MAP_H
 
-#ifdef GADGET_TYPE_NETWORKING
-
-#include <linux/if_ether.h>
-#include <linux/in.h>
-#include <linux/ip.h>
-#include <linux/ipv6.h>
-#include <linux/tcp.h>
-#include <linux/udp.h>
-
+// The include <bpf/bpf_helpers.h> below requires to include either
+// <linux/types.h> or <vmlinux.h> before. We can't include both because they
+// are incompatible. Let the gadget choose which one to include.
+#if !defined(__VMLINUX_H__) && !defined(_LINUX_TYPES_H)
+#error "Include <linux/types.h> or <vmlinux.h> before including this file."
 #endif
 
-#ifndef PACKET_HOST
-#define PACKET_HOST 0
-#endif
+// Necessary for the SEC() definition
+#include <bpf/bpf_helpers.h>
 
-#ifndef PACKET_OUTGOING
-#define PACKET_OUTGOING 4
-#endif
+// This file is shared between the networking and tracing programs.
+// Therefore, avoid includes that are specific to one of these types of programs.
+// For example, don't include <linux/ip.h> nor <vmlinux.h> here.
+// Redefine the constants we need but namespaced (SE_) so we don't pollute gadgets.
 
-#ifndef ETH_HLEN
-#define ETH_HLEN 14
-#endif
+#define SE_PACKET_HOST 0
+#define SE_ETH_HLEN 14
+#define SE_ETH_P_IP 0x0800 /* Internet Protocol packet     */
+#define SE_ETH_P_IPV6 0x86DD /* IPv6 over bluebook           */
+#define SE_AF_INET 2 /* Internet IP Protocol 	*/
+#define SE_AF_INET6 10 /* IP version 6                 */
 
-#ifndef ETH_P_IP
-#define ETH_P_IP 0x0800 /* Internet Protocol packet     */
-#endif
+#define SE_IPV6_HLEN 40
+#define SE_IPV6_NEXTHDR_OFFSET 6 // offsetof(struct ipv6hdr, nexthdr)
 
-#ifndef AF_INET
-#define AF_INET 2 /* Internet IP Protocol 	*/
-#endif
+#define SE_TCPHDR_DEST_OFFSET 2 // offsetof(struct tcphdr, dest);
+#define SE_TCPHDR_SOURCE_OFFSET 0 // offsetof(struct tcphdr, source);
+#define SE_UDPHDR_DEST_OFFSET 2 // offsetof(struct udphdr, dest);
+#define SE_UDPHDR_SOURCE_OFFSET 0 // offsetof(struct udphdr, source);
 
-#ifndef AF_INET6
-#define AF_INET6 10 /* IP version 6                 */
-#endif
+#define SE_NEXTHDR_HOP 0 /* Hop-by-hop option header. */
+#define SE_NEXTHDR_TCP 6 /* TCP segment. */
+#define SE_NEXTHDR_UDP 17 /* UDP message. */
+#define SE_NEXTHDR_ROUTING 43 /* Routing header. */
+#define SE_NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
+#define SE_NEXTHDR_AUTH 51 /* Authentication header. */
+#define SE_NEXTHDR_NONE 59 /* No next header */
+#define SE_NEXTHDR_DEST 60 /* Destination options header. */
 
-// See include/net/ipv6.h
-#ifndef NEXTHDR_NONE
-#define NEXTHDR_HOP 0 /* Hop-by-hop option header. */
-#define NEXTHDR_TCP 6 /* TCP segment. */
-#define NEXTHDR_UDP 17 /* UDP message. */
-#define NEXTHDR_ROUTING 43 /* Routing header. */
-#define NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
-#define NEXTHDR_AUTH 51 /* Authentication header. */
-#define NEXTHDR_NONE 59 /* No next header */
-#define NEXTHDR_DEST 60 /* Destination options header. */
-#endif
-
-#ifdef GADGET_TYPE_NETWORKING
-
-unsigned long long load_byte(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.byte");
-unsigned long long load_half(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.half");
-unsigned long long load_word(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.word");
-
-#endif
+#define SE_TASK_COMM_LEN 16
 
 struct sockets_key {
 	__u32 netns;
@@ -70,12 +53,11 @@ struct sockets_key {
 	__u16 port;
 };
 
-#define TASK_COMM_LEN 16
 struct sockets_value {
 	__u64 mntns;
 	__u64 pid_tgid;
 	__u64 uid_gid;
-	char task[TASK_COMM_LEN];
+	char task[SE_TASK_COMM_LEN];
 	__u64 sock;
 	__u64 deletion_timestamp;
 	char ipv6only;
@@ -109,10 +91,10 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return 0;
 
 	switch (h_proto) {
-	case bpf_htons(ETH_P_IP):
-		key.family = AF_INET;
+	case bpf_htons(SE_ETH_P_IP):
+		key.family = SE_AF_INET;
 		err = bpf_skb_load_bytes(
-			skb, ETH_HLEN + offsetof(struct iphdr, protocol),
+			skb, SE_ETH_HLEN + offsetof(struct iphdr, protocol),
 			&key.proto, sizeof(key.proto));
 		if (err < 0)
 			return 0;
@@ -121,23 +103,23 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		// represents the size of the IP header in 32-bit words, so we need to
 		// multiply this value by 4 to get the header size in bytes.
 		__u8 ihl_byte;
-		err = bpf_skb_load_bytes(skb, ETH_HLEN, &ihl_byte,
+		err = bpf_skb_load_bytes(skb, SE_ETH_HLEN, &ihl_byte,
 					 sizeof(ihl_byte));
 		if (err < 0)
 			return 0;
 		struct iphdr *iph = (struct iphdr *)&ihl_byte;
 		__u8 ip_header_len = iph->ihl * 4;
-		l4_off = ETH_HLEN + ip_header_len;
+		l4_off = SE_ETH_HLEN + ip_header_len;
 		break;
 
-	case bpf_htons(ETH_P_IPV6):
-		key.family = AF_INET6;
+	case bpf_htons(SE_ETH_P_IPV6):
+		key.family = SE_AF_INET6;
 		err = bpf_skb_load_bytes(
-			skb, ETH_HLEN + offsetof(struct ipv6hdr, nexthdr),
+			skb, SE_ETH_HLEN + SE_IPV6_NEXTHDR_OFFSET,
 			&key.proto, sizeof(key.proto));
 		if (err < 0)
 			return 0;
-		l4_off = ETH_HLEN + sizeof(struct ipv6hdr);
+		l4_off = SE_ETH_HLEN + SE_IPV6_HLEN;
 
 // Parse IPv6 extension headers
 // Up to 6 extension headers can be chained. See ipv6_ext_hdr().
@@ -147,8 +129,8 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 			__u8 off;
 
 			// TCP or UDP found
-			if (key.proto == NEXTHDR_TCP ||
-			    key.proto == NEXTHDR_UDP)
+			if (key.proto == SE_NEXTHDR_TCP ||
+			    key.proto == SE_NEXTHDR_UDP)
 				break;
 
 			err = bpf_skb_load_bytes(skb, l4_off, &nextproto,
@@ -159,11 +141,11 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 			// Unfortunately, each extension header has a different way to calculate the header length.
 			// Support the ones defined in ipv6_ext_hdr(). See ipv6_skip_exthdr().
 			switch (key.proto) {
-			case NEXTHDR_FRAGMENT:
+			case SE_NEXTHDR_FRAGMENT:
 				// No hdrlen in the fragment header
 				l4_off += 8;
 				break;
-			case NEXTHDR_AUTH:
+			case SE_NEXTHDR_AUTH:
 				// See ipv6_authlen()
 				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
 							 sizeof(off));
@@ -171,9 +153,9 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 					return 0;
 				l4_off += 4 * (off + 2);
 				break;
-			case NEXTHDR_HOP:
-			case NEXTHDR_ROUTING:
-			case NEXTHDR_DEST:
+			case SE_NEXTHDR_HOP:
+			case SE_NEXTHDR_ROUTING:
+			case SE_NEXTHDR_DEST:
 				// See ipv6_optlen()
 				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
 							 sizeof(off));
@@ -181,7 +163,7 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 					return 0;
 				l4_off += 8 * (off + 1);
 				break;
-			case NEXTHDR_NONE:
+			case SE_NEXTHDR_NONE:
 				// Nothing more in the packet. Not even TCP or UDP.
 				return 0;
 			default:
@@ -199,16 +181,16 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	int off = l4_off;
 	switch (key.proto) {
 	case IPPROTO_TCP:
-		if (skb->pkt_type == PACKET_HOST)
-			off += offsetof(struct tcphdr, dest);
+		if (skb->pkt_type == SE_PACKET_HOST)
+			off += SE_TCPHDR_DEST_OFFSET;
 		else
-			off += offsetof(struct tcphdr, source);
+			off += SE_TCPHDR_SOURCE_OFFSET;
 		break;
 	case IPPROTO_UDP:
-		if (skb->pkt_type == PACKET_HOST)
-			off += offsetof(struct udphdr, dest);
+		if (skb->pkt_type == SE_PACKET_HOST)
+			off += SE_UDPHDR_DEST_OFFSET;
 		else
-			off += offsetof(struct udphdr, source);
+			off += SE_UDPHDR_SOURCE_OFFSET;
 		break;
 	default:
 		return 0;
@@ -224,8 +206,8 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return ret;
 
 	// If a native socket was not found, try to find a dual-stack socket.
-	if (key.family == AF_INET) {
-		key.family = AF_INET6;
+	if (key.family == SE_AF_INET) {
+		key.family = SE_AF_INET6;
 		ret = bpf_map_lookup_elem(&gadget_sockets, &key);
 		if (ret && ret->ipv6only == 0)
 			return ret;
