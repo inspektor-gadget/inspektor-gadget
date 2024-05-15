@@ -24,6 +24,7 @@ import (
 
 	"github.com/cilium/ebpf/btf"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -52,7 +53,10 @@ func (o *btfgenOperator) Description() string {
 }
 
 func (o *btfgenOperator) InstantiateImageOperator(
-	gadgetCtx operators.GadgetContext, desc ocispec.Descriptor, paramValues api.ParamValues,
+	gadgetCtx operators.GadgetContext,
+	target oras.ReadOnlyTarget,
+	desc ocispec.Descriptor,
+	paramValues api.ParamValues,
 ) (operators.ImageOperatorInstance, error) {
 	logger := gadgetCtx.Logger()
 
@@ -63,12 +67,14 @@ func (o *btfgenOperator) InstantiateImageOperator(
 	}
 
 	return &btfgenOperatorInstance{
-		desc: desc,
+		target: target,
+		desc:   desc,
 	}, nil
 }
 
 type btfgenOperatorInstance struct {
-	desc ocispec.Descriptor
+	target oras.ReadOnlyTarget
+	desc   ocispec.Descriptor
 }
 
 func (i *btfgenOperatorInstance) Name() string {
@@ -81,7 +87,7 @@ func (i *btfgenOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) erro
 		return fmt.Errorf("getting OS info: %w", err)
 	}
 
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), i.desc)
+	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), i.target, i.desc)
 	if err != nil {
 		return fmt.Errorf("getting ebpf binary: %w", err)
 	}

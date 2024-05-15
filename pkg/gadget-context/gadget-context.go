@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"oras.land/oras-go/v2"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -65,6 +67,7 @@ type GadgetContext struct {
 	loaded           bool
 	imageName        string
 	metadata         []byte
+	orasTarget       oras.ReadOnlyTarget
 }
 
 func NewBuiltIn(
@@ -286,6 +289,10 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	return nil
+}
+
+func (c *GadgetContext) OrasTarget() oras.ReadOnlyTarget {
+	return c.orasTarget
 }
 
 func WithTimeoutOrCancel(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {

@@ -18,6 +18,8 @@ import (
 	"slices"
 	"time"
 
+	"oras.land/oras-go/v2"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
@@ -39,5 +41,11 @@ func WithDataOperators(ops ...operators.DataOperator) Option {
 func WithTimeout(timeout time.Duration) Option {
 	return func(gadgetCtx *GadgetContext) {
 		gadgetCtx.timeout = timeout
+	}
+}
+
+func WithOrasReadonlyTarget(ociStore oras.ReadOnlyTarget) Option {
+	return func(c *GadgetContext) {
+		c.orasTarget = ociStore
 	}
 }
