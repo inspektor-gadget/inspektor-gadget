@@ -76,7 +76,7 @@ func (s *simpleOperator) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (s *simpleOperator) Stop(gadgetCtx operators.GadgetContext) error {
-	if s.onStart != nil {
+	if s.onStop != nil {
 		return s.onStop(gadgetCtx)
 	}
 	return nil
