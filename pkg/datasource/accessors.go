@@ -22,7 +22,6 @@ import (
 	"slices"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
 // FieldAccessor grants access to the underlying buffer of a field
@@ -396,7 +395,13 @@ func (a *fieldAccessor) Float64(data Data) float64 {
 
 func (a *fieldAccessor) String(data Data) string {
 	if a.f.Kind == api.Kind_CString {
-		return gadgets.FromCString(a.Get(data))
+		in := a.Get(data)
+		for i := 0; i < len(in); i++ {
+			if in[i] == 0 {
+				return string(in[:i])
+			}
+		}
+		return string(in)
 	}
 	return string(a.Get(data))
 }
