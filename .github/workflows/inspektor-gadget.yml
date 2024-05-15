@@ -473,6 +473,8 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@v3
       with:
@@ -504,6 +506,8 @@ jobs:
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
       uses: oras-project/setup-oras@v1
