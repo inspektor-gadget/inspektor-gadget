@@ -17,6 +17,7 @@ Examples showing how to use some gadgets in their simplest configuration.
   events to the terminal in json format.
 - [trace_dns](./simple/trace_dns/): Run the `trace_dns` gadget with some of the
   operators it requires.
+- [from_file](./simple/from_file/): Run a gadget from a tarball.
 
 ### Operators
 
