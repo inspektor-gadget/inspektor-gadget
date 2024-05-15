@@ -80,7 +80,7 @@ func main() {
 	var client pb.GadgetTracerManagerClient
 	var ctx context.Context
 	var cancel context.CancelFunc
-	conn, err := grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
 	}

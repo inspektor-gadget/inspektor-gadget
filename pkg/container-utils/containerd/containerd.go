@@ -70,10 +70,7 @@ func NewContainerdClient(socketPath string, protocol string, config *containerut
 		namespace = config.Namespace
 	}
 
-	dialCtx, cancelFunc := context.WithTimeout(context.TODO(), DefaultTimeout)
-	defer cancelFunc()
-	grpcConn, err := grpc.DialContext(
-		dialCtx,
+	grpcConn, err := grpc.NewClient(
 		"unix:"+socketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
