@@ -1,5 +1,5 @@
 # Artifact Hub package metadata file
-version: 0.28.0
+version: 0.28.1
 name: "top file"
 category: monitoring-logging
 displayName: "top file"
