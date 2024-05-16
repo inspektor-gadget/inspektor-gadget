@@ -12,6 +12,9 @@
 #include <gadget/sockets-map.h>
 #include "socket-enricher-helpers.h"
 
+#define AF_INET 2 /* Internet IP Protocol */
+#define AF_INET6 10 /* IP version 6 */
+
 #define MAX_ENTRIES 10240
 
 // The map 'start' keeps context between a kprobe and a kretprobe

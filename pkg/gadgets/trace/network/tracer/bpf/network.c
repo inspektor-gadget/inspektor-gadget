@@ -6,6 +6,7 @@
 #include <linux/ip.h>
 #include <linux/in.h>
 #include <linux/udp.h>
+#include <linux/tcp.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
@@ -14,6 +15,12 @@
 #include <gadget/sockets-map.h>
 
 #include "network.h"
+
+#define PACKET_HOST 0
+#define PACKET_OUTGOING 4
+
+#define AF_INET 2 /* Internet IP Protocol */
+#define AF_INET6 10 /* IP version 6 */
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event_t *unusedevent __attribute__((unused));

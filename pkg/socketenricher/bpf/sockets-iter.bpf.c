@@ -12,6 +12,9 @@
 #include <gadget/sockets-map.h>
 #include "socket-enricher-helpers.h"
 
+#define AF_INET 2 /* Internet IP Protocol */
+#define AF_INET6 10 /* IP version 6 */
+
 const volatile __u64 socket_file_ops_addr = 0;
 
 static __always_inline void insert_socket_from_iter(struct sock *sock,

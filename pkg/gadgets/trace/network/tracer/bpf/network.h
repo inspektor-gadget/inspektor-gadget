@@ -4,6 +4,10 @@
 #ifndef GADGET_NETWORK_H
 #define GADGET_NETWORK_H
 
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN 16
+#endif
+
 struct event_t {
 	// Keep netns at the top: networktracer depends on it
 	__u32 netns;

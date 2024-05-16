@@ -4,7 +4,10 @@
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/in.h>
+#include <linux/tcp.h>
+#include <linux/types.h>
 #include <linux/udp.h>
 #include <sys/socket.h>
 #include <stdbool.h>
@@ -17,12 +20,30 @@
 
 #include "dns-common.h"
 
+unsigned long long load_byte(const void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.byte");
+unsigned long long load_half(const void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.half");
+unsigned long long load_word(const void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.word");
+
 #ifndef PACKET_HOST
 #define PACKET_HOST 0x0
 #endif
 
 #ifndef PACKET_OUTGOING
 #define PACKET_OUTGOING 0x4
+#endif
+
+#ifndef NEXTHDR_HOP
+#define NEXTHDR_HOP 0 /* Hop-by-hop option header. */
+#define NEXTHDR_TCP 6 /* TCP segment. */
+#define NEXTHDR_UDP 17 /* UDP message. */
+#define NEXTHDR_ROUTING 43 /* Routing header. */
+#define NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
+#define NEXTHDR_AUTH 51 /* Authentication header. */
+#define NEXTHDR_NONE 59 /* No next header */
+#define NEXTHDR_DEST 60 /* Destination options header. */
 #endif
 
 #define DNS_QR_QUERY 0
