@@ -125,7 +125,7 @@ struct dnshdr {
 
 // DNS resource record
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.3
-#pragma pack(2)
+#pragma pack(push, 2)
 struct dnsrr {
 	__u16 name; // Two octets when using message compression, see https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
 	__u16 type;
@@ -134,6 +134,7 @@ struct dnsrr {
 	__u16 rdlength;
 	// Followed by rdata
 };
+#pragma pack(pop)
 
 // Map of DNS query to timestamp so we can calculate latency from query sent to answer received.
 struct query_key_t {
