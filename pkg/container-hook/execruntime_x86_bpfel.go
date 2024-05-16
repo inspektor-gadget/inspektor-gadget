@@ -73,6 +73,7 @@ type execruntimeMapSpecs struct {
 	ExecArgs    *ebpf.MapSpec `ebpf:"exec_args"`
 	IgFaPickCtx *ebpf.MapSpec `ebpf:"ig_fa_pick_ctx"`
 	IgFaRecords *ebpf.MapSpec `ebpf:"ig_fa_records"`
+	PidByTgid   *ebpf.MapSpec `ebpf:"pid_by_tgid"`
 }
 
 // execruntimeObjects contains all objects after they have been loaded into the kernel.
@@ -97,6 +98,7 @@ type execruntimeMaps struct {
 	ExecArgs    *ebpf.Map `ebpf:"exec_args"`
 	IgFaPickCtx *ebpf.Map `ebpf:"ig_fa_pick_ctx"`
 	IgFaRecords *ebpf.Map `ebpf:"ig_fa_records"`
+	PidByTgid   *ebpf.Map `ebpf:"pid_by_tgid"`
 }
 
 func (m *execruntimeMaps) Close() error {
@@ -104,6 +106,7 @@ func (m *execruntimeMaps) Close() error {
 		m.ExecArgs,
 		m.IgFaPickCtx,
 		m.IgFaRecords,
+		m.PidByTgid,
 	)
 }
 
