@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	commonadvise "github.com/inspektor-gadget/inspektor-gadget/cmd/common/advise"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -138,15 +139,21 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 
 	// Get a manager on seccompprofile.
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
-		ClientDisableCacheFor: []client.Object{
-			// We need to disable cache otherwise we get the following error message:
-			// the cache is not started, can not read objects
-			// Since this manager will be created each time user interacts with the
-			// CLI the cache will not persist, so there is not really advantages of
-			// using a cache.
-			&seccompprofile.SeccompProfile{},
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
+		},
+		// We need to disable cache otherwise we get the following error message:
+		// the cache is not started, can not read objects
+		// Since this manager will be created each time user interacts with the
+		// CLI the cache will not persist, so there is not really advantages of
+		// using a cache.
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{
+					&seccompprofile.SeccompProfile{},
+				},
+			},
 		},
 	})
 	if err != nil {
