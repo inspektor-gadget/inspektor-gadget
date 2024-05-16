@@ -75,7 +75,7 @@ spec:
   terminationGracePeriodSeconds: 0
   containers:
     - name: prometheus
-      image: prom/prometheus:v2.44.0
+      image: docker.io/prom/prometheus:v2.44.0
       args:
         - "--config.file=/etc/prometheus/prometheus.yml"
         - "--log.level=debug"
