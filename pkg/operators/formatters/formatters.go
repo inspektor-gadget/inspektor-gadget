@@ -150,7 +150,7 @@ var replacers = []replacer{
 				default:
 					return nil
 				case 4:
-					signalNumber := in.Uint32(data)
+					signalNumber, _ := in.Uint32(data)
 					signalName := unix.SignalName(syscall.Signal(signalNumber))
 					signalField.Set(data, []byte(signalName))
 				}

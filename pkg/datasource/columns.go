@@ -134,7 +134,8 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				if d.data == nil {
 					return ""
 				}
-				return acc.String(d.data)
+				str, _ := acc.String(d.data)
+				return str
 			})
 			if err != nil {
 				return nil, fmt.Errorf("creating columns: %w", err)

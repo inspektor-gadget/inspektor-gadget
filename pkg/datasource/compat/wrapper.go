@@ -260,9 +260,11 @@ func getUint64(accessor datasource.FieldAccessor, data datasource.Data) uint64 {
 	d := accessor.Get(data)
 	switch len(d) {
 	case 4:
-		return uint64(accessor.Uint32(data))
+		v, _ := accessor.Uint32(data)
+		return uint64(v)
 	case 8:
-		return accessor.Uint64(data)
+		v, _ := accessor.Uint64(data)
+		return v
 	}
 	return 0
 }
