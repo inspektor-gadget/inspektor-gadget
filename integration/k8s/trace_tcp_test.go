@@ -85,7 +85,7 @@ func TestTraceTCP(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		traceTCPCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig or kubectl-gadget has started
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

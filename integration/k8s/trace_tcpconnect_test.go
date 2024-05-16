@@ -84,7 +84,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		traceTcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig or kubectl-gdaget has started
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -158,7 +158,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		traceTcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig or kubectl-gadget has started
 		// TODO: can't use setuidgid because it's not available on the nginx image
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
