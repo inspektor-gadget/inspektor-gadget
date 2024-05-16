@@ -335,16 +335,6 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
 
-		// TODO: need a link to find out if this is a snapshotter for network; if so, we can add the netns id
-		m.netns, err = ds.AddField(
-			"netns",
-			api.Kind_Uint64,
-			datasource.WithTags("type:gadget_netns_id", "name:netns"),
-		)
-		if err != nil {
-			return fmt.Errorf("adding netnsid")
-		}
-
 		m.accessor = accessor
 		m.ds = ds
 	}
