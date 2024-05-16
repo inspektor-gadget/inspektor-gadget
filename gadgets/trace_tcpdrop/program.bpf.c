@@ -17,6 +17,7 @@
 #include <gadget/buffer.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
+#include <gadget/core_fixes.bpf.h>
 
 #define GADGET_TYPE_TRACING
 #include <gadget/sockets-map.h>
@@ -181,10 +182,14 @@ int ig_tcpdrop(struct trace_event_raw_kfree_skb *ctx)
 	struct sock *sk = BPF_CORE_READ(skb, sk);
 	int reason = ctx->reason;
 
-	// If bpf_core_enum_value fails, it will return 0 and that will not be a silent failure
+	// If enum value was not found, bpf_core_enum_value returns 0.
+	// The verifier will reject the program with
+	// invalid func unknown#195896080
+	// 195896080 == 0xbad2310 reads "bad relo"
 	int reason_not_specified = bpf_core_enum_value(
-		// Maybe reason type needs to be skb_drop_reason in the event struct
 		enum skb_drop_reason, SKB_DROP_REASON_NOT_SPECIFIED);
+	if (reason_not_specified == 0)
+		bpf_core_unreachable();
 
 	if (reason > reason_not_specified)
 		return __trace_tcp_drop(ctx, sk, skb, reason);

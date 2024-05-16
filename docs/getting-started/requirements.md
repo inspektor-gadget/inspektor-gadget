@@ -73,7 +73,7 @@ listed in the following table:
 | `trace sni`              | U.U                     |                         |
 | `trace tcp`              | U.U                     |                         |
 | `trace tcpconnect`       | 5.8                     | `KPROBES`, `KRETPROBES` |
-| `trace tcpdrop`          | 5.17                    |                         |
+| `trace tcpdrop`          | 5.18                    |                         |
 | `trace tcpretrans`       | 4.15                    |                         |
 | `script`                 | [4.9][1]                |                         |
 | `traceloop`              | 4.15                    | `KPROBES`               |
