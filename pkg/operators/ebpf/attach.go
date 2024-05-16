@@ -74,7 +74,7 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		case strings.HasPrefix(p.SectionName, iterPrefix):
 			i.logger.Debugf("Attaching iter %q to %q", p.Name, p.AttachTo)
 			switch p.AttachTo {
-			case "task", "tcp", "udp":
+			case "task", "task_file", "tcp", "udp", "ksym":
 				return link.AttachIter(link.IterOptions{
 					Program: prog,
 				})

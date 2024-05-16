@@ -146,8 +146,11 @@ func (i *ebpfInstance) runSnapshotters() error {
 
 		for pName, l := range snapshotter.links {
 			i.logger.Debugf("Running iterator %q", pName)
-			switch {
-			case l.typ == "task":
+
+			if !isIteratorKindSupported(l.typ) {
+				return fmt.Errorf("iterator kind %q is not supported", l.typ)
+			}
+			if !isIteratorKindPerNetNs(l.typ) {
 				buf, err := bpfiterns.Read(l.link)
 				if err != nil {
 					return fmt.Errorf("reading iterator %q: %w", pName, err)
@@ -167,7 +170,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 					}
 					pArray.Append(data)
 				}
-			case isIteratorKindPerNetNs(l.typ):
+			} else {
 				visitedNetNs := make(map[uint64]struct{})
 				for _, container := range i.containers {
 					_, visited := visitedNetNs[container.Netns]
@@ -224,6 +227,23 @@ func (i *ebpfInstance) runSnapshotters() error {
 // network namespace.
 func isIteratorKindPerNetNs(kind string) bool {
 	if kind == "tcp" || kind == "udp" {
+		return true
+	}
+	return false
+}
+
+// isIteratorKindSupported returns true if the iterator kind is supported by
+// Inspektor Gadget.
+func isIteratorKindSupported(kind string) bool {
+	// Linux 6.9 supports the following iterator kinds:
+	//
+	// $ git grep -w '^DEFINE_BPF_ITER_FUNC'|sed 's/^.*(\([a-z0-9_]*\),.*$/\1/'
+	// bpf_link bpf_map bpf_map_elem bpf_prog bpf_sk_storage_map cgroup
+	// ipv6_route ksym netlink sockmap task task_file task_vma tcp udp unix
+	//
+	// But at the moment, only a subset is supported by Inspektor Gadget.
+	switch kind {
+	case "task", "task_file", "ksym", "tcp", "udp":
 		return true
 	}
 	return false
