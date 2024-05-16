@@ -76,6 +76,14 @@ func (d *dataArray) Get(index int) Data {
 	return (*dataElement)(d.DataArray[index])
 }
 
+func (d *dataArray) Swap(i, j int) {
+	l := len(d.DataArray)
+	if i >= l || i < 0 || j >= l || j < 0 {
+		return
+	}
+	d.DataArray[i], d.DataArray[j] = d.DataArray[j], d.DataArray[i]
+}
+
 func (d *dataArray) New() Data {
 	return d.ds.newDataElement()
 }
