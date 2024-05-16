@@ -14,7 +14,17 @@
 
 package datasource
 
-type subscription struct {
+type subscriptionData struct {
 	priority int
 	fn       DataFunc
+}
+
+type subscriptionArray struct {
+	priority int
+	fn       ArrayFunc
+}
+
+type subscriptionPacket struct {
+	priority int
+	fn       PacketFunc
 }

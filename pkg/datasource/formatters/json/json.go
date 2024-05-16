@@ -29,11 +29,15 @@ import (
 )
 
 var (
-	opener         = []byte("{")
-	closer         = []byte("}")
-	fieldSep       = []byte(",")
-	fieldSepPretty = []byte(",\n")
-	openerPretty   = []byte("{\n")
+	openerArray       = []byte("[")
+	closerArray       = []byte("]")
+	opener            = []byte("{")
+	closer            = []byte("}")
+	fieldSep          = []byte(",")
+	fieldSepPretty    = []byte(",\n")
+	openerPretty      = []byte("{\n")
+	openerArrayPretty = []byte("[\n")
+	closerArrayPretty = []byte("\n]")
 )
 
 type Formatter struct {
@@ -46,6 +50,7 @@ type Formatter struct {
 	useDefault        bool
 	showAll           bool
 	pretty            bool
+	array             bool
 	indent            string
 	opener            []byte
 	fieldSep          []byte
@@ -96,15 +101,23 @@ func (f *Formatter) init() error {
 		}
 	}
 
+	opener := f.opener
+	indent := f.indent
 	closer := closer
 	if f.pretty {
-		closer = append([]byte("\n"), closer...)
+		if f.array {
+			opener = append([]byte(f.indent), opener...)
+			indent = f.indent + f.indent
+			closer = append([]byte("\n"+f.indent), closer...)
+		} else {
+			closer = append([]byte("\n"), closer...)
+		}
 	}
 
 	f.fns = append(f.fns, func(e *encodeState, data datasource.Data) {
-		e.Write(f.opener)
+		e.Write(opener)
 	})
-	subFieldFuncs, _ := f.addSubFields(nil, "", f.indent)
+	subFieldFuncs, _ := f.addSubFields(nil, "", indent)
 	f.fns = append(f.fns, subFieldFuncs...)
 	f.fns = append(f.fns, func(e *encodeState, data datasource.Data) {
 		e.Write(closer)
@@ -277,6 +290,42 @@ func (f *Formatter) Marshal(data datasource.Data) []byte {
 	for _, fn := range f.fns {
 		fn(e, data)
 	}
+	return e.Bytes()
+}
+
+func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
+	// If the array is empty, return an empty one-line array (no matter if
+	// pretty is enabled or not)
+	len := a.Len()
+	if len == 0 {
+		return append(openerArray, closerArray...)
+	}
+
+	e := bufpool.Get().(*encodeState)
+	e.Reset()
+	defer bufpool.Put(e)
+
+	oArray := openerArray
+	cArray := closerArray
+	fieldSepArray := fieldSep
+	if f.pretty {
+		oArray = openerArrayPretty
+		cArray = closerArrayPretty
+		fieldSepArray = fieldSepPretty
+	}
+
+	e.Write([]byte(oArray))
+	for i := 0; i < len; i++ {
+		for _, fn := range f.fns {
+			fn(e, a.Get(i))
+		}
+		// Don't add a separator after the last array element
+		if i < len-1 {
+			e.Write([]byte(fieldSepArray))
+		}
+	}
+	e.Write([]byte(cArray))
+
 	return e.Bytes()
 }
 

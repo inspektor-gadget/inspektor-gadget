@@ -111,10 +111,20 @@ message InfoResponse {
   string serverVersion = 4;
 }
 
+message DataElement {
+  repeated bytes payload = 1;
+}
+
 message GadgetData {
   string node = 1;
   uint32 seq = 2;
-  repeated bytes payload = 3;
+  DataElement data = 3;
+}
+
+message GadgetDataArray {
+  string node = 1;
+  uint32 seq = 2;
+  repeated DataElement dataArray = 3;
 }
 
 message Param {

@@ -18,6 +18,8 @@ import (
 	"encoding/binary"
 	"io"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
@@ -26,27 +28,60 @@ type Type uint32
 
 const (
 	TypeUndefined Type = iota
-	TypeEvent
+	TypeSingle
+	TypeArray
 	TypeMetrics
 )
 
 type Data interface {
 	private()
+	payload() [][]byte
+}
+
+type DataArray interface {
+	// New returns a newly allocated data element. Use Append to add it to the array
+	New() Data
+
+	// Append appends Data to the array
+	Append(Data)
+
+	// Release releases the memory of Data; Data may not be used after calling this
+	Release(Data)
+
+	// Len returns the number of elements in the array
+	Len() int
+
+	// Get returns the element at the given index
+	Get(int) Data
+}
+
+type Packet interface {
+	// SetSeq sets the sequence number of the packet
 	SetSeq(uint32)
-	Raw() *api.GadgetData
+
+	// Raw returns the raw proto message for marshaling and unmarshaling
+	Raw() proto.Message
 }
 
-func (d *data) SetSeq(seq uint32) {
-	d.Seq = seq
+type PacketSingle interface {
+	Packet
+	Data
 }
 
-func (d *data) Raw() *api.GadgetData {
-	return (*api.GadgetData)(d)
+type PacketArray interface {
+	Packet
+	DataArray
 }
 
 // DataFunc is the callback that will be called for Data emitted by a DataSource. Data has to be consumed
 // synchronously and may not be accessed after returning - make a copy if you need to hold on to Data.
 type DataFunc func(DataSource, Data) error
+
+// ArrayFunc is analogous to DataFunc, but for DataArray
+type ArrayFunc func(DataSource, DataArray) error
+
+// PacketFunc is analogous to DataFunc, but for Packet
+type PacketFunc func(DataSource, Packet) error
 
 // DataSource is an interface that represents a data source of a gadget. Usually, it represents a map in eBPF and some
 // tooling around handling it in Go. An eBPF program can have multiple DataSources, each one representing a different
@@ -65,34 +100,50 @@ type DataSource interface {
 	// AddField adds a field as a new payload
 	AddField(fieldName string, kind api.Kind, options ...FieldOption) (FieldAccessor, error)
 
-	// NewData builds a new data structure that can be written to
-	NewData() Data
+	// NewPacketSingle builds a new PacketSingle that can be written to
+	NewPacketSingle() (PacketSingle, error)
+	// NewPacketSingleFromRaw builds a new PacketSingle from a raw bytes slice coming from protobuf
+	NewPacketSingleFromRaw(b []byte) (PacketSingle, error)
 
-	// NewDataFromRaw builds a new data structure from a raw bytes slice coming from protobuf
-	NewDataFromRaw(b []byte) (Data, error)
+	// NewPacketArray and NewPacketArrayFromRaw are analogous to NewPacketSingle and NewPacketSingleFromRaw, but for
+	// PacketArray
+	NewPacketArray() (PacketArray, error)
+	NewPacketArrayFromRaw(b []byte) (PacketArray, error)
 
 	GetField(fieldName string) FieldAccessor
 	GetFieldsWithTag(tag ...string) []FieldAccessor
 
-	// EmitAndRelease sends data through the operator chain and releases it afterward;
-	// Data may not be used after calling this. This should only be used in the running phase of the gadget, not
+	// EmitAndRelease sends Packet through the operator chain and releases it afterward;
+	// Packet may not be used after calling this. This should only be used in the running phase of the gadget, not
 	// in the initialization phase.
-	EmitAndRelease(Data) error
+	EmitAndRelease(Packet) error
 
-	// Release releases the memory of Data; Data may not be used after calling this
-	Release(Data)
+	// Release releases the memory of Packet; Packet may not be used after calling this
+	Release(Packet)
 
 	// ReportLostData reports a number of lost data cases
 	ReportLostData(lostSampleCount uint64)
 
-	// Dump dumps the content of Data to a writer for debugging purposes
-	Dump(Data, io.Writer)
+	// Dump dumps the content of Packet to a writer for debugging purposes
+	Dump(Packet, io.Writer)
 
 	// Subscribe makes sure that events emitted from this DataSource are passed to DataFunc; subscribers will be
 	// sorted by priority and handed over data in that order (lower numbers = earlier). Subscriptions to
 	// DataSources should only happen in the initialization phase. Data sent to dataFn has to be consumed synchronously
-	// and must not be accessed after returning.
-	Subscribe(dataFn DataFunc, priority int)
+	// and must not be accessed after returning. If the data source type is TypeArray, the dataFn will be called for each
+	// data element in the array. For TypeSingle, it will be called once. If you want to receive the entire Packet
+	// (PacketSingle, PacketArray, etc), use SubscribePacket instead.
+	Subscribe(dataFn DataFunc, priority int) error
+
+	// SubscribeArray works like Subscribe, but it will receive the entire DataArray instead of the data elements in it.
+	// Notice that if you subscribe to both Subscribe and SubscribeArray, the same data elements will be sent to DataFunc
+	// and also to ArrayFunc (along with the other elements in the array).
+	SubscribeArray(dataFn ArrayFunc, priority int) error
+
+	// SubscribePacket works like Subscribe, but it will receive the entire Packet instead of the data elements in it.
+	// It means that PacketFunc could be called with PacketSingle, PacketArray or any other type implementing Packet.
+	// Subscriptions can know the type of the packet by checking the data source type: TypeSingle, TypeArray, etc.
+	SubscribePacket(packetFn PacketFunc, priority int) error
 
 	Parser() (parser.Parser, error)
 

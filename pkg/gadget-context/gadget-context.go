@@ -237,6 +237,7 @@ func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 	for _, ds := range c.GetDataSources() {
 		di := &api.DataSource{
 			Id:          0,
+			Type:        uint32(ds.Type()),
 			Name:        ds.Name(),
 			Fields:      ds.Fields(),
 			Tags:        ds.Tags(),
