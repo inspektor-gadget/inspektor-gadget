@@ -73,7 +73,7 @@ func runTraceTcp(t *testing.T, ns string, cmd string) {
 	commands := []TestStep{
 		traceTcpCmd,
 		// TODO: can't use setuidgid because it's not available on the nginx image
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 	}
 

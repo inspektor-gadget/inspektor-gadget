@@ -33,7 +33,7 @@ func TestProfileTCPRTT(t *testing.T) {
 
 	startServerCommands := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand(serverPodName, "nginx", ns, "", ""),
+		PodCommand(serverPodName, "docker.io/library/nginx:latest", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, serverPodName),
 	}
 	RunTestSteps(startServerCommands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

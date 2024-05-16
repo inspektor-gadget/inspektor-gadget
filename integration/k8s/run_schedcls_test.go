@@ -43,7 +43,7 @@ func TestRunSchedCLS(t *testing.T) {
 
 	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommand("nginx-pod", "docker.io/library/nginx:latest", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 	RunTestSteps(commandsPreTest, t)
