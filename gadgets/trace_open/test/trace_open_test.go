@@ -16,6 +16,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,6 @@ import (
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/k8s"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -49,49 +49,67 @@ func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	match.SetDefaultTestComponent()
 
-	runtime := "docker"
+	runtime := os.Getenv("IG_RUNTIME")
+
+	containerRuntime := runtime
+
+	if runtime == "kubernetes" {
+		// Get container runtime used in the cluster
+		containerRuntime = gadgettesting.GetContainerRuntime(t)
+	}
 
 	var expectedCommonData eventtypes.CommonData
 	var ns string
 	var opts []igrunner.Option
 	var isDockerRuntime bool
 
+	containerFactory, err := containers.NewContainerFactory(runtime)
+	require.NoError(t, err, "new container factory")
+	containerName := "test-trace-open"
+	containerImage := "docker.io/library/busybox"
+
+	testContainer := containerFactory.NewContainer(
+		containerName,
+		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+		containers.WithContainerImage(containerImage),
+	)
+
+	testContainer.Start(t)
+	t.Cleanup(func() {
+		testContainer.Stop(t)
+	})
+
 	switch match.DefaultTestComponent {
+	default:
+		t.Fatalf("TODO: invalid thing")
 	case match.IgTestComponent:
-		opts = append(opts, igrunner.WithFlags(fmt.Sprintf("-r %s", runtime), "--timeout=5"))
-
-		containerFactory, err := containers.NewContainerFactory(runtime)
-		require.NoError(t, err, "new container factory")
-		containerName := "test-trace-open"
-		containerImage := "docker.io/library/busybox"
-
-		testContainer := containerFactory.NewContainer(
-			containerName,
-			"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
-			containers.WithContainerImage(containerImage),
-		)
-
-		testContainer.Start(t)
-		t.Cleanup(func() {
-			testContainer.Stop(t)
-		})
+		opts = append(opts, igrunner.WithFlags(fmt.Sprintf("-r %s", containerRuntime), "--timeout=5"))
 
 		expectedCommonData = eventtypes.CommonData{
 			Runtime: eventtypes.BasicRuntimeMetadata{
-				RuntimeName:        eventtypes.String2RuntimeName(runtime),
+				RuntimeName:        eventtypes.String2RuntimeName(containerRuntime),
 				ContainerName:      containerName,
 				ContainerID:        testContainer.ID(),
 				ContainerImageName: containerImage,
 			},
 		}
 	case match.InspektorGadgetTestComponent:
-		isDockerRuntime = runtime == "docker"
-		ns = k8s.GenerateTestNamespaceName("test-trace-open")
+		isDockerRuntime = containerRuntime == "docker"
+		//ns = k8s.GenerateTestNamespaceName("test-trace-open")
+		// TODO: allow passing this to the runtime
+		ns = "myfoonamespace"
 
 		opts = append(opts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns)))
 		opts = append(opts, igrunner.WithStartAndStop())
 
-		expectedCommonData = match.BuildCommonData(ns, match.WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedCommonData = match.BuildCommonData(ns,
+			match.WithContainerImageName("docker.io/library/busybox:latest",
+				isDockerRuntime,
+			))
+
+		// TODO: This should be another option passed to BuildCommonData
+		expectedCommonData.K8s.ContainerName = containerName
+		expectedCommonData.K8s.PodName = containerName
 	}
 
 	opts = append(opts, igrunner.WithValidateOutput(
@@ -125,22 +143,7 @@ func TestTraceOpen(t *testing.T) {
 		},
 	))
 
-	traceOpenCmd := igrunner.New(
-		"trace_open",
-		opts...,
-	)
+	traceOpenCmd := igrunner.New("trace_open", opts...)
 
-	switch match.DefaultTestComponent {
-	case match.IgTestComponent:
-		igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
-	case match.InspektorGadgetTestComponent:
-		igtesting.RunTestSteps([]igtesting.TestStep{
-			k8s.CreateTestNamespaceCommand(ns),
-			traceOpenCmd,
-			k8s.SleepForSecondsCommand(2), // wait to ensure kubectl-gadget has started
-			k8s.BusyboxPodRepeatCommand(t, ns, "setuidgid 1000:1111 cat /dev/null"),
-			k8s.WaitUntilTestPodReadyCommand(t, ns),
-			k8s.DeleteTestNamespaceCommand(t, ns),
-		}, t, igtesting.WithCbBeforeCleanup(k8s.PrintLogsFn(ns)))
-	}
+	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
 }

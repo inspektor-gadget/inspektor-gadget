@@ -35,6 +35,13 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	case types.RuntimeNameContainerd:
 		return &ContainerdManager{}, nil
 	default:
+		// TODO: this horrible hack has to be done because kuberentes is not a
+		// valid runtime, and we can include it there as it doesn't make sense.
+		// Perhaps this switch should be done using string?
+		if containerRuntime == "kubernetes" {
+			return &K8sManager{}, nil
+		}
+
 		return nil, fmt.Errorf("unknown container runtime %q", containerRuntime)
 	}
 }

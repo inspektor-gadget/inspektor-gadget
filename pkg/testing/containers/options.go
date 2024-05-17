@@ -22,6 +22,9 @@ type cOptions struct {
 	options      []testutils.Option
 	cleanup      bool
 	startAndStop bool
+
+	// dirt hack to have this available for k8s
+	image string
 }
 
 // containerOption is a function that modifies a ContainerSpec and exposes only
@@ -39,6 +42,7 @@ func (o *cOptions) IsStartAndStop() bool {
 func WithContainerImage(image string) containerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithImage(image))
+		opts.image = image
 	}
 }
 

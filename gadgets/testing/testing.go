@@ -15,12 +15,40 @@
 package testing
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func RequireEnvironmentVariables(t testing.TB) {
 	if os.Getenv("IG_PATH") == "" {
 		t.Skip("environment variable IG_PATH undefined")
 	}
+
+	if os.Getenv("IG_RUNTIME") == "" {
+		t.Skip("environment variable IG_RUNTIME undefined")
+	}
+
+	// TODO: some sanity checks:
+	// - if IG_PATH contains kubectl-gadget, then IG_RUNTIME must be kubernetes.
+}
+
+// TODO: move to another place?
+
+// GetContainerRuntime returns the container runtime the cluster is using.
+func GetContainerRuntime(t *testing.T) string {
+	cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	r, err := cmd.Output()
+	require.NoError(t, err)
+
+	ret := string(r)
+	parts := strings.Split(ret, ":")
+	require.GreaterOrEqual(t, len(parts), 1, "unexpected container runtime version")
+	return parts[0]
 }
