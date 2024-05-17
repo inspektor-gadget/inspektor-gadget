@@ -60,7 +60,7 @@ require (
 	k8s.io/cli-runtime v0.30.1
 	k8s.io/client-go v0.30.1
 	k8s.io/code-generator v0.30.1
-	k8s.io/cri-api v0.30.0
+	k8s.io/cri-api v0.30.1
 	oras.land/oras-go/v2 v2.4.0
 	sigs.k8s.io/controller-runtime v0.18.0
 	sigs.k8s.io/security-profiles-operator v0.8.3
@@ -69,6 +69,7 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/golang/protobuf v1.5.4
 	github.com/google/gopacket v1.1.19
 	github.com/sigstore/sigstore v1.8.3
 )
@@ -114,7 +115,6 @@ require (
 	github.com/go-openapi/swag v0.22.10 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-containerregistry v0.19.1 // indirect
