@@ -20,10 +20,10 @@ const (
 	PerfBufferPages = 64
 
 	// Constant used to enable filtering by mount namespace inode id in eBPF.
-	// Keep in syn with variable defined in pkg/gadgets/common/mntns_filter.h.
+	// Keep in syn with variable defined in include/gadget/mntns_filter.h.
 	FilterByMntNsName = "gadget_filter_by_mntns"
 
 	// Name of the map that stores the mount namespace inode id to filter on.
-	// Keep in syn with name used in pkg/gadgets/common/mntns_filter.h.
+	// Keep in syn with name used in include/gadget/mntns_filter.h.
 	MntNsFilterMapName = "gadget_mntns_filter_map"
 )
