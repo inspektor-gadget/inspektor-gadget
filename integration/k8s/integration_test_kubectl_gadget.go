@@ -144,7 +144,7 @@ func testMainInspektorGadget(m *testing.M) int {
 				defer func() {
 					// This will actually never be called due to the os.Exit()
 					// but the notifyCancelDone channel helps to make the main
-					// go routing wait for the handler to finish the clean up.
+					// go routine wait for the handler to finish the clean up.
 					notifyCancelDone <- true
 				}()
 

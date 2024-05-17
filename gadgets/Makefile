@@ -66,5 +66,5 @@ test: build
 	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
-	IG=$(IG) \
+	IG_PATH=$(IG) \
 	go test -exec 'sudo -E' -v ./...

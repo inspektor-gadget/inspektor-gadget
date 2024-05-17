@@ -17,12 +17,22 @@ package match
 
 import (
 	"encoding/json"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+)
+
+var DefaultTestComponent string
+
+const (
+	IgTestComponent              = "ig"
+	InspektorGadgetTestComponent = "kubectl-gadget"
 )
 
 func ParseMultiJSONOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
@@ -95,5 +105,52 @@ func ExpectRegexpToMatch(t *testing.T, expectedRegexp string) func(t *testing.T,
 		if !r.MatchString(output) {
 			t.Fatalf("output didn't match the expected regexp: %s", expectedRegexp)
 		}
+	}
+}
+
+type CommonDataOption func(commonData *eventtypes.CommonData)
+
+// WithContainerImageName sets the ContainerImageName to facilitate the tests
+func WithContainerImageName(imageName string, isDockerRuntime bool) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		if !isDockerRuntime {
+			commonData.Runtime.ContainerImageName = imageName
+		}
+	}
+}
+
+func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.CommonData {
+	e := eventtypes.CommonData{
+		K8s: eventtypes.K8sMetadata{
+			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+				Namespace: namespace,
+				// Pod and Container name are defined by BusyboxPodCommand.
+				PodName:       "test-pod",
+				ContainerName: "test-pod",
+			},
+		},
+		// TODO: Include the Node
+	}
+	for _, option := range options {
+		option(&e)
+	}
+	return e
+}
+
+func SetDefaultTestComponent() {
+	DefaultTestComponent = IgTestComponent
+	if strings.Contains(os.Getenv("IG_PATH"), InspektorGadgetTestComponent) {
+		DefaultTestComponent = InspektorGadgetTestComponent
+	}
+}
+
+func NormalizeCommonData(e *eventtypes.CommonData, ns string) {
+	switch DefaultTestComponent {
+	case InspektorGadgetTestComponent:
+		e.Runtime.ContainerID = ""
+		e.K8s.Node = ""
+		// TODO: Verify container runtime and container name
+		e.Runtime.RuntimeName = ""
+		e.Runtime.ContainerName = ""
 	}
 }

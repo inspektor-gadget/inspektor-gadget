@@ -24,6 +24,7 @@ import (
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/k8s"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -46,63 +47,100 @@ type traceOpenEvent struct {
 
 func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
+	match.SetDefaultTestComponent()
 
 	runtime := "docker"
-	containerFactory, err := containers.NewContainerFactory(runtime)
-	require.NoError(t, err, "new container factory")
 
-	containerName := "test-trace-open"
-	containerImage := "docker.io/library/busybox"
+	var expectedCommonData eventtypes.CommonData
+	var ns string
+	var opts []igrunner.Option
+	var isDockerRuntime bool
 
-	testContainer := containerFactory.NewContainer(
-		containerName,
-		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
-		containers.WithContainerImage(containerImage),
-	)
+	switch match.DefaultTestComponent {
+	case match.IgTestComponent:
+		opts = append(opts, igrunner.WithFlags(fmt.Sprintf("-r %s", runtime), "--timeout=5"))
 
-	testContainer.Start(t)
-	t.Cleanup(func() {
-		testContainer.Stop(t)
-	})
+		containerFactory, err := containers.NewContainerFactory(runtime)
+		require.NoError(t, err, "new container factory")
+		containerName := "test-trace-open"
+		containerImage := "docker.io/library/busybox"
+
+		testContainer := containerFactory.NewContainer(
+			containerName,
+			"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+			containers.WithContainerImage(containerImage),
+		)
+
+		testContainer.Start(t)
+		t.Cleanup(func() {
+			testContainer.Stop(t)
+		})
+
+		expectedCommonData = eventtypes.CommonData{
+			Runtime: eventtypes.BasicRuntimeMetadata{
+				RuntimeName:        eventtypes.String2RuntimeName(runtime),
+				ContainerName:      containerName,
+				ContainerID:        testContainer.ID(),
+				ContainerImageName: containerImage,
+			},
+		}
+	case match.InspektorGadgetTestComponent:
+		isDockerRuntime = runtime == "docker"
+		ns = k8s.GenerateTestNamespaceName("test-trace-open")
+
+		opts = append(opts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns)))
+		opts = append(opts, igrunner.WithStartAndStop())
+
+		expectedCommonData = match.BuildCommonData(ns, match.WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+	}
+
+	opts = append(opts, igrunner.WithValidateOutput(
+		func(t *testing.T, output string) {
+			expectedEntry := &traceOpenEvent{
+				CommonData: expectedCommonData,
+				Comm:       "cat",
+				FName:      "/dev/null",
+				Fd:         3,
+				Err:        0,
+				Uid:        1000,
+				Gid:        1111,
+				Flags:      0,
+				Mode:       0,
+			}
+
+			normalize := func(e *traceOpenEvent) {
+				e.MountNsID = 0
+				e.Pid = 0
+
+				// The container image digest is not currently enriched for Docker containers:
+				// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
+				if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
+					e.Runtime.ContainerImageDigest = ""
+				}
+
+				match.NormalizeCommonData(&e.CommonData, ns)
+			}
+
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+		},
+	))
 
 	traceOpenCmd := igrunner.New(
 		"trace_open",
-		igrunner.WithFlags(fmt.Sprintf("--runtimes=%s", runtime), "--timeout=5"),
-		igrunner.WithValidateOutput(
-			func(t *testing.T, output string) {
-				expectedEntry := &traceOpenEvent{
-					CommonData: eventtypes.CommonData{
-						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:        eventtypes.String2RuntimeName(runtime),
-							ContainerName:      containerName,
-							ContainerID:        testContainer.ID(),
-							ContainerImageName: containerImage,
-						},
-					},
-					Comm:  "cat",
-					Fd:    3,
-					Err:   0,
-					FName: "/dev/null",
-					Uid:   1000,
-					Gid:   1111,
-					Flags: 0,
-					Mode:  0,
-				}
-
-				normalize := func(e *traceOpenEvent) {
-					e.MountNsID = 0
-					e.Pid = 0
-
-					// The container image digest is not currently enriched for Docker containers:
-					// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
-					if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
-						e.Runtime.ContainerImageDigest = ""
-					}
-				}
-
-				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-			}),
+		opts...,
 	)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
+	switch match.DefaultTestComponent {
+	case match.IgTestComponent:
+		igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
+	case match.InspektorGadgetTestComponent:
+		igtesting.RunTestSteps([]igtesting.TestStep{
+			k8s.CreateTestNamespaceCommand(ns),
+			traceOpenCmd,
+			k8s.SleepForSecondsCommand(2), // wait to ensure kubectl-gadget has started
+			k8s.BusyboxPodRepeatCommand(t, ns, "setuidgid 1000:1111 cat /dev/null"),
+			k8s.WaitUntilTestPodReadyCommand(t, ns),
+			k8s.DeleteTestNamespaceCommand(t, ns),
+		}, t, igtesting.WithCbBeforeCleanup(k8s.PrintLogsFn(ns)))
+	}
 }

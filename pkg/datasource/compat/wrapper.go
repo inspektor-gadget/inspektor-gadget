@@ -142,7 +142,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		return nil, err
 	}
 	ev.podnameAccessor, err = k8s.AddSubField(
-		"pod",
+		"podName",
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
@@ -154,7 +154,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		return nil, err
 	}
 	ev.containernameAccessorK8s, err = k8s.AddSubField(
-		"container",
+		"containerName",
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
