@@ -111,22 +111,6 @@ func (c *Command) Running() bool {
 	return c.started
 }
 
-// DeployInspektorGadget deploys inspector gadget in Kubernetes
-func DeployInspektorGadget(image, imagePullPolicy string) *Command {
-	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --debug --experimental",
-		imagePullPolicy)
-
-	if image != "" {
-		cmd = cmd + " --image=" + image
-	}
-
-	return &Command{
-		Name:           "DeployInspektorGadget",
-		Cmd:            cmd,
-		ExpectedRegexp: "Inspektor Gadget successfully deployed",
-	}
-}
-
 func DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *Command {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.10.0/cert-manager.yaml
@@ -197,13 +181,6 @@ kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
 		Cmd:            cmdStr,
 		ExpectedRegexp: `daemon set "spod" successfully rolled out`,
 	}
-}
-
-// CleanupInspektorGadget cleans up inspector gadget in Kubernetes
-var CleanupInspektorGadget = &Command{
-	Name:    "CleanupInspektorGadget",
-	Cmd:     "$KUBECTL_GADGET undeploy",
-	Cleanup: true,
 }
 
 // CleanupSPO cleans up security profile operator in Kubernetes

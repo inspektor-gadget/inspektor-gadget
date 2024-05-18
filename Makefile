@@ -272,7 +272,7 @@ ig-tests:
 	rm -f ./ig-manager.test
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-ig -no-deploy-spo" make integration-tests
+# INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-spo" make integration-tests
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
@@ -282,7 +282,6 @@ integration-tests: kubectl-gadget
 			-timeout 30m \
 			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
-			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
 			-gadget-repository $(GADGET_REPOSITORY) \
 			-gadget-tag $(GADGET_TAG) \
@@ -416,7 +415,7 @@ help:
 	@echo  '  controller-tests		- Run controllers unit tests'
 	@echo  '  ig-tests			- Run ig manager unit tests'
 	@echo  '  gadgets-unit-tests		- Run gadget unit tests'
-	@echo  '  integration-tests		- Run integration tests'
+	@echo  '  integration-tests		- Run integration tests (deploy IG before running the tests)'
 	@echo  '  test-gadgets			- Run gadgets test'
 	@echo  ''
 	@echo  'Installing targets:'

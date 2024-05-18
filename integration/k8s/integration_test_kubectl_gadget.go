@@ -40,9 +40,6 @@ const (
 var cleaningUp = uint32(0)
 
 var (
-	image = flag.String("image", "", "gadget container image")
-
-	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
 	doNotDeploySPO = flag.Bool("no-deploy-spo", true, "don't deploy the Security Profiles Operator (SPO)")
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
@@ -89,17 +86,6 @@ func testMainInspektorGadget(m *testing.M) int {
 
 	initCommands := []*integration.Command{}
 	cleanupCommands := []*integration.Command{integration.DeleteRemainingNamespacesCommand()}
-
-	if !*doNotDeployIG {
-		imagePullPolicy := "Always"
-		if *k8sDistro == K8sDistroMinikubeGH {
-			imagePullPolicy = "Never"
-		}
-		deployCmd := integration.DeployInspektorGadget(*image, imagePullPolicy)
-		initCommands = append(initCommands, deployCmd)
-
-		cleanupCommands = append(cleanupCommands, integration.CleanupInspektorGadget)
-	}
 
 	deploySPO := !integration.CheckNamespace(securityProfileOperatorNamespace) && !*doNotDeploySPO
 	if deploySPO {
