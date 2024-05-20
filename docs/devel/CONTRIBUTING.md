@@ -118,6 +118,7 @@ $ make testdata
 ### Integration tests
 
 The integration tests use a Kubernetes cluster to deploy and test Inspektor Gadget.
+Note that, Inspektor Gadget must be deployed on the Kubernetes cluster before running the tests.
 Be sure that you have a valid kubeconfig and run:
 
 ```bash

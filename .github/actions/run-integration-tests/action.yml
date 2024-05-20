@@ -35,12 +35,20 @@ runs:
       with:
         name: kubectl-gadget-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/
+    - name: Deploy Inspektor Gadget
+      id: deploy-ig
+      shell: bash
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
+        if [[ ${{ inputs.kubernetes_distribution }} == "minikube-github" ]]; then
+          # Inspektor-Gadget container image is loaded into the cluster using "minikube image load" instead of pushing the container image to a registry.
+          EXTRA_FLAGS='--image-pull-policy=Never'
+        fi
+        ./kubectl-gadget deploy $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
     - name: Integration tests
       id: integration-tests
       shell: bash
       run: |
-        tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-
         cleanup() {
             echo "IntegrationTestsJob: Workflow run is being cancelled: $1 was received"
             trap - $1
@@ -73,13 +81,16 @@ runs:
         make \
           KUBERNETES_DISTRIBUTION=${{ inputs.kubernetes_distribution }} \
           KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
-          CONTAINER_REPO=${{ inputs.container_repo }} \
-          IMAGE_TAG=${{ inputs.image_tag }} \
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
           GADGET_REPOSITORY=${{ inputs.gadget_repository }} \
           GADGET_TAG=${{ inputs.gadget_tag }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
+    - name: Undeploy Inspektor Gadget
+      id: undeploy-ig
+      if: always()
+      shell: bash
+      run: ./kubectl-gadget undeploy
     - name: Prepare and publish test reports
       if: always()
       continue-on-error: true
