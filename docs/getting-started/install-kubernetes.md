@@ -17,6 +17,7 @@ description: >
   - [Deploying into a custom namespace](#deploying-into-a-custom-namespace)
   - [Hook Mode](#hook-mode)
   - [Deploying with an AppArmor profile](#deploying-with-an-apparmor-profile)
+  - [Helm Chart Installation](#helm-chart-installation)
   - [Specific Information for Different Platforms](#specific-information-for-different-platforms)
     - [Minikube](#minikube)
 - [Uninstalling from the cluster](#uninstalling-from-the-cluster)
@@ -182,6 +183,19 @@ spec:
 ...
 $ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
 ```
+
+### Helm Chart Installation
+
+Inspektor Gadget can also be installed using our [official Helm chart](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/charts). To install using Helm, run the following commands:
+
+```bash
+$ helm repo add gadget https://inspektor-gadget.github.io/charts
+$ helm install gadget gadget/gadget --namespace=gadget --create-namespace
+```
+
+For more information on the Helm chart, please refer to the [Helm Chart documentation](https://artifacthub.io/packages/helm/gadget/gadget).
+
+Also, all the above configurations options can be passed as [values](https://artifacthub.io/packages/helm/gadget/gadget#values) to the Helm chart.
 
 ### Specific Information for Different Platforms
 
