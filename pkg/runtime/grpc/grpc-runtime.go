@@ -362,10 +362,9 @@ func (r *Runtime) runBuiltInGadgetOnTargets(
 	return results, results.Err()
 }
 
-func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
+func (r *Runtime) dialContext(_ context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	}
 
 	// If we're in Kubernetes connection mode, we need a custom dialer
@@ -375,13 +374,9 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
-	} else {
-		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
-		defer cancel()
-		dialCtx = newCtx
 	}
 
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("passthrough:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
