@@ -1,6 +1,6 @@
 ---
 title: Installing on Kubernetes
-weight: 10
+weight: 20
 description: >
   How to install Inspektor Gadget on Kubernetes
 ---
