@@ -51,7 +51,7 @@ type (
 	NetNsEnrichFunc func(event operators.ContainerInfoFromNetNSID)
 )
 
-// GetEventWrappers checks for data sources containing refererences to mntns/netns that we could enrich data for
+// GetEventWrappers checks for data sources containing references to mntns/netns that we could enrich data for
 func GetEventWrappers(gadgetCtx operators.GadgetContext) (map[datasource.DataSource]*EventWrapperBase, error) {
 	res := make(map[datasource.DataSource]*EventWrapperBase)
 	for _, ds := range gadgetCtx.GetDataSources() {
@@ -68,17 +68,26 @@ func GetEventWrappers(gadgetCtx operators.GadgetContext) (map[datasource.DataSou
 		var mntnsField datasource.FieldAccessor
 		var netnsField datasource.FieldAccessor
 
-		for _, f := range mntnsFields {
+		if len(mntnsFields) > 0 {
 			gadgetCtx.Logger().Debugf("using mntns enrichment")
-			mntnsField = f
+			mntnsField = mntnsFields[0]
+
 			// We only support one of those per DataSource for now
-			break
+			if len(mntnsFields) > 1 {
+				gadgetCtx.Logger().Warnf("multiple fields of %q found in DataSource %q, only %q will be used",
+					MntNsIdType, ds.Name(), mntnsField.Name())
+			}
 		}
-		for _, f := range netnsFields {
+
+		if len(netnsFields) > 0 {
 			gadgetCtx.Logger().Debugf("using netns enrichment")
-			netnsField = f
+			netnsField = netnsFields[0]
+
 			// We only support one of those per DataSource for now
-			break
+			if len(netnsFields) > 1 {
+				gadgetCtx.Logger().Warnf("multiple fields of %q found in DataSource %q, only %q will be used",
+					NetNsIdType, ds.Name(), netnsField.Name())
+			}
 		}
 
 		accessors, err := WrapAccessors(ds, mntnsField, netnsField)
