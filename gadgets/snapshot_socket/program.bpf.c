@@ -52,7 +52,7 @@ struct socket_entry {
 	struct gadget_l4endpoint_t dst;
 	__u32 state;
 	__u32 ino;
-	__u32 netns;
+	gadget_netns_id netns;
 };
 
 GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);

@@ -24,10 +24,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+// Keep this aligned with include/gadget/types.h
 const (
-	MntNsIdType     = "type:gadget_mntns_id"
-	NetNsIdType     = "type:gadget_netns_id"
-	NetNsIdFallback = "name:netns"
+	MntNsIdType = "type:gadget_mntns_id"
+	NetNsIdType = "type:gadget_netns_id"
 )
 
 type EventWrapperBase struct {
@@ -56,7 +56,7 @@ func GetEventWrappers(gadgetCtx operators.GadgetContext) (map[datasource.DataSou
 	res := make(map[datasource.DataSource]*EventWrapperBase)
 	for _, ds := range gadgetCtx.GetDataSources() {
 		mntnsFields := ds.GetFieldsWithTag(MntNsIdType)
-		netnsFields := ds.GetFieldsWithTag(NetNsIdType, NetNsIdFallback)
+		netnsFields := ds.GetFieldsWithTag(NetNsIdType)
 		if len(mntnsFields) == 0 && len(netnsFields) == 0 {
 			continue
 		}

@@ -28,6 +28,9 @@ struct gadget_l4endpoint_t {
 // Inode id of a mount namespace. It's used to enrich the event in user space
 typedef __u64 gadget_mntns_id;
 
+// Inode id of a network namespace. It's used to enrich the event in user space
+typedef __u32 gadget_netns_id;
+
 // gadget_timestamp is a type that represents the nanoseconds since the system boot. Gadgets can use
 // this type to provide a timestamp. The value contained must be the one returned by
 // bpf_ktime_get_boot_ns() and it's automatically converted by Inspektor Gadget to a human friendly

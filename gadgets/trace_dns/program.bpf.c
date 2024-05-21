@@ -39,7 +39,7 @@ struct event_t {
 	struct gadget_l4endpoint_t dst;
 
 	gadget_mntns_id mntns_id;
-	__u32 netns;
+	gadget_netns_id netns;
 	__u32 pid;
 	__u32 tid;
 	__u32 uid;

@@ -59,7 +59,7 @@ struct event_t {
 	gadget_timestamp timestamp;
 
 	gadget_mntns_id mntns_id;
-	__u32 netns;
+	gadget_netns_id netns;
 
 	__u32 pid;
 	__u32 tid;

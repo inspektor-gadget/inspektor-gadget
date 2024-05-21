@@ -50,7 +50,7 @@ struct event {
 	enum tcp_state state;
 	__u8 tcpflags;
 	enum skb_drop_reason reason;
-	__u32 netns;
+	gadget_netns_id netns;
 
 	// The original gadget has instances of these fields for both process context and
 	// socket context. Since sub-structures in the `event` are not yet supported, we only use
