@@ -19,7 +19,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,7 +32,9 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/pkg/jsonmessage"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
@@ -272,6 +273,36 @@ func buildLocal(opts *cmdOpts, conf *buildFile) error {
 	return nil
 }
 
+func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage string) error {
+	f := filters.NewArgs()
+	f.Add("reference", builderImage)
+
+	images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
+	if err != nil {
+		return fmt.Errorf("listing images: %w", err)
+	}
+
+	for _, img := range images {
+		for _, tag := range img.RepoTags {
+			if tag == builderImage {
+				return nil
+			}
+		}
+	}
+
+	fmt.Printf("Pulling builder image %s\n", builderImage)
+	reader, err := cli.ImagePull(ctx, builderImage, image.PullOptions{})
+	if err != nil {
+		return fmt.Errorf("pulling builder image: %w", err)
+	}
+	defer reader.Close()
+
+	out := os.Stdout
+	outFd := out.Fd()
+	isTTY := term.IsTerminal(int(outFd))
+	return jsonmessage.DisplayJSONMessagesStream(reader, out, outFd, isTTY, nil)
+}
+
 func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -285,37 +316,8 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	}
 	defer cli.Close()
 
-	f := filters.NewArgs()
-	f.Add("reference", opts.builderImage)
-
-	images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
-	if err != nil {
-		return fmt.Errorf("listing images: %w", err)
-	}
-
-	var found bool
-
-	for _, img := range images {
-		for _, tag := range img.RepoTags {
-			if tag == opts.builderImage {
-				found = true
-				break
-			}
-		}
-
-		if found {
-			break
-		}
-	}
-
-	if !found {
-		fmt.Printf("Pulling builder image %s. It could take few minutes.\n", opts.builderImage)
-		reader, err := cli.ImagePull(ctx, opts.builderImage, image.PullOptions{})
-		if err != nil {
-			return fmt.Errorf("pulling builder image: %w", err)
-		}
-		io.Copy(io.Discard, reader)
-		reader.Close()
+	if err := ensureBuilderImage(ctx, cli, opts.builderImage); err != nil {
+		return err
 	}
 
 	wasmFullPath := ""
