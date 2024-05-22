@@ -527,12 +527,14 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 		return fmt.Errorf("getting ebpfInstance")
 	}
 
-	compat.Subscribe(
-		l.eventWrappers,
-		l.manager.igManager.ContainerCollection.EnrichEventByMntNs,
-		l.manager.igManager.ContainerCollection.EnrichEventByNetNs,
-		0,
-	)
+	if l.manager.igManager != nil {
+		compat.Subscribe(
+			l.eventWrappers,
+			l.manager.igManager.ContainerCollection.EnrichEventByMntNs,
+			l.manager.igManager.ContainerCollection.EnrichEventByNetNs,
+			0,
+		)
+	}
 
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
