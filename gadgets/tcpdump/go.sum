@@ -1,0 +1,4 @@
+github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
+github.com/ghedo/go.pkt v0.0.0-20200209120728-c97f47ad982f h1:U2GyHCH1JGEcB60ZdFhlBWUN1kAwTqAbApbJrxqSfbU=
+github.com/ghedo/go.pkt v0.0.0-20200209120728-c97f47ad982f/go.mod h1:mjscj0hxKAqsP6IrUpFF9pet4J3E5wGucrAUTs3K6cw=
+github.com/songgao/water v0.0.0-20180420064739-bf1a5d02778f/go.mod h1:P5HUIBuIWKbyjl083/loAegFkfbFNx5i2qEP4CNbm7E=
