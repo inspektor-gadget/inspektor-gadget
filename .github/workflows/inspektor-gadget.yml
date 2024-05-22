@@ -972,6 +972,11 @@ jobs:
         for dir in $(dirname $(find examples/builtin-gadgets -name README.md)); do
           go build ./$dir;
         done
+    - name: Build gadgets example binaries
+      run: |
+        for dir in $(dirname $(find examples/gadgets -name main.go)); do
+          go build ./$dir;
+        done
 
   test-unit:
     name: Unit tests
