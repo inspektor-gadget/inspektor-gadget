@@ -212,7 +212,7 @@ Successfully pushed ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef869
 We're now all set to run our gadget for the first time.
 
 ```bash
-$ sudo -E ig run mygadget:latest
+$ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
 PID
 1113
@@ -265,7 +265,7 @@ Build and run the gadget again. Now it provides more information.
 ```bash
 $ sudo -E ig image build -t mygadget:latest .
 ....
-$ sudo -E ig run mygadget:latest
+$ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
 PID                      COMM                     FILENAME
 11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
@@ -367,7 +367,7 @@ Now we can build and run the gadget again
 $ sudo -E ig image build . -t mygadget
 ...
 
-$ sudo -E ig run mygadget:latest
+$ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
 PID             COMM            FILENAME
 224707          git             .git/objects/cd/4968fd25e0b4d597f93993a29a9821c1a263d6
@@ -456,7 +456,7 @@ After adding the `gadget_mntns_id` field to the event structure, compiling and r
 Inspektor Gadget will automatically add the container name column to the output:
 
 ```bash
-$ sudo -E ig run mygadget:latest
+$ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
 ```
@@ -490,7 +490,7 @@ events by container name.
 The following command doesn't show any event as there is no container with the specified name:
 
 ```bash
-$ sudo -E ig run mygadget:latest -c non_existing_container
+$ sudo -E ig run mygadget:latest -c non_existing_container --verify-image=false
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
 ```
@@ -581,7 +581,7 @@ Edit them, build and run the gadget again:
 $ sudo -E ig image build . -t mygadget --update-metadata -v
 ...
 
-$ sudo -E ig run mygadget:latest
+$ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME  PID          COMM         FILENAME                                        UID         GID
 ```
