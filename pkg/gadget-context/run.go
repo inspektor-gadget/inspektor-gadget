@@ -34,6 +34,10 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		return ops[i].Priority() < ops[j].Priority()
 	})
 
+	for _, op := range ops {
+		log.Debugf("operator %q has priority %d", op.Name(), op.Priority())
+	}
+
 	params := make([]*api.Param, 0)
 
 	dataOperatorInstances := make([]operators.DataOperatorInstance, 0, len(ops))
