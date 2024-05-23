@@ -29,6 +29,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	RunTargets = "run-targets"
+)
+
 type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser
