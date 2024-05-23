@@ -1,6 +1,6 @@
 ---
 title: Installing on Linux
-weight: 20
+weight: 30
 description: >
   How to install Inspektor Gadget on Linux
 ---
