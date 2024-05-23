@@ -177,6 +177,8 @@ type DataSource interface {
 
 	Annotations() map[string]string
 	Tags() []string
+
+	CopyFieldsTo(DataSource) error
 }
 
 type DataSourceOption func(*dataSource)

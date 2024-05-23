@@ -700,6 +700,35 @@ func (ds *dataSource) Fields() []*api.Field {
 	return res
 }
 
+func (ds *dataSource) CopyFieldsTo(out DataSource) error {
+	ds.lock.RLock()
+	defer ds.lock.RUnlock()
+
+	outDs, ok := out.(*dataSource)
+	if !ok {
+		return errors.New("invalid destination DataSource")
+	}
+
+	outDs.lock.Lock()
+	defer outDs.lock.Unlock()
+
+	if len(outDs.fields) == 0 {
+		outDs.fields = make([]*field, 0, len(ds.fields))
+		outDs.fieldMap = make(map[string]*field)
+	}
+
+	for _, f := range ds.fields {
+		msg := proto.Clone((*api.Field)(f))
+		nf, _ := msg.(*api.Field)
+		outDs.fields = append(outDs.fields, (*field)(nf))
+		if !FieldFlagUnreferenced.In(f.Flags) {
+			outDs.fieldMap[nf.Name] = (*field)(nf)
+		}
+	}
+
+	return nil
+}
+
 func (ds *dataSource) Accessors(rootOnly bool) []FieldAccessor {
 	ds.lock.RLock()
 	defer ds.lock.RUnlock()
