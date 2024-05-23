@@ -46,6 +46,7 @@ type GadgetContext interface {
 	ImageName() string
 	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
 	GetDataSources() map[string]datasource.DataSource
+	GetAllDataSources() map[string]datasource.DataSource
 	SetVar(string, any)
 	GetVar(string) (any, bool)
 	SerializeGadgetInfo() (*api.GadgetInfo, error)

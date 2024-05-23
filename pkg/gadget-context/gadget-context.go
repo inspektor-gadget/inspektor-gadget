@@ -212,10 +212,26 @@ func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (data
 	return ds, nil
 }
 
-func (c *GadgetContext) GetDataSources() map[string]datasource.DataSource {
+func (c *GadgetContext) getDataSources(all bool) map[string]datasource.DataSource {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return maps.Clone(c.dataSources)
+
+	ret := maps.Clone(c.dataSources)
+	for name, ds := range ret {
+		// Don't forward unrequested data sources if all is false
+		if !all && !ds.IsRequested() {
+			delete(ret, name)
+		}
+	}
+	return ret
+}
+
+func (c *GadgetContext) GetDataSources() map[string]datasource.DataSource {
+	return c.getDataSources(false)
+}
+
+func (c *GadgetContext) GetAllDataSources() map[string]datasource.DataSource {
+	return c.getDataSources(true)
 }
 
 func (c *GadgetContext) SetVar(varName string, value any) {

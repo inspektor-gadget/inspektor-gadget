@@ -215,9 +215,13 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 					continue
 				}
 				gadgetCtx.Logger().Debugf("loaded gadget info")
-				for _, ds := range gadgetCtx.GetDataSources() {
+				for _, ds := range gadgetCtx.GetAllDataSources() {
 					gadgetCtx.Logger().Debugf("registered ds %s", ds.Name())
-					dsMap[dsNameMap[ds.Name()]] = ds
+					if dsId, ok := dsNameMap[ds.Name()]; ok {
+						dsMap[dsId] = ds
+					} else {
+						gadgetCtx.Logger().Debugf("datasource %s not found in gadget info", ds.Name())
+					}
 				}
 				initialized = true
 			default:
