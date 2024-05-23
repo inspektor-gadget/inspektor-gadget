@@ -29,6 +29,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	// NumRunTargets is the number of targets that the gadget will run on
+	NumRunTargets = "n-run-targets"
+)
+
 type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser

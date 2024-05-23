@@ -75,6 +75,9 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *para
 	if err != nil {
 		return fmt.Errorf("getting target nodes: %w", err)
 	}
+
+	gadgetCtx.SetVar(runtime.NumRunTargets, len(targets))
+
 	_, err = r.runGadgetOnTargets(gadgetCtx, paramValues, targets)
 	return err
 }
