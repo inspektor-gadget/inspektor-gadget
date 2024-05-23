@@ -26,6 +26,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -250,9 +251,28 @@ func validateStructs(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) er
 			mapStructFields[f.Name] = f
 		}
 
+		mntnsFields := 0
+		netnsFields := 0
+
 		btfStructFields := make(map[string]btf.Member, len(btfStruct.Members))
 		for _, m := range btfStruct.Members {
 			btfStructFields[m.Name] = m
+
+			if m.Type.TypeName() != "" && strings.Contains(compat.MntNsIdType, m.Type.TypeName()) {
+				mntnsFields++
+			}
+			if m.Type.TypeName() != "" && strings.Contains(compat.NetNsIdType, m.Type.TypeName()) {
+				netnsFields++
+			}
+		}
+
+		if mntnsFields > 1 {
+			log.Warnf("Using multiple fields of %q may cause unpredictable behavior during enrichment",
+				compat.MntNsIdType)
+		}
+		if netnsFields > 1 {
+			log.Warnf("Using multiple fields of %q may cause unpredictable behavior during enrichment",
+				compat.NetNsIdType)
 		}
 
 		for fieldName := range mapStructFields {

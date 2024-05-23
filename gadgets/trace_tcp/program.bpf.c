@@ -35,7 +35,7 @@ struct event {
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
-	__u32 netns;
+	gadget_netns_id netns;
 	enum event_type type;
 };
 

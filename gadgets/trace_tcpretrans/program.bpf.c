@@ -39,7 +39,7 @@ struct event {
 	__u8 state;
 	__u8 tcpflags;
 	__u32 reason;
-	__u32 netns;
+	gadget_netns_id netns;
 	enum type type;
 
 	gadget_mntns_id mntns_id;
