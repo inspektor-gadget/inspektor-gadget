@@ -172,6 +172,7 @@ func newDataSource(t Type, name string) (*dataSource, error) {
 		name:            name,
 		dType:           t,
 		requestedFields: make(map[string]bool),
+		requested:       true,
 		fieldMap:        make(map[string]*field),
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
@@ -629,6 +630,12 @@ func (ds *dataSource) Accessors(rootOnly bool) []FieldAccessor {
 		})
 	}
 	return res
+}
+
+func (ds *dataSource) SetRequested(v bool) {
+	ds.lock.Lock()
+	defer ds.lock.Unlock()
+	ds.requested = v
 }
 
 func (ds *dataSource) IsRequested() bool {
