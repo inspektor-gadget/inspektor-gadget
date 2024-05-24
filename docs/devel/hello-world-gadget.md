@@ -214,7 +214,7 @@ Tools like [cosign](https://docs.sigstore.dev/signing/signing_with_containers/) 
 Signed images ensure integrity and authenticity, adding an extra layer of trust.
 By default, Inspektor Gadget forbids running unsigned gadget images, but you can skip the verification using the `--verify-image=false` flag at your own risks.
 
-For more details on the verification process, refer to the [verification documentation](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/getting-started/verify.md#verify-image-based-gadgets).
+For more details on the verification process, refer to the [verification documentation](../getting-started/verify.md#verify-image-based-gadgets).
 
 ## Running the gadget
 
