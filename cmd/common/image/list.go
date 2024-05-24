@@ -16,6 +16,7 @@ package image
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -34,6 +35,10 @@ import (
 
 func NewListCmd() *cobra.Command {
 	var noTrunc bool
+	var outputMode string
+
+	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON}
+
 	cmd := &cobra.Command{
 		Use:          "list",
 		Short:        "List gadget images on the host",
@@ -64,13 +69,31 @@ func NewListCmd() *cobra.Command {
 					return ""
 				})
 			}
-			formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(!noTrunc && isTerm))
-			formatter.WriteTable(cmd.OutOrStdout(), images)
+			switch outputMode {
+			case utils.OutputModeJSON:
+				bytes, err := json.Marshal(images)
+				if err != nil {
+					return fmt.Errorf("marshalling images to JSON: %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+			case utils.OutputModeColumns:
+				formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(!noTrunc && isTerm))
+				formatter.WriteTable(cmd.OutOrStdout(), images)
+			default:
+				return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(outputModes, ", "))
+			}
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output, this option is only valid when used in a terminal")
+	cmd.Flags().StringVarP(
+		&outputMode,
+		"output",
+		"o",
+		utils.OutputModeColumns,
+		fmt.Sprintf("Output mode, possible values are, %s", strings.Join(outputModes, ", ")),
+	)
 
 	return utils.MarkExperimental(cmd)
 }
