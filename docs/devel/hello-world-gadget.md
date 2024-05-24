@@ -207,6 +207,15 @@ Pushing ghcr.io/my-org/mygadget:latest...
 Successfully pushed ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
+## Signing the gadget image
+
+Once you have pushed your gadget image to a container registry, it's highly recommended to sign it for security reasons.
+Tools like [cosign](https://docs.sigstore.dev/signing/signing_with_containers/) can be used for this purpose.
+Signed images ensure integrity and authenticity, adding an extra layer of trust.
+By default, Inspektor Gadget forbids running unsigned gadget images, but you can skip the verification using the `--verify-image=false` flag at your own risks.
+
+For more details on the verification process, refer to the [verification documentation](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/getting-started/verify.md#verify-image-based-gadgets).
+
 ## Running the gadget
 
 We're now all set to run our gadget for the first time.
