@@ -63,8 +63,9 @@ type Attacher interface {
 }
 
 type LocalManager struct {
-	igManager *igmanager.IGManager
-	rc        []*containerutilsTypes.RuntimeConfig
+	igManager     *igmanager.IGManager
+	rc            []*containerutilsTypes.RuntimeConfig
+	fakeContainer *containercollection.Container
 }
 
 func (l *LocalManager) Name() string {
@@ -215,6 +216,20 @@ partsLoop:
 	}
 
 	l.rc = rc
+
+	pidOne := uint32(1)
+	mntns, err := containerutils.GetMntNs(int(pidOne))
+	if err != nil {
+		return fmt.Errorf("getting mount namespace ID for host PID %d: %w", pidOne, err)
+	}
+
+	// We need this fake container for gadget which rely only on the Attacher
+	// concept:
+	// * Network gadget will get the netns corresponding to PID 1 on their
+	//   own.
+	// * Others, like traceloop or advise seccomp-profile, need the mount
+	//   namespace ID to bet set.
+	l.fakeContainer = &containercollection.Container{Pid: pidOne, Mntns: mntns}
 
 	igManager, err := igmanager.NewManager(l.rc)
 	if err != nil {
@@ -370,9 +385,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		}
 
 		if host {
-			// We need to attach this fake container for gadget which rely only on the
-			// Attacher concept.
-			containers = append(containers, &containercollection.Container{Pid: 1})
+			containers = append(containers, l.manager.fakeContainer)
 		}
 
 		for _, container := range containers {
@@ -401,9 +414,7 @@ func (l *localManagerTrace) PostGadgetRun() error {
 			}
 
 			if host {
-				// Reciprocal operation of attaching fake container with PID 1 which is
-				// needed by gadgets relying on the Attacher concept.
-				l.attacher.DetachContainer(&containercollection.Container{Pid: 1})
+				l.attacher.DetachContainer(l.manager.fakeContainer)
 			}
 		}
 	}
