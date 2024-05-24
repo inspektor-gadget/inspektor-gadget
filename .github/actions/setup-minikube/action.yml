@@ -5,6 +5,9 @@ inputs:
   runtime:
     description: "The container runtime to use for minikube."
     required: true
+  driver:
+    description: "The driver to use for minikube."
+    required: true
   multi-node:
     description: "Whether to run minikube with multiple nodes."
     required: false
@@ -13,10 +16,21 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Install prerequisities
+      shell: bash
+      if: inputs.driver == 'kvm2'
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+        sudo chmod 0666 /dev/kvm
     - name: Start minikube
       shell: bash
       run: |
-        make minikube-start-${{ inputs.runtime }}
+        if [ ${{ inputs.driver }} == 'kvm2' ]; then
+          sudo MINIKUBE_DRIVER=${{ inputs.driver }} make minikube-start-${{ inputs.runtime }}
+        else
+          MINIKUBE_DRIVER=${{ inputs.driver }} make minikube-start-${{ inputs.runtime }}
+        fi
       env:
         # When using multi-node, run the integration tests on two nodes.
         # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
