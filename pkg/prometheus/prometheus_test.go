@@ -43,12 +43,12 @@ func TestMetrics(t *testing.T) {
 		expectedErr bool
 
 		// outer key: metric name, inner key: attributes hash
-		expectedInt64Counters     map[string]map[string]int64
-		expectedFloat64Counters   map[string]map[string]float64
-		expectedInt64Gauges       map[string]map[string]int64
-		expectedFloat64Gauges     map[string]map[string]float64
-		expectedInt64Histograms   map[string]map[string]int64
-		expectedFloat64Histograms map[string]map[string]float64
+		expectedInt64Counters         map[string]map[string]int64
+		expectedFloat64Counters       map[string]map[string]float64
+		expectedInt64ObservableGauges map[string]map[string]int64
+		expectedFloat64Gauges         map[string]map[string]float64
+		expectedInt64Histograms       map[string]map[string]int64
+		expectedFloat64Histograms     map[string]map[string]float64
 	}
 
 	tests := []testDefinition{
@@ -456,7 +456,7 @@ func TestMetrics(t *testing.T) {
 					},
 				},
 			},
-			expectedInt64Gauges: map[string]map[string]int64{
+			expectedInt64ObservableGauges: map[string]map[string]int64{
 				"gauge_no_labels_nor_filtering": {"": 5},
 			},
 		},
@@ -474,7 +474,7 @@ func TestMetrics(t *testing.T) {
 					},
 				},
 			},
-			expectedInt64Gauges: map[string]map[string]int64{
+			expectedInt64ObservableGauges: map[string]map[string]int64{
 				"gauge_filter_only_root_events": {"": 3},
 			},
 		},
@@ -492,7 +492,7 @@ func TestMetrics(t *testing.T) {
 					},
 				},
 			},
-			expectedInt64Gauges: map[string]map[string]int64{
+			expectedInt64ObservableGauges: map[string]map[string]int64{
 				"gauge_filter_only_root_cat_events": {"": 2},
 			},
 		},
@@ -510,7 +510,7 @@ func TestMetrics(t *testing.T) {
 					},
 				},
 			},
-			expectedInt64Gauges: map[string]map[string]int64{
+			expectedInt64ObservableGauges: map[string]map[string]int64{
 				"gauge_with_int_field": {"": 105 + 216 + 327 + 428 + 429},
 			},
 		},
@@ -552,7 +552,7 @@ func TestMetrics(t *testing.T) {
 					},
 				},
 			},
-			expectedInt64Gauges: map[string]map[string]int64{
+			expectedInt64ObservableGauges: map[string]map[string]int64{
 				"gauge_no_labels_nor_filtering": {"": 5},
 				"gauge_filter_only_root_events": {"": 3},
 			},
@@ -715,7 +715,7 @@ func TestMetrics(t *testing.T) {
 
 			require.Equal(t, len(test.expectedInt64Counters), len(meter.int64counters))
 			require.Equal(t, len(test.expectedFloat64Counters), len(meter.float64counters))
-			require.Equal(t, len(test.expectedInt64Gauges), len(meter.int64gauges))
+			require.Equal(t, len(test.expectedInt64ObservableGauges), len(meter.int64observablegauges))
 			require.Equal(t, len(test.expectedInt64Histograms), len(meter.int64histograms))
 			require.Equal(t, len(test.expectedFloat64Histograms), len(meter.float64histograms))
 
@@ -744,18 +744,18 @@ func TestMetrics(t *testing.T) {
 				require.InDeltaMapValues(t, expected, counter.values, 0.01, "counter values are wrong")
 			}
 
-			// int64 gauges
-			for name, expected := range test.expectedInt64Gauges {
-				gauge, ok := meter.int64gauges[name]
-				require.True(t, ok, "int64 gauge %q not found", name)
+			// int64 observable gauges
+			for name, expected := range test.expectedInt64ObservableGauges {
+				gauge, ok := meter.int64observablegauges[name]
+				require.True(t, ok, "int64 observable gauge %q not found", name)
 
 				require.Equal(t, expected, gauge.values, "counter values are wrong")
 			}
 
-			// float64 gauges
+			// float64 observable gauges
 			for name, expected := range test.expectedFloat64Gauges {
-				gauge, ok := meter.float64gauges[name]
-				require.True(t, ok, "float gauge %q not found", name)
+				gauge, ok := meter.float64observablegauges[name]
+				require.True(t, ok, "float observable gauge %q not found", name)
 
 				// require.Equal doesn't work because of float comparisons
 				require.InDeltaMapValues(t, expected, gauge.values, 0.01, "gauge values are wrong")
