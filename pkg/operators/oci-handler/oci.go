@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -43,21 +42,20 @@ const (
 	publicKey             = "public-key"
 )
 
-type ociHandler struct{}
+type ociHandler struct {
+	globalParams *params.Params
+}
 
 func (o *ociHandler) Name() string {
 	return "oci"
 }
 
-func (o *ociHandler) Init(*params.Params) error {
+func (o *ociHandler) Init(params *params.Params) error {
+	o.globalParams = params
 	return nil
 }
 
 func (o *ociHandler) GlobalParams() api.Params {
-	return nil
-}
-
-func (o *ociHandler) InstanceParams() api.Params {
 	return api.Params{
 		// Hardcoded for now
 		{
@@ -116,6 +114,10 @@ func (o *ociHandler) InstanceParams() api.Params {
 	}
 }
 
+func (o *ociHandler) InstanceParams() api.Params {
+	return api.Params{}
+}
+
 func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, error) {
 	k8sClient, err := k8sutil.NewClientset("")
 	if err != nil {
@@ -134,20 +136,13 @@ func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, err
 func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
-	ociParams := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
-	err := ociParams.CopyFromMap(instanceParamValues, "")
-	if err != nil {
-		return nil, err
-	}
-
 	instance := &OciHandlerInstance{
 		ociHandler:  o,
 		gadgetCtx:   gadgetCtx,
-		ociParams:   ociParams,
 		paramValues: instanceParamValues,
 	}
 
-	err = instance.init(gadgetCtx)
+	err := instance.init(gadgetCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +160,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 
 	// TODO: move to a place without dependency on k8s
-	pullSecretString := o.ociParams.Get(pullSecret).AsString()
+	pullSecretString := o.ociHandler.globalParams.Get(pullSecret).AsString()
 	var secretBytes []byte = nil
 	if pullSecretString != "" {
 		var err error
@@ -178,19 +173,19 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	imgOpts := &oci.ImageOptions{
 		AuthOptions: oci.AuthOptions{
-			AuthFile:    o.ociParams.Get(authfileParam).AsString(),
+			AuthFile:    o.ociHandler.globalParams.Get(authfileParam).AsString(),
 			SecretBytes: secretBytes,
-			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
+			Insecure:    o.ociHandler.globalParams.Get(insecureParam).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
-			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
-			PublicKey:       o.ociParams.Get(publicKey).AsString(),
+			VerifyPublicKey: o.ociHandler.globalParams.Get(verifyImage).AsBool(),
+			PublicKey:       o.ociHandler.globalParams.Get(publicKey).AsString(),
 		},
 	}
 
 	// Make sure the image is available, either through pulling or by just accessing a local copy
 	// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
-	err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), imgOpts, o.ociParams.Get(pullParam).AsString())
+	err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(), imgOpts, o.ociHandler.globalParams.Get(pullParam).AsString())
 	if err != nil {
 		return fmt.Errorf("ensuring image: %w", err)
 	}
@@ -301,7 +296,6 @@ type OciHandlerInstance struct {
 	dataOperatorInstances  []operators.DataOperatorInstance
 	extraParams            api.Params
 	paramValues            api.ParamValues
-	ociParams              *params.Params
 	paramValueMap          map[string]string
 }
 
