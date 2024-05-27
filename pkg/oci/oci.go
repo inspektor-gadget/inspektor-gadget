@@ -17,6 +17,7 @@ package oci
 import (
 	"archive/tar"
 	"bytes"
+	"cmp"
 	"context"
 	"crypto"
 	"crypto/x509"
@@ -27,10 +28,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
@@ -242,6 +246,36 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 	return imageDesc, nil
 }
 
+// sortIndex sorts the manifest list in the index file and writes it back. This
+// is done to be sure the index is deterministic and the generate tar file is
+// the same.
+func sortIndex(indexPath string) (*ocispec.Index, error) {
+	file, err := os.ReadFile(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading index.json: %w", err)
+	}
+
+	var index ocispec.Index
+	if err = json.Unmarshal(file, &index); err != nil {
+		return nil, fmt.Errorf("unmarshalling index.json: %w", err)
+	}
+
+	slices.SortFunc(index.Manifests, func(a, b ocispec.Descriptor) int {
+		return cmp.Compare(a.Digest.String(), b.Digest.String())
+	})
+
+	file, err = json.Marshal(index)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling index.json: %w", err)
+	}
+
+	if err = os.WriteFile(indexPath, file, 0o600); err != nil {
+		return nil, fmt.Errorf("writing index.json: %w", err)
+	}
+
+	return &index, nil
+}
+
 func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) error {
 	ociStore, err := GetLocalOciStore()
 	if err != nil {
@@ -271,7 +305,22 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 		}
 	}
 
-	if err := tarFolderToFile(tmpDir, dstFile); err != nil {
+	index, err := sortIndex(path.Join(tmpDir, "index.json"))
+	if err != nil {
+		return fmt.Errorf("reading index.json: %w", err)
+	}
+
+	// Set the time of the tar file to the creation time of the index. This
+	// allows to have a deterministic tarball.
+	var tarHeaderTime time.Time
+	if index.Annotations != nil && index.Annotations[ocispec.AnnotationCreated] != "" {
+		tarHeaderTime, err = time.Parse(time.RFC3339, index.Annotations[ocispec.AnnotationCreated])
+		if err != nil {
+			return fmt.Errorf("parsing created time: %w", err)
+		}
+	}
+
+	if err := tarFolderToFile(tmpDir, dstFile, tarHeaderTime); err != nil {
 		return fmt.Errorf("creating tar for gadget image: %w", err)
 	}
 
@@ -308,7 +357,7 @@ func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
 }
 
 // based on https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
-func tarFolderToFile(src, filePath string) error {
+func tarFolderToFile(src, filePath string, headerTime time.Time) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("opening file: %w", err)
@@ -330,6 +379,10 @@ func tarFolderToFile(src, filePath string) error {
 		if err != nil {
 			return err
 		}
+
+		header.ModTime = headerTime
+		header.AccessTime = headerTime
+		header.ChangeTime = headerTime
 
 		// update the name to correctly reflect the desired destination when untaring
 		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
