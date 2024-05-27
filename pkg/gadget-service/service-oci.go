@@ -28,7 +28,22 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
+
+func (s *Service) initOperators() error {
+	for op, globalParams := range s.operators {
+		err := op.Init(globalParams)
+		if err != nil {
+			return fmt.Errorf("initializing operator %s: %w", op.Name(), err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) GetOperatorMap() map[operators.DataOperator]*params.Params {
+	return s.operators
+}
 
 func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
 	if req.Version != api.VersionGadgetInfo {
@@ -37,7 +52,7 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 
 	// Get all available operators
 	ops := make([]operators.DataOperator, 0)
-	for _, op := range operators.GetDataOperators() {
+	for op := range s.operators {
 		ops = append(ops, op)
 	}
 
@@ -183,7 +198,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	)
 
 	ops := make([]operators.DataOperator, 0)
-	for _, op := range operators.GetDataOperators() {
+	for op := range s.operators {
 		ops = append(ops, op)
 	}
 	ops = append(ops, svc)
