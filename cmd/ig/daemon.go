@@ -24,6 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -63,6 +64,12 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		16384,
 		"The events buffer length. A low value could impact horizontal scaling.")
 
+	service := gadgetservice.NewService(log.StandardLogger())
+
+	for _, params := range service.GetOperatorMap() {
+		common.AddFlags(daemonCmd, params, nil, runtime)
+	}
+
 	daemonCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if os.Geteuid() != 0 {
 			return fmt.Errorf("%s must be run as root to be able to run eBPF programs", filepath.Base(os.Args[0]))
@@ -86,7 +93,8 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		}
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
-		service := gadgetservice.NewService(log.StandardLogger(), eventBufferLength)
+		service.SetEventBufferLength(eventBufferLength)
+
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,
 			SocketPath: socketPath,
