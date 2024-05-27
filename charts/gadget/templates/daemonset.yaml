@@ -80,13 +80,6 @@ spec:
               value: {{ .Values.config.hookMode | quote }}
             - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
               value: {{ .Values.config.fallbackPodInformer | quote }}
-            # Make sure to keep these settings in sync with pkg/container-utils/runtime-client/interface.go
-            - name: INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH
-              value: {{ .Values.config.containerdSocketPath | quote }}
-            - name: INSPEKTOR_GADGET_CRIO_SOCKETPATH
-              value: {{ .Values.config.crioSocketPath | quote }}
-            - name: INSPEKTOR_GADGET_DOCKER_SOCKETPATH
-              value: {{ .Values.config.dockerSocketPath | quote }}
             - name: HOST_ROOT
               value: "/host"
             - name: IG_EXPERIMENTAL

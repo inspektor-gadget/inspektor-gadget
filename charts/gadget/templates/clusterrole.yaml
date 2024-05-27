@@ -8,6 +8,9 @@ metadata:
   {{- end }}
 rules:
   - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+  - apiGroups: [""]
     resources: ["namespaces", "nodes", "pods"]
     verbs: ["get", "watch", "list"]
   - apiGroups: [""]

@@ -19,6 +19,9 @@ metadata:
   name: gadget-cluster-role
 rules:
   - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+  - apiGroups: [""]
     resources: ["namespaces", "nodes", "pods"]
     verbs: ["get", "watch", "list"]
   - apiGroups: [""]
@@ -161,13 +164,6 @@ spec:
               value: "auto"
             - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
               value: "true"
-            # Make sure to keep these settings in sync with pkg/container-utils/runtime-client/interface.go
-            - name: INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH
-              value: "/run/containerd/containerd.sock"
-            - name: INSPEKTOR_GADGET_CRIO_SOCKETPATH
-              value: "/run/crio/crio.sock"
-            - name: INSPEKTOR_GADGET_DOCKER_SOCKETPATH
-              value: "/run/docker.sock"
             - name: HOST_ROOT
               value: "/host"
             - name: IG_EXPERIMENTAL
