@@ -783,7 +783,10 @@ jobs:
     name: Publish ig img manifest
     # level: 2
     if: github.event_name != 'pull_request'
-    needs: build-ig-container-images
+    needs:
+      - build-ig-container-images
+      - check-secrets
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -807,7 +810,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ github.repository_owner }}/ig
       - name: Publish the manifest list
+        id: publish-manifest-list
         run: |
+          IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
@@ -815,7 +820,7 @@ jobs:
           IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image only includes the ig binary, a standalone tool to run the gadgets."
 
           docker buildx imagetools create \
-            -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+            -t $IMAGE_TAG \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-amd64 }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-arm64 }} \
@@ -825,6 +830,16 @@ jobs:
             --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
             --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
             --annotation index:org.opencontainers.image.title="$IMAGE_TITLE"
+
+          image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
+          echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
+      - name: Sign the manifest list
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   build-helper-images:
     # level: 0
