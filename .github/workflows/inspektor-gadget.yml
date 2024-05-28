@@ -842,9 +842,12 @@ jobs:
           image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   build-helper-images:
-    # level: 0
+    # level: 2
     name: helper images
     runs-on: ubuntu-latest
+    needs:
+      - check-secrets
+      - public-key-check
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
       ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
@@ -909,6 +912,9 @@ jobs:
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
+        # The repository should have the variable PUSH_HELPERS set to
+        # ENABLE_PUSH_HELPERS, see:
+        # https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository
         push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         platforms: ${{ matrix.image.platform }}
@@ -929,6 +935,13 @@ jobs:
         fi
 
         echo "${{ matrix.image.name }}=${image}" >> $GITHUB_OUTPUT
+    - name: Sign ${{ matrix.image.name }} image
+      if: steps.check-build-helpers.outputs.build == 'true' && needs.check-secrets.outputs.cosign == 'true' && vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS'
+      uses: ./.github/actions/sign-container-image
+      with:
+        password: '${{ secrets.COSIGN_PASSWORD }}'
+        private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.build-image.outputs.digest }}"
 
   build-examples:
     name: example
