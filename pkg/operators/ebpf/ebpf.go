@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
+	"oras.land/oras-go/v2"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -76,12 +77,13 @@ func (o *ebpfOperator) Description() string {
 
 func (o *ebpfOperator) InstantiateImageOperator(
 	gadgetCtx operators.GadgetContext,
+	target oras.ReadOnlyTarget,
 	desc ocispec.Descriptor,
 	paramValues api.ParamValues,
 ) (
 	operators.ImageOperatorInstance, error,
 ) {
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), desc)
+	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, desc)
 	if err != nil {
 		return nil, fmt.Errorf("getting ebpf binary: %w", err)
 	}

@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"oras.land/oras-go/v2"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -52,6 +54,7 @@ type GadgetContext interface {
 	SetMetadata([]byte)
 	SetParams([]*api.Param)
 	DataOperators() []operators.DataOperator
+	OrasTarget() oras.ReadOnlyTarget
 
 	Run(paramValues api.ParamValues) error
 	PrepareGadgetInfo(paramValues api.ParamValues) error
