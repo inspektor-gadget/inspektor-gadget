@@ -41,6 +41,7 @@ var RuntimePaths = []string{
 	"/run/torcx/unpack/docker/bin/runc", // Used in Flatcar Container Linux
 	"/usr/bin/crun",
 	"/var/lib/rancher/k3s/data/current/bin/runc", // Used in k3s
+	"/var/lib/rancher/rke2/bin/runc",             // Used in RKE2
 }
 
 // Notify marks the runtime path given as argument if it exists.
