@@ -34,6 +34,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	runtimefinder "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/runtime-finder"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -113,22 +114,6 @@ type RuncNotifier struct {
 	wg sync.WaitGroup
 }
 
-// runcPaths is the list of paths where runc could be installed. Depending on
-// the Linux distribution, it could be in different locations.
-//
-// When this package is executed in a container, it prepends the
-// HOST_ROOT env variable to the path.
-var runcPaths = []string{
-	"/bin/runc",
-	"/usr/bin/runc",
-	"/usr/sbin/runc",
-	"/usr/local/bin/runc",
-	"/usr/local/sbin/runc",
-	"/usr/lib/cri-o-runc/sbin/runc",
-	"/run/torcx/unpack/docker/bin/runc",
-	"/usr/bin/crun",
-}
-
 // initFanotify initializes the fanotify API with the flags we need
 func initFanotify() (*fanotify.NotifyFD, error) {
 	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS | unix.FAN_NONBLOCK)
@@ -161,7 +146,7 @@ func Supported() bool {
 // or terminated, and call the callback on such event.
 //
 // Limitations:
-// - runc must be installed in one of the paths listed by runcPaths
+// - runc must be installed in one of the paths listed by notify.RuntimePaths
 func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	n := &RuncNotifier{
 		callback:         callback,
@@ -180,38 +165,33 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 
 	runcPath := os.Getenv("RUNC_PATH")
 	if runcPath != "" {
-		log.Debugf("Runcfanotify: trying runc from RUNC_PATH env variable at %s", runcPath)
+		log.Debugf("runc-fanotify: trying runtime from RUNC_PATH env variable at %s", runcPath)
 
-		if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
-			return nil, err
+		notifiedPath, err := runtimefinder.Notify(runcPath, host.HostRoot, runcBinaryNotify)
+		if err != nil {
+			return nil, fmt.Errorf("runc-fanotify: notifying %s: %w", runcPath, err)
 		}
 
-		if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
-			return nil, fmt.Errorf("fanotify marking of %s: %w", runcPath, err)
-		}
+		log.Debugf("runc-fanotify: monitoring runtime at %s (originally %s)", notifiedPath, runcPath)
 		runcMonitored = true
 	} else {
-		for _, r := range runcPaths {
-			runcPath := filepath.Join(host.HostRoot, r)
+		for _, r := range runtimefinder.RuntimePaths {
+			log.Debugf("runc-fanotify: trying runtime at %s", r)
 
-			log.Debugf("Runcfanotify: trying runc at %s", runcPath)
-
-			if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
-				log.Debugf("Runcfanotify: runc at %s not found", runcPath)
+			notifiedPath, err := runtimefinder.Notify(r, host.HostRoot, runcBinaryNotify)
+			if err != nil {
+				log.Debugf("runc-fanotify: notifying %s: %v", r, err)
 				continue
 			}
 
-			if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
-				log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
-				continue
-			}
+			log.Debugf("runc-fanotify: monitoring runtime at %s (originally %s)", notifiedPath, r)
 			runcMonitored = true
 		}
 	}
 
 	if !runcMonitored {
 		runcBinaryNotify.File.Close()
-		return nil, fmt.Errorf("no runc instance can be monitored with fanotify. The following paths were tested: %s. You can use the RUNC_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runcPaths", strings.Join(runcPaths, ","))
+		return nil, fmt.Errorf("no runc instance can be monitored with fanotify. The following paths were tested: %s. You can use the RUNC_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimefinder.RuntimePaths", strings.Join(runtimefinder.RuntimePaths, ", "))
 	}
 
 	n.wg.Add(2)
