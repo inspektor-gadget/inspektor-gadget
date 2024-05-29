@@ -9,8 +9,50 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "ci:"
+  # Update root go dependencies
   - package-ecosystem: "gomod"
     directory: "/"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "go:"
+    allow:
+      - dependency-type: all
+  # Update other go depedendencies
+  - package-ecosystem: "gomod"
+    directory: "/examples/"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "go:"
+    allow:
+      - dependency-type: all
+  - package-ecosystem: "gomod"
+    directory: "/tools/eks-cleanup/"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "go:"
+    allow:
+      - dependency-type: all
+  - package-ecosystem: "gomod"
+    directory: "/tools/testjson2md/"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "go:"
+    allow:
+      - dependency-type: all
+  - package-ecosystem: "gomod"
+    directory: "/tools/dnstester/"
     schedule:
       interval: "daily"
       time: "05:00"
