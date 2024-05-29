@@ -33,9 +33,11 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -62,14 +64,25 @@ type Service struct {
 	logger            logger.Logger
 	servers           map[*grpc.Server]struct{}
 	eventBufferLength uint64
+
+	// operators stores all global parameters for DataOperators (non-legacy)
+	operators map[operators.DataOperator]*params.Params
 }
 
-func NewService(defaultLogger logger.Logger, length uint64) *Service {
-	return &Service{
-		servers:           map[*grpc.Server]struct{}{},
-		logger:            defaultLogger,
-		eventBufferLength: length,
+func NewService(defaultLogger logger.Logger) *Service {
+	ops := make(map[operators.DataOperator]*params.Params)
+	for _, op := range operators.GetDataOperators() {
+		ops[op] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 	}
+	return &Service{
+		servers:   map[*grpc.Server]struct{}{},
+		logger:    defaultLogger,
+		operators: ops,
+	}
+}
+
+func (s *Service) SetEventBufferLength(val uint64) {
+	s.eventBufferLength = val
 }
 
 func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {
@@ -327,6 +340,11 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 	api.RegisterGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
+
+	err = s.initOperators()
+	if err != nil {
+		return fmt.Errorf("initializing operators: %w", err)
+	}
 
 	return server.Serve(s.listener)
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
@@ -41,7 +42,10 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
 
 	// Add operator global flags
-	operatorsGlobalParamsCollection := operators.GlobalParamsCollection()
+	opGlobalParams := make(map[string]*params.Params)
+	for _, op := range operators.GetDataOperators() {
+		opGlobalParams[op.Name()] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
+	}
 
 	// gadget parameters are only available after contacting the server
 	gadgetParams := make(params.Params, 0)
@@ -89,6 +93,12 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 			ops := make([]operators.DataOperator, 0)
 			for _, op := range operators.GetDataOperators() {
+				// Initialize operator
+				err := op.Init(opGlobalParams[op.Name()])
+				if err != nil {
+					log.Warnf("error initializing operator %s: %v", op.Name(), err)
+					continue
+				}
 				ops = append(ops, op)
 			}
 			ops = append(ops, clioperator.CLIOperator)
@@ -197,7 +207,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	AddFlags(cmd, runtimeGlobalParams, nil, runtime)
 	AddFlags(cmd, runtimeParams, nil, runtime)
 
-	for _, operatorParams := range operatorsGlobalParamsCollection {
+	for _, operatorParams := range opGlobalParams {
 		AddFlags(cmd, operatorParams, nil, runtime)
 	}
 

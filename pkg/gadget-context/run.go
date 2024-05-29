@@ -41,20 +41,11 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		log.Debugf("initializing data op %q", op.Name())
 		opParamPrefix := fmt.Sprintf("operator.%s", op.Name())
 
-		// Lazily initialize operator
-		// TODO: global params should be filled out from a config file or such; maybe it's a better idea not to
-		// lazily initialize operators at all, but just hand over the config. The "lazy" stuff could then be done
-		// if the operator is instantiated and needs to do work
-		err := op.Init(apihelpers.ToParamDescs(op.GlobalParams()).ToParams())
-		if err != nil {
-			return nil, fmt.Errorf("initializing operator %q: %w", op.Name(), err)
-		}
-
 		// Get and fill params
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
-		err = apihelpers.Validate(instanceParams, opParamValues)
+		err := apihelpers.Validate(instanceParams, opParamValues)
 		if err != nil {
 			return nil, fmt.Errorf("validating params for operator %q: %w", op.Name(), err)
 		}
