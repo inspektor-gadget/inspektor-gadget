@@ -1,0 +1,28 @@
+# Artifact Hub package metadata file
+version: 0.28.1
+name: "trace ssl"
+category: monitoring-logging
+displayName: "trace ssl"
+createdAt: "2024-04-20T14:09:00+08:00"
+description: "use uprobe to capture data on read/recv or write/send functions of OpenSSL, GnuTLS, NSS and Libcrypto"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_ssl:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+install: |
+    # Run
+    ```bash
+    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_ssl:latest
+    ```
+provider:
+    name: Inspektor Gadget
