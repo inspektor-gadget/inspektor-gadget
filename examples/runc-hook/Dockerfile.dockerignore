@@ -1,7 +1,5 @@
 *
 !go.mod
 !go.sum
-!go.work
-!go.work.sum
 !examples
 !pkg

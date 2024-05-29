@@ -969,12 +969,14 @@ jobs:
         cache: true
     - name: Build builtin gadgets example binaries
       run: |
-        for dir in $(dirname $(find examples/builtin-gadgets -name README.md)); do
+        cd examples
+        for dir in $(dirname $(find builtin-gadgets -name README.md)); do
           go build ./$dir;
         done
     - name: Build gadgets example binaries
       run: |
-        for dir in $(dirname $(find examples/gadgets -name main.go)); do
+        cd examples
+        for dir in $(dirname $(find gadgets -name main.go)); do
           go build ./$dir;
         done
 
