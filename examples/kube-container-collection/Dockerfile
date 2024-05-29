@@ -5,6 +5,7 @@ COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
 
 COPY ./ /gadget
+COPY examples/go.mod examples/go.sum /gadget/examples/
 RUN cd /gadget/examples/kube-container-collection && make kube-container-collection-static
 
 FROM busybox
