@@ -515,21 +515,35 @@ func (ds *dataSource) EmitAndRelease(p Packet) error {
 		for _, sub := range ds.subscriptionsData {
 			err := sub.fn(ds, p.(*data))
 			if err != nil {
+				if errors.Is(err, ErrDiscard) {
+					return nil
+				}
 				return err
 			}
 		}
 	case TypeArray:
 		for _, sub := range ds.subscriptionsData {
-			for _, d := range p.(*dataArray).GetDataArray() {
-				err := sub.fn(ds, (*dataElement)(d))
+			i := 0
+			alen := len(p.(*dataArray).DataArray)
+			for i < alen {
+				err := sub.fn(ds, (*dataElement)(p.(*dataArray).DataArray[i]))
 				if err != nil {
+					if errors.Is(err, ErrDiscard) {
+						p.(*dataArray).DataArray = slices.Delete(p.(*dataArray).DataArray, i, i+1)
+						alen--
+						continue
+					}
 					return err
 				}
+				i++
 			}
 		}
 		for _, sub := range ds.subscriptionsArray {
 			err := sub.fn(ds, p.(*dataArray))
 			if err != nil {
+				if errors.Is(err, ErrDiscard) {
+					return nil
+				}
 				return err
 			}
 		}
@@ -539,6 +553,9 @@ func (ds *dataSource) EmitAndRelease(p Packet) error {
 	for _, sub := range ds.subscriptionsPacket {
 		err := sub.fn(ds, p)
 		if err != nil {
+			if errors.Is(err, ErrDiscard) {
+				return nil
+			}
 			return err
 		}
 	}
