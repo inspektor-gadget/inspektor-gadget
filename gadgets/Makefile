@@ -10,6 +10,7 @@ KUBECTL_GADGET ?= kubectl-gadget
 IG_FLAGS ?=
 COSIGN ?= cosign
 GADGETS = \
+	trace_capabilities \
 	trace_dns \
 	trace_exec \
 	trace_lsm \
