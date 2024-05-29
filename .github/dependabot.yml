@@ -17,6 +17,8 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
+    allow:
+      - dependency-type: all
   - package-ecosystem: "docker"
     directory: "/Dockerfiles"
     schedule:
