@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -23,6 +26,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -40,6 +45,9 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 	var socket string
 	var group string
 	var eventBufferLength uint64
+	var serverKey string
+	var serverCert string
+	var clientCA string
 
 	daemonCmd.PersistentFlags().StringVarP(
 		&group,
@@ -62,6 +70,27 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		"",
 		16384,
 		"The events buffer length. A low value could impact horizontal scaling.")
+
+	daemonCmd.PersistentFlags().StringVarP(
+		&serverKey,
+		"tls-key",
+		"",
+		"",
+		"Path to tls key file")
+
+	daemonCmd.PersistentFlags().StringVarP(
+		&serverCert,
+		"tls-cert",
+		"",
+		"",
+		"Path to tls cert file")
+
+	daemonCmd.PersistentFlags().StringVarP(
+		&clientCA,
+		"tls-client-ca",
+		"",
+		"",
+		"Path to CA certificate for client validation")
 
 	daemonCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if os.Geteuid() != 0 {
@@ -87,11 +116,41 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
 		service := gadgetservice.NewService(log.StandardLogger(), eventBufferLength)
+
+		var options []grpc.ServerOption
+
+		if serverKey != "" || serverCert != "" || clientCA != "" {
+			cert, err := tls.LoadX509KeyPair(serverCert, serverKey)
+			if err != nil {
+				return fmt.Errorf("loading TLS keypair: %w", err)
+			}
+
+			ca := x509.NewCertPool()
+			caBytes, err := os.ReadFile(clientCA)
+			if err != nil {
+				return fmt.Errorf("loading client CA certificate: %w", err)
+			}
+
+			if ok := ca.AppendCertsFromPEM(caBytes); !ok {
+				return errors.New("failed to parse client CA certificate")
+			}
+
+			tlsConfig := &tls.Config{
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				Certificates: []tls.Certificate{cert},
+				ClientCAs:    ca,
+			}
+
+			options = append(options, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		} else {
+			log.Warnf("no TLS configuration provided, running in insecure mode")
+		}
+
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,
 			SocketPath: socketPath,
 			SocketGID:  gid,
-		})
+		}, options...)
 	}
 
 	return daemonCmd

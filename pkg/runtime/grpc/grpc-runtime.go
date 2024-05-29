@@ -16,18 +16,22 @@ package grpcruntime
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -60,6 +64,11 @@ const (
 	ParamRemoteAddress     = "remote-address"
 	ParamConnectionMethod  = "connection-method"
 	ParamConnectionTimeout = "connection-timeout"
+
+	ParamTLSKey        = "tls-key"
+	ParamTLSCert       = "tls-cert"
+	ParamTLSServerCA   = "tls-server-ca"
+	ParamTLSServerName = "tls-server-name"
 
 	// ParamGadgetServiceTCPPort is only used in combination with KubernetesProxyConnectionMethodTCP
 	ParamGadgetServiceTCPPort = "tcp-port"
@@ -161,6 +170,30 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 			Description:  "Maximum time to establish a connection to remote target in seconds",
 			DefaultValue: fmt.Sprintf("%d", ConnectTimeout),
 			TypeHint:     params.TypeUint16,
+		},
+		{
+			Key:          ParamTLSKey,
+			Description:  "TLS client key",
+			DefaultValue: "",
+			TypeHint:     params.TypeString,
+		},
+		{
+			Key:          ParamTLSCert,
+			Description:  "TLS client certificate",
+			DefaultValue: "",
+			TypeHint:     params.TypeString,
+		},
+		{
+			Key:          ParamTLSServerCA,
+			Description:  "TLS server CA certificate",
+			DefaultValue: "",
+			TypeHint:     params.TypeString,
+		},
+		{
+			Key:          ParamTLSServerName,
+			Description:  "override TLS server name (if omitted, using target server name)",
+			DefaultValue: "",
+			TypeHint:     params.TypeString,
 		},
 	}
 	switch r.connectionMode {
@@ -364,8 +397,44 @@ func (r *Runtime) runBuiltInGadgetOnTargets(
 
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
+		grpc.WithReturnConnectionError(),
+	}
+
+	if tlsKey, tlsCert, tlsCA := r.globalParams.Get(ParamTLSKey).String(), r.globalParams.Get(ParamTLSCert).String(), r.globalParams.Get(ParamTLSServerCA).String(); tlsKey != "" || tlsCert != "" || tlsCA != "" {
+		cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		if err != nil {
+			return nil, fmt.Errorf("loading TLS keypair: %w", err)
+		}
+
+		ca := x509.NewCertPool()
+		caBytes, err := os.ReadFile(tlsCA)
+		if err != nil {
+			return nil, fmt.Errorf("loading client CA certificate: %w", err)
+		}
+		if ok := ca.AppendCertsFromPEM(caBytes); !ok {
+			return nil, errors.New("failed to parse client CA certificate")
+		}
+
+		purl, _ := url.Parse(target.addressOrPod)
+
+		tlsConfig := &tls.Config{
+			ServerName:   purl.Hostname(),
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      ca,
+		}
+
+		if serverName := r.globalParams.Get(ParamTLSServerName).String(); serverName != "" {
+			tlsConfig.ServerName = serverName
+		}
+
+		if tlsConfig.ServerName == "" {
+			return nil, errors.New("invalid hostname, use --tls-server-name to override")
+		}
+
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// If we're in Kubernetes connection mode, we need a custom dialer

@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -33,6 +35,15 @@ import (
 func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
 	if req.Version != api.VersionGadgetInfo {
 		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
+	}
+
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if ok {
+			subject := tlsInfo.State.VerifiedChains[0][0].Subject
+			s.logger.Infof("[%s] GetGadgetInfo(%q)", subject, req.ImageName)
+		}
 	}
 
 	// Get all available operators
@@ -59,6 +70,15 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ociRequest := ctrl.GetRunRequest()
 	if ociRequest == nil {
 		return fmt.Errorf("expected first control message to be gadget run request")
+	}
+
+	p, ok := peer.FromContext(runGadget.Context())
+	if ok {
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if ok {
+			subject := tlsInfo.State.VerifiedChains[0][0].Subject
+			s.logger.Infof("[%s] RunGadget(%q)", subject, ociRequest.ImageName)
+		}
 	}
 
 	if ociRequest.Version != api.VersionGadgetRunProtocol {
