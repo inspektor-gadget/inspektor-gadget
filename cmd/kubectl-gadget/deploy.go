@@ -781,7 +781,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			return false, nil
 		}
 	})
-
 	if err != nil {
 		if utilwait.Interrupted(err) && debug {
 			fmt.Println("DUMP PODS:")

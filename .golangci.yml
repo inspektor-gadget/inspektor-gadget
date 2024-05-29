@@ -2,6 +2,7 @@ output:
   sort-results: true
 
 run:
+  go: "1.22"
   timeout: 10m
   build-tags:
   - docs
@@ -30,13 +31,9 @@ linters:
   - goimports
 
 linters-settings:
-  gofumpt:
-    lang-version: "1.22"
   staticcheck:
-    go: "1.22"
     checks: ["all"]
   stylecheck:
-    go: "1.22"
     checks: ["all"]
   errorlint:
     # https://github.com/polyfloyd/go-errorlint

@@ -310,7 +310,6 @@ func main() {
 			HookMode:            hookMode,
 			FallbackPodInformer: fallbackPodInformer,
 		})
-
 		if err != nil {
 			log.Fatalf("failed to create Gadget Tracer Manager server: %v", err)
 		}
