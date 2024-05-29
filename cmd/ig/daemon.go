@@ -86,7 +86,9 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		}
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
-		service := gadgetservice.NewService(log.StandardLogger(), eventBufferLength)
+		service := gadgetservice.NewService(log.StandardLogger())
+		service.SetEventBufferLength(eventBufferLength)
+
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,
 			SocketPath: socketPath,

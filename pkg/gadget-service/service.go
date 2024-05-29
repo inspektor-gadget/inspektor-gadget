@@ -69,17 +69,20 @@ type Service struct {
 	operators map[operators.DataOperator]*params.Params
 }
 
-func NewService(defaultLogger logger.Logger, length uint64) *Service {
+func NewService(defaultLogger logger.Logger) *Service {
 	ops := make(map[operators.DataOperator]*params.Params)
 	for _, op := range operators.GetDataOperators() {
 		ops[op] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 	}
 	return &Service{
-		servers:           map[*grpc.Server]struct{}{},
-		logger:            defaultLogger,
-		operators:         ops,
-		eventBufferLength: length,
+		servers:   map[*grpc.Server]struct{}{},
+		logger:    defaultLogger,
+		operators: ops,
 	}
+}
+
+func (s *Service) SetEventBufferLength(val uint64) {
+	s.eventBufferLength = val
 }
 
 func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {

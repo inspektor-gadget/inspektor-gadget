@@ -335,7 +335,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("Parsing EVENTS_BUFFER_LENGTH %q: %v", stringBufferLength, err)
 		}
-		service := gadgetservice.NewService(log.StandardLogger(), bufferLength)
+		service := gadgetservice.NewService(log.StandardLogger())
+		service.SetEventBufferLength(bufferLength)
 
 		socketType, socketPath, err := api.ParseSocketAddress(gadgetServiceHost)
 		if err != nil {
