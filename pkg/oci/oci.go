@@ -690,7 +690,7 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 	return nil
 }
 
-func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error {
+func verifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions) error {
 	imageStore, err := GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting local oci store: %w", err)
@@ -706,6 +706,14 @@ func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
+	return VerifyImage(ctx, imageRef, imageDigest, imgOpts)
+}
+
+// VerifyImage is used to verify the image corresponding to the reference and
+// digest with the given public key.
+// If the image was signed with the given public key, nothing is returned,
+// otherwise an error is returned.
+func VerifyImage(ctx context.Context, imageRef reference.Named, imageDigest string, imgOpts *ImageOptions) error {
 	verifier, err := newVerifier([]byte(imgOpts.PublicKey))
 	if err != nil {
 		return fmt.Errorf("creating verifier: %w", err)
@@ -819,7 +827,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return nil
 	}
 
-	err := verifyImage(ctx, image, imgOpts)
+	err := verifyGadgetImage(ctx, image, imgOpts)
 	if err != nil {
 		return fmt.Errorf("verifying image %q: %w", image, err)
 	}
