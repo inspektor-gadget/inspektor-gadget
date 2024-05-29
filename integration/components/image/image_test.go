@@ -51,6 +51,13 @@ func TestImage(t *testing.T) {
 
 	tmpFolder := t.TempDir()
 	exportPath := path.Join(tmpFolder, "export.tar")
+	gadgetSrcFolder := path.Join(tmpFolder, "gadget")
+	err := os.MkdirAll(gadgetSrcFolder, 0o755)
+	require.NoError(t, err)
+
+	// create an empty eBPF program for the test as it compiles fine
+	_, err = os.Create(path.Join(gadgetSrcFolder, "program.bpf.c"))
+	require.NoError(t, err)
 
 	// ensure all images are removed
 	t.Cleanup(func() {
@@ -81,7 +88,7 @@ func TestImage(t *testing.T) {
 			name: "build",
 			cmd:  commonImage.NewBuildCmd(),
 			args: []string{
-				"--builder-image", *testBuilderImage, "--tag", testLocalImage, "../../../gadgets/trace_open",
+				"--builder-image", *testBuilderImage, "--tag", testLocalImage, gadgetSrcFolder,
 			},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully built %s", testLocalImage),
