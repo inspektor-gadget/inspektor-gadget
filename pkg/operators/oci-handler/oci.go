@@ -231,7 +231,6 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	viper := viper.New()
 	viper.SetConfigType("yaml")
 	err = viper.ReadConfig(bytes.NewReader(metadata))
-
 	if err != nil {
 		return fmt.Errorf("unmarshalling metadata: %w", err)
 	}
