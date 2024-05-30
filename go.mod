@@ -62,7 +62,7 @@ require (
 	k8s.io/client-go v0.30.1
 	k8s.io/code-generator v0.30.1
 	k8s.io/cri-api v0.30.1
-	k8s.io/kubelet v0.30.0
+	k8s.io/kubelet v0.30.1
 	k8s.io/kubernetes v1.30.1
 	oras.land/oras-go/v2 v2.4.0
 	sigs.k8s.io/controller-runtime v0.18.3
@@ -220,17 +220,17 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	k8s.io/apiserver v0.30.1 // indirect
-	k8s.io/cloud-provider v0.30.0 // indirect
+	k8s.io/cloud-provider v0.30.1 // indirect
 	k8s.io/component-base v0.30.1 // indirect
-	k8s.io/controller-manager v0.30.0 // indirect
-	k8s.io/csi-translation-lib v0.30.0 //indirect
-	k8s.io/dynamic-resource-allocation v0.30.0 //indirect
+	k8s.io/controller-manager v0.30.1 // indirect
+	k8s.io/csi-translation-lib v0.30.1 //indirect
+	k8s.io/dynamic-resource-allocation v0.30.1 //indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kms v0.30.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/kube-scheduler v0.30.0 //indirect
-	k8s.io/mount-utils v0.30.0 //indirect
+	k8s.io/kube-scheduler v0.30.1 //indirect
+	k8s.io/mount-utils v0.30.1 //indirect
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
