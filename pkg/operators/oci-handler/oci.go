@@ -264,8 +264,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Prepare(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("preparing operator %q: %v", opInst.Name(), err)
-			continue
+			return fmt.Errorf("preparing operator %q: %w", opInst.Name(), err)
 		}
 
 		// Add gadget params prefixed with operators' name
