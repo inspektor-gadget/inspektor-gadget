@@ -40,6 +40,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
 
 //go:embed Makefile.build
@@ -76,6 +77,8 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	verifyImage      bool
+	publicKey        string
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -110,6 +113,15 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+
+	cmd.Flags().BoolVar(
+		&opts.verifyImage,
+		"verify-image",
+		true,
+		"Verify the builder image using the provided public key")
+	cmd.Flags().StringVar(
+		&opts.publicKey,
+		"public-key", resources.InspektorGadgetPublicKey, "Public key used to verify the builder image")
 
 	return utils.MarkExperimental(cmd)
 }
@@ -303,6 +315,48 @@ func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage st
 	return jsonmessage.DisplayJSONMessagesStream(reader, out, outFd, isTTY, nil)
 }
 
+func getBuilderImageDigest(ctx context.Context, cli *client.Client, builderImage string) (string, error) {
+	builderImageInspect, _, err := cli.ImageInspectWithRaw(ctx, builderImage)
+	if err != nil {
+		return "", fmt.Errorf("inspecting builder image: %w", err)
+	}
+
+	repoDigests := len(builderImageInspect.RepoDigests)
+	expectedDigest := 1
+	if repoDigests != expectedDigest {
+		return "", fmt.Errorf("bad number of repository digest: expected %d, got %d", expectedDigest, repoDigests)
+	}
+
+	repoDigest := builderImageInspect.RepoDigests[0]
+	parts := strings.Split(repoDigest, "@")
+
+	if len(parts) != 2 {
+		return "", fmt.Errorf("repository digest has wrong format: got %s, expected image@hash", repoDigest)
+	}
+
+	return parts[1], nil
+}
+
+func verifyBuilderImage(ctx context.Context, cli *client.Client, builderImage string, imgOpts *oci.ImageOptions) error {
+	if !imgOpts.VerifyPublicKey {
+		fmt.Fprintf(os.Stderr, "you set --verify-image=false, builder image will not be verified\n")
+
+		return nil
+	}
+
+	builderImageRef, err := oci.NormalizeImageName(builderImage)
+	if err != nil {
+		return fmt.Errorf("normalizing builder image name: %w", err)
+	}
+
+	builderImageDigest, err := getBuilderImageDigest(ctx, cli, builderImage)
+	if err != nil {
+		return fmt.Errorf("getting builder image digest: %w", err)
+	}
+
+	return oci.VerifyImage(ctx, builderImageRef, builderImageDigest, imgOpts)
+}
+
 func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -318,6 +372,22 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	if err := ensureBuilderImage(ctx, cli, opts.builderImage); err != nil {
 		return err
+	}
+
+	imgOpts := &oci.ImageOptions{
+		VerifyOptions: oci.VerifyOptions{
+			VerifyPublicKey: opts.verifyImage,
+			PublicKey:       opts.publicKey,
+		},
+		AuthOptions: oci.AuthOptions{
+			// We need to set this to connect to the remote repository.
+			AuthFile: oci.DefaultAuthFile,
+		},
+	}
+
+	err = verifyBuilderImage(ctx, cli, opts.builderImage, imgOpts)
+	if err != nil {
+		return fmt.Errorf("verifying builder image: %w", err)
 	}
 
 	wasmFullPath := ""
