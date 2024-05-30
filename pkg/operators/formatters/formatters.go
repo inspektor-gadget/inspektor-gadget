@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 // Keep this aligned with include/gadget/types.h
@@ -43,6 +45,9 @@ const (
 
 	// Name of the type to store a signal
 	SignalTypeName = "gadget_signal"
+
+	// Name of the type to store a syscall
+	SyscallTypeName = "gadget_syscall"
 )
 
 type formattersOperator struct{}
@@ -154,6 +159,41 @@ var replacers = []replacer{
 					signalName := unix.SignalName(syscall.Signal(signalNumber))
 					signalField.Set(data, []byte(signalName))
 				}
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
+	{
+		name:      "syscall",
+		selectors: []string{"type:" + SyscallTypeName},
+		replace: func(ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			if in.Type() != api.Kind_Uint64 {
+				return nil, fmt.Errorf("checking field %q: expected uint64", in.Name())
+			}
+
+			oldName := in.Name()
+			if err := in.Rename(oldName + "_raw"); err != nil {
+				return nil, fmt.Errorf("renaming field: %w", err)
+			}
+			in.SetHidden(true, false)
+
+			syscallField, err := ds.AddField(oldName, api.Kind_String)
+			if err != nil {
+				return nil, err
+			}
+			return func(data datasource.Data) error {
+				syscallNumber, err := in.Uint64(data)
+				if err != nil {
+					return err
+				}
+
+				syscallName, exist := syscalls.GetSyscallNameByNumber(int(syscallNumber))
+				if !exist {
+					syscallName = "unknown"
+				}
+				syscallField.PutString(data, "SYS_"+strings.ToUpper(syscallName))
+
 				return nil
 			}, nil
 		},
