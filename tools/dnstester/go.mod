@@ -2,7 +2,7 @@ module github.com/inspektor-gadget/inspektor-gadget/tools/dnstester
 
 go 1.18
 
-require github.com/miekg/dns v1.1.51
+require github.com/miekg/dns v1.1.59
 
 require (
 	golang.org/x/mod v0.17.0 // indirect
