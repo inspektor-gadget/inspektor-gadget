@@ -17,10 +17,12 @@ package localmanager
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/containerd/containerd/pkg/cri/constants"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
@@ -38,6 +40,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -203,9 +206,19 @@ partsLoop:
 			}
 		}
 
+		cleanSocketPath, err := securejoin.SecureJoin(host.HostRoot, socketPath)
+		if err != nil {
+			log.Debugf("securejoin failed: %s", err)
+		}
+
+		if _, err := os.Stat(cleanSocketPath); err != nil {
+			log.Warnf("Ignoring runtime %q with non-existent socketPath %q", runtimeName, socketPath)
+			continue partsLoop
+		}
+
 		r := &containerutilsTypes.RuntimeConfig{
 			Name:            runtimeName,
-			SocketPath:      socketPath,
+			SocketPath:      cleanSocketPath,
 			RuntimeProtocol: operatorParams.Get(RuntimeProtocol).AsString(),
 			Extra: containerutilsTypes.ExtraConfig{
 				Namespace: namespace,
