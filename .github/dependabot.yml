@@ -20,6 +20,20 @@ updates:
       prefix: "go:"
     allow:
       - dependency-type: all
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      k8s:
+        patterns:
+          - "k8s.io/*"
+      docker:
+        patterns:
+          - "github.com/docker/docker/*"
+          - "github.com/moby/moby/*"
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
   # Update other go depedendencies
   - package-ecosystem: "gomod"
     directory: "/examples/"
@@ -31,6 +45,20 @@ updates:
       prefix: "go:"
     allow:
       - dependency-type: all
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      k8s:
+        patterns:
+          - "k8s.io/*"
+      docker:
+        patterns:
+          - "github.com/docker/docker/*"
+          - "github.com/moby/moby/*"
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
   - package-ecosystem: "gomod"
     directory: "/tools/eks-cleanup/"
     schedule:
