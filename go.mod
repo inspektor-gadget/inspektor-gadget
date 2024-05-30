@@ -63,7 +63,7 @@ require (
 	k8s.io/code-generator v0.30.1
 	k8s.io/cri-api v0.30.1
 	k8s.io/kubelet v0.30.0
-	k8s.io/kubernetes v1.30.0
+	k8s.io/kubernetes v1.30.1
 	oras.land/oras-go/v2 v2.4.0
 	sigs.k8s.io/controller-runtime v0.18.3
 	sigs.k8s.io/security-profiles-operator v0.8.3
