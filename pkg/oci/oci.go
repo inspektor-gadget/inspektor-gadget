@@ -125,7 +125,7 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // pullGadgetImageToStore pulls the gadget image into the given store and returns its descriptor.
 func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
-	targetImage, err := normalizeImageName(image)
+	targetImage, err := NormalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
@@ -152,7 +152,7 @@ func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image s
 }
 
 func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthOptions, image string) error {
-	targetImage, err := normalizeImageName(image)
+	targetImage, err := NormalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image: %w", err)
 	}
@@ -183,7 +183,7 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
-	targetImage, err := normalizeImageName(image)
+	targetImage, err := NormalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
@@ -210,11 +210,11 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // TagGadgetImage tags the src image with the dst image.
 func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
-	src, err := normalizeImageName(srcImage)
+	src, err := NormalizeImageName(srcImage)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing src image: %w", err)
 	}
-	dst, err := normalizeImageName(dstImage)
+	dst, err := NormalizeImageName(dstImage)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing dst image: %w", err)
 	}
@@ -260,7 +260,7 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 	}
 
 	for _, image := range images {
-		targetImage, err := normalizeImageName(image)
+		targetImage, err := NormalizeImageName(image)
 		if err != nil {
 			return fmt.Errorf("normalizing image: %w", err)
 		}
@@ -427,7 +427,7 @@ func DeleteGadgetImage(ctx context.Context, image string) error {
 		return fmt.Errorf("getting oci store: %w", err)
 	}
 
-	targetImage, err := normalizeImageName(image)
+	targetImage, err := NormalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image: %w", err)
 	}
@@ -487,7 +487,7 @@ func splitIGDomain(name string) (domain, remainder string) {
 	return
 }
 
-func normalizeImageName(image string) (reference.Named, error) {
+func NormalizeImageName(image string) (reference.Named, error) {
 	// Use the default gadget's registry if no domain is specified.
 	domain, remainer := splitIGDomain(image)
 
@@ -696,7 +696,7 @@ func verifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 		return fmt.Errorf("getting local oci store: %w", err)
 	}
 
-	imageRef, err := normalizeImageName(image)
+	imageRef, err := NormalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image name: %w", err)
 	}
@@ -812,7 +812,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	case PullImageNever:
 		// Just check if the image exists to report a better error message
-		targetImage, err := normalizeImageName(image)
+		targetImage, err := NormalizeImageName(image)
 		if err != nil {
 			return fmt.Errorf("normalizing image: %w", err)
 		}
@@ -882,7 +882,7 @@ func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 
 // getIndex gets an index for the given image
 func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Index, error) {
-	imageRef, err := normalizeImageName(image)
+	imageRef, err := NormalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}

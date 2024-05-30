@@ -148,7 +148,7 @@ func TestNormalizeImage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			imageRef, err := normalizeImageName(test.image)
+			imageRef, err := NormalizeImageName(test.image)
 			if test.err {
 				require.Error(t, err)
 				return

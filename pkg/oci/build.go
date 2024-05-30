@@ -103,7 +103,7 @@ func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 	}
 
 	if image != "" {
-		targetImage, err := normalizeImageName(image)
+		targetImage, err := NormalizeImageName(image)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing image: %w", err)
 		}
