@@ -42,12 +42,12 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	securejoin "github.com/cyphar/filepath-securejoin"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/secureopen"
 )
 
 type ProgType uint32
@@ -167,32 +167,17 @@ func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo 
 }
 
 func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) {
-	var targetPaths []string
-	var securedTargetPaths []string
-
 	filePath := t.attachFilePath
-	if !filepath.IsAbs(filePath) {
-		containerLdCachePath, err := securejoin.SecureJoin(filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "root"), "etc/ld.so.cache")
-		if err != nil {
-			return nil, fmt.Errorf("path %q: %w", filePath, err)
-		}
-		ldCachePaths, err := parseLdCache(containerLdCachePath, filePath)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ld cache: %w", err)
-		}
-		targetPaths = ldCachePaths
-	} else {
-		targetPaths = append(targetPaths, filePath)
+	if filepath.IsAbs(filePath) {
+		return []string{filePath}, nil
 	}
-	for _, targetPath := range targetPaths {
-		securedTargetPath, err := securejoin.SecureJoin(filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "root"), targetPath)
-		if err != nil {
-			t.logger.Debugf("path %q in ld cache is not available: %s", filePath, err.Error())
-			continue
-		}
-		securedTargetPaths = append(securedTargetPaths, securedTargetPath)
+
+	ldCachePath := "/etc/ld.so.cache"
+	ldCachePaths, err := parseLdCache(containerPid, ldCachePath, filePath)
+	if err != nil {
+		return nil, fmt.Errorf("parsing ld cache: %w", err)
 	}
-	return securedTargetPaths, nil
+	return ldCachePaths, nil
 }
 
 // attach uprobe program to the inode of the file passed in parameter
@@ -225,20 +210,22 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 // try attaching to a container, will update `containerPid2Inodes`
 func (t *Tracer[Event]) attach(containerPid uint32) {
 	var attachedRealInodes []uint64
-	attachFilePaths, err := t.searchForLibrary(containerPid)
+	unsecuredAttachFilePaths, err := t.searchForLibrary(containerPid)
 	if err != nil {
 		t.logger.Debugf("attaching to container %d: %s", containerPid, err.Error())
 	}
 
-	if len(attachFilePaths) == 0 {
+	if len(unsecuredAttachFilePaths) == 0 {
 		t.logger.Debugf("cannot find file to attach in container %d for symbol %q", containerPid, t.attachSymbol)
 	}
 
-	for _, filePath := range attachFilePaths {
-		// Do not use `O_PATH` flag here, because `ReadRealInodeFromFd` needs the `private_data` field
-		// in kernel "struct file", to access the underlying inode through overlayFS.
-		// Using `O_PATH` flag will cause the `private_data` field to be zero.
-		file, err := os.Open(filePath)
+	for _, filePath := range unsecuredAttachFilePaths {
+		// Thankfully, OpenInContainer returns a fd opened without `O_PATH`.
+		// This is necessary because `ReadRealInodeFromFd` needs the
+		// `private_data` field in kernel "struct file", to access the
+		// underlying inode through overlayFS. Using `O_PATH` flag will cause
+		// the `private_data` field to be zero.
+		file, err := secureopen.OpenInContainer(containerPid, filePath)
 		if err != nil {
 			t.logger.Debugf("opening file '%q' for uprobe: %s", filePath, err.Error())
 			continue
