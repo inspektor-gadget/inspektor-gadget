@@ -178,14 +178,14 @@ require (
 	k8s.io/apiextensions-apiserver v0.30.1 // indirect
 	k8s.io/apiserver v0.30.1 // indirect
 	k8s.io/cli-runtime v0.30.1 // indirect
-	k8s.io/cloud-provider v0.30.0 // indirect
+	k8s.io/cloud-provider v0.30.1 // indirect
 	k8s.io/component-base v0.30.1 // indirect
-	k8s.io/controller-manager v0.30.0 // indirect
+	k8s.io/controller-manager v0.30.1 // indirect
 	k8s.io/cri-api v0.30.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kms v0.30.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/kubelet v0.30.0 // indirect
+	k8s.io/kubelet v0.30.1 // indirect
 	k8s.io/kubernetes v1.30.1 // indirect
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
