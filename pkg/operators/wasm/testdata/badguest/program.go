@@ -117,11 +117,6 @@ func assertEqual(v1, v2 uint32, msg string) {
 	}
 }
 
-//export gadgetAPIVersion
-func gadgetAPIVersion() uint64 {
-	return 1
-}
-
 //export gadgetInit
 func gadgetInit() int {
 	// Disable GC to avoid it cleaning up the memory we're using
