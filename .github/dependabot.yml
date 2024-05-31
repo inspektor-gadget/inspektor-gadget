@@ -18,8 +18,6 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
-    allow:
-      - dependency-type: all
     groups:
       golang-x:
         patterns:
@@ -43,8 +41,6 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
-    allow:
-      - dependency-type: all
     groups:
       golang-x:
         patterns:
@@ -67,8 +63,6 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
-    allow:
-      - dependency-type: all
   - package-ecosystem: "gomod"
     directory: "/tools/testjson2md/"
     schedule:
@@ -77,8 +71,6 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
-    allow:
-      - dependency-type: all
   - package-ecosystem: "gomod"
     directory: "/tools/dnstester/"
     schedule:
@@ -87,8 +79,6 @@ updates:
       timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
-    allow:
-      - dependency-type: all
   - package-ecosystem: "docker"
     directory: "/Dockerfiles"
     schedule:
