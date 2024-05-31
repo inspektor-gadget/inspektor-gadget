@@ -22,7 +22,7 @@ import (
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) *TestContainer
+	NewContainer(name, cmd string, opts ...ContainerOption) *TestContainer
 }
 
 // NewContainerFactory returns a new instance of a ContainerFactory based on the
@@ -35,6 +35,10 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	case types.RuntimeNameContainerd:
 		return &ContainerdManager{}, nil
 	default:
+		if containerRuntime == RuntimeKubernetes {
+			return &K8sManager{}, nil
+		}
+
 		return nil, fmt.Errorf("unknown container runtime %q", containerRuntime)
 	}
 }
