@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -48,6 +49,16 @@ func TestImage(t *testing.T) {
 	testLocalImage := fmt.Sprintf("%s/%s:%s", testReg, testRepo, testTag)
 	testRegistryImage := fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, testTag)
 
+	tmpFolder := t.TempDir()
+	exportPath := path.Join(tmpFolder, "export.tar")
+	gadgetSrcFolder := path.Join(tmpFolder, "gadget")
+	err := os.MkdirAll(gadgetSrcFolder, 0o755)
+	require.NoError(t, err)
+
+	// create an empty eBPF program for the test as it compiles fine
+	_, err = os.Create(path.Join(gadgetSrcFolder, "program.bpf.c"))
+	require.NoError(t, err)
+
 	// ensure all images are removed
 	t.Cleanup(func() {
 		// remove local image
@@ -70,12 +81,14 @@ func TestImage(t *testing.T) {
 		negateExpected bool
 	}
 
+	// The order of these tests is important as one test depends on the previous
+	// one
 	testCases := []testCase{
 		{
 			name: "build",
 			cmd:  commonImage.NewBuildCmd(),
 			args: []string{
-				"--builder-image", *testBuilderImage, "--tag", testLocalImage, "../../../gadgets/trace_open",
+				"--builder-image", *testBuilderImage, "--tag", testLocalImage, gadgetSrcFolder,
 			},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully built %s", testLocalImage),
@@ -180,6 +193,22 @@ func TestImage(t *testing.T) {
 			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure"},
 			expectedStderr: []string{
 				fmt.Sprintf("%s/%s:%s: not found", registryAddr, testRepo, "unknown"),
+			},
+		},
+		{
+			name: "export",
+			cmd:  commonImage.NewExportCmd(),
+			args: []string{testRegistryImage, exportPath},
+			expectedStdout: []string{
+				fmt.Sprintf("Successfully exported images to %s", exportPath),
+			},
+		},
+		{
+			name: "import",
+			cmd:  commonImage.NewImportCmd(),
+			args: []string{exportPath},
+			expectedStdout: []string{
+				fmt.Sprintf("Successfully imported images:\n  %s", testRegistryImage),
 			},
 		},
 	}
