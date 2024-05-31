@@ -76,6 +76,17 @@ const (
 	subscriptionTypePacket
 )
 
+// go linkname doesn't work with constants. Define some variables to be able to
+// use it on pkg/operators/wasm/consts_test.go
+var (
+	subscriptionTypeDataVar   uint32 = uint32(subscriptionTypeData)
+	subscriptionTypeArrayVar  uint32 = uint32(subscriptionTypeArray)
+	subscriptionTypePacketVar uint32 = uint32(subscriptionTypePacket)
+	_                                = subscriptionTypeDataVar
+	_                                = subscriptionTypeArrayVar
+	_                                = subscriptionTypePacketVar
+)
+
 type DataSourceType uint32
 
 const (
