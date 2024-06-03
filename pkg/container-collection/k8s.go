@@ -30,8 +30,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
-	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
-	kubeletconfigscheme "k8s.io/kubernetes/pkg/kubelet/apis/config/scheme"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
@@ -215,7 +213,7 @@ func getContainerRuntimeSocketPath(clientset *kubernetes.Clientset, nodeName str
 
 // The /configz endpoint isn't officially documented. It was introduced in Kubernetes 1.26 and been around for a long time
 // as stated in https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/configz/OWNERS
-func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (*kubeletconfig.KubeletConfiguration, error) {
+func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (*kubeletconfigv1beta1.KubeletConfiguration, error) {
 	resp, err := clientset.CoreV1().RESTClient().Get().Resource("nodes").
 		Name(nodeName).Suffix("proxy", "configz").DoRaw(context.TODO())
 	if err != nil {
@@ -228,9 +226,8 @@ func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (
 	return kubeCfg, nil
 }
 
-// Decodes the http response from /configz and returns a kubeletconfig.KubeletConfiguration (internal type)
-// Taken from: https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/kubeletconfig/kubeletconfig.go#L192
-func decodeConfigz(respBody []byte) (*kubeletconfig.KubeletConfiguration, error) {
+// Decodes the http response from /configz and returns the kubelet configuration
+func decodeConfigz(respBody []byte) (*kubeletconfigv1beta1.KubeletConfiguration, error) {
 	// This hack because /configz reports the following structure:
 	// {"kubeletconfig": {the JSON representation of kubeletconfigv1beta1.KubeletConfiguration}}
 	type configzWrapper struct {
@@ -238,21 +235,10 @@ func decodeConfigz(respBody []byte) (*kubeletconfig.KubeletConfiguration, error)
 	}
 
 	configz := configzWrapper{}
-	kubeCfg := kubeletconfig.KubeletConfiguration{}
-
 	err := json.Unmarshal(respBody, &configz)
 	if err != nil {
 		return nil, err
 	}
 
-	scheme, _, err := kubeletconfigscheme.NewSchemeAndCodecs()
-	if err != nil {
-		return nil, err
-	}
-	err = scheme.Convert(&configz.ComponentConfig, &kubeCfg, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kubeCfg, nil
+	return &configz.ComponentConfig, nil
 }
