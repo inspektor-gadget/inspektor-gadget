@@ -48,6 +48,12 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		ImageName:   gadgetCtx.ImageName(),
 		Version:     api.VersionGadgetInfo,
 	}
+
+	// specify that ImageName will contain a gadget instance ID
+	if gadgetCtx.UseInstance() {
+		in.Flags |= api.GadgetInfoRequestFlagUseInstance
+	}
+
 	out, err := client.GetGadgetInfo(gadgetCtx.Context(), in)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
@@ -69,6 +75,10 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *para
 	gadgetCtx.Logger().Debugf("Params")
 	for k, v := range paramValues {
 		gadgetCtx.Logger().Debugf("- %s: %q", k, v)
+	}
+
+	if p := runtimeParams.Get(ParamDetach); p != nil && p.AsBool() {
+		return r.createGadgetInstance(gadgetCtx, runtimeParams, paramValues)
 	}
 
 	targets, err := r.getTargets(gadgetCtx.Context(), runtimeParams)
@@ -128,21 +138,40 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	defer conn.Close()
 	client := api.NewGadgetManagerClient(conn)
 
-	runRequest := &api.GadgetRunRequest{
-		ImageName:   gadgetCtx.ImageName(),
-		ParamValues: allParams,
-		Args:        gadgetCtx.Args(),
-		LogLevel:    uint32(gadgetCtx.Logger().GetLevel()),
-		Timeout:     int64(gadgetCtx.Timeout()),
-		Version:     api.VersionGadgetRunProtocol,
-	}
-
 	runClient, err := client.RunGadget(connCtx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		return nil, err
 	}
 
-	controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+	var controlRequest *api.GadgetControlRequest
+
+	interactive := true
+	if gadgetCtx.UseInstance() {
+		gadgetCtx.Logger().Debugf("attaching to gadget instance %s", gadgetCtx.ImageName())
+		controlRequest = &api.GadgetControlRequest{
+			Event: &api.GadgetControlRequest_AttachRequest{
+				AttachRequest: &api.GadgetAttachRequest{
+					Id:      gadgetCtx.ImageName(),
+					Version: api.VersionGadgetRunProtocol,
+				},
+			},
+		}
+		interactive = false
+	} else {
+		controlRequest = &api.GadgetControlRequest{
+			Event: &api.GadgetControlRequest_RunRequest{
+				RunRequest: &api.GadgetRunRequest{
+					ImageName:   gadgetCtx.ImageName(),
+					ParamValues: allParams,
+					Args:        gadgetCtx.Args(),
+					LogLevel:    uint32(gadgetCtx.Logger().GetLevel()),
+					Timeout:     int64(gadgetCtx.Timeout()),
+					Version:     api.VersionGadgetRunProtocol,
+				},
+			},
+		}
+	}
+
 	err = runClient.Send(controlRequest)
 	if err != nil {
 		return nil, err
@@ -243,18 +272,20 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		gadgetCtx.Logger().Debugf("%-20s | done from server side (%v)", target.node, doneErr)
 		runErr = doneErr
 	case <-gadgetCtx.Context().Done():
-		// Send stop request
-		gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
-		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
-		runClient.Send(controlRequest)
+		if interactive {
+			// Send stop request
+			gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
+			controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
+			runClient.Send(controlRequest)
 
-		// Wait for done or timeout
-		select {
-		case doneErr := <-doneChan:
-			gadgetCtx.Logger().Debugf("%-20s | done after cancel request (%v)", target.node, doneErr)
-			runErr = doneErr
-		case <-time.After(ResultTimeout * time.Second):
-			return nil, fmt.Errorf("timed out while getting result")
+			// Wait for done or timeout
+			select {
+			case doneErr := <-doneChan:
+				gadgetCtx.Logger().Debugf("%-20s | done after cancel request (%v)", target.node, doneErr)
+				runErr = doneErr
+			case <-time.After(ResultTimeout * time.Second):
+				return nil, fmt.Errorf("timed out while getting result")
+			}
 		}
 	}
 	return result, runErr
