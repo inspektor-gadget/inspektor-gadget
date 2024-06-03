@@ -1,5 +1,5 @@
 # Artifact Hub package metadata file
-version: 0.28.1
+version: 0.29.0
 name: "trace oomkill"
 category: monitoring-logging
 displayName: "trace oomkill"
