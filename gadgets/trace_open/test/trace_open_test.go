@@ -25,39 +25,46 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type traceOpenEvent struct {
 	eventtypes.CommonData
 
-	MountNsID uint64 `json:"mountnsid"`
-	Pid       uint32 `json:"pid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	Comm      string `json:"comm"`
-	Fd        uint32 `json:"fd"`
-	Err       int32  `json:"err"`
-	Ret       int    `json:"ret"`
-	Flags     int    `json:"flags"`
-	Mode      int    `json:"mode"`
-	FName     string `json:"fname"`
+	// MountNsID and Pid were not used since these are dynamic fields
+	// and need to be normalized to 0 later
+	Uid   uint32 `json:"uid"`
+	Gid   uint32 `json:"gid"`
+	Comm  string `json:"comm"`
+	Fd    uint32 `json:"fd"`
+	Err   int32  `json:"err"`
+	Flags int    `json:"flags"`
+	Mode  int    `json:"mode"`
+	FName string `json:"fname"`
 }
 
 func TestTraceOpen(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
+	utils.InitTest(t)
 
-	runtime := "docker"
-	containerFactory, err := containers.NewContainerFactory(runtime)
+	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-
 	containerName := "test-trace-open"
-	containerImage := "docker.io/library/busybox"
+	containerImage := "docker.io/library/busybox:latest"
+
+	var ns string
+	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
+
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+		ns = utils.GenerateTestNamespaceName(t, "test-trace-open")
+		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
+	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
 		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
-		containers.WithContainerImage(containerImage),
+		containerOpts...,
 	)
 
 	testContainer.Start(t)
@@ -65,44 +72,42 @@ func TestTraceOpen(t *testing.T) {
 		testContainer.Stop(t)
 	})
 
-	traceOpenCmd := igrunner.New(
-		"trace_open",
-		igrunner.WithFlags(fmt.Sprintf("--runtimes=%s", runtime), "--timeout=5"),
-		igrunner.WithValidateOutput(
-			func(t *testing.T, output string) {
-				expectedEntry := &traceOpenEvent{
-					CommonData: eventtypes.CommonData{
-						Runtime: eventtypes.BasicRuntimeMetadata{
-							RuntimeName:        eventtypes.String2RuntimeName(runtime),
-							ContainerName:      containerName,
-							ContainerID:        testContainer.ID(),
-							ContainerImageName: containerImage,
-						},
-					},
-					Comm:  "cat",
-					Fd:    3,
-					Err:   0,
-					FName: "/dev/null",
-					Uid:   1000,
-					Gid:   1111,
-					Flags: 0,
-					Mode:  0,
-				}
+	var runnerOpts []igrunner.Option
+	var testingOpts []igtesting.Option
+	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
 
-				normalize := func(e *traceOpenEvent) {
-					e.MountNsID = 0
-					e.Pid = 0
+	switch utils.CurrentTestComponent {
+	case utils.IgLocalTestComponent:
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
+	case utils.KubectlGadgetTestComponent:
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=5"))
+		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
+		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
+	}
 
-					// The container image digest is not currently enriched for Docker containers:
-					// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
-					if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
-						e.Runtime.ContainerImageDigest = ""
-					}
-				}
+	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
+		func(t *testing.T, output string) {
+			expectedEntry := &traceOpenEvent{
+				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				Comm:       "cat",
+				FName:      "/dev/null",
+				Fd:         3,
+				Err:        0,
+				Uid:        1000,
+				Gid:        1111,
+				Flags:      0,
+				Mode:       0,
+			}
 
-				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
-			}),
-	)
+			normalize := func(e *traceOpenEvent) {
+				utils.NormalizeCommonData(&e.CommonData)
+			}
 
-	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t)
+			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+		},
+	))
+
+	traceOpenCmd := igrunner.New("trace_open", runnerOpts...)
+
+	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t, testingOpts...)
 }

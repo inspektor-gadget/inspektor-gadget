@@ -20,7 +20,11 @@ import (
 )
 
 func RequireEnvironmentVariables(t testing.TB) {
-	if os.Getenv("IG") == "" {
-		t.Skip("environment variable IG undefined")
+	if os.Getenv("IG_PATH") == "" {
+		t.Skip("environment variable IG_PATH undefined")
+	}
+
+	if os.Getenv("IG_RUNTIME") == "" {
+		t.Skip("environment variable IG_RUNTIME undefined")
 	}
 }

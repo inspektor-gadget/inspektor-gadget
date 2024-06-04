@@ -4,6 +4,7 @@ GADGET_TAG ?= $(shell ../tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 IG ?= ig
+KUBECTL_GADGET ?= kubectl-gadget
 COSIGN ?= cosign
 GADGETS = \
 	trace_dns \
@@ -63,10 +64,21 @@ clean:
 	done
 
 .PHONY:
-test: build
+test-ig-local: build
+	IG_PATH=$(IG) \
+	IG_RUNTIME=docker \
 	CGO_ENABLED=0 \
 	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
-	IG=$(IG) \
+	go test -exec 'sudo -E' -v ./...
+
+.PHONY:
+test-k8s: build
+	IG_PATH=$(KUBECTL_GADGET) \
+	IG_RUNTIME=kubernetes \
+	CGO_ENABLED=0 \
+	IG_EXPERIMENTAL=true \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	GADGET_TAG=$(GADGET_TAG) \
 	go test -exec 'sudo -E' -v ./...
