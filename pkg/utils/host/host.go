@@ -27,8 +27,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var (
@@ -55,6 +58,10 @@ type Config struct {
 	// - Docker Desktop with WSL2
 	// - Talos Linux
 	AutoMountFilesystems bool
+}
+
+type ProcStat struct {
+	StartedAt types.Time
 }
 
 var (
@@ -143,4 +150,18 @@ func GetProcCmdline(pid int) []string {
 	pidStr := fmt.Sprint(pid)
 	cmdlineBytes, _ := os.ReadFile(filepath.Join(HostProcFs, pidStr, "cmdline"))
 	return strings.Split(string(cmdlineBytes), "\x00")
+}
+
+func GetProcStat(pid int) (ProcStat, error) {
+	var stat syscall.Stat_t
+	path := filepath.Join(HostProcFs, fmt.Sprint(pid))
+	if err := syscall.Stat(path, &stat); err != nil {
+		return ProcStat{}, fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	mtim := stat.Mtim.Nano()
+
+	return ProcStat{
+		StartedAt: types.Time(mtim),
+	}, nil
 }

@@ -177,6 +177,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
+				e.Container.Runtime.ContainerStartedAt = 0
 
 				// CRI-O uses a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in

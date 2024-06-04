@@ -94,6 +94,7 @@ func TestSnapshotSocket(t *testing.T) {
 					e.Runtime.ContainerName = ""
 					e.Runtime.ContainerID = ""
 					e.Runtime.ContainerImageDigest = ""
+					e.Runtime.ContainerStartedAt = 0
 				}
 
 				match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
