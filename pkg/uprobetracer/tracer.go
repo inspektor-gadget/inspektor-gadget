@@ -50,6 +50,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/secureopen"
 )
 
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} usdthelper ./bpf/usdt_helper.bpf.c -- -I./bpf/
+
 type ProgType uint32
 
 const (
