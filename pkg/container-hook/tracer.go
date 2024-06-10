@@ -99,6 +99,14 @@ type watchedContainer struct {
 	pid int
 }
 
+type pendingContainer struct {
+	id             string
+	bundleDir      string
+	configJSONPath string
+	pidFile        string
+	pidFileDir     string
+}
+
 type futureContainer struct {
 	id        string
 	name      string
@@ -108,6 +116,7 @@ type futureContainer struct {
 
 type ContainerNotifier struct {
 	runtimeBinaryNotify *fanotify.NotifyFD
+	pidFileDirNotify    *fanotify.NotifyFD
 	callback            ContainerNotifyFunc
 
 	// containers is the set of containers that are being watched for
@@ -124,6 +133,13 @@ type ContainerNotifier struct {
 	// Keys: Container ID
 	futureContainers map[string]*futureContainer
 	futureMu         sync.Mutex
+
+	// pendingContainers is the set of containers that are created but not yet
+	// started (e.g. 'runc create' executed but not yet 'runc start').
+	//
+	// Keys: pid file
+	pendingContainers map[string]*pendingContainer
+	pendingMu         sync.Mutex
 
 	objs  execruntimeObjects
 	links []link.Link
@@ -144,7 +160,25 @@ var runtimePaths []string = append(
 
 // initFanotify initializes the fanotify API with the flags we need
 func initFanotify() (*fanotify.NotifyFD, error) {
-	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS | unix.FAN_NONBLOCK)
+	// Flags for the fanotify fd
+	var fanotifyFlags uint
+	// FAN_CLOEXEC is required to avoid leaking the fd to child processes
+	fanotifyFlags |= uint(unix.FAN_CLOEXEC)
+	// FAN_CLASS_CONTENT is required for perm events such as FAN_OPEN_EXEC_PERM
+	fanotifyFlags |= uint(unix.FAN_CLASS_CONTENT)
+	// FAN_UNLIMITED_QUEUE is required so we don't miss any events
+	fanotifyFlags |= uint(unix.FAN_UNLIMITED_QUEUE)
+	// FAN_UNLIMITED_MARKS is required so we can monitor as many pid files as
+	// necessary without being restricted by:
+	//     sysctl fs.fanotify.max_user_marks
+	// With this flag, we don't influence other applications using fanotify
+	// (kernel accounting is per-uid),
+	fanotifyFlags |= uint(unix.FAN_UNLIMITED_MARKS)
+	// FAN_NONBLOCK is required so GetEvent can be interrupted by Close()
+	fanotifyFlags |= uint(unix.FAN_NONBLOCK)
+
+	// Flags for the fd installed when reading a fanotify event (e.g. flag for
+	// the runc fd or the pid file fd).
 	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
 	return fanotify.Initialize(fanotifyFlags, openFlags)
 }
@@ -168,10 +202,11 @@ func Supported() bool {
 // - the container runtime must be installed in one of the paths listed by runtimePaths
 func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, error) {
 	n := &ContainerNotifier{
-		callback:         callback,
-		containers:       make(map[string]*watchedContainer),
-		futureContainers: make(map[string]*futureContainer),
-		done:             make(chan bool),
+		callback:          callback,
+		containers:        make(map[string]*watchedContainer),
+		futureContainers:  make(map[string]*futureContainer),
+		pendingContainers: make(map[string]*pendingContainer),
+		done:              make(chan bool),
 	}
 
 	if err := n.install(); err != nil {
@@ -246,6 +281,12 @@ func (n *ContainerNotifier) install() error {
 	}
 	n.runtimeBinaryNotify = runtimeBinaryNotify
 
+	pidFileDirNotify, err := initFanotify()
+	if err != nil {
+		return err
+	}
+	n.pidFileDirNotify = pidFileDirNotify
+
 	// Load, initialize and attach ebpf program
 	err = n.installEbpf(runtimeBinaryNotify.Fd)
 	if err != nil {
@@ -282,13 +323,13 @@ func (n *ContainerNotifier) install() error {
 	}
 
 	if !runtimeFound {
-		runtimeBinaryNotify.File.Close()
 		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ", "))
 	}
 
-	n.wg.Add(2)
+	n.wg.Add(3)
 	go n.watchContainersTermination()
 	go n.watchRuntimeBinary()
+	go n.watchPendingContainers()
 
 	return nil
 }
@@ -365,25 +406,19 @@ func (n *ContainerNotifier) watchContainersTermination() {
 	}
 }
 
-func (n *ContainerNotifier) watchPidFileIterate(
-	pidFileDirNotify *fanotify.NotifyFD,
-	bundleDir string,
-	configJSONPath string,
-	pidFile string,
-	pidFileDir string,
-) (bool, error) {
+func (n *ContainerNotifier) watchPidFileIterate() error {
 	// Get the next event from fanotify.
 	// Even though the API allows to pass skipPIDs, we cannot use
 	// it here because ResponseAllow would not be called.
-	data, err := pidFileDirNotify.GetEvent()
+	data, err := n.pidFileDirNotify.GetEvent()
 	if err != nil {
-		return false, fmt.Errorf("%w", err)
+		return err
 	}
 
 	// data can be nil if the event received is from a process in skipPIDs.
 	// In that case, skip and get the next event.
 	if data == nil {
-		return false, nil
+		return nil
 	}
 
 	// Don't leak the fd received by GetEvent
@@ -393,94 +428,107 @@ func (n *ContainerNotifier) watchPidFileIterate(
 
 	if !data.MatchMask(unix.FAN_ACCESS_PERM) {
 		// This should not happen: FAN_ACCESS_PERM is the only mask Marked
-		return false, fmt.Errorf("fanotify: unknown event on runc: mask=%d pid=%d", data.Mask, data.Pid)
+		log.Errorf("fanotify: unknown event on pid file: mask=%d pid=%d", data.Mask, data.Pid)
+		return nil
 	}
 
 	// This unblocks whoever is accessing the pidfile
-	defer pidFileDirNotify.ResponseAllow(data)
+	defer n.pidFileDirNotify.ResponseAllow(data)
 
 	path, err := data.GetPath()
 	if err != nil {
-		return false, err
+		log.Errorf("fanotify: could not get path for pid file")
+		return nil
 	}
 	path = filepath.Join(host.HostRoot, path)
 
-	// Consider files identical if they have the same device/inode,
-	// even if the paths differ due to symlinks (for example,
-	// the event's path is /run/... but the runc --pid-file argument
-	// uses /var/run/..., where /var/run is a symlink to /run).
-	filesAreIdentical, err := checkFilesAreIdentical(path, pidFile)
-	if err != nil {
-		return false, err
-	} else if !filesAreIdentical {
-		return false, nil
+	n.pendingMu.Lock()
+	var pc *pendingContainer
+	for pidFile := range n.pendingContainers {
+		// Consider files identical if they have the same device/inode,
+		// even if the paths differ due to symlinks (for example,
+		// the event's path is /run/... but the runc --pid-file argument
+		// uses /var/run/..., where /var/run is a symlink to /run).
+		filesAreIdentical, err := checkFilesAreIdentical(path, pidFile)
+		if err == nil && filesAreIdentical {
+			pc = n.pendingContainers[pidFile]
+			delete(n.pendingContainers, pidFile)
+			break
+		}
+	}
+	n.pendingMu.Unlock()
+
+	if pc == nil {
+		return nil
 	}
 
 	pidFileContent, err := io.ReadAll(dataFile)
 	if err != nil {
-		return false, err
+		log.Errorf("fanotify: error reading pid file: %s", err)
+		return nil
 	}
 	if len(pidFileContent) == 0 {
-		return false, fmt.Errorf("empty pid file")
+		log.Errorf("fanotify: empty pid file")
+		return nil
 	}
 	containerPID, err := strconv.Atoi(string(pidFileContent))
 	if err != nil {
-		return false, err
+		log.Errorf("fanotify: pid file cannot be parsed: %s", err)
+		return nil
 	}
 
 	// Unfortunately, Linux 5.4 doesn't respect ignore masks
 	// See fix in Linux 5.9:
 	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
 	// Workaround: remove parent mask. We don't need it anymore :)
-	err = pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pc.pidFileDir)
 	if err != nil {
-		return false, nil
+		log.Errorf("fanotify: could not remove mark on %s: %s", pc.pidFileDir, err)
+		return nil
 	}
 
-	bundleConfigJSON, err := os.ReadFile(configJSONPath)
+	bundleConfigJSON, err := os.ReadFile(pc.configJSONPath)
 	if err != nil {
-		return false, err
+		log.Errorf("fanotify: could not read config.json: %s", err)
+		return nil
 	}
 	containerConfig := &ocispec.Spec{}
 	err = json.Unmarshal(bundleConfigJSON, containerConfig)
 	if err != nil {
-		return false, err
+		log.Errorf("fanotify: could not unmarshal config.json: %s", err)
+		return nil
 	}
 
-	// cri-o appends userdata to bundleDir,
-	// so we trim it here to get the correct containerID
-	containerID := filepath.Base(filepath.Clean(strings.TrimSuffix(bundleDir, "userdata")))
-
-	err = n.AddWatchContainerTermination(containerID, containerPID)
+	err = n.AddWatchContainerTermination(pc.id, containerPID)
 	if err != nil {
-		log.Errorf("container %s with pid %d terminated before we could watch it: %s", containerID, containerPID, err)
-		return true, nil
+		log.Errorf("fanotify: container %s with pid %d terminated before we could watch it: %s", pc.id, containerPID, err)
+		return nil
 	}
 
 	if containerPID > math.MaxUint32 {
-		log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
-		return true, nil
+		log.Errorf("fanotify: Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
+		return nil
 	}
 
 	var containerName string
 	n.futureMu.Lock()
-	fc, ok := n.futureContainers[containerID]
+	fc, ok := n.futureContainers[pc.id]
 	if ok {
 		containerName = fc.name
 	}
-	delete(n.futureContainers, containerID)
+	delete(n.futureContainers, pc.id)
 	n.futureMu.Unlock()
 
 	n.callback(ContainerEvent{
 		Type:            EventTypeAddContainer,
-		ContainerID:     containerID,
+		ContainerID:     pc.id,
 		ContainerPID:    uint32(containerPID),
 		ContainerConfig: containerConfig,
-		Bundle:          bundleDir,
+		Bundle:          pc.bundleDir,
 		ContainerName:   containerName,
 	})
 
-	return true, nil
+	return nil
 }
 
 func checkFilesAreIdentical(path1, path2 string) (bool, error) {
@@ -507,21 +555,12 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 }
 
 func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile string) error {
-	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
-	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
-
-	pidFileDirNotify, err := fanotify.Initialize(fanotifyFlags, openFlags)
-	if err != nil {
-		return err
-	}
-
 	// The pidfile does not exist yet, so we cannot monitor it directly.
 	// Instead we monitor its parent directory with FAN_EVENT_ON_CHILD to
 	// get events on the directory's children.
 	pidFileDir := filepath.Dir(pidFile)
-	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	if err != nil {
-		pidFileDirNotify.File.Close()
 		return fmt.Errorf("marking %s: %w", pidFileDir, err)
 	}
 
@@ -529,52 +568,54 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 	// same directory as the pid file. To avoid getting events unrelated to
 	// the pidfile, add an ignore mask.
 	//
-	// This is best effort because the ignore mask is unfortunately not
-	// respected until a fix in Linux 5.9:
+	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
+	// masks on files when the parent directory is the object being watched:
 	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
 	configJSONPath := filepath.Join(bundleDir, "config.json")
 	if _, err := os.Stat(configJSONPath); errors.Is(err, os.ErrNotExist) {
 		// podman might install config.json in the userdata directory
 		configJSONPath = filepath.Join(bundleDir, "userdata", "config.json")
 		if _, err := os.Stat(configJSONPath); errors.Is(err, os.ErrNotExist) {
-			pidFileDirNotify.File.Close()
 			return fmt.Errorf("config not found at %s", configJSONPath)
 		}
 	}
-	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
-		pidFileDirNotify.File.Close()
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
-	// similar to config.json, we ignore passwd file if it exists
-	passwdPath := filepath.Join(bundleDir, "passwd")
-	if _, err := os.Stat(passwdPath); !errors.Is(err, os.ErrNotExist) {
-		err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, passwdPath)
+	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
+	// masks on files when the parent directory is the object being watched:
+	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
+	ignoreFileList := []string{
+		"passwd",
+		"log.json",
+		"runtime",
+	}
+	for _, ignoreFile := range ignoreFileList {
+		ignoreFilePath := filepath.Join(bundleDir, ignoreFile)
+		// No need to os.Stat() before: this is best-effort and we ignore the
+		// errors. Not all files are guaranteed to exist depending on the
+		// container runtime.
+		err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 		if err != nil {
-			pidFileDirNotify.File.Close()
-			return fmt.Errorf("marking passwd path: %w", err)
+			log.Debugf("fanotify: marking %s: %v", ignoreFilePath, err)
 		}
 	}
 
-	n.wg.Add(1)
-	go func() {
-		defer n.wg.Done()
-		defer pidFileDirNotify.File.Close()
-		for {
-			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, configJSONPath, pidFile, pidFileDir)
-			if n.closed.Load() {
-				return
-			}
-			if err != nil {
-				log.Warnf("error watching pid: %v\n", err)
-				return
-			}
-			if stop {
-				return
-			}
-		}
-	}()
+	// cri-o appends userdata to bundleDir,
+	// so we trim it here to get the correct containerID
+	containerID := filepath.Base(filepath.Clean(strings.TrimSuffix(bundleDir, "userdata")))
+
+	n.pendingMu.Lock()
+	defer n.pendingMu.Unlock()
+	n.pendingContainers[pidFile] = &pendingContainer{
+		id:             containerID,
+		bundleDir:      bundleDir,
+		configJSONPath: configJSONPath,
+		pidFile:        pidFile,
+		pidFileDir:     pidFileDir,
+	}
 
 	return nil
 }
@@ -583,16 +624,27 @@ func (n *ContainerNotifier) watchRuntimeBinary() {
 	defer n.wg.Done()
 
 	for {
-		stop, err := n.watchRuntimeIterate()
+		err := n.watchRuntimeIterate()
 		if n.closed.Load() {
-			n.runtimeBinaryNotify.File.Close()
 			return
 		}
 		if err != nil {
 			log.Errorf("error watching runtime binary: %v\n", err)
+			return
 		}
-		if stop {
-			n.runtimeBinaryNotify.File.Close()
+	}
+}
+
+func (n *ContainerNotifier) watchPendingContainers() {
+	defer n.wg.Done()
+
+	for {
+		err := n.watchPidFileIterate()
+		if n.closed.Load() {
+			return
+		}
+		if err != nil {
+			log.Errorf("error watching pid file directories: %v\n", err)
 			return
 		}
 	}
@@ -671,19 +723,19 @@ func (n *ContainerNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 	}
 }
 
-func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
+func (n *ContainerNotifier) watchRuntimeIterate() error {
 	// Get the next event from fanotify.
 	// Even though the API allows to pass skipPIDs, we cannot use it here
 	// because ResponseAllow would not be called.
 	data, err := n.runtimeBinaryNotify.GetEvent()
 	if err != nil {
-		return true, err
+		return err
 	}
 
 	// data can be nil if the event received is from a process in skipPIDs.
 	// In that case, skip and get the next event.
 	if data == nil {
-		return false, nil
+		return nil
 	}
 
 	// Don't leak the fd received by GetEvent
@@ -691,7 +743,8 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 
 	if !data.MatchMask(unix.FAN_OPEN_EXEC_PERM) {
 		// This should not happen: FAN_OPEN_EXEC_PERM is the only mask Marked
-		return false, fmt.Errorf("fanotify: unknown event on runc: mask=%d pid=%d", data.Mask, data.Pid)
+		log.Errorf("fanotify: unknown event on runtime: mask=%d pid=%d", data.Mask, data.Pid)
+		return nil
 	}
 
 	// This unblocks the execution
@@ -701,18 +754,19 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 	var record execruntimeRecord
 	err = n.objs.IgFaRecords.LookupAndDelete(nil, &record)
 	if err != nil {
-		return false, fmt.Errorf("lookup record: %w", err)
+		log.Errorf("fanotify: lookup record: %s", err)
+		return nil
 	}
 
 	// Skip empty record
 	// This can happen when the ebpf code didn't find the exec args
 	if record.Pid == 0 {
-		log.Debugf("skip event with pid=0")
-		return false, nil
+		log.Debugf("fanotify: skip event with pid=0")
+		return nil
 	}
 	if record.ArgsSize == 0 {
-		log.Debugf("skip event without args")
-		return false, nil
+		log.Debugf("fanotify: skip event without args")
+		return nil
 	}
 
 	callerComm := strings.TrimRight(string(record.CallerComm[:]), "\x00")
@@ -725,8 +779,8 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 		}
 	}
 	if len(cmdlineArr) == 0 {
-		log.Debugf("cannot get cmdline for pid %d", record.Pid)
-		return false, nil
+		log.Debugf("fanotify: cannot get cmdline for pid %d", record.Pid)
+		return nil
 	}
 	if len(cmdlineArr) > 0 {
 		calleeComm = filepath.Base(cmdlineArr[0])
@@ -750,10 +804,10 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 	case "runc", "crun":
 		n.parseOCIRuntime(calleeComm, cmdlineArr)
 	default:
-		return false, nil
+		return nil
 	}
 
-	return false, nil
+	return nil
 }
 
 func (n *ContainerNotifier) Close() {
@@ -761,6 +815,9 @@ func (n *ContainerNotifier) Close() {
 	close(n.done)
 	if n.runtimeBinaryNotify != nil {
 		n.runtimeBinaryNotify.File.Close()
+	}
+	if n.pidFileDirNotify != nil {
+		n.pidFileDirNotify.File.Close()
 	}
 	n.wg.Wait()
 
