@@ -351,6 +351,9 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 				checkParents[nf] = struct{}{}
 			}
 		}
+		if s, ok := f.(HiddenField); ok && s.FieldHidden() {
+			FieldFlagHidden.AddTo(&nf.Flags)
+		}
 		newFields = append(newFields, nf)
 	}
 
