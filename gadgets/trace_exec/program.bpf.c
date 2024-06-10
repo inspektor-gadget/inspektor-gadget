@@ -35,6 +35,7 @@ struct event {
 	int retval;
 	int args_count;
 	bool upper_layer;
+	bool pupper_layer;
 	unsigned int args_size;
 	char comm[TASK_COMM_LEN];
 	char args[FULL_MAX_ARGS_ARR];
@@ -151,13 +152,8 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	return 0;
 }
 
-static __always_inline bool has_upper_layer()
+static __always_inline bool has_upper_layer(struct inode *inode)
 {
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
-	if (!inode) {
-		return false;
-	}
 	unsigned long sb_magic = BPF_CORE_READ(inode, i_sb, s_magic);
 
 	if (sb_magic != OVERLAYFS_SUPER_MAGIC) {
@@ -185,6 +181,8 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	struct event *event;
 	pid_t execs_lookup_key;
 	u32 uid = (u32)bpf_get_current_uid_gid();
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
 	ret = ctx->ret;
 	execs_lookup_key = gadget_get_exec_caller_pid(ret);
@@ -197,8 +195,19 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	if (ignore_failed && ret < 0)
 		goto cleanup;
 
-	if (ret == 0)
-		event->upper_layer = has_upper_layer();
+	if (ret == 0) {
+		struct inode *inode =
+			BPF_CORE_READ(task, mm, exe_file, f_inode);
+		if (inode) {
+			event->upper_layer = has_upper_layer(inode);
+		}
+
+		struct inode *pinode =
+			BPF_CORE_READ(parent, mm, exe_file, f_inode);
+		if (pinode) {
+			event->pupper_layer = has_upper_layer(pinode);
+		}
+	}
 
 	event->retval = ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));

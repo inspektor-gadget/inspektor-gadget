@@ -29,9 +29,10 @@ func TestTraceExec(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-exec")
 
-	cmd := "cp /bin/date /date ; setuidgid 1000:1111 sh -c 'while true; do /date ; /bin/sleep 0.1; done'"
+	innerCmd := "while true ; do /bin/sleep 0.1 ; done"
+	cmd := fmt.Sprintf("cp /bin/sh /usr/bin/sh ; setuidgid 1000:1111 /usr/bin/sh -c '%s'", innerCmd)
 	shArgs := []string{"/bin/sh", "-c", cmd}
-	dateArgs := []string{"/date"}
+	innerShArgs := []string{"/usr/bin/sh", "-c", innerCmd}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
 	var extraArgs string
@@ -65,24 +66,25 @@ func TestTraceExec(t *testing.T) {
 				},
 				{
 					Event:      expectedEvent,
-					Comm:       "date",
-					Pcomm:      "sh",
-					Args:       dateArgs,
+					Comm:       "sh",
+					Pcomm:      "", // Not tested, see normalize()
+					Args:       innerShArgs,
 					Uid:        1000,
 					Gid:        1111,
 					Cwd:        "/",
-					ExePath:    "/date",
+					ExePath:    "/usr/bin/sh",
 					UpperLayer: true,
 				},
 				{
-					Event:   expectedEvent,
-					Comm:    "sleep",
-					Pcomm:   "sh",
-					Args:    sleepArgs,
-					Uid:     1000,
-					Gid:     1111,
-					Cwd:     "/",
-					ExePath: "/bin/sleep",
+					Event:       expectedEvent,
+					Comm:        "sleep",
+					Pcomm:       "sh",
+					Args:        sleepArgs,
+					Uid:         1000,
+					Gid:         1111,
+					Cwd:         "/",
+					ExePath:     "/bin/sleep",
+					PupperLayer: true,
 				},
 			}
 
