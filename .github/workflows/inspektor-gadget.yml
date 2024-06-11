@@ -1512,13 +1512,13 @@ jobs:
           GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
           GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         run: |
-          make build-gadgets -o install/ig
+          make build-gadgets -o install/ig -j$(nproc)
 
           # Check that metadata files are updated
           git diff --exit-code HEAD --
 
           # Avoid building the gadgets again
-          make -C gadgets/ push -o build
+          make -C gadgets/ push-existing -j$(nproc)
       - name: Sign the gadgets
         if: needs.check-secrets.outputs.cosign == 'true'
         env:
@@ -1527,7 +1527,7 @@ jobs:
           GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
           GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         run: |
-          make -C gadgets/ sign -o push
+          make -C gadgets/ sign-existing -j$(nproc)
 
   gadgets-unittest:
     name: Gadgets unit tests
