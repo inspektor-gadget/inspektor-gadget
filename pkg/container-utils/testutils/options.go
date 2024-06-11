@@ -28,15 +28,17 @@ const (
 type Option func(*containerOptions)
 
 type containerOptions struct {
-	ctx            context.Context
-	image          string
-	imageTag       string
-	seccompProfile string
-	namespace      string
-	wait           bool
-	logs           bool
-	removal        bool
-	portBindings   nat.PortMap
+	ctx              context.Context
+	expectStartError bool
+	image            string
+	imageTag         string
+	mounts           []string
+	seccompProfile   string
+	namespace        string
+	wait             bool
+	logs             bool
+	removal          bool
+	portBindings     nat.PortMap
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -60,9 +62,21 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+func WithExpectStartError() Option {
+	return func(opts *containerOptions) {
+		opts.expectStartError = true
+	}
+}
+
 func WithImage(image string) Option {
 	return func(opts *containerOptions) {
 		opts.image = image
+	}
+}
+
+func WithBindMounts(mounts []string) Option {
+	return func(opts *containerOptions) {
+		opts.mounts = mounts
 	}
 }
 

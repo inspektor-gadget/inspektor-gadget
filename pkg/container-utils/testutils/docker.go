@@ -19,10 +19,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 )
 
@@ -77,6 +79,21 @@ func (d *DockerContainer) Run(t *testing.T) {
 		hostConfig.PortBindings = d.options.portBindings
 	}
 
+	for _, m := range d.options.mounts {
+		paths := strings.SplitN(m, ":", 2)
+		source := m
+		target := m
+		if len(paths) == 2 {
+			source = paths[0]
+			target = paths[1]
+		}
+		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: source,
+			Target: target,
+		})
+	}
+
 	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
 		Image: d.options.image,
 		Cmd:   []string{"/bin/sh", "-c", d.cmd},
@@ -85,9 +102,24 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
-	if err := d.client.ContainerStart(d.options.ctx, resp.ID, container.StartOptions{}); err != nil {
+	err = d.client.ContainerStart(d.options.ctx, resp.ID, container.StartOptions{})
+	if d.options.expectStartError {
+		if err == nil {
+			t.Fatalf("Expected error creating container")
+		}
+		t.Logf("Failed to create container as expected: %s", err)
+		if d.options.removal {
+			err := d.removeAndClose()
+			if err != nil {
+				t.Logf("Failed to remove container: %s", err)
+			}
+		}
+		return
+	}
+	if err != nil {
 		t.Fatalf("Failed to start container: %s", err)
 	}
+
 	d.id = resp.ID
 
 	if d.options.wait {

@@ -110,6 +110,12 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.portBindings != nil {
 		t.Fatalf("testutils/containerd: Port bindings are not supported yet")
 	}
+	if len(c.options.mounts) > 0 {
+		t.Fatalf("testutils/containerd: Mounts are not supported yet")
+	}
+	if c.options.expectStartError {
+		t.Fatalf("testutils/containerd: ExpectStartError is not supported yet")
+	}
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,
