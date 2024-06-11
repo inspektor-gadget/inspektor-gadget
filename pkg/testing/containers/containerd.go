@@ -22,7 +22,7 @@ import (
 
 type ContainerdManager struct{}
 
-func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOption) *TestContainer {
+func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...ContainerOption) *TestContainer {
 	c := &TestContainer{}
 
 	for _, o := range opts {

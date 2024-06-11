@@ -44,38 +44,38 @@ func (ig *runner) createCmd() {
 	ig.Cmd = exec.Command(ig.path, args...)
 }
 
-type option func(*runner)
+type Option func(*runner)
 
 // WithPath used for providing custom path to ig executable.
-func WithPath(path string) option {
+func WithPath(path string) Option {
 	return func(ig *runner) {
 		ig.path = path
 	}
 }
 
 // WithFlags args should be in form: "--flag_name=value" or "-shorthand=value".
-func WithFlags(flags ...string) option {
+func WithFlags(flags ...string) Option {
 	return func(ig *runner) {
 		ig.flags = flags
 	}
 }
 
 // WithStartAndStop used to set StartAndStop value to true.
-func WithStartAndStop() option {
+func WithStartAndStop() Option {
 	return func(ig *runner) {
 		ig.StartAndStop = true
 	}
 }
 
 // WithValidateOutput used to compare the actual output with expected output.
-func WithValidateOutput(validateOutput func(t *testing.T, output string)) option {
+func WithValidateOutput(validateOutput func(t *testing.T, output string)) Option {
 	return func(ig *runner) {
 		ig.ValidateOutput = validateOutput
 	}
 }
 
-// New creates a new IG configured with the options passed as parameters.
-func New(image string, opts ...option) igtesting.TestStep {
+// New creates a new IG configured with the Options passed as parameters.
+func New(image string, opts ...Option) igtesting.TestStep {
 	commandName := fmt.Sprintf("Run_%s", image)
 	repository := os.Getenv("GADGET_REPOSITORY")
 	tag := os.Getenv("GADGET_TAG")
@@ -86,7 +86,7 @@ func New(image string, opts ...option) igtesting.TestStep {
 		image = fmt.Sprintf("%s:%s", image, tag)
 	}
 
-	ig := &runner{
+	factoryRunner := &runner{
 		path:  "ig",
 		image: image,
 		Command: command.Command{
@@ -94,15 +94,15 @@ func New(image string, opts ...option) igtesting.TestStep {
 		},
 	}
 
-	if path, ok := os.LookupEnv("IG"); ok {
-		ig.path = path
+	if path, ok := os.LookupEnv("IG_PATH"); ok {
+		factoryRunner.path = path
 	}
 
 	for _, opt := range opts {
-		opt(ig)
+		opt(factoryRunner)
 	}
 
-	ig.createCmd()
+	factoryRunner.createCmd()
 
-	return ig
+	return factoryRunner
 }

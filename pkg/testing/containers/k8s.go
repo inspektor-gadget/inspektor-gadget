@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@
 
 package containers
 
-import (
-	"context"
+import "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
-)
+// RuntimeKubernetes is used to implement container factory interface for running containers in k8s (not an actual runtime)
+const RuntimeKubernetes = "kubernetes"
 
-type DockerManager struct{}
+type K8sManager struct{}
 
-func (dm *DockerManager) NewContainer(name, cmd string, opts ...ContainerOption) *TestContainer {
+func (km *K8sManager) NewContainer(name string, cmd string, opts ...ContainerOption) *TestContainer {
 	c := &TestContainer{}
 
 	for _, o := range opts {
 		o(&c.cOptions)
 	}
-	c.options = append(c.options, testutils.WithContext(context.Background()))
 
-	c.Container = testutils.NewDockerContainer(name, cmd, c.options...)
+	c.Container = testutils.NewK8sContainer(name, cmd, c.options...)
 	return c
 }

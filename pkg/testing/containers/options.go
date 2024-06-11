@@ -24,9 +24,9 @@ type cOptions struct {
 	startAndStop bool
 }
 
-// containerOption is a function that modifies a ContainerSpec and exposes only
+// ContainerOption is a function that modifies a ContainerSpec and exposes only
 // few options from testutils.Option to the user.
-type containerOption func(opts *cOptions)
+type ContainerOption func(opts *cOptions)
 
 func (o *cOptions) IsCleanup() bool {
 	return o.cleanup
@@ -36,25 +36,31 @@ func (o *cOptions) IsStartAndStop() bool {
 	return o.startAndStop
 }
 
-func WithContainerImage(image string) containerOption {
+func WithContainerImage(image string) ContainerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithImage(image))
 	}
 }
 
-func WithContainerSeccompProfile(profile string) containerOption {
+func WithContainerSeccompProfile(profile string) ContainerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))
 	}
 }
 
-func WithCleanup() containerOption {
+func WithContainerNamespace(namespace string) ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithNamespace(namespace))
+	}
+}
+
+func WithCleanup() ContainerOption {
 	return func(opts *cOptions) {
 		opts.cleanup = true
 	}
 }
 
-func WithStartAndStop() containerOption {
+func WithStartAndStop() ContainerOption {
 	return func(opts *cOptions) {
 		opts.startAndStop = true
 	}

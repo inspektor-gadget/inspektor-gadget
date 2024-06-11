@@ -1404,7 +1404,68 @@ jobs:
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-          -C gadgets/ test -o build
+          -C gadgets/ test-ig-local -o build
+
+  test-gadgets-k8s:
+    name: Test gadgets K8s
+    #level 3
+    needs:
+      - build-ig
+      - build-gadget-container-images
+      - build-helper-images
+      - build-and-push-gadgets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [docker, containerd, cri-o]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+    - name: Setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Setup minikube
+      uses: ./.github/actions/setup-minikube
+      with:
+        runtime: ${{ matrix.runtime }}
+    - name: Get gadget-container-image-linux-amd64.tar from artifact.
+      uses: actions/download-artifact@v3
+      with:
+        name: gadget-container-image-linux-amd64.tar
+        path: /home/runner/work/inspektor-gadget/
+    - name: Prepare minikube by loading gadget-container-image-linux-amd64.tar
+      run: |
+        # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
+        docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
+        minikube image load ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@v3
+      with:
+        name: kubectl-gadget-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/inspektor-gadget/
+    - name: Gadgets tests
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
+        ./kubectl-gadget deploy --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        make \
+        GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
+        GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+        KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
+        -C gadgets/ test-k8s -o build
+    - name: Undeploy Inspektor Gadget
+      id: undeploy-ig
+      if: always()
+      shell: bash
+      run: ./kubectl-gadget undeploy
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
