@@ -63,6 +63,10 @@ func (f *Field) FieldType() api.Kind {
 	return f.kind
 }
 
+func (f *Field) FieldHidden() bool {
+	return f.Attributes.Hidden
+}
+
 func (f *Field) FieldAnnotations() map[string]string {
 	out := make(map[string]string)
 
