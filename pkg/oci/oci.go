@@ -62,9 +62,14 @@ type VerifyOptions struct {
 	PublicKey       string
 }
 
+type AllowedDigestsOptions struct {
+	AllowedDigests []string
+}
+
 type ImageOptions struct {
 	AuthOptions
 	VerifyOptions
+	AllowedDigestsOptions
 }
 
 const (
@@ -863,6 +868,32 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 		if _, err := imageStore.Resolve(ctx, targetImage.String()); err != nil {
 			return fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
+		}
+	}
+
+	if len(imgOpts.AllowedDigests) > 0 {
+		targetImage, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image: %w", err)
+		}
+
+		desc, err := imageStore.Resolve(ctx, targetImage.String())
+		if err != nil {
+			return fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
+		}
+
+		digestString := desc.Digest.String()
+		found := false
+		for _, digest := range imgOpts.AllowedDigests {
+			if digestString == digest {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("image digest not allowed: %q not in %q", digestString, strings.Join(imgOpts.AllowedDigests, ", "))
 		}
 	}
 

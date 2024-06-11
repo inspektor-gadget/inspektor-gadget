@@ -41,6 +41,7 @@ const (
 	pullSecret            = "pull-secret"
 	verifyImage           = "verify-image"
 	publicKey             = "public-key"
+	allowedDigests        = "allowed-digests"
 )
 
 type ociHandler struct{}
@@ -112,6 +113,12 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Description:  "Public key used to verify the image based gadget",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeString,
+		},
+		{
+			Key:         allowedDigests,
+			Title:       "Allowed Digests",
+			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
+			TypeHint:    api.TypeString,
 		},
 	}
 }
@@ -185,6 +192,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		VerifyOptions: oci.VerifyOptions{
 			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
 			PublicKey:       o.ociParams.Get(publicKey).AsString(),
+		},
+		AllowedDigestsOptions: oci.AllowedDigestsOptions{
+			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
 		},
 	}
 
