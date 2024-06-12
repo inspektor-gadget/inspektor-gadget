@@ -94,8 +94,8 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
 ```
 
 By default, a counter is increased by one each time there is an event, however it's possible to
@@ -111,8 +111,8 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
     selector:
       - "k8s.namespace:default"
 ```
@@ -130,8 +130,8 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
     selector:
       - "comm:cat"
 ```
@@ -147,7 +147,7 @@ metrics:
     gadget: dns
     labels:
       - k8s.namespace
-      - k8s.pod
+      - k8s.podName
     selector:
       - "qr:Q" # Only count query events
 ```
@@ -173,8 +173,8 @@ metrics:
     gadget: process
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
 ```
 
 Number of sockets in `CLOSE_WAIT` state
@@ -188,8 +188,8 @@ metrics:
     gadget: socket
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
     selector:
       - "status:CLOSE_WAIT"
 ```
@@ -296,8 +296,8 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
 ```
 
 Start the gadget
@@ -337,8 +337,8 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
     selector:
      - "comm:cat"
 ```

@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace bind
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID    COMM             PROTO  ADDR             PORT   OPTS   IF
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID    COMM             PROTO  ADDR             PORT   OPTS   IF
 ```
 
 Indeed, it is waiting for socket binding to occur.
@@ -36,8 +36,8 @@ command terminated with exit code 1
 Go back to *the first terminal* and see:
 
 ```
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID    COMM             PROTO  ADDR             PORT   OPTS   IF
-minikube         default          test-pod         test-pod         58208  nc               IP     ::               4242   .R...  0
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID    COMM             PROTO  ADDR             PORT   OPTS   IF
+minikube         default          test-pod         test-pod          58208  nc               IP     ::               4242   .R...  0
 ```
 
 This line corresponds to the socket binding operation initiated by `nc`.
@@ -58,7 +58,7 @@ Start the gadget first
 
 ```bash
 $ sudo ig trace bind -c test-trace-bind
-K8S.CONTAINER    PID     COMM             PROTO  ADDR             PORT    OPTS    IF
+K8S.CONTAINERNAME PID     COMM             PROTO  ADDR             PORT    OPTS    IF
 ```
 
 In another terminal, run a container that performs a bind operation
@@ -71,8 +71,8 @@ The gadget will print the event on the first terminal:
 
 ```bash
 $ sudo ig trace bind -c test-trace-bind
-K8S.CONTAINER    PID     COMM             PROTO  ADDR             PORT    OPTS    IF
-test-trace-bind  380299  nc               TCP    ::               4242    .R...   0
+K8S.CONTAINERNAME PID     COMM             PROTO  ADDR             PORT    OPTS    IF
+test-trace-bind   380299  nc               TCP    ::               4242    .R...   0
 ```
 
 ### Restricting output to certain PID, ports or succeeded and failed port bindings

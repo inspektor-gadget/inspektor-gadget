@@ -13,7 +13,7 @@ In terminal 1, start the trace tcpretrans gadget:
 
 ```bash
 $ kubectl gadget trace tcpretrans
-K8S.NODE     K8S.NAMESP… K8S.POD     K8S.CONTAI… PID     COMM  IP SRC                    DST                    STATE     TCPFLA… TYPE
+K8S.NODE     K8S.NAMESP… K8S.PODNAME K8S.CONTAI… PID     COMM  IP SRC                    DST                    STATE     TCPFLA… TYPE
 ```
 
 In terminal 2, start a pod and configure the network emulator to drop 25% of the packets. This will cause TCP retransmissions:
@@ -31,7 +31,7 @@ root@shell:/# curl nginx
 The results in terminal 1 will show that some TCP transmissions cause by the dropped packets:
 
 ```
-K8S.NODE     K8S.NAMESP… K8S.POD     K8S.CONTAI… PID     COMM  IP SRC                    DST                    STATE     TCPFLA… TYPE
+K8S.NODE     K8S.NAMESP… K8S.PODNAME K8S.CONTAI… PID     COMM  IP SRC                    DST                    STATE     TCPFLA… TYPE
 miniku…ocker default     shell       shell       60274   curl  4  p/default/shell:46022  s/default/nginx:80     ESTABLIS…         LOSS
 miniku…ocker default     shell       shell       60274   curl  4  p/default/shell:46022  s/default/nginx:80     ESTABLIS… PSH|ACK RETRANS
 ```

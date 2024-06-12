@@ -146,9 +146,9 @@ func (b *BasicRuntimeMetadata) IsEnriched() bool {
 
 type BasicK8sMetadata struct {
 	Namespace     string            `json:"namespace,omitempty" column:"namespace,template:namespace"`
-	PodName       string            `json:"podName,omitempty" column:"pod,template:pod"`
+	PodName       string            `json:"podName,omitempty" column:"podName,template:pod"`
 	PodLabels     map[string]string `json:"podLabels,omitempty" column:"labels,hide"`
-	ContainerName string            `json:"containerName,omitempty" column:"container,template:container"`
+	ContainerName string            `json:"containerName,omitempty" column:"containerName,template:container"`
 }
 
 func (b *BasicK8sMetadata) IsEnriched() bool {

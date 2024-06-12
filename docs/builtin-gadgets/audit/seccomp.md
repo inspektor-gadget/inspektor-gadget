@@ -62,8 +62,8 @@ spec:
 * Start the audit-seccomp gadget.
 
 ```bash
-$ kubectl gadget audit seccomp -o columns=k8s.namespace,k8s.pod,syscall,code
-K8S.NAMESPACE    K8S.POD          SYSCALL          CODE
+$ kubectl gadget audit seccomp -o columns=k8s.namespace,k8s.podname,syscall,code
+K8S.NAMESPACE    K8S.PODNAME      SYSCALL          CODE
 ```
 
 * In another terminal, execute the aforementioned syscalls in the pod.
@@ -77,7 +77,7 @@ Bad system call (core dumped)
 * Observe the syscalls logged by seccomp in the first terminal.
 
 ```
-K8S.NAMESPACE    K8S.POD          SYSCALL          CODE
+K8S.NAMESPACE    K8S.PODNAME      SYSCALL          CODE
 default          mypod            mkdir            log
 default          mypod            unshare          kill_thread
 ```

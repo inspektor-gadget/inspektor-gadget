@@ -135,13 +135,13 @@ EOF
 
 					expectedEntry := &Result{
 						Metric: map[string]string{
-							"__name__":        "executed_processes_total",
-							"k8s_container":   "test-pod",
-							"job":             "gadget",
-							"k8s_namespace":   ns,
-							"k8s_pod":         "test-pod",
-							"instance":        "",
-							"otel_scope_name": "",
+							"__name__":          "executed_processes_total",
+							"k8s_containerName": "test-pod",
+							"job":               "gadget",
+							"k8s_namespace":     ns,
+							"k8s_podName":       "test-pod",
+							"instance":          "",
+							"otel_scope_name":   "",
 						},
 						Value: []interface{}{nil, "100"},
 					}

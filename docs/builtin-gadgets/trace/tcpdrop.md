@@ -47,7 +47,7 @@ It is possible to see more detailed information by reading specific columns or u
 
 ```
 $ kubectl gadget trace tcpdrop \
-    -o columns=k8s.node,k8s.namespace,k8s.pod,k8s.container,pid,comm,ip,src.addr,src.port,src.kind,src.ns,src.name,dst.addr,dst.port,dst.kind,dst.ns,dst.name,state,tcpflags,reason
+    -o columns=k8s.node,k8s.namespace,k8s.podname,k8s.containername,pid,comm,ip,src.addr,src.port,src.kind,src.ns,src.name,dst.addr,dst.port,dst.kind,dst.ns,dst.name,state,tcpflags,reason
 ```
 
 ```

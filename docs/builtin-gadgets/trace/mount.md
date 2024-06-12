@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace mount
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    COMM             PID     TID     MNTNS      CALL
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME COMM             PID     TID     MNTNS      CALL
 ```
 
 Indeed, it is waiting for `mount` and `umount` to be called.
@@ -40,15 +40,15 @@ command terminated with exit code 255
 Go back to *the first terminal* and see:
 
 ```bash
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    COMM             PID     TID     MNTNS      CALL
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "vfat", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "msdos", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "iso9660", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "fuseblk", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "xfs", MS_SILENT, "") = -2
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME COMM             PID     TID     MNTNS      CALL
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "vfat", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "msdos", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "iso9660", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "fuseblk", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0         mount            12841   12841   4026532682  mount("/mnt", "/mnt", "xfs", MS_SILENT, "") = -2
 ```
 
 All these lines correspond to the error we get from `mount` inside the pod.

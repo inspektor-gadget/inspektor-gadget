@@ -123,8 +123,8 @@ func GetKubernetesColumns() []string {
 	return []string{
 		"k8s.node",
 		"k8s.namespace",
-		"k8s.pod",
-		"k8s.container",
+		"k8s.podName",
+		"k8s.containerName",
 	}
 }
 

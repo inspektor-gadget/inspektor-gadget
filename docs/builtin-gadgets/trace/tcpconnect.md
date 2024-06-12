@@ -29,7 +29,7 @@ In our trace tcpconnect gadget terminal we can now see the logged connection:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod
-K8S.NODE                 K8S.NAMESPACE            K8S.POD                  K8S.CONTAINER            PID        COMM          IP SRC                     DST
+K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        PID        COMM          IP SRC                     DST
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443
 ```
@@ -92,7 +92,7 @@ Switching to the gadget trace tcpconnnect terminal, we see the same connections 
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-K8S.NODE                 K8S.NAMESPACE            K8S.POD                  K8S.CONTAINER            PID        COMM          IP SRC                     DST
+K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        PID        COMM          IP SRC                     DST
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80   # (previous output)
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443  # (previous output)
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40676   r/1.1.1.1:80
@@ -115,7 +115,7 @@ there is no redirect visible to port 443:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-K8S.NODE                 K8S.NAMESPACE            K8S.POD                  K8S.CONTAINER            PID        COMM          IP SRC                     DST
+K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        PID        COMM          IP SRC                     DST
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80   # (previous output)
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443  # (previous output)
 minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40676   r/1.1.1.1:80   # (previous output)
@@ -204,7 +204,7 @@ The first terminal show all those connections and their latency. In my case both
 the same node, so it's very low:
 
 ```bash
-K8S.NODE              K8S.NAMESPACE  K8S.POD            K8S.CONTAINER      PID        COMM            IP SRC                         DST                               LATENCY
+K8S.NODE              K8S.NAMESPACE  K8S.PODNAME        K8S.CONTAINERNAME  PID        COMM            IP SRC                         DST                               LATENCY
 minikube-docker       default        myclientpod        myclientpod        2054329    curl            4  p/default/myclientpod:50306 s/default/nginx:80               47.069µs
 minikube-docker       default        myclientpod        myclientpod        2054338    curl            4  p/default/myclientpod:53378 s/default/nginx:80              120.017µs
 ```
@@ -222,7 +222,7 @@ the server again:
 Now the latency is a lot higher and has some variance because of the emulation configuration:
 
 ```bash
-K8S.NODE              K8S.NAMESPACE  K8S.POD            K8S.CONTAINER      PID        COMM            IP SRC                         DST                               LATENCY
+K8S.NODE              K8S.NAMESPACE  K8S.PODNAME        K8S.CONTAINERNAME  PID        COMM            IP SRC                         DST                               LATENCY
 ...
 minikube-docker       default        myclientpod        myclientpod        2056697    curl            4  p/default/myclientpod:32415 s/default/nginx:80             7.820966ms
 minikube-docker       default        myclientpod        myclientpod        2056832    curl            4  p/default/myclientpod:32927 s/default/nginx:80            64.388825ms

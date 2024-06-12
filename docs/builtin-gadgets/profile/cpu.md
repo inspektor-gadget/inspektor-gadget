@@ -29,8 +29,8 @@ Capturing stack traces... Hit Ctrl-C to end.^C
 After a while press with Ctrl-C to stop trace collection
 
 ```
-K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             COUNT
-minikube         default          random                         random           340800  cat              1
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME                    K8S.CONTAINERNAME PID     COMM             COUNT
+minikube         default          random                         random            340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
         __x64_sys_read
@@ -60,8 +60,8 @@ Instead of waiting, you can use the `--timeout` argument:
 ```bash
 $ kubectl gadget profile cpu --timeout 5 --podname random -K
 Capturing stack traces...
-K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             COUNT
-minikube         default          random                         random           340800  cat              1
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME                    K8S.CONTAINERNAME PID     COMM             COUNT
+minikube         default          random                         random            340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
         __x64_sys_read
@@ -86,7 +86,7 @@ minikube         default          random                         random         
 This gadget also supports custom column outputting, for example:
 
 ```bash
-$ kubectl gadget profile cpu --timeout 1 --podname random -o columns=k8s.node,k8s.pod
+$ kubectl gadget profile cpu --timeout 1 --podname random -o columns=k8s.node,k8s.podname
 Capturing stack traces...
 K8S.NODE         K8S.POD
 minikube         random
@@ -97,10 +97,10 @@ minikube         random
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget profile cpu --timeout 1 --podname random -o columns=k8s.node,k8s.namespace,k8s.pod,k8s.container,pid,comm,count
+$ kubectl gadget profile cpu --timeout 1 --podname random -o columns=k8s.node,k8s.namespace,k8s.podname,k8s.containername,pid,comm,count
 Capturing stack traces...
-K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             COUNT
-minikube         default          random                         random           340800  cat              1
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME                    K8S.CONTAINERNAME PID     COMM             COUNT
+minikube         default          random                         random            340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
         __x64_sys_read
