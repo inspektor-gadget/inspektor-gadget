@@ -88,7 +88,7 @@ type execsnoopWithLongPathsMapSpecs struct {
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	Execs                *ebpf.MapSpec `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
-	PidByTgid            *ebpf.MapSpec `ebpf:"pid_by_tgid"`
+	IgPidByTgid          *ebpf.MapSpec `ebpf:"ig_pid_by_tgid"`
 }
 
 // execsnoopWithLongPathsObjects contains all objects after they have been loaded into the kernel.
@@ -114,7 +114,7 @@ type execsnoopWithLongPathsMaps struct {
 	Events               *ebpf.Map `ebpf:"events"`
 	Execs                *ebpf.Map `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
-	PidByTgid            *ebpf.Map `ebpf:"pid_by_tgid"`
+	IgPidByTgid          *ebpf.Map `ebpf:"ig_pid_by_tgid"`
 }
 
 func (m *execsnoopWithLongPathsMaps) Close() error {
@@ -123,7 +123,7 @@ func (m *execsnoopWithLongPathsMaps) Close() error {
 		m.Events,
 		m.Execs,
 		m.GadgetMntnsFilterMap,
-		m.PidByTgid,
+		m.IgPidByTgid,
 	)
 }
 
