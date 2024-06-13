@@ -638,7 +638,7 @@ func getImageDigest(ctx context.Context, store *oci.Store, imageRef string) (str
 	return desc.Digest.String(), nil
 }
 
-func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string, authOpts *AuthOptions) ([]byte, []byte, error) {
+func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
 	signatureTag, err := craftSignatureTag(imageDigest)
 	if err != nil {
 		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
@@ -724,7 +724,7 @@ func VerifyImage(ctx context.Context, imageRef reference.Named, imageDigest stri
 		return fmt.Errorf("creating repository: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := getSigningInformation(ctx, repo, imageDigest, &imgOpts.AuthOptions)
+	signatureBytes, payloadBytes, err := getSigningInformation(ctx, repo, imageDigest)
 	if err != nil {
 		return fmt.Errorf("getting signing information: %w", err)
 	}
