@@ -132,8 +132,8 @@ github.com/giantswarm/microerror v0.4.1/go.mod h1:URFj0gFCmZihjya6saQCXxslBrgctX
 github.com/go-errors/errors v1.4.2 h1:J6MZopCL4uSllY1OfXM374weqZFFItUbrImctkmUxIA=
 github.com/go-errors/errors v1.4.2/go.mod h1:sIVyrIiJhuEF+Pj9Ebtd6P/rEYROXFi3BopGUQ5a5Og=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
-github.com/go-logr/logr v1.4.1 h1:pKouT5E8xu9zeFC39JXRDukb6JFQPXM5p5I91188VAQ=
-github.com/go-logr/logr v1.4.1/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
+github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
+github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
 github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre4VKE=
 github.com/go-logr/zapr v1.3.0 h1:XGdV8XW8zdwFiwOA2Dryh1gj2KRQyOOoNmBy4EplIcQ=
@@ -622,8 +622,8 @@ google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEYHJ7i3ixzK3sjbqSGDJWnxyFXZblF3eUsNvo=
 google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de h1:F6qOa9AZTYJXOUEr4jDysRDLrm4PHePlge4v4TGAlxY=
 google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de/go.mod h1:VUhTRKeHn9wwcdrk73nvdC9gF178Tzhmt/qyaFcPLSo=
-google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 h1:rIo7ocm2roD9DcFIX67Ym8icoGCKSARAiPljFhh5suQ=
-google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2/go.mod h1:O1cOfN1Cy6QEYr7VxtjOyP5AdAuR0aJ/MYZaaof623Y=
+google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 h1:RFiFrvy37/mpSpdySBDrUdipW/dHwsRwh3J3+A9VgT4=
+google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237/go.mod h1:Z5Iiy3jtmioajWHDGFk7CeugTyHtPvMHA4UTmUkyalE=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 h1:NnYq6UN9ReLM9/Y01KWNOWyI5xQ9kbIms5GGJVwS/Yc=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237/go.mod h1:WtryC6hu0hhx87FDGxWCDptyssuo68sk10vYjF+T9fY=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
@@ -631,8 +631,8 @@ google.golang.org/grpc v1.23.0/go.mod h1:Y5yQAOtifL1yxbo5wqy6BxZv8vAUGQwXBOALyac
 google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQciAY=
 google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
-google.golang.org/grpc v1.63.2 h1:MUeiw1B2maTVZthpU5xvASfTh3LDbxHd6IJ6QQVU+xM=
-google.golang.org/grpc v1.63.2/go.mod h1:WAX/8DgncnokcFUldAxq7GeB5DXHDbMF+lLvDomNkRA=
+google.golang.org/grpc v1.64.0 h1:KH3VH9y/MgNQg1dE7b3XfVK0GsPSIzJwdF617gUSbvY=
+google.golang.org/grpc v1.64.0/go.mod h1:oxjF8E3FBnjp+/gVFYdWacaLDx9na1aqy9oovLpxQYg=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
 google.golang.org/protobuf v0.0.0-20200228230310-ab0ca4ff8a60/go.mod h1:cfTl7dwQJ+fmap5saPgwCLgHXTUD7jkjRqWcaiX5VyM=
@@ -710,10 +710,10 @@ sigs.k8s.io/kustomize/api v0.14.0 h1:6+QLmXXA8X4eDM7ejeaNUyruA1DDB3PVIjbpVhDOJRA
 sigs.k8s.io/kustomize/api v0.14.0/go.mod h1:vmOXlC8BcmcUJQjiceUbcyQ75JBP6eg8sgoyzc+eLpQ=
 sigs.k8s.io/kustomize/kyaml v0.14.3 h1:WpabVAKZe2YEp/irTSHwD6bfjwZnTtSDewd2BVJGMZs=
 sigs.k8s.io/kustomize/kyaml v0.14.3/go.mod h1:npvh9epWysfQ689Rtt/U+dpOJDTBn8kUnF1O6VzvmZA=
-sigs.k8s.io/release-utils v0.7.7 h1:JKDOvhCk6zW8ipEOkpTGDH/mW3TI+XqtPp16aaQ79FU=
-sigs.k8s.io/release-utils v0.7.7/go.mod h1:iU7DGVNi3umZJ8q6aHyUFzsDUIaYwNnNKGHo3YE5E3s=
-sigs.k8s.io/security-profiles-operator v0.8.3 h1:nYkcxRAVRIaAd2qKEG5LUQmAas5tCAb85QbT6nhdRVM=
-sigs.k8s.io/security-profiles-operator v0.8.3/go.mod h1:QdxKJ74GFgUR9Owweo6YZ9/XVeP8QYb/s9rCQz6pnKg=
+sigs.k8s.io/release-utils v0.8.1 h1:qSA9p3vZzO6RAq7zvzupCZjR29+n3NK9DSJPe9bSf7w=
+sigs.k8s.io/release-utils v0.8.1/go.mod h1:vrQ3eR1VmudgX4OUwr4pUZEkYLRms9bdbv06mr3kchQ=
+sigs.k8s.io/security-profiles-operator v0.8.4 h1:j00FWU9/NFnGYx7krJqiaHsuXyTmBwWq+luv2vmdguA=
+sigs.k8s.io/security-profiles-operator v0.8.4/go.mod h1:eXHEJ49YPW2gG8E4zWalu9LxO8oLAltBHk11s+fB87s=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1 h1:150L+0vs/8DA78h1u02ooW1/fFq/Lwr+sGiqlzvrtq4=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1/go.mod h1:N8hJocpFajUSSeSJ9bOZ77VzejKZaXsTtZo4/u7Io08=
 sigs.k8s.io/yaml v1.4.0 h1:Mk1wCc2gy/F0THH0TAp1QYyJNzRm2KCLy3o5ASXVI5E=
