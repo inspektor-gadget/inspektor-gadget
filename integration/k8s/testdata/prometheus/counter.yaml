@@ -6,7 +6,7 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
     selector:
       - "comm:cat"

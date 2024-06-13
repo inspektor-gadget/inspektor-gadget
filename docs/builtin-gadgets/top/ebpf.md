@@ -29,10 +29,10 @@ Now, in a second terminal, start `top file` on the _gadget_ namespace to get som
 
 ```bash
 $ kubectl gadget top file -n gadget
-K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             READS  WRITES R_KB    W_KB    T FILE
-minikube         gadget           gadget-k2mvp                   gadget           575955  runc:[2:INIT]    1      0      0       0       R cap_last_cap
-minikube         gadget           gadget-k2mvp                   gadget           575955  runc:[2:INIT]    2      0      8       0       R group
-minikube         gadget           gadget-k2mvp                   gadget           575955  gadgettracerman  2      0      8       0       R UTC
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME                    K8S.CONTAINERNAME PID     COMM             READS  WRITES R_KB    W_KB    T FILE
+minikube         gadget           gadget-k2mvp                   gadget            575955  runc:[2:INIT]    1      0      0       0       R cap_last_cap
+minikube         gadget           gadget-k2mvp                   gadget            575955  runc:[2:INIT]    2      0      8       0       R group
+minikube         gadget           gadget-k2mvp                   gadget            575955  gadgettracerman  2      0      8       0       R UTC
 ...
 ```
 

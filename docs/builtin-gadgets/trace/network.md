@@ -20,7 +20,7 @@ $ kubectl run -ti -n demo --image=busybox --restart=Never shell -- wget 1.1.1.1.
 
 * Observe the results:
 ```
-K8S.NODE         K8S.NAMESPACE    K8S.POD                        TYPE      PROTO  PORT    REMOTE
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME                    TYPE      PROTO  PORT    REMOTE
 minikube         demo             shell                          OUTGOING  UDP    53      svc kube-system/kube-dns
 minikube         demo             shell                          OUTGOING  TCP    80      endpoint 1.1.1.1
 ```

@@ -29,7 +29,7 @@ minikube-docker where myapp1-pod-sbtvw and myapp2-pod-5pg4w are running:
 
 ```bash
 $ kubectl gadget trace exec --selector role=demo --node minikube-docker
-K8S.NODE        K8S.NAMESPACE K8S.POD          K8S.CONTAINER PID     PPID    COMM  PCOMM RET ARGS
+K8S.NODE        K8S.NAMESPACE K8S.PODNAME      K8S.CONTAINER PID     PPID    COMM  PCOMM RET ARGS
 minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226276 2221571 true  sh    0   /bin/true
 minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226277 2221571 date  sh    0   /bin/date
 minikube-docker default       myapp1-pod-sbtvw myapp1-pod    2226278 2221571 cat   sh    0   /bin/cat /proc/version

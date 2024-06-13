@@ -127,8 +127,8 @@ metrics:
     gadget: exec
     labels:
       - k8s.namespace
-      - k8s.pod
-      - k8s.container
+      - k8s.podName
+      - k8s.containerName
 ```
 
 The category and gadget fields define which gadget to use. The labels indicate how metrics are
@@ -159,8 +159,8 @@ will only consider events in the default namespace.
   category: trace
   gadget: exec
   labels:
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
   selector:
     - "k8s.namespace:default"
 ```
@@ -175,8 +175,8 @@ Or only count events for a given command:
   gadget: exec
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
   selector:
     - "comm:cat"
 ```
@@ -191,8 +191,8 @@ And finally, we can provide counters for failed operations:
   gadget: exec
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
   selector:
     - "retval:!0"
 ```
@@ -225,8 +225,8 @@ Another example is:
   gadget: seccomp
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
     - syscall
   selector:
     - "syscall:bpf"
@@ -243,8 +243,8 @@ increase a counter using a field on the event:
   gadget: fsslower
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
   field: bytes
   selector:
     - "filesystem:ext4"
@@ -268,8 +268,8 @@ snapshotters.
   gadget: process
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
 
 # Number of sockets in CLOSE_WAIT state
 - name: number_of_sockets_close_wait
@@ -278,8 +278,8 @@ snapshotters.
   gadget: socket
   labels:
     - k8s.namespace
-    - k8s.pod
-    - k8s.container
+    - k8s.podName
+    - k8s.containerName
   selector:
     - "status:CLOSE_WAIT"
 ```
@@ -309,7 +309,7 @@ We'll support the same bucket configuration as described in
     type: exp2
   labels:
     - k8s.namespace
-    - k8s.pod
+    - k8s.podName
   selector:
     - "qr:R"
 ```

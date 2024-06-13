@@ -20,7 +20,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top block-io
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
 ```
 
 Indeed, it is waiting for I/O to occur.
@@ -33,8 +33,8 @@ $ kubectl exec -ti test-pod -- dd if=/dev/zero of=/tmp/foo count=16384
 On *the first terminal*, you should see:
 
 ```
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
-minikube         default          test-pod         test-pod         7767    dd               W   0      0      1564672 3046     4
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
+minikube         default          test-pod         test-pod          7767    dd               W   0      0      1564672 3046     4
 ```
 
 This line correspond to the block device I/O initiated by `dd`.

@@ -21,7 +21,7 @@ thus tracing on all nodes for a pod called "mypod":
 
 ```bash
 $ kubectl gadget trace open --podname mypod
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER   PID    COMM               FD ERR PATH
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINER   PID    COMM               FD ERR PATH
 ip-10-0-30-247   default          mypod            mypod           18455  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18521  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18525  whoami              3   0 /etc/passwd

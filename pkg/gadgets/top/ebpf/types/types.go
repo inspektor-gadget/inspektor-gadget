@@ -56,9 +56,9 @@ func GetColumns() *columns.Columns[Stats] {
 
 	col, _ := cols.GetColumn("k8s.namespace")
 	col.Visible = false
-	col, _ = cols.GetColumn("k8s.pod")
+	col, _ = cols.GetColumn("k8s.podName")
 	col.Visible = false
-	col, _ = cols.GetColumn("k8s.container")
+	col, _ = cols.GetColumn("k8s.containerName")
 	col.Visible = false
 	col, _ = cols.GetColumn("runtime.containerName")
 	col.Visible = false

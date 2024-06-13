@@ -60,7 +60,7 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-K8S.NODE         K8S.NAMESPACE  K8S.POD                 K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+K8S.NODE         K8S.NAMESPACE  K8S.PODNAME             K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
 minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711127  nice  setpriority  0    23  SYS_NICE  1      Deny
 minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711260  nice  setpriority  0    23  SYS_NICE  1      Deny
 minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711457  nice  setpriority  0    23  SYS_NICE  1      Deny
@@ -129,7 +129,7 @@ We can see the same checks but this time with the `Allow` verdict:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-K8S.NODE         K8S.NAMESPACE  K8S.POD                 K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+K8S.NODE         K8S.NAMESPACE  K8S.PODNAME             K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
 minikube-docker  default        set-priorit…66dff-nm5pt set-priority  2718069  nice  setpriority  0    23  SYS_NICE  1      Allow
 minikube-docker  default        set-priorit…66dff-nm5pt set-priority  2718291  nice  setpriority  0    23  SYS_NICE  1      Allow
 ^C

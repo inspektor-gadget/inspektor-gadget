@@ -19,7 +19,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top tcp
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID       COMM      IP SRC                   DST                   SENT     RECV
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID       COMM      IP SRC                   DST                   SENT     RECV
 ```
 
 Indeed, it is waiting for TCP connection to occur.
@@ -32,9 +32,9 @@ $ kubectl exec -ti test-pod -- wget 1.1.1.1
 On *the first terminal*, you should see:
 
 ```
-K8S.NODE           K8S.NAMESPACE K8S.POD    CONTAINER   PID         COMM       IP SRC                        DST                  SENT       RECV      
-minikube-docker    default       test-pod   test-pod    289548      wget       4  p/default/test-pod:47228   r/1.1.1.1:443        296B       15.49KiB  
-minikube-docker    default       test-pod   test-pod    289540      wget       4  p/default/test-pod:42604   r/1.1.1.1:80         70B        381B      
+K8S.NODE           K8S.NAMESPACE K8S.PODNAMECONTAINER   PID         COMM       IP SRC                        DST                  SENT       RECV
+minikube-docker    default       test-pod   test-pod    289548      wget       4  p/default/test-pod:47228   r/1.1.1.1:443        296B       15.49KiB
+minikube-docker    default       test-pod   test-pod    289540      wget       4  p/default/test-pod:42604   r/1.1.1.1:80         70B        381B
 ```
 
 This line corresponds to the TCP connection initiated by `wget`.

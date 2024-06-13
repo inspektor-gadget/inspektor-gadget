@@ -17,7 +17,7 @@ all the events from the beginning:
 
 ```bash
 $ kubectl gadget top file -p mypod
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
 ...
 ```
 
@@ -37,24 +37,24 @@ written by the pod. For instace, apt-get is reading a lot of files in
 when updating the packages list and installing packages.
 
 ```bash
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          425    0      27022   0       R archive.ubuntu.com_ubuntu_dists_focal-updates_main_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          278    0      17775   0       R archive.ubuntu.com_ubuntu_dists_focal_main_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          244    0      15594   0       R security.ubuntu.com_ubuntu_dists_focal-security_main_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          93     0      5921    0       R archive.ubuntu.com_ubuntu_dists_focal_universe_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          91     0      5797    0       R archive.ubuntu.com_ubuntu_dists_focal-updates_universe_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          82     0      5160    0       R archive.ubuntu.com_ubuntu_dists_focal-updates_restricted_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          73     0      4568    0       R security.ubuntu.com_ubuntu_dists_focal-security_restricted_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          70     0      4435    0       R security.ubuntu.com_ubuntu_dists_focal-security_universe_binary-amd64_Packages.lz4
-ubuntu-hirsute   default          mypod            mypod            642727  apt-get          19     0      1172    0       R archive.ubuntu.com_ubuntu_dists_focal_multiverse_binary-amd64_Packages.lz4
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          425    0      27022   0       R archive.ubuntu.com_ubuntu_dists_focal-updates_main_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          278    0      17775   0       R archive.ubuntu.com_ubuntu_dists_focal_main_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          244    0      15594   0       R security.ubuntu.com_ubuntu_dists_focal-security_main_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          93     0      5921    0       R archive.ubuntu.com_ubuntu_dists_focal_universe_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          91     0      5797    0       R archive.ubuntu.com_ubuntu_dists_focal-updates_universe_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          82     0      5160    0       R archive.ubuntu.com_ubuntu_dists_focal-updates_restricted_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          73     0      4568    0       R security.ubuntu.com_ubuntu_dists_focal-security_restricted_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          70     0      4435    0       R security.ubuntu.com_ubuntu_dists_focal-security_universe_binary-amd64_Packages.lz4
+ubuntu-hirsute   default          mypod            mypod             642727  apt-get          19     0      1172    0       R archive.ubuntu.com_ubuntu_dists_focal_multiverse_binary-amd64_Packages.lz4
 ```
 
 After the initial installation is done, we can see how git uses a
 temporary file to store the repository being cloned.
 
 ```
-K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
-ubuntu-hirsute   default          mypod            mypod            647042  git              0      1070   0       4280    R tmp_pack_2rpZd
+K8S.NODE         K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNAME PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+ubuntu-hirsute   default          mypod            mypod             647042  git              0      1070   0       4280    R tmp_pack_2rpZd
 ```
 
 Finally, we need to clean up our pod, press Ctrl + C on its terminal and

@@ -14,7 +14,7 @@ we can run:
 
 ```bash
 $ kubectl gadget trace sni
-K8S.NODE           K8S.NAMESPACE      K8S.POD            PID        TID       COMM      NAME
+K8S.NODE           K8S.NAMESPACE      K8S.PODNAME        PID        TID       COMM      NAME
 ```
 
 To generate some output for this example, let's create a demo pod in *another terminal*:
@@ -36,7 +36,7 @@ Location: https://github.com/ [following]
 Go back to *the first terminal* and see:
 
 ```
-K8S.NODE           K8S.NAMESPACE      K8S.POD            PID        TID       COMM      NAME
+K8S.NODE           K8S.NAMESPACE      K8S.PODNAME        PID        TID       COMM      NAME
 minikube           default            ubuntu             3917791    3917791   wget      www.github.com
 minikube           default            ubuntu             3917791    3917791   wget      github.com
 minikube           default            ubuntu             3917812    3917812   wget      wikimedia.org

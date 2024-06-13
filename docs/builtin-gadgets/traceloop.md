@@ -35,7 +35,7 @@ result lost forever? Let's check with the traceloop gadget:
 
 ```bash
 $ kubectl gadget traceloop list
-K8S.NODE                                K8S.NAMESPACE                          K8S.POD                                K8S.CONTAINER                          CONTAINERID
+K8S.NODE                                K8S.NAMESPACE                          K8S.PODNAME                            K8S.CONTAINERNAME                      CONTAINERID
 minikube                                kube-system                            kube-scheduler-minikube                kube-scheduler                         2b63eb745ce2cf
 ...
 minikube                                test                                   mypod                                  mypod                                  ef6f2d3f44b555
