@@ -771,22 +771,22 @@ jobs:
 
           image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
-      - name: Install Cosign
-        if: needs.check-secrets.outputs.cosign == 'true'
-        uses: sigstore/cosign-installer@main
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
-        env:
-          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
-          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-        run: |
-          cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
     # level: 2
     if: github.event_name != 'pull_request'
-    needs: build-ig-container-images
+    needs:
+      - build-ig-container-images
+      - check-secrets
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -810,7 +810,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ github.repository_owner }}/ig
       - name: Publish the manifest list
+        id: publish-manifest-list
         run: |
+          IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
@@ -818,7 +820,7 @@ jobs:
           IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image only includes the ig binary, a standalone tool to run the gadgets."
 
           docker buildx imagetools create \
-            -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+            -t $IMAGE_TAG \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-amd64 }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }} \
             ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-arm64 }} \
@@ -829,10 +831,23 @@ jobs:
             --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
             --annotation index:org.opencontainers.image.title="$IMAGE_TITLE"
 
+          image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
+          echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
+      - name: Sign the manifest list
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+
   build-helper-images:
-    # level: 0
+    # level: 2
     name: helper images
     runs-on: ubuntu-latest
+    needs:
+      - check-secrets
+      - public-key-check
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
       ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
@@ -897,6 +912,9 @@ jobs:
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
+        # The repository should have the variable PUSH_HELPERS set to
+        # ENABLE_PUSH_HELPERS, see:
+        # https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository
         push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         platforms: ${{ matrix.image.platform }}
@@ -917,6 +935,13 @@ jobs:
         fi
 
         echo "${{ matrix.image.name }}=${image}" >> $GITHUB_OUTPUT
+    - name: Sign ${{ matrix.image.name }} image
+      if: steps.check-build-helpers.outputs.build == 'true' && needs.check-secrets.outputs.cosign == 'true' && vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS'
+      uses: ./.github/actions/sign-container-image
+      with:
+        password: '${{ secrets.COSIGN_PASSWORD }}'
+        private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.build-image.outputs.digest }}"
 
   build-examples:
     name: example

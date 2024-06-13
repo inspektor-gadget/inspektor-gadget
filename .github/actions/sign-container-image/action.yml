@@ -1,0 +1,26 @@
+name: "Sign the container image"
+description: "Sign the container image given as argument with cosign using the provided private key."
+
+inputs:
+  password:
+    description: "Private key password"
+    required: true
+  private_key:
+    description: "Private key to sign the image"
+    required: true
+  image:
+    description: "The image to sign"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@main
+    - name: Sign the container image
+      env:
+        COSIGN_PASSWORD: '${{ inputs.password }}'
+        COSIGN_PRIVATE_KEY: '${{ inputs.private_key }}'
+      shell: bash
+      run: |
+        cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ inputs.image }}"
