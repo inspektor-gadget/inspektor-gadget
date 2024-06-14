@@ -37,7 +37,7 @@ structs:
       description: Group id of the event's process
       attributes:
         template: uid
-    - name: tcpflags
+    - name: tcpflags_raw
       description: TCP flags from a TCP header
       attributes:
         width: 16

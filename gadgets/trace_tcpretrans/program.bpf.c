@@ -31,13 +31,24 @@ enum type {
 	LOSS,
 };
 
+enum tcp_flags_set : __u8 {
+	FIN = 0x01,
+	SYN = 0x02,
+	RST = 0x04,
+	PSH = 0x08,
+	ACK = 0x10,
+	URG = 0x20,
+	ECE = 0x40,
+	CWR = 0x80,
+};
+
 struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
 	gadget_timestamp timestamp_raw;
 	__u8 state;
-	__u8 tcpflags;
+	enum tcp_flags_set tcpflags_raw;
 	__u32 reason;
 	gadget_netns_id netns;
 	enum type type_raw;
@@ -131,7 +142,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	// Instead, we have to read the TCP flags from the TCP control buffer.
 	if (skb) {
 		tcb = (struct tcp_skb_cb *)&(skb->cb[0]);
-		bpf_probe_read_kernel(&event->tcpflags, sizeof(event->tcpflags),
+		bpf_probe_read_kernel(&event->tcpflags_raw,
+				      sizeof(event->tcpflags_raw),
 				      &tcb->tcp_flags);
 	}
 

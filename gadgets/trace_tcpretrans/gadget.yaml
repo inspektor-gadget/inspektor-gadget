@@ -37,7 +37,7 @@ structs:
       description: 'TODO: Fill field description'
       attributes:
         template: uid
-    - name: tcpflags
+    - name: tcpflags_raw
       description: 'TODO: Fill field description'
       attributes:
         width: 16

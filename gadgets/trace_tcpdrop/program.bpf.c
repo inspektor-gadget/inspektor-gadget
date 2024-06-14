@@ -42,13 +42,24 @@ enum tcp_state {
 	tcp_max_states = 13,
 };
 
+enum tcp_flags_set : __u8 {
+	FIN = 0x01,
+	SYN = 0x02,
+	RST = 0x04,
+	PSH = 0x08,
+	ACK = 0x10,
+	URG = 0x20,
+	ECE = 0x40,
+	CWR = 0x80,
+};
+
 struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
 	gadget_timestamp timestamp_raw;
 	enum tcp_state state_raw;
-	__u8 tcpflags;
+	enum tcp_flags_set tcpflags_raw;
 	enum skb_drop_reason reason_raw;
 	gadget_netns_id netns;
 
@@ -109,7 +120,7 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->state_raw = BPF_CORE_READ(sk, __sk_common.skc_state);
 	event->reason_raw = reason;
-	bpf_probe_read_kernel(&event->tcpflags, sizeof(event->tcpflags),
+	bpf_probe_read_kernel(&event->tcpflags_raw, sizeof(event->tcpflags_raw),
 			      &tcphdr->flags);
 
 	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
