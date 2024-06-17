@@ -168,12 +168,12 @@ enum lsm_tracepoint { FOR_EACH_LSM_HOOK(ENUM_ITEM) };
 
 struct event {
 	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	u32 pid;
 	u32 tid;
 	u32 uid;
 	u32 gid;
-	enum lsm_tracepoint tracepoint;
+	enum lsm_tracepoint tracepoint_raw;
 	char comm[TASK_COMM_LEN];
 };
 
@@ -210,12 +210,12 @@ FOR_EACH_LSM_HOOK(DECLARE_LSM_PARAMETER)
 		uid_gid = bpf_get_current_uid_gid();                   \
                                                                        \
 		event.mntns_id = mntns_id;                             \
-		event.timestamp = bpf_ktime_get_boot_ns();             \
+		event.timestamp_raw = bpf_ktime_get_boot_ns();         \
 		event.pid = pid_tgid >> 32;                            \
 		event.tid = pid_tgid;                                  \
 		event.uid = uid_gid;                                   \
 		event.gid = uid_gid >> 32;                             \
-		event.tracepoint = name;                               \
+		event.tracepoint_raw = name;                           \
 		bpf_get_current_comm(event.comm, sizeof(event.comm));  \
                                                                        \
 		bpf_ringbuf_output(&events, &event, sizeof(event), 0); \

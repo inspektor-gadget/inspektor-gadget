@@ -20,7 +20,7 @@ struct event {
 	__u32 tpid;
 	__u64 pages;
 	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	char fcomm[TASK_COMM_LEN];
 	char tcomm[TASK_COMM_LEN];
 };
@@ -54,7 +54,7 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 	bpf_probe_read_kernel(&event->tcomm, sizeof(event->tcomm),
 			      BPF_CORE_READ(oc, chosen, comm));
 	event->mntns_id = mntns_id;
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;

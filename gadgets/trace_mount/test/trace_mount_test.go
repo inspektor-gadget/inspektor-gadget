@@ -38,14 +38,14 @@ type traceMountEvent struct {
 	Pid       int    `json:"pid"`
 	Tid       int    `json:"tid"`
 	MountNsID uint64 `json:"mount_ns_id"`
-	Timestamp uint64 `json:"timestamp"`
+	Timestamp string `json:"timestamp"`
 	Ret       int    `json:"ret"`
 	Comm      string `json:"comm"`
 	Fs        string `json:"fs"`
 	Src       string `json:"src"`
 	Dest      string `json:"dest"`
 	Data      string `json:"data"`
-	OpStr     string `json:"op_str"`
+	Op        string `json:"op"`
 }
 
 func TestTraceMount(t *testing.T) {
@@ -97,7 +97,7 @@ func TestTraceMount(t *testing.T) {
 			expectedEntry := &traceMountEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 				Comm:       "mount",
-				OpStr:      "MOUNT",
+				Op:         "MOUNT",
 				Src:        "/mnt",
 				Dest:       "/mnt",
 				Ret:        -int(unix.ENOENT),
@@ -105,7 +105,7 @@ func TestTraceMount(t *testing.T) {
 
 				// Check only the existence of these fields
 				Flags:     utils.NormalizedInt,
-				Timestamp: utils.NormalizedInt,
+				Timestamp: utils.NormalizedStr,
 				Delta:     utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
@@ -115,7 +115,7 @@ func TestTraceMount(t *testing.T) {
 
 			normalize := func(e *traceMountEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.Timestamp)
+				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Delta)
 				utils.NormalizeInt(&e.Flags)
 				utils.NormalizeInt(&e.Pid)

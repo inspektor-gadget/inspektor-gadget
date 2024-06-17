@@ -22,6 +22,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
+)
+
+const (
+	enumTargetNameAnnotation = "ebpf.formatter.enum"
 )
 
 func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 {
@@ -76,7 +81,13 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 				}
 			}
 
-			out, err := ds.AddField(name+"_str", api.Kind_String)
+			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "enum", in, enumTargetNameAnnotation)
+			if err != nil {
+				i.logger.Warnf("Failed to get target name for enum field %q: %v", in.Name(), err)
+				continue
+			}
+
+			out, err := ds.AddField(targetName, api.Kind_String)
 			if err != nil {
 				return err
 			}

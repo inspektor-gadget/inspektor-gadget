@@ -26,7 +26,7 @@ structs:
     - name: gid
       attributes:
         template: uid
-    - name: tracepoint
+    - name: tracepoint_raw
       description: lsm tracepoint enum
       attributes:
         width: 16
@@ -36,9 +36,7 @@ structs:
       description: command
       attributes:
         template: comm
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
 ebpfParams:
   trace_all:
     key: trace-all

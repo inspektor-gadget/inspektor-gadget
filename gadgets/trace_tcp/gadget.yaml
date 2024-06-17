@@ -10,9 +10,7 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: pid
       attributes:
         template: pid
@@ -41,7 +39,7 @@ structs:
       description: Network namespace inode id
       attributes:
         template: ns
-    - name: type
+    - name: type_raw
       description: Type of TCP connection event
       attributes:
         width: 16

@@ -22,7 +22,7 @@ struct args_t {
 };
 
 struct event {
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	/* user terminology for pid: */
 	__u32 pid;
 	__u32 uid;
@@ -161,7 +161,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	event->err = errval;
 	event->fd = fd;
 	event->mntns_id = gadget_get_mntns_id();
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	/* emit event */
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));

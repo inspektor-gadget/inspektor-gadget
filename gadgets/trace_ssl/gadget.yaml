@@ -15,15 +15,13 @@ structs:
       description: mount namespace inode id
       attributes:
         template: ns
-    - name: operation
+    - name: operation_raw
       description: type of SSL operations
       attributes:
         width: 16
         alignment: left
         ellipsis: end
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: latency_ns
       attributes:
         template: timestamp

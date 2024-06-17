@@ -38,7 +38,7 @@ struct event {
 	struct gadget_l4endpoint_t dst;
 
 	char task[TASK_COMM_LEN];
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
@@ -214,7 +214,7 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	event->mntns_id = mntns_id;
 	bpf_get_current_comm(event->task, sizeof(event->task));
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
@@ -245,7 +245,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 		bpf_ntohs(dport); // host expects data in host byte order
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	bpf_get_current_comm(event->task, sizeof(event->task));
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
@@ -347,7 +347,7 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 		BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 cleanup:

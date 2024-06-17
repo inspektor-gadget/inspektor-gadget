@@ -47,7 +47,7 @@ structs:
       attributes:
         width: 32
         minWidth: 24
-    - name: op
+    - name: op_raw
       attributes:
         width: 6
         minWidth: 6
@@ -57,9 +57,7 @@ structs:
         width: 20
         alignment: left
         ellipsis: end
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
 ebpfParams:
   target_pid:
     key: pid

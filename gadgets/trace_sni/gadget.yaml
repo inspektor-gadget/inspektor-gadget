@@ -10,9 +10,7 @@ tracers:
 structs:
   event_t:
     fields:
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: pid
       description: PID of the process that sent the request
       attributes:

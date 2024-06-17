@@ -10,9 +10,7 @@ tracers:
 structs:
   event_t:
     fields:
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: src
       description: Source endpoint
       attributes:
