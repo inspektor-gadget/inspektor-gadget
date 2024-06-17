@@ -12,6 +12,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/exec_fixes.h>
 #include <gadget/kernel_stack_map.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
@@ -141,7 +142,7 @@ struct syscall_context {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(key_size, sizeof(u64));
+	__uint(key_size, sizeof(pid_t));
 	__uint(value_size, sizeof(struct syscall_context));
 	__uint(max_entries,
 	       1048576); // There can be many threads sleeping in some futex/poll syscalls
@@ -268,7 +269,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	}
 
 	struct syscall_context *sc_ctx;
-	sc_ctx = bpf_map_lookup_elem(&current_syscall, &pid_tgid);
+	sc_ctx = bpf_map_lookup_elem(&current_syscall, &event->pid);
 	if (sc_ctx) {
 		event->syscall_raw = sc_ctx->nr;
 	} else {
@@ -287,10 +288,14 @@ int BPF_KRETPROBE(ig_trace_cap_x)
  * https://github.com/seccomp/libseccomp/blob/afbde6ddaec7c58c3b281d43b0b287269ffca9bd/src/syscalls.csv
  */
 #if defined(__TARGET_ARCH_arm64)
+#define __NR_execve 221
+#define __NR_execveat 281
 #define __NR_rt_sigreturn 139
 #define __NR_exit_group 94
 #define __NR_exit 93
 #elif defined(__TARGET_ARCH_x86)
+#define __NR_execve 59
+#define __NR_execveat 322
 #define __NR_rt_sigreturn 15
 #define __NR_exit_group 231
 #define __NR_exit 60
@@ -307,7 +312,7 @@ static __always_inline int skip_exit_probe(int nr)
 SEC("raw_tracepoint/sys_enter")
 int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 {
-	u64 pid_tgid = bpf_get_current_pid_tgid();
+	pid_t pid = bpf_get_current_pid_tgid();
 	struct syscall_context sc_ctx = {};
 
 	u64 mntns_id = gadget_get_mntns_id();
@@ -318,10 +323,12 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	u64 nr = ctx->args[1];
 	sc_ctx.nr = nr;
 
+	if (nr == __NR_execve || nr == __NR_execveat)
+		gadget_enter_exec();
+
 	// The sys_exit tracepoint is not called for some syscalls.
 	if (!skip_exit_probe(nr))
-		bpf_map_update_elem(&current_syscall, &pid_tgid, &sc_ctx,
-				    BPF_ANY);
+		bpf_map_update_elem(&current_syscall, &pid, &sc_ctx, BPF_ANY);
 
 	return 0;
 }
@@ -329,8 +336,20 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_exit")
 int ig_cap_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 {
-	u64 pid_tgid = bpf_get_current_pid_tgid();
-	bpf_map_delete_elem(&current_syscall, &pid_tgid);
+	pid_t pid = bpf_get_current_pid_tgid();
+	struct pt_regs *regs = (struct pt_regs *)ctx->args[0];
+	long ret = ctx->args[1];
+
+#if defined(__TARGET_ARCH_x86)
+	int nr = BPF_CORE_READ(regs, orig_ax);
+#elif defined(__TARGET_ARCH_arm64)
+	int nr = BPF_CORE_READ(regs, syscallno);
+#endif
+
+	if (nr == __NR_execve || nr == __NR_execveat)
+		pid = gadget_get_exec_caller_pid(ret);
+
+	bpf_map_delete_elem(&current_syscall, &pid);
 	return 0;
 }
 
