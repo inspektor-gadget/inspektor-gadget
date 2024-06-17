@@ -39,8 +39,8 @@ type traceOpenEvent struct {
 	MountNsID uint64 `json:"mntns_id"`
 	Fd        uint32 `json:"fd"`
 	Err       int32  `json:"err"`
-	Flags     int    `json:"flags"`
-	Mode      int    `json:"mode"`
+	Flags     string `json:"flags"`
+	Mode      string `json:"mode"`
 	Comm      string `json:"comm"`
 	FName     string `json:"fname"`
 }
@@ -96,8 +96,8 @@ func TestTraceOpen(t *testing.T) {
 				Err:        0,
 				Uid:        1000,
 				Gid:        1111,
-				Flags:      0,
-				Mode:       0,
+				Flags:      "O_RDONLY",
+				Mode:       "----------",
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
