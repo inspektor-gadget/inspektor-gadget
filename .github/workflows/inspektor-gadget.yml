@@ -769,7 +769,7 @@ jobs:
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
 
-          image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
+          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_TAG | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
@@ -831,7 +831,7 @@ jobs:
             --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
             --annotation index:org.opencontainers.image.title="$IMAGE_TITLE"
 
-          image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
+          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_TAG | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
