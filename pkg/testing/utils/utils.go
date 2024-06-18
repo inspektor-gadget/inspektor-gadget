@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/constraints"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -175,4 +176,23 @@ func GetContainerRuntime(t *testing.T) string {
 func GenerateTestNamespaceName(t *testing.T, namespace string) string {
 	t.Logf("Seed used: %d", seed)
 	return fmt.Sprintf("%s-%d", namespace, r.Int())
+}
+
+const (
+	NormalizedInt = 1
+	NormalizedStr = "foo"
+)
+
+func NormalizeInt[T constraints.Integer](f *T) {
+	var zero T
+
+	if *f != zero {
+		*f = T(NormalizedInt)
+	}
+}
+
+func NormalizeString(f *string) {
+	if *f != "" {
+		*f = NormalizedStr
+	}
 }

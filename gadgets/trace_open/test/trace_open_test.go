@@ -32,16 +32,17 @@ import (
 type traceOpenEvent struct {
 	eventtypes.CommonData
 
-	// MountNsID and Pid were not used since these are dynamic fields
-	// and need to be normalized to 0 later
-	Uid   uint32 `json:"uid"`
-	Gid   uint32 `json:"gid"`
-	Comm  string `json:"comm"`
-	Fd    uint32 `json:"fd"`
-	Err   int32  `json:"err"`
-	Flags int    `json:"flags"`
-	Mode  int    `json:"mode"`
-	FName string `json:"fname"`
+	Timestamp string `json:"timestamp"`
+	Pid       uint32 `json:"pid"`
+	Uid       uint32 `json:"uid"`
+	Gid       uint32 `json:"gid"`
+	MountNsID uint64 `json:"mntns_id"`
+	Fd        uint32 `json:"fd"`
+	Err       int32  `json:"err"`
+	Flags     int    `json:"flags"`
+	Mode      int    `json:"mode"`
+	Comm      string `json:"comm"`
+	FName     string `json:"fname"`
 }
 
 func TestTraceOpen(t *testing.T) {
@@ -97,10 +98,18 @@ func TestTraceOpen(t *testing.T) {
 				Gid:        1111,
 				Flags:      0,
 				Mode:       0,
+
+				// Check the existence of the following fields
+				Timestamp: utils.NormalizedStr,
+				Pid:       utils.NormalizedInt,
+				MountNsID: utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceOpenEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
+				utils.NormalizeString(&e.Timestamp)
+				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.MountNsID)
 			}
 
 			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
