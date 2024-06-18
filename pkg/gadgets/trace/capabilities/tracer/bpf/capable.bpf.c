@@ -178,8 +178,8 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.current_userns = ap->current_userns;
 	event.target_userns = ap->target_userns;
 	event.cap_effective = ap->cap_effective;
-	event.pid = pid_tgid >> 32;
-	event.tgid = pid_tgid;
+	event.pid = pid_tgid;
+	event.tgid = pid_tgid >> 32;
 	event.cap = ap->cap;
 	event.uid = (u32)uid_gid;
 	event.gid = (u32)(uid_gid >> 32);
