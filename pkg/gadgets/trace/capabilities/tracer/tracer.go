@@ -265,7 +265,7 @@ func (t *Tracer) run() {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.Mntnsid},
 			TargetUserNs:  bpfEvent.TargetUserns,
 			CurrentUserNs: bpfEvent.CurrentUserns,
-			Pid:           bpfEvent.Pid,
+			Pid:           bpfEvent.Tgid,
 			Cap:           int(bpfEvent.Cap),
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
