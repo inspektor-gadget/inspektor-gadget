@@ -306,7 +306,6 @@ Example of command:
 ```bash
 $ docker run -ti --rm \
     --privileged \
-    -v /run:/run \
     -v /:/host \
     --pid=host \
     ghcr.io/inspektor-gadget/ig \
@@ -317,7 +316,6 @@ heuristic_yonath         3329233    3329211    ls               0   /bin/ls
 
 List of flags:
 - `--privileged` gives all capabilities such as `CAP_SYS_ADMIN`. It is required to run eBPF programs.
-- `-v /run:/run` gives access to the container runtimes sockets (docker, containerd, CRI-O).
 - `-v /:/host` gives access to the host filesystem. This is used to access the host processes via /host/proc, and access
   container runtime hooks (rootfs and config.json).
 - `--pid=host` runs in the host PID namespace. Optional on Linux. This is necessary on Docker Desktop on Windows because
