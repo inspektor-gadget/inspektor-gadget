@@ -104,6 +104,9 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if len(c.cmd) != 0 {
 		specOpts = append(specOpts, oci.WithProcessArgs("/bin/sh", "-c", c.cmd))
 	}
+	if c.options.privileged {
+		specOpts = append(specOpts, oci.WithPrivileged)
+	}
 	if c.options.seccompProfile != "" {
 		t.Fatalf("testutils/containerd: seccomp profiles are not supported yet")
 	}

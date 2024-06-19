@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
@@ -29,42 +30,47 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type traceOpenEvent struct {
+type traceMountEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	Pid       uint32 `json:"pid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	MountNsID uint64 `json:"mntns_id"`
-	Fd        uint32 `json:"fd"`
-	Err       int32  `json:"err"`
-	Flags     int    `json:"flags"`
-	Mode      int    `json:"mode"`
+	Delta     uint64 `json:"delta"`
+	Flags     uint64 `json:"flags"`
+	Pid       int    `json:"pid"`
+	Tid       int    `json:"tid"`
+	MountNsID uint64 `json:"mount_ns_id"`
+	Timestamp uint64 `json:"timestamp"`
+	Ret       int    `json:"ret"`
 	Comm      string `json:"comm"`
-	FName     string `json:"fname"`
+	Fs        string `json:"fs"`
+	Src       string `json:"src"`
+	Dest      string `json:"dest"`
+	Data      string `json:"data"`
+	OpStr     string `json:"op_str"`
 }
 
-func TestTraceOpen(t *testing.T) {
+func TestTraceMount(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-trace-open"
+	containerName := "test-trace-mount"
 	containerImage := "docker.io/library/busybox:latest"
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
 
-	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-trace-open")
+	switch utils.CurrentTestComponent {
+	case utils.KubectlGadgetTestComponent:
+		ns = utils.GenerateTestNamespaceName(t, "test-trace-mount")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
+	case utils.IgLocalTestComponent:
+		containerOpts = append(containerOpts, containers.WithPrivileged())
 	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+		"while true; do mount /mnt /mnt; sleep 0.1; done",
 		containerOpts...,
 	)
 
@@ -88,35 +94,41 @@ func TestTraceOpen(t *testing.T) {
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
-			expectedEntry := &traceOpenEvent{
+			expectedEntry := &traceMountEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "cat",
-				FName:      "/dev/null",
-				Fd:         3,
-				Err:        0,
-				Uid:        1000,
-				Gid:        1111,
-				Flags:      0,
-				Mode:       0,
+				Comm:       "mount",
+				OpStr:      "MOUNT",
+				Src:        "/mnt",
+				Dest:       "/mnt",
+				Ret:        -int(unix.ENOENT),
+				Data:       "",
 
-				// Check the existence of the following fields
-				Timestamp: utils.NormalizedStr,
+				// Check only the existence of these fields
+				Flags:     utils.NormalizedInt,
+				Timestamp: utils.NormalizedInt,
+				Delta:     utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
+				Tid:       utils.NormalizedInt,
 				MountNsID: utils.NormalizedInt,
+				Fs:        utils.NormalizedStr,
 			}
 
-			normalize := func(e *traceOpenEvent) {
+			normalize := func(e *traceMountEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeString(&e.Timestamp)
+				utils.NormalizeInt(&e.Timestamp)
+				utils.NormalizeInt(&e.Delta)
+				utils.NormalizeInt(&e.Flags)
 				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeString(&e.Fs)
 			}
 
 			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	))
 
-	traceOpenCmd := igrunner.New("trace_open", runnerOpts...)
+	traceMountCmd := igrunner.New("trace_mount", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{traceOpenCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{traceMountCmd}, t, testingOpts...)
 }

@@ -74,6 +74,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if d.options.seccompProfile != "" {
 		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", d.options.seccompProfile)}
 	}
+	if d.options.privileged {
+		hostConfig.Privileged = true
+	}
 
 	if d.options.portBindings != nil {
 		hostConfig.PortBindings = d.options.portBindings

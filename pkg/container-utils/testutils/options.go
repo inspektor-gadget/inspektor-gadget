@@ -39,6 +39,7 @@ type containerOptions struct {
 	logs             bool
 	removal          bool
 	portBindings     nat.PortMap
+	privileged       bool
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -108,6 +109,12 @@ func WithoutWait() Option {
 func WithoutLogs() Option {
 	return func(opts *containerOptions) {
 		opts.logs = false
+	}
+}
+
+func WithPrivileged() Option {
+	return func(opts *containerOptions) {
+		opts.privileged = true
 	}
 }
 
