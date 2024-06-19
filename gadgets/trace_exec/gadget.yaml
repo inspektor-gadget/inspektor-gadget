@@ -13,6 +13,7 @@ structs:
     - name: timestamp
       attributes:
         template: timestamp
+        hidden: true
     - name: pid
       attributes:
         template: pid
@@ -25,9 +26,11 @@ structs:
     - name: uid
       attributes:
         template: uid
+        hidden: true
     - name: gid
       attributes:
         template: uid
+        hidden: true
     - name: loginuid
       description: 'TODO: Fill field description'
       attributes:
@@ -47,6 +50,7 @@ structs:
       attributes:
         width: 3
         alignment: left
+        hidden: true
         ellipsis: end
     - name: args_count
       description: 'TODO: Fill field description'
@@ -73,11 +77,13 @@ structs:
       description: Mount namespace inode id
       attributes:
         template: ns
+        hidden: true
     - name: upper_layer
       description: Whether the executable is in the upper layer of the overlay filesystem
       attributes:
         width: 5
         alignment: left
+        hidden: true
         ellipsis: end
 ebpfParams:
   ignore_failed:
