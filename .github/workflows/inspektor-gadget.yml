@@ -919,7 +919,7 @@ jobs:
       id: image-tag
       run: |
         if [ -n "${{ steps.build-image.outputs.digest }}" ]; then
-          image="${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}"
+          image="${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.build-image.outputs.digest }}"
         else
           if [ ${{ matrix.image.name }} == "dnstester" ]; then
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
@@ -1361,6 +1361,11 @@ jobs:
         run: |
           tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
           sudo mv ig /usr/bin/ig
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+      - name: Verify eBPF builder image
+        run: |
+          cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
       - name: Build gadgets
         run: |
           export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
@@ -1374,9 +1379,6 @@ jobs:
 
           # Avoid building the gadgets again
           make -C gadgets/ push -o build
-      - name: Install Cosign
-        if: needs.check-secrets.outputs.cosign == 'true'
-        uses: sigstore/cosign-installer@main
       - name: Sign the gadgets
         if: needs.check-secrets.outputs.cosign == 'true'
         env:
