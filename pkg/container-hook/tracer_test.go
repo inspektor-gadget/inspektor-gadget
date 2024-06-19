@@ -98,6 +98,33 @@ func TestContainerHookEvent(t *testing.T) {
 	}
 }
 
+func TestContainerHookCleanup(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	containerPendingTimeout = 100 * time.Millisecond
+	containerCheckInterval = 1 * time.Second
+	t.Cleanup(func() {
+		containerPendingTimeout = defaultContainerPendingTimeout
+		containerCheckInterval = defaultContainerCheckInterval
+	})
+
+	notifier, err := NewContainerNotifier(func(event ContainerEvent) {})
+	require.NoError(t, err)
+	require.NotNil(t, notifier, "Returned notifier was nil")
+
+	// Give some time for the tracer to capture the events
+	time.Sleep(100 * time.Millisecond)
+
+	generateEvent(10)(t)
+
+	time.Sleep(2 * time.Second)
+
+	require.Equal(t, 0, len(notifier.pendingContainers))
+	require.Equal(t, 0, len(notifier.futureContainers))
+
+	notifier.Close()
+}
+
 func generateEvent(nfailure int) func(t *testing.T) string {
 	return func(t *testing.T) string {
 		// Failed container with bad configuration

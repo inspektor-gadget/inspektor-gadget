@@ -68,6 +68,18 @@ const (
 	EventTypeRemoveContainer
 )
 
+const (
+	defaultContainerPendingTimeout = 15 * time.Second
+	defaultContainerCheckInterval  = 10 * time.Second
+)
+
+var (
+	// How long to wait for a container after a "conmon" or a "runc start" command
+	// The values can be overridden by tests.
+	containerPendingTimeout = defaultContainerPendingTimeout
+	containerCheckInterval  = defaultContainerCheckInterval
+)
+
 // ContainerEvent is the notification for container creation or termination
 type ContainerEvent struct {
 	// Type is whether the container was added or removed
@@ -105,6 +117,8 @@ type pendingContainer struct {
 	configJSONPath string
 	pidFile        string
 	pidFileDir     string
+	timestamp      time.Time
+	removeMarks    []func()
 }
 
 type futureContainer struct {
@@ -112,6 +126,7 @@ type futureContainer struct {
 	name      string
 	bundleDir string
 	pidFile   string
+	timestamp time.Time
 }
 
 type ContainerNotifier struct {
@@ -326,10 +341,11 @@ func (n *ContainerNotifier) install() error {
 		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ", "))
 	}
 
-	n.wg.Add(3)
+	n.wg.Add(4)
 	go n.watchContainersTermination()
 	go n.watchRuntimeBinary()
 	go n.watchPendingContainers()
+	go n.checkTimeout()
 
 	return nil
 }
@@ -453,6 +469,9 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		if err == nil && filesAreIdentical {
 			pc = n.pendingContainers[pidFile]
 			delete(n.pendingContainers, pidFile)
+			for _, remove := range pc.removeMarks {
+				remove()
+			}
 			break
 		}
 	}
@@ -474,16 +493,6 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 	containerPID, err := strconv.Atoi(string(pidFileContent))
 	if err != nil {
 		log.Errorf("fanotify: pid file cannot be parsed: %s", err)
-		return nil
-	}
-
-	// Unfortunately, Linux 5.4 doesn't respect ignore masks
-	// See fix in Linux 5.9:
-	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
-	// Workaround: remove parent mask. We don't need it anymore :)
-	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pc.pidFileDir)
-	if err != nil {
-		log.Errorf("fanotify: could not remove mark on %s: %s", pc.pidFileDir, err)
 		return nil
 	}
 
@@ -555,6 +564,8 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 }
 
 func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile string) error {
+	removeMarks := []func(){}
+
 	// The pidfile does not exist yet, so we cannot monitor it directly.
 	// Instead we monitor its parent directory with FAN_EVENT_ON_CHILD to
 	// get events on the directory's children.
@@ -563,6 +574,10 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 	if err != nil {
 		return fmt.Errorf("marking %s: %w", pidFileDir, err)
 	}
+
+	removeMarks = append(removeMarks, func() {
+		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	})
 
 	// watchPidFileIterate() will read config.json and it might be in the
 	// same directory as the pid file. To avoid getting events unrelated to
@@ -584,6 +599,10 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
+	removeMarks = append(removeMarks, func() {
+		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+	})
+
 	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
 	// masks on files when the parent directory is the object being watched:
 	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
@@ -600,6 +619,10 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 		err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 		if err != nil {
 			log.Debugf("fanotify: marking %s: %v", ignoreFilePath, err)
+		} else {
+			removeMarks = append(removeMarks, func() {
+				_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
+			})
 		}
 	}
 
@@ -609,12 +632,17 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 
 	n.pendingMu.Lock()
 	defer n.pendingMu.Unlock()
+
+	// Delete old entries
+	now := time.Now()
 	n.pendingContainers[pidFile] = &pendingContainer{
 		id:             containerID,
 		bundleDir:      bundleDir,
 		configJSONPath: configJSONPath,
 		pidFile:        pidFile,
 		pidFileDir:     pidFileDir,
+		timestamp:      now,
+		removeMarks:    removeMarks,
 	}
 
 	return nil
@@ -646,6 +674,41 @@ func (n *ContainerNotifier) watchPendingContainers() {
 		if err != nil {
 			log.Errorf("error watching pid file directories: %v\n", err)
 			return
+		}
+	}
+}
+
+func (n *ContainerNotifier) checkTimeout() {
+	defer n.wg.Done()
+
+	ticker := time.NewTicker(containerCheckInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-n.done:
+			return
+		case <-ticker.C:
+			now := time.Now()
+
+			n.futureMu.Lock()
+			for id, fc := range n.futureContainers {
+				if now.Sub(fc.timestamp) > containerPendingTimeout {
+					delete(n.futureContainers, id)
+				}
+			}
+			n.futureMu.Unlock()
+
+			n.pendingMu.Lock()
+			for id, pc := range n.pendingContainers {
+				if now.Sub(pc.timestamp) > containerPendingTimeout {
+					for _, remove := range pc.removeMarks {
+						remove()
+					}
+					delete(n.pendingContainers, id)
+				}
+			}
+			n.pendingMu.Unlock()
 		}
 	}
 }
@@ -688,6 +751,7 @@ func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 		pidFile:   pidFile,
 		bundleDir: bundleDir,
 		name:      containerName,
+		timestamp: time.Now(),
 	}
 	n.futureMu.Unlock()
 }
