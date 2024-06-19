@@ -111,7 +111,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		containers: make(map[string]*containercollection.Container),
 
 		enums:      make(map[string]*btf.Enum),
-		converters: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
+		formatters: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
 
 		vars: make(map[string]*ebpfVar),
 
@@ -168,7 +168,7 @@ type ebpfInstance struct {
 	containers map[string]*containercollection.Container
 
 	enums      map[string]*btf.Enum
-	converters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
+	formatters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 
 	gadgetCtx operators.GadgetContext
 }
@@ -289,7 +289,7 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("registering datasources: %w", err)
 	}
 
-	err = i.initConverters(gadgetCtx)
+	err = i.initFormatters(gadgetCtx)
 	if err != nil {
 		return fmt.Errorf("initializing formatters: %w", err)
 	}
@@ -356,11 +356,11 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 }
 
 func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
-	for ds, converters := range i.converters {
-		for _, converter := range converters {
-			converter := converter
+	for ds, formatters := range i.formatters {
+		for _, formatter := range formatters {
+			formatter := formatter
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-				return converter(ds, data)
+				return formatter(ds, data)
 			}, 0)
 		}
 	}
