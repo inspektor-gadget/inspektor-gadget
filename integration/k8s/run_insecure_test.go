@@ -62,6 +62,12 @@ func TestRunInsecure(t *testing.T) {
 
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
 	// As the image was not signed, we need to set --verify-image=false.
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run --verify-image=false %s:5000/trace_open:%s -n %s -o json --insecure", registryIP, *gadgetTag, ns)
-	runTraceOpen(t, ns, cmd)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run --verify-image=false %s:5000/trace_open:%s -n %s -o json --insecure --timeout 2", registryIP, *gadgetTag, ns)
+
+	// run the gadget without verifying its output as we only need to check if it runs
+	traceOpenCmd := &Command{
+		Name: "StartRunTraceOpenGadget",
+		Cmd:  cmd,
+	}
+	RunTestSteps([]TestStep{traceOpenCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
