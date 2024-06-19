@@ -183,9 +183,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	struct file *exe_file;
 	char *exepath;
 
-	if (valid_uid(targ_uid) && targ_uid != uid)
-		return 0;
-
 	ret = ctx->ret;
 	execs_lookup_key = gadget_get_exec_caller_pid(ret);
 	if (!execs_lookup_key)

@@ -186,9 +186,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	pid_t execs_lookup_key;
 	u32 uid = (u32)bpf_get_current_uid_gid();
 
-	if (valid_uid(targ_uid) && targ_uid != uid)
-		return 0;
-
 	ret = ctx->ret;
 	execs_lookup_key = gadget_get_exec_caller_pid(ret);
 	if (!execs_lookup_key)
