@@ -37,7 +37,7 @@ runs:
           -conclusion ${{ inputs.test-step-conclusion }}
         cat test-report.md >> $GITHUB_STEP_SUMMARY
     - name: Upload test reports summary as artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-reports
         path: ./test-report_*_*.json
