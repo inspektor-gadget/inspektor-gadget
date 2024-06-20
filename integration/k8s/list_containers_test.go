@@ -134,7 +134,7 @@ func TestListContainers(t *testing.T) {
 			fmt.Sprintf("ig list-containers -o json --runtimes=%s", containerRuntime),
 			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
 			func(t *testing.T, o string, f func(*containercollection.Container), c *containercollection.Container) {
-				ExpectEntriesInArrayToMatch(t, o, f, c)
+				match.MatchEntries(t, match.JSONSingleArrayMode, o, f, c)
 			},
 		)
 		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -146,8 +146,8 @@ func TestListContainers(t *testing.T) {
 		listContainerTestStep := newListContainerTestStep(
 			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", containerRuntime, runtimeContainerName),
 			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
-			func(t *testing.T, o string, f func(*containercollection.Container), c *containercollection.Container) {
-				ExpectAllInArrayToMatch(t, o, f, c)
+			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
+				match.MatchAllEntries(t, match.JSONSingleArrayMode, output, f, c)
 			},
 		)
 		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -234,8 +234,8 @@ func TestWatchCreatedContainers(t *testing.T) {
 
 			// Watching containers is a command that needs to be started before
 			// the container is created, so we can't filter by container name
-			// neither use ExpectAllInArrayToMatch here.
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEvent)
+			// neither use MatchAllEntries here.
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvent)
 		},
 	}
 
@@ -329,8 +329,8 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 			// Watching containers is a command that needs to be started before
 			// the container is created, so we can't filter by container name
-			// neither use ExpectAllInArrayToMatch here.
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEvent)
+			// neither use MatchAllEntries here.
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvent)
 		},
 	}
 
@@ -427,8 +427,8 @@ func TestPodWithSecurityContext(t *testing.T) {
 
 			// Watching containers is a command that needs to be started before
 			// the container is created, so we can't filter by container name
-			// neither use ExpectAllInArrayToMatch here.
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEvent)
+			// neither use MatchAllEntries here.
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvent)
 		},
 	}
 

@@ -116,7 +116,7 @@ EOF
 		Name:           fmt.Sprintf("Run %s", podname),
 		Cmd:            exec.Command("/bin/sh", "-c", cmdStr),
 		StartAndStop:   true,
-		ValidateOutput: match.ExpectStringToMatch(t, fmt.Sprintf("pod/%s created\n", podname)),
+		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s created\n", podname)),
 	}
 }
 
@@ -126,7 +126,7 @@ func deletePodCommand(t *testing.T, podname, namespace string) *command.Command 
 	return &command.Command{
 		Name:           fmt.Sprintf("Delete %s", podname),
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl delete -n=%s pod %s", namespace, podname)),
-		ValidateOutput: match.ExpectStringToMatch(t, fmt.Sprintf("pod \"%s\" deleted\n", podname)),
+		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod \"%s\" deleted\n", podname)),
 	}
 }
 
@@ -161,7 +161,7 @@ func deleteTestNamespaceCommand(t *testing.T, namespace string) *command.Command
 	return &command.Command{
 		Name:           "DeleteTestNamespace",
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl delete ns %s", namespace)),
-		ValidateOutput: match.ExpectStringToMatch(t, fmt.Sprintf("namespace \"%s\" deleted\n", namespace)),
+		ValidateOutput: match.EqualString(t, fmt.Sprintf("namespace \"%s\" deleted\n", namespace)),
 	}
 }
 
@@ -171,7 +171,7 @@ func waitUntilPodReadyCommand(t *testing.T, namespace string, podname string) *c
 	return &command.Command{
 		Name:           "WaitForTestPod",
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname)),
-		ValidateOutput: match.ExpectStringToMatch(t, fmt.Sprintf("pod/%s condition met\n", podname)),
+		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
 	}
 }
 

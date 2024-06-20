@@ -112,7 +112,7 @@ func TestTraceOpen(t *testing.T) {
 				utils.NormalizeInt(&e.MountNsID)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	))
 

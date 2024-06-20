@@ -23,6 +23,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, expectedEntry *topblockioTypes.Stats) *Command {
@@ -39,7 +40,7 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, expectedEntry *t
 			normalizeCommonData(&e.CommonData, ns)
 		}
 
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
+		match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 	}
 
 	return &Command{

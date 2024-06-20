@@ -22,6 +22,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
@@ -50,7 +51,7 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 			}
 		}
 
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
+		match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 	}
 
 	return &Command{

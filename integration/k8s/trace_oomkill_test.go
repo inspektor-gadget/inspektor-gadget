@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	traceoomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestTraceOOMKill(t *testing.T) {
@@ -61,7 +62,7 @@ func TestTraceOOMKill(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			ExpectAllToMatch(t, output, normalize, expectedEntry)
+			match.MatchAllEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	}
 

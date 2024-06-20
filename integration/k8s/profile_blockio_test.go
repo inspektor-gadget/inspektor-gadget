@@ -42,7 +42,7 @@ func TestProfileBlockIO(t *testing.T) {
 				e.Intervals = nil
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	}
 

@@ -65,9 +65,9 @@ func TestTraceBind(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
+			// Since we aren't doing any filtering in traceBindCmd we avoid using MatchAllEntries
 			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	}
 

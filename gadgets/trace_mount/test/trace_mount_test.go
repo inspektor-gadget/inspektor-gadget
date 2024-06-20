@@ -127,7 +127,7 @@ func TestTraceMount(t *testing.T) {
 				utils.NormalizeString(&e.Call)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	))
 

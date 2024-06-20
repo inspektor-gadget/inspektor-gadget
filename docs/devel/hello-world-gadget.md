@@ -690,7 +690,7 @@ func TestMyGadget(t *testing.T) {
         }
 
         // parses the output and matches it to expectedEntry.
-        match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+        match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
       },
     ),
   )

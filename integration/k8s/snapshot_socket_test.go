@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	snapshotsocketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -95,7 +96,7 @@ func TestSnapshotSocket(t *testing.T) {
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
+				match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
 			},
 		},
 	}

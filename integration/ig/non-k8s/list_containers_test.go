@@ -61,7 +61,7 @@ func TestFilterByContainerName(t *testing.T) {
 				c.Runtime.ContainerImageDigest = ""
 			}
 
-			ExpectAllInArrayToMatch(t, output, normalize, expectedContainer)
+			match.MatchAllEntries(t, match.JSONSingleArrayMode, output, normalize, expectedContainer)
 		},
 	}
 
@@ -128,7 +128,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.Runtime.ContainerImageDigest = ""
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEvents...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvents...)
 		},
 	}
 

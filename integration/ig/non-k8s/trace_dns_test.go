@@ -146,7 +146,7 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 				}
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 

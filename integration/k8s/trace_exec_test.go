@@ -108,7 +108,7 @@ func TestTraceExec(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 
@@ -171,7 +171,7 @@ func TestTraceExecHost(t *testing.T) {
 				e.Groupname = ""
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 

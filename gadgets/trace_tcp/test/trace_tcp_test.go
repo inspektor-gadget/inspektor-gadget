@@ -141,7 +141,7 @@ func TestTraceTCP(t *testing.T) {
 				utils.NormalizeInt(&e.NetNsID)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	))
 

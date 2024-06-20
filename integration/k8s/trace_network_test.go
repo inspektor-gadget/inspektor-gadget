@@ -172,7 +172,7 @@ func TestTraceNetwork(t *testing.T) {
 				}
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 
