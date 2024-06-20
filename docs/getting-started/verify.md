@@ -212,6 +212,40 @@ WARN[0000] you set --verify-image=false, image will not be verified
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
+## Verify the ebpf-builder image
+
+We also sign the `ebpf-builder` image which is used to build gadgets.
+You can verify it using the following command:
+
+```bash
+$ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/ebpf-builder:latest
+```
+
+We highly recommend you to verify by digest and specify the digest when building.
+This helps to protect against [TOCTOU](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) issue, as the image tag that got verified could have been manipulated to point to another malicious image after the check.
+
+```bash
+$ DIGEST='sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522'
+$ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/ebpf-builder@$DIGEST
+
+Verification for ghcr.io/inspektor-gadget/ebpf-builder@sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+
+[{"critical":{"identity":{"docker-reference":"ghcr.io/inspektor-gadget/ebpf-builder"}, ...
+]
+$ sudo -E ig image build -t trace_exec:build-verified -f gadgets/trace_exec/gadget.yaml --builder-image ghcr.io/inspektor-gadget/ebpf-builder@$DIGEST gadgets/trace_exec
+INFO[0000] Experimental features enabled
+Pulling builder image ghcr.io/inspektor-gadget/ebpf-builder@sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522
+ghcr.io/inspektor-gadget/ebpf-builder@sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522: Pulling from inspektor-gadget/ebpf-builder
+...
+Digest: sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522
+Status: Downloaded newer image for ghcr.io/inspektor-gadget/ebpf-builder@sha256:4967ad1a11a9ed32867dc0d63e137dc2196c560db4b3644c7c0c97fccea7c522
+Successfully built ghcr.io/inspektor-gadget/gadget/trace_exec:build-verified@sha256:c85eac1e4615a08c74883402f73c5f8667b64597bd51f9e46275dfdbb0a04703
+```
+
 ## Verify an asset
 
 Rather than signing all the assets, we only sign the checksums file.
