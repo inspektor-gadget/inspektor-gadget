@@ -48,6 +48,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
 )
 
 func main() {

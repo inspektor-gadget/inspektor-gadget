@@ -320,14 +320,32 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		return err
 	}
 
+	// where the gadget source code is mounted in the container
+	gadgetSourcePath := "/work"
+	pathHost := cwd
+
+	inspektorGadetSrcPath := os.Getenv("IG_SOURCE_PATH")
+	if inspektorGadetSrcPath != "" {
+		pathHost = inspektorGadetSrcPath
+		// find the gadget relative path to the inspektor-gadget source
+		if !strings.HasPrefix(cwd, inspektorGadetSrcPath) {
+			return fmt.Errorf("the current directory %q is not under the inspektor-gadget source path %q", cwd, inspektorGadetSrcPath)
+		}
+		gadgetRelativePath := strings.TrimPrefix(cwd, inspektorGadetSrcPath)
+		gadgetSourcePath = filepath.Join("/work", gadgetRelativePath)
+
+		// use in-tree headers too
+		conf.CFlags += " -I /work/include/"
+	}
+
 	wasmFullPath := ""
 	if conf.Wasm != "" {
-		wasmFullPath = filepath.Join("/work", conf.Wasm)
+		wasmFullPath = filepath.Join(gadgetSourcePath, conf.Wasm)
 	}
 
 	cmd := []string{
 		"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE=" + filepath.Join("/work", conf.EBPFSource),
+		"EBPFSOURCE=" + filepath.Join(gadgetSourcePath, conf.EBPFSource),
 		"WASM=" + wasmFullPath,
 		"OUTPUTDIR=/out",
 		"CFLAGS=" + conf.CFlags,
@@ -338,7 +356,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		{
 			Type:     mount.TypeBind,
 			Target:   "/work",
-			Source:   cwd,
+			Source:   pathHost,
 			ReadOnly: true,
 		},
 		{
@@ -362,9 +380,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	resp, err := cli.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image: opts.builderImage,
-			Cmd:   cmd,
-			User:  fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			Image:      opts.builderImage,
+			Cmd:        cmd,
+			WorkingDir: gadgetSourcePath,
+			User:       fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		},
 		&container.HostConfig{
 			Mounts: mounts,
