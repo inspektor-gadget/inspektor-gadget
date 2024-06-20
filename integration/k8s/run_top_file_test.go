@@ -103,7 +103,7 @@ func TestRunTopFile(t *testing.T) {
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/top_file:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/top_file:%s --verify-image=%t -n %s -o json", *gadgetRepository, *gadgetTag, *gadgetVerifyImage, ns)
 
 	runTopFile(t, ns, cmd)
 }

@@ -49,7 +49,7 @@ func TestRunSchedCLS(t *testing.T) {
 	RunTestSteps(commandsPreTest, t)
 	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
 
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/ci/sched_cls_drop:%s -n %s", *gadgetRepository, *gadgetTag, ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/ci/sched_cls_drop:%s --verify-image=%t -n %s", *gadgetRepository, *gadgetTag, *gadgetVerifyImage, ns)
 	runSchedCLSCmd := &Command{
 		Name:         "StartRunSchedCLS",
 		Cmd:          cmd,

@@ -50,7 +50,7 @@ func TestRunSnapshotProcess(t *testing.T) {
 	commands := []TestStep{
 		&Command{
 			Name:         "StartRunSnapshotProcessGadget",
-			Cmd:          fmt.Sprintf("$KUBECTL_GADGET run %s/snapshot_process:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns),
+			Cmd:          fmt.Sprintf("$KUBECTL_GADGET run %s/snapshot_process:%s --verify-image=%t -n %s -o json", *gadgetRepository, *gadgetTag, *gadgetVerifyImage, ns),
 			StartAndStop: true,
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedBaseJsonObj := RunEventToObj(t, &types.Event{

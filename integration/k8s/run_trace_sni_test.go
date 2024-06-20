@@ -98,7 +98,7 @@ func TestRunTraceSni(t *testing.T) {
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_sni:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_sni:%s --verify-image=%t -n %s -o json", *gadgetRepository, *gadgetTag, *gadgetVerifyImage, ns)
 
 	runTraceSni(t, ns, cmd)
 }
