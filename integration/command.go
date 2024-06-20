@@ -346,7 +346,7 @@ func (c *Command) kill() error {
 	// in our case, the process of /bin/sh and c.Cmd.
 	err := syscall.Kill(-c.command.Process.Pid, sig)
 	if err != nil {
-		return err
+		return fmt.Errorf("killing command(%s): %w", c.Name, err)
 	}
 
 	// In some cases, we do not have to wait here because the Cmd was executed
@@ -362,22 +362,19 @@ func (c *Command) kill() error {
 		// do not return error, it is what we were expecting.
 		var exiterr *exec.ExitError
 		if ok := errors.As(err, &exiterr); !ok {
-			return err
+			return fmt.Errorf("command returned error(%s): %w", c.Name, err)
 		}
 
 		waitStatus, ok := exiterr.Sys().(syscall.WaitStatus)
 		if !ok {
-			return err
+			return fmt.Errorf("command returned error(%s): %w", c.Name, err)
 		}
 
 		if waitStatus.Signal() != sig {
-			return err
+			return fmt.Errorf("command returned error(%s): %w", c.Name, err)
 		}
-
-		return nil
 	}
-
-	return err
+	return nil
 }
 
 // RunWithoutTest runs the Command, this is thought to be used in TestMain().
@@ -449,7 +446,7 @@ func (c *Command) KillWithoutTest() error {
 	fmt.Printf("Kill command(%s)\n", c.Name)
 
 	if err := c.kill(); err != nil {
-		return fmt.Errorf("killing command(%s): %w", c.Name, err)
+		return err
 	}
 
 	return nil
@@ -499,7 +496,7 @@ func (c *Command) Stop(t *testing.T) {
 	err := c.kill()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
 		c.Name, c.stderr.String(), c.stdout.String())
-	require.NoError(t, err, "failed to kill command(%s)", c.Name)
+	require.NoError(t, err)
 
 	c.verifyOutput(t)
 
