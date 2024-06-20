@@ -209,8 +209,7 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	BPF_CORE_READ_INTO(&event->src.l3.addr.v4, sk,
 			   __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&event->dst.l3.addr.v4, sk, __sk_common.skc_daddr);
-	event->dst.port =
-		bpf_ntohs(dport); // host expects data in host byte order
+	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	event->mntns_id = mntns_id;
 	bpf_get_current_comm(event->task, sizeof(event->task));
@@ -241,8 +240,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-	event->dst.port =
-		bpf_ntohs(dport); // host expects data in host byte order
+	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	bpf_get_current_comm(event->task, sizeof(event->task));
 	event->timestamp = bpf_ktime_get_boot_ns();
@@ -270,7 +268,7 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 
 	sk = *skpp;
 
-	BPF_CORE_READ_INTO(&dport, sk, __sk_common.skc_dport);
+	dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	if (filter_port(dport))
 		goto end;
 

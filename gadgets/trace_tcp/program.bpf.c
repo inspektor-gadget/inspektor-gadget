@@ -131,10 +131,12 @@ static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 	}
 
 	BPF_CORE_READ_INTO(&tuple->dst.port, sk, __sk_common.skc_dport);
+	tuple->dst.port = bpf_ntohs(tuple->dst.port);
 	if (tuple->dst.port == 0)
 		return false;
 
 	BPF_CORE_READ_INTO(&tuple->src.port, sockp, inet_sport);
+	tuple->src.port = bpf_ntohs(tuple->src.port);
 	if (tuple->src.port == 0)
 		return false;
 
@@ -378,7 +380,6 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	sport = BPF_CORE_READ(sk, __sk_common.skc_num);
 
 	fill_tuple(&t, sk, family);
-	t.src.port = bpf_ntohs(sport);
 	/* do not send event if IP address is 0.0.0.0 or port is 0 */
 	if (__builtin_memcmp(t.src.l3.addr.v6, ip_v6_zero,
 			     sizeof(t.src.l3.addr.v6)) == 0 ||
