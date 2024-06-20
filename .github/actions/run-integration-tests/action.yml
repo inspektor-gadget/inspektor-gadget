@@ -34,7 +34,7 @@ runs:
   using: "composite"
   steps:
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: kubectl-gadget-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/
