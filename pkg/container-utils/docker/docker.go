@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
@@ -32,6 +33,7 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -56,8 +58,11 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 
 	case containerutilsTypes.RuntimeProtocolCRI:
 		// TODO: Configurable
-		socketPath = runtimeclient.CriDockerDefaultSocketPath
-		return cri.NewCRIClient(types.RuntimeNameDocker, socketPath, DefaultTimeout)
+		joinedSocketPath, err := securejoin.SecureJoin(host.HostRoot, runtimeclient.CriDockerDefaultSocketPath)
+		if err != nil {
+			return nil, fmt.Errorf("securejoining %v to %v: %w", host.HostRoot, runtimeclient.CriDockerDefaultSocketPath, err)
+		}
+		return cri.NewCRIClient(types.RuntimeNameDocker, joinedSocketPath, DefaultTimeout)
 
 	default:
 		return nil, fmt.Errorf("unknown runtime protocol %q", protocol)
