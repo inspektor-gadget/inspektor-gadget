@@ -1,0 +1,31 @@
+name: tpcdump
+description: Print a tcpdump-like output
+homepageURL: 'TODO: Fill the gadget homepage URL'
+documentationURL: 'TODO: Fill the gadget documentation URL'
+sourceURL: 'TODO: Fill the gadget source code URL'
+tracers:
+  tcpdump:
+    mapName: events
+    structName: event_t
+structs:
+  event_t:
+    fields:
+    - name: netns
+      description: Network namespace inode id
+      attributes:
+        template: ns
+        hidden: true
+    - name: len
+      description: Packet len
+      attributes:
+        width: 10
+        alignment: left
+        ellipsis: end
+        hidden: true
+    - name: data
+      description: Packet raw data
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+        hidden: true
