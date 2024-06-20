@@ -46,10 +46,10 @@ struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	gadget_timestamp timestamp;
-	enum tcp_state state;
+	gadget_timestamp timestamp_raw;
+	enum tcp_state state_raw;
 	__u8 tcpflags;
-	enum skb_drop_reason reason;
+	enum skb_drop_reason reason_raw;
 	gadget_netns_id netns;
 
 	// The original gadget has instances of these fields for both process context and
@@ -106,9 +106,9 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	if (!event)
 		return 0;
 
-	event->timestamp = bpf_ktime_get_boot_ns();
-	event->state = BPF_CORE_READ(sk, __sk_common.skc_state);
-	event->reason = reason;
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->state_raw = BPF_CORE_READ(sk, __sk_common.skc_state);
+	event->reason_raw = reason;
 	bpf_probe_read_kernel(&event->tcpflags, sizeof(event->tcpflags),
 			      &tcphdr->flags);
 

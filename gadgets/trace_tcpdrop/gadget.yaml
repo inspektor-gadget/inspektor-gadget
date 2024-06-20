@@ -10,9 +10,7 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: src
       attributes:
         minWidth: 24
@@ -45,7 +43,7 @@ structs:
         width: 16
         alignment: left
         ellipsis: end
-    - name: reason
+    - name: reason_raw
       description: Reason for dropping a packet
       attributes:
         width: 16
@@ -59,7 +57,7 @@ structs:
       description: Mount namespace inode id
       attributes:
         template: ns
-    - name: state
+    - name: state_raw
       description: State of the TCP connection
       attributes:
         width: 16

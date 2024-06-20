@@ -34,18 +34,18 @@ func runTraceTcp(t *testing.T, ns string, cmd string) {
 			})
 
 			expectedTraceTcpJsonObj := map[string]interface{}{
-				"task":      "curl",
-				"timestamp": 0,
-				"src":       "",
-				"dst":       "",
-				"type_str":  "connect",
-				// needed due to type being an enum
-				"type":     0,
-				"pid":      0,
-				"uid":      0,
-				"gid":      0,
-				"mntns_id": 0,
-				"netns":    0,
+				"task":          "curl",
+				"timestamp":     "",
+				"timestamp_raw": 0,
+				"src":           "",
+				"dst":           "",
+				"type":          "connect",
+				"type_raw":      0,
+				"pid":           0,
+				"uid":           0,
+				"gid":           0,
+				"mntns_id":      0,
+				"netns":         0,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceTcpJsonObj)
@@ -58,7 +58,8 @@ func runTraceTcp(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeContainerID(m, "")
 				SetEventRuntimeContainerName(m, "")
 
-				m["timestamp"] = 0
+				m["timestamp"] = ""
+				m["timestamp_raw"] = 0
 				m["src"] = ""
 				m["dst"] = ""
 				m["pid"] = uint32(0)

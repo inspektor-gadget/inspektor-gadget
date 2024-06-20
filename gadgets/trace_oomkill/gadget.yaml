@@ -23,14 +23,11 @@ structs:
       attributes:
         template: pid
     - name: pages
-      attributes: {}
     - name: mntns_id
       description: Mount namespace inode id
       attributes:
         template: ns
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: fcomm
       attributes:
         template: comm

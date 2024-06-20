@@ -33,7 +33,7 @@
 #define MAX_ADDR_ANSWERS 1
 
 struct event_t {
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
@@ -273,7 +273,7 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	//     R3 type=mem expected=fp, pkt, pkt_meta, map_key, map_value
 	// Fixed in Linux 5.17 by:
 	// https://github.com/torvalds/linux/commit/a672b2e36a648afb04ad3bda93b6bda947a479a5
-	timestamp = event->timestamp = bpf_ktime_get_boot_ns();
+	timestamp = event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	long err = bpf_skb_load_bytes(skb,
 				      DNS_OFF + offsetof(struct dnshdr, id),

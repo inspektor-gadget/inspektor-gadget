@@ -34,15 +34,17 @@ func runTraceSni(t *testing.T, ns string, cmd string) {
 			})
 
 			expectedTraceSniJsonObj := map[string]interface{}{
-				"task":      "wget",
-				"name":      "inspektor-gadget.io",
-				"timestamp": "",
-				"pid":       0,
-				"tid":       0,
-				"uid":       1000,
-				"gid":       1111,
-				"mntns_id":  0,
-				"netns":     0,
+				"task":          "wget",
+				"name":          "inspektor-gadget.io",
+				"timestamp":     "",
+				"timestamp_raw": 0,
+
+				"pid":      0,
+				"tid":      0,
+				"uid":      1000,
+				"gid":      1111,
+				"mntns_id": 0,
+				"netns":    0,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceSniJsonObj)
@@ -56,6 +58,7 @@ func runTraceSni(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeContainerName(m, "")
 
 				m["timestamp"] = ""
+				m["timestamp_raw"] = 0
 				m["pid"] = uint32(0)
 				m["tid"] = uint32(0)
 

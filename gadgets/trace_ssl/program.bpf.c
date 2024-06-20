@@ -47,8 +47,8 @@ enum operation {
 
 struct event {
 	gadget_mntns_id mntns_id;
-	enum operation operation;
-	gadget_timestamp timestamp;
+	enum operation operation_raw;
+	gadget_timestamp timestamp_raw;
 	u64 latency_ns;
 	u32 pid;
 	u32 tid;
@@ -170,8 +170,8 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 		goto clean;
 
 	event->mntns_id = ssl_data->mntns_id;
-	event->operation = op;
-	event->timestamp = ts;
+	event->operation_raw = op;
+	event->timestamp_raw = ts;
 	event->latency_ns = ts - ssl_data->start_time;
 	event->pid = pid;
 	event->tid = tid;
@@ -265,8 +265,8 @@ int trace_uretprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 		goto clean;
 
 	event->mntns_id = ssl_data->mntns_id;
-	event->operation = libssl_SSL_do_handshake;
-	event->timestamp = ts;
+	event->operation_raw = libssl_SSL_do_handshake;
+	event->timestamp_raw = ts;
 	event->latency_ns = ts - ssl_data->start_time;
 	event->pid = pid_tgid >> 32;
 	event->tid = tid;
@@ -350,8 +350,8 @@ static __always_inline int probe_crypto_exit(struct pt_regs *ctx,
 		goto clean;
 
 	event->mntns_id = crypto_data->mntns_id;
-	event->operation = op;
-	event->timestamp = ts;
+	event->operation_raw = op;
+	event->timestamp_raw = ts;
 	event->latency_ns = ts - crypto_data->start_time;
 	event->pid = pid_tgid >> 32;
 	event->tid = tid;

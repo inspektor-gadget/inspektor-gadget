@@ -25,7 +25,7 @@
 
 struct event {
 	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	__u32 pid;
 	__u32 ppid;
 	__u32 uid;
@@ -102,7 +102,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 
 	gadget_enter_exec();
 
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
 	event->uid = uid;
 	event->gid = gid;

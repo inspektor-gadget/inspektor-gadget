@@ -88,7 +88,7 @@ type Field struct {
 	// Field description
 	Description string `yaml:"description,omitempty"`
 	// Attributes defines how the field should be formatted
-	Attributes FieldAttributes `yaml:"attributes"`
+	Attributes FieldAttributes `yaml:"attributes,omitempty"`
 	// Annotations represents extra information that is not relevant to Inspektor Gadget, but
 	// for other applications, like color font for instance.
 	Annotations map[string]interface{} `yaml:"annotations,omitempty"`

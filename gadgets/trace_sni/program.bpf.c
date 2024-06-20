@@ -56,7 +56,7 @@
 #define TASK_COMM_LEN 16
 
 struct event_t {
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 
 	gadget_mntns_id mntns_id;
 	gadget_netns_id netns;
@@ -226,7 +226,7 @@ int ig_trace_sni(struct __sk_buff *skb)
 			break;
 		event.name[i] = sni[i];
 	}
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event.timestamp_raw = bpf_ktime_get_boot_ns();
 
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);

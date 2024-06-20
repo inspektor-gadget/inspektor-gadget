@@ -31,10 +31,10 @@ struct event {
 	__u32 pid;
 	__u32 tid;
 	char comm[TASK_COMM_LEN];
-	enum memop operation;
+	enum memop operation_raw;
 	__u64 addr;
 	__u64 size;
-	__u64 timestamp_ns;
+	gadget_timestamp timestamp_raw;
 };
 
 /* used for context between uprobes and uretprobes of allocations */
@@ -112,10 +112,10 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->pid = pid_tgid >> 32;
 	event->tid = tid;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->operation = operation;
+	event->operation_raw = operation;
 	event->addr = addr;
 	event->size = size;
-	event->timestamp_ns = bpf_ktime_get_ns();
+	event->timestamp_raw = bpf_ktime_get_ns();
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -145,10 +145,10 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 	event->pid = pid_tgid >> 32;
 	event->tid = tid;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->operation = operation;
+	event->operation_raw = operation;
 	event->addr = addr;
 	event->size = 0;
-	event->timestamp_ns = bpf_ktime_get_ns();
+	event->timestamp_raw = bpf_ktime_get_ns();
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

@@ -35,14 +35,14 @@ struct event {
 	__u32 pid;
 	__u32 tid;
 	gadget_mntns_id mount_ns_id;
-	__u64 timestamp;
+	gadget_timestamp timestamp_raw;
 	int ret;
 	char comm[TASK_COMM_LEN];
 	char fs[FS_NAME_LEN];
 	char src[PATH_MAX];
 	char dest[PATH_MAX];
 	char data[DATA_LEN];
-	enum op op;
+	enum op op_raw;
 };
 
 const volatile pid_t target_pid = 0;
@@ -112,13 +112,13 @@ static int probe_exit(void *ctx, int ret)
 		goto cleanup;
 
 	eventp->mount_ns_id = gadget_get_mntns_id();
-	eventp->timestamp = bpf_ktime_get_boot_ns();
+	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags = argp->flags;
 	eventp->pid = pid;
 	eventp->tid = tid;
 	eventp->ret = ret;
-	eventp->op = argp->op;
+	eventp->op_raw = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));
 	if (argp->src)
 		bpf_probe_read_user_str(eventp->src, sizeof(eventp->src),

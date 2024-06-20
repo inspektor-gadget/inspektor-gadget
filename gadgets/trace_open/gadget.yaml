@@ -10,9 +10,7 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp
-      attributes:
-        template: timestamp
+    - name: timestamp_raw
     - name: pid
       attributes:
         template: pid

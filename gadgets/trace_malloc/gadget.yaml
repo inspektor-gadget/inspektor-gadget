@@ -20,7 +20,7 @@ structs:
       description: command
       attributes:
         template: comm
-    - name: operation
+    - name: operation_raw
       description: memory operation type
       attributes:
         width: 16
@@ -42,6 +42,4 @@ structs:
         width: 20
         alignment: left
         ellipsis: end
-    - name: timestamp_ns
-      attributes:
-        template: timestamp
+    - name: timestamp_raw

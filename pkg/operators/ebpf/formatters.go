@@ -22,6 +22,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
+)
+
+const (
+	enumTargetNameAnnotation = "ebpf.formatter.enum"
 )
 
 func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 {
@@ -52,14 +57,14 @@ func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 
 	return 0
 }
 
-func (i *ebpfInstance) initEnumConverter(gadgetCtx operators.GadgetContext) error {
+func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) error {
 	btfSpec, err := btf.LoadKernelSpec()
 	if err != nil {
 		i.logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
 	}
 
 	for _, ds := range gadgetCtx.GetDataSources() {
-		var converters []func(ds datasource.DataSource, data datasource.Data) error
+		var formatters []func(ds datasource.DataSource, data datasource.Data) error
 
 		for name, enum := range i.enums {
 			in := ds.GetField(name)
@@ -76,12 +81,18 @@ func (i *ebpfInstance) initEnumConverter(gadgetCtx operators.GadgetContext) erro
 				}
 			}
 
-			out, err := ds.AddField(name+"_str", api.Kind_String)
+			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "enum", in, enumTargetNameAnnotation)
+			if err != nil {
+				i.logger.Warnf("Failed to get target name for enum field %q: %v", in.Name(), err)
+				continue
+			}
+
+			out, err := ds.AddField(targetName, api.Kind_String)
 			if err != nil {
 				return err
 			}
 
-			converter := func(ds datasource.DataSource, data datasource.Data) error {
+			formatter := func(ds datasource.DataSource, data datasource.Data) error {
 				// TODO: lookup table?
 				inBytes := in.Get(data)
 				val := byteSliceAsUint64(inBytes, enum.Signed, ds)
@@ -95,20 +106,20 @@ func (i *ebpfInstance) initEnumConverter(gadgetCtx operators.GadgetContext) erro
 				return nil
 			}
 
-			converters = append(converters, converter)
+			formatters = append(formatters, formatter)
 		}
 
-		if len(converters) > 0 {
-			i.converters[ds] = converters
+		if len(formatters) > 0 {
+			i.formatters[ds] = formatters
 		}
 	}
 
 	return nil
 }
 
-func (i *ebpfInstance) initConverters(gadgetCtx operators.GadgetContext) error {
-	if err := i.initEnumConverter(gadgetCtx); err != nil {
-		return fmt.Errorf("initializing enum converters: %w", err)
+func (i *ebpfInstance) initFormatters(gadgetCtx operators.GadgetContext) error {
+	if err := i.initEnumFormatter(gadgetCtx); err != nil {
+		return fmt.Errorf("initializing enum formatter: %w", err)
 	}
 
 	return nil

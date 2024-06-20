@@ -35,12 +35,12 @@ struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	__u8 state;
 	__u8 tcpflags;
 	__u32 reason;
 	gadget_netns_id netns;
-	enum type type;
+	enum type type_raw;
 
 	gadget_mntns_id mntns_id;
 	__u32 pid;
@@ -81,8 +81,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 
 	sockp = (struct inet_sock *)sk;
 
-	event->type = type;
-	event->timestamp = bpf_ktime_get_boot_ns();
+	event->type_raw = type;
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	switch (family) {

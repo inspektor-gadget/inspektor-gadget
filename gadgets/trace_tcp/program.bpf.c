@@ -31,12 +31,12 @@ struct event {
 
 	char task[TASK_COMM_LEN];
 	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp;
+	gadget_timestamp timestamp_raw;
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
 	gadget_netns_id netns;
-	enum event_type type;
+	enum event_type type_raw;
 };
 
 const volatile uid_t filter_uid = -1;
@@ -146,8 +146,8 @@ static __always_inline void fill_event(struct tuple_key_t *tuple,
 				       __u64 uid_gid, __u16 family, __u8 type,
 				       __u64 mntns_id)
 {
-	event->timestamp = bpf_ktime_get_boot_ns();
-	event->type = type;
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->type_raw = type;
 	event->pid = pid;
 	event->uid = (__u32)uid_gid;
 	event->gid = (__u32)(uid_gid >> 32);
