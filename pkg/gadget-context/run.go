@@ -102,13 +102,6 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 		}
 	}
 
-	ctx := c.Context()
-	if c.timeout > 0 {
-		newContext, cancel := context.WithTimeout(ctx, c.timeout)
-		defer cancel()
-		ctx = newContext
-	}
-
 	for _, opInst := range dataOperatorInstances {
 		log.Debugf("starting op %q", opInst.Name())
 		err := opInst.Start(c)
@@ -116,6 +109,13 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 			c.cancel()
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
+	}
+
+	ctx := c.Context()
+	if c.timeout > 0 {
+		newContext, cancel := context.WithTimeout(ctx, c.timeout)
+		defer cancel()
+		ctx = newContext
 	}
 
 	log.Debugf("running...")
