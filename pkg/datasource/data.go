@@ -124,6 +124,11 @@ func (f *field) ReflectType() reflect.Type {
 	}
 }
 
+type subscription struct {
+	priority int
+	fn       PacketFunc
+}
+
 type dataSource struct {
 	name string
 
@@ -140,9 +145,7 @@ type dataSource struct {
 
 	requestedFields map[string]bool
 
-	subscriptionsData   []*subscriptionData
-	subscriptionsArray  []*subscriptionArray
-	subscriptionsPacket []*subscriptionPacket
+	subscriptions []*subscription
 
 	requested bool
 
@@ -457,13 +460,30 @@ func (ds *dataSource) Subscribe(fn DataFunc, priority int) error {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	ds.subscriptionsData = append(ds.subscriptionsData, &subscriptionData{
-		priority: priority,
-		fn:       fn,
-	})
-	sort.SliceStable(ds.subscriptionsData, func(i, j int) bool {
-		return ds.subscriptionsData[i].priority < ds.subscriptionsData[j].priority
-	})
+	switch ds.Type() {
+	case TypeSingle:
+		ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
+			return fn(ds, p.(*data))
+		}})
+	case TypeArray:
+		ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
+			i := 0
+			alen := len(p.(*dataArray).DataArray)
+			for i < alen {
+				err := fn(ds, (*dataElement)(p.(*dataArray).DataArray[i]))
+				if err != nil {
+					if errors.Is(err, ErrDiscard) {
+						p.(*dataArray).DataArray = slices.Delete(p.(*dataArray).DataArray, i, i+1)
+						alen--
+						continue
+					}
+					return err
+				}
+				i++
+			}
+			return nil
+		}})
+	}
 
 	return nil
 }
@@ -480,14 +500,9 @@ func (ds *dataSource) SubscribeArray(fn ArrayFunc, priority int) error {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	ds.subscriptionsArray = append(ds.subscriptionsArray, &subscriptionArray{
-		priority: priority,
-		fn:       fn,
-	})
-	sort.SliceStable(ds.subscriptionsArray, func(i, j int) bool {
-		return ds.subscriptionsArray[i].priority < ds.subscriptionsArray[j].priority
-	})
-
+	ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
+		return fn(ds, p.(*dataArray))
+	}})
 	return nil
 }
 
@@ -499,70 +514,32 @@ func (ds *dataSource) SubscribePacket(fn PacketFunc, priority int) error {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	ds.subscriptionsPacket = append(ds.subscriptionsPacket, &subscriptionPacket{
-		priority: priority,
-		fn:       fn,
-	})
-	sort.SliceStable(ds.subscriptionsPacket, func(i, j int) bool {
-		return ds.subscriptionsPacket[i].priority < ds.subscriptionsPacket[j].priority
-	})
-
+	ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
+		return fn(ds, p)
+	}})
 	return nil
+}
+
+func (ds *dataSource) addSubscription(s *subscription) {
+	ds.subscriptions = append(ds.subscriptions, s)
+	sort.SliceStable(ds.subscriptions, func(i, j int) bool {
+		return ds.subscriptions[i].priority < ds.subscriptions[j].priority
+	})
 }
 
 func (ds *dataSource) EmitAndRelease(p Packet) error {
 	defer ds.Release(p)
 
-	switch ds.dType {
-	case TypeSingle:
-		for _, sub := range ds.subscriptionsData {
-			err := sub.fn(ds, p.(*data))
-			if err != nil {
-				if errors.Is(err, ErrDiscard) {
-					return nil
-				}
-				return err
-			}
+	var err error
+	for _, s := range ds.subscriptions {
+		err = s.fn(ds, p)
+		if errors.Is(err, ErrDiscard) {
+			return nil
 		}
-	case TypeArray:
-		for _, sub := range ds.subscriptionsData {
-			i := 0
-			alen := len(p.(*dataArray).DataArray)
-			for i < alen {
-				err := sub.fn(ds, (*dataElement)(p.(*dataArray).DataArray[i]))
-				if err != nil {
-					if errors.Is(err, ErrDiscard) {
-						p.(*dataArray).DataArray = slices.Delete(p.(*dataArray).DataArray, i, i+1)
-						alen--
-						continue
-					}
-					return err
-				}
-				i++
-			}
-		}
-		for _, sub := range ds.subscriptionsArray {
-			err := sub.fn(ds, p.(*dataArray))
-			if err != nil {
-				if errors.Is(err, ErrDiscard) {
-					return nil
-				}
-				return err
-			}
-		}
-	}
-
-	// Finally, send packet to packet-subscribers no matter the datasource type
-	for _, sub := range ds.subscriptionsPacket {
-		err := sub.fn(ds, p)
 		if err != nil {
-			if errors.Is(err, ErrDiscard) {
-				return nil
-			}
 			return err
 		}
 	}
-
 	return nil
 }
 
