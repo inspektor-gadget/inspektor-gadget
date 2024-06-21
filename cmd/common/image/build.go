@@ -277,15 +277,18 @@ func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage st
 	f := filters.NewArgs()
 	f.Add("reference", builderImage)
 
-	images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
-	if err != nil {
-		return fmt.Errorf("listing images: %w", err)
-	}
+	// For :latest we always want to have the newest image that is available upstream
+	if !strings.HasSuffix(builderImage, ":latest") {
+		images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
+		if err != nil {
+			return fmt.Errorf("listing images: %w", err)
+		}
 
-	for _, img := range images {
-		for _, tag := range img.RepoTags {
-			if tag == builderImage {
-				return nil
+		for _, img := range images {
+			for _, tag := range img.RepoTags {
+				if tag == builderImage {
+					return nil
+				}
 			}
 		}
 	}
