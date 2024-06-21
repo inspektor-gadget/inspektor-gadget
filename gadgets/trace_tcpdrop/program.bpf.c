@@ -112,11 +112,11 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	bpf_probe_read_kernel(&event->tcpflags, sizeof(event->tcpflags),
 			      &tcphdr->flags);
 
-	BPF_CORE_READ_INTO(&event->dst.port, sk, __sk_common.skc_dport);
+	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	if (event->dst.port == 0)
 		goto cleanup;
 
-	BPF_CORE_READ_INTO(&event->src.port, sockp, inet_sport);
+	event->src.port = bpf_ntohs(BPF_CORE_READ(sockp, inet_sport));
 	if (event->src.port == 0)
 		goto cleanup;
 

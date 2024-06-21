@@ -15,7 +15,6 @@
 package formatters
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
 	"strings"
@@ -340,7 +339,7 @@ var replacers = []replacer{
 				return nil, fmt.Errorf("adding string field: %w", err)
 			}
 			return func(entry datasource.Data) error {
-				port := binary.BigEndian.Uint16(ports[0].Get(entry))
+				port, _ := ports[0].Uint16(entry)
 				out.Set(entry, []byte(fmt.Sprintf("%s:%d", string(l3strings[0].Get(entry)), port)))
 				return nil
 			}, nil
