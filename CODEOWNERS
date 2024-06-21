@@ -32,6 +32,7 @@
 /pkg/container-hook/ @alban
 /pkg/container-utils/ @blanquicet @mqasimsarfraz
 /pkg/container-utils/containerd/ @burak-ok
+/pkg/datasource/ @flyth
 /pkg/gadget-context/ @flyth
 /pkg/gadget-registry/ @flyth
 /pkg/gadget-service/ @flyth
