@@ -409,6 +409,11 @@ func (n *ContainerNotifier) watchContainersTermination() {
 					continue
 				}
 
+				if c.pid > math.MaxUint32 {
+					log.Errorf("container PID (%d) exceeds math.MaxUint32 (%d)", c.pid, math.MaxUint32)
+					return
+				}
+
 				go n.callback(ContainerEvent{
 					Type:         EventTypeRemoveContainer,
 					ContainerID:  c.id,
