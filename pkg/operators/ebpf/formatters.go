@@ -16,6 +16,7 @@ package ebpfoperator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cilium/ebpf/btf"
 
@@ -26,7 +27,8 @@ import (
 )
 
 const (
-	enumTargetNameAnnotation = "ebpf.formatter.enum"
+	enumTargetNameAnnotation        = "ebpf.formatter.enum"
+	enumBitfieldSeparatorAnnotation = "ebpf.formatter.bitfield.separator"
 )
 
 func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 {
@@ -92,18 +94,42 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 				return err
 			}
 
-			formatter := func(ds datasource.DataSource, data datasource.Data) error {
-				// TODO: lookup table?
-				inBytes := in.Get(data)
-				val := byteSliceAsUint64(inBytes, enum.Signed, ds)
-				for _, v := range enum.Values {
-					if val == v.Value {
-						out.Set(data, []byte(v.Name))
-						return nil
-					}
+			var formatter func(ds datasource.DataSource, data datasource.Data) error
+
+			isBitField := strings.HasSuffix(enum.Name, "_set")
+			if isBitField {
+				separator := in.Annotations()[enumBitfieldSeparatorAnnotation]
+				if separator == "" {
+					separator = "|"
 				}
-				out.Set(data, []byte("UNKNOWN"))
-				return nil
+
+				formatter = func(ds datasource.DataSource, data datasource.Data) error {
+					inBytes := in.Get(data)
+					val := byteSliceAsUint64(inBytes, enum.Signed, ds)
+
+					var arr []string
+					for _, v := range enum.Values {
+						if val&v.Value == v.Value {
+							arr = append(arr, v.Name)
+						}
+					}
+					out.PutString(data, strings.Join(arr, separator))
+					return nil
+				}
+			} else {
+				formatter = func(ds datasource.DataSource, data datasource.Data) error {
+					// TODO: lookup table?
+					inBytes := in.Get(data)
+					val := byteSliceAsUint64(inBytes, enum.Signed, ds)
+					for _, v := range enum.Values {
+						if val == v.Value {
+							out.Set(data, []byte(v.Name))
+							return nil
+						}
+					}
+					out.Set(data, []byte("UNKNOWN"))
+					return nil
+				}
 			}
 
 			formatters = append(formatters, formatter)
