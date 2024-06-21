@@ -19,9 +19,44 @@ enum op {
 	UMOUNT,
 };
 
+enum flags_set : u64 {
+	MS_RDONLY = 0x00000001,
+	MS_NOSUID = 0x00000002,
+	MS_NODEV = 0x00000004,
+	MS_NOEXEC = 0x00000008,
+	MS_SYNCHRONOUS = 0x00000010,
+	MS_REMOUNT = 0x00000020,
+	MS_MANDLOCK = 0x00000040,
+	MS_DIRSYNC = 0x00000080,
+	MS_NOSYMFOLLOW = 0x00000100,
+	MS_NOATIME = 0x00000200,
+	MS_NODIRATIME = 0x00000400,
+	MS_BIND = 0x00000800,
+	MS_MOVE = 0x00001000,
+	MS_REC = 0x00002000,
+	MS_VERBOSE = 0x00004000,
+	MS_SILENT = 0x00008000,
+	MS_POSIXACL = 0x00010000,
+	MS_UNBINDABLE = 0x00020000,
+	MS_PRIVATE = 0x00040000,
+	MS_SLAVE = 0x00080000,
+	MS_SHARED = 0x00100000,
+	MS_RELATIME = 0x00200000,
+	MS_KERNMOUNT = 0x00400000,
+	MS_I_VERSION = 0x00800000,
+	MS_STRICTATIME = 0x01000000,
+	MS_LAZYTIME = 0x02000000,
+	MS_SUBMOUNT = 0x04000000,
+	MS_NOREMOTELOCK = 0x08000000,
+	MS_NOSEC = 0x10000000,
+	MS_BORN = 0x20000000,
+	MS_ACTIVE = 0x40000000,
+	MS_NOUSER = 0x80000000,
+};
+
 struct arg {
 	__u64 ts;
-	__u64 flags;
+	enum flags_set flags;
 	const char *src;
 	const char *dest;
 	const char *fs;
@@ -31,7 +66,7 @@ struct arg {
 
 struct event {
 	__u64 delta;
-	__u64 flags;
+	enum flags_set flags_raw;
 	__u32 pid;
 	__u32 tid;
 	gadget_mntns_id mount_ns_id;
@@ -65,7 +100,7 @@ GADGET_TRACER(mount, events, event);
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
 // static int probe_entry(const char *src, const char *dest, const char *fs,
 static __always_inline int probe_entry(const char *src, const char *dest,
-				       const char *fs, __u64 flags,
+				       const char *fs, enum flags_set flags,
 				       const char *data, enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
@@ -101,7 +136,6 @@ static int probe_exit(void *ctx, int ret)
 	__u32 tid = (__u32)pid_tgid;
 	struct arg *argp;
 	struct event *eventp;
-	int zero = 0;
 
 	argp = bpf_map_lookup_elem(&args, &tid);
 	if (!argp)
@@ -114,7 +148,7 @@ static int probe_exit(void *ctx, int ret)
 	eventp->mount_ns_id = gadget_get_mntns_id();
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
-	eventp->flags = argp->flags;
+	eventp->flags_raw = argp->flags;
 	eventp->pid = pid;
 	eventp->tid = tid;
 	eventp->ret = ret;
@@ -154,7 +188,7 @@ int ig_mount_e(struct syscall_trace_enter *ctx)
 	const char *src = (const char *)ctx->args[0];
 	const char *dest = (const char *)ctx->args[1];
 	const char *fs = (const char *)ctx->args[2];
-	__u64 flags = (__u64)ctx->args[3];
+	enum flags_set flags = (enum flags_set)ctx->args[3];
 	const char *data = (const char *)ctx->args[4];
 
 	return probe_entry(src, dest, fs, flags, data, MOUNT);
@@ -170,7 +204,7 @@ SEC("tracepoint/syscalls/sys_enter_umount")
 int ig_umount_e(struct syscall_trace_enter *ctx)
 {
 	const char *dest = (const char *)ctx->args[0];
-	__u64 flags = (__u64)ctx->args[1];
+	enum flags_set flags = (enum flags_set)ctx->args[1];
 
 	return probe_entry(NULL, dest, NULL, flags, NULL, UMOUNT);
 }
