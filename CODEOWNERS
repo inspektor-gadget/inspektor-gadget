@@ -80,7 +80,7 @@
 /pkg/standardgadgets/ @mauriciovasquezbernal
 /pkg/tracer-collection/ @alban
 /pkg/types/ @blanquicet
-/pkg/uprobetracer/ @alban @i-Pear
+/pkg/uprobetracer/ @alban
 /pkg/utils/bpf-iter-ns/ @alban
 /pkg/utils/host/ @alban
 /tools/ @mqasimsarfraz
