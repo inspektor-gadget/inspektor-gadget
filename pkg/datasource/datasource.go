@@ -65,6 +65,9 @@ type DataArray interface {
 
 	// Get returns the element at the given index
 	Get(int) Data
+
+	// Swap swaps two elements of the array by their index
+	Swap(i, j int)
 }
 
 type Packet interface {
