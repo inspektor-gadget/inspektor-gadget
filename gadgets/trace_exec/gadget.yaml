@@ -77,7 +77,9 @@ structs:
         alignment: left
         ellipsis: end
     - name: pupper_layer
-      description: Whether the executable's parent in the process hierarchy is in the upper layer of the overlay filesystem. Only initialized when the execution succeeded.
+      description: Whether the executable's parent in the process hierarchy is in
+        the upper layer of the overlay filesystem. Only initialized when the execution
+        succeeded.
       attributes:
         width: 5
         alignment: left
