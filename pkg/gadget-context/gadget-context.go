@@ -317,7 +317,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	if run {
-		go c.run(localOperators)
+		if err := c.start(localOperators); err != nil {
+			return fmt.Errorf("starting local operators: %w", err)
+		}
+
+		c.Logger().Debugf("running...")
+
+		go func() {
+			// TODO: Client shouldn't need to wait for the timeout. It should be
+			// managed only on the server side.
+			WaitForTimeoutOrDone(c)
+			c.stop(localOperators)
+		}()
 	}
 
 	return nil

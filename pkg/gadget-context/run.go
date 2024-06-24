@@ -15,7 +15,6 @@
 package gadgetcontext
 
 import (
-	"context"
 	"fmt"
 	"sort"
 
@@ -92,53 +91,40 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 	return dataOperatorInstances, nil
 }
 
-func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstance) error {
-	defer c.cancel()
-	log := c.Logger()
-
+func (c *GadgetContext) start(dataOperatorInstances []operators.DataOperatorInstance) error {
 	for _, opInst := range dataOperatorInstances {
 		preStart, ok := opInst.(operators.PreStart)
 		if !ok {
 			continue
 		}
-		log.Debugf("pre-starting op %q", opInst.Name())
+		c.Logger().Debugf("pre-starting op %q", opInst.Name())
 		err := preStart.PreStart(c)
 		if err != nil {
 			c.cancel()
 			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
 		}
 	}
-
-	ctx := c.Context()
-	if c.timeout > 0 {
-		newContext, cancel := context.WithTimeout(ctx, c.timeout)
-		defer cancel()
-		ctx = newContext
-	}
-
 	for _, opInst := range dataOperatorInstances {
-		log.Debugf("starting op %q", opInst.Name())
+		c.Logger().Debugf("starting op %q", opInst.Name())
 		err := opInst.Start(c)
 		if err != nil {
 			c.cancel()
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
 	}
+	return nil
+}
 
-	log.Debugf("running...")
-
-	<-ctx.Done()
-
+func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInstance) {
 	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
-		log.Debugf("stopping op %q", opInst.Name())
+		c.Logger().Debugf("stopping op %q", opInst.Name())
 		err := opInst.Stop(c)
 		if err != nil {
-			log.Errorf("stopping operator %q: %v", opInst.Name(), err)
+			c.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
-
 	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
@@ -146,13 +132,12 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 		if !ok {
 			continue
 		}
-		log.Debugf("post-stopping op %q", opInst.Name())
+		c.Logger().Debugf("post-stopping op %q", opInst.Name())
 		err := postStop.PostStop(c)
 		if err != nil {
-			log.Errorf("post-stopping operator %q: %v", opInst.Name(), err)
+			c.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
-	return nil
 }
 
 func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
@@ -161,10 +146,21 @@ func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
 }
 
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
+	defer c.cancel()
+
 	dataOperatorInstances, err := c.initAndPrepareOperators(paramValues)
 	if err != nil {
-		c.cancel()
 		return fmt.Errorf("initializing and preparing operators: %w", err)
 	}
-	return c.run(dataOperatorInstances)
+
+	if err := c.start(dataOperatorInstances); err != nil {
+		return fmt.Errorf("starting operators: %w", err)
+	}
+
+	c.Logger().Debugf("running...")
+
+	WaitForTimeoutOrDone(c)
+	c.stop(dataOperatorInstances)
+
+	return nil
 }
