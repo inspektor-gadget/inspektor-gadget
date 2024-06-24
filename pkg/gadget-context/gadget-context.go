@@ -304,6 +304,9 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	if run {
+		if err := c.start(localOperators); err != nil {
+			return fmt.Errorf("starting local operators: %w", err)
+		}
 		go c.run(localOperators)
 	}
 
