@@ -135,91 +135,88 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	return nil
 }
 
-func (i *ebpfInstance) runSnapshotters() error {
-	for sName, snapshotter := range i.snapshotters {
-		i.logger.Debugf("Running snapshotter %q", sName)
+func (i *ebpfInstance) runSnapshotters(sName string, snapshotter *Snapshotter) error {
+	pArray, err := snapshotter.ds.NewPacketArray()
+	if err != nil {
+		return fmt.Errorf("creating new packet: %w", err)
+	}
 
-		pArray, err := snapshotter.ds.NewPacketArray()
-		if err != nil {
-			return fmt.Errorf("creating new packet: %w", err)
+	for pName, l := range snapshotter.links {
+		i.logger.Debugf("Running iterator %q", pName)
+
+		if !isIteratorKindSupported(l.typ) {
+			return fmt.Errorf("iterator kind %q is not supported", l.typ)
 		}
-
-		for pName, l := range snapshotter.links {
-			i.logger.Debugf("Running iterator %q", pName)
-
-			if !isIteratorKindSupported(l.typ) {
-				return fmt.Errorf("iterator kind %q is not supported", l.typ)
+		if !isIteratorKindPerNetNs(l.typ) {
+			buf, err := bpfiterns.Read(l.link)
+			if err != nil {
+				return fmt.Errorf("reading iterator %q: %w", pName, err)
 			}
-			if !isIteratorKindPerNetNs(l.typ) {
-				buf, err := bpfiterns.Read(l.link)
-				if err != nil {
-					return fmt.Errorf("reading iterator %q: %w", pName, err)
+
+			size := snapshotter.accessor.Size()
+			if uint32(len(buf))%size != 0 {
+				return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+					pName, len(buf), size)
+			}
+
+			for i := uint32(0); i < uint32(len(buf)); i += size {
+				data := pArray.New()
+				if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+					pArray.Release(data)
+					return fmt.Errorf("setting data element %d: %w", i, err)
 				}
-
-				size := snapshotter.accessor.Size()
-				if uint32(len(buf))%size != 0 {
-					return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
-						pName, len(buf), size)
+				pArray.Append(data)
+			}
+		} else {
+			visitedNetNs := make(map[uint64]struct{})
+			for _, container := range i.containers {
+				_, visited := visitedNetNs[container.Netns]
+				if visited {
+					continue
 				}
+				visitedNetNs[container.Netns] = struct{}{}
 
-				for i := uint32(0); i < uint32(len(buf)); i += size {
-					data := pArray.New()
-					if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
-						pArray.Release(data)
-						return fmt.Errorf("setting data element %d: %w", i, err)
-					}
-					pArray.Append(data)
-				}
-			} else {
-				visitedNetNs := make(map[uint64]struct{})
-				for _, container := range i.containers {
-					_, visited := visitedNetNs[container.Netns]
-					if visited {
-						continue
-					}
-					visitedNetNs[container.Netns] = struct{}{}
-
-					err := nsenter.NetnsEnter(int(container.Pid), func() error {
-						reader, err := l.link.Open()
-						if err != nil {
-							return err
-						}
-						defer reader.Close()
-
-						buf, err := io.ReadAll(reader)
-						if err != nil {
-							return fmt.Errorf("reading iterator %q: %w", pName, err)
-						}
-
-						size := snapshotter.accessor.Size()
-						if uint32(len(buf))%size != 0 {
-							return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
-								pName, len(buf), size)
-						}
-
-						for i := uint32(0); i < uint32(len(buf)); i += size {
-							data := pArray.New()
-							if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
-								pArray.Release(data)
-								return fmt.Errorf("setting data element %d: %w", i, err)
-							}
-							pArray.Append(data)
-						}
-
-						return nil
-					})
+				err := nsenter.NetnsEnter(int(container.Pid), func() error {
+					reader, err := l.link.Open()
 					if err != nil {
-						return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
-							container.Runtime.RuntimeName, pName, err)
+						return err
 					}
+					defer reader.Close()
+
+					buf, err := io.ReadAll(reader)
+					if err != nil {
+						return fmt.Errorf("reading iterator %q: %w", pName, err)
+					}
+
+					size := snapshotter.accessor.Size()
+					if uint32(len(buf))%size != 0 {
+						return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+							pName, len(buf), size)
+					}
+
+					for i := uint32(0); i < uint32(len(buf)); i += size {
+						data := pArray.New()
+						if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+							pArray.Release(data)
+							return fmt.Errorf("setting data element %d: %w", i, err)
+						}
+						pArray.Append(data)
+					}
+
+					return nil
+				})
+				if err != nil {
+					return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
+						container.Runtime.RuntimeName, pName, err)
 				}
 			}
-		}
-
-		if err := snapshotter.ds.EmitAndRelease(pArray); err != nil {
-			return fmt.Errorf("emitting snapshotter %q data: %w", sName, err)
 		}
 	}
+
+	if err := snapshotter.ds.EmitAndRelease(pArray); err != nil {
+		return fmt.Errorf("emitting snapshotter %q data: %w", sName, err)
+	}
+
 	return nil
 }
 

@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -359,7 +360,8 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
-		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityNone))
+		// TODO: Make data source periodicity configurable
+		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityByInterval))
 		m.accessor = accessor
 		m.ds = ds
 	}
@@ -619,10 +621,44 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
-	err = i.runSnapshotters()
-	if err != nil {
-		i.Close()
-		return fmt.Errorf("running snapshotters: %w", err)
+	for sName, snapshotter := range i.snapshotters {
+		periodicity, ok := snapshotter.ds.Annotations()[datasource.PeriodicityAnnotation]
+		if !ok {
+			return fmt.Errorf("periodicity was not set for snapshotter %s", sName)
+		}
+		if periodicity != string(datasource.PeriodicityNone) && periodicity != string(datasource.PeriodicityByInterval) {
+			return fmt.Errorf("invalid periodicity %s for snapshotter %s", periodicity, sName)
+		}
+
+		go func(sName string, snapshotter *Snapshotter) {
+			i.logger.Debugf("Running snapshotter %q", sName)
+
+			if periodicity == string(datasource.PeriodicityNone) {
+				err := i.runSnapshotters(sName, snapshotter)
+				if err != nil {
+					i.Close()
+					i.logger.Errorf("running snapshotter: %w", err)
+				}
+				return
+			}
+
+			// TODO: Make interval configurable
+			ticker := time.NewTicker(time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-gadgetCtx.Context().Done():
+					return
+				case <-ticker.C:
+					err := i.runSnapshotters(sName, snapshotter)
+					if err != nil {
+						i.Close()
+						i.logger.Errorf("running snapshotter: %w", err)
+						return
+					}
+				}
+			}
+		}(sName, snapshotter)
 	}
 
 	return nil
