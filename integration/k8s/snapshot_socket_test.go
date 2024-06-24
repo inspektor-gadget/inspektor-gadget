@@ -93,6 +93,7 @@ func TestSnapshotSocket(t *testing.T) {
 					e.Runtime.ContainerName = ""
 					e.Runtime.ContainerID = ""
 					e.Runtime.ContainerImageDigest = ""
+					e.Runtime.ContainerStartedAt = 0
 				}
 
 				ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)

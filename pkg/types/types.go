@@ -35,6 +35,7 @@ func init() {
 	columns.MustRegisterTemplate("container", "width:30")
 	columns.MustRegisterTemplate("containerImageName", "width:30")
 	columns.MustRegisterTemplate("containerImageDigest", "width:30")
+	columns.MustRegisterTemplate("containerStartedAt", "width:35,hide")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("uid", "minWidth:8")
@@ -138,6 +139,9 @@ type BasicRuntimeMetadata struct {
 	// containerd: events from both initial and new containers are enriched
 	// crio: events from initial containers are enriched
 	ContainerImageDigest string `json:"containerImageDigest,omitempty" column:"containerImageDigest,hide"`
+
+	// ContainerStartedAt is the unix timestamp at which the container was started at
+	ContainerStartedAt Time `json:"containerStartedAt,omitempty" column:"containerStartedAt,template:timestamp,stringer,hide"`
 }
 
 func (b *BasicRuntimeMetadata) IsEnriched() bool {
@@ -204,6 +208,7 @@ func (c *CommonData) SetContainerMetadata(container Container) {
 	c.Runtime.ContainerID = runtime.ContainerID
 	c.Runtime.ContainerImageName = runtime.ContainerImageName
 	c.Runtime.ContainerImageDigest = runtime.ContainerImageDigest
+	c.Runtime.ContainerStartedAt = runtime.ContainerStartedAt
 }
 
 func (c *CommonData) GetNode() string {

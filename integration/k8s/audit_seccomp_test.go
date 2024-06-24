@@ -202,6 +202,7 @@ EOF
 					e.Runtime.ContainerName = ""
 					e.Runtime.ContainerID = ""
 					e.Runtime.ContainerImageDigest = ""
+					e.Runtime.ContainerStartedAt = 0
 				}
 
 				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)

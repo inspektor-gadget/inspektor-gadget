@@ -61,6 +61,7 @@ func normalizeCommonData(e *eventtypes.CommonData, ns string) {
 
 	e.Runtime.ContainerID = ""
 	e.Runtime.ContainerImageDigest = ""
+	e.Runtime.ContainerStartedAt = 0
 
 	switch DefaultTestComponent {
 	case IgTestComponent:
