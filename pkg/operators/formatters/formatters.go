@@ -314,7 +314,9 @@ var replacers = []replacer{
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			// We do some length checks in here - since we expect the in field to be part of an eBPF struct that
 			// is always sized statically, we can avoid checking the individual entries later on.
-			in.SetHidden(true, false)
+			in.SetHidden(true, true)
+
+			in.SetHidden(false, false)
 			// Get accessors to required fields
 			ports := in.GetSubFieldsWithTag("name:port")
 			if len(ports) != 1 {
@@ -323,24 +325,63 @@ var replacers = []replacer{
 			if ports[0].Size() != 2 {
 				return nil, fmt.Errorf("port size expected to be 2 bytes")
 			}
-			l3 := in.GetSubFieldsWithTag("type:" + L3EndpointTypeName)
-			if len(l3) != 1 {
-				return nil, fmt.Errorf("expected exactly 1 l3endpoint field")
+			ips := in.GetSubFieldsWithTag("type:gadget_ip_addr_t")
+			if len(ips) != 1 {
+				return nil, fmt.Errorf("expected %d gadget_ip_addr_t field, got %d", 1, len(ips))
 			}
-			l3strings := l3[0].GetSubFieldsWithTag("l3string")
-			if len(l3strings) != 1 {
-				return nil, fmt.Errorf("expected exactly 1 l3string field")
+			if ips[0].Size() != 16 {
+				return nil, fmt.Errorf("expected gadget_ip_addr_t to have 16 bytes")
+			}
+			versions := in.GetSubFieldsWithTag("name:version")
+			if len(versions) != 1 {
+				return nil, fmt.Errorf("expected exactly 1 version field")
 			}
 
-			// Hide l3 & subfields of l3
-			l3[0].SetHidden(true, true)
-			out, err := in.AddSubField("address", api.Kind_String)
+			// TODO: hidden and json.skip instead?
+			ips[0].RemoveReference(true)
+
+			addrName := strings.TrimSuffix(ips[0].Name(), "_raw")
+
+			addrF, err := in.AddSubField(addrName, api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
 			if err != nil {
 				return nil, fmt.Errorf("adding string field: %w", err)
 			}
+
+			jsonSkipAnn := map[string]string{
+				"field.jsonskip": "true",
+			}
+			summaryF, err := in.AddSubField("summary", api.Kind_String,
+				datasource.WithAnnotations(jsonSkipAnn),
+				datasource.WithFlags(datasource.FieldFlagHidden),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("adding string field: %w", err)
+			}
+
+			in.Annotations()["columns.summary"] = in.Name() + ".summary"
+
 			return func(entry datasource.Data) error {
+				ip := ips[0].Get(entry)
+				v := versions[0].Get(entry)
+				if len(v) != 1 {
+					return nil
+				}
+
+				var addrStr string
+
+				switch v[0] {
+				case 4:
+					addrStr = net.IP(ip[:4]).String()
+				case 6:
+					addrStr = net.IP(ip).String()
+				default:
+					return fmt.Errorf("invalid IP version for l3endpoint")
+				}
+
+				addrF.PutString(entry, addrStr)
+
 				port, _ := ports[0].Uint16(entry)
-				out.Set(entry, []byte(fmt.Sprintf("%s:%d", string(l3strings[0].Get(entry)), port)))
+				summaryF.PutString(entry, fmt.Sprintf("%s:%d", addrStr, port))
 				return nil
 			}, nil
 		},

@@ -17,7 +17,6 @@ package datasource
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"math"
 	"slices"
 
@@ -344,7 +343,8 @@ func (a *fieldAccessor) Annotations() map[string]string {
 		return map[string]string{}
 	}
 	// return a clone to avoid write access
-	return maps.Clone(a.f.Annotations)
+	//return maps.Clone(a.f.Annotations)
+	return a.f.Annotations
 }
 
 func (a *fieldAccessor) Uint8(data Data) (uint8, error) {

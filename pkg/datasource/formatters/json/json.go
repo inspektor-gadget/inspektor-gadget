@@ -145,6 +145,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			continue
 		}
 
+		if val, ok := acc.Annotations()["field.jsonskip"]; ok && val == "true" {
+			continue
+		}
+
 		fullFieldName := prefix + accessor.Name()
 
 		var subFieldFuncs []func(state *encodeState, data datasource.Data)

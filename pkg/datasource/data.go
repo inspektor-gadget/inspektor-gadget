@@ -369,9 +369,9 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}
 
 	// Unref parent fields
-	for p := range parentFields {
-		FieldFlagUnreferenced.AddTo(&newFields[p].Flags)
-	}
+	//for p := range parentFields {
+	//	FieldFlagUnreferenced.AddTo(&newFields[p].Flags)
+	//}
 
 	// Check whether parent id is valid
 	for f := range checkParents {

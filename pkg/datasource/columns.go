@@ -124,6 +124,11 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 			}
 		}
 
+		if alias, ok := f.Annotations["columns.summary"]; ok {
+			//fmt.Printf("alias: %s\n", alias)
+			f = ds.fieldMap[alias]
+		}
+
 		if f.Kind == api.Kind_CString || f.Kind == api.Kind_String {
 			acc := &fieldAccessor{
 				ds: ds,

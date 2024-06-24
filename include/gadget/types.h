@@ -20,8 +20,15 @@ struct gadget_l3endpoint_t {
 
 // struct defining an L4 endpoint
 struct gadget_l4endpoint_t {
-	struct gadget_l3endpoint_t l3;
-	__u16 port;
+	//struct gadget_l3endpoint_t l3;
+
+	// TODO: removed named union
+	union gadget_ip_addr_t addr_raw;
+	__u8 version; // 4 or 6
+	//__u8 pad[3]; // manual padding to avoid issues between C and Go
+
+
+	__u16 port; // L4 port in host byte order
 	__u16 proto; // IP protocol number
 };
 
