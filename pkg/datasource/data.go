@@ -218,6 +218,8 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 	} else {
 		ds.byteOrder = binary.LittleEndian
 	}
+	ds.tags = in.Tags
+	ds.annotations = in.Annotations
 	// TODO: add more checks / validation
 	return ds, nil
 }
