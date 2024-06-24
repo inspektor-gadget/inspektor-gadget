@@ -68,3 +68,8 @@ const (
 	// TagSrcEbpf defines that a field was extracted from eBPF
 	TagSrcEbpf = "src:ebpf"
 )
+
+const (
+	FetchCountAnnotation    = "fetch-count"
+	FetchIntervalAnnotation = "fetch-interval"
+)
