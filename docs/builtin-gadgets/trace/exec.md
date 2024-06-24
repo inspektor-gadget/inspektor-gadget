@@ -112,26 +112,30 @@ test                644497 639225 cat   0   /usr/bin/cat /dev/null   /   /usr/bi
 
 ### Overlay filesystem upper layer
 
-It can be useful to know if the executable in a container was modified or part
-of the original container image. If it was modified, it will be located in the
-upper layer of the overlay filesystem. For this reason, this gadget provides
-the upper layer field which is true if the executable is located in the upper
-layer of the overlay filesystem.
+It can be useful to know if the executable, or its parent in the process
+hierarchy, in a container was modified or part of the original container image.
+If it was modified, it will be located in the upper layer of the overlay filesystem.
+For this reason, this gadget provides the upper layer field which is true if the
+executable is located in the upper layer of the overlay filesystem.
 
 ```bash
-$ sudo ig trace exec -c test -o columns=comm,ret,upperlayer
-COMM             RET UPPERLAYER
-sh               0   false
-cp               0   false
-echo             0   false
-echo2            0   true
+$ sudo ig trace exec -c test -o columns=comm,ret,upperlayer,pupperlayer
+COMM             RET UPPERLAYER PUPPERLAYER
+sh               0   false      false
+cp               0   false      false
+echo             0   false      false
+echo2            0   true       false
+cp               0   false      false
+sh2              0   true       false
+echo             0   false      true
 ```
 
 ```bash
 $ docker run -ti --rm --name=test ubuntu \
-    sh -c 'cp /bin/echo /bin/echo2 ; /bin/echo lower ; /bin/echo2 upper'
+    sh -c 'cp /bin/echo /bin/echo2 ; /bin/echo lower ; /bin/echo2 upper ; cp /bin/sh /bin/sh2 ; sh2 -c "/bin/echo pupper"'
 lower
 upper
+pupper
 ```
 
 Limitations:

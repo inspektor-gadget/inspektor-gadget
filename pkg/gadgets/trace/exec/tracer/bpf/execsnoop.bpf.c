@@ -145,13 +145,8 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	return 0;
 }
 
-static __always_inline bool has_upper_layer()
+static __always_inline bool has_upper_layer(struct inode *inode)
 {
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
-	if (!inode) {
-		return false;
-	}
 	unsigned long sb_magic = BPF_CORE_READ(inode, i_sb, s_magic);
 
 	if (sb_magic != OVERLAYFS_SUPER_MAGIC) {
@@ -196,7 +191,17 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 		goto cleanup;
 
 	if (ret == 0) {
-		event->upper_layer = has_upper_layer();
+		struct inode *inode =
+			BPF_CORE_READ(task, mm, exe_file, f_inode);
+		if (inode) {
+			event->upper_layer = has_upper_layer(inode);
+		}
+
+		struct inode *pinode =
+			BPF_CORE_READ(parent, mm, exe_file, f_inode);
+		if (pinode) {
+			event->pupper_layer = has_upper_layer(pinode);
+		}
 	}
 
 	event->retval = ret;
