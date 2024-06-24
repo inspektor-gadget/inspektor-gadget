@@ -21,9 +21,16 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
 var configPath string
@@ -95,4 +102,82 @@ func setFlagsFromConfig(f *pflag.Flag, k string) error {
 		}
 	}
 	return nil
+}
+
+func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Configuration commands",
+	}
+	defaultCmd := &cobra.Command{
+		Use:          "default",
+		Short:        "Print the default configuration",
+		SilenceUsage: true,
+		Args:         cobra.NoArgs,
+	}
+	viewCmd := &cobra.Command{
+		Use:          "view",
+		Short:        "Print the current configuration",
+		SilenceUsage: true,
+		Args:         cobra.NoArgs,
+	}
+
+	defaultCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		defaultConfig := viper.New()
+		runtimeConfig := make(map[string]string)
+		runtime.GlobalParamDescs().ToParams().CopyToMap(runtimeConfig, "")
+		if len(runtimeConfig) > 0 {
+			defaultConfig.Set("runtime", runtimeConfig)
+		}
+
+		dataOps := operators.GetDataOperators()
+		operatorConfig := make(map[string]map[string]string, len(dataOps))
+		for _, op := range dataOps {
+			opName := strings.ToLower(op.Name())
+			opGlobalParams := apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
+			if len(opGlobalParams.ParamMap()) == 0 {
+				continue
+			}
+			operatorConfig[opName] = make(map[string]string)
+			opGlobalParams.CopyToMap(operatorConfig[opName], "")
+		}
+
+		operatorConfig[ocihandler.OciHandler.Name()] = make(map[string]string)
+		opInstanceParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+		opInstanceParams.CopyToMap(operatorConfig[ocihandler.OciHandler.Name()], "")
+		if len(operatorConfig) > 0 {
+			defaultConfig.Set("operator", operatorConfig)
+		}
+
+		rootFlags.VisitAll(func(flag *pflag.Flag) {
+			if flag.Name == "config" {
+				return
+			}
+			defaultConfig.Set(flag.Name, flag.DefValue)
+		})
+
+		cfg, err := yaml.Marshal(defaultConfig.AllSettings())
+		if err != nil {
+			return fmt.Errorf("marshalling default config: %w", err)
+		}
+
+		fmt.Print(string(cfg))
+		return nil
+	}
+
+	viewCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		cfg, err := yaml.Marshal(config.Config.AllSettings())
+		if err != nil {
+			return fmt.Errorf("marshalling config: %w", err)
+		}
+
+		fmt.Print(string(cfg))
+		return nil
+	}
+
+	cmd.AddCommand(utils.MarkExperimental(defaultCmd))
+	cmd.AddCommand(utils.MarkExperimental(viewCmd))
+	AddConfigFlag(cmd)
+
+	return utils.MarkExperimental(cmd)
 }

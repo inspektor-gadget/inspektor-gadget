@@ -163,6 +163,7 @@ func main() {
 	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
 	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags))
+	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

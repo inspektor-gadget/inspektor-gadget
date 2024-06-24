@@ -104,6 +104,7 @@ func main() {
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
+	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
