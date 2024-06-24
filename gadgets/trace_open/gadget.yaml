@@ -23,11 +23,11 @@ structs:
     - name: gid
       attributes:
         template: uid
-    - name: flags
+    - name: flags_raw
       attributes:
         width: 5
         hidden: true
-    - name: mode
+    - name: mode_raw
       description: File access mode
       attributes:
         width: 16
