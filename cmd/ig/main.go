@@ -81,10 +81,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// save the root flags for later use before we modify them (e.g. add runtime flags)
+	rootFlags := commonutils.CopyFlagSet(rootCmd.PersistentFlags())
+
 	runtime := local.New()
 
 	// ensure that the runtime flags are set from the config file
-	if err = common.InitConfig(); err != nil {
+	if err = common.InitConfig(rootFlags); err != nil {
 		log.Fatalf("initializing config: %v", err)
 	}
 	if err = common.SetFlagsForParams(rootCmd, runtime.GlobalParamDescs().ToParams(), config.RuntimeKey); err != nil {

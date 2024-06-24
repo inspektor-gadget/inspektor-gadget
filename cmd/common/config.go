@@ -15,6 +15,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -32,8 +33,8 @@ func AddConfigFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&configPath, "config", "", "config file to use")
 }
 
-// InitConfig initializes the config by reading the config file
-func InitConfig() error {
+// InitConfig initializes the config by reading the config file and setting root flags
+func InitConfig(rootFlags *pflag.FlagSet) error {
 	// set the config file path if it is provided
 	if configPath != "" {
 		config.Config = config.NewWithPath(configPath)
@@ -44,7 +45,19 @@ func InitConfig() error {
 		return fmt.Errorf("reading config: %w", err)
 	}
 
-	return nil
+	// set the root flags based on the config
+	var flagErr error
+	rootFlags.VisitAll(func(f *pflag.Flag) {
+		if f.Name == "config" {
+			return
+		}
+
+		if err := setFlagsFromConfig(f, f.Name); err != nil {
+			flagErr = errors.Join(flagErr, err)
+		}
+	})
+
+	return flagErr
 }
 
 // SetFlagsForParams sets the flags for the given params based on the config

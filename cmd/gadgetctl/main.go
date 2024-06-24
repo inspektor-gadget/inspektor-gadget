@@ -59,6 +59,9 @@ func main() {
 
 	runtime := grpcruntime.New()
 
+	// save the root flags for later use before we modify them (e.g. add runtime flags)
+	rootFlags := commonutils.CopyFlagSet(rootCmd.PersistentFlags())
+
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, runtime)
 	err := runtime.Init(runtimeGlobalParams)
@@ -86,7 +89,7 @@ func main() {
 	}
 
 	// ensure that the runtime flags are set from the config file
-	if err := common.InitConfig(rootCmd); err != nil {
+	if err := common.InitConfig(rootFlags); err != nil {
 		log.Fatalf("initializing config: %v", err)
 	}
 	if err = common.SetFlagsForParams(rootCmd, runtimeGlobalParams, config.RuntimeKey); err != nil {
