@@ -26,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -42,6 +43,7 @@ func main() {
 		Use:   filepath.Base(os.Args[0]),
 		Short: "Collection of gadgets for containers",
 	}
+	common.AddConfigFlag(rootCmd)
 	common.AddVerboseFlag(rootCmd)
 
 	skipInfo := false
@@ -81,6 +83,14 @@ func main() {
 		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
 			log.Warnf(err.Error())
 		}
+	}
+
+	// ensure that the runtime flags are set from the config file
+	if err := common.InitConfig(rootCmd); err != nil {
+		log.Fatalf("initializing config: %v", err)
+	}
+	if err = common.SetFlagsForParams(rootCmd, runtimeGlobalParams, config.RuntimeKey); err != nil {
+		log.Fatalf("setting runtime flags from config: %v", err)
 	}
 
 	hiddenColumnTags := []string{"kubernetes"}

@@ -29,6 +29,7 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	igconfig "github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -57,6 +58,7 @@ func main() {
 		log.Info("Experimental features enabled")
 	}
 
+	common.AddConfigFlag(rootCmd)
 	common.AddVerboseFlag(rootCmd)
 
 	// Some commands don't need the gadget namespace. Run then before to avoid
@@ -92,6 +94,14 @@ func main() {
 		// Analogous to cobra error message
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	// ensure that the runtime flags are set from the config file
+	if err = common.InitConfig(); err != nil {
+		log.Fatalf("initializing config: %v", err)
+	}
+	if err = common.SetFlagsForParams(rootCmd, runtimeGlobalParams, igconfig.RuntimeKey); err != nil {
+		log.Fatalf("setting runtime flags from config: %v", err)
 	}
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
