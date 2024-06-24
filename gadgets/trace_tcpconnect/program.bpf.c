@@ -44,6 +44,7 @@ struct event {
 	__u32 gid;
 	gadget_mntns_id mntns_id;
 	__u64 latency;
+	int retcode;
 };
 
 const volatile int filter_ports[MAX_PORTS];
@@ -191,7 +192,7 @@ static __always_inline void count_v6(struct sock *sk, __u16 dport)
 
 static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id)
+				     __u64 mntns_id, int ret)
 {
 	struct event *event;
 
@@ -214,13 +215,14 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	event->mntns_id = mntns_id;
 	bpf_get_current_comm(event->task, sizeof(event->task));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->retcode = ret;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
 
 static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id)
+				     __u64 mntns_id, int ret)
 {
 	struct event *event;
 
@@ -244,12 +246,12 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	bpf_get_current_comm(event->task, sizeof(event->task));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->retcode = ret;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
 
-static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
-					    int ip_ver)
+static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -258,13 +260,11 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	struct sock *sk;
 	u64 mntns_id;
 	__u16 dport;
+	unsigned short family;
 
 	skpp = bpf_map_lookup_elem(&sockets_per_process, &tid);
 	if (!skpp)
 		return 0;
-
-	if (ret)
-		goto end;
 
 	sk = *skpp;
 
@@ -272,18 +272,19 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	if (filter_port(dport))
 		goto end;
 
+	BPF_CORE_READ_INTO(&family, sk, __sk_common.skc_family);
 	if (do_count) {
-		if (ip_ver == 4)
+		if (family == AF_INET)
 			count_v4(sk, dport);
 		else
 			count_v6(sk, dport);
 	} else {
 		mntns_id = gadget_get_mntns_id();
 
-		if (ip_ver == 4)
-			trace_v4(ctx, pid, sk, dport, mntns_id);
+		if (family == AF_INET)
+			trace_v4(ctx, pid, sk, dport, mntns_id, ret);
 		else
-			trace_v6(ctx, pid, sk, dport, mntns_id);
+			trace_v6(ctx, pid, sk, dport, mntns_id, ret);
 	}
 
 end:
@@ -352,28 +353,17 @@ cleanup:
 	return cleanup_sockets_latency_map(sk);
 }
 
-SEC("kprobe/tcp_v4_connect")
-int BPF_KPROBE(ig_tcpc_v4_co_e, struct sock *sk)
+SEC("kprobe/inet_stream_connect")
+int BPF_KPROBE(ig_inet_stream_connect, struct socket *sock,
+	       struct sockaddr *uaddr, int addr_len, int flags)
 {
-	return enter_tcp_connect(ctx, sk);
+	return enter_tcp_connect(ctx, BPF_CORE_READ(sock, sk));
 }
 
-SEC("kretprobe/tcp_v4_connect")
-int BPF_KRETPROBE(ig_tcpc_v4_co_x, int ret)
+SEC("kretprobe/inet_stream_connect")
+int BPF_KRETPROBE(ig_inet_stream_connect_ret, int ret)
 {
-	return exit_tcp_connect(ctx, ret, 4);
-}
-
-SEC("kprobe/tcp_v6_connect")
-int BPF_KPROBE(ig_tcpc_v6_co_e, struct sock *sk)
-{
-	return enter_tcp_connect(ctx, sk);
-}
-
-SEC("kretprobe/tcp_v6_connect")
-int BPF_KRETPROBE(ig_tcpc_v6_co_x, int ret)
-{
-	return exit_tcp_connect(ctx, ret, 6);
+	return exit_tcp_connect(ctx, ret);
 }
 
 SEC("kprobe/tcp_rcv_state_process")
