@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	pkgtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -55,6 +56,7 @@ func runTraceOOMKill(t *testing.T, ns string, cmd string) {
 				SetEventRuntimeName(m, "")
 				SetEventRuntimeContainerID(m, "")
 				SetEventRuntimeContainerName(m, "")
+				SetEventRuntimeContainerStartedAt(m, pkgtypes.Time(0).String())
 
 				m["fcomm"] = ""
 				m["fpid"] = uint32(0)

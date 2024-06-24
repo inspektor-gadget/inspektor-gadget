@@ -103,6 +103,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				c.SandboxId = ""
 				c.Runtime.ContainerID = ""
 				c.Runtime.ContainerImageDigest = ""
+				c.Runtime.ContainerStartedAt = 0
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
