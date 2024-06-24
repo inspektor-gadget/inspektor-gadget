@@ -32,6 +32,19 @@ const (
 	TypeArray
 )
 
+const (
+	// PeriodicityAnnotation to define the periodicity of data sources.
+	PeriodicityAnnotation = "periodicity"
+)
+
+type Periodicity string
+
+const (
+	PeriodicityNone       Periodicity = "none"
+	PeriodicityByInterval Periodicity = "interval"
+	PeriodicityByEvent    Periodicity = "event"
+)
+
 type dsError string
 
 func (err dsError) Error() string {
