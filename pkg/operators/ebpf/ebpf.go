@@ -328,6 +328,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
+		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityByEvent))
 		m.accessor = accessor
 		m.ds = ds
 	}
@@ -336,7 +337,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
-
+		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityNone))
 		m.accessor = accessor
 		m.ds = ds
 	}
