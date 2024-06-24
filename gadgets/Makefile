@@ -48,25 +48,25 @@ $(GADGETS):
 		$$GADGET_BUILD_PARAMS \
 		$@
 
-.PHONY:
-push: build
-	@echo "Pushing all gadgets"
-	for GADGET in $(GADGETS); do \
-		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
-	done
-
-sign: push
-	@echo "Signing all gadgets"
-	for GADGET in $(GADGETS); do \
-		digest=$$(sudo -E IG_EXPERIMENTAL=true $(IG) image list --no-trunc | grep "$$GADGET " | awk '{ print $$3 }') ; \
-		cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$$GADGET@$$digest || exit 1 ; \
-	done
+%-push: %
+	@echo "Pushing $*"
+	@sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY:
-clean:
-	for GADGET in $(GADGETS); do \
-		sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
-	done
+push: $(addsuffix -push,$(GADGETS))
+
+%-sign: %-push
+	@echo "Signing $*"
+	digest=$$(sudo -E IG_EXPERIMENTAL=true $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
+	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+
+sign: $(addsuffix -sign,$(GADGETS))
+
+%-clean:
+	sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+
+.PHONY:
+clean: $(addsuffix -clean,$(GADGETS))
 
 .PHONY:
 test-ig-local: build
