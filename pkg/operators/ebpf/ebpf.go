@@ -361,7 +361,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
 		// TODO: Make data source periodicity configurable
-		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityByInterval))
+		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityNone))
 		m.accessor = accessor
 		m.ds = ds
 	}
