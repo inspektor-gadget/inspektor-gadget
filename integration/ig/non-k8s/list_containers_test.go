@@ -56,7 +56,6 @@ func TestFilterByContainerName(t *testing.T) {
 				c.K8s.PodLabels = nil
 				c.K8s.PodUID = ""
 				c.Runtime.ContainerID = ""
-				c.Runtime.ContainerStartedAt = 0
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				c.Runtime.ContainerImageName = ""
 				c.Runtime.ContainerImageDigest = ""
@@ -124,7 +123,6 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
-				e.Container.Runtime.ContainerStartedAt = 0
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				e.Container.Runtime.ContainerImageName = ""
 				e.Container.Runtime.ContainerImageDigest = ""

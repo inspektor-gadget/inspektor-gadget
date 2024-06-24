@@ -100,7 +100,6 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig) (*IGManager, erro
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithContainerFanotifyEbpf(),
 		containercollection.WithTracerCollection(l.tracerCollection),
-		containercollection.WithProcEnrichment(),
 	}
 
 	if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(runtimes) {

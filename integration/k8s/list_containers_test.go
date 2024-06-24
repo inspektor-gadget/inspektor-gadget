@@ -80,7 +80,6 @@ func newListContainerTestStep(
 				c.K8s.PodLabels = addPodLabels(pod)
 				c.Runtime.ContainerID = ""
 				c.Runtime.ContainerImageDigest = ""
-				c.Runtime.ContainerStartedAt = 0
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
@@ -215,7 +214,6 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
-				e.Container.Runtime.ContainerStartedAt = 0
 
 				// Docker and CRI-O use a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in
@@ -407,7 +405,6 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Container.SandboxId = ""
 				e.Container.Runtime.ContainerID = ""
 				e.Container.Runtime.ContainerImageDigest = ""
-				e.Container.Runtime.ContainerStartedAt = 0
 				e.Container.K8s.PodLabels = addPodLabels(po)
 				e.Container.K8s.PodUID = ""
 
