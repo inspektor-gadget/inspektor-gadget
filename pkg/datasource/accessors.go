@@ -84,6 +84,9 @@ type FieldAccessor interface {
 	// Annotations returns stored annotations of the field
 	Annotations() map[string]string
 
+	// AddAnnotation sets a new annotation for the field
+	AddAnnotation(key, value string)
+
 	// RemoveReference removes the reference by name from the hierarchy, effectively freeing the name
 	// tbd: name
 	RemoveReference(recurse bool)
@@ -345,6 +348,13 @@ func (a *fieldAccessor) Annotations() map[string]string {
 	}
 	// return a clone to avoid write access
 	return maps.Clone(a.f.Annotations)
+}
+
+func (a *fieldAccessor) AddAnnotation(key, value string) {
+	if a.f.Annotations == nil {
+		a.f.Annotations = map[string]string{}
+	}
+	a.f.Annotations[key] = value
 }
 
 func (a *fieldAccessor) Uint8(data Data) (uint8, error) {
