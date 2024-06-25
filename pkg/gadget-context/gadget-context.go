@@ -191,7 +191,10 @@ func (c *GadgetContext) DataOperators() []operators.DataOperator {
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	ds := datasource.New(t, name)
+	ds, err := datasource.New(t, name)
+	if err != nil {
+		return nil, fmt.Errorf("creating DataSource: %w", err)
+	}
 	c.dataSources[name] = ds
 	return ds, nil
 }

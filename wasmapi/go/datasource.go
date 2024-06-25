@@ -94,7 +94,6 @@ const (
 	DataSourceTypeUndefined DataSourceType = 0
 	DataSourceTypeSingle    DataSourceType = 1
 	DataSourceTypeArray     DataSourceType = 2
-	DataSourceTypeMetrics   DataSourceType = 3
 )
 
 type subscription struct {

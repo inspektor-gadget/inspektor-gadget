@@ -161,7 +161,13 @@ type dataSource struct {
 	lock      sync.RWMutex
 }
 
-func newDataSource(t Type, name string) *dataSource {
+func newDataSource(t Type, name string) (*dataSource, error) {
+	switch t {
+	case TypeSingle, TypeArray:
+	default:
+		return nil, fmt.Errorf("invalid data source type: %v", t)
+	}
+
 	return &dataSource{
 		name:            name,
 		dType:           t,
@@ -170,15 +176,18 @@ func newDataSource(t Type, name string) *dataSource {
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
 		annotations:     map[string]string{},
-	}
+	}, nil
 }
 
-func New(t Type, name string) DataSource {
+func New(t Type, name string) (DataSource, error) {
 	return newDataSource(t, name)
 }
 
 func NewFromAPI(in *api.DataSource) (DataSource, error) {
-	ds := newDataSource(Type(in.Type), in.Name)
+	ds, err := newDataSource(Type(in.Type), in.Name)
+	if err != nil {
+		return nil, fmt.Errorf("creating DataSource: %w", err)
+	}
 	for _, f := range in.Fields {
 		ds.fields = append(ds.fields, (*field)(f))
 		if !FieldFlagUnreferenced.In(f.Flags) {

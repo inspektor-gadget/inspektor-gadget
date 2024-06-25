@@ -139,14 +139,7 @@ func (i *wasmOperatorInstance) addDataSourceFuncs(env wazero.HostModuleBuilder) 
 // - DataSource handle on success, 0 on error
 func (i *wasmOperatorInstance) newDataSource(ctx context.Context, m wapi.Module, stack []uint64) {
 	dsNamePtr := stack[0]
-
-	// TODO: Handle it in datasource.New()
 	dsType := wapi.DecodeU32(stack[1])
-	if dsType > uint32(datasource.TypeMetrics) {
-		i.logger.Warnf("newDataSource: invalid datasource type %d", dsType)
-		stack[0] = 0
-		return
-	}
 
 	dsName, err := stringFromStack(m, dsNamePtr)
 	if err != nil {
