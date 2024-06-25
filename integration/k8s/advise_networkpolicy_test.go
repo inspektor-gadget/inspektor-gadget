@@ -98,7 +98,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+				match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 			},
 		},
 		&Command{
@@ -152,7 +152,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerImageDigest = ""
 				}
 
-				match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+				match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 			},
 		},
 		&Command{

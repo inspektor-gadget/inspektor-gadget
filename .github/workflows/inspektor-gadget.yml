@@ -1459,6 +1459,7 @@ jobs:
       uses: ./.github/actions/setup-minikube
       with:
         runtime: ${{ matrix.runtime }}
+        multi-node: true
     - name: Get gadget-container-image-linux-amd64.tar from artifact.
       uses: actions/download-artifact@v4
       with:

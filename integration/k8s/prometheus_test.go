@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestPrometheus(t *testing.T) {
@@ -152,7 +153,7 @@ EOF
 						r.Metric["otel_scope_name"] = ""
 					}
 
-					ExpectEntriesInArrayToMatch(t, string(prometheusResponse.Data.Result), normalize, expectedEntry)
+					match.MatchEntries(t, match.JSONSingleArrayMode, string(prometheusResponse.Data.Result), normalize, expectedEntry)
 				},
 			},
 		}

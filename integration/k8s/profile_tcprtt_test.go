@@ -238,7 +238,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 				}
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	}
 }

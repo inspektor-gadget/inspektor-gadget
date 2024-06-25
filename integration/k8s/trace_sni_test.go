@@ -66,7 +66,7 @@ func TestTraceSni(t *testing.T) {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	}
 

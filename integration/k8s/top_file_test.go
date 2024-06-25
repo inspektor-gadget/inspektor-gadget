@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func newTopFileCmd(ns string, cmd string, startAndStop bool, expectedEntry *topfileTypes.Stats) *Command {
@@ -34,7 +35,7 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool, expectedEntry *topf
 			normalizeCommonData(&e.CommonData, ns)
 		}
 
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
+		match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 	}
 
 	return &Command{

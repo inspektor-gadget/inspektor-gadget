@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	toptcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -35,7 +36,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool, expectedEntry *toptc
 			normalizeCommonData(&e.CommonData, ns)
 		}
 
-		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
+		match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 	}
 
 	return &Command{

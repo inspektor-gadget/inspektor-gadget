@@ -21,6 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -57,7 +58,7 @@ func TestSnapshotProcess(t *testing.T) {
 				e.Runtime.ContainerImageDigest = ""
 			}
 
-			ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
 		},
 	}
 

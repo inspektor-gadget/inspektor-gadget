@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
@@ -30,48 +29,38 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type traceMountEvent struct {
+type snapshotProcessEntry struct {
 	eventtypes.CommonData
 
-	Delta     uint64 `json:"delta"`
-	Flags     string `json:"flags"`
-	Pid       int    `json:"pid"`
-	Tid       int    `json:"tid"`
-	MountNsID uint64 `json:"mount_ns_id"`
-	Timestamp string `json:"timestamp"`
-	Ret       int    `json:"ret"`
+	MountNsID uint64 `json:"mntns_id"`
+	Pid       uint32 `json:"pid"`
+	Tid       uint32 `json:"tid"`
+	Ppid      uint32 `json:"ppid"`
+	Uid       uint32 `json:"uid"`
+	Gid       uint32 `json:"gid"`
 	Comm      string `json:"comm"`
-	Fs        string `json:"fs"`
-	Src       string `json:"src"`
-	Dest      string `json:"dest"`
-	Data      string `json:"data"`
-	Op        string `json:"op"`
-	Call      string `json:"call"`
 }
 
-func TestTraceMount(t *testing.T) {
+func TestSnapshotProcess(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-trace-mount"
+	containerName := "test-snapshot-process"
 	containerImage := "docker.io/library/busybox:latest"
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
 
-	switch utils.CurrentTestComponent {
-	case utils.KubectlGadgetTestComponent:
-		ns = utils.GenerateTestNamespaceName(t, "test-trace-mount")
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+		ns = utils.GenerateTestNamespaceName(t, "test-snapshot-process")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
-	case utils.IgLocalTestComponent:
-		containerOpts = append(containerOpts, containers.WithPrivileged())
 	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do mount /mnt /mnt; sleep 0.1; done",
+		"setuidgid 1000:1111 nc -l -p 9090",
 		containerOpts...,
 	)
 
@@ -84,54 +73,45 @@ func TestTraceMount(t *testing.T) {
 	var testingOpts []igtesting.Option
 	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
 
+	// TODO: timeout shouldn't be required
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=1"))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=1"))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
-			expectedEntry := &traceMountEvent{
+			expectedEntry := &snapshotProcessEntry{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "mount",
-				Op:         "MOUNT",
-				Src:        "/mnt",
-				Dest:       "/mnt",
-				Ret:        -int(unix.ENOENT),
-				Data:       "",
+				Comm:       "nc",
+				Uid:        1000,
+				Gid:        1111,
 
-				// Check only the existence of these fields
-				Flags:     utils.NormalizedStr,
-				Timestamp: utils.NormalizedStr,
-				Delta:     utils.NormalizedInt,
+				// Check the existence of the following fields
+				MountNsID: utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
-				MountNsID: utils.NormalizedInt,
-				Fs:        utils.NormalizedStr,
-				Call:      utils.NormalizedStr,
+				Ppid:      utils.NormalizedInt,
 			}
 
-			normalize := func(e *traceMountEvent) {
+			normalize := func(e *snapshotProcessEntry) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Delta)
-				utils.NormalizeString(&e.Flags)
+				utils.NormalizeInt(&e.MountNsID)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MountNsID)
-				utils.NormalizeString(&e.Fs)
-				utils.NormalizeString(&e.Call)
+				utils.NormalizeInt(&e.Ppid)
 			}
 
-			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
+			// TODO: Use match.JSONSingleArrayMode once the combiner operator is implemented
+			match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 		},
 	))
 
-	traceMountCmd := igrunner.New("trace_mount", runnerOpts...)
+	snashotProcessCmd := igrunner.New("snapshot_process", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{traceMountCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{snashotProcessCmd}, t, testingOpts...)
 }

@@ -204,7 +204,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 				normalizeCommonData(&e.CommonData, ns)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 
@@ -318,7 +318,7 @@ func TestTraceDnsHost(t *testing.T) {
 				e.Runtime.ContainerImageDigest = ""
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	}
 

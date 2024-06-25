@@ -112,7 +112,7 @@ func TestTraceSNI(t *testing.T) {
 				utils.NormalizeInt(&e.Tid)
 			}
 
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
 		},
 	))
 

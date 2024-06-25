@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestSnapshotProcess(t *testing.T) {
@@ -75,7 +76,7 @@ func TestSnapshotProcess(t *testing.T) {
 				e.K8s.Node = nodeName
 			}
 
-			ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
 		},
 	}
 

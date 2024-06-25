@@ -110,7 +110,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				}
 			}
 
-			ExpectEntriesInArrayToMatch(t, output, normalize, expectedContainer)
+			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedContainer)
 		},
 	}
 
@@ -196,8 +196,8 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 
 			// Watching containers is a command that needs to be started before
 			// the container is created, so we can't filter by container name
-			// neither use ExpectAllInArrayToMatch here.
-			match.ExpectEntriesToMatch(t, output, normalize, expectedEvent)
+			// neither use MatchAllEntries here.
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvent)
 		},
 	}
 

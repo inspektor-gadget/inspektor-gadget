@@ -21,6 +21,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
 func TestTopEbpf(t *testing.T) {
@@ -51,7 +52,7 @@ func TestTopEbpf(t *testing.T) {
 				e.PerCpuUsage = 0
 			}
 
-			ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 		},
 	}
 
