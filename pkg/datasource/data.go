@@ -377,11 +377,6 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 		newFields = append(newFields, nf)
 	}
 
-	// Unref parent fields
-	for p := range parentFields {
-		FieldFlagUnreferenced.AddTo(&newFields[p].Flags)
-	}
-
 	// Check whether parent id is valid
 	for f := range checkParents {
 		parentID := f.Parent - uint32(parentOffset) // adjust offset again to match offset in newFields for this check
