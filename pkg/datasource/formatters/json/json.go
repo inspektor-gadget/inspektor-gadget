@@ -40,6 +40,12 @@ var (
 	closerArrayPretty = []byte("\n]")
 )
 
+const (
+	// SkipFieldAnnotation is used to indicate that this field should be
+	// skipped.
+	SkipFieldAnnotation = "json.skip"
+)
+
 type Formatter struct {
 	ds                datasource.DataSource
 	fns               []func(e *encodeState, data datasource.Data)
@@ -142,6 +148,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 
 		// skip unreferenced fields
 		if datasource.FieldFlagUnreferenced.In(accessor.Flags()) {
+			continue
+		}
+
+		if val, ok := acc.Annotations()[SkipFieldAnnotation]; ok && val == "true" {
 			continue
 		}
 
