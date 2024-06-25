@@ -94,16 +94,16 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 
 	switch (family) {
 	case AF_INET:
-		entry.src.l3.version = entry.dst.l3.version = 4;
-		entry.src.l3.addr.v4 = src_v4;
-		entry.dst.l3.addr.v4 = dest_v4;
+		entry.src.version = entry.dst.version = 4;
+		entry.src.addr_raw.v4 = src_v4;
+		entry.dst.addr_raw.v4 = dest_v4;
 		break;
 	case AF_INET6:
-		entry.src.l3.version = entry.dst.l3.version = 6;
-		bpf_probe_read_kernel(&entry.dst.l3.addr.v6,
-				      sizeof(entry.dst.l3.addr.v6), dest_v6);
-		bpf_probe_read_kernel(&entry.src.l3.addr.v6,
-				      sizeof(entry.src.l3.addr.v6), src_v6);
+		entry.src.version = entry.dst.version = 6;
+		bpf_probe_read_kernel(&entry.dst.addr_raw.v6,
+				      sizeof(entry.dst.addr_raw.v6), dest_v6);
+		bpf_probe_read_kernel(&entry.src.addr_raw.v6,
+				      sizeof(entry.src.addr_raw.v6), src_v6);
 		break;
 	default:
 		return;

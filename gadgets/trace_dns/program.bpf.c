@@ -282,16 +282,16 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 		goto out;
 	event->id = bpf_ntohs(event->id);
 
-	event->src.l3.version = event->dst.l3.version = 4;
+	event->src.version = event->dst.version = 4;
 	err = bpf_skb_load_bytes(skb, ETH_HLEN + offsetof(struct iphdr, daddr),
-				 &event->dst.l3.addr.v4,
-				 sizeof(event->dst.l3.addr.v4));
+				 &event->dst.addr_raw.v4,
+				 sizeof(event->dst.addr_raw.v4));
 	if (err < 0)
 		goto out;
 
 	err = bpf_skb_load_bytes(skb, ETH_HLEN + offsetof(struct iphdr, saddr),
-				 &event->src.l3.addr.v4,
-				 sizeof(event->src.l3.addr.v4));
+				 &event->src.addr_raw.v4,
+				 sizeof(event->src.addr_raw.v4));
 	if (err < 0)
 		goto out;
 

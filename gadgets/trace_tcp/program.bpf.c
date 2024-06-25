@@ -100,28 +100,28 @@ static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 
 	switch (family) {
 	case AF_INET:
-		BPF_CORE_READ_INTO(&tuple->src.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&tuple->src.addr_raw.v4, sk,
 				   __sk_common.skc_rcv_saddr);
-		if (tuple->src.l3.addr.v4 == 0)
+		if (tuple->src.addr_raw.v4 == 0)
 			return false;
 
-		BPF_CORE_READ_INTO(&tuple->dst.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&tuple->dst.addr_raw.v4, sk,
 				   __sk_common.skc_daddr);
-		if (tuple->dst.l3.addr.v4 == 0)
+		if (tuple->dst.addr_raw.v4 == 0)
 			return false;
 
 		break;
 	case AF_INET6:
 		BPF_CORE_READ_INTO(
-			&tuple->src.l3.addr.v6, sk,
+			&tuple->src.addr_raw.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (__builtin_memcmp(&tuple->src.l3.addr.v6, &ip_v6_zero,
-				     sizeof(tuple->src.l3.addr.v6)) == 0)
+		if (__builtin_memcmp(&tuple->src.addr_raw.v6, &ip_v6_zero,
+				     sizeof(tuple->src.addr_raw.v6)) == 0)
 			return false;
-		BPF_CORE_READ_INTO(&tuple->dst.l3.addr.v6, sk,
+		BPF_CORE_READ_INTO(&tuple->dst.addr_raw.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (__builtin_memcmp(&tuple->dst.l3.addr.v6, &ip_v6_zero,
-				     sizeof(tuple->dst.l3.addr.v6)) == 0)
+		if (__builtin_memcmp(&tuple->dst.addr_raw.v6, &ip_v6_zero,
+				     sizeof(tuple->dst.addr_raw.v6)) == 0)
 			return false;
 
 		break;
@@ -157,15 +157,15 @@ static __always_inline void fill_event(struct tuple_key_t *tuple,
 	event->netns = tuple->netns;
 	event->mntns_id = mntns_id;
 	if (family == AF_INET) {
-		event->src.l3.addr.v4 = tuple->src.l3.addr.v4;
-		event->dst.l3.addr.v4 = tuple->dst.l3.addr.v4;
-		event->src.l3.version = event->dst.l3.version = 4;
+		event->src.addr_raw.v4 = tuple->src.addr_raw.v4;
+		event->dst.addr_raw.v4 = tuple->dst.addr_raw.v4;
+		event->src.version = event->dst.version = 4;
 	} else {
-		__builtin_memcpy(event->src.l3.addr.v6, tuple->src.l3.addr.v6,
+		__builtin_memcpy(event->src.addr_raw.v6, tuple->src.addr_raw.v6,
 				 16);
-		__builtin_memcpy(event->dst.l3.addr.v6, tuple->dst.l3.addr.v6,
+		__builtin_memcpy(event->dst.addr_raw.v6, tuple->dst.addr_raw.v6,
 				 16);
-		event->src.l3.version = event->dst.l3.version = 6;
+		event->src.version = event->dst.version = 6;
 	}
 	event->src.port = tuple->src.port;
 	event->dst.port = tuple->dst.port;
@@ -381,10 +381,10 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 
 	fill_tuple(&t, sk, family);
 	/* do not send event if IP address is 0.0.0.0 or port is 0 */
-	if (__builtin_memcmp(t.src.l3.addr.v6, ip_v6_zero,
-			     sizeof(t.src.l3.addr.v6)) == 0 ||
-	    __builtin_memcmp(t.dst.l3.addr.v6, ip_v6_zero,
-			     sizeof(t.dst.l3.addr.v6)) == 0 ||
+	if (__builtin_memcmp(t.src.addr_raw.v6, ip_v6_zero,
+			     sizeof(t.src.addr_raw.v6)) == 0 ||
+	    __builtin_memcmp(t.dst.addr_raw.v6, ip_v6_zero,
+			     sizeof(t.dst.addr_raw.v6)) == 0 ||
 	    t.dst.port == 0 || t.src.port == 0)
 		return 0;
 
