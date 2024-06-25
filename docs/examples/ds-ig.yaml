@@ -35,8 +35,6 @@ spec:
         volumeMounts:
           - mountPath: /host
             name: host
-          - mountPath: /run
-            name: run
           - mountPath: /sys/kernel/debug
             name: debugfs
       nodeSelector:
@@ -45,9 +43,6 @@ spec:
         - name: host
           hostPath:
             path: /
-        - name: run
-          hostPath:
-            path: /run
         - name: debugfs
           hostPath:
             path: /sys/kernel/debug

@@ -27,14 +27,9 @@ spec:
       volumeMounts:
         - mountPath: /host
           name: host
-        - mountPath: /run
-          name: run
   # CHANGEME: where do you want to run this pod?
   nodeName: minikube-containerd
   volumes:
     - name: host
       hostPath:
         path: /
-    - name: run
-      hostPath:
-        path: /run

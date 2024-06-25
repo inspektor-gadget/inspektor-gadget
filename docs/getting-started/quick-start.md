@@ -34,7 +34,6 @@ We can use `docker run` to run `ig` on a Linux host:
 ```bash
 $ docker run -ti --rm \
     --privileged \
-    -v /run:/run \
     -v /:/host \
     --pid=host \
     ghcr.io/inspektor-gadget/ig \
