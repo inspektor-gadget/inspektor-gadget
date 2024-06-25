@@ -28,6 +28,7 @@ structs:
       attributes:
         width: 3
         alignment: left
+        hidden: true
         ellipsis: end
     - name: comm
       attributes:
@@ -35,28 +36,31 @@ structs:
     - name: fs
       attributes:
         width: 8
+        hidden: true
     - name: src
       attributes:
         width: 32
         minWidth: 24
+        hidden: true
     - name: dest
       attributes:
         width: 32
         minWidth: 24
+        hidden: true
     - name: data
       attributes:
         width: 32
         minWidth: 24
+        hidden: true
     - name: op_raw
       attributes:
         width: 6
         minWidth: 6
-    - name: flags
-      description: Mount flags such as MS_RDONLY
+        hidden: true
+    - name: flags_raw
+      description: raw flags value
       attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
+        hidden: true
     - name: timestamp_raw
 ebpfParams:
   target_pid:

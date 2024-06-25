@@ -34,7 +34,7 @@ type traceMountEvent struct {
 	eventtypes.CommonData
 
 	Delta     uint64 `json:"delta"`
-	Flags     uint64 `json:"flags"`
+	Flags     string `json:"flags"`
 	Pid       int    `json:"pid"`
 	Tid       int    `json:"tid"`
 	MountNsID uint64 `json:"mount_ns_id"`
@@ -46,6 +46,7 @@ type traceMountEvent struct {
 	Dest      string `json:"dest"`
 	Data      string `json:"data"`
 	Op        string `json:"op"`
+	Call      string `json:"call"`
 }
 
 func TestTraceMount(t *testing.T) {
@@ -104,24 +105,26 @@ func TestTraceMount(t *testing.T) {
 				Data:       "",
 
 				// Check only the existence of these fields
-				Flags:     utils.NormalizedInt,
+				Flags:     utils.NormalizedStr,
 				Timestamp: utils.NormalizedStr,
 				Delta:     utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
 				MountNsID: utils.NormalizedInt,
 				Fs:        utils.NormalizedStr,
+				Call:      utils.NormalizedStr,
 			}
 
 			normalize := func(e *traceMountEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Delta)
-				utils.NormalizeInt(&e.Flags)
+				utils.NormalizeString(&e.Flags)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.MountNsID)
 				utils.NormalizeString(&e.Fs)
+				utils.NormalizeString(&e.Call)
 			}
 
 			match.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
