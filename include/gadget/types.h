@@ -13,16 +13,16 @@ union gadget_ip_addr_t {
 
 // struct defining either an IPv4 or IPv6 L3 endpoint
 struct gadget_l3endpoint_t {
-	union gadget_ip_addr_t addr;
+	union gadget_ip_addr_t addr_raw;
 	__u8 version; // 4 or 6
-	__u8 pad[3]; // manual padding to avoid issues between C and Go
 };
 
 // struct defining an L4 endpoint
 struct gadget_l4endpoint_t {
-	struct gadget_l3endpoint_t l3;
-	__u16 port;
+	union gadget_ip_addr_t addr_raw;
+	__u16 port; // L4 port in host byte order
 	__u16 proto; // IP protocol number
+	__u8 version; // 4 or 6
 };
 
 // Inode id of a mount namespace. It's used to enrich the event in user space
