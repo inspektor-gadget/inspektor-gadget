@@ -68,7 +68,6 @@ func TestConsts(t *testing.T) {
 	assert.EqualValues(t, wasmapi.DataSourceTypeUndefined, datasource.TypeUndefined)
 	assert.EqualValues(t, wasmapi.DataSourceTypeSingle, datasource.TypeSingle)
 	assert.EqualValues(t, wasmapi.DataSourceTypeArray, datasource.TypeArray)
-	assert.EqualValues(t, wasmapi.DataSourceTypeMetrics, datasource.TypeMetrics)
 
 	// subscriptionType
 	assert.EqualValues(t, wasmapiSubscriptionTypeData, subscriptionTypeData)

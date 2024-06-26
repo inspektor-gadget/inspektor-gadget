@@ -30,7 +30,6 @@ const (
 	TypeUndefined Type = iota
 	TypeSingle
 	TypeArray
-	TypeMetrics
 )
 
 type dsError string
