@@ -4,7 +4,7 @@ This directory contains docker compose files for spinning up grafana and prometh
 Prometheus is configured to scrape metrics from the `ig` instance running on the host machine as:
 
 ```bash
-go run -exec sudo ../../cmd/ig/ prometheus --config @config/histogram.yaml
+go run -exec sudo ../../cmd/ig/ prometheus --metrics-config @config/histogram.yaml
 INFO[0000] Running. Press Ctrl + C to finish
 ...
 ```

@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	ParamConfig = "config"
+	ParamConfig = "metrics-config"
 )
 
 type fakeEvent struct{}

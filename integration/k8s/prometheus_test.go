@@ -111,7 +111,7 @@ EOF
 		counterMetricsCommand := []TestStep{
 			&Command{
 				Name:         "RunPrometheusGadget",
-				Cmd:          "$KUBECTL_GADGET prometheus --config @testdata/prometheus/counter.yaml",
+				Cmd:          "$KUBECTL_GADGET prometheus --metrics-config @testdata/prometheus/counter.yaml",
 				StartAndStop: true,
 			},
 			SleepForSecondsCommand(2),
