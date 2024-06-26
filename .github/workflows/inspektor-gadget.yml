@@ -1967,7 +1967,6 @@ jobs:
       - semgrep
       - test-integration-minikube
       - test-integration-aks
-      - test-integration-aro
       - test-components
       - build-ig-cwe
       - test-ig
