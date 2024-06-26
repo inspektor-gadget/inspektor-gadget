@@ -28,8 +28,8 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type entry  socket ./bpf/socket.bpf.c -- -Werror -O2 -g -c -x c
@@ -77,7 +77,7 @@ func parseStatus(proto string, statusUint uint8) (string, error) {
 
 func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes.Event, error) {
 	sockets := []*socketcollectortypes.Event{}
-	err := netnsenter.NetnsEnter(int(pid), func() error {
+	err := nsenter.NetnsEnter(int(pid), func() error {
 		for _, it := range t.iters {
 			reader, err := it.Open()
 			if err != nil {

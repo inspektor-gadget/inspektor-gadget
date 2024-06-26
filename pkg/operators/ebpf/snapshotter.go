@@ -26,8 +26,8 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 type linkSnapshotter struct {
@@ -179,7 +179,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 					}
 					visitedNetNs[container.Netns] = struct{}{}
 
-					err := netnsenter.NetnsEnter(int(container.Pid), func() error {
+					err := nsenter.NetnsEnter(int(container.Pid), func() error {
 						reader, err := l.link.Open()
 						if err != nil {
 							return err
