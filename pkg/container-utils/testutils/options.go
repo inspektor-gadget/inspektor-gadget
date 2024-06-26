@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ type containerOptions struct {
 	removal          bool
 	portBindings     nat.PortMap
 	privileged       bool
+	limits           map[string]string
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -139,5 +140,12 @@ func WithPortBindings(portBindings nat.PortMap) Option {
 func WithForceDelete() Option {
 	return func(opts *containerOptions) {
 		opts.forceDelete = true
+	}
+}
+
+// WithLimits sets the resource limits of the container
+func WithLimits(limits map[string]string) Option {
+	return func(opts *containerOptions) {
+		opts.limits = limits
 	}
 }
