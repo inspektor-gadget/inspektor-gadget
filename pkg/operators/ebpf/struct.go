@@ -165,43 +165,49 @@ func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
 	return nil
 }
 
-func getFieldKind(typ reflect.Type, tags []string) api.Kind {
+func getFieldKind(typ reflect.Type, tags []string) (api.Kind, bool) {
 	if typ == nil {
-		return api.Kind_Invalid
+		return api.Kind_Invalid, false
 	}
 
 	switch typ.Kind() {
 	case reflect.Bool:
-		return api.Kind_Bool
+		return api.Kind_Bool, false
 	case reflect.Int8:
-		return api.Kind_Int8
+		return api.Kind_Int8, false
 	case reflect.Int16:
-		return api.Kind_Int16
+		return api.Kind_Int16, false
 	case reflect.Int32:
-		return api.Kind_Int32
+		return api.Kind_Int32, false
 	case reflect.Int64:
-		return api.Kind_Int64
+		return api.Kind_Int64, false
 	case reflect.Uint8:
-		return api.Kind_Uint8
+		return api.Kind_Uint8, false
 	case reflect.Uint16:
-		return api.Kind_Uint16
+		return api.Kind_Uint16, false
 	case reflect.Uint32:
-		return api.Kind_Uint32
+		return api.Kind_Uint32, false
 	case reflect.Uint64:
-		return api.Kind_Uint64
+		return api.Kind_Uint64, false
 	case reflect.Float32:
-		return api.Kind_Float32
+		return api.Kind_Float32, false
 	case reflect.Float64:
-		return api.Kind_Float64
+		return api.Kind_Float64, false
 	case reflect.Array:
 		// Special case to handle char arrays as strings
 		// TODO: Handle other cases once we support arrays
 		if typ.Elem().Kind() == reflect.Int8 && slices.Contains(tags, "type:char") {
-			return api.Kind_CString
+			return api.Kind_CString, false
 		}
+		kind, arrayKind := getFieldKind(typ.Elem(), tags)
+		if arrayKind {
+			// shy away
+			return api.Kind_Invalid, false
+		}
+		return kind, true
 	}
 
-	return api.Kind_Invalid
+	return api.Kind_Invalid, false
 }
 
 func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32, parent int) {
@@ -273,11 +279,13 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		i.enums[member.Name] = enum
 	}
 
-	kind := getFieldKind(refType, tags)
+	kind, arrayKind := getFieldKind(refType, tags)
+	if arrayKind {
+		kind = api.ArrayOf(kind)
+	}
 
 	field := newField(fsize, kind)
 	field.Field.Attributes.Width = uint(columns.GetWidthFromType(refType.Kind()))
-
 	i.logger.Debugf(" adding field %q (%s) (kind: %s) at %d (parent %d) (%v)",
 		field.Name, fieldType, kind.String(), field.Offset, parent, tags)
 	*fields = append(*fields, field)
