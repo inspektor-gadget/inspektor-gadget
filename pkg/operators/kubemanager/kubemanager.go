@@ -446,6 +446,10 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		},
 	}
 
+	if m.params.Get(ParamAllNamespaces).AsBool() {
+		containerSelector.K8s.Namespace = ""
+	}
+
 	if m.manager.gadgetTracerManager == nil {
 		return fmt.Errorf("container-collection isn't available")
 	}
