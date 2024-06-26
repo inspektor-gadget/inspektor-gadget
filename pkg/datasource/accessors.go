@@ -20,6 +20,9 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"unsafe"
+
+	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
@@ -35,6 +38,22 @@ func (e *InvalidFieldLengthErr) Error() string {
 
 func invalidFieldLengthErr(size, expected int) error {
 	return &InvalidFieldLengthErr{
+		Expected: expected,
+		Actual:   size,
+	}
+}
+
+type InvalidMultipleOfFieldLengthErr struct {
+	Expected int
+	Actual   int
+}
+
+func (e *InvalidMultipleOfFieldLengthErr) Error() string {
+	return fmt.Sprintf("invalid field length, expected multiple of %d, got %d", e.Expected, e.Actual)
+}
+
+func invalidMultipleOfFieldLengthErr(size, expected int) error {
+	return &InvalidMultipleOfFieldLengthErr{
 		Expected: expected,
 		Actual:   size,
 	}
@@ -108,6 +127,17 @@ type FieldAccessor interface {
 	String(Data) (string, error)
 	Bytes(Data) ([]byte, error)
 	Bool(Data) (bool, error)
+
+	Uint8Array(Data) ([]uint8, error)
+	Uint16Array(Data) ([]uint16, error)
+	Uint32Array(Data) ([]uint32, error)
+	Uint64Array(Data) ([]uint64, error)
+	Int8Array(Data) ([]int8, error)
+	Int16Array(Data) ([]int16, error)
+	Int32Array(Data) ([]int32, error)
+	Int64Array(Data) ([]int64, error)
+	Float32Array(Data) ([]float32, error)
+	Float64Array(Data) ([]float64, error)
 
 	PutUint8(Data, uint8) error
 	PutUint16(Data, uint16) error
@@ -443,6 +473,66 @@ func (a *fieldAccessor) Float64(data Data) (float64, error) {
 		return 0.0, err
 	}
 	return math.Float64frombits(i), nil
+}
+
+// Array functions
+// to be discussed: these methods use a slow copying method to return the arrays
+// It can also be done using for the unsafe package, like:
+// return unsafe.Slice((*uint64)(unsafe.Pointer(&val[0])), len(val)/8), nil
+// I _think_ it's okay, but if there are any reasons against it, please let me know.
+
+func copyArray[T constraints.Integer | constraints.Float](a *fieldAccessor, data Data, convert func([]byte) T) ([]T, error) {
+	var s T
+	size := int(unsafe.Sizeof(s))
+	val := a.Get(data)
+	if len(val)%size != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), size)
+	}
+	res := make([]T, 0, len(val)/size)
+	for i := 0; i < len(val); i += size {
+		res = append(res, convert(val[i:i+size]))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Uint8Array(data Data) ([]uint8, error) {
+	return copyArray(a, data, func(v []byte) uint8 { return v[0] })
+}
+
+func (a *fieldAccessor) Uint16Array(data Data) ([]uint16, error) {
+	return copyArray(a, data, a.ds.byteOrder.Uint16)
+}
+
+func (a *fieldAccessor) Uint32Array(data Data) ([]uint32, error) {
+	return copyArray(a, data, a.ds.byteOrder.Uint32)
+}
+
+func (a *fieldAccessor) Uint64Array(data Data) ([]uint64, error) {
+	return copyArray(a, data, a.ds.byteOrder.Uint64)
+}
+
+func (a *fieldAccessor) Int8Array(data Data) ([]int8, error) {
+	return copyArray(a, data, func(v []byte) int8 { return int8(v[0]) })
+}
+
+func (a *fieldAccessor) Int16Array(data Data) ([]int16, error) {
+	return copyArray(a, data, func(v []byte) int16 { return int16(a.ds.byteOrder.Uint16(v)) })
+}
+
+func (a *fieldAccessor) Int32Array(data Data) ([]int32, error) {
+	return copyArray(a, data, func(v []byte) int32 { return int32(a.ds.byteOrder.Uint32(v)) })
+}
+
+func (a *fieldAccessor) Int64Array(data Data) ([]int64, error) {
+	return copyArray(a, data, func(v []byte) int64 { return int64(a.ds.byteOrder.Uint64(v)) })
+}
+
+func (a *fieldAccessor) Float32Array(data Data) ([]float32, error) {
+	return copyArray(a, data, func(v []byte) float32 { return math.Float32frombits(a.ds.byteOrder.Uint32(v)) })
+}
+
+func (a *fieldAccessor) Float64Array(data Data) ([]float64, error) {
+	return copyArray(a, data, func(v []byte) float64 { return math.Float64frombits(a.ds.byteOrder.Uint64(v)) })
 }
 
 func (a *fieldAccessor) String(data Data) (string, error) {
