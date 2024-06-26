@@ -40,6 +40,22 @@ func invalidFieldLengthErr(size, expected int) error {
 	}
 }
 
+type InvalidMultipleOfFieldLengthErr struct {
+	Expected int
+	Actual   int
+}
+
+func (e *InvalidMultipleOfFieldLengthErr) Error() string {
+	return fmt.Sprintf("invalid field length, expected multiple of %d, got %d", e.Expected, e.Actual)
+}
+
+func invalidMultipleOfFieldLengthErr(size, expected int) error {
+	return &InvalidMultipleOfFieldLengthErr{
+		Expected: expected,
+		Actual:   size,
+	}
+}
+
 // FieldAccessor grants access to the underlying buffer of a field
 type FieldAccessor interface {
 	Name() string
@@ -108,6 +124,17 @@ type FieldAccessor interface {
 	String(Data) (string, error)
 	Bytes(Data) ([]byte, error)
 	Bool(Data) (bool, error)
+
+	Uint8Array(Data) ([]uint8, error)
+	Uint16Array(Data) ([]uint16, error)
+	Uint32Array(Data) ([]uint32, error)
+	Uint64Array(Data) ([]uint64, error)
+	Int8Array(Data) ([]int8, error)
+	Int16Array(Data) ([]int16, error)
+	Int32Array(Data) ([]int32, error)
+	Int64Array(Data) ([]int64, error)
+	Float32Array(Data) ([]float32, error)
+	Float64Array(Data) ([]float64, error)
 
 	PutUint8(Data, uint8) error
 	PutUint16(Data, uint16) error
@@ -443,6 +470,126 @@ func (a *fieldAccessor) Float64(data Data) (float64, error) {
 		return 0.0, err
 	}
 	return math.Float64frombits(i), nil
+}
+
+// Array functions
+// to be discussed: these methods use a slow copying method to return the arrays
+// It can also be done using for the unsafe package, like:
+// return unsafe.Slice((*uint64)(unsafe.Pointer(&val[0])), len(val)/8), nil
+// I _think_ it's okay, but if there are any reasons against it, please let me know.
+
+func (a *fieldAccessor) Uint8Array(data Data) ([]uint8, error) {
+	val := a.Get(data)
+	res := make([]uint8, 0, len(val))
+	for i := 0; i < len(val); i++ {
+		res = append(res, val[i])
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Uint16Array(data Data) ([]uint16, error) {
+	val := a.Get(data)
+	if len(val)%2 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 2)
+	}
+	res := make([]uint16, 0, len(val)/2)
+	for i := 0; i < len(val); i += 2 {
+		res = append(res, a.ds.byteOrder.Uint16(val[i:]))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Uint32Array(data Data) ([]uint32, error) {
+	val := a.Get(data)
+	if len(val)%4 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 4)
+	}
+	res := make([]uint32, 0, len(val)/4)
+	for i := 0; i < len(val); i += 4 {
+		res = append(res, a.ds.byteOrder.Uint32(val[i:]))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Uint64Array(data Data) ([]uint64, error) {
+	val := a.Get(data)
+	if len(val)%8 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 4)
+	}
+	res := make([]uint64, 0, len(val)/8)
+	for i := 0; i < len(val); i += 8 {
+		res = append(res, a.ds.byteOrder.Uint64(val[i:]))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Int8Array(data Data) ([]int8, error) {
+	val := a.Get(data)
+	res := make([]int8, 0, len(val))
+	for i := 0; i < len(val); i++ {
+		res = append(res, int8(val[i]))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Int16Array(data Data) ([]int16, error) {
+	val := a.Get(data)
+	if len(val)%2 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 2)
+	}
+	res := make([]int16, 0, len(val)/2)
+	for i := 0; i < len(val); i += 2 {
+		res = append(res, int16(a.ds.byteOrder.Uint16(val[i:])))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Int32Array(data Data) ([]int32, error) {
+	val := a.Get(data)
+	if len(val)%4 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 4)
+	}
+	res := make([]int32, 0, len(val)/4)
+	for i := 0; i < len(val); i += 4 {
+		res = append(res, int32(a.ds.byteOrder.Uint32(val[i:])))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Int64Array(data Data) ([]int64, error) {
+	val := a.Get(data)
+	if len(val)%8 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 4)
+	}
+	res := make([]int64, 0, len(val)/8)
+	for i := 0; i < len(val); i += 8 {
+		res = append(res, int64(a.ds.byteOrder.Uint64(val[i:])))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Float32Array(data Data) ([]float32, error) {
+	val := a.Get(data)
+	if len(val)%4 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 4)
+	}
+	res := make([]float32, 0, len(val)/4)
+	for i := 0; i < len(val); i += 4 {
+		res = append(res, math.Float32frombits(a.ds.byteOrder.Uint32(val[i:])))
+	}
+	return res, nil
+}
+
+func (a *fieldAccessor) Float64Array(data Data) ([]float64, error) {
+	val := a.Get(data)
+	if len(val)%8 != 0 {
+		return nil, invalidMultipleOfFieldLengthErr(len(val), 8)
+	}
+	res := make([]float64, 0, len(val)/8)
+	for i := 0; i < len(val); i += 8 {
+		res = append(res, math.Float64frombits(a.ds.byteOrder.Uint64(val[i:])))
+	}
+	return res, nil
 }
 
 func (a *fieldAccessor) String(data Data) (string, error) {
