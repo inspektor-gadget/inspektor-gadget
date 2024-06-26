@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 func CgroupPathV2AddMountpoint(path string) (string, error) {
@@ -56,7 +57,17 @@ func GetCgroupID(pathWithMountpoint string) (uint64, error) {
 func GetCgroupPaths(pid int) (string, string, error) {
 	cgroupPathV1 := ""
 	cgroupPathV2 := ""
-	if cgroupFile, err := os.Open(filepath.Join(host.HostProcFs, fmt.Sprint(pid), "cgroup")); err == nil {
+
+	hostCgroupNs, err := host.IsHostCgroupNs()
+	if err != nil {
+		return "", "", err
+	}
+
+	readFn := func() error {
+		cgroupFile, err := os.Open(filepath.Join(host.HostProcFs, fmt.Sprint(pid), "cgroup"))
+		if err != nil {
+			return fmt.Errorf("parsing cgroup: %w", err)
+		}
 		defer cgroupFile.Close()
 		reader := bufio.NewReader(cgroupFile)
 		for {
@@ -75,8 +86,16 @@ func GetCgroupPaths(pid int) (string, string, error) {
 				continue
 			}
 		}
+		return nil
+	}
+
+	if hostCgroupNs {
+		err = readFn()
 	} else {
-		return "", "", fmt.Errorf("parsing cgroup: %w", err)
+		err = nsenter.CgroupnsEnter(1, readFn)
+	}
+	if err != nil {
+		return "", "", err
 	}
 
 	if cgroupPathV1 == "/" {

@@ -39,6 +39,7 @@ const (
 func TestRuntimeClientInterface(t *testing.T) {
 	t.Parallel()
 	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
 
 	for _, runtime := range testutils.SupportedContainerRuntimes {
 		t.Run(runtime.String(), func(t *testing.T) {
