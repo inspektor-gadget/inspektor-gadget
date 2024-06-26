@@ -22,7 +22,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-	_ "unsafe"
+	"unsafe"
+
+	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -59,6 +61,7 @@ type Formatter struct {
 	array             bool
 	indent            string
 	opener            []byte
+	openerArray       []byte
 	fieldSep          []byte
 }
 
@@ -81,9 +84,11 @@ func New(ds datasource.DataSource, options ...Option) (*Formatter, error) {
 
 func (f *Formatter) init() error {
 	f.opener = opener
+	f.openerArray = openerArray
 	f.fieldSep = fieldSep
 	if f.pretty {
 		f.opener = openerPretty
+		f.openerArray = openerArrayPretty
 		f.fieldSep = fieldSepPretty
 	}
 	for _, field := range f.fields {
@@ -129,6 +134,43 @@ func (f *Formatter) init() error {
 		e.Write(closer)
 	})
 	return nil
+}
+
+func writeIntArrFn[T constraints.Integer](
+	toArrayFn func(datasource.Data) ([]T, error),
+	fieldSep []byte,
+	newIndent string,
+) func(e *encodeState, data datasource.Data) {
+	return func(e *encodeState, data datasource.Data) {
+		vals, _ := toArrayFn(data)
+		for i, v := range vals {
+			if i > 0 {
+				e.Write(fieldSep)
+			}
+			e.WriteString(newIndent)
+			b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
+			e.Write(b)
+		}
+	}
+}
+
+func writeFloatArrFn[T constraints.Float](
+	toArrayFn func(datasource.Data) ([]T, error),
+	fieldSep []byte,
+	newIndent string,
+) func(e *encodeState, data datasource.Data) {
+	var f T
+	fsize := unsafe.Sizeof(f)
+	return func(e *encodeState, data datasource.Data) {
+		vals, _ := toArrayFn(data)
+		for i, v := range vals {
+			if i > 0 {
+				e.Write(fieldSep)
+			}
+			e.WriteString(newIndent)
+			floatEncoder(fsize*8).writeFloat(e, float64(v))
+		}
+	}
 }
 
 func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix string, indent string) (fns []func(*encodeState, datasource.Data), fieldCounter int) {
@@ -200,8 +242,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		}
 
 		closer := closer
+		closerArray := closerArray
 		if f.pretty {
 			closer = append([]byte("\n"+indent), closer...)
+			closerArray = append([]byte("\n"+indent), closerArray...)
 		}
 
 		// Field has subfields
@@ -218,7 +262,50 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		}
 
 		var fn func(e *encodeState, data datasource.Data)
+
 		// Field doesn't have subfields
+		if accessor.Type()&api.KindFlagArray != 0 {
+			newIndent := ""
+			if f.pretty {
+				newIndent = indent + f.indent
+			}
+			switch accessor.Type() {
+			case api.ArrayOf(api.Kind_Int8):
+				fn = writeIntArrFn(accessor.Int8Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Int16):
+				fn = writeIntArrFn(accessor.Int16Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Int32):
+				fn = writeIntArrFn(accessor.Int32Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Int64):
+				fn = writeIntArrFn(accessor.Int64Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Uint8):
+				fn = writeIntArrFn(accessor.Uint8Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Uint16):
+				fn = writeIntArrFn(accessor.Uint16Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Uint32):
+				fn = writeIntArrFn(accessor.Uint32Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Uint64):
+				fn = writeIntArrFn(accessor.Uint64Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Float32):
+				fn = writeFloatArrFn(accessor.Float32Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_Float64):
+				fn = writeFloatArrFn(accessor.Float64Array, f.fieldSep, newIndent)
+			default:
+				fn = func(e *encodeState, data datasource.Data) {
+					e.Write(fieldName)
+					writeString(e, hex.EncodeToString(accessor.Get(data)))
+				}
+				continue
+			}
+			fns = append(fns, func(e *encodeState, data datasource.Data) {
+				e.Write(fieldName)
+				e.Write(f.openerArray)
+				fn(e, data)
+				e.Write(closerArray)
+			})
+			continue
+		}
+
 		switch accessor.Type() {
 		case api.Kind_Int8:
 			fn = func(e *encodeState, data datasource.Data) {
