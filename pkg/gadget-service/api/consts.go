@@ -34,6 +34,18 @@ const (
 )
 
 const (
+	KindFlagArray Kind = 0x10000000
+)
+
+func ArrayOf(kind Kind) Kind {
+	return kind | KindFlagArray
+}
+
+func IsArrayKind(kind Kind) bool {
+	return kind&KindFlagArray != 0
+}
+
+const (
 	GadgetServicePort = 8080
 	DefaultDaemonPath = "unix:///var/run/ig/ig.socket"
 )
