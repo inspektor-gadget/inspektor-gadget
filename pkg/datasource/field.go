@@ -24,25 +24,25 @@ type FieldFlag uint32
 
 const (
 	// FieldFlagEmpty means the field cannot have a value
-	FieldFlagEmpty FieldFlag = 1 << iota
+	FieldFlagEmpty FieldFlag = 1
 
 	// FieldFlagContainer means that the field is statically sized and can have multiple statically sized members;
 	// AddStaticFields() will return the container for all given fields, and it is assumed, that the creator will
 	// always assign the full container using Set()
-	FieldFlagContainer
+	FieldFlagContainer FieldFlag = 2
 
 	// FieldFlagHidden sets a field to invisible
-	FieldFlagHidden
+	FieldFlagHidden FieldFlag = 4
 
 	// FieldFlagHasParent means that the field is not directly attached to the root of DataSource, but instead to
 	// another field that is referenced to in the Parent field
-	FieldFlagHasParent
+	FieldFlagHasParent FieldFlag = 8
 
 	// FieldFlagStaticMember means that the field is part of a container and is statically sized
-	FieldFlagStaticMember
+	FieldFlagStaticMember FieldFlag = 16
 
 	// FieldFlagUnreferenced means that a field is no longer referenced by its name in the DataSource
-	FieldFlagUnreferenced
+	FieldFlagUnreferenced FieldFlag = 32
 )
 
 func (f FieldFlag) Uint32() uint32 {
