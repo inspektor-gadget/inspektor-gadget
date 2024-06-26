@@ -25,6 +25,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
+	otelmetrics "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
@@ -84,6 +85,7 @@ func main() {
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	operators.RegisterDataOperator(ocihandler.OciHandler)
+	operators.RegisterDataOperator(otelmetrics.Operator)
 
 	rootCmd.AddCommand(newDaemonCommand(runtime))
 	rootCmd.AddCommand(image.NewImageCmd())

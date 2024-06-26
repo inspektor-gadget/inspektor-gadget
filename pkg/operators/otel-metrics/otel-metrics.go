@@ -16,10 +16,12 @@ package otelmetrics
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -27,10 +29,12 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -374,6 +378,41 @@ func (mc *metricsCollector) addValHistFunc(f datasource.FieldAccessor) error {
 	switch f.Type() {
 	default:
 		return fmt.Errorf("unsupported field type for metrics value %q: %s", f.Name(), f.Type())
+	case api.ArrayOf(api.Kind_Uint32):
+		// Calc buckets
+		alen := int(f.Size() / 4)
+		log.Printf("buckets: %d", alen)
+		log.Printf("buckets off: %d", f.Size()%4)
+
+		bucketVals := make([]int64, alen)
+		bucketValsFloat := make([]float64, alen)
+		for i := range bucketVals {
+			bucketVals[i] = int64(1 << i)
+			bucketValsFloat[i] = float64(bucketVals[i])
+		}
+
+		options = append(options, metric.WithExplicitBucketBoundaries(bucketValsFloat...))
+		hOptions := make([]metric.Int64HistogramOption, len(options))
+		for i, option := range options {
+			hOptions[i] = option
+		}
+
+		hist, err := mc.meter.Int64Histogram(f.Name(), hOptions...)
+		if err != nil {
+			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
+		}
+		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
+			b := f.Get(data)
+			for i := 0; i < alen; i++ {
+				val := binary.LittleEndian.Uint32(b[i*4:])
+				// This looks counterintuitive - and it is. However, there's currently no way to mirror
+				// existing buckets to an otel meter directly.
+				for range val {
+					hist.Record(ctx, bucketVals[i], metric.WithAttributeSet(set))
+				}
+			}
+		})
+		return nil
 	case api.Kind_Uint8,
 		api.Kind_Uint16,
 		api.Kind_Uint32,
@@ -476,6 +515,7 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 			gadgetCtx.Logger().Debugf("registered field %q as type %q", fieldName, metricsType)
 		}
 		if !hasValueFields {
+			gadgetCtx.Logger().Debugf("no value fields found for metrics %q", mappedName)
 			continue
 		}
 		m.collectors[ds] = collector
@@ -493,6 +533,41 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			return err
 		}
 	}
+	go func() {
+		// Periodically print
+		md := &metricdata.ResourceMetrics{}
+		for {
+			err := m.op.exporter.Collect(context.Background(), md)
+			if err != nil {
+				return
+			}
+			for _, sm := range md.ScopeMetrics {
+				for _, m := range sm.Metrics {
+					fmt.Println(m.Name)
+					switch t := m.Data.(type) {
+					case metricdata.Histogram[int64]:
+						for _, dp := range t.DataPoints {
+							last := uint64(0)
+							v := make([]histogram.Interval, 0, len(dp.Bounds))
+							for bucket, high := range dp.Bounds {
+								v = append(v, histogram.Interval{
+									Count: dp.BucketCounts[bucket],
+									Start: last,
+									End:   uint64(high),
+								})
+								last = uint64(high)
+							}
+							h := histogram.Histogram{
+								Intervals: v,
+							}
+							fmt.Println(h.String())
+						}
+					}
+				}
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 	return nil
 }
 

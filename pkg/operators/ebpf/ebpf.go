@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 
@@ -107,6 +108,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		structs:      make(map[string]*Struct),
 		snapshotters: make(map[string]*Snapshotter),
 		params:       make(map[string]*param),
+		mapIters:     make(map[string]*mapIter),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -137,6 +139,11 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		return nil, fmt.Errorf("initializing ebpf gadget: %w", err)
 	}
 
+	err = newInstance.evaluateMapParams(paramValues)
+	if err != nil {
+		return nil, fmt.Errorf("evaluating map params: %w", err)
+	}
+
 	return newInstance, nil
 }
 
@@ -153,6 +160,7 @@ type ebpfInstance struct {
 	tracers      map[string]*Tracer
 	structs      map[string]*Struct
 	snapshotters map[string]*Snapshotter
+	mapIters     map[string]*mapIter
 	params       map[string]*param
 	paramValues  map[string]string
 
@@ -205,6 +213,11 @@ func (i *ebpfInstance) analyze() error {
 		// 	validator:    i.validateGlobalConstVoidPtrVar,
 		// 	populateFunc: i.populateMap,
 		// },
+		{
+			prefixFunc:   hasPrefix(mapIterPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.populateMapIter,
+		},
 		{
 			prefixFunc: func(s string) (string, bool) {
 				// Exceptions for backwards-compatibility
@@ -340,6 +353,49 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.accessor = accessor
 		m.ds = ds
 	}
+	for name, m := range i.mapIters {
+		fields := make([]*Field, 0)
+		ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, name)
+		if err != nil {
+			return fmt.Errorf("adding mapiter datasource: %w", err)
+		}
+		ds.AddAnnotation("metrics.export", "true")
+		staticFields := make([]datasource.StaticField, 0, len(fields))
+		for _, field := range i.structs[m.keyStructName].Fields {
+			if field.Annotations == nil {
+				field.Annotations = make(map[string]interface{})
+			}
+			field.Annotations["metrics.type"] = "key"
+			staticFields = append(staticFields, field)
+		}
+		accessor, err := ds.AddStaticFields(i.structs[m.keyStructName].Size, staticFields)
+		if err != nil {
+			return fmt.Errorf("adding fields for datasource: %w", err)
+		}
+		m.keyAccessor = accessor
+
+		staticFields = make([]datasource.StaticField, 0, len(fields))
+		for _, field := range i.structs[m.valStructName].Fields {
+			if field.Annotations == nil {
+				field.Annotations = make(map[string]interface{})
+			}
+			if slices.Contains(field.Tags, "type:gadget_histogram_slot__u32") || slices.Contains(field.Tags, "type:gadget_histogram_slot__u64") {
+				field.Annotations["metrics.type"] = "histogram"
+			} else if slices.Contains(field.Tags, "type:gadget_counter__u32") || slices.Contains(field.Tags, "type:gadget_counter__u64") {
+				field.Annotations["metrics.type"] = "counter"
+			} else if slices.Contains(field.Tags, "type:gadget_gauge__u32") || slices.Contains(field.Tags, "type:gadget_gauge__u64") {
+				field.Annotations["metrics.type"] = "gauge"
+			}
+			staticFields = append(staticFields, field)
+		}
+		accessor, err = ds.AddStaticFields(i.structs[m.valStructName].Size, staticFields)
+		if err != nil {
+			return fmt.Errorf("adding fields for datasource: %w", err)
+		}
+		m.valAccessor = accessor
+
+		m.ds = ds
+	}
 	return nil
 }
 
@@ -352,6 +408,9 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 	for _, p := range i.params {
 		res = append(res, p.Param)
 	}
+
+	// MapIter params
+	res = append(res, i.mapParams()...)
 	return res
 }
 
@@ -595,6 +654,12 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		i.Close()
 		return fmt.Errorf("running snapshotters: %w", err)
+	}
+
+	err = i.runMapIterators()
+	if err != nil {
+		i.Close()
+		return fmt.Errorf("running map iterators: %w", err)
 	}
 
 	return nil
