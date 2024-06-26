@@ -292,6 +292,11 @@ func main() {
 			log.Fatalf("Detecting net namespace: %v", err)
 		}
 		log.Infof("HostNetwork=%t", hostNetNs)
+		hostCgroupNs, err := host.IsHostCgroupNs()
+		if err != nil {
+			log.Fatalf("Detecting cgroup namespace: %v", err)
+		}
+		log.Infof("HostCgroup=%t", hostCgroupNs)
 
 		node := os.Getenv("NODE_NAME")
 		if node == "" {

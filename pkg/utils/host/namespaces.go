@@ -29,30 +29,25 @@ import (
 	"syscall"
 )
 
-var (
-	onceHostPidNs sync.Once
-	isHostPidNs   bool
-	errHostPidNs  error
-
-	onceHostNetNs sync.Once
-	isHostNetNs   bool
-	errHostNetNs  error
-)
-
 // IsHostPidNs returns true if the current process is running in the host PID namespace
 func IsHostPidNs() (bool, error) {
-	onceHostPidNs.Do(func() {
-		isHostPidNs, errHostPidNs = isHostNamespace("pid")
-	})
-	return isHostPidNs, errHostPidNs
+	return sync.OnceValues[bool, error](func() (bool, error) {
+		return isHostNamespace("pid")
+	})()
 }
 
 // IsHostNetNs returns true if the current process is running in the host network namespace
 func IsHostNetNs() (bool, error) {
-	onceHostNetNs.Do(func() {
-		isHostNetNs, errHostNetNs = isHostNamespace("net")
-	})
-	return isHostNetNs, errHostNetNs
+	return sync.OnceValues[bool, error](func() (bool, error) {
+		return isHostNamespace("net")
+	})()
+}
+
+// IsHostCgroupNs returns true if the current process is running in the host cgroup namespace
+func IsHostCgroupNs() (bool, error) {
+	return sync.OnceValues[bool, error](func() (bool, error) {
+		return isHostNamespace("cgroup")
+	})()
 }
 
 // isHostNamespace checks if the current process is running in the specified host namespace
