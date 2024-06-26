@@ -59,6 +59,7 @@ type Formatter struct {
 	array             bool
 	indent            string
 	opener            []byte
+	openerArray       []byte
 	fieldSep          []byte
 }
 
@@ -81,9 +82,11 @@ func New(ds datasource.DataSource, options ...Option) (*Formatter, error) {
 
 func (f *Formatter) init() error {
 	f.opener = opener
+	f.openerArray = openerArray
 	f.fieldSep = fieldSep
 	if f.pretty {
 		f.opener = openerPretty
+		f.openerArray = openerArrayPretty
 		f.fieldSep = fieldSepPretty
 	}
 	for _, field := range f.fields {
@@ -200,8 +203,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		}
 
 		closer := closer
+		closerArray := closerArray
 		if f.pretty {
 			closer = append([]byte("\n"+indent), closer...)
+			closerArray = append([]byte("\n"+indent), closerArray...)
 		}
 
 		// Field has subfields
@@ -218,7 +223,149 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		}
 
 		var fn func(e *encodeState, data datasource.Data)
+
 		// Field doesn't have subfields
+
+		if accessor.Type()&api.KindFlagArray != 0 {
+			newIndent := ""
+			if f.pretty {
+				newIndent = indent + f.indent
+			}
+			switch accessor.Type() {
+			case api.ArrayOf(api.Kind_Int8):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Int8Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Int16):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Int16Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Int32):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Int16Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Int64):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Int64Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendInt(e.scratch[:0], int64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Uint8):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Uint8Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Uint16):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Uint16Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Uint32):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Uint32Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendUint(e.scratch[:0], uint64(v), 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Uint64):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Uint64Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						b := strconv.AppendUint(e.scratch[:0], v, 10)
+						e.Write(b)
+					}
+				}
+			case api.ArrayOf(api.Kind_Float32):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Float32Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						floatEncoder(32).writeFloat(e, float64(v))
+					}
+				}
+			case api.ArrayOf(api.Kind_Float64):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.Float64Array(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						floatEncoder(64).writeFloat(e, v)
+					}
+				}
+			default:
+				fn = func(e *encodeState, data datasource.Data) {
+					e.Write(fieldName)
+					writeString(e, hex.EncodeToString(accessor.Get(data)))
+				}
+				continue
+			}
+			fns = append(fns, func(e *encodeState, data datasource.Data) {
+				e.Write(fieldName)
+				e.Write(f.openerArray)
+				fn(e, data)
+				e.Write(closerArray)
+			})
+			continue
+		}
+
 		switch accessor.Type() {
 		case api.Kind_Int8:
 			fn = func(e *encodeState, data datasource.Data) {
