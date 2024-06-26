@@ -158,6 +158,22 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 		t.Fatalf("Failed to wait on task %q: %s", c.name, err)
 	}
 	c.pid = int(task.Pid())
+	// TODO: it should get the container IP by using GetIfaces() but it creates an import cycle
+	//	ifaces, err := containerutils.GetIfaces(c.pid)
+	//	if err != nil {
+	//		t.Fatalf("Failed to get interfaces for container %q: %s", c.name, err)
+	//	}
+	//
+	//	if len(ifaces) != 1 {
+	//		t.Fatalf("Expected 1 interface for container %q, got %d", c.name, len(ifaces))
+	//	}
+	//
+	//	addrs, err := ifaces[0].Addrs()
+	//	if err != nil {
+	//		t.Fatalf("Failed to get addresses for interface %q: %s", ifaces[0].Name, err)
+	//	}
+	//
+	//	c.ip = addrs[0].String()
 
 	if c.options.wait {
 		s := <-c.exitStatus
