@@ -82,6 +82,7 @@ func (c *K8sContainer) Start(t *testing.T) {
 	}, t)
 
 	c.id = getContainerID(t, c.name, c.options.namespace)
+	c.ip = getPodIP(t, c.name, c.options.namespace)
 	c.started = true
 }
 
@@ -236,4 +237,13 @@ func getContainerID(t *testing.T, podName, namespace string) string {
 	parts := strings.Split(ret, "/")
 	require.GreaterOrEqual(t, len(parts), 1, "unexpected container id")
 	return parts[len(parts)-1]
+}
+
+func getPodIP(t *testing.T, podName, namespace string) string {
+	cmd := exec.Command("kubectl", "-n", namespace, "get", "pod", podName, "-o", "jsonpath={.status.podIP}")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	r, err := cmd.Output()
+	require.NoError(t, err, "getting pod ip: %s", stderr.String())
+	return string(r)
 }
