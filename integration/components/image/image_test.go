@@ -16,10 +16,13 @@ package image
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -242,4 +245,63 @@ func TestImage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func calculateSha256Sum(t *testing.T, filePath string) string {
+	t.Helper()
+
+	file, err := os.Open(filePath)
+	require.NoError(t, err)
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	require.NoError(t, err)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func runCmd(t *testing.T, cmd *cobra.Command, args []string) {
+	t.Helper()
+
+	cmd.SetArgs(args)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestExportDeterministic(t *testing.T) {
+	// ensure that experimental is enabled
+	os.Setenv("IG_EXPERIMENTAL", "true")
+
+	testImage := "test-image-export"
+	tmpFolder := t.TempDir()
+	gadgetSrcFolder := path.Join(tmpFolder, "gadget")
+	err := os.MkdirAll(gadgetSrcFolder, 0o755)
+	require.NoError(t, err)
+
+	// create an empty eBPF program for the test as it compiles fine
+	_, err = os.Create(path.Join(gadgetSrcFolder, "program.bpf.c"))
+	require.NoError(t, err)
+
+	sums := make([]string, 2)
+
+	t.Setenv("SOURCE_DATE_EPOCH", fmt.Sprint(time.Now().Unix()))
+
+	// build and export the image
+	for i := 0; i < 2; i++ {
+		runCmd(t, commonImage.NewBuildCmd(), []string{
+			"--builder-image", *testBuilderImage, "--tag", testImage, gadgetSrcFolder,
+		})
+		exportPath := path.Join(tmpFolder, fmt.Sprintf("export%d.tar", i))
+		runCmd(t, commonImage.NewExportCmd(), []string{testImage, exportPath})
+		sums[i] = calculateSha256Sum(t, exportPath)
+
+		runCmd(t, commonImage.NewRemoveCmd(), []string{testImage})
+		os.Remove(exportPath)
+		time.Sleep(2 * time.Second) // ensure that the timestamp of the files is different
+	}
+
+	require.Equal(t, sums[0], sums[1])
 }

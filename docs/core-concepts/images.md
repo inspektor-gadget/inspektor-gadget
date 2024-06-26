@@ -192,6 +192,27 @@ Supported files:
 - `*.wasm`: prebuilt wasm module
 - `*.go`: automatically built with tinygo
 
+#### Reproducible builds
+
+The `build` command supports the
+[`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/docs/source-date-epoch/)
+env variable:
+
+```bash
+# Set SOURCE_DATE_EPOCH to the last modification of the ebpf program source code.
+# It can be set to any epoch you want.
+$ export SOURCE_DATE_EPOCH="$(date -r program.bpf.c +%s)"
+
+$ sudo -E ig image build -t foo:latest .
+INFO[0000] Experimental features enabled
+Successfully built ghcr.io/inspektor-gadget/gadget/foo:latest@sha256:373f077d366ef2703535e8e862b60f8a35cc1a9312e9e203534b8fce554f8749
+
+# Building again produces the exact same digest
+$ sudo -E ig image build -t foo:latest .
+INFO[0000] Experimental features enabled
+Successfully built ghcr.io/inspektor-gadget/gadget/foo:latest@sha256:373f077d366ef2703535e8e862b60f8a35cc1a9312e9e203534b8fce554f8749
+```
+
 #### `list`
 
 List gadget images on the host.
