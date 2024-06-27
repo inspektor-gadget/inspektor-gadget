@@ -54,7 +54,7 @@ $(GADGETS):
 
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
-	gomplate -d gadget=$(@:README.md=gadget.yaml) < README.template > $@
+	gomplate -d gadget=$(@:README.md=gadget.yaml) -d artifacthubpkg=$(@:README.md=artifacthub-pkg.yml) < README.template > $@
 
 .PHONY:
 push: build
