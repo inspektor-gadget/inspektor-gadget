@@ -122,6 +122,19 @@ Then, it can be used each time a gadget is run:
 $ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest --pull-secret my-pull-secret
 ```
 
+You can specify the pull secret as part of configuration file to avoid specifying it each time you run a gadget:
+
+```yaml
+# ~/.ig/config.yaml
+...
+operator:
+  oci:
+    pull-secret: "my-pull-secret"
+...
+```
+
+For more information about the configuration file, check the [configuration guide](#configuration-file).
+
 ## With `ig`
 
 ``` bash
@@ -165,3 +178,100 @@ mycontainer3                                        122110  cat              0  
 mycontainer3                                        122110  cat              0        0        3         /lib/libc.so.6
 mycontainer3                                        122110  cat              0        0        3         /dev/null
 ```
+
+## Environment Variables
+
+You can use environment variables to configure the behavior of the `run` command. The environment variables use fully qualified names (as in the [configuration file]())
+with the prefix `INSPEKTOR_GADGET_`.
+
+```bash
+# Enable verbose output
+$ export INSPEKTOR_GADGET_VERBOSE=true
+$ kubectl gadget run trace_open
+INFO[0000] Experimental features enabled                
+DEBU[0000] using target "gadget-b7jrc" ("minikube-docker")
+...
+# Disable image verification (not recommended)
+$ export INSPEKTOR_GADGET_OPERATOR_OCI_VERIFY_IMAGE=false
+$ sudo ig run trace_open
+INFO[0000] Experimental features enabled
+WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
+WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] you set --verify-image=false, image will not be verified
+...
+```
+
+## Configuration File
+
+You can use a configuration file to set specific settings that persist across multiple executions. The default location for the configuration file is `~/.ig/config.yaml`.
+You can change the location of the configuration file specifying the `--config` flag.
+
+The default configuration file can be generated using the following command:
+
+```bash
+# Default configuration file for kubectl gadget
+$ kubectl gadget config default
+as: ""
+as-group: []
+as-uid: ""
+cache-dir: /home/qasim/.kube/cache
+...
+
+# Default configuration file for ig
+$ ig config default
+INFO[0000] Experimental features enabled
+auto-mount-filesystems: "false"
+auto-wsl-workaround: "false"
+operator:
+    localmanager:
+        containerd-namespace: k8s.io
+...
+# Default configuration file for gadgetctl
+$ gadgetctl config default
+operator:
+    oci:
+        allowed-digests: ""
+        authfile: /var/lib/ig/config.json
+        insecure: "false"
+...
+```
+
+You can use the default configuration as a starting point (e.g. `ig config default > ~/.ig/config.yaml`) and modify it to suit your needs.
+
+The current configuration can be printed using the following command:
+
+```bash
+# Print the current configuration for kubectl gadget
+$ kubectl gadget config view
+INFO[0000] Experimental features enabled
+as: ""
+as-group: []
+as-uid: ""
+cache-dir: /home/qasim/.kube/cache
+...
+
+# Print the current configuration for ig
+$ ig config view
+INFO[0000] Experimental features enabled
+operator:
+    localmanager:
+        containerd-namespace: k8s.io
+        runtimes: docker,containerd,cri-o,podman
+...
+# Print the current configuration for gadgetctl
+$ gadgetctl config view
+INFO[0000] Experimental features enabled
+operator:
+    oci:
+        authfile: /var/lib/ig/config.json
+        insecure: "false"
+...
+```
+
+## Precedence
+
+The precedence ([coming from viper](https://github.com/spf13/viper?tab=readme-ov-file#why-viper)) of the configuration settings is as follows:
+- Flags passed to the command
+- Environment variables
+- Configuration file
+- Default values
