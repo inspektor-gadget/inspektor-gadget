@@ -30,10 +30,14 @@ GADGETS = \
 	ci/sched_cls_drop \
 	#
 
+GADGETS_README = $(addsuffix /README.md, $(GADGETS))
+
 .PHONY: all
 all: build
 
 build: $(GADGETS)
+
+readmes: $(GADGETS_README)
 
 # GADGET_BUILD_PARAMS can be used to pass additional parameters e.g
 # GADGET_BUILD_PARAMS="--update-metadata" make build
@@ -47,6 +51,10 @@ $(GADGETS):
 		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) \
 		$$GADGET_BUILD_PARAMS \
 		$@
+
+.PHONY: $(GADGETS_README)
+$(GADGETS_README):
+	gomplate -d gadget=$(@:README.md=gadget.yaml) < README.template > $@
 
 .PHONY:
 push: build
