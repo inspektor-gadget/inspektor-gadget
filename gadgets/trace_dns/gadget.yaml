@@ -54,17 +54,27 @@ datasources:
       name:
         annotations:
           columns.width: 30
+      qr_raw:
+        annotations:
+          columns.hidden: true
       qr:
         annotations:
+          columns.minwidth: 2
           columns.width: 2
       pkt_type:
         annotations:
           columns.width: 8
+          columns.hidden: true
+      rcode_raw:
+        annotations:
+          columns.hidden: true
       rcode:
         annotations:
+          columns.minwidth: 8
           columns.width: 8
       latency_ns:
         annotations:
+          description: DNS request latency
           columns.width: 8
           columns.hidden: true
       anaddr:
@@ -73,12 +83,25 @@ datasources:
       id:
         annotations:
           columns.hidden: true
+      qtype_raw:
+        annotations:
+          columns.hidden: true
       qtype:
         annotations:
           description: Query type
-      ancount:
+      num_answers:
+        annotations:
+          description: Number of answers
+          columns.hidden: true
+      dns_off:
         annotations:
           columns.hidden: true
-      anaddrcount:
+          json.skip: true
+      data:
         annotations:
           columns.hidden: true
+          json.skip: true
+      data_len:
+        annotations:
+          columns.hidden: true
+          json.skip: true
