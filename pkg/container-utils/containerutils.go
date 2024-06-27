@@ -181,3 +181,41 @@ func GetIfacePeers(pid int) ([]*net.Interface, error) {
 
 	return ifacesHost, err
 }
+
+// GetIfaces returns the interfaces inside the container
+// It returns only veth and up devices
+func GetIfaces(pid int) ([]*net.Interface, error) {
+	var ifaces []*net.Interface
+
+	err := netnsenter.NetnsEnter(pid, func() error {
+		links, err := netlink.LinkList()
+		if err != nil {
+			return fmt.Errorf("getting links: %w", err)
+		}
+
+		for _, link := range links {
+			veth, ok := link.(*netlink.Veth)
+			if !ok {
+				continue
+			}
+
+			if veth.LinkAttrs.Flags&net.FlagUp == 0 {
+				continue
+			}
+
+			iface, err := net.InterfaceByIndex(link.Attrs().Index)
+			if err != nil {
+				return fmt.Errorf("getting interface by index: %w", err)
+			}
+
+			ifaces = append(ifaces, iface)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return ifaces, nil
+}

@@ -189,3 +189,20 @@ func (f Field) SetBytes(data Data, buf []byte) error {
 	}
 	return nil
 }
+
+func (f Field) Bool(data Data) (bool, error) {
+	val := fieldGet(uint32(f), uint32(data), uint32(Kind_Bool))
+	return val == 1, nil
+}
+
+func (f Field) SetBool(data Data, b bool) error {
+	var value uint64
+	if b {
+		value = 1
+	}
+	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Bool), value)
+	if ret != 0 {
+		return errSetField
+	}
+	return nil
+}
