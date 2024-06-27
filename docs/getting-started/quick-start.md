@@ -18,7 +18,7 @@ We can quickly try out Inspektor Gadget without installing by using [`ig`](../ig
 We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
 
 ```bash
-$ kubectl debug node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig --auto-sd-unit-restart trace exec
+$ kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig trace exec
 Creating debugging pod node-debugger-minikube-docker-c2wfw with container debugger on node minikube-docker.
 If you don't see a command prompt, try pressing enter.
 RUNTIME.CONTAINERNAME          PID              PPID             COMM             RET ARGS
