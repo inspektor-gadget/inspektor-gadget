@@ -36,33 +36,16 @@ structs:
       attributes:
         hidden: true
         template: uid
-    - name: name
-      attributes:
-        width: 30
-    - name: qr
-      attributes:
-        width: 2
-    - name: pkt_type
-      attributes:
-        width: 8
-    - name: rcode
-      attributes:
-        width: 8
-    - name: latency_ns
-      attributes:
-        width: 8
-        hidden: true
-    - name: anaddr
-      attributes:
-        width: 16
     - name: netns
       description: Network namespace inode id
       attributes:
         template: ns
+        hidden: true
     - name: mntns_id
       description: Mount namespace inode id
       attributes:
         template: ns
+        hidden: true
     - name: tid
       description: 'TODO: Fill field description'
       attributes:
@@ -70,30 +53,19 @@ structs:
         alignment: left
         hidden: true
         ellipsis: end
-    - name: id
-      description: 'TODO: Fill field description'
+    # These fields are internal, hide them from the user
+    - name: data
+      annotations:
+        json.skip: true
       attributes:
-        width: 16
-        alignment: left
         hidden: true
-        ellipsis: end
-    - name: qtype
-      description: 'TODO: Fill field description'
+    - name: data_len
+      annotations:
+        json.skip: true
       attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: ancount
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
         hidden: true
-        ellipsis: end
-    - name: anaddrcount
-      description: 'TODO: Fill field description'
+    - name: dns_off
+      annotations:
+        json.skip: true
       attributes:
-        width: 16
-        alignment: left
         hidden: true
-        ellipsis: end
