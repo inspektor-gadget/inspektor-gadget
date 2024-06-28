@@ -84,7 +84,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				},
 			}
 
-			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+			// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 			if isDockerRuntime {
 				expectedContainer.Runtime.ContainerImageName = ""
 			}
@@ -104,7 +104,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				c.Runtime.ContainerID = ""
 				c.Runtime.ContainerImageDigest = ""
 
-				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 				if isDockerRuntime {
 					c.Runtime.ContainerImageName = ""
 				}
@@ -156,7 +156,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 				},
 			}
 
-			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+			// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 			if isDockerRuntime {
 				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
@@ -188,7 +188,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 					e.Container.Runtime.ContainerName = cn
 				}
 
-				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 				if isDockerRuntime {
 					e.Container.Runtime.ContainerImageName = ""
 				}

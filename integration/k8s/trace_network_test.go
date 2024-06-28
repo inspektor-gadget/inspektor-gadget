@@ -164,7 +164,7 @@ func TestTraceNetwork(t *testing.T) {
 							e.Runtime.ContainerName = cn
 						}
 					}
-					// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+					// Docker can provide different values for ContainerImageName. See `getContainerImageInfoFromImage`
 					if isDockerRuntime {
 						e.Runtime.ContainerImageName = ""
 					}
