@@ -1961,7 +1961,6 @@ jobs:
     name: Release
     # level: 5
     needs:
-      - documentation-checks
       - ebpf-objects-checks
       - lint
       - semgrep
