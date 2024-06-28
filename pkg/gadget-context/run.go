@@ -34,6 +34,10 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		return ops[i].Priority() < ops[j].Priority()
 	})
 
+	for _, op := range ops {
+		log.Debugf("operator %q has priority %d", op.Name(), op.Priority())
+	}
+
 	params := make([]*api.Param, 0)
 
 	dataOperatorInstances := make([]operators.DataOperatorInstance, 0, len(ops))
@@ -82,15 +86,13 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 	return dataOperatorInstances, nil
 }
 
-func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstance) error {
-	log := c.Logger()
-
+func (c *GadgetContext) start(dataOperatorInstances []operators.DataOperatorInstance) error {
 	for _, opInst := range dataOperatorInstances {
 		preStart, ok := opInst.(operators.PreStart)
 		if !ok {
 			continue
 		}
-		log.Debugf("pre-starting op %q", opInst.Name())
+		c.Logger().Debugf("pre-starting op %q", opInst.Name())
 		err := preStart.PreStart(c)
 		if err != nil {
 			c.cancel()
@@ -98,20 +100,26 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 		}
 	}
 
-	ctx := c.Context()
-	if c.timeout > 0 {
-		newContext, cancel := context.WithTimeout(ctx, c.timeout)
-		defer cancel()
-		ctx = newContext
-	}
-
 	for _, opInst := range dataOperatorInstances {
-		log.Debugf("starting op %q", opInst.Name())
+		c.Logger().Debugf("starting op %q", opInst.Name())
 		err := opInst.Start(c)
 		if err != nil {
 			c.cancel()
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
+	}
+
+	return nil
+}
+
+func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstance) {
+	log := c.Logger()
+
+	ctx := c.Context()
+	if c.timeout > 0 {
+		newContext, cancel := context.WithTimeout(ctx, c.timeout)
+		defer cancel()
+		ctx = newContext
 	}
 
 	log.Debugf("running...")
@@ -141,7 +149,6 @@ func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstan
 			log.Errorf("post-stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
-	return nil
 }
 
 func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
@@ -155,5 +162,10 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 		c.cancel()
 		return fmt.Errorf("initializing and preparing operators: %w", err)
 	}
-	return c.run(dataOperatorInstances)
+	if err := c.start(dataOperatorInstances); err != nil {
+		c.cancel()
+		return fmt.Errorf("starting operators: %w", err)
+	}
+	c.run(dataOperatorInstances)
+	return nil
 }

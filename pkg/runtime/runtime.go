@@ -29,6 +29,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	RunTargets = "run-targets"
+)
+
 type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser
@@ -46,6 +50,7 @@ type GadgetContext interface {
 	ImageName() string
 	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
 	GetDataSources() map[string]datasource.DataSource
+	GetDataSourcesAll() map[string]datasource.DataSource
 	SetVar(string, any)
 	GetVar(string) (any, bool)
 	SerializeGadgetInfo() (*api.GadgetInfo, error)

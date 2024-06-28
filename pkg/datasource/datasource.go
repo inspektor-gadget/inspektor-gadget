@@ -32,6 +32,19 @@ const (
 	TypeArray
 )
 
+const (
+	// PeriodicityAnnotation to define the periodicity of data sources.
+	PeriodicityAnnotation = "periodicity"
+)
+
+type Periodicity string
+
+const (
+	PeriodicityNone       Periodicity = "none"
+	PeriodicityByInterval Periodicity = "interval"
+	PeriodicityByEvent    Periodicity = "event"
+)
+
 type dsError string
 
 func (err dsError) Error() string {
@@ -165,6 +178,7 @@ type DataSource interface {
 
 	Accessors(rootOnly bool) []FieldAccessor
 
+	SetRequested(bool)
 	IsRequested() bool
 
 	// ByteOrder returns a binary accessor using the byte order of the creator of the DataSource
@@ -175,4 +189,6 @@ type DataSource interface {
 
 	Annotations() map[string]string
 	Tags() []string
+
+	CopyFieldsTo(DataSource) error
 }
