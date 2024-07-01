@@ -180,7 +180,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	int ret;
 	struct event *event;
 	pid_t execs_lookup_key;
-	u32 uid = (u32)bpf_get_current_uid_gid();
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
