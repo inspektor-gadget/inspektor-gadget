@@ -62,8 +62,16 @@ static __always_inline bool is_dns_port(__u16 port)
 	return false;
 }
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event_t *unusedevent __attribute__((unused));
+// Cannot use gadget_reserve_buf() because this does not support
+// bpf_perf_event_output with packet appended
+static const struct event_t empty_event = {};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(struct event_t));
+} tmp_events SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
@@ -127,10 +135,11 @@ struct {
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
-	struct event_t event;
+	struct event_t *event;
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
 	int i;
+	int zero = 0;
 
 	// Do a first pass only to extract the port and drop the packet if it's not DNS
 	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
@@ -213,38 +222,42 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	// Initialize event here only after we know we're interested in this packet to avoid
 	// spending useless cycles.
-	__builtin_memset(&event, 0, sizeof(event));
+	bpf_map_update_elem(&tmp_events, &zero, &empty_event, BPF_NOEXIST);
+	event = bpf_map_lookup_elem(&tmp_events, &zero);
+	if (!event)
+		return 0;
+	bpf_map_delete_elem(&tmp_events, &zero);
 
-	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
-	event.timestamp = bpf_ktime_get_boot_ns();
-	event.proto = proto;
-	event.dns_off = dns_off;
-	event.pkt_type = skb->pkt_type;
-	event.sport = sport;
-	event.dport = dport;
+	event->netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	event->timestamp = bpf_ktime_get_boot_ns();
+	event->proto = proto;
+	event->dns_off = dns_off;
+	event->pkt_type = skb->pkt_type;
+	event->sport = sport;
+	event->dport = dport;
 
 	// The packet is DNS: Do a second pass to extract all the information we need
 	switch (h_proto) {
 	case ETH_P_IP:
-		event.af = AF_INET;
-		event.daddr_v4 = load_word(
+		event->af = AF_INET;
+		event->daddr_v4 = load_word(
 			skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-		event.saddr_v4 = load_word(
+		event->saddr_v4 = load_word(
 			skb, ETH_HLEN + offsetof(struct iphdr, saddr));
 		// load_word converts from network to host endianness. Convert back to
 		// network endianness because inet_ntop() requires it.
-		event.daddr_v4 = bpf_htonl(event.daddr_v4);
-		event.saddr_v4 = bpf_htonl(event.saddr_v4);
+		event->daddr_v4 = bpf_htonl(event->daddr_v4);
+		event->saddr_v4 = bpf_htonl(event->saddr_v4);
 		break;
 	case ETH_P_IPV6:
-		event.af = AF_INET6;
+		event->af = AF_INET6;
 		if (bpf_skb_load_bytes(
 			    skb, ETH_HLEN + offsetof(struct ipv6hdr, saddr),
-			    &event.saddr_v6, sizeof(event.saddr_v6)))
+			    &event->saddr_v6, sizeof(event->saddr_v6)))
 			return 0;
 		if (bpf_skb_load_bytes(
 			    skb, ETH_HLEN + offsetof(struct ipv6hdr, daddr),
-			    &event.daddr_v6, sizeof(event.daddr_v6)))
+			    &event->daddr_v6, sizeof(event->daddr_v6)))
 			return 0;
 		break;
 	}
@@ -252,13 +265,21 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
 	if (skb_val != NULL) {
-		event.mount_ns_id = skb_val->mntns;
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task, skb_val->task,
-				 sizeof(event.task));
-		event.uid = (__u32)skb_val->uid_gid;
-		event.gid = (__u32)(skb_val->uid_gid >> 32);
+		event->mount_ns_id = skb_val->mntns;
+		event->pid = skb_val->pid_tgid >> 32;
+		event->tid = (__u32)skb_val->pid_tgid;
+		event->ppid = skb_val->ppid;
+		__builtin_memcpy(&event->comm, skb_val->task,
+				 sizeof(event->comm));
+		__builtin_memcpy(&event->pcomm, skb_val->ptask,
+				 sizeof(event->pcomm));
+		event->uid = (__u32)skb_val->uid_gid;
+		event->gid = (__u32)(skb_val->uid_gid >> 32);
+		bpf_probe_read_kernel_str(&event->cwd, sizeof(event->cwd),
+					  skb_val->cwd);
+		bpf_probe_read_kernel_str(&event->exepath,
+					  sizeof(event->exepath),
+					  skb_val->exepath);
 	}
 
 	// Calculate latency:
@@ -278,7 +299,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// Skip this if skb_val == NULL (gadget_socket_lookup did not set pid_tgid we use in the query key)
 	// or if event->timestamp == 0 (kernels before 5.8 don't support bpf_ktime_get_boot_ns, and the patched
 	// version IG injects always returns zero).
-	if (skb_val != NULL && event.timestamp > 0) {
+	if (skb_val != NULL && event->timestamp > 0) {
 		union dnsflags flags;
 		flags.flags = load_half(skb, dns_off + offsetof(struct dnshdr,
 								flags));
@@ -289,18 +310,18 @@ int ig_trace_dns(struct __sk_buff *skb)
 			.pid_tgid = skb_val->pid_tgid,
 			.id = id,
 		};
-		if (qr == DNS_QR_QUERY && event.pkt_type == PACKET_OUTGOING) {
+		if (qr == DNS_QR_QUERY && event->pkt_type == PACKET_OUTGOING) {
 			bpf_map_update_elem(&query_map, &query_key,
-					    &event.timestamp, BPF_NOEXIST);
+					    &event->timestamp, BPF_NOEXIST);
 		} else if (flags.qr == DNS_QR_RESP &&
-			   event.pkt_type == PACKET_HOST) {
+			   event->pkt_type == PACKET_HOST) {
 			__u64 *query_ts =
 				bpf_map_lookup_elem(&query_map, &query_key);
 			if (query_ts != NULL) {
 				// query ts should always be less than the event ts, but check anyway to be safe.
-				if (*query_ts < event.timestamp) {
-					event.latency_ns =
-						event.timestamp - *query_ts;
+				if (*query_ts < event->timestamp) {
+					event->latency_ns =
+						event->timestamp - *query_ts;
 				}
 				bpf_map_delete_elem(&query_map, &query_key);
 			}
@@ -309,7 +330,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	__u64 skb_len = skb->len;
 	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+			      event, sizeof(*event));
 
 	return 0;
 }

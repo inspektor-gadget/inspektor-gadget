@@ -19,9 +19,11 @@ type dnsEventT struct {
 	MountNsId uint64
 	Pid       uint32
 	Tid       uint32
+	Ppid      uint32
 	Uid       uint32
 	Gid       uint32
-	Task      [16]uint8
+	Comm      [16]uint8
+	Pcomm     [16]uint8
 	SaddrV6   [16]uint8
 	DaddrV6   [16]uint8
 	Af        uint16
@@ -30,8 +32,10 @@ type dnsEventT struct {
 	DnsOff    uint16
 	Proto     uint8
 	PktType   uint8
-	_         [6]byte
+	_         [2]byte
 	LatencyNs uint64
+	Cwd       [4096]uint8
+	Exepath   [4096]uint8
 }
 
 type dnsQueryKeyT struct {
@@ -54,10 +58,14 @@ type dnsSocketsValue struct {
 	PidTgid           uint64
 	UidGid            uint64
 	Task              [16]int8
+	Ptask             [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
+	Cwd               [4096]uint8
+	Exepath           [4096]uint8
+	Ppid              uint32
 	Ipv6only          int8
-	_                 [7]byte
+	_                 [3]byte
 }
 
 // loadDns returns the embedded CollectionSpec for dns.
@@ -111,6 +119,7 @@ type dnsMapSpecs struct {
 	Events        *ebpf.MapSpec `ebpf:"events"`
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 	QueryMap      *ebpf.MapSpec `ebpf:"query_map"`
+	TmpEvents     *ebpf.MapSpec `ebpf:"tmp_events"`
 }
 
 // dnsObjects contains all objects after they have been loaded into the kernel.
@@ -135,6 +144,7 @@ type dnsMaps struct {
 	Events        *ebpf.Map `ebpf:"events"`
 	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
 	QueryMap      *ebpf.Map `ebpf:"query_map"`
+	TmpEvents     *ebpf.Map `ebpf:"tmp_events"`
 }
 
 func (m *dnsMaps) Close() error {
@@ -142,6 +152,7 @@ func (m *dnsMaps) Close() error {
 		m.Events,
 		m.GadgetSockets,
 		m.QueryMap,
+		m.TmpEvents,
 	)
 }
 
