@@ -31,6 +31,8 @@ GADGETS = \
 	ci/sched_cls_drop \
 	#
 
+DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 GADGETS_README = $(addsuffix /README.md, $(GADGETS))
 
 .PHONY: all
@@ -55,7 +57,13 @@ $(GADGETS):
 
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
-	gomplate -d gadget=$(@:README.md=gadget.yaml) -d artifacthubpkg=$(@:README.md=artifacthub-pkg.yml) < README.template > $@
+	gomplate -d gadget=$(@:README.md=gadget.yaml) -d artifacthubpkg=$(@:README.md=artifacthub-pkg.yml) --file README.template --out $@.new
+	if ! cmp $@ $@.new > /dev/null ; then \
+		mv $@.new $@ ; \
+		sed -i 's/^createdAt:.*$$/createdAt: "$(DATE)"/g' $(@:README.md=artifacthub-pkg.yml) ; \
+	else \
+		rm -f $@.new ; \
+	fi
 
 .PHONY:
 push: build
