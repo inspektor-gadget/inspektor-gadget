@@ -4,6 +4,7 @@ name: "trace tcp"
 category: monitoring-logging
 displayName: "trace tcp"
 createdAt: "2024-07-01T09:22:04Z"
+digest: "2024-07-01T13:58:59Z"
 description: "monitor connect, accept and close events of TCP connections"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
