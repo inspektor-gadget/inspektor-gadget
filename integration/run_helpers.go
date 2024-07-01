@@ -48,6 +48,12 @@ func SetEventRuntimeContainerName(jsonObj map[string]interface{}, s string) {
 	}
 }
 
+func SetEventRuntimeContainerStartedAt(jsonObj map[string]interface{}, s string) {
+	if runtimeMetadata := jsonObj["runtime"].(map[string]interface{}); runtimeMetadata != nil {
+		runtimeMetadata["containerStartedAt"] = s
+	}
+}
+
 func SetEventK8sNode(jsonObj map[string]interface{}, s string) {
 	if k8sMetadata := jsonObj["k8s"].(map[string]interface{}); k8sMetadata != nil {
 		k8sMetadata["node"] = s

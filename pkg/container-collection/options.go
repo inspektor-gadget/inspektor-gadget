@@ -910,3 +910,26 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		return nil
 	}
 }
+
+// WithProcEnrichment enables an enricher to add process metadata
+func WithProcEnrichment() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+			pid := int(container.Pid)
+			if pid == 0 {
+				log.Errorf("proc enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
+				return false
+			}
+
+			procStat, err := host.GetProcStat(pid)
+			if err != nil {
+				log.Errorf("proc enricher: failed to read /proc/%d/stat for container %s: %v", pid, container.Runtime.ContainerID, err)
+				return false
+			}
+
+			container.Runtime.ContainerStartedAt = procStat.StartedAt
+			return true
+		})
+		return nil
+	}
+}

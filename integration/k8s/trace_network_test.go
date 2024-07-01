@@ -152,6 +152,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Gid = 0
 				e.Runtime.ContainerID = ""
 				e.Runtime.ContainerImageDigest = ""
+				e.Runtime.ContainerStartedAt = 0
 
 				switch DefaultTestComponent {
 				case IgTestComponent:
