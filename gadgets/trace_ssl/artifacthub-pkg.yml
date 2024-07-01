@@ -3,7 +3,7 @@ version: 0.29.0
 name: "trace ssl"
 category: monitoring-logging
 displayName: "trace ssl"
-createdAt: "2024-04-20T14:09:00+08:00"
+createdAt: "2024-07-01T09:22:04Z"
 description: "use uprobe to capture data on read/recv or write/send functions of OpenSSL, GnuTLS, NSS and Libcrypto"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

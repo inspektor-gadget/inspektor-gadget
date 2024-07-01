@@ -3,7 +3,7 @@ version: 0.29.0
 name: "snapshot process"
 category: monitoring-logging
 displayName: "snapshot process"
-createdAt: "2024-03-25T14:32:05+01:00"
+createdAt: "2024-07-01T09:22:04Z"
 description: "Show running processes"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
