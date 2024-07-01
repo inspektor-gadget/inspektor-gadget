@@ -34,6 +34,7 @@ import (
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -59,6 +60,7 @@ type RunConfig struct {
 type Service struct {
 	api.UnimplementedBuiltInGadgetManagerServer
 	api.UnimplementedGadgetManagerServer
+	instanceMgr       *instancemanager.Manager
 	listener          net.Listener
 	runtime           runtime.Runtime
 	logger            logger.Logger
@@ -83,6 +85,11 @@ func NewService(defaultLogger logger.Logger) *Service {
 
 func (s *Service) SetEventBufferLength(val uint64) {
 	s.eventBufferLength = val
+}
+
+func (s *Service) SetInstanceManager(mgr *instancemanager.Manager) {
+	s.instanceMgr = mgr
+	mgr.Service = s
 }
 
 func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {
@@ -338,12 +345,18 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 	server := grpc.NewServer(serverOptions...)
 	api.RegisterBuiltInGadgetManagerServer(server, s)
 	api.RegisterGadgetManagerServer(server, s)
+	api.RegisterGadgetInstanceManagerServer(server, s.instanceMgr)
 
 	s.servers[server] = struct{}{}
 
 	err = s.initOperators()
 	if err != nil {
 		return fmt.Errorf("initializing operators: %w", err)
+	}
+
+	err = s.instanceMgr.Store.LoadStoredGadgets()
+	if err != nil {
+		return fmt.Errorf("loading stored gadgets: %w", err)
 	}
 
 	return server.Serve(s.listener)

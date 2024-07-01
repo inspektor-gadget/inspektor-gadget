@@ -27,6 +27,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
+	filestore "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager/file-store"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
@@ -94,6 +96,15 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
 		service.SetEventBufferLength(eventBufferLength)
+
+		mgr := instancemanager.New(runtime, false)
+		store, err := filestore.New(mgr)
+		if err != nil {
+			return fmt.Errorf("initializing store: %w", err)
+		}
+		mgr.SetStore(store)
+
+		service.SetInstanceManager(mgr)
 
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,

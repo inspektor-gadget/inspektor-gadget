@@ -89,7 +89,7 @@ func main() {
 	rootCmd.AddCommand(image.NewImageCmd())
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
-	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
