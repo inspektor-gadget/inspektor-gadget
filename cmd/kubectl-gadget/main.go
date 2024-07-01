@@ -82,22 +82,23 @@ func main() {
 	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
 	grpcRuntime.Init(runtimeGlobalParams)
-	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
-	if err != nil {
-		log.Fatalf("Creating RESTConfig: %s", err)
-	}
-	grpcRuntime.SetRestConfig(config)
 
 	// evaluate flags early for runtimeGlobalParams; this will make
 	// sure that all flags relevant for the grpc connection are ready
 	// to be used
 
-	err = commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
+	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
 	if err != nil {
 		// Analogous to cobra error message
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
+	if err != nil {
+		log.Fatalf("Creating RESTConfig: %s", err)
+	}
+	grpcRuntime.SetRestConfig(config)
 
 	namespace, _ := utils.GetNamespace()
 	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)
