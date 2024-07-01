@@ -57,6 +57,12 @@ const (
 	ParamTraceKernel = "trace-pipe"
 
 	kernelTypesVar = "kernelTypes"
+
+	// BPF_TRACE_UPROBE_MULTI is declared in cilium/ebpf, but it is internal:
+	// https://github.com/cilium/ebpf/blob/v0.15.0/internal/sys/types.go#L67
+	// It is part of the Linux API:
+	// https://github.com/torvalds/linux/blob/v6.8/include/uapi/linux/bpf.h#L1049
+	BPF_TRACE_UPROBE_MULTI ebpf.AttachType = 48
 )
 
 type param struct {
@@ -179,6 +185,14 @@ func (i *ebpfInstance) loadSpec() error {
 	if err != nil {
 		return fmt.Errorf("loading spec: %w", err)
 	}
+
+	// For USDT programs, we need to add the BPF_TRACE_UPROBE_MULTI flag
+	for _, p := range spec.Programs {
+		if p.Type == ebpf.Kprobe && strings.HasPrefix(p.SectionName, usdtPrefix) {
+			p.AttachType = BPF_TRACE_UPROBE_MULTI
+		}
+	}
+
 	i.collectionSpec = spec
 	return nil
 }
@@ -487,6 +501,15 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	mapReplacements := make(map[string]*ebpf.Map)
 	constReplacements := make(map[string]any)
+
+	// replace USDT argument buffer map on gadget side
+	if _, ok := i.collectionSpec.Maps[uprobetracer.UsdtArgsBufferMapName]; ok {
+		usdtArgsMap, err := uprobetracer.GetUsdtArgsBufferMap()
+		if err != nil {
+			return fmt.Errorf("creating USDT argument map on gadget's side: %w", err)
+		}
+		mapReplacements[uprobetracer.UsdtArgsBufferMapName] = usdtArgsMap
+	}
 
 	// Set gadget params
 	for name, p := range i.params {
