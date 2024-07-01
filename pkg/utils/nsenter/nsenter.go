@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package netnsenter
+package nsenter
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/vishvananda/netns"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 	netnsig "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/netns"
 )
 
+// NetnsEnter enters the network namespace of a process and executes the provided function
 func NetnsEnter(pid int, f func() error) error {
 	if pid == 0 {
 		return f()
@@ -48,6 +53,41 @@ func NetnsEnter(pid int, f func() error) error {
 
 	// Switch back to the original namespace
 	defer netns.Set(origns)
+
+	return f()
+}
+
+// CgroupnsEnter enters the cgroup namespace of a process and executes the provided function
+func CgroupnsEnter(pid int, f func() error) error {
+	if pid == 0 {
+		return f()
+	}
+
+	// Lock the OS Thread so we don't accidentally switch namespaces
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// Save the current cgroup namespace
+	origCgroupPath := filepath.Join("/proc", fmt.Sprint(os.Getpid()), "task", fmt.Sprint(unix.Gettid()), "ns", "cgroup")
+	origns, err := unix.Open(origCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(origns)
+
+	newCgroupPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "ns", "cgroup")
+	cgroupnsHandle, err := unix.Open(newCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(cgroupnsHandle)
+	err = unix.Setns(cgroupnsHandle, unix.CLONE_NEWCGROUP)
+	if err != nil {
+		return err
+	}
+
+	// Switch back to the original namespace
+	defer unix.Setns(origns, unix.CLONE_NEWCGROUP)
 
 	return f()
 }

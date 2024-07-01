@@ -65,7 +65,6 @@
 /pkg/ig-manager/ @blanquicet
 /pkg/kallsyms/ @alban
 /pkg/kfilefields/ @alban @mqasimsarfraz
-/pkg/netnsenter/ @alban
 /pkg/networktracer/ @alban @blanquicet
 /pkg/operators/ @flyth
 /pkg/operators/kubeipresolver/ @burak-ok
@@ -84,5 +83,6 @@
 /pkg/uprobetracer/ @alban
 /pkg/utils/bpf-iter-ns/ @alban
 /pkg/utils/host/ @alban
+/pkg/utils/nsenter/ @alban
 /tools/ @mqasimsarfraz
 /tools/demos/ @alban

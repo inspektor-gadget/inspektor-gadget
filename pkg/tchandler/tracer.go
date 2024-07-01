@@ -31,7 +31,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} dispatcher ./bpf/dispatcher.bpf.c -- -I./bpf/
@@ -91,7 +91,7 @@ func NewHandler(direction AttachmentDirection) (*Handler, error) {
 
 	// We need to create the client on the host network namespace, otherwise it's not able to
 	// create the qdisc and filters.
-	err = netnsenter.NetnsEnter(1, func() error {
+	err = nsenter.NetnsEnter(1, func() error {
 		// Setup tc socket for communication with the kernel
 		tcnl, err = tc.Open(&tc.Config{})
 		if err != nil {
@@ -217,7 +217,7 @@ func (t *Handler) AttachContainer(container *containercollection.Container) erro
 
 	// We need to perform these operations from the host network namespace, otherwise we won't
 	// be able to add the filter to the network interface.
-	err = netnsenter.NetnsEnter(1, func() error {
+	err = nsenter.NetnsEnter(1, func() error {
 		for _, iface := range ifaces {
 			if a, ok := t.attachments[iface.Name]; ok {
 				a.users[pid] = struct{}{}

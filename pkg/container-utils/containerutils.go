@@ -34,9 +34,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/podman"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	nsenter "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 var AvailableRuntimes = []string{
@@ -131,7 +131,7 @@ func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
 func GetIfacePeers(pid int) ([]*net.Interface, error) {
 	var ifaceLinks []int
 
-	err := netnsenter.NetnsEnter(pid, func() error {
+	err := nsenter.NetnsEnter(pid, func() error {
 		links, err := netlink.LinkList()
 		if err != nil {
 			return fmt.Errorf("getting links: %w", err)
@@ -167,7 +167,7 @@ func GetIfacePeers(pid int) ([]*net.Interface, error) {
 
 	ifacesHost := make([]*net.Interface, 0, len(ifaceLinks))
 
-	err = netnsenter.NetnsEnter(1, func() error {
+	err = nsenter.NetnsEnter(1, func() error {
 		for _, ifaceLink := range ifaceLinks {
 			ifaceHost, err := net.InterfaceByIndex(ifaceLink)
 			if err != nil {
