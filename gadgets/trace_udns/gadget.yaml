@@ -1,0 +1,53 @@
+name: trace udns
+description: use uprobe to trace dns requests in libc.so
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+tracers:
+  udns:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: pid
+      attributes:
+        template: pid
+    - name: comm
+      description: command
+      attributes:
+        template: comm
+    - name: operation
+      description: memory operation type
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: mntns_id
+      description: Mount namespace inode id
+      attributes:
+        template: ns
+    - name: tid
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 10
+        alignment: left
+        ellipsis: end
+    - name: name
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: service
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: endpoint
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
