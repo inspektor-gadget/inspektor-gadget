@@ -8,6 +8,12 @@ env:
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
   DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
+  # With the recent update of docker/build-push-action to v6, this action
+  # started creating docker build summary files (i.e. .dockerbuild).
+  # Sadly, these files create troubles when trying to download artifact in the
+  # release job as they seem to not be downloadable.
+  # So, for now, let's deactivate this feature.
+  DOCKER_BUILD_NO_SUMMARY: true
 concurrency:
   group: ${{ github.ref }}
   # We do not want to cancel job in progress on main to be sure to catch new
