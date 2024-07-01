@@ -119,12 +119,14 @@ struct event {
         struct gadget_l4endpoint_t  field2;
         gadget_mntns_id             field3;
         gadget_timestamp            field4;
+        gadget_kernel_stack         field5;
 }
 ```
 
 * `struct gadget_l3endpoint_t` and `struct gadget_l4endpoint_t`: enrich with the Kubernetes endpoint. TODO: add details.
 * `typedef __u64 gadget_mntns_id`: container enrichment (see #container-enrichment)
 * `typedef __u64 gadget_timestamp`: add human-readable timestamp from `bpf_ktime_get_boot_ns()`.
+* `typedef __u32 gadget_kernel_stack`: symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see #kernel-stack-maps).
 
 ## Buffer API
 
@@ -213,5 +215,51 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 		gadget_output_buf(ctx, &events, event, len);
 
 	/* ... */
+}
+```
+
+## Kernel stack maps
+
+To make use of kernel stack maps, gadgets must include
+[gadget/kernel_stack_map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/43d7b29f43d6ced34004ed20a7508c25cf6a5fb9/include/gadget/kernel_stack_map.h).
+
+```C
+#include <gadget/kernel_stack_map.h>
+```
+
+This will define the following struct:
+
+```C
+#define PERF_MAX_STACK_DEPTH 127
+#define MAX_ENTRIES	10000
+struct {
+	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
+	__uint(key_size, sizeof(u32));
+	__uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, MAX_ENTRIES);
+} ig_kstack SEC(".maps");
+```
+
+Then, add a field in the event structure with the type of `gadget_kernel_stack`,
+designated for storing the stack id. `gadget_get_kernel_stack(ctx)` could be used 
+to populate this field, this helper function will store the kernel stack into 
+`ig_kstack` and returns the stack id (positive or null) as the key. It will return
+a negative value on failure.
+
+```C
+struct event {
+        gadget_kernel_stack kstack;
+        /* other fields */
+};
+
+struct event *event;
+long kernel_stack_id;
+
+event = gadget_reserve_buf(&events, sizeof(*event));
+kernel_stack_id = gadget_get_kernel_stack(ctx);
+if (kernel_stack_id >= 0) {
+    event->kstack = kernel_stack_id;
+} else {
+    // get kernel stack failed
 }
 ```

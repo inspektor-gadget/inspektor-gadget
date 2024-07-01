@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,13 +23,19 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
 
 const (
+	kernelStackTargetNameAnnotation = "ebpf.formatter.kstack"
 	enumTargetNameAnnotation        = "ebpf.formatter.enum"
 	enumBitfieldSeparatorAnnotation = "ebpf.formatter.bitfield.separator"
+)
+
+const (
+	StackIdKernelType = "type:gadget_kernel_stack"
 )
 
 func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 {
@@ -143,9 +150,74 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 	return nil
 }
 
+func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
+	var kernelSymbolResolver *kallsyms.KAllSyms = nil
+	for _, ds := range gadgetCtx.GetDataSources() {
+		for _, in := range ds.GetFieldsWithTag(StackIdKernelType) {
+			if in == nil {
+				continue
+			}
+			in.SetHidden(true, false)
+
+			if kernelSymbolResolver == nil {
+				var err error
+				kernelSymbolResolver, err = kallsyms.NewKAllSyms()
+				if err != nil {
+					return err
+				}
+			}
+
+			if i.stackIdMap == nil {
+				return errors.New("kernel stack map is not initialized but used. " +
+					"if you are using `gadget_kernel_stack` as event field, " +
+					"try to include <gadget/kernel_stack_map.h>")
+			}
+
+			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "kstack", in, kernelStackTargetNameAnnotation)
+			if err != nil {
+				i.logger.Warnf("Failed to get target name for enum field %q: %v", in.Name(), err)
+				continue
+			}
+			out, err := ds.AddField(targetName, api.Kind_String)
+			if err != nil {
+				return err
+			}
+			converter := func(ds datasource.DataSource, data datasource.Data) error {
+				inBytes := in.Get(data)
+				stackId := ds.ByteOrder().Uint32(inBytes)
+
+				stack := [PerfMaxStackDepth]uint64{}
+				err = i.stackIdMap.Lookup(stackId, &stack)
+				if err != nil {
+					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
+					out.Set(data, []byte{})
+					return nil
+				}
+
+				outString := ""
+				for depth, addr := range stack {
+					if addr == 0 {
+						break
+					}
+					outString += fmt.Sprintf("[%d]%s; ", depth, kernelSymbolResolver.LookupByInstructionPointer(addr))
+				}
+
+				out.Set(data, []byte(outString))
+				return nil
+			}
+			i.formatters[ds] = append(i.formatters[ds], converter)
+		}
+	}
+	return nil
+}
+
 func (i *ebpfInstance) initFormatters(gadgetCtx operators.GadgetContext) error {
 	if err := i.initEnumFormatter(gadgetCtx); err != nil {
 		return fmt.Errorf("initializing enum formatter: %w", err)
+	}
+
+	if err := i.initStackConverter(gadgetCtx); err != nil {
+		return fmt.Errorf("initializing stack converters: %w", err)
 	}
 
 	return nil

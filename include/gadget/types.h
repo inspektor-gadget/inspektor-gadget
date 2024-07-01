@@ -45,4 +45,6 @@ typedef __u32 gadget_signal;
 // as string.
 typedef __u64 gadget_syscall;
 
+typedef __u32 gadget_kernel_stack;
+
 #endif /* __TYPES_H */
