@@ -58,9 +58,10 @@ $(GADGETS):
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
 	gomplate -d gadget=$(@:README.md=gadget.yaml) -d artifacthubpkg=$(@:README.md=artifacthub-pkg.yml) --file README.template --out $@.new
+	@# Modify field 'digest' to request reindexing from artifacthub.
 	if ! cmp $@ $@.new > /dev/null ; then \
 		mv $@.new $@ ; \
-		sed -i 's/^createdAt:.*$$/createdAt: "$(DATE)"/g' $(@:README.md=artifacthub-pkg.yml) ; \
+		sed -i 's/^digest:.*$$/digest: "$(DATE)"/g' $(@:README.md=artifacthub-pkg.yml) ; \
 	else \
 		rm -f $@.new ; \
 	fi
