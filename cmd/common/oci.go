@@ -24,6 +24,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
@@ -74,6 +75,20 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 				return fmt.Errorf("initializing runtime: %w", err)
 			}
 			defer runtime.Close()
+
+			// set global operator flags from the config file
+			for o, p := range opGlobalParams {
+				err = SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
+				if err != nil {
+					return fmt.Errorf("setting operator %s flags: %w", o, err)
+				}
+			}
+
+			// set oci flags from the config file
+			err = SetFlagsForParams(cmd, ociParams, config.OperatorKey+"."+ocihandler.OciHandler.Name())
+			if err != nil {
+				return fmt.Errorf("setting oci flags: %w", err)
+			}
 
 			// we need to re-enable flag parsing, as utils.ParseEarlyFlags() would
 			// not do anything otherwise

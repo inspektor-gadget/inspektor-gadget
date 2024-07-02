@@ -21,6 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -61,6 +62,7 @@ func main() {
 		Use:   "ig",
 		Short: "Collection of gadgets for containers",
 	}
+	common.AddConfigFlag(rootCmd)
 	common.AddVerboseFlag(rootCmd)
 
 	host.AddFlags(rootCmd)
@@ -79,7 +81,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// save the root flags for later use before we modify them (e.g. add runtime flags)
+	rootFlags := commonutils.CopyFlagSet(rootCmd.PersistentFlags())
+
 	runtime := local.New()
+
+	// ensure that the runtime flags are set from the config file
+	if err = common.InitConfig(rootFlags); err != nil {
+		log.Fatalf("initializing config: %v", err)
+	}
+	if err = common.SetFlagsForParams(rootCmd, runtime.GlobalParamDescs().ToParams(), config.RuntimeKey); err != nil {
+		log.Fatalf("setting runtime flags from config: %v", err)
+	}
+
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
@@ -90,6 +104,7 @@ func main() {
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
+	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
