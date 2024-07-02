@@ -137,29 +137,29 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	unsigned int family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	switch (family) {
 	case AF_INET:
-		event->src.l3.version = event->dst.l3.version = 4;
+		event->src.version = event->dst.version = 4;
 
-		BPF_CORE_READ_INTO(&event->dst.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk,
 				   __sk_common.skc_daddr);
-		if (event->dst.l3.addr.v4 == 0)
+		if (event->dst.addr_raw.v4 == 0)
 			goto cleanup;
-		BPF_CORE_READ_INTO(&event->src.l3.addr.v4, sk,
+		BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
 				   __sk_common.skc_rcv_saddr);
-		if (event->src.l3.addr.v4 == 0)
+		if (event->src.addr_raw.v4 == 0)
 			goto cleanup;
 		break;
 
 	case AF_INET6:
-		event->src.l3.version = event->dst.l3.version = 6;
+		event->src.version = event->dst.version = 6;
 
 		BPF_CORE_READ_INTO(
-			&event->src.l3.addr.v6, sk,
+			&event->src.addr_raw.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (event->src.l3.addr.v6 == 0)
+		if (event->src.addr_raw.v6 == 0)
 			goto cleanup;
-		BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (event->dst.l3.addr.v6 == 0)
+		if (event->dst.addr_raw.v6 == 0)
 			goto cleanup;
 		break;
 

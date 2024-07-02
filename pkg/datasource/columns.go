@@ -27,6 +27,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	// ColumnsReplaceAnnotation is used to indicate that this field should be
+	// replaced by the one indicated in the annotation when printing it.
+	ColumnsReplaceAnnotation = "columns.replace"
+)
+
 type DataTuple struct {
 	ds   DataSource
 	data Data
@@ -121,6 +127,14 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				if v == "true" {
 					attributes.FixedWidth = true
 				}
+			}
+		}
+
+		// Use replace field if it's defined
+		if replacementField, ok := f.Annotations[ColumnsReplaceAnnotation]; ok {
+			f, ok = ds.fieldMap[replacementField]
+			if !ok {
+				return nil, fmt.Errorf("replacement field %q not found", replacementField)
 			}
 		}
 

@@ -204,11 +204,11 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	event->pid = pid;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
-	event->src.l3.version = event->dst.l3.version = 4;
+	event->src.version = event->dst.version = 4;
 	event->src.proto = event->dst.proto = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event->src.l3.addr.v4, sk,
+	BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
 			   __sk_common.skc_rcv_saddr);
-	BPF_CORE_READ_INTO(&event->dst.l3.addr.v4, sk, __sk_common.skc_daddr);
+	BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk, __sk_common.skc_daddr);
 	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	event->mntns_id = mntns_id;
@@ -234,11 +234,11 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	event->mntns_id = mntns_id;
-	event->src.l3.version = event->dst.l3.version = 6;
+	event->src.version = event->dst.version = 6;
 	event->src.proto = event->dst.proto = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event->src.l3.addr.v6, sk,
+	BPF_CORE_READ_INTO(&event->src.addr_raw.v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-	BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
+	BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -332,17 +332,17 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	event->src.proto = event->dst.proto = IPPROTO_TCP;
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family == AF_INET) {
-		event->src.l3.version = event->dst.l3.version = 4;
-		event->src.l3.addr.v4 =
+		event->src.version = event->dst.version = 4;
+		event->src.addr_raw.v4 =
 			BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-		event->dst.l3.addr.v4 =
+		event->dst.addr_raw.v4 =
 			BPF_CORE_READ(sk, __sk_common.skc_daddr);
 	} else {
-		event->src.l3.version = event->dst.l3.version = 6;
+		event->src.version = event->dst.version = 6;
 		BPF_CORE_READ_INTO(
-			&event->src.l3.addr.v6, sk,
+			&event->src.addr_raw.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		BPF_CORE_READ_INTO(&event->dst.l3.addr.v6, sk,
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
