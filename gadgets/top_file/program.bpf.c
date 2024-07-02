@@ -44,7 +44,7 @@ struct file_stat {
 	__u32 tid;
 	char file[PATH_MAX];
 	char comm[TASK_COMM_LEN];
-	enum type t;
+	enum type t_raw;
 };
 
 #define MAX_ENTRIES 10240
@@ -114,11 +114,11 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		bpf_get_current_comm(&valuep->comm, sizeof(valuep->comm));
 		get_file_path(file, valuep->file, sizeof(valuep->file));
 		if (S_ISREG(mode)) {
-			valuep->t = R;
+			valuep->t_raw = R;
 		} else if (S_ISSOCK(mode)) {
-			valuep->t = S;
+			valuep->t_raw = S;
 		} else {
-			valuep->t = O;
+			valuep->t_raw = O;
 		}
 	}
 	if (op == READ) {

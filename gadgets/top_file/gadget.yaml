@@ -39,7 +39,7 @@ structs:
       description: Bytes written by file
       attributes:
         width: 8
-    - name: t
+    - name: t_raw
       description: Type of file, 'R' for regular files, 'S' for sockets and 'O' for
         others (including pipes). By default only regular files are shown; use the
         --all-files option to show all file types.
