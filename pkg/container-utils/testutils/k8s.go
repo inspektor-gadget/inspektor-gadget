@@ -60,7 +60,7 @@ func (c *K8sContainer) Start(t *testing.T) {
 
 	igtesting.RunTestSteps([]igtesting.TestStep{
 		createTestNamespaceCommand(c.options.namespace),
-		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd),
+		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
 		sleepForSecondsCommand(2),
 		waitUntilPodReadyCommand(t, c.options.namespace, c.name),
 	}, t)
@@ -83,20 +83,8 @@ const (
 	namespaceLabelValue string = "ig-integration-tests"
 )
 
-// podCommand returns a Command that starts a pod with a specified image, command and args
-func podCommand(t *testing.T, podname, image, namespace, cmd, commandArgs string) *command.Command {
-	cmdLine := ""
-	if cmd != "" {
-		cmdLine = fmt.Sprintf("\n    command: %s", cmd)
-	}
-
-	commandArgsLine := ""
-	if commandArgs != "" {
-		commandArgsLine = fmt.Sprintf("\n    args:\n    - %s", commandArgs)
-	}
-
-	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
-apiVersion: v1
+func createPodYaml(podname, image, namespace, cmd, commandArgs string, limits map[string]string) string {
+	yamlStr := fmt.Sprintf(`apiVersion: v1
 kind: Pod
 metadata:
   name: %s
@@ -108,9 +96,37 @@ spec:
   terminationGracePeriodSeconds: 0
   containers:
   - name: %s
-    image: %s%s%s
+    image: %s
+`, podname, namespace, podname, podname, image)
+
+	if cmd != "" {
+		cmdLine := fmt.Sprintf("    command: %s\n", cmd)
+
+		commandArgsLine := ""
+		if commandArgs != "" {
+			commandArgsLine = fmt.Sprintf("    args:\n    - %s\n", commandArgs)
+		}
+		yamlStr = yamlStr + cmdLine + commandArgsLine
+	}
+
+	if len(limits) > 0 {
+		yamlStr = yamlStr + "    resources:\n      limits:\n"
+		for k, v := range limits {
+			yamlStr = yamlStr + fmt.Sprintf("        %s: \"%s\"\n", k, v)
+		}
+	}
+
+	return yamlStr
+}
+
+// podCommand returns a Command that starts a pod with a specified image, command and args
+func podCommand(t *testing.T, podname, image, namespace, cmd, commandArgs string, limits map[string]string) *command.Command {
+	podYaml := createPodYaml(podname, image, namespace, cmd, commandArgs, limits)
+
+	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
+%s
 EOF
-`, podname, namespace, podname, podname, image, cmdLine, commandArgsLine)
+`, podYaml)
 
 	return &command.Command{
 		Name:           fmt.Sprintf("Run %s", podname),

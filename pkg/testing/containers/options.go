@@ -60,6 +60,12 @@ func WithPrivileged() ContainerOption {
 	}
 }
 
+func WithLimits(limits map[string]string) ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithLimits(limits))
+	}
+}
+
 func WithCleanup() ContainerOption {
 	return func(opts *cOptions) {
 		opts.cleanup = true
