@@ -92,11 +92,17 @@ func setFlagsFromConfig(f *pflag.Flag, k string) error {
 	}
 
 	if !f.Changed && config.Config.IsSet(k) {
-		val := config.Config.GetString(k)
-		if val == f.DefValue {
+		if _, ok := f.Value.(pflag.SliceValue); ok {
+			vals := config.Config.GetStringSlice(k)
+			for _, val := range vals {
+				if err := f.Value.Set(val); err != nil {
+					return fmt.Errorf("setting flag %s: %w", f.Name, err)
+				}
+			}
 			return nil
 		}
 
+		val := config.Config.GetString(k)
 		if err := f.Value.Set(val); err != nil {
 			return fmt.Errorf("setting flag %s: %w", f.Name, err)
 		}
@@ -153,6 +159,11 @@ func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Comm
 			if flag.Name == "config" {
 				return
 			}
+			if sv, ok := flag.Value.(pflag.SliceValue); ok {
+				defaultConfig.Set(flag.Name, sv.GetSlice())
+				return
+			}
+
 			defaultConfig.Set(flag.Name, flag.DefValue)
 		})
 
