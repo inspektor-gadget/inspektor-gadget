@@ -16,9 +16,13 @@ package clioperator
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 	"sort"
 	"strings"
 
+	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -93,6 +97,21 @@ func getNamesFromFields(fields []*api.Field) []string {
 		res = append(res, f.FullName)
 	}
 	return res
+}
+
+func clearScreen() {
+	switch runtime.GOOS {
+	case "linux":
+		fmt.Print("\033[H\033[2J")
+	case "windows":
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	default:
+		// It's a best effort approach here as we aren't 100% it'll work
+		// on all cases.
+		fmt.Print("\033[H\033[2J")
+	}
 }
 
 func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
@@ -222,20 +241,61 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				fmt.Print("\n")
 			})
 
-			p.SetEventCallback(formatter.EventHandlerFunc())
-			handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
-			if !ok {
-				gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
-					p.EventHandlerFunc())
-				continue
+			printHeader := func() {
+				fmt.Println(formatter.FormatHeader())
 			}
 
-			fmt.Println(formatter.FormatHeader())
+			switch ds.Type() {
+			case datasource.TypeSingle:
+				printHeader()
+				p.SetEventCallback(formatter.EventHandlerFunc())
+				handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
+				if !ok {
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
+						p.EventHandlerFunc())
+					continue
+				}
 
-			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-				handler(datasource.NewDataTuple(ds, data))
-				return nil
-			}, Priority)
+				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+					handler(datasource.NewDataTuple(ds, data))
+					return nil
+				}, Priority)
+			case datasource.TypeArray:
+				// If the output is periodic, we need to clear the terminal for every interval
+				headerFuncs := []func(){}
+				periodicity := ds.Annotations()[datasource.PeriodicityAnnotation]
+				isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
+				if isTerminal && periodicity == string(datasource.PeriodicityByInterval) {
+					headerFuncs = append(headerFuncs, clearScreen)
+				}
+				headerFuncs = append(headerFuncs, printHeader)
+
+				// Print first header while we wait for input
+				for _, headerFunc := range headerFuncs {
+					headerFunc()
+				}
+
+				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))
+				handler, ok := p.EventHandlerFuncArray().(func(data []*datasource.DataTuple))
+				if !ok {
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T",
+						p.EventHandlerFunc())
+					continue
+				}
+
+				ds.SubscribeArray(func(ds datasource.DataSource, dataArray datasource.DataArray) error {
+					l := dataArray.Len()
+					tuples := make([]*datasource.DataTuple, 0, l)
+
+					for i := 0; i < l; i++ {
+						data := dataArray.Get(i)
+						tuples = append(tuples, datasource.NewDataTuple(ds, data))
+					}
+
+					handler(tuples)
+					return nil
+				}, Priority)
+			}
 		case ModeJSON, ModeJSONPretty, ModeYAML:
 			// var opts []json.Option
 			// if hasFields {
