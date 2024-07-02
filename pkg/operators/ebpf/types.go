@@ -19,6 +19,9 @@ const (
 	// Prefix used to mark trace maps
 	tracerInfoPrefix = "gadget_tracer_"
 
+	// Prefix used to mark topper maps
+	topperInfoPrefix = "gadget_topper_"
+
 	// Prefix used to mark eBPF params
 	paramPrefix = "gadget_param_"
 

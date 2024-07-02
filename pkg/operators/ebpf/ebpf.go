@@ -111,6 +111,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		// Preallocate maps
 		tracers:      make(map[string]*Tracer),
 		structs:      make(map[string]*Struct),
+		toppers:      make(map[string]*Topper),
 		snapshotters: make(map[string]*Snapshotter),
 		params:       make(map[string]*param),
 
@@ -157,6 +158,7 @@ type ebpfInstance struct {
 	collection     *ebpf.Collection
 
 	tracers      map[string]*Tracer
+	toppers      map[string]*Topper
 	structs      map[string]*Struct
 	snapshotters map[string]*Snapshotter
 	params       map[string]*param
@@ -197,6 +199,11 @@ func (i *ebpfInstance) analyze() error {
 			prefixFunc:   hasPrefix(tracerInfoPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateTracer,
+		},
+		{
+			prefixFunc:   hasPrefix(topperInfoPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.populateTopper,
 		},
 		{
 			prefixFunc:   hasPrefix(snapshottersPrefix),
@@ -365,6 +372,16 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.accessor = accessor
 		m.ds = ds
 	}
+	for name, m := range i.toppers {
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
+		if err != nil {
+			return fmt.Errorf("adding datasource: %w", err)
+		}
+		ds.AddAnnotation(datasource.PeriodicityAnnotation, string(datasource.PeriodicityByInterval))
+		m.accessor = accessor
+		m.ds = ds
+	}
+
 	return nil
 }
 
@@ -574,14 +591,24 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	i.collection = collection
 
-	for _, tracer := range i.tracers {
+	for name, tracer := range i.tracers {
 		i.logger.Debugf("starting tracer %q", tracer.MapName)
-		go func(tracer *Tracer) {
+		go func(name string, tracer *Tracer) {
 			err := i.runTracer(gadgetCtx, tracer)
 			if err != nil {
-				i.logger.Errorf("starting tracer: %w", err)
+				i.logger.Errorf("starting tracer %q: %w", name, err)
 			}
-		}(tracer)
+		}(name, tracer)
+	}
+
+	for name, topper := range i.toppers {
+		i.logger.Debugf("starting topper %q", topper.MapName)
+		go func(name string, topper *Topper) {
+			err := i.runTopper(gadgetCtx, topper)
+			if err != nil {
+				i.logger.Errorf("starting topper %q: %w", name, err)
+			}
+		}(name, topper)
 	}
 
 	// Attach programs
