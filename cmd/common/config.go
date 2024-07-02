@@ -92,6 +92,19 @@ func setFlagsFromConfig(f *pflag.Flag, k string) error {
 	}
 
 	if !f.Changed && config.Config.IsSet(k) {
+		// If the flag's value is a slice, we must set each value individually because the Set() method does not
+		// support slice types. Any new values set will be appended to the existing values in the slice.
+		// For more details, see: https://github.com/spf13/pflag/blob/master/string_array.go#L21
+		if _, ok := f.Value.(pflag.SliceValue); ok {
+			vals := config.Config.GetStringSlice(k)
+			for _, val := range vals {
+				if err := f.Value.Set(val); err != nil {
+					return fmt.Errorf("setting flag %s: %w", f.Name, err)
+				}
+			}
+			return nil
+		}
+
 		val := config.Config.GetString(k)
 		if val == f.DefValue {
 			return nil
@@ -153,6 +166,15 @@ func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Comm
 			if flag.Name == "config" {
 				return
 			}
+
+			// ensure we set the actual slice value (not string) so users will know they need
+			// to set YAML list for array/slice flags. For example, for default value of empty slice
+			// we need to set it as `[]` (not `'[]'`) in the config file.
+			if sv, ok := flag.Value.(pflag.SliceValue); ok {
+				defaultConfig.Set(flag.Name, sv.GetSlice())
+				return
+			}
+
 			defaultConfig.Set(flag.Name, flag.DefValue)
 		})
 
