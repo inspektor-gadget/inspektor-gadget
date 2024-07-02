@@ -10,8 +10,8 @@ Kubernetes (`ig-k8s`) and in Linux hosts (`ig`).
 
 
 ```bash
-$ kubectl gadget prometheus --config @<path>
-$ ig prometheus --config @<path> --metrics-listen-address $IP:$PORT --metrics-path /metrics
+$ kubectl gadget prometheus --metrics-config @<path>
+$ ig prometheus --metrics-config @<path> --metrics-listen-address $IP:$PORT --metrics-path /metrics
 ```
 
 ## Configuration File
@@ -303,7 +303,7 @@ metrics:
 Start the gadget
 
 ```bash
-$ kubectl gadget prometheus --config @myconfig.yaml
+$ kubectl gadget prometheus --metrics-config @myconfig.yaml
 INFO[0000] Running. Press Ctrl + C to finish
 INFO[0000] minikube             | Publishing metrics...
 ```
@@ -346,7 +346,7 @@ metrics:
 Restart the gadget
 
 ```bash
-$ kubectl gadget prometheus --config @myconfig.yaml
+$ kubectl gadget prometheus --metrics-config @myconfig.yaml
 INFO[0000] Running. Press Ctrl + C to finish
 INFO[0000] minikube             | Publishing metrics...
 ```
@@ -387,7 +387,7 @@ $ prometheus --config.file prometheus.yaml
 Then, start the prometheus gadget with the same configuration as above Kubernetes section:
 
 ```bash
-$ sudo ig prometheus --config @myconfig.yaml
+$ sudo ig prometheus --metrics-config @myconfig.yaml
 INFO[0000] Running. Press Ctrl + C to finish
 INFO[0000] Publishing metrics...
 ```
@@ -424,7 +424,7 @@ At this point, Grafana is available at http://localhost:3000 and Prometheus at h
 with the following configuration:
 
 ```bash
-$ sudo ig prometheus --config @tools/monitoring/config/histogram.yaml
+$ sudo ig prometheus --metrics-config @tools/monitoring/config/histogram.yaml
 INFO[0000] Running. Press Ctrl + C to finish
 ```
 
