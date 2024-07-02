@@ -41,3 +41,6 @@ structs:
       description: Mount namespace inode id
       attributes:
         template: ns
+    - name: retcode
+      attributes:
+        width: 7
