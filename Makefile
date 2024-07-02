@@ -116,7 +116,7 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 # See: https://pkg.go.dev/cmd/compile
 debug-ig:
 	CGO_ENABLED=0 go build \
-		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=${VERSION} \
+		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
 		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
 		-extldflags '-static'" \
 		-gcflags='all=-N -l' \
