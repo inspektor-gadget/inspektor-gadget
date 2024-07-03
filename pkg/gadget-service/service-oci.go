@@ -17,6 +17,7 @@ package gadgetservice
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,6 +51,18 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
 	}
 
+	if id, ok := strings.CutPrefix(req.ImageName, "attach://"); ok {
+		gi := s.instanceMgr.LookupInstance(id)
+		if gi == nil {
+			return nil, fmt.Errorf("instance %s not found", id)
+		}
+		gadgetInfo, err := gi.GadgetInfo()
+		if err != nil {
+			return nil, err
+		}
+		return &api.GetGadgetInfoResponse{GadgetInfo: gadgetInfo}, nil
+	}
+
 	// Get all available operators
 	ops := make([]operators.DataOperator, 0)
 	for op := range s.operators {
@@ -69,6 +82,11 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
+	}
+
+	attachRequest := ctrl.GetAttachRequest()
+	if attachRequest != nil {
+		return s.instanceMgr.AttachToGadgetInstance(attachRequest.Id, runGadget)
 	}
 
 	ociRequest := ctrl.GetRunRequest()

@@ -235,6 +235,7 @@ func (c *GadgetContext) SetMetadata(m []byte) {
 func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 	gi := &api.GadgetInfo{
 		Name:      "",
+		Id:        c.id,
 		ImageName: c.ImageName(),
 		Metadata:  c.metadata,
 		Params:    c.params,
@@ -266,6 +267,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		return nil
 	}
 
+	c.id = info.Id
 	c.dataSources = make(map[string]datasource.DataSource)
 	for _, inds := range info.DataSources {
 		ds, err := datasource.NewFromAPI(inds)

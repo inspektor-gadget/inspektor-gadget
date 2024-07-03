@@ -60,6 +60,10 @@ const (
 	ParamRemoteAddress     = "remote-address"
 	ParamConnectionMethod  = "connection-method"
 	ParamConnectionTimeout = "connection-timeout"
+	ParamDetachable        = "detachable"
+	ParamInstallOnly       = "install-only"
+	ParamTags              = "tags"
+	ParamName              = "name"
 
 	// ParamGadgetServiceTCPPort is only used in combination with KubernetesProxyConnectionMethodTCP
 	ParamGadgetServiceTCPPort = "tcp-port"
@@ -137,7 +141,30 @@ func checkForDuplicates(subject string) func(value string) error {
 }
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
-	p := params.ParamDescs{}
+	p := params.ParamDescs{
+		{
+			Key:          ParamDetachable,
+			Description:  "Install gadget to be able to attach to it from multiple clients and keep it running in the background",
+			TypeHint:     params.TypeBool,
+			DefaultValue: "false",
+		},
+		{
+			Key:          ParamInstallOnly,
+			Description:  "Install gadget without directly attaching to it",
+			TypeHint:     params.TypeBool,
+			DefaultValue: "false",
+		},
+		{
+			Key:         ParamTags,
+			Description: "Comma-separated list of tags to apply to the gadget instance",
+			TypeHint:    params.TypeString,
+		},
+		{
+			Key:         ParamName,
+			Description: "Distinctive name to assign to the gadget instance",
+			TypeHint:    params.TypeString,
+		},
+	}
 	switch r.connectionMode {
 	case ConnectionModeDirect:
 		return p

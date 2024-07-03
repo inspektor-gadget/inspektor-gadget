@@ -72,6 +72,10 @@ message GadgetRunRequest {
   int64 timeout = 13;
 }
 
+message GadgetAttachRequest {
+  string id = 1;
+}
+
 message BuiltInGadgetStopRequest {
 }
 
@@ -97,6 +101,7 @@ message GadgetControlRequest {
   oneof Event {
     GadgetRunRequest runRequest = 1;
     GadgetStopRequest stopRequest = 2;
+    GadgetAttachRequest attachRequest = 3;
   }
 }
 
@@ -148,6 +153,7 @@ message GadgetInfo {
   map<string, string> annotations = 5;
   bytes metadata = 6;
   repeated Param params = 7;
+  string id = 8;
 }
 
 message DataSource {
@@ -248,7 +254,50 @@ service BuiltInGadgetManager {
   rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
 }
 
+message InstallGadgetInstanceRequest {
+  GadgetInstance gadgetInstance = 1;
+  int32 eventBufferLength = 2;
+}
+
+message InstallGadgetInstanceResponse {
+  int32 result = 1;
+  GadgetInstance gadgetInstance = 2;
+}
+
+message ListGadgetInstancesRequest {}
+
+message GadgetInstance {
+  string id = 1;
+  GadgetRunRequest gadgetInfo = 2;
+  repeated string tags = 3;
+  int64 timeCreated = 4;
+  bool paused = 5;
+  string name = 6;
+}
+
+message ListGadgetInstanceResponse {
+  repeated GadgetInstance gadgetInstances = 1;
+}
+
+message GadgetInstanceId {
+  string id = 1;
+}
+
+message StatusResponse {
+  int32 result = 1;
+  string message = 2;
+}
+
 service GadgetManager {
   rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+  rpc AttachToGadgetInstance(GadgetInstanceId) returns (stream GadgetEvent) {}
+}
+
+service GadgetInstanceManager {
+  rpc InstallGadgetInstance(InstallGadgetInstanceRequest) returns (InstallGadgetInstanceResponse) {}
+  rpc ListGadgetInstances(ListGadgetInstancesRequest) returns (ListGadgetInstanceResponse) {}
+  rpc GetGadgetInstance(GadgetInstanceId) returns (GadgetInstance) {}
+  rpc RemoveGadgetInstance(GadgetInstanceId) returns (StatusResponse) {}
+  rpc StopGadgetInstance(GadgetInstanceId) returns (StatusResponse) {}
 }
