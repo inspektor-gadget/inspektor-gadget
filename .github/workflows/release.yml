@@ -24,9 +24,16 @@ jobs:
 
         echo "version=${inspektor_gadget_version}" >> $GITHUB_OUTPUT
 
+        DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
         for PKGFILE in $(find gadgets/ -name artifacthub-pkg.yml) ; do
+            # - The 'createdAt' field identifies the release date. It should not
+            #   be changed in between releases.
+            # - The 'digest' field is modified to request reindexing from
+            #   artifacthub. It is fine to modify it more often.
             sed -i \
                 -e "s/^version:.*$/version: ${inspektor_gadget_version}/" \
+                -e "s/^createdAt:.*$/createdAt: \"${DATE}\"/" \
+                -e "s/^digest:.*$/digest: \"${DATE}\"/" \
                 $PKGFILE
         done
 
