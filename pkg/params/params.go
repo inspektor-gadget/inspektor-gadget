@@ -89,13 +89,19 @@ type ParamDesc struct {
 	// PossibleValues holds all possible values for this parameter and will be considered
 	// when validating
 	PossibleValues []string `json:"possibleValues" yaml:"possibleValues,omitempty"`
+
+	// Shared indicates there can be other params with the same key. This is
+	// useful for operators that need to expose the same param. The Alias of all
+	// shared params must be equal.
+	Shared bool
 }
 
 // Param holds a ParamDesc but can additionally store a value
 type Param struct {
 	*ParamDesc
-	value string
-	isSet bool
+	value        string
+	isSet        bool
+	sharedParams []*Param
 }
 
 // GetTitle returns a human friendly title of the field; if no Title has been specified,
@@ -351,6 +357,14 @@ func (p *Param) Set(val string) error {
 	}
 	p.value = val
 	p.isSet = true
+
+	// TODO: how to avoid loops?
+	for _, sharedParam := range p.sharedParams {
+		if err := sharedParam.Set(val); err != nil {
+			return fmt.Errorf("setting shared param: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -360,6 +374,10 @@ func (p *Param) IsSet() bool {
 
 func (p *Param) IsDefault() bool {
 	return p.DefaultValue == p.value
+}
+
+func (p *Param) AddSharedParam(other *Param) {
+	p.sharedParams = append(p.sharedParams, other)
 }
 
 // AsAny returns the value of the parameter according to its type hint. If there is not any type

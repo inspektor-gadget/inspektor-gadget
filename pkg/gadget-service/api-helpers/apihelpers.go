@@ -37,6 +37,7 @@ func ParamDescsToParams(descs params.ParamDescs) (res api.Params) {
 			ValueHint:      string(desc.ValueHint),
 			PossibleValues: desc.PossibleValues,
 			IsMandatory:    desc.IsMandatory,
+			Shared:         desc.Shared,
 		})
 	}
 	return
@@ -55,6 +56,7 @@ func ParamToParamDesc(p *api.Param) *params.ParamDesc {
 		TypeHint:       params.TypeHint(p.TypeHint),
 		ValueHint:      params.ValueHint(p.ValueHint),
 		PossibleValues: p.PossibleValues,
+		Shared:         p.Shared,
 	}
 }
 

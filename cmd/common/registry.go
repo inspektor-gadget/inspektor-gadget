@@ -747,6 +747,24 @@ func AddFlags(cmd *cobra.Command, params *params.Params, skipParams []params.Val
 			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"
 		}
 
+		if flag := cmd.PersistentFlags().Lookup(p.Key); flag != nil {
+			oldParam, ok := flag.Value.(*Param)
+			if !ok {
+				panic("flag value is not a *Param")
+			}
+
+			if !oldParam.Shared {
+				panic(fmt.Sprintf("param %q is not shared", p.Key))
+			}
+
+			if oldParam.Alias != p.Alias {
+				panic(fmt.Sprintf("param %q has different alias", p.Key))
+			}
+
+			oldParam.AddSharedParam(p)
+			continue
+		}
+
 		flag := cmd.PersistentFlags().VarPF(&Param{p}, p.Key, p.Alias, desc)
 		if p.IsMandatory {
 			cmd.MarkPersistentFlagRequired(p.Key)
