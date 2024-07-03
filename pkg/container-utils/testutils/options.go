@@ -36,6 +36,7 @@ type containerOptions struct {
 	seccompProfile   string
 	namespace        string
 	wait             bool
+	waitOrOomKilled  bool
 	logs             bool
 	removal          bool
 	portBindings     nat.PortMap
@@ -104,6 +105,12 @@ func WithNamespace(namespace string) Option {
 func WithoutWait() Option {
 	return func(opts *containerOptions) {
 		opts.wait = false
+	}
+}
+
+func WithWaitOrOomKilled() Option {
+	return func(opts *containerOptions) {
+		opts.waitOrOomKilled = true
 	}
 }
 

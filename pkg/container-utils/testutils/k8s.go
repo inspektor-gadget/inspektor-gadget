@@ -58,11 +58,16 @@ func (c *K8sContainer) Run(t *testing.T) {
 func (c *K8sContainer) Start(t *testing.T) {
 	// TODO: handle pid, portBindings.
 
+	waitCommand := waitUntilPodReadyCommand(t, c.options.namespace, c.name)
+	if c.options.waitOrOomKilled {
+		waitCommand = waitUntilPodReadyOrOOMKilledCommand(t, c.options.namespace, c.name)
+	}
+
 	igtesting.RunTestSteps([]igtesting.TestStep{
 		createTestNamespaceCommand(c.options.namespace),
 		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
 		sleepForSecondsCommand(2),
-		waitUntilPodReadyCommand(t, c.options.namespace, c.name),
+		waitCommand,
 	}, t)
 
 	c.id = getContainerID(t, c.name, c.options.namespace)
@@ -187,6 +192,16 @@ func waitUntilPodReadyCommand(t *testing.T, namespace string, podname string) *c
 	return &command.Command{
 		Name:           "WaitForTestPod",
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname)),
+		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
+	}
+}
+
+// waitUntilPodReadyOrOOMKilledCommand returns a Command which waits until pod with the specified name in
+// the given as parameter namespace is ready or was oomkilled.
+func waitUntilPodReadyOrOOMKilledCommand(t *testing.T, namespace string, podname string) *command.Command {
+	return &command.Command{
+		Name:           "WaitForTestPod",
+		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s || kubectl wait pod --for jsonpath='{.status.containerStatuses[0].state.terminated.reason}'=OOMKilled -n %s %s", namespace, podname, namespace, podname)),
 		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
 	}
 }

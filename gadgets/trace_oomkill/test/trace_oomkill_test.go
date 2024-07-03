@@ -59,11 +59,11 @@ func TestTraceOomKill(t *testing.T) {
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-trace-sni")
+		ns = utils.GenerateTestNamespaceName(t, "test-trace-oomkill")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
-	containerOpts = append(containerOpts, containers.WithLimits(map[string]string{"memory": "128Mi"}), containers.WithStartAndStop())
+	containerOpts = append(containerOpts, containers.WithLimits(map[string]string{"memory": "128Mi"}), containers.WithStartAndStop(), containers.WithWaitOrOomKilled())
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
@@ -73,7 +73,7 @@ func TestTraceOomKill(t *testing.T) {
 
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage)}
 
 	switch utils.CurrentTestComponent {
 	case utils.IgK8sTestComponent:
@@ -100,17 +100,22 @@ func TestTraceOomKill(t *testing.T) {
 				Pages:     utils.NormalizedInt,
 				Fcomm:     utils.NormalizedStr,
 			}
+			expectedEntry.Runtime.ContainerID = utils.NormalizedStr
 
 			normalize := func(e *traceOomKillEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
+				utils.NormalizeString(&e.Runtime.ContainerID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.MountNsID)
 				utils.NormalizeInt(&e.Fpid)
-				utils.NormalizeInt(&e.Fuid)
-				utils.NormalizeInt(&e.Fgid)
 				utils.NormalizeInt(&e.Tpid)
 				utils.NormalizeInt(&e.Pages)
 				utils.NormalizeString(&e.Fcomm)
+
+				// NormalizeInt only normalizes if the value is not 0
+				// Fuid and Fgid might be 0, so do the normalization manually
+				e.Fuid = utils.NormalizedInt
+				e.Fgid = utils.NormalizedInt
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
