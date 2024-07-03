@@ -29,6 +29,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -41,6 +42,7 @@ const (
 	DataSourcePrefix     = "combined"
 	OperatorName         = "Combiner"
 	OperatorInstanceName = "CombinerInstance"
+	ParamInterval        = "interval"
 )
 
 type combinerOperator struct{}
@@ -58,7 +60,13 @@ func (o *combinerOperator) GlobalParams() api.Params {
 }
 
 func (o *combinerOperator) InstanceParams() api.Params {
-	return nil
+	return api.Params{&api.Param{
+		Key:          ParamInterval,
+		Description:  "How often the gadget produces data",
+		DefaultValue: "1s",
+		TypeHint:     api.TypeDuration,
+		Shared:       true,
+	}}
 }
 
 func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -88,8 +96,14 @@ func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCon
 		return nil, nil
 	}
 
+	params := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
+	params.CopyFromMap(paramValues, "")
+
+	interval := params.Get(ParamInterval).AsDuration()
+
 	return &combinerOperatorInstance{
 		targets:    targets,
+		interval:   interval,
 		pktBuffers: make(map[string]chan datasource.PacketArray),
 	}, nil
 }
@@ -100,7 +114,8 @@ func (o *combinerOperator) Priority() int {
 
 type combinerOperatorInstance struct {
 	// Number of targets to (ideally) wait for before emitting the combined data
-	targets int
+	targets  int
+	interval time.Duration
 
 	// Map of packet buffers to send data to the combiner data source
 	pktBuffers map[string]chan datasource.PacketArray
@@ -126,6 +141,7 @@ func forwardData(
 	packetBuf <-chan datasource.PacketArray,
 	done <-chan struct{},
 	targets int,
+	interval time.Duration,
 ) {
 	combinedPacket, err := combinedDs.NewPacketArray()
 	if err != nil {
@@ -157,8 +173,7 @@ func forwardData(
 	case string(datasource.PeriodicityByInterval):
 		// For data sources that have periodicity, even if we receive data from
 		// all targets, we emit the combined data only after a certain interval
-		// TODO: Make interval configurable
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		c = ticker.C
 	default:
@@ -255,7 +270,7 @@ func (o *combinerOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 		}
 
 		o.pktBuffers[ds.Name()] = make(chan datasource.PacketArray, o.targets)
-		go forwardData(gadgetCtx, combinedDs, o.pktBuffers[ds.Name()], o.done, o.targets)
+		go forwardData(gadgetCtx, combinedDs, o.pktBuffers[ds.Name()], o.done, o.targets, o.interval)
 
 		gadgetCtx.Logger().Debugf("%s: subscribing to %s", o.Name(), ds.Name())
 

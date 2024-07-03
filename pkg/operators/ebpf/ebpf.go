@@ -56,6 +56,7 @@ const (
 
 	ParamIface       = "iface"
 	ParamTraceKernel = "trace-pipe"
+	ParamInterval    = "interval"
 
 	// Keep in sync with `include/gadget/kernel_stack_map.h`
 	KernelStackMapName       = "ig_kstack"
@@ -472,6 +473,19 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// TODO: should actually look at the datasources
+	if len(i.toppers) > 0 {
+		i.params[ParamInterval] = &param{
+			Param: &api.Param{
+				Key:          ParamInterval,
+				Description:  "How often the gadget produces data",
+				DefaultValue: "1s",
+				TypeHint:     api.TypeDuration,
+				Shared:       true,
+			},
+		}
+	}
+
 	i.params[ParamTraceKernel] = &param{
 		Param: &api.Param{
 			Key:          ParamTraceKernel,
@@ -601,10 +615,15 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}(name, tracer)
 	}
 
+	var interval time.Duration
+	if len(i.toppers) > 0 {
+		interval = paramMap[ParamInterval].AsDuration()
+	}
+
 	for name, topper := range i.toppers {
 		i.logger.Debugf("starting topper %q", topper.MapName)
 		go func(name string, topper *Topper) {
-			err := i.runTopper(gadgetCtx, topper)
+			err := i.runTopper(gadgetCtx, topper, interval)
 			if err != nil {
 				i.logger.Errorf("starting topper %q: %w", name, err)
 			}

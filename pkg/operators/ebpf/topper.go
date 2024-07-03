@@ -204,7 +204,7 @@ func (t *Topper) readEntries(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-func (i *ebpfInstance) runTopper(gadgetCtx operators.GadgetContext, topper *Topper) error {
+func (i *ebpfInstance) runTopper(gadgetCtx operators.GadgetContext, topper *Topper, interval time.Duration) error {
 	if topper.MapName == "" {
 		return fmt.Errorf("topper map name empty")
 	}
@@ -217,7 +217,7 @@ func (i *ebpfInstance) runTopper(gadgetCtx operators.GadgetContext, topper *Topp
 
 	go func() {
 		// TODO: This should be configurable
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(interval)
 
 		for {
 			select {
