@@ -43,6 +43,7 @@ func invalidFieldLengthErr(size, expected int) error {
 // FieldAccessor grants access to the underlying buffer of a field
 type FieldAccessor interface {
 	Name() string
+	FullName() string
 
 	// Size returns the expected size of the underlying field or zero, if the field has a dynamic size
 	Size() uint32
@@ -130,6 +131,10 @@ type fieldAccessor struct {
 
 func (a *fieldAccessor) Name() string {
 	return a.f.Name
+}
+
+func (a *fieldAccessor) FullName() string {
+	return a.f.FullName
 }
 
 func (a *fieldAccessor) Rename(name string) error {
