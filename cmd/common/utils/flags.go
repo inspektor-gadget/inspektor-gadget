@@ -22,6 +22,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
@@ -195,4 +196,10 @@ func ParseEarlyFlags(cmd *cobra.Command, rawArgs []string) error {
 	args = removeHelpArg(args)
 	err := cmd.ParseFlags(args)
 	return err
+}
+
+func CopyFlagSet(fs *pflag.FlagSet) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	flags.AddFlagSet(fs)
+	return flags
 }
