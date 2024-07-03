@@ -36,6 +36,8 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		runtimeParams = r.ParamDescs().ToParams()
 	}
 
+	gadgetCtx.SetVar(runtime.RunTargets, 1)
+
 	conn, err := r.getConnToRandomTarget(gadgetCtx.Context(), runtimeParams)
 	if err != nil {
 		return nil, fmt.Errorf("dialing random target: %w", err)
