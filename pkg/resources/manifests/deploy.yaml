@@ -12,6 +12,22 @@ metadata:
   name: gadget
   namespace: gadget
 ---
+# Source: gadget/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gadget
+  namespace: gadget
+data:
+    config.yaml: |-
+      hook-mode: auto
+      fallback-pod-informer: true
+      events-buffer-length: 16384
+      containerd-socketpath: /run/containerd/containerd.sock
+      crio-socketpath: /run/crio/crio.sock
+      docker-socketpath: /run/docker.sock
+      podman-socketpath: /run/podman/podman.sock
+---
 # Source: gadget/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -286,6 +302,9 @@ spec:
             # For this, we use an emptyDir without size limit.
             - mountPath: /var/lib/ig
               name: oci
+            - mountPath: /etc/ig
+              name: config
+              readOnly: true
       nodeSelector:
         kubernetes.io/os: linux
       affinity:
@@ -339,3 +358,10 @@ spec:
             path: /sys/kernel/debug
         - name: oci
           emptyDir:
+        - configMap:
+            name: gadget
+          defaultMode: 400
+          items:
+            - key: config.yaml
+              path: config.yaml
+          name: config
