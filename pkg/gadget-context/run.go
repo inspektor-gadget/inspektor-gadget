@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/spf13/viper"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -80,6 +82,21 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		if extra, ok := opInst.(operators.DataOperatorExtraParams); ok {
 			pd := extra.ExtraParams(c)
 			params = append(params, pd.AddPrefix(opParamPrefix)...)
+		}
+	}
+
+	if cfg, ok := c.GetVar("config"); ok {
+		if v, ok := cfg.(*viper.Viper); ok {
+			// Get default parameters from gadget.yaml
+			if m := v.GetStringMapString("paramDefaults"); m != nil {
+				for _, p := range params {
+					paramKey := p.Prefix + p.Key
+					if val, ok := m[paramKey]; ok {
+						c.logger.Debugf("overriding param default from gadget.yaml %q: %q", paramKey, val)
+						p.DefaultValue = val
+					}
+				}
+			}
 		}
 	}
 
