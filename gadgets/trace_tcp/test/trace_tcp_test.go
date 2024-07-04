@@ -32,16 +32,16 @@ import (
 type traceTCPEvent struct {
 	eventtypes.CommonData
 
-	// TODO: endpoints, see https://github.com/inspektor-gadget/inspektor-gadget/issues/3034
-
-	Task      string `json:"task"`
-	MountNsID uint64 `json:"mntns_id"`
-	Timestamp string `json:"timestamp"`
-	Pid       uint32 `json:"pid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	NetNsID   uint64 `json:"netns"`
-	Type      string `json:"type"`
+	Src       utils.L4Endpoint `json:"src"`
+	Dst       utils.L4Endpoint `json:"dst"`
+	Task      string           `json:"task"`
+	MountNsID uint64           `json:"mntns_id"`
+	Timestamp string           `json:"timestamp"`
+	Pid       uint32           `json:"pid"`
+	Uid       uint32           `json:"uid"`
+	Gid       uint32           `json:"gid"`
+	NetNsID   uint64           `json:"netns"`
+	Type      string           `json:"type"`
 }
 
 func TestTraceTCP(t *testing.T) {
@@ -94,10 +94,22 @@ func TestTraceTCP(t *testing.T) {
 			expectedEntries := []*traceTCPEvent{
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Task:       "curl",
-					Uid:        0,
-					Gid:        0,
-					Type:       "connect",
+					Src: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Dst: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Task: "curl",
+					Uid:  0,
+					Gid:  0,
+					Type: "connect",
 
 					// Check only the existence of these fields
 					MountNsID: utils.NormalizedInt,
@@ -107,10 +119,22 @@ func TestTraceTCP(t *testing.T) {
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Task:       "nginx",
-					Uid:        101,
-					Gid:        101,
-					Type:       "accept",
+					Src: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Dst: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Task: "nginx",
+					Uid:  101,
+					Gid:  101,
+					Type: "accept",
 
 					// Check only the existence of these fields
 					MountNsID: utils.NormalizedInt,
@@ -120,10 +144,22 @@ func TestTraceTCP(t *testing.T) {
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Task:       "curl",
-					Uid:        0,
-					Gid:        0,
-					Type:       "close",
+					Src: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Dst: utils.L4Endpoint{
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Port:    utils.NormalizedInt,
+						Proto:   6,
+					},
+					Task: "curl",
+					Uid:  0,
+					Gid:  0,
+					Type: "close",
 
 					// Check only the existence of these fields
 					MountNsID: utils.NormalizedInt,
@@ -139,6 +175,11 @@ func TestTraceTCP(t *testing.T) {
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.NetNsID)
+				// Checking the ports is a little bit complicated as successive
+				// calls to curl with --local-port fail because of
+				// https://github.com/curl/curl/issues/6288
+				utils.NormalizeInt(&e.Src.Port)
+				utils.NormalizeInt(&e.Dst.Port)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)

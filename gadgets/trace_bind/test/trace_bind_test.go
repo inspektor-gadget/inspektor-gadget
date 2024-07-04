@@ -32,17 +32,16 @@ import (
 type traceBindEvent struct {
 	eventtypes.CommonData
 
-	// TODO: address, see https://github.com/inspektor-gadget/inspektor-gadget/issues/3034
-
-	Timestamp  string `json:"timestamp"`
-	MountNsID  uint64 `json:"mount_ns_id"`
-	Pid        uint32 `json:"pid"`
-	Uid        uint32 `json:"uid"`
-	Gid        uint32 `json:"gid"`
-	Ret        int32  `json:"ret"`
-	Opts       string `json:"opts"`
-	Comm       string `json:"comm"`
-	BoundDevIF uint32 `json:"bound_dev_if"`
+	Addr       utils.L4Endpoint `json:"addr"`
+	Timestamp  string           `json:"timestamp"`
+	MountNsID  uint64           `json:"mount_ns_id"`
+	Pid        uint32           `json:"pid"`
+	Uid        uint32           `json:"uid"`
+	Gid        uint32           `json:"gid"`
+	Ret        int32            `json:"ret"`
+	Opts       string           `json:"opts"`
+	Comm       string           `json:"comm"`
+	BoundDevIF uint32           `json:"bound_dev_if"`
 }
 
 func TestTraceBind(t *testing.T) {
@@ -64,7 +63,7 @@ func TestTraceBind(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 nc -l -p 9090 -w 1; sleep 0.1; done",
+		"while true; do setuidgid 1000:1111 nc -l -s 127.0.0.1 -p 9090 -w 1; sleep 0.1; done",
 		containerOpts...,
 	)
 
@@ -90,10 +89,16 @@ func TestTraceBind(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceBindEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "nc",
-				Opts:       "REUSEADDRESS",
-				Uid:        1000,
-				Gid:        1111,
+				Addr: utils.L4Endpoint{
+					Addr:    "127.0.0.1",
+					Version: 4,
+					Port:    9090,
+					Proto:   6,
+				},
+				Comm: "nc",
+				Opts: "REUSEADDRESS",
+				Uid:  1000,
+				Gid:  1111,
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
