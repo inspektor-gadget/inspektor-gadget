@@ -83,8 +83,6 @@ func newCache() (*inventoryCache, error) {
 
 	return &inventoryCache{
 		clientset: clientset,
-		pods:      cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second),
-		svcs:      cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second),
 	}, nil
 }
 
@@ -97,6 +95,14 @@ func (cache *inventoryCache) Close() {
 		cache.factory.Shutdown()
 		cache.factory = nil
 	}
+	if cache.pods != nil {
+		cache.pods.Close()
+		cache.pods = nil
+	}
+	if cache.svcs != nil {
+		cache.svcs.Close()
+		cache.svcs = nil
+	}
 }
 
 func (cache *inventoryCache) Start() {
@@ -105,6 +111,9 @@ func (cache *inventoryCache) Start() {
 
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
+		cache.pods = cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second)
+		cache.svcs = cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second)
+
 		cache.factory = informers.NewSharedInformerFactory(cache.clientset, informerResync)
 		cache.factory.Core().V1().Pods().Informer().AddEventHandler(cache)
 		cache.factory.Core().V1().Services().Informer().AddEventHandler(cache)
