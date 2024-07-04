@@ -5,7 +5,7 @@ go 1.22.0
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.15.0
-	github.com/containerd/containerd v1.7.18
+	github.com/containerd/containerd v1.7.19
 	github.com/containerd/nri v0.6.1
 	github.com/containers/common v0.59.1
 	github.com/containers/image/v5 v5.31.1
@@ -73,6 +73,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/gopacket v1.1.19
 	github.com/sigstore/sigstore v1.8.4
+	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.7.3
 )
 
@@ -90,11 +91,13 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/cgroups/v3 v3.0.3 // indirect
+	github.com/containerd/containerd/api v1.7.19 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/ttrpc v1.2.4 // indirect
+	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/containerd/ttrpc v1.2.5 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.1.10 // indirect
@@ -178,7 +181,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
