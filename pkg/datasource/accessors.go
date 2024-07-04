@@ -43,6 +43,7 @@ func invalidFieldLengthErr(size, expected int) error {
 // FieldAccessor grants access to the underlying buffer of a field
 type FieldAccessor interface {
 	Name() string
+	FullName() string
 
 	// Size returns the expected size of the underlying field or zero, if the field has a dynamic size
 	Size() uint32
@@ -83,6 +84,9 @@ type FieldAccessor interface {
 
 	// Annotations returns stored annotations of the field
 	Annotations() map[string]string
+
+	// AddAnnotation sets a new annotation for the field
+	AddAnnotation(key, value string)
 
 	// RemoveReference removes the reference by name from the hierarchy, effectively freeing the name
 	// tbd: name
@@ -127,6 +131,10 @@ type fieldAccessor struct {
 
 func (a *fieldAccessor) Name() string {
 	return a.f.Name
+}
+
+func (a *fieldAccessor) FullName() string {
+	return a.f.FullName
 }
 
 func (a *fieldAccessor) Rename(name string) error {
@@ -345,6 +353,13 @@ func (a *fieldAccessor) Annotations() map[string]string {
 	}
 	// return a clone to avoid write access
 	return maps.Clone(a.f.Annotations)
+}
+
+func (a *fieldAccessor) AddAnnotation(key, value string) {
+	if a.f.Annotations == nil {
+		a.f.Annotations = map[string]string{}
+	}
+	a.f.Annotations[key] = value
 }
 
 func (a *fieldAccessor) Uint8(data Data) (uint8, error) {
