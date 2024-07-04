@@ -1,5 +1,5 @@
 MINIKUBE_VERSION ?= v1.33.1
-KUBERNETES_VERSION ?= v1.30.1
+KUBERNETES_VERSION ?= v1.30.0
 MINIKUBE_DRIVER ?= docker
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
