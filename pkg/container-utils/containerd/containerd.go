@@ -72,6 +72,7 @@ func NewContainerdClient(socketPath string, protocol string, config *containerut
 
 	dialCtx, cancelFunc := context.WithTimeout(context.TODO(), DefaultTimeout)
 	defer cancelFunc()
+	//nolint:staticcheck
 	grpcConn, err := grpc.DialContext(
 		dialCtx,
 		"unix:"+socketPath,

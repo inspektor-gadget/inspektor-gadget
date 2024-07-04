@@ -365,6 +365,7 @@ func (r *Runtime) runBuiltInGadgetOnTargets(
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		//nolint:staticcheck
 		grpc.WithBlock(),
 	}
 
@@ -381,6 +382,7 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 		dialCtx = newCtx
 	}
 
+	//nolint:staticcheck
 	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)

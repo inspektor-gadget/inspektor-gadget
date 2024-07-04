@@ -53,6 +53,7 @@ type CRIClient struct {
 }
 
 func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (*CRIClient, error) {
+	//nolint:staticcheck
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

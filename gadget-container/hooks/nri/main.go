@@ -94,6 +94,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	var client pb.GadgetTracerManagerClient
 	var ctx context.Context
 	var cancel context.CancelFunc
+	//nolint:staticcheck
 	conn, err := grpc.Dial("unix://"+conf.Socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
