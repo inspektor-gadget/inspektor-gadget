@@ -203,16 +203,17 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	event->addr.port = sport;
-	event->addr.l3.version = ver;
+	event->addr.version = ver;
 	event->addr.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 
 	if (ver == 4) {
-		bpf_probe_read_kernel(&event->addr.l3.addr.v4,
-				      sizeof(event->addr.l3.addr.v4),
+		bpf_probe_read_kernel(&event->addr.addr_raw.v4,
+				      sizeof(event->addr.addr_raw.v4),
 				      &inet_sock->inet_saddr);
 	} else { /* ver == 6 */
 		bpf_probe_read_kernel(
-			&event->addr.l3.addr.v6, sizeof(event->addr.l3.addr.v6),
+			&event->addr.addr_raw.v6,
+			sizeof(event->addr.addr_raw.v6),
 			sock->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	}
 
