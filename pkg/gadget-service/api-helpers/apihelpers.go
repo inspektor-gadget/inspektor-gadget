@@ -17,6 +17,11 @@
 package apihelpers
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -77,4 +82,55 @@ func Validate(p api.Params, v api.ParamValues) error {
 		}
 	}
 	return nil
+}
+
+// GetStringValuesPerDataSource will separate a string and extract per-datasource values. It expects a string like
+// `datasource1:value,datasource2:value` or `value` (datasource is optional - this will lead to an empty key)
+func GetStringValuesPerDataSource(s string) map[string]string {
+	if s == "" {
+		return map[string]string{}
+	}
+	res := make(map[string]string)
+	for _, interval := range strings.Split(s, ",") {
+		if interval == "" {
+			continue
+		}
+		info := strings.SplitN(interval, ":", 2)
+		dsName := ""
+		val := info[0]
+		if len(info) > 1 {
+			dsName = info[0]
+			val = info[1]
+		}
+		res[dsName] = val
+	}
+	return res
+}
+
+// GetIntValuesPerDataSource works like GetStringValuesPerDataSource, but will return int values instead
+func GetIntValuesPerDataSource(s string) (map[string]int, error) {
+	var err error
+	m := GetStringValuesPerDataSource(s)
+	res := make(map[string]int, len(m))
+	for k, v := range m {
+		res[k], err = strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("converting %s to int: %w", v, err)
+		}
+	}
+	return res, nil
+}
+
+// GetDurationValuesPerDataSource works like GetStringValuesPerDataSource, but will return time.Duration values instead
+func GetDurationValuesPerDataSource(s string) (map[string]time.Duration, error) {
+	var err error
+	m := GetStringValuesPerDataSource(s)
+	res := make(map[string]time.Duration, len(m))
+	for k, v := range m {
+		res[k], err = time.ParseDuration(v)
+		if err != nil {
+			return nil, fmt.Errorf("converting %s to duration: %w", v, err)
+		}
+	}
+	return res, nil
 }
