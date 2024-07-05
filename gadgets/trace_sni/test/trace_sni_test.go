@@ -32,8 +32,6 @@ import (
 type traceSNIEvent struct {
 	eventtypes.CommonData
 
-	// TODO: endpoints, see https://github.com/inspektor-gadget/inspektor-gadget/issues/3034
-
 	Timestamp string `json:"timestamp"`
 	MountNsID uint64 `json:"mntns_id"`
 	NetNs     uint64 `json:"netns"`
