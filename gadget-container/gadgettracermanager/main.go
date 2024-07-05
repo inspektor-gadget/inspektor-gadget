@@ -37,6 +37,9 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	// Import this early to set the environment variable before any other package is imported
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
+
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
