@@ -232,6 +232,10 @@ func (t *Tracer[Event]) Run(
 		return fmt.Errorf("getting a perf reader: %w", err)
 	}
 
+	if err := gadgets.FreezeMaps(t.collection.Maps[bpfPerfMapName]); err != nil {
+		return err
+	}
+
 	var ok bool
 	t.prog, ok = t.collection.Programs[bpfProgName]
 	if !ok {

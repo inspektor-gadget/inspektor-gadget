@@ -125,6 +125,10 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 
+	if err := gadgets.FreezeMaps(t.objs.mountsnoopMaps.Events); err != nil {
+		return err
+	}
+
 	return nil
 }
 
