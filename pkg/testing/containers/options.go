@@ -77,3 +77,9 @@ func WithStartAndStop() ContainerOption {
 		opts.startAndStop = true
 	}
 }
+
+func WithWaitOrOomKilled() ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithWaitOrOomKilled())
+	}
+}

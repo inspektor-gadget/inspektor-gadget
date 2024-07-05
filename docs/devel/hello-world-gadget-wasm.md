@@ -18,9 +18,9 @@ you are familiar with that guide before continuing with this.
 
 ### Creating our first wasm program
 
-Create a `program.go` file in the same folder of the `program.bpf.c` one. As a
-first step, let's define the `init`, `start` and `stop` functions and emit some
-log messages from them:
+Create a folder named `go` next to the `program.bpf.c` file. In there
+we create a new file named `program.go`. As a first step, let's define the
+`init`, `start` and `stop` functions and emit some log messages from them:
 
 ```golang
 package main
@@ -55,7 +55,7 @@ We also need a `build.yaml` file that indicates the gadget includes a Golang
 program that needs to be compiled to a wasm module:
 
 ```yaml
-wasm: program.go
+wasm: go/program.go
 ```
 
 Build the gadget

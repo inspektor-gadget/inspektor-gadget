@@ -96,7 +96,7 @@ test-ig-local: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
-	find . -name '*_test.go' -execdir go test -exec 'sudo -E' -v ./... \;
+	go test -exec 'sudo -E' -v ./...
 
 .PHONY:
 test-k8s: build
@@ -107,4 +107,4 @@ test-k8s: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
-	find . -name '*_test.go' -execdir go test -exec 'sudo -E' -v ./... \;
+	go test -exec 'sudo -E' -v ./...
