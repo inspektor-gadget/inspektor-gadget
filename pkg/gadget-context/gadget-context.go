@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -191,10 +192,22 @@ func (c *GadgetContext) DataOperators() []operators.DataOperator {
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	ds, err := datasource.New(t, name)
+
+	options := make([]datasource.DataSourceOption, 0)
+	if cfg, ok := c.GetVar("config"); ok {
+		if v, ok := cfg.(*viper.Viper); ok {
+			sub := v.Sub("datasources." + name)
+			if sub != nil {
+				options = append(options, datasource.WithConfig(sub))
+			}
+		}
+	}
+
+	ds, err := datasource.New(t, name, options...)
 	if err != nil {
 		return nil, fmt.Errorf("creating DataSource: %w", err)
 	}
+
 	c.dataSources[name] = ds
 	return ds, nil
 }
