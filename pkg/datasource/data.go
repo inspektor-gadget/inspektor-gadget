@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"google.golang.org/protobuf/proto"
 
@@ -178,7 +179,7 @@ func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSourc
 		fieldMap:        make(map[string]*field),
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
-		annotations:     map[string]string{},
+		annotations:     make(map[string]string),
 	}
 
 	for _, option := range options {
@@ -187,6 +188,7 @@ func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSourc
 
 	if ds.config != nil {
 		// Apply configuration
+		ds.tags = append(ds.tags, ds.config.GetStringSlice("tags")...)
 		annotations := ds.config.GetStringMapString("annotations")
 		for k, v := range annotations {
 			ds.annotations[k] = v
@@ -360,6 +362,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 			Index:        uint32(len(ds.fields) + len(newFields)),
 			PayloadIndex: idx,
 			Flags:        FieldFlagStaticMember.Uint32(),
+			Annotations:  maps.Clone(defaultFieldAnnotations),
 		}
 		nf.Size = f.FieldSize()
 		nf.Offs = f.FieldOffset()
@@ -426,26 +429,70 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}}, nil
 }
 
+func applyFieldTemplate(f *field, annotations map[string]string) {
+	templateAnn := annotations[TemplateAnnotation]
+	if templateAnn == "" {
+		return
+	}
+
+	template := annotationsTemplates[templateAnn]
+	if template == nil {
+		log.Warnf("template %q not found for field %q", templateAnn, f.Name)
+		return
+	}
+
+	log.Debugf("applying template %q to field %q", templateAnn, f.Name)
+	for k, v := range template {
+		f.Annotations[k] = v
+	}
+}
+
 func (ds *dataSource) applyFieldConfig(newFields ...*field) {
-	if ds.config == nil {
-		return
+	var fields *viper.Viper
+
+	if ds.config != nil {
+		fields = ds.config.Sub("fields")
 	}
 
-	fields := ds.config.Sub("fields")
-	if fields == nil {
-		return
-	}
-
+	// first pass applying configuration from metadata
 	for _, field := range newFields {
-		sub := fields.Sub(field.Name)
-		if sub == nil {
+		// apply template first in case the field being added contains an
+		// annotation with it, for instance, when the field is created by an
+		// operator. The annotations added by the template can be changed by the
+		// field config below.
+		applyFieldTemplate(field, field.Annotations)
+
+		// apply configuration from metadata
+		if fields == nil {
 			continue
 		}
 
-		for k, v := range sub.GetStringMapString("annotations") {
+		fieldConfig := fields.Sub(field.Name)
+		if fieldConfig == nil {
+			continue
+		}
+
+		field.Tags = append(field.Tags, fieldConfig.GetStringSlice("tags")...)
+
+		fieldAnnotations := fieldConfig.GetStringMapString("annotations")
+		if fieldAnnotations == nil {
+			continue
+		}
+
+		// apply template annotations first to allow user overwrite some
+		// annotations from the template
+		applyFieldTemplate(field, fieldAnnotations)
+
+		for k, v := range fieldAnnotations {
 			field.Annotations[k] = v
 		}
-		field.Tags = append(field.Tags, sub.GetStringSlice("tags")...)
+	}
+
+	// second pass setting flags based on annotations
+	for _, field := range newFields {
+		if field.Annotations[ColumnsHiddenAnnotation] == "true" {
+			FieldFlagHidden.AddTo(&field.Flags)
+		}
 	}
 }
 
@@ -462,7 +509,7 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 		FullName:    name,
 		Index:       uint32(len(ds.fields)),
 		Kind:        kind,
-		Annotations: make(map[string]string),
+		Annotations: maps.Clone(defaultFieldAnnotations),
 	}
 	for _, opt := range opts {
 		opt(nf)

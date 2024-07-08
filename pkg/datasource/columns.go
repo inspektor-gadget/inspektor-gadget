@@ -31,6 +31,17 @@ const (
 	// ColumnsReplaceAnnotation is used to indicate that this field should be
 	// replaced by the one indicated in the annotation when printing it.
 	ColumnsReplaceAnnotation = "columns.replace"
+
+	ColumnsWidthAnnotation     = "columns.width"
+	ColumnsMaxWidthAnnotation  = "columns.maxwidth"
+	ColumnsMinWidthAnnotation  = "columns.minwidth"
+	ColumnsAlignmentAnnotation = "columns.alignment"
+	ColumnsEllipsisAnnotation  = "columns.ellipsis"
+	ColumnsHiddenAnnotation    = "columns.hidden"
+	ColumnsFixedAnnotation     = "columns.fixed"
+
+	DescriptionAnnotation = "description"
+	TemplateAnnotation    = "template"
 )
 
 type DataTuple struct {
@@ -80,7 +91,7 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 		// extract attributes from annotations
 		for k, v := range f.Annotations {
 			switch k {
-			case "columns.alignment":
+			case ColumnsAlignmentAnnotation:
 				switch metadatav1.Alignment(v) {
 				case metadatav1.AlignmentLeft:
 					attributes.Alignment = columns.AlignLeft
@@ -89,7 +100,7 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				default:
 					return nil, fmt.Errorf("invalid alignment type for column %q: %s", f.Name, v)
 				}
-			case "columns.ellipsis":
+			case ColumnsEllipsisAnnotation:
 				switch metadatav1.EllipsisType(v) {
 				case metadatav1.EllipsisNone:
 					attributes.EllipsisType = ellipsis.None
@@ -102,28 +113,25 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				default:
 					return nil, fmt.Errorf("invalid ellipsis type for column %q: %s", f.Name, v)
 				}
-			case "columns.width":
+			case ColumnsWidthAnnotation:
 				var err error
 				attributes.Width, err = strconv.Atoi(v)
 				if err != nil {
 					return nil, fmt.Errorf("reading width for column %q: %w", f.Name, err)
 				}
-			case "columns.minWidth":
+			case ColumnsMinWidthAnnotation:
 				var err error
 				attributes.MinWidth, err = strconv.Atoi(v)
 				if err != nil {
 					return nil, fmt.Errorf("reading minWidth for column %q: %w", f.Name, err)
 				}
-			case "columns.maxWidth":
+			case ColumnsMaxWidthAnnotation:
 				var err error
 				attributes.MaxWidth, err = strconv.Atoi(v)
 				if err != nil {
 					return nil, fmt.Errorf("reading maxWidth for column %q: %w", f.Name, err)
 				}
-			case "columns.template":
-				attributes.Template = v
-				df.Template = v
-			case "columns.fixed":
+			case ColumnsFixedAnnotation:
 				if v == "true" {
 					attributes.FixedWidth = true
 				}
@@ -196,4 +204,72 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 		}
 	}
 	return cols, nil
+}
+
+var defaultFieldAnnotations = map[string]string{
+	ColumnsWidthAnnotation:     "16",
+	ColumnsEllipsisAnnotation:  string(metadatav1.EllipsisEnd),
+	ColumnsAlignmentAnnotation: string(metadatav1.AlignmentLeft),
+}
+
+var annotationsTemplates = map[string]map[string]string{
+	"timestamp": {
+		ColumnsWidthAnnotation:    "35",
+		ColumnsMaxWidthAnnotation: "35",
+		ColumnsEllipsisAnnotation: "end",
+	},
+	"node": {
+		ColumnsWidthAnnotation:    "30",
+		ColumnsEllipsisAnnotation: string(metadatav1.EllipsisMiddle),
+	},
+	"pod": {
+		ColumnsWidthAnnotation:    "30",
+		ColumnsEllipsisAnnotation: string(metadatav1.EllipsisMiddle),
+	},
+	"container": {
+		ColumnsWidthAnnotation: "30",
+	},
+	"namespace": {
+		ColumnsWidthAnnotation: "30",
+	},
+	"containerImageName": {
+		ColumnsWidthAnnotation: "30",
+	},
+	"containerImageDigest": {
+		ColumnsWidthAnnotation: "30",
+	},
+	"containerStartedAt": {
+		ColumnsHiddenAnnotation: "true",
+		ColumnsWidthAnnotation:  "35",
+	},
+	"comm": {
+		DescriptionAnnotation:     "Process name",
+		ColumnsMaxWidthAnnotation: "16",
+	},
+	"pid": {
+		ColumnsMinWidthAnnotation:  "7",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"uid": {
+		ColumnsMinWidthAnnotation:  "8",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"gid": {
+		ColumnsMinWidthAnnotation:  "8",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"ns": {
+		ColumnsHiddenAnnotation:    "true",
+		ColumnsWidthAnnotation:     "12",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"l4endpoint": {
+		ColumnsMinWidthAnnotation: "22",
+		ColumnsWidthAnnotation:    "40",
+		ColumnsMaxWidthAnnotation: "52",
+	},
+	"syscall": {
+		ColumnsWidthAnnotation:    "18",
+		ColumnsMaxWidthAnnotation: "28",
+	},
 }

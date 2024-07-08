@@ -3,6 +3,80 @@ description: trace dns requests and responses
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs/latest/
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
+datasources:
+  dns:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      src:
+        annotations:
+          description: Source endpoint
+          template: l4endpoint
+      dst:
+        annotations:
+          description: Destination endpoint
+          template: l4endpoint
+      pid:
+        annotations:
+          description: PID of the process that sent the request
+          template: pid
+      task:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      name:
+        annotations:
+          columns.width: 30
+      qr:
+        annotations:
+          columns.width: 2
+      pkt_type:
+        annotations:
+          columns.width: 8
+      rcode:
+        annotations:
+          columns.width: 8
+      latency_ns:
+        annotations:
+          columns.width: 8
+          columns.hidden: true
+      anaddr:
+        annotations:
+          columns.width: 16
+      netns:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      tid:
+        annotations:
+          columns.hidden: true
+      id:
+        annotations:
+          columns.hidden: true
+      qtype:
+        annotations:
+          description: Query type
+      ancount:
+        annotations:
+          columns.hidden: true
+      anaddrcount:
+        annotations:
+          columns.hidden: true
 tracers:
   dns:
     mapName: events
@@ -10,90 +84,3 @@ tracers:
 structs:
   event_t:
     fields:
-    - name: timestamp_raw
-    - name: src
-      description: Source endpoint
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: dst
-      description: Destination endpoint
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: pid
-      description: PID of the process that sent the request
-      attributes:
-        template: pid
-    - name: task
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        hidden: true
-        template: uid
-    - name: gid
-      attributes:
-        hidden: true
-        template: uid
-    - name: name
-      attributes:
-        width: 30
-    - name: qr
-      attributes:
-        width: 2
-    - name: pkt_type
-      attributes:
-        width: 8
-    - name: rcode
-      attributes:
-        width: 8
-    - name: latency_ns
-      attributes:
-        width: 8
-        hidden: true
-    - name: anaddr
-      attributes:
-        width: 16
-    - name: netns
-      description: Network namespace inode id
-      attributes:
-        template: ns
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: tid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: id
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: qtype
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: ancount
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: anaddrcount
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end

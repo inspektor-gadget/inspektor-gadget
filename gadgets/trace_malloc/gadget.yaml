@@ -3,6 +3,41 @@ description: use uprobe to trace malloc and free in libc.so
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  malloc:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          template: pid
+      tid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          template: comm
+      operation_raw:
+        annotations:
+          columns.hidden: true
+      operation:
+        annotations:
+          description: memory operation type
+      addr:
+        annotations:
+          description: address of malloc/free operations
+          columns.width: 20
+      mntns_id:
+        annotations:
+          template: ns
+      size:
+        annotations:
+          description: size of malloc operations
+          columns.width: 20
 tracers:
   malloc:
     mapName: events
@@ -10,36 +45,3 @@ tracers:
 structs:
   event:
     fields:
-    - name: pid
-      attributes:
-        template: pid
-    - name: tid
-      attributes:
-        template: pid
-    - name: comm
-      description: command
-      attributes:
-        template: comm
-    - name: operation_raw
-      description: memory operation type
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: addr
-      description: address of malloc/free operations
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: size
-      description: size of malloc operations
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
-    - name: timestamp_raw

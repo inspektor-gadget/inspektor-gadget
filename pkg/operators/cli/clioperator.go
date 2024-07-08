@@ -146,7 +146,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		fmt.Fprintf(&sb, "  %q (data source):\n", ds.Name())
 		for _, f := range availableFields {
 			fmt.Fprintf(&sb, "    %s\n", f.FullName)
-			if desc, ok := f.Annotations["description"]; ok { // TODO: const to API?
+			if desc, ok := f.Annotations[datasource.DescriptionAnnotation]; ok {
 				fmt.Fprintf(&sb, "      %s\n", desc)
 			}
 		}

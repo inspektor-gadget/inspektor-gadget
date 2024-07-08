@@ -3,6 +3,76 @@ description: trace TCP packets dropped by the kernel
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  tcpdrop:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      src:
+        annotations:
+          template: l4endpoint
+      dst:
+        annotations:
+          template: l4endpoint
+      task:
+        annotations:
+          template: comm
+      pid:
+        annotations:
+          template: pid
+      tid:
+        annotations:
+          description: Thread id that generated event
+          columns.hidden: true
+          template: pid
+      uid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          description: Group id of the event's process
+          template: uid
+          columns.hidden: true
+      tcpflags_raw:
+        annotations:
+          columns.hidden: true
+      tcpflags:
+        annotations:
+          description: TCP flags from a TCP header
+      reason_raw:
+        annotations:
+          columns.hidden: true
+      reason:
+        annotations:
+          description: Reason for dropping a packet
+          columns.ellipsis: start
+      netns:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      mount_ns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      state_raw:
+        annotations:
+          columns.hidden: true
+      state:
+        annotations:
+          description: State of the TCP connection
+      kernel_stack_raw:
+        annotations:
+          columns.hidden: true
+      kernel_stack:
+        annotations:
+          description: Kernel stack
+          columns.hidden: true
+          columns.width: 20
 tracers:
   tcpdrop:
     mapName: events
@@ -10,62 +80,3 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: src
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: dst
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: task
-      attributes:
-        template: comm
-    - name: pid
-      attributes:
-        template: pid
-    - name: tid
-      description: Thread id that generated event
-      attributes:
-        hidden: true
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      description: Group id of the event's process
-      attributes:
-        template: uid
-    - name: tcpflags_raw
-      description: TCP flags from a TCP header
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: reason_raw
-      description: Reason for dropping a packet
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: start
-    - name: netns
-      description: Network namespace inode id
-      attributes:
-        template: ns
-    - name: mount_ns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: state_raw
-      description: State of the TCP connection
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: kernel_stack_raw
-      description: Kernel stack
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end

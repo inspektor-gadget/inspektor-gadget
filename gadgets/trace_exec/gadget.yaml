@@ -3,6 +3,70 @@ description: trace process executions
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  exec:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          template: pid
+      ppid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      loginuid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      sessionid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      retval:
+        annotations:
+          columns.width: 5
+          columns.alignment: right
+      args_count:
+        annotations:
+          columns.hidden: true
+          json.skip: true
+      args_size:
+        annotations:
+          columns.hidden: true
+          json.skip: true
+      args:
+        annotations:
+          columns.width: 16
+      mntns_id:
+        annotations:
+          template: ns
+      upper_layer:
+        annotations:
+          description: Whether the executable is in the upper layer of the overlay filesystem
+          columns.width: 5
+          columns.hidden: true
+      pupper_layer:
+        annotations:
+          description: Whether the executable's parent in the process hierarchy
+            is in the upper layer of the overlay filesystem. Only initialized when
+            the execution succeeded.
+          columns.width: 5
+          columns.hidden: true
 tracers:
   exec:
     mapName: events
@@ -10,80 +74,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: pid
-      attributes:
-        template: pid
-    - name: ppid
-      attributes:
-        template: pid
-    - name: comm
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: loginuid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: sessionid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: retval
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 3
-        alignment: left
-        ellipsis: end
-    - name: args_count
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: args_size
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: args
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: upper_layer
-      description: Whether the executable is in the upper layer of the overlay filesystem
-      attributes:
-        width: 5
-        alignment: left
-        ellipsis: end
-    - name: pupper_layer
-      description: Whether the executable's parent in the process hierarchy is in
-        the upper layer of the overlay filesystem. Only initialized when the execution
-        succeeded.
-      attributes:
-        width: 5
-        alignment: left
-        ellipsis: end
 ebpfParams:
   ignore_failed:
     key: ignore-failed

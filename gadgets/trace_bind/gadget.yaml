@@ -3,6 +3,50 @@ description: Trace socket bindings
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  bind:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      mount_ns_id:
+        annotations:
+          template: ns
+      addr:
+        annotations:
+          description: Address the socket is bound to
+          columns.width: 32
+      pid:
+        annotations:
+          template: pid
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      ret:
+        annotations:
+          description: Return value of the bind() syscall
+          columns.width: 5
+          columns.alignment: right
+      opts_raw:
+        annotations:
+          columns.hidden: true
+      opts:
+        annotations:
+          description: Socket options
+          columns.hidden: true
+      comm:
+        annotations:
+          template: comm
+      bound_dev_if:
+        annotations:
+          description: Index of the network interface the socket is bound to
+          columns.width: 10
 tracers:
   bind:
     mapName: events
@@ -10,46 +54,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: mount_ns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: addr
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: pid
-      attributes:
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: ret
-      description: Return value of the bind() syscall
-      attributes:
-        width: 3
-        alignment: left
-    - name: opts_raw
-      description: Socket options
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: comm
-      attributes:
-        template: comm
-    - name: bound_dev_if
-      description: Index of the network interface the socket is bound to
-      attributes:
-        width: 10
-        alignment: left
-        ellipsis: end
 ebpfParams:
   ignore_errors:
     key: ignore_errors

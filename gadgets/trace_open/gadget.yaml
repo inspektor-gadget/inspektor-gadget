@@ -3,6 +3,58 @@ description: trace open files
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  open:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      flags_raw:
+        annotations:
+          columns.hidden: true
+      flags:
+        annotations:
+          columns.hidden: true
+          columns.width: 10
+      mode_raw:
+        annotations:
+          columns.hidden: true
+      mode:
+        annotations:
+          description: File access mode
+      err:
+        annotations:
+          description: Error code
+          columns.width: 5
+          columns.alignment: right
+      fd:
+        annotations:
+          description: File descriptor. 0 in case of error
+          columns.minwidth: 2
+          columns.maxwidth: 3
+          columns.alignment: right
+      fname:
+        annotations:
+          columns.width: 32
+          columns.minwidth: 24
+      mntns_id:
+        annotations:
+          template: ns
 tracers:
   open:
     mapName: events
@@ -10,48 +62,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: pid
-      attributes:
-        template: pid
-    - name: comm
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: flags_raw
-      attributes:
-        width: 5
-        hidden: true
-    - name: mode_raw
-      description: File access mode
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: err
-      description: Error code
-      attributes:
-        width: 3
-        alignment: right
-    - name: fd
-      description: File descriptor. 0 in case of error
-      attributes:
-        minWidth: 2
-        maxWidth: 3
-    - name: fname
-      attributes:
-        width: 32
-        minWidth: 24
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
 ebpfParams:
   targ_failed:
     key: failed

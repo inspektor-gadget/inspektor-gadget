@@ -15,21 +15,16 @@
 package ebpfoperator
 
 import (
-	"fmt"
 	"reflect"
 	"slices"
 
 	"github.com/cilium/ebpf/btf"
-	"gopkg.in/yaml.v3"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
 type Field struct {
-	metadatav1.Field
 	Tags   []string
 	Offset uint32
 	Size   uint32
@@ -63,51 +58,6 @@ func (f *Field) FieldType() api.Kind {
 	return f.kind
 }
 
-func (f *Field) FieldHidden() bool {
-	return f.Attributes.Hidden
-}
-
-func (f *Field) FieldAnnotations() map[string]string {
-	out := make(map[string]string)
-
-	for k, v := range f.Annotations {
-		if s, ok := v.(string); ok {
-			out[k] = s
-		} else {
-			// try to copy rest
-			out[k] = fmt.Sprintf("%v", v)
-		}
-	}
-
-	if val := f.Description; val != "" {
-		out["description"] = val
-	}
-
-	// Rewrite attributes as annotations; TODO: tbd
-	if val := f.Attributes.Alignment; val != "" {
-		out["columns.alignment"] = string(val)
-	}
-	if val := f.Attributes.Ellipsis; val != "" {
-		out["columns.ellipsis"] = string(val)
-	}
-	if val := f.Attributes.Width; val != 0 {
-		out["columns.width"] = fmt.Sprintf("%d", val)
-	}
-	if val := f.Attributes.MinWidth; val != 0 {
-		out["columns.minWidth"] = fmt.Sprintf("%d", val)
-	}
-	if val := f.Attributes.MaxWidth; val != 0 {
-		out["columns.maxWidth"] = fmt.Sprintf("%d", val)
-	}
-	if val := f.Attributes.Template; val != "" {
-		out["columns.template"] = val
-	}
-	if val := f.Attributes.Hidden; val {
-		out["hidden"] = "true"
-	}
-	return out
-}
-
 func (f *Field) FieldParent() int {
 	return f.parent
 }
@@ -123,41 +73,10 @@ func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
 
 	// TODO: make this validate the struct
 	for _, field := range gadgetStruct.Fields {
-		existingFields[field.Name] = field
+		existingFields[field.name] = field
 	}
 
 	i.getFieldsFromStruct(btfStruct, &gadgetStruct.Fields, "", 0, -1)
-
-	var configStruct *metadatav1.Struct
-	fields := i.config.Sub("structs." + btfStruct.Name)
-	if fields != nil {
-		// This feels ugly, maybe optimize
-		d, _ := yaml.Marshal(fields.AllSettings())
-		err := yaml.Unmarshal(d, &configStruct)
-		if err != nil {
-			return fmt.Errorf("invalid metadata for struct %q", btfStruct.Name)
-		}
-
-		// Build lookup
-		lookup := make(map[string]metadatav1.Field)
-		for _, field := range configStruct.Fields {
-			lookup[field.Name] = field
-		}
-
-		// Only handling topmost layer for now // TODO
-		for _, field := range gadgetStruct.Fields {
-			cfgField, ok := lookup[field.Name]
-			if !ok {
-				continue
-			}
-			i.logger.Debugf(" found field config for %q", field.Name)
-
-			// Fill in blanks from metadata
-			field.Description = cfgField.Description
-			field.Attributes = cfgField.Attributes
-			field.Annotations = cfgField.Annotations
-		}
-	}
 
 	gadgetStruct.Size = btfStruct.Size
 
@@ -212,17 +131,8 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	tags = append(tags, "name:"+member.Name, api.TagSrcEbpf)
 
-	defaultAttributes := metadatav1.FieldAttributes{
-		Alignment: metadatav1.AlignmentLeft,
-		Ellipsis:  metadatav1.EllipsisEnd,
-	}
-
 	newField := func(size uint32, kind api.Kind) *Field {
 		return &Field{
-			Field: metadatav1.Field{
-				Name:       prefix + member.Name,
-				Attributes: defaultAttributes,
-			},
 			Size:   size,
 			Tags:   tags,
 			Offset: offset + member.Offset.Bytes(),
@@ -239,7 +149,7 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
-		i.logger.Debugf(" adding field %q (%s) at %d (%v)", field.Name, "struct", field.Offset, tags)
+		i.logger.Debugf(" adding field %q (%s) at %d (%v)", prefix+field.name, "struct", field.Offset, tags)
 		i.getFieldsFromStruct(t, fields, prefix+member.Name+".", offset+member.Offset.Bytes(), newParent)
 		return
 	}
@@ -250,7 +160,7 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 		newParent := len(*fields)
 		*fields = append(*fields, field)
 
-		i.logger.Debugf(" adding field %q (%s) at %d", field.Name, "union", field.Offset)
+		i.logger.Debugf(" adding field %q (%s) at %d", prefix+field.name, "union", field.Offset)
 		i.getFieldsFromUnion(t, fields, prefix+member.Name+".", offset+member.Offset.Bytes(), newParent)
 		return
 	}
@@ -276,10 +186,9 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	kind := getFieldKind(refType, tags)
 
 	field := newField(fsize, kind)
-	field.Field.Attributes.Width = uint(columns.GetWidthFromType(refType.Kind()))
 
 	i.logger.Debugf(" adding field %q (%s) (kind: %s) at %d (parent %d) (%v)",
-		field.Name, fieldType, kind.String(), field.Offset, parent, tags)
+		prefix+field.name, fieldType, kind.String(), field.Offset, parent, tags)
 	*fields = append(*fields, field)
 }
 

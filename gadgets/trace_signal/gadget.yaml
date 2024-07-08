@@ -3,6 +3,45 @@ description: trace signal
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  signal:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          template: pid
+      tpid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      ret:
+        annotations:
+          columns.width: 5
+          columns.alignment: right
+      sig_raw:
+        annotations:
+          columns.hidden: true
+      sig:
+        annotations:
+          description: Signal number
+          columns.width: 10
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
 tracers:
   signal:
     mapName: events
@@ -10,32 +49,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: pid
-      attributes:
-        template: pid
-    - name: tpid
-      attributes:
-        template: pid
-    - name: comm
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: ret
-      attributes:
-        width: 5
-    - name: sig_raw
-      attributes:
-        width: 5
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
 ebpfParams:
   failed_only:
     key: failed
