@@ -21,6 +21,9 @@ datasources:
       comm:
         annotations:
           template: comm
+      pcomm:
+        annotations:
+          template: pcomm
       uid:
         annotations:
           template: uid
