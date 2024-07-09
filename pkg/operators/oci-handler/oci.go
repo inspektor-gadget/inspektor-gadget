@@ -206,6 +206,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		AllowedRegistriesOptions: oci.AllowedRegistriesOptions{
 			AllowedRegistries: o.ociParams.Get(allowedRegistries).AsStringSlice(),
 		},
+		Logger: gadgetCtx.Logger(),
 	}
 
 	target := gadgetCtx.OrasTarget()
