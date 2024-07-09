@@ -15,7 +15,9 @@
 package runtimeclient_test
 
 import (
+	"errors"
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -32,9 +34,42 @@ import (
 
 const (
 	containerNamePrefix = "test-container"
-	containerImageName  = "docker.io/library/alpine:latest"
-	numContainers       = 2
+	// untagged/undigested image name
+	baseImageName = "docker.io/library/alpine"
+	numContainers = 2
 )
+
+func containerImageDigest(t *testing.T) string {
+	t.Helper()
+	switch runtime.GOARCH {
+	case "amd64":
+		return "sha256:16edc9559472f368b71e0f19a575e71080f2251f6693e7d560e21cc6472f7da6"
+	case "arm64":
+		return "sha256:e31c3b1cd47718260e1b6163af0a05b3c428dc01fa410baf72ca8b8076e22e72"
+	default:
+		t.Fatalf("arch %q: %v", runtime.GOARCH, errors.ErrUnsupported)
+	}
+	return ""
+}
+
+func containerImageName(t *testing.T) string {
+	t.Helper()
+	return fmt.Sprintf("%s@%s", baseImageName, containerImageDigest(t))
+}
+
+// TODO: make containerImageName consistent between container runtimes.
+// https://github.com/inspektor-gadget/inspektor-gadget/pull/2798#discussion_r1598477792
+func expectedContainerImageName(t *testing.T, runtime types.RuntimeName) string {
+	t.Helper()
+	switch runtime {
+	case types.RuntimeNameDocker:
+		return baseImageName
+	case types.RuntimeNameContainerd:
+		return containerImageName(t)
+	default:
+		return ""
+	}
+}
 
 func TestRuntimeClientInterface(t *testing.T) {
 	t.Parallel()
@@ -54,7 +89,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 					runtime,
 					cn,
 					"sleep inf", // We simply want to keep the container running
-					testutils.WithImage(containerImageName),
+					testutils.WithImage(containerImageName(t)),
 				)
 				require.Nil(t, err)
 				require.NotNil(t, c)
@@ -69,10 +104,11 @@ func TestRuntimeClientInterface(t *testing.T) {
 						ContainerData: runtimeclient.ContainerData{
 							Runtime: runtimeclient.RuntimeContainerData{
 								BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-									RuntimeName:        runtime,
-									ContainerName:      cn,
-									ContainerID:        c.ID(),
-									ContainerImageName: containerImageName,
+									RuntimeName:          runtime,
+									ContainerName:        cn,
+									ContainerID:          c.ID(),
+									ContainerImageName:   expectedContainerImageName(t, runtime),
+									ContainerImageDigest: containerImageDigest(t),
 								},
 								State: runtimeclient.StateRunning,
 							},
@@ -108,8 +144,6 @@ func TestRuntimeClientInterface(t *testing.T) {
 				for _, eData := range expectedData {
 					found := false
 					for _, cData := range containers {
-						// ContainerImageDigest may vary among versions, so we do not check it for now
-						cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 						if cmp.Equal(*cData, eData.ContainerData) {
 							found = true
 							break
@@ -125,8 +159,6 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainer(eData.Runtime.ContainerID)
-					// ContainerImageDigest may vary among versions, so we do not check it for now
-					cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
 					require.True(t, cmp.Equal(*cData, eData.ContainerData),
@@ -139,8 +171,6 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainerDetails(eData.Runtime.ContainerID)
-					// ContainerImageDigest may vary among versions, so we do not check it for now
-					cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
 
