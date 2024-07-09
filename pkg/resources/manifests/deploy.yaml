@@ -172,6 +172,10 @@ spec:
               value: "16384"
             - name: GADGET_TRACER_MANAGER_LOG_LEVEL
               value: "info"
+            - name: GADGET_VERIFY_IMAGE
+              value: "true"
+            - name: GADGET_PUBLIC_KEY
+              value: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh\nIr4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==\n-----END PUBLIC KEY-----\n"
           securityContext:
             readOnlyRootFilesystem: true
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate

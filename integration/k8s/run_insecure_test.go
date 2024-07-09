@@ -60,9 +60,14 @@ func TestRunInsecure(t *testing.T) {
 	}
 	RunTestSteps(orasCpCmds, t)
 
+	cosignSignCmd := &Command{
+		Name: "SignTestImage",
+		Cmd:  fmt.Sprintf("docker run -e COSIGN_PRIVATE_KEY=env://COSIGN_PRIVATE_KEY --rm gcr.io/projectsigstore/cosign:v1.13.0 sign --key env://COSIGN_PRIVATE_KEY --yes --recursive %s", fmt.Sprintf("%s:5000/trace_open:%s", registryIP, *gadgetTag)),
+	}
+	cosignSignCmd.Run(t)
+
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
-	// As the image was not signed, we need to set --verify-image=false.
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run --verify-image=false %s:5000/trace_open:%s -n %s -o json --insecure --timeout 2", registryIP, *gadgetTag, ns)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s:5000/trace_open:%s -n %s -o json --insecure --timeout 2", registryIP, *gadgetTag, ns)
 
 	// run the gadget without verifying its output as we only need to check if it runs
 	traceOpenCmd := &Command{

@@ -44,9 +44,8 @@ var (
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 
-	gadgetRepository  = flag.String("gadget-repository", "ghcr.io/inspektor-gadget/gadget", "repository where gadget images are stored")
-	gadgetTag         = flag.String("gadget-tag", "latest", "tag used for gadgets's OCI images")
-	gadgetVerifyImage = flag.Bool("gadget-verify-image", true, "verify gadget image before running tests")
+	gadgetRepository = flag.String("gadget-repository", "ghcr.io/inspektor-gadget/gadget", "repository where gadget images are stored")
+	gadgetTag        = flag.String("gadget-tag", "latest", "tag used for gadgets's OCI images")
 )
 
 func cleanupFunc(cleanupCommands []*integration.Command) {

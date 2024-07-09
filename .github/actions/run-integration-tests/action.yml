@@ -47,7 +47,7 @@ runs:
           # Inspektor-Gadget container image is loaded into the cluster using "minikube image load" instead of pushing the container image to a registry.
           EXTRA_FLAGS='--image-pull-policy=Never'
         fi
-        ./kubectl-gadget deploy $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
+        ./kubectl-gadget deploy --gadgets-verify-image=${{ inputs.gadget_verify_image }} $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
     - name: Integration tests
       id: integration-tests
       shell: bash
@@ -87,7 +87,6 @@ runs:
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
           GADGET_REPOSITORY=${{ inputs.gadget_repository }} \
           GADGET_TAG=${{ inputs.gadget_tag }} \
-          GADGET_VERIFY_IMAGE=${{ inputs.gadget_verify_image }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Undeploy Inspektor Gadget

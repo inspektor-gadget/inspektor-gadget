@@ -101,6 +101,8 @@ var (
 	verifyImage         bool
 	publicKey           string
 	strLevels           []string
+	gadgetVerifyImage   bool
+	gadgetPublicKey     string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -227,6 +229,14 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&publicKey,
 		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
+	deployCmd.PersistentFlags().BoolVarP(
+		&gadgetVerifyImage,
+		"gadgets-verify-image", "",
+		true,
+		"verify image-based gadgets using the provided public key")
+	deployCmd.PersistentFlags().StringVarP(
+		&gadgetPublicKey,
+		"gadgets-public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the image-based gadgets")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -242,7 +252,7 @@ func info(format string, args ...any) {
 // It was adapted from:
 // https://github.com/kubernetes/client-go/issues/193#issuecomment-363318588
 func parseK8sYaml(content string) ([]runtime.Object, error) {
-	sepYamlfiles := strings.Split(content, "---")
+	sepYamlfiles := strings.Split(content, "---\n")
 	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
 	sch := runtime.NewScheme()
@@ -626,6 +636,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
 					}
 					gadgetContainer.Env[i].Value = daemonLogLevel
+				case "GADGET_VERIFY_IMAGE":
+					gadgetContainer.Env[i].Value = strconv.FormatBool(gadgetVerifyImage)
+				case "GADGET_PUBLIC_KEY":
+					gadgetContainer.Env[i].Value = gadgetPublicKey
 				}
 			}
 

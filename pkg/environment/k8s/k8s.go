@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package k8s sets the environnment to Kubernetes. Imported by kubectl-gadget.
+// Package k8s sets the environment to Kubernetes. Imported by kubectl-gadget.
 package k8s
 
 import "github.com/inspektor-gadget/inspektor-gadget/pkg/environment"

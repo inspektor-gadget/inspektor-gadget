@@ -88,6 +88,10 @@ spec:
               value: {{ .Values.config.eventsBufferLength | quote }}
             - name: GADGET_TRACER_MANAGER_LOG_LEVEL
               value: {{ .Values.config.daemonLogLevel | quote }}
+            - name: GADGET_VERIFY_IMAGE
+              value: {{ .Values.config.gadgetVerifyImage | quote }}
+            - name: GADGET_PUBLIC_KEY
+              value: {{ .Values.config.gadgetPublicKey | quote }}
           securityContext:
             readOnlyRootFilesystem: true
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate

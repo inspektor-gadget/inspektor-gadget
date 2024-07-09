@@ -26,6 +26,7 @@ import (
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"

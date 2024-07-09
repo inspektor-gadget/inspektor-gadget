@@ -36,8 +36,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -51,6 +49,8 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type AuthOptions struct {

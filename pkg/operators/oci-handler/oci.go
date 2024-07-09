@@ -19,11 +19,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
@@ -59,7 +62,7 @@ func (o *ociHandler) GlobalParams() api.Params {
 }
 
 func (o *ociHandler) InstanceParams() api.Params {
-	return api.Params{
+	params := api.Params{
 		// Hardcoded for now
 		{
 			Key:          authfileParam,
@@ -101,26 +104,33 @@ func (o *ociHandler) InstanceParams() api.Params {
 			TypeHint:    api.TypeString,
 		},
 		{
-			Key:          verifyImage,
-			Title:        "Verify image",
-			Description:  "Verify image using the provided public key",
-			DefaultValue: "true",
-			TypeHint:     api.TypeBool,
-		},
-		{
-			Key:          publicKey,
-			Title:        "Public key",
-			Description:  "Public key used to verify the image based gadget",
-			DefaultValue: resources.InspektorGadgetPublicKey,
-			TypeHint:     api.TypeString,
-		},
-		{
 			Key:         allowedDigests,
 			Title:       "Allowed Digests",
 			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
 			TypeHint:    api.TypeString,
 		},
 	}
+
+	if environment.Environment == environment.Local {
+		params = append(params,
+			&api.Param{
+				Key:          verifyImage,
+				Title:        "Verify image-based gadget",
+				Description:  "Verify image-based gadget using the provided public key",
+				DefaultValue: "true",
+				TypeHint:     api.TypeBool,
+			},
+			&api.Param{
+				Key:          publicKey,
+				Title:        "Public key",
+				Description:  "Public key used to verify the image-based gadget",
+				DefaultValue: resources.InspektorGadgetPublicKey,
+				TypeHint:     api.TypeString,
+			},
+		)
+	}
+
+	return params
 }
 
 func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, error) {
@@ -189,14 +199,35 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			SecretBytes: secretBytes,
 			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
 		},
-		VerifyOptions: oci.VerifyOptions{
-			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
-			PublicKey:       o.ociParams.Get(publicKey).AsString(),
-		},
 		AllowedDigestsOptions: oci.AllowedDigestsOptions{
 			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
 		},
 		Logger: gadgetCtx.Logger(),
+	}
+
+	switch environment.Environment {
+	case environment.Kubernetes:
+		envValue := os.Getenv("GADGET_VERIFY_IMAGE")
+		if envValue == "" {
+			return fmt.Errorf("GADGET_VERIFY_IMAGE must not be empty")
+		}
+
+		boolValue, err := strconv.ParseBool(envValue)
+		if err != nil {
+			return fmt.Errorf("GADGET_VERIFY_IMAGE has wrong value: %w", err)
+		}
+		imgOpts.VerifyPublicKey = boolValue
+
+		envValue = os.Getenv("GADGET_PUBLIC_KEY")
+		if envValue == "" {
+			return fmt.Errorf("GADGET_PUBLIC_KEY must not be empty")
+		}
+		imgOpts.PublicKey = envValue
+	case environment.Local:
+		imgOpts.VerifyPublicKey = o.ociParams.Get(verifyImage).AsBool()
+		imgOpts.PublicKey = o.ociParams.Get(publicKey).AsString()
+	default:
+		return fmt.Errorf("%v is not a valid environment value", environment.Environment)
 	}
 
 	target := gadgetCtx.OrasTarget()
