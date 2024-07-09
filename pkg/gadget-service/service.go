@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -310,6 +311,19 @@ func newUnixListener(address string, gid int) (net.Listener, error) {
 func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) error {
 	s.runtime = local.New()
 	defer s.runtime.Close()
+
+	// Set the global parameters for all operators using config file
+	for op, p := range s.operators {
+		for pk := range p.ParamMap() {
+			ck := config.OperatorKey + "." + op.Name() + "." + pk
+			if config.Config.IsSet(ck) {
+				err := p.Set(pk, config.Config.GetString(ck))
+				if err != nil {
+					return fmt.Errorf("setting operator parameter %s: %w", ck, err)
+				}
+			}
+		}
+	}
 
 	// Use defaults for now - this will become more important when we fan-out requests also to other
 	//  gRPC runtimes
