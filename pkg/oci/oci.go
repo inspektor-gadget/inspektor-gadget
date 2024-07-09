@@ -36,6 +36,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -70,6 +72,8 @@ type ImageOptions struct {
 	AuthOptions
 	VerifyOptions
 	AllowedDigestsOptions
+
+	Logger logger.Logger
 }
 
 const (
@@ -898,7 +902,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 	}
 
 	if !imgOpts.VerifyPublicKey {
-		log.Warnf("you set --verify-image=false, image will not be verified")
+		imgOpts.Logger.Warnf("you set --verify-image=false, image will not be verified")
 
 		return nil
 	}

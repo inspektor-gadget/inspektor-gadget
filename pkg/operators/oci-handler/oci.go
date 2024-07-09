@@ -196,6 +196,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		AllowedDigestsOptions: oci.AllowedDigestsOptions{
 			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
 		},
+		Logger: gadgetCtx.Logger(),
 	}
 
 	target := gadgetCtx.OrasTarget()
