@@ -31,8 +31,7 @@ struct {
 	__type(value, struct val_t);
 } counts SEC(".maps");
 
-SEC("kprobe/blk_account_io_start")
-int BPF_KPROBE(ig_topio_start, struct request *req)
+static __always_inline int trace_start(struct request *req)
 {
 	u64 mntns_id;
 
@@ -71,8 +70,7 @@ int BPF_KPROBE(ig_topio_req, struct request *req)
 	return 0;
 }
 
-SEC("kprobe/blk_account_io_done")
-int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
+static __always_inline int trace_done(struct request *req)
 {
 	struct val_t *valp, zero = {};
 	struct info_t info = {};
@@ -118,6 +116,30 @@ int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
 	bpf_map_delete_elem(&whobyreq, &req);
 
 	return 0;
+}
+
+SEC("kprobe/blk_account_io_start")
+int BPF_KPROBE(ig_topio_start, struct request *req)
+{
+	return trace_start(req);
+}
+
+SEC("kprobe/blk_account_io_done")
+int BPF_KPROBE(ig_topio_done, struct request *req)
+{
+	return trace_done(req);
+}
+
+SEC("tp_btf/block_io_start")
+int BPF_PROG(ig_topio_start_tp, struct request *req)
+{
+	return trace_start(req);
+}
+
+SEC("tp_btf/block_io_done")
+int BPF_PROG(ig_topio_done_tp, struct request *req)
+{
+	return trace_done(req);
 }
 
 char LICENSE[] SEC("license") = "GPL";
