@@ -52,6 +52,9 @@ const (
 	// Name of the type to store a signal
 	SignalTypeName = "gadget_signal"
 
+	// ErrnoTypeName contains the name of the type to store an errno
+	ErrnoTypeName = "gadget_errno"
+
 	// Name of the type to store a syscall
 	SyscallTypeName = "gadget_syscall"
 )
@@ -60,6 +63,7 @@ const (
 	timestampTargetAnnotation = "formatters.timestamp.target"
 	syscallTargetAnnotation   = "formatters.syscall.target"
 	signalTargetAnnotation    = "formatters.signal.target"
+	errnoTargetAnnotation     = "formatters.errno.target"
 )
 
 type formattersOperator struct{}
@@ -224,6 +228,42 @@ var replacers = []replacer{
 					signalNumber, _ := in.Uint32(data)
 					signalName := unix.SignalName(syscall.Signal(signalNumber))
 					signalField.Set(data, []byte(signalName))
+				}
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
+	{
+		name:      "errno",
+		selectors: []string{"type:" + ErrnoTypeName},
+		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.errno", in, errnoTargetAnnotation)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := []datasource.FieldOption{
+				datasource.WithAnnotations(map[string]string{
+					datasource.TemplateAnnotation: "errorString",
+				}),
+			}
+			errnoField, err := ds.AddField(outName, api.Kind_String, opts...)
+			if err != nil {
+				return nil, err
+			}
+
+			in.SetHidden(true, false)
+
+			return func(data datasource.Data) error {
+				switch in.Type() {
+				case api.Kind_Uint32:
+					errnoNumber, _ := in.Uint32(data)
+					errnoName := unix.ErrnoName(syscall.Errno(errnoNumber))
+					if errnoNumber != 0 && errnoName == "" {
+						errnoName = fmt.Sprintf("error#%d", errnoNumber)
+					}
+					errnoField.PutString(data, errnoName)
 				}
 				return nil
 			}, nil
