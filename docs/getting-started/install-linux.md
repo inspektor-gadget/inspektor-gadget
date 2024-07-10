@@ -32,6 +32,8 @@ $ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/downloa
 $ ig version
 ```
 
+We strongly advise you to verify `ig` by following our [detailed instructions](./verify.md#verify-an-asset).
+
 ### Compile from source
 
 `ig` is built using a Docker container relying on [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx), so you don't have to worry
