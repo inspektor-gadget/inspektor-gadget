@@ -47,7 +47,7 @@ type traceExecEvent struct {
 	Ppid        uint32 `json:"ppid"`
 	Loginuid    uint32 `json:"loginuid"`
 	Sessionid   uint32 `json:"sessionid"`
-	Retval      int32  `json:"retval"`
+	Error       string `json:"error"`
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
 	Args        string `json:"args"`

@@ -47,7 +47,6 @@ datasources:
           columns.width: 16
           columns.alignment: right
           columns.hidden: true
-      retcode:
+      error_raw:
         annotations:
-          columns.width: 7
-          columns.alignment: right
+          columns.hidden: true

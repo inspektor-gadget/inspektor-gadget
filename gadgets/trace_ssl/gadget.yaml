@@ -47,9 +47,9 @@ datasources:
         annotations:
           description: unencrypted buffer
           columns.width: 32
-      retval:
+      error:
         annotations:
-          description: return value
+          description: error value
           columns.width: 20
       operation_raw:
         annotations:

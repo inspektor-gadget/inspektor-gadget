@@ -38,7 +38,7 @@ struct event {
 	__u32 ppid;
 	__u32 loginuid;
 	__u32 sessionid;
-	int retval;
+	gadget_errno error_raw;
 	int args_count;
 	bool upper_layer;
 	bool pupper_layer;
@@ -214,7 +214,7 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 		}
 	}
 
-	event->retval = ret;
+	event->error_raw = -ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	if (parent != NULL) {

@@ -40,10 +40,9 @@ datasources:
         annotations:
           description: Target process ID
           template: pid
-      ret:
+      error_raw:
         annotations:
-          columns.width: 5
-          columns.alignment: right
+          columns.hidden: true
       sig_raw:
         annotations:
           columns.hidden: true

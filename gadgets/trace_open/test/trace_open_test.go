@@ -42,7 +42,7 @@ type traceOpenEvent struct {
 	Gid  uint32 `json:"gid"`
 
 	Fd    uint32 `json:"fd"`
-	Err   int32  `json:"err"`
+	Error string `json:"error"`
 	Flags string `json:"flags"`
 	Mode  string `json:"mode"`
 	FName string `json:"fname"`
@@ -96,7 +96,7 @@ func TestTraceOpen(t *testing.T) {
 				Comm:       "cat",
 				FName:      "/dev/null",
 				Fd:         3,
-				Err:        0,
+				Error:      "",
 				Uid:        1000,
 				Gid:        1111,
 				Flags:      "O_RDONLY",

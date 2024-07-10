@@ -32,7 +32,7 @@ struct event {
 	__u32 uid;
 	__u32 gid;
 
-	__s32 err;
+	gadget_errno error_raw;
 	__u32 fd;
 	int flags_raw;
 	__u16 mode_raw;
@@ -165,7 +165,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
 	event->mode_raw = ap->mode;
-	event->err = errval;
+	event->error_raw = errval;
 	event->fd = fd;
 	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp_raw = bpf_ktime_get_boot_ns();

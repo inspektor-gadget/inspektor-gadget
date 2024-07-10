@@ -44,7 +44,7 @@ struct event {
 	__u32 uid;
 	__u32 gid;
 
-	int ret;
+	gadget_errno error_raw;
 	enum bind_options_set opts_raw;
 	// TODO: How to get the name of the device?
 	__u32 bound_dev_if;
@@ -199,7 +199,7 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	event->pid = pid;
 	event->tid = tid;
 	event->bound_dev_if = BPF_CORE_READ(sock, __sk_common.skc_bound_dev_if);
-	event->ret = ret;
+	event->error_raw = -ret;
 	event->mntns_id = mntns_id;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->uid = (u32)uid_gid;

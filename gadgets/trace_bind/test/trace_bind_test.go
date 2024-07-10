@@ -42,7 +42,7 @@ type traceBindEvent struct {
 	Gid  uint32 `json:"gid"`
 
 	Addr       utils.L4Endpoint `json:"addr"`
-	Ret        int32            `json:"ret"`
+	Error      string           `json:"error"`
 	Opts       string           `json:"opts"`
 	BoundDevIF uint32           `json:"bound_dev_if"`
 }
