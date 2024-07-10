@@ -928,7 +928,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 	}
 
 	if !imgOpts.VerifyPublicKey {
-		imgOpts.Logger.Warnf("you set --verify-image=false, image will not be verified")
+		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding CLI options")
 
 		return nil
 	}

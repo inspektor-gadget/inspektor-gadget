@@ -17,3 +17,7 @@ data:
       crio-socketpath: {{ .Values.config.crioSocketPath }}
       docker-socketpath: {{ .Values.config.dockerSocketPath }}
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
+      operator:
+        oci:
+          verify-image: {{ .Values.config.verifyGadgets }}
+          public-key: {{ .Values.config.gadgetsPublicKey | quote }}

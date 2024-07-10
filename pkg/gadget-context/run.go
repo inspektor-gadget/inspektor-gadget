@@ -42,12 +42,18 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		opParamPrefix := fmt.Sprintf("operator.%s", op.Name())
 
 		// Get and fill params
+		globalParams := op.GlobalParams().AddPrefix(opParamPrefix)
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
-		err := apihelpers.Validate(instanceParams, opParamValues)
+		err := apihelpers.Validate(globalParams, opParamValues)
 		if err != nil {
-			return nil, fmt.Errorf("validating params for operator %q: %w", op.Name(), err)
+			return nil, fmt.Errorf("validating global params for operator %q: %w", op.Name(), err)
+		}
+
+		err = apihelpers.Validate(instanceParams, opParamValues)
+		if err != nil {
+			return nil, fmt.Errorf("validating instance params for operator %q: %w", op.Name(), err)
 		}
 
 		opInst, err := op.InstantiateDataOperator(c, opParamValues)

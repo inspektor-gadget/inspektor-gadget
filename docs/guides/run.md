@@ -188,7 +188,7 @@ with the prefix `INSPEKTOR_GADGET_`.
 # Enable verbose output
 $ export INSPEKTOR_GADGET_VERBOSE=true
 $ kubectl gadget run trace_open
-INFO[0000] Experimental features enabled                
+INFO[0000] Experimental features enabled
 DEBU[0000] using target "gadget-b7jrc" ("minikube-docker")
 ...
 # Disable image verification (not recommended)
@@ -196,8 +196,8 @@ $ export INSPEKTOR_GADGET_OPERATOR_OCI_VERIFY_IMAGE=false
 $ sudo ig run trace_open
 INFO[0000] Experimental features enabled
 WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
-WARN[0000] you set --verify-image=false, image will not be verified
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 ...
 ```
 

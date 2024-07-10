@@ -8,7 +8,7 @@ MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
 GADGET_TAG ?= $(shell ./tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
-GADGET_VERIFY_IMAGE ?= true
+VERIFY_GADGETS ?= true
 TEST_COMPONENT ?= inspektor-gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
@@ -286,7 +286,6 @@ integration-tests: kubectl-gadget
 			-dnstester-image $(DNSTESTER_IMAGE) \
 			-gadget-repository $(GADGET_REPOSITORY) \
 			-gadget-tag $(GADGET_TAG) \
-			-gadget-verify-image=$(GADGET_VERIFY_IMAGE) \
 			-test-component $(TEST_COMPONENT) \
 			$$INTEGRATION_TESTS_PARAMS
 
@@ -346,7 +345,7 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || \
 		(echo "Image $(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG) was not correctly loaded into Minikube" && false)
 	@echo
-	./kubectl-gadget deploy --liveness-probe=$(LIVENESS_PROBE) \
+	./kubectl-gadget deploy --verify-gadgets=$(VERIFY_GADGETS) --liveness-probe=$(LIVENESS_PROBE) \
 		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"

@@ -45,18 +45,36 @@ const (
 	allowedRegistries     = "allowed-registries"
 )
 
-type ociHandler struct{}
+type ociHandler struct {
+	globalParams *params.Params
+}
 
 func (o *ociHandler) Name() string {
 	return "oci"
 }
 
-func (o *ociHandler) Init(*params.Params) error {
+func (o *ociHandler) Init(params *params.Params) error {
+	o.globalParams = params
 	return nil
 }
 
 func (o *ociHandler) GlobalParams() api.Params {
-	return nil
+	return api.Params{
+		{
+			Key:          verifyImage,
+			Title:        "Verify image",
+			Description:  "Verify image using the provided public key",
+			DefaultValue: "true",
+			TypeHint:     api.TypeBool,
+		},
+		{
+			Key:          publicKey,
+			Title:        "Public key",
+			Description:  "Public key used to verify the gadget",
+			DefaultValue: resources.InspektorGadgetPublicKey,
+			TypeHint:     api.TypeString,
+		},
+	}
 }
 
 func (o *ociHandler) InstanceParams() api.Params {
@@ -102,20 +120,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 			TypeHint:    api.TypeString,
 		},
 		{
-			Key:          verifyImage,
-			Title:        "Verify image",
-			Description:  "Verify image using the provided public key",
-			DefaultValue: "true",
-			TypeHint:     api.TypeBool,
-		},
-		{
-			Key:          publicKey,
-			Title:        "Public key",
-			Description:  "Public key used to verify the image based gadget",
-			DefaultValue: resources.InspektorGadgetPublicKey,
-			TypeHint:     api.TypeString,
-		},
-		{
 			Key:         allowedDigests,
 			Title:       "Allowed Digests",
 			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
@@ -148,7 +152,12 @@ func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, err
 func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
-	ociParams := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
+	ociParams := o.globalParams
+	if ociParams == nil {
+		ociParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+	}
+
+	*ociParams = append(*ociParams, *apihelpers.ToParamDescs(o.InstanceParams()).ToParams()...)
 	err := ociParams.CopyFromMap(instanceParamValues, "")
 	if err != nil {
 		return nil, err
@@ -208,6 +217,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		},
 		Logger: gadgetCtx.Logger(),
 	}
+
+	gadgetCtx.Logger().Debugf("image options: %+v", imgOpts)
 
 	target := gadgetCtx.OrasTarget()
 	// If the target wasn't explicitly set, use the local store. In this case we

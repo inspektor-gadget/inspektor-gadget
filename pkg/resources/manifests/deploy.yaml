@@ -27,6 +27,10 @@ data:
       crio-socketpath: /run/crio/crio.sock
       docker-socketpath: /run/docker.sock
       podman-socketpath: /run/podman/podman.sock
+      operator:
+        oci:
+          verify-image: true
+          public-key: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh\nIr4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==\n-----END PUBLIC KEY-----\n"
 ---
 # Source: gadget/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1

@@ -207,8 +207,8 @@ Note that we do not recommend using this:
 
 ```bash
 $ sudo -E ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
-WARN[0000] you set --verify-image=false, image will not be verified
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
