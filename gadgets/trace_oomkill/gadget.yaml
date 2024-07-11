@@ -38,10 +38,3 @@ datasources:
       tcomm:
         annotations:
           template: comm
-tracers:
-  oomkill:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:

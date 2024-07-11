@@ -36,7 +36,7 @@ type Field struct {
 }
 
 type Struct struct {
-	Fields []*Field `yaml:"fields"`
+	Fields []*Field
 	Size   uint32
 }
 
@@ -70,16 +70,10 @@ func (f *Field) FieldAnnotations() map[string]string {
 
 func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
 	gadgetStruct := i.structs[btfStruct.Name]
-	existingFields := make(map[string]*Field)
 
 	if gadgetStruct == nil {
 		gadgetStruct = &Struct{}
 		i.logger.Debugf("adding struct %q", btfStruct.Name)
-	}
-
-	// TODO: make this validate the struct
-	for _, field := range gadgetStruct.Fields {
-		existingFields[field.name] = field
 	}
 
 	i.getFieldsFromStruct(btfStruct, &gadgetStruct.Fields, "", 0, -1)

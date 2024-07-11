@@ -36,13 +36,6 @@ datasources:
       comm:
         attributes:
           template: comm
-tracers:
-  lsm:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   trace_all:
     key: trace-all

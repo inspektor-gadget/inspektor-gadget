@@ -43,10 +43,3 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-tracers:
-  sni:
-    mapName: events
-    structName: event_t
-structs:
-  event_t:
-    fields:

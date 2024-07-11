@@ -94,15 +94,6 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	i.logger.Debugf("> name       : %q", name)
 	i.logger.Debugf("> struct name: %q", structName)
 
-	snapConfig := i.config.Sub("snapshotters." + name)
-	if snapConfig != nil {
-		if configStructName := snapConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating snapshotter %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
-		}
-		i.logger.Debugf("> successfully validated with metadata")
-	}
-
 	iterators, err := i.parseSnapshotterPrograms(parts[2:])
 	if err != nil {
 		return fmt.Errorf("parsing snapshotter %q programs: %w", name, err)

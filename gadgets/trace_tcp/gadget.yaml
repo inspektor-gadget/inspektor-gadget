@@ -44,13 +44,6 @@ datasources:
       type:
         annotations:
           description: Type of TCP connection event
-tracers:
-  tracetcp:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   filter_pid:
     key: pid

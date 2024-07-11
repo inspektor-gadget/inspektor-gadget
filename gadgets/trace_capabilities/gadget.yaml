@@ -74,13 +74,6 @@ datasources:
           description: if the process has the requested capability
           columns.width: 10
           columns.hidden: true
-tracers:
-  capabilities:
-    mapName: events
-    structName: cap_event
-structs:
-  cap_event:
-    fields:
 ebpfParams:
   audit_only:
     key: audit_only

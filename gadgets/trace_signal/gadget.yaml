@@ -42,13 +42,6 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-tracers:
-  signal:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   failed_only:
     key: failed

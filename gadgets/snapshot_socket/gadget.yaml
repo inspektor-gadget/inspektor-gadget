@@ -26,9 +26,3 @@ datasources:
         annotations:
           description: Network namespace inode id
           template: ns
-snapshotters:
-  sockets:
-    structName: socket_entry
-structs:
-  socket_entry:
-    fields:

@@ -66,24 +66,6 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	i.logger.Debugf("> map name   : %q", mapName)
 	i.logger.Debugf("> struct name: %q", structName)
 
-	tracerConfig := i.config.Sub("tracers." + name)
-	if tracerConfig != nil {
-		if configMapName := tracerConfig.GetString("mapName"); configMapName != "" && configMapName != mapName {
-			return fmt.Errorf("validating tracer %q: mapName %q in eBPF program does not match %q from metadata file",
-				name, configMapName, mapName)
-		}
-		if configStructName := tracerConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating tracer %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
-		}
-		i.logger.Debugf("> successfully validated with metadata")
-	}
-
-	if _, ok := i.tracers[name]; ok {
-		i.logger.Debugf("tracer %q already defined, skipping", name)
-		return nil
-	}
-
 	tracerMap, ok := i.collectionSpec.Maps[mapName]
 	if !ok {
 		return fmt.Errorf("map %q not found in eBPF object", mapName)

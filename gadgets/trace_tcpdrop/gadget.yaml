@@ -73,10 +73,3 @@ datasources:
           description: Kernel stack
           columns.hidden: true
           columns.width: 20
-tracers:
-  tcpdrop:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:

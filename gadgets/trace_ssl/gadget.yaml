@@ -52,13 +52,6 @@ datasources:
       operation:
         annotations:
           description: type of SSL operations
-tracers:
-  ssl:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   record_data:
     key: record-data

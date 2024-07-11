@@ -38,10 +38,3 @@ datasources:
         annotations:
           description: size of malloc operations
           columns.width: 20
-tracers:
-  malloc:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:

@@ -70,13 +70,6 @@ datasources:
       call:
         annotations:
           columns.width: 32
-tracers:
-  mount:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   target_pid:
     key: pid

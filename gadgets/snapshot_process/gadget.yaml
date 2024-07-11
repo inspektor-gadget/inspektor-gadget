@@ -33,12 +33,6 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-snapshotters:
-  processes:
-    structName: process_entry
-structs:
-  process_entry:
-    fields:
 ebpfParams:
   show_threads:
     key: threads
