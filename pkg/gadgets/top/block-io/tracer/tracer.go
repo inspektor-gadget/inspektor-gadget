@@ -114,23 +114,30 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading kernel symbols: %w", err)
 	}
 
-	// __blk_account_io_start and __blk_account_io_done were inlined in:
-	// be6bfe36db17 ("block: inline hot paths of blk_account_io_*()").
-	// which was included in kernel 5.16.
-	// So let's be future proof and check if these symbols do not exist.
-	blkAccountIoStartFunction := "__blk_account_io_start"
-	if !kernelSymbols.SymbolExists(blkAccountIoStartFunction) {
-		blkAccountIoStartFunction = "blk_account_io_start"
-	}
-
-	blkAccountIoDoneFunction := "__blk_account_io_done"
-	if !kernelSymbols.SymbolExists(blkAccountIoDoneFunction) {
-		blkAccountIoDoneFunction = "blk_account_io_done"
-	}
-
-	t.ioStartLink, err = link.Kprobe(blkAccountIoStartFunction, t.objs.IgTopioStart, nil)
+	// blk_account_io_start and blk_account_io_done were moved in:
+	// 450b7879e345 ("block: move blk_account_io_{start,done} to blk-mq.c")
+	// which was included in kernel 5.17.
+	// Hopefully, two BTF tracepoints were added, so let's be future proof and
+	// first try to attach to these new tracepoints:
+	// 5a80bd075f3b ("block: introduce block_io_start/block_io_done tracepoints")
+	t.ioStartLink, err = link.AttachTracing(link.TracingOptions{
+		Program:    t.objs.IgTopioStartTp,
+		AttachType: ebpf.AttachTraceRawTp,
+	})
 	if err != nil {
-		return fmt.Errorf("attaching kprobe: %w", err)
+		// __blk_account_io_start and __blk_account_io_done were inlined in:
+		// be6bfe36db17 ("block: inline hot paths of blk_account_io_*()").
+		// which was included in kernel 5.16.
+		// So let's be future proof and check if these symbols do not exist.
+		blkAccountIoStartFunction := "__blk_account_io_start"
+		if !kernelSymbols.SymbolExists(blkAccountIoStartFunction) {
+			blkAccountIoStartFunction = "blk_account_io_start"
+		}
+
+		t.ioStartLink, err = link.Kprobe(blkAccountIoStartFunction, t.objs.IgTopioStart, nil)
+		if err != nil {
+			return fmt.Errorf("attaching kprobe: %w", err)
+		}
 	}
 
 	t.startRequestLink, err = link.Kprobe("blk_mq_start_request", t.objs.IgTopioReq, nil)
@@ -138,9 +145,20 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
-	t.doneLink, err = link.Kprobe(blkAccountIoDoneFunction, t.objs.IgTopioDone, nil)
+	t.ioStartLink, err = link.AttachTracing(link.TracingOptions{
+		Program:    t.objs.IgTopioDoneTp,
+		AttachType: ebpf.AttachTraceRawTp,
+	})
 	if err != nil {
-		return fmt.Errorf("attaching kprobe: %w", err)
+		blkAccountIoDoneFunction := "__blk_account_io_done"
+		if !kernelSymbols.SymbolExists(blkAccountIoDoneFunction) {
+			blkAccountIoDoneFunction = "blk_account_io_done"
+		}
+
+		t.doneLink, err = link.Kprobe(blkAccountIoDoneFunction, t.objs.IgTopioDone, nil)
+		if err != nil {
+			return fmt.Errorf("attaching kprobe: %w", err)
+		}
 	}
 
 	return nil

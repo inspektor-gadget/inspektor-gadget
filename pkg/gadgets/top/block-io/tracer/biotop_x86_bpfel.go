@@ -81,9 +81,11 @@ type biotopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biotopProgramSpecs struct {
-	IgTopioDone  *ebpf.ProgramSpec `ebpf:"ig_topio_done"`
-	IgTopioReq   *ebpf.ProgramSpec `ebpf:"ig_topio_req"`
-	IgTopioStart *ebpf.ProgramSpec `ebpf:"ig_topio_start"`
+	IgTopioDone    *ebpf.ProgramSpec `ebpf:"ig_topio_done"`
+	IgTopioDoneTp  *ebpf.ProgramSpec `ebpf:"ig_topio_done_tp"`
+	IgTopioReq     *ebpf.ProgramSpec `ebpf:"ig_topio_req"`
+	IgTopioStart   *ebpf.ProgramSpec `ebpf:"ig_topio_start"`
+	IgTopioStartTp *ebpf.ProgramSpec `ebpf:"ig_topio_start_tp"`
 }
 
 // biotopMapSpecs contains maps before they are loaded into the kernel.
@@ -134,16 +136,20 @@ func (m *biotopMaps) Close() error {
 //
 // It can be passed to loadBiotopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biotopPrograms struct {
-	IgTopioDone  *ebpf.Program `ebpf:"ig_topio_done"`
-	IgTopioReq   *ebpf.Program `ebpf:"ig_topio_req"`
-	IgTopioStart *ebpf.Program `ebpf:"ig_topio_start"`
+	IgTopioDone    *ebpf.Program `ebpf:"ig_topio_done"`
+	IgTopioDoneTp  *ebpf.Program `ebpf:"ig_topio_done_tp"`
+	IgTopioReq     *ebpf.Program `ebpf:"ig_topio_req"`
+	IgTopioStart   *ebpf.Program `ebpf:"ig_topio_start"`
+	IgTopioStartTp *ebpf.Program `ebpf:"ig_topio_start_tp"`
 }
 
 func (p *biotopPrograms) Close() error {
 	return _BiotopClose(
 		p.IgTopioDone,
+		p.IgTopioDoneTp,
 		p.IgTopioReq,
 		p.IgTopioStart,
+		p.IgTopioStartTp,
 	)
 }
 
