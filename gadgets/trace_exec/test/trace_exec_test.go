@@ -174,7 +174,7 @@ func TestTraceExec(t *testing.T) {
 	steps := []igtesting.TestStep{
 		traceExecCmd,
 		// wait to ensure ig or kubectl-gadget has started
-		utils.Sleep(3 * time.Second),
+		utils.Sleep(10 * time.Second),
 		testContainer,
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
