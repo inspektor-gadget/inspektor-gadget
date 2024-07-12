@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
-	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
@@ -36,7 +35,7 @@ type linkSnapshotter struct {
 }
 
 type Snapshotter struct {
-	metadatav1.Snapshotter
+	structName string
 
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
@@ -111,11 +110,9 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 
 	i.logger.Debugf("adding snapshotter %q", name)
 	i.snapshotters[name] = &Snapshotter{
-		Snapshotter: metadatav1.Snapshotter{
-			StructName: btfStruct.Name,
-		},
-		iterators: iterators,
-		links:     make(map[string]*linkSnapshotter),
+		structName: btfStruct.Name,
+		iterators:  iterators,
+		links:      make(map[string]*linkSnapshotter),
 	}
 
 	err = i.populateStructDirect(btfStruct)

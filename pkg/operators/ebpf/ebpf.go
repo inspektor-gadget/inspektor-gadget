@@ -346,7 +346,7 @@ func (i *ebpfInstance) addDataSource(
 func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 	// register datasources
 	for name, m := range i.tracers {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
@@ -354,7 +354,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.ds = ds
 	}
 	for name, m := range i.snapshotters {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.StructName].Size, i.structs[m.StructName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
@@ -572,7 +572,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	i.collection = collection
 
 	for _, tracer := range i.tracers {
-		i.logger.Debugf("starting tracer %q", tracer.MapName)
+		i.logger.Debugf("starting tracer %q", tracer.mapName)
 		go func(tracer *Tracer) {
 			err := i.runTracer(gadgetCtx, tracer)
 			if err != nil {
