@@ -80,18 +80,15 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 This macro will automatically create a ring buffer if the kernel supports it.
 Otherwise, a perf array will be created.
 
-Optionally, you can employ the `GADGET_TRACER` macro to define a tracer with the
-following parameters:
+And define a tracer by using the `GADGET_TRACER` macro with the following
+parameters:
 
 - Tracer's Name: `open`
 - Buffer Map Name: `events`
 - Event Structure Name: `event`
 
-This information enables Inspektor Gadget to generate the metadata file automatically.
-Refer to the [metadata file](#creating-a-metadata-file) section for detailed instructions.
-
 ```c
-// [Optional] Define a tracer
+// Define a tracer
 GADGET_TRACER(open, events, event);
 ```
 
@@ -153,7 +150,7 @@ struct event {
 // events is the name of the buffer map and 1024 * 256 is its size.
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-// [Optional] Define a tracer
+// Define a tracer
 GADGET_TRACER(open, events, event);
 
 SEC("tracepoint/syscalls/sys_enter_openat")
@@ -295,10 +292,6 @@ other things, it can be used to specify the format to be used.
 
 An initial version of the metadata file can be created by passing `--update-metadata` to the build command:
 
-> [!NOTE]
-> The `tracers` and `structs` sections will only be generated if the eBPF program defined a tracer
-> using the `GADGET_TRACER` macro.
-
 ```bash
 $ sudo -E ig image build . -t mygadget --update-metadata
 ```
@@ -311,31 +304,18 @@ description: 'TODO: Fill the gadget description'
 homepageURL: 'TODO: Fill the gadget homepage URL'
 documentationURL: 'TODO: Fill the gadget documentation URL'
 sourceURL: 'TODO: Fill the gadget source code URL'
-tracers:
+datasources:
   open:
-    mapName: events
-    structName: event
-structs:
-  event:
     fields:
-    - name: pid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: comm
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: filename
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
+      comm:
+        annotations:
+          'description:': 'TODO: Fill field description'
+      filename:
+        annotations:
+          'description:': 'TODO: Fill field description'
+      pid:
+        annotations:
+          'description:': 'TODO: Fill field description'
 ```
 
 Let's edit the file to customize the output. We define some templates for well-known fields like
@@ -347,27 +327,21 @@ description: Example gadget
 homepageURL: http://mygadget.com
 documentationURL: https://mygadget.com/docs
 sourceURL: https://github.com/my-org/mygadget/
-tracers:
+datasources:
   open:
-    mapName: events
-    structName: event
-structs:
-  event:
     fields:
-    - name: pid
-      description: PID of the process opening a file
-      attributes:
-        template: pid
-    - name: comm
-      description: Name of the process opening a file
-      attributes:
-        template: comm
-    - name: filename
-      description: Path of the file being opened
-      attributes:
-        width: 64
-        alignment: left
-        ellipsis: end
+      comm:
+        annotations:
+          description: Name of the process opening a file
+          template: comm
+      filename:
+        annotations:
+           description: Path of the file being opened
+           columns.width: 64
+      pid:
+        annotations:
+          description: PID of the process opening a file
+          template: pid
 ```
 
 Now we can build and run the gadget again
@@ -377,28 +351,23 @@ $ sudo -E ig image build . -t mygadget
 ...
 
 $ sudo -E ig run mygadget:latest --verify-image=false
-INFO[0000] Experimental features enabled
-PID             COMM            FILENAME
-224707          git             .git/objects/cd/4968fd25e0b4d597f93993a29a9821c1a263d6
-224707          git             .git/objects/57/d7fb78a6f22dbfcf66d3175d06ce49d0e0dff5
-224707          git             .git/objects/03/5159622b915b7f55f64b6c0a30536531d08c5f
-19463           CompositorTileW /dev/shm/.org.chromium.Chromium.5pbSUV
-19463           CompositorTileW /dev/shm/.org.chromium.Chromium.96jgiV
-19463           CompositorTileW /dev/shm/.org.chromium.Chromium.3tqlBS
-224708          Sandbox Forked  /proc/self/uid_map
-224708          Sandbox Forked  /proc/self/setgroups
-224708          Sandbox Forked  /proc/self/gid_map
-3830            firefox-bin     /proc/224708/oom_score_adj
-224708          Sandbox Forked
-224710          Chroot Helper
-224708          firefox-bin     /usr/lib/firefox/tls/x86_64/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/tls/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/x86_64/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-224708          firefox-bin     /usr/lib/firefox/libmozsandbox.so
+              PID COMM              FILENAME
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
+             1094 systemd-oomd      /proc/meminfo
+            20100 tmux: server      /proc/118135/cmdline
+             1094 systemd-oomd      /proc/meminfo
+             1094 systemd-oomd      /proc/meminfo
+             5803 FSBroker114558    /proc/114558/statm
+             5803 FSBroker114558    /proc/114558/statm
+             5803 FSBroker114558    /proc/114558/smaps
+            20100 tmux: server      /proc/118135/cmdline
+             1094 systemd-oomd      /proc/meminfo
+           118137 ig                /proc
 ```
 
 Now the output is much better.
@@ -481,15 +450,23 @@ Only events generated in containers are now printed, and they include the name o
 generating them.
 
 ```bash
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
-mycontainer                  225805          cat             /lib/tls/libm.so.6              4026532256
-mycontainer                  225805          cat             /lib/x86_64/x86_64/libm.so.6    4026532256
-mycontainer                  225805          cat             /lib/x86_64/libm.so.6           4026532256
-mycontainer                  225805          cat             /lib/x86_64/libm.so.6           4026532256
-mycontainer                  225805          cat             /lib/libm.so.6                  4026532256
-mycontainer                  225805          cat             /lib/libresolv.so.2             4026532256
-mycontainer                  225805          cat             /lib/libc.so.6                  4026532256
-mycontainer                  225805          cat             /dev/null                       4026532256
+$ sudo -E ig run mygadget:latest --verify-image=false
+RUNTIME.CONTAINERNAME MNTNS_ID            PID COMM        FILENAME
+mycontainer           4026536181       119341 runc:[2:IN… /proc/self/fd
+mycontainer           4026536181       119341 sh          /etc/ld.so.cache
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v…
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v…
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/tls/x86_64/x86_64/lib…
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/tls/libm.so.6
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/x86_64/x86_64/libm.so…
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer           4026536181       119341 sh          /lib/x86_64-linux-gnu/libm.so.6
+mycontainer           4026536181       119341 sh          /usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-…
+mycontainer           4026536181       119341 sh          /usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-
+...
 ```
 
 Additionally, after adding the `gadget_mntns_id` field to the event structure, Inspektor Gadget will
@@ -501,7 +478,7 @@ The following command doesn't show any event as there is no container with the s
 ```bash
 $ sudo -E ig run mygadget:latest -c non_existing_container --verify-image=false
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
+RUNTIME.CONTAINERNAME MNTNS_ID            PID COMM        FILENAME
 ```
 
 ## Updating the gadget
@@ -533,14 +510,13 @@ to the metadata file. Notice the -v option is used to get debugging messages.
 $ sudo -E ig image build . -t mygadget --update-metadata -v
 INFO[0000] Experimental features enabled
 ...
-DEBU[0001] Metadata file found, updating it
-DEBU[0001] Tracer "open" already defined, skipping
-DEBU[0001] Field "pid" already exists, skipping
-DEBU[0001] Field "comm" already exists, skipping
-DEBU[0001] Adding field "uid"
-DEBU[0001] Adding field "gid"
-DEBU[0001] Field "filename" already exists, skipping
-DEBU[0001] Adding field "mntns_id"
+DEBU[0000] Metadata file found, updating it
+DEBU[0000] Adding field "mntns_id"
+DEBU[0000] Field "pid" already exists, skipping
+DEBU[0000] Field "comm" already exists, skipping
+DEBU[0000] Field "filename" already exists, skipping
+DEBU[0000] Adding field "uid"
+DEBU[0000] Adding field "gid"
 ...
 ```
 
@@ -549,41 +525,48 @@ step](#filtering-and-container-enrichement) fields were added to the metadata
 file:
 
 ```yaml
-    - name: uid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: gid
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: mntns_id
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
+      gid:
+        annotations:
+          'description:': 'TODO: Fill field description'
+      mntns_id:
+        annotations:
+          'description:': 'TODO: Fill field description'
+      pid:
+        annotations:
+          description: PID of the process opening a file
+          template: pid
+      uid:
+        annotations:
+          'description:': 'TODO: Fill field description'
 ```
 
 Edit them, build and run the gadget again:
 
 ```yaml
-    - name: uid
-      description: User ID opening the file
-      attributes:
-        template: uid
-    - name: gid
-      description: Group ID opening the file
-      attributes:
-        template: uid
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
+      comm:
+        annotations:
+          description: Name of the process opening a file
+          template: comm
+      filename:
+        annotations:
+          columns.width: "64"
+          description: Path of the file being opened
+      gid:
+        annotations:
+          description: Group ID opening the file
+          template: uid
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      pid:
+        annotations:
+          description: PID of the process opening a file
+          template: pid
+      uid:
+        annotations:
+          description: User ID opening the file
+          template: uid
 ```
 
 ```bash
@@ -592,7 +575,7 @@ $ sudo -E ig image build . -t mygadget --update-metadata -v
 
 $ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME  PID          COMM         FILENAME                                        UID         GID
+RUNTIME.CONTAINERN…        PID COMM       FILENAME                                       UID       GID
 ```
 
 Now, the UID and GID columns have the expected format. Notice also that the MNTNS_ID column is
