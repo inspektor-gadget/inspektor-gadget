@@ -105,6 +105,7 @@ var (
 	verifyImage         bool
 	publicKey           string
 	strLevels           []string
+	prepopulateGadgets  []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -231,6 +232,10 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&publicKey,
 		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
+	rootCmd.AddCommand(deployCmd)
+	deployCmd.PersistentFlags().StringSliceVar(
+		&prepopulateGadgets,
+		"prepopulate-gadgets", []string{}, "List of gadgets to prepopulate")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -630,6 +635,32 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
 					}
 					gadgetContainer.Env[i].Value = daemonLogLevel
+				}
+			}
+
+			if len(prepopulateGadgets) > 0 {
+				daemonSet.Spec.Template.Spec.InitContainers = append(daemonSet.Spec.Template.Spec.InitContainers,
+					v1.Container{
+						Name:            "prepopulator",
+						Image:           "ghcr.io/inspektor-gadget/prepopulator",
+						Command:         []string{"/prepopulator"},
+						Args:            prepopulateGadgets,
+						ImagePullPolicy: policy,
+						VolumeMounts: []v1.VolumeMount{
+							{
+								MountPath: "/var/lib/ig",
+								Name:      "oci",
+							},
+						},
+					},
+				)
+
+				for i, volumeMount := range gadgetContainer.VolumeMounts {
+					if volumeMount.Name != "oci" {
+						continue
+					}
+
+					gadgetContainer.VolumeMounts[i].ReadOnly = true
 				}
 			}
 
