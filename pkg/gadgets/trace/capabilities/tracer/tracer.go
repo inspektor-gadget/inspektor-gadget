@@ -187,6 +187,10 @@ func (t *Tracer) install() error {
 	}
 	t.reader = reader
 
+	if err := gadgets.FreezeMaps(t.objs.capabilitiesMaps.Events); err != nil {
+		return err
+	}
+
 	return nil
 }
 

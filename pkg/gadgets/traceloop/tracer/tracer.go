@@ -707,7 +707,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 		<-t.ctx.Done()
 		evs, err := t.Read(container.Runtime.ContainerID)
 		if err != nil {
-			t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.Runtime.ContainerID, err)
+			t.gadgetCtx.Logger().Warnf("error reading from container %s: %v", container.Runtime.ContainerID, err)
 			return
 		}
 		for _, ev := range evs {

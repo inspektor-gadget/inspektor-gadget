@@ -239,6 +239,11 @@ func (t *Tracer) install() error {
 	if err != nil {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
+
+	if err := gadgets.FreezeMaps(t.objs.fsslowerMaps.Events); err != nil {
+		return err
+	}
+
 	return nil
 }
 

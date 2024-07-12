@@ -244,3 +244,16 @@ func LoadeBPFSpec(
 
 	return nil
 }
+
+func FreezeMaps(maps ...*ebpf.Map) error {
+	for _, m := range maps {
+		if err := m.Freeze(); err != nil {
+			if info, _ := m.Info(); info != nil {
+				return fmt.Errorf("freezing map %s: %w", info.Name, err)
+			}
+			return fmt.Errorf("freezing map: %w", err)
+		}
+	}
+
+	return nil
+}
