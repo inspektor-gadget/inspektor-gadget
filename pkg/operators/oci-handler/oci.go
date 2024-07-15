@@ -42,6 +42,7 @@ const (
 	verifyImage           = "verify-image"
 	publicKey             = "public-key"
 	allowedDigests        = "allowed-digests"
+	allowedRegistries     = "allowed-registries"
 )
 
 type ociHandler struct{}
@@ -120,6 +121,12 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
 			TypeHint:    api.TypeString,
 		},
+		{
+			Key:         allowedRegistries,
+			Title:       "Allowed registries",
+			Description: "Only run image-based gadgets from these registries",
+			TypeHint:    api.TypeString,
+		},
 	}
 }
 
@@ -195,6 +202,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		},
 		AllowedDigestsOptions: oci.AllowedDigestsOptions{
 			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
+		},
+		AllowedRegistriesOptions: oci.AllowedRegistriesOptions{
+			AllowedRegistries: o.ociParams.Get(allowedRegistries).AsStringSlice(),
 		},
 	}
 

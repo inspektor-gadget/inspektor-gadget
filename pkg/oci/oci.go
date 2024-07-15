@@ -66,10 +66,15 @@ type AllowedDigestsOptions struct {
 	AllowedDigests []string
 }
 
+type AllowedRegistriesOptions struct {
+	AllowedRegistries []string
+}
+
 type ImageOptions struct {
 	AuthOptions
 	VerifyOptions
 	AllowedDigestsOptions
+	AllowedRegistriesOptions
 }
 
 const (
@@ -868,6 +873,27 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 		if _, err := imageStore.Resolve(ctx, targetImage.String()); err != nil {
 			return fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
+		}
+	}
+
+	if len(imgOpts.AllowedRegistries) > 0 {
+		targetImage, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image: %w", err)
+		}
+
+		image := targetImage.String()
+		found := false
+
+		for _, registry := range imgOpts.AllowedRegistries {
+			found = strings.HasPrefix(image, registry)
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("%s not originating from allowed registries: %v", image, strings.Join(imgOpts.AllowedRegistries, ", "))
 		}
 	}
 
