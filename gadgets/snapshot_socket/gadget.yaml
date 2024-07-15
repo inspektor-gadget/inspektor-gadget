@@ -3,36 +3,32 @@ description: Show TCP and UDP sockets
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  sockets:
+    fields:
+      src:
+        annotations:
+          description: Source address
+          template: l4endpoint
+      dst:
+        annotations:
+          description: Destination address
+          template: l4endpoint
+      state:
+        annotations:
+          columns.width: 10
+      ino:
+        annotations:
+          description: Inode number
+          columns.width: 10
+          columns.hidden: true
+      netns:
+        annotations:
+          description: Network namespace inode id
+          template: ns
 snapshotters:
   sockets:
     structName: socket_entry
 structs:
   socket_entry:
     fields:
-    - name: src
-      description: Source address
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: dst
-      description: Destination address
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: state
-      attributes:
-        width: 10
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: ino
-      description: Inode number
-      attributes:
-        width: 10
-        alignment: left
-        hidden: true
-        ellipsis: end
-    - name: netns
-      description: Network namespace inode id
-      attributes:
-        template: ns

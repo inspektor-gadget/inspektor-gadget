@@ -3,6 +3,71 @@ description: trace TCP retransmissions
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  tcpretrans:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      src:
+        annotations:
+          template: l4endpoint
+      dst:
+        annotations:
+          template: l4endpoint
+      task:
+        annotations:
+          template: comm
+      pid:
+        annotations:
+          template: pid
+      tid:
+        annotations:
+          description: Thread id that generated event
+          columns.hidden: true
+          template: pid
+      uid:
+        annotations:
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          description: Group id of the event's process
+          template: uid
+          columns.hidden: true
+      tcpflags_raw:
+        annotations:
+          columns.hidden: true
+      tcpflags:
+        annotations:
+          description: TCP flags from a TCP header
+      reason_raw:
+        annotations:
+          columns.hidden: true
+      reason:
+        annotations:
+          description: Reason for retransmission
+      netns:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      type_raw:
+        annotations:
+          columns.hidden: true
+      type:
+        annotations:
+          description: Type of the retransmission, either RETRANS or LOSS
+          columns.width: 10
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      state:
+        annotations:
+          description: Connection state
 tracers:
   tcpretrans:
     mapName: events
@@ -10,62 +75,3 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: src
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: dst
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: task
-      attributes:
-        template: comm
-    - name: pid
-      attributes:
-        template: pid
-    - name: tid
-      description: 'TODO: Fill field description'
-      attributes:
-        hidden: true
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      description: 'TODO: Fill field description'
-      attributes:
-        template: uid
-    - name: tcpflags_raw
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: reason
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: netns
-      description: Network namespace inode id
-      attributes:
-        template: ns
-    - name: type_raw
-      description: Type of the retransmission, either RETRANS or LOSS
-      attributes:
-        width: 7
-        alignment: left
-        ellipsis: end
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: state
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end

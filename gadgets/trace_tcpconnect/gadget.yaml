@@ -3,6 +3,46 @@ description: trace tcp connections
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  tcpconnect:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          template: pid
+      task:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      src:
+        annotations:
+          template: l4endpoint
+      dst:
+        annotations:
+          template: l4endpoint
+      latency:
+        annotations:
+          columns.width: 16
+          columns.alignment: right
+          columns.hidden: true
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      retcode:
+        annotations:
+          columns.width: 7
+          columns.alignment: right
 tracers:
   tcpconnect:
     mapName: events
@@ -10,37 +50,3 @@ tracers:
 structs:
   event:
     fields:
-    - name: timestamp_raw
-    - name: pid
-      attributes:
-        template: pid
-    - name: task
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: src
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: dst
-      attributes:
-        minWidth: 24
-        maxWidth: 50
-    - name: latency
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: retcode
-      attributes:
-        width: 7

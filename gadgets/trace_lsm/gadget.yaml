@@ -3,6 +3,39 @@ description: a strace for LSM tracepoints
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  lsm:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      mntns_id:
+        annotations:
+          template: ns
+      pid:
+        annotations:
+          template: pid
+      tid:
+        annotations:
+          template: pid
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      tracepoint_raw:
+        annotations:
+          columns.hidden: true
+      tracepoint:
+        annotations:
+          description: lsm tracepoint name
+      comm:
+        attributes:
+          template: comm
 tracers:
   lsm:
     mapName: events
@@ -10,33 +43,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: pid
-      attributes:
-        template: pid
-    - name: tid
-      attributes:
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: tracepoint_raw
-      description: lsm tracepoint enum
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: comm
-      description: command
-      attributes:
-        template: comm
-    - name: timestamp_raw
 ebpfParams:
   trace_all:
     key: trace-all

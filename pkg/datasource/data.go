@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -159,28 +161,44 @@ type dataSource struct {
 
 	byteOrder binary.ByteOrder
 	lock      sync.RWMutex
+
+	config *viper.Viper
 }
 
-func newDataSource(t Type, name string) (*dataSource, error) {
+func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSource, error) {
 	switch t {
 	case TypeSingle, TypeArray:
 	default:
 		return nil, fmt.Errorf("invalid data source type: %v", t)
 	}
 
-	return &dataSource{
+	ds := &dataSource{
 		name:            name,
 		dType:           t,
 		requestedFields: make(map[string]bool),
 		fieldMap:        make(map[string]*field),
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
-		annotations:     map[string]string{},
-	}, nil
+		annotations:     make(map[string]string),
+	}
+
+	for _, option := range options {
+		option(ds)
+	}
+
+	if ds.config != nil {
+		// Apply configuration
+		ds.tags = append(ds.tags, ds.config.GetStringSlice("tags")...)
+		annotations := ds.config.GetStringMapString("annotations")
+		for k, v := range annotations {
+			ds.annotations[k] = v
+		}
+	}
+	return ds, nil
 }
 
-func New(t Type, name string) (DataSource, error) {
-	return newDataSource(t, name)
+func New(t Type, name string, options ...DataSourceOption) (DataSource, error) {
+	return newDataSource(t, name, options...)
 }
 
 func NewFromAPI(in *api.DataSource) (DataSource, error) {
@@ -344,6 +362,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 			Index:        uint32(len(ds.fields) + len(newFields)),
 			PayloadIndex: idx,
 			Flags:        FieldFlagStaticMember.Uint32(),
+			Annotations:  maps.Clone(defaultFieldAnnotations),
 		}
 		nf.Size = f.FieldSize()
 		nf.Offs = f.FieldOffset()
@@ -393,6 +412,8 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 		}
 	}
 
+	ds.applyFieldConfig(newFields...)
+
 	ds.fields = append(ds.fields, newFields...)
 
 	for _, f := range newFields {
@@ -408,6 +429,73 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}}, nil
 }
 
+func applyFieldTemplate(f *field, annotations map[string]string) {
+	templateAnn := annotations[TemplateAnnotation]
+	if templateAnn == "" {
+		return
+	}
+
+	template := annotationsTemplates[templateAnn]
+	if template == nil {
+		log.Warnf("template %q not found for field %q", templateAnn, f.Name)
+		return
+	}
+
+	log.Debugf("applying template %q to field %q", templateAnn, f.Name)
+	for k, v := range template {
+		f.Annotations[k] = v
+	}
+}
+
+func (ds *dataSource) applyFieldConfig(newFields ...*field) {
+	var fields *viper.Viper
+
+	if ds.config != nil {
+		fields = ds.config.Sub("fields")
+	}
+
+	// first pass applying configuration from metadata
+	for _, field := range newFields {
+		// apply template first in case the field being added contains an
+		// annotation with it, for instance, when the field is created by an
+		// operator. The annotations added by the template can be changed by the
+		// field config below.
+		applyFieldTemplate(field, field.Annotations)
+
+		// apply configuration from metadata
+		if fields == nil {
+			continue
+		}
+
+		fieldConfig := fields.Sub(field.Name)
+		if fieldConfig == nil {
+			continue
+		}
+
+		field.Tags = append(field.Tags, fieldConfig.GetStringSlice("tags")...)
+
+		fieldAnnotations := fieldConfig.GetStringMapString("annotations")
+		if fieldAnnotations == nil {
+			continue
+		}
+
+		// apply template annotations first to allow user overwrite some
+		// annotations from the template
+		applyFieldTemplate(field, fieldAnnotations)
+
+		for k, v := range fieldAnnotations {
+			field.Annotations[k] = v
+		}
+	}
+
+	// second pass setting flags based on annotations
+	for _, field := range newFields {
+		if field.Annotations[ColumnsHiddenAnnotation] == "true" {
+			FieldFlagHidden.AddTo(&field.Flags)
+		}
+	}
+}
+
 func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error) {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
@@ -417,10 +505,11 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	}
 
 	nf := &field{
-		Name:     name,
-		FullName: name,
-		Index:    uint32(len(ds.fields)),
-		Kind:     kind,
+		Name:        name,
+		FullName:    name,
+		Index:       uint32(len(ds.fields)),
+		Kind:        kind,
+		Annotations: maps.Clone(defaultFieldAnnotations),
 	}
 	for _, opt := range opts {
 		opt(nf)
@@ -431,6 +520,8 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 		nf.PayloadIndex = ds.payloadCount
 		ds.payloadCount++
 	}
+
+	ds.applyFieldConfig(nf)
 
 	ds.fields = append(ds.fields, nf)
 	ds.fieldMap[nf.FullName] = nf

@@ -3,6 +3,46 @@ description: trace sni
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  sni:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      pid:
+        annotations:
+          description: PID of the process that sent the request
+          template: pid
+      tid:
+        annotations:
+          description: TID of the thread sending the request
+          columns.hidden: true
+          template: pid
+      task:
+        annotations:
+          template: comm
+      uid:
+        annotations:
+          hidden: true
+          template: uid
+      gid:
+        annotations:
+          hidden: true
+          template: uid
+      name:
+        annotations:
+          columns.width: 30
+      netns:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
 tracers:
   sni:
     mapName: events
@@ -10,35 +50,3 @@ tracers:
 structs:
   event_t:
     fields:
-    - name: timestamp_raw
-    - name: pid
-      description: PID of the process that sent the request
-      attributes:
-        template: pid
-    - name: task
-      attributes:
-        template: comm
-    - name: uid
-      attributes:
-        hidden: true
-        template: uid
-    - name: gid
-      attributes:
-        hidden: true
-        template: uid
-    - name: name
-      attributes:
-        width: 30
-    - name: netns
-      description: Network namespace inode id
-      attributes:
-        template: ns
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: tid
-      description: TID of the thread sending the request
-      attributes:
-        hidden: true
-        template: pid

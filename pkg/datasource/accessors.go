@@ -254,11 +254,12 @@ func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOpt
 	}
 
 	nf := &field{
-		Name:     name,
-		FullName: parentFullName + "." + name,
-		Kind:     kind,
-		Parent:   a.f.Index,
-		Index:    uint32(len(a.ds.fields)),
+		Name:        name,
+		FullName:    parentFullName + "." + name,
+		Kind:        kind,
+		Parent:      a.f.Index,
+		Index:       uint32(len(a.ds.fields)),
+		Annotations: maps.Clone(defaultFieldAnnotations),
 	}
 	for _, opt := range opts {
 		opt(nf)
@@ -274,6 +275,8 @@ func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOpt
 		nf.PayloadIndex = a.ds.payloadCount
 		a.ds.payloadCount++
 	}
+
+	a.ds.applyFieldConfig(nf)
 
 	a.ds.fields = append(a.ds.fields, nf)
 	a.ds.fieldMap[nf.FullName] = nf

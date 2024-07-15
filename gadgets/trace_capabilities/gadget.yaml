@@ -3,6 +3,77 @@ description: trace security capabilitiy checks
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  capabilities:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      mntnsid:
+        annotations:
+          template: ns
+      current_userns:
+        annotations:
+          template: ns
+      target_userns:
+        annotations:
+          template: ns
+      cap_effective_raw:
+        annotations:
+          columns.hidden: true
+      cap_effective:
+        annotations:
+          columns.width: 20
+          columns.hidden: true
+      pid:
+        annotations:
+          template: pid
+      cap_raw:
+        annotations:
+          columns.hidden: true
+      cap:
+        annotations:
+          columns.hidden: true
+      tgid:
+        annotations:
+          template: pid
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      audit:
+        annotations:
+          columns.width: 11
+      insetid:
+        annotations:
+          columns.width: 11
+      syscall_raw:
+        annotations:
+          columns.hidden: true
+      syscall:
+        annotations:
+          columns.width: 20
+      task:
+        annotations:
+          template: comm
+      kstack_raw:
+        annotations:
+          columns.hidden: true
+      kstack:
+        annotations:
+          description: kernel stack
+          columns.width: 10
+          columns.hidden: true
+      capable:
+        annotations:
+          description: if the process has the requested capability
+          columns.width: 10
+          columns.hidden: true
 tracers:
   capabilities:
     mapName: events
@@ -10,72 +81,6 @@ tracers:
 structs:
   cap_event:
     fields:
-    - name: mntnsid
-      description: mount namespace inode id
-      attributes:
-        template: ns
-    - name: current_userns
-      attributes:
-        template: ns
-    - name: target_userns
-      attributes:
-        template: ns
-    - name: cap_effective_raw
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
-    - name: timestamp_raw
-      attributes:
-        template: timestamp
-    - name: pid
-      attributes:
-        template: pid
-    - name: cap_raw
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: tgid
-      attributes:
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: audit
-      attributes:
-        width: 11
-        alignment: left
-        ellipsis: end
-    - name: insetid
-      attributes:
-        width: 11
-        alignment: left
-        ellipsis: end
-    - name: syscall_raw
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
-    - name: task
-      description: command
-      attributes:
-        template: comm
-    - name: kstack_raw
-      description: kernel stack
-      attributes:
-        width: 10
-        alignment: left
-        ellipsis: end
-    - name: capable
-      description: if the process has the requested capability
-      attributes:
-        width: 10
-        alignment: left
-        ellipsis: end
 ebpfParams:
   audit_only:
     key: audit_only

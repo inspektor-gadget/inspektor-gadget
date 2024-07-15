@@ -3,6 +3,41 @@ description: trace OOM killer
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  events:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      fpid:
+        annotations:
+          template: pid
+      fuid:
+        annotations:
+          template: uid
+      fgid:
+        annotations:
+          template: uid
+      tpid:
+        annotations:
+          template: pid
+      pages:
+        annotations:
+          columns.width: 8
+          columns.alignment: right
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      fcomm:
+        annotations:
+          template: comm
+      tcomm:
+        annotations:
+          template: comm
 tracers:
   oomkill:
     mapName: events
@@ -10,27 +45,3 @@ tracers:
 structs:
   event:
     fields:
-    - name: fpid
-      attributes:
-        template: pid
-    - name: fuid
-      attributes:
-        template: uid
-    - name: fgid
-      attributes:
-        template: uid
-    - name: tpid
-      attributes:
-        template: pid
-    - name: pages
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
-    - name: timestamp_raw
-    - name: fcomm
-      attributes:
-        template: comm
-    - name: tcomm
-      attributes:
-        template: comm

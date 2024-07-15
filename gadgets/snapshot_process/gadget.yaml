@@ -3,40 +3,42 @@ description: Show running processes
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  processes:
+    fields:
+      comm:
+        annotations:
+          template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+      ppid:
+        annotations:
+          description: Parent process ID
+          template: pid
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
 snapshotters:
   processes:
     structName: process_entry
 structs:
   process_entry:
     fields:
-    - name: comm
-      description: Process name
-      attributes:
-        template: comm
-    - name: pid
-      description: Process ID
-      attributes:
-        template: pid
-    - name: tid
-      description: Thread ID
-      attributes:
-        template: pid
-    - name: ppid
-      description: Parent process ID
-      attributes:
-        template: pid
-    - name: uid
-      description: User ID
-      attributes:
-        template: uid
-    - name: gid
-      description: Group ID
-      attributes:
-        template: uid
-    - name: mntns_id
-      description: Mount namespace inode id
-      attributes:
-        template: ns
 ebpfParams:
   show_threads:
     key: threads

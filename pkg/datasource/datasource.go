@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/spf13/viper"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -175,4 +176,12 @@ type DataSource interface {
 
 	Annotations() map[string]string
 	Tags() []string
+}
+
+type DataSourceOption func(*dataSource)
+
+func WithConfig(v *viper.Viper) DataSourceOption {
+	return func(source *dataSource) {
+		source.config = v
+	}
 }

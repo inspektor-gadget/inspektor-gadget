@@ -284,7 +284,7 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					"columns.template": "timestamp",
+					datasource.TemplateAnnotation: "timestamp",
 				}),
 			}
 			out, err := ds.AddField(outName, api.Kind_String, opts...)

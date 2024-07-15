@@ -4,6 +4,54 @@ description: Captures data on read/recv or write/send functions of OpenSSL, GnuT
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  ssl:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      latency_ns:
+        annotations:
+          columns.width: 10
+      pid:
+        annotations:
+          template: pid
+      tid:
+        annotations:
+          template: pid
+      uid:
+        annotations:
+          template: uid
+      gid:
+        annotations:
+          template: uid
+      comm:
+        annotations:
+          template: comm
+      len:
+        annotations:
+          columns.hidden: true
+      buf:
+        annotations:
+          description: unencrypted buffer
+          columns.width: 32
+      retval:
+        annotations:
+          description: return value
+          columns.width: 20
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      operation_raw:
+        annotations:
+          columns.hidden: true
+      operation:
+        annotations:
+          description: type of SSL operations
 tracers:
   ssl:
     mapName: events
@@ -11,54 +59,6 @@ tracers:
 structs:
   event:
     fields:
-    - name: mntns_id
-      description: mount namespace inode id
-      attributes:
-        template: ns
-    - name: operation_raw
-      description: type of SSL operations
-      attributes:
-        width: 16
-        alignment: left
-        ellipsis: end
-    - name: timestamp_raw
-    - name: latency_ns
-      attributes:
-        template: timestamp
-    - name: pid
-      attributes:
-        template: pid
-    - name: tid
-      attributes:
-        template: pid
-    - name: uid
-      attributes:
-        template: uid
-    - name: gid
-      attributes:
-        template: uid
-    - name: len
-      description: data length
-      attributes:
-        width: 10
-        alignment: left
-        ellipsis: end
-    - name: comm
-      description: command
-      attributes:
-        template: comm
-    - name: buf
-      description: unencrypted buffer
-      attributes:
-        width: 32
-        alignment: left
-        ellipsis: end
-    - name: retval
-      description: return value
-      attributes:
-        width: 20
-        alignment: left
-        ellipsis: end
 ebpfParams:
   record_data:
     key: record-data

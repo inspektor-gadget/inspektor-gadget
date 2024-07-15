@@ -143,7 +143,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			"columns.template": "namespace",
+			datasource.TemplateAnnotation: "namespace",
 		}),
 		datasource.WithOrder(-30),
 	)
@@ -155,7 +155,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			"columns.template": "pod",
+			datasource.TemplateAnnotation: "pod",
 		}),
 		datasource.WithOrder(-29),
 	)
@@ -167,7 +167,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			"columns.template": "container",
+			datasource.TemplateAnnotation: "container",
 		}),
 		datasource.WithOrder(-28),
 	)
@@ -199,7 +199,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"containerName",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			"columns.template": "container",
+			datasource.TemplateAnnotation: "container",
 		}),
 		datasource.WithOrder(-26),
 	)
@@ -210,8 +210,8 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"runtimeName",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			"columns.width": "19",
-			"columns.fixed": "true",
+			datasource.ColumnsWidthAnnotation: "19",
+			datasource.ColumnsFixedAnnotation: "true",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-25),
@@ -223,8 +223,8 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"containerId",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			"columns.width":    "13",
-			"columns.maxWidth": "64",
+			datasource.ColumnsWidthAnnotation:    "13",
+			datasource.ColumnsMaxWidthAnnotation: "64",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-24),
