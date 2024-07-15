@@ -37,6 +37,9 @@
         "dockerSocketPath": {
           "type": "string"
         },
+        "podmanSocketPath": {
+          "type": "string"
+        },
         "experimental": {
           "type": "boolean"
         },

@@ -42,6 +42,8 @@ import (
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -276,6 +278,11 @@ func main() {
 			log.Info("Experimental features enabled")
 		}
 
+		config.Config = config.NewWithPath(gadgettracermanagerconfig.ConfigPath)
+		if err := config.Config.ReadInConfig(); err != nil {
+			log.Warnf("reading config: %v", err)
+		}
+
 		operators.RegisterDataOperator(ocihandler.OciHandler)
 
 		hostConfig := host.Config{
@@ -338,9 +345,13 @@ func main() {
 			go startController(node, tracerManager)
 		}
 
-		stringBufferLength := os.Getenv("EVENTS_BUFFER_LENGTH")
+		stringBufferLength := config.Config.GetString(gadgettracermanagerconfig.EventsBufferLengthKey)
 		if stringBufferLength == "" {
-			log.Fatalf("Environment variable EVENTS_BUFFER_LENGTH not set")
+			log.Warnf("EVENTS_BUFFER_LENGTH is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.EventsBufferLengthKey)
+			stringBufferLength = os.Getenv("EVENTS_BUFFER_LENGTH")
+		}
+		if stringBufferLength == "" {
+			log.Fatalf("Environment variable EVENTS_BUFFER_LENGTH or config not set")
 		}
 
 		bufferLength, err := strconv.ParseUint(stringBufferLength, 10, 64)
