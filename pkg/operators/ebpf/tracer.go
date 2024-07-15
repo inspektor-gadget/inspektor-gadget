@@ -240,6 +240,13 @@ func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Trac
 		return fmt.Errorf("creating BPF map reader: %w", err)
 	}
 
+	// TODO: freezing ringbuf doesn't work: "device or resource busy"
+	if m.Type() == ebpf.PerfEventArray {
+		if err := gadgets.FreezeMaps(m); err != nil {
+			return err
+		}
+	}
+
 	go tracer.receiveEvents(gadgetCtx)
 
 	<-gadgetCtx.Context().Done()

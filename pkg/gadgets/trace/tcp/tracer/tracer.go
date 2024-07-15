@@ -149,6 +149,10 @@ func (t *Tracer) install() error {
 	}
 	t.reader = reader
 
+	if err := gadgets.FreezeMaps(t.objs.tcptracerMaps.Events); err != nil {
+		return err
+	}
+
 	return nil
 }
 

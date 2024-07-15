@@ -60,13 +60,17 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
-const gadgetPullSecret = "gadget-pull-secret"
+const (
+	gadgetPullSecret = "gadget-pull-secret"
+	configYamlKey    = "config.yaml"
+)
 
 var deployCmd = &cobra.Command{
 	Use:          "deploy",
@@ -695,6 +699,33 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
 			rBinding.Namespace = gadgetNamespace
+		}
+
+		if cm, isCm := object.(*v1.ConfigMap); isCm {
+			cm.Namespace = gadgetNamespace
+			cfgData, ok := cm.Data[configYamlKey]
+			if !ok {
+				return fmt.Errorf("%q not found in ConfigMap %q", configYamlKey, cm.Name)
+			}
+			cfg := make(map[string]interface{}, len(cm.Data))
+			err = yaml.Unmarshal([]byte(cfgData), &cfg)
+			if err != nil {
+				return fmt.Errorf("unmarshaling config.yaml: %w", err)
+			}
+
+			cfg[gadgettracermanagerconfig.HookModeKey] = hookMode
+			cfg[gadgettracermanagerconfig.FallbackPodInformerKey] = fallbackPodInformer
+			cfg[gadgettracermanagerconfig.EventsBufferLengthKey] = eventBufferLength
+			cfg[gadgettracermanagerconfig.ContainerdSocketPath] = runtimesConfig.Containerd
+			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
+			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
+			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
+
+			data, err := yaml.Marshal(cfg)
+			if err != nil {
+				return fmt.Errorf("marshaling config.yaml: %w", err)
+			}
+			cm.Data[configYamlKey] = string(data)
 		}
 
 		if printOnly {

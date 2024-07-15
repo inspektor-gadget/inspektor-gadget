@@ -53,6 +53,7 @@ $ export CLUSTER=<myCluster>
 $ export VNET=<myVNET>
 $ export MASTSUB=<myMASTSUB>
 $ export WORKSUB=<myWORKSUB>
+$ export SP_NAME=<myServicePrincipalName>
 
 # Set subscription so that we don't need to specify it at every command
 $ az account set --subscription $SUBSCRIPTION
@@ -68,12 +69,23 @@ $ az group create --name $RESOURCEGROUP --location $LOCATION
 
 # Create virtual network and two empty subnets for the master and the worker nodes.
 $ az network vnet create --resource-group $RESOURCEGROUP --name $VNET --address-prefixes 10.0.0.0/22
-$ az network vnet subnet create --resource-group $RESOURCEGROUP --vnet-name $VNET --name $MASTSUB --address-prefixes 10.0.0.0/23 --service-endpoints Microsoft.ContainerRegistry
-$ az network vnet subnet create --resource-group $RESOURCEGROUP --vnet-name $VNET --name $WORKSUB --address-prefixes 10.0.2.0/23 --service-endpoints Microsoft.ContainerRegistry
-$ az network vnet subnet update --name $MASTSUB --resource-group $RESOURCEGROUP --vnet-name $VNET --disable-private-link-service-network-policies true
+$ az network vnet subnet create --resource-group $RESOURCEGROUP --vnet-name $VNET \
+  --name $MASTSUB --address-prefixes 10.0.0.0/23 --service-endpoints Microsoft.ContainerRegistry
+$ az network vnet subnet create --resource-group $RESOURCEGROUP --vnet-name $VNET \
+  --name $WORKSUB --address-prefixes 10.0.2.0/23 --service-endpoints Microsoft.ContainerRegistry
+$ az network vnet subnet update --name $MASTSUB --resource-group $RESOURCEGROUP --vnet-name $VNET \
+  --disable-private-link-service-network-policies true
+
+# Create the service principal for the cluster
+$ SP_CREDENTIALS=$(az ad sp create-for-rbac -n $SP_NAME --role contributor --scopes "/subscriptions/${SUBSCRIPTION}/resourceGroups/${RESOURCEGROUP}")
+
+$ SP_APPID=$(echo $SP_CREDENTIALS | jq '.appId')
+$ SP_PASSWORD=$(echo $SP_CREDENTIALS | jq '.password')
 
 # Create the cluster (Minimum 3 worker nodes must be used)
-$ az aro create --resource-group $RESOURCEGROUP --name $CLUSTER --vnet $VNET --master-subnet $MASTSUB --worker-count 3 --worker-subnet $WORKSUB
+$ az aro create --resource-group $RESOURCEGROUP --name $CLUSTER --vnet $VNET \
+  --master-subnet $MASTSUB --worker-count 3 --worker-subnet $WORKSUB \
+  --client-id $SP_APPID --client-secret $SP_PASSWORD
 ```
 
 Considerations:

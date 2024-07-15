@@ -31,6 +31,8 @@ import (
 	"k8s.io/client-go/rest"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -75,6 +77,12 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	// Get a runtime client to talk to the container runtime handling pods in
 	// this node.
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
+	if socketPath == "" {
+		socketPath, err = getSocketPathFromConfig(types.String2RuntimeName(list[0]))
+		if err != nil {
+			log.Warnf("Failed to retrieve socket path for runtime client from config: %v. Falling back to default container runtime", err)
+		}
+	}
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
 		&containerutilsTypes.RuntimeConfig{
 			Name:            types.String2RuntimeName(list[0]),
@@ -105,6 +113,20 @@ func trimRuntimePrefix(id string) string {
 	}
 
 	return parts[1]
+}
+
+func getSocketPathFromConfig(runtime types.RuntimeName) (string, error) {
+	switch runtime {
+	case types.RuntimeNameDocker:
+		return config.Config.GetString(gadgettracermanagerconfig.DockerSocketPath), nil
+	case types.RuntimeNameContainerd:
+		return config.Config.GetString(gadgettracermanagerconfig.ContainerdSocketPath), nil
+	case types.RuntimeNameCrio:
+		return config.Config.GetString(gadgettracermanagerconfig.CrioSocketPath), nil
+	case types.RuntimeNamePodman:
+		return config.Config.GetString(gadgettracermanagerconfig.PodmanSocketPath), nil
+	}
+	return "", fmt.Errorf("unsupported runtime: %s", runtime)
 }
 
 // GetNonRunningContainers returns the list of containers IDs that are not running.

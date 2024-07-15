@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -94,6 +95,10 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
 		service.SetEventBufferLength(eventBufferLength)
+
+		if err = config.Config.ReadInConfig(); err != nil {
+			log.Warnf("reading config: %v", err)
+		}
 
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,

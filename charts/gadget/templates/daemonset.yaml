@@ -211,6 +211,9 @@ spec:
               name: pull-secret
               readOnly: true
             {{- end }}
+            - mountPath: /etc/ig
+              name: config
+              readOnly: true
       nodeSelector:
         {{- .Values.nodeSelector | toYaml | nindent 8 }}
       affinity:
@@ -270,9 +273,16 @@ spec:
         {{- if .Values.config.mountPullSecret }}
         - name: pull-secret
           secret:
-            defaultMode: 420
+            defaultMode: 400
             items:
               - key: .dockerconfigjson
                 path: config.json
             secretName: gadget-pull-secret
         {{- end }}
+        - configMap:
+            name: {{ include "gadget.fullname" . }}
+          defaultMode: 400
+          items:
+            - key: config.yaml
+              path: config.yaml
+          name: config

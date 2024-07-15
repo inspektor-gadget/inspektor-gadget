@@ -709,7 +709,7 @@ jobs:
           name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
       - name: Scan gadget ${{ matrix.os }} ${{ matrix.platform }} container image
-        uses: aquasecurity/trivy-action@7c2007bcb556501da015201bcba5aa14069b74e2 # v0.23.0
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.24.0
         with:
           input: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           format: 'table'
@@ -1426,12 +1426,23 @@ jobs:
         cache: true
       id: go
     - name: Gadgets tests
+      id: gadgets-tests
+      shell: bash
       run: |
+          set -o pipefail
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
           IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
-          -C gadgets/ test-ig-local -o build
+          -C gadgets/ test-ig-local -o build |& tee gadgets-tests.log & wait $!
+    - name: Prepare and publish test reports
+      if: always()
+      continue-on-error: true
+      uses: ./.github/actions/prepare-and-publish-test-reports
+      with:
+        test-log-file: gadgets-tests.log
+        test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
+        test-summary-suffix: "test-gadgets"
 
   test-gadgets-k8s:
     name: Test gadgets K8s
@@ -1482,7 +1493,10 @@ jobs:
         name: kubectl-gadget-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/
     - name: Gadgets tests
+      id: gadgets-tests
+      shell: bash
       run: |
+        set -o pipefail
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         ./kubectl-gadget deploy --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make \
@@ -1490,12 +1504,20 @@ jobs:
         GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
         KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
         IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
-        -C gadgets/ test-k8s -o build
+        -C gadgets/ test-k8s -o build |& tee gadgets-tests.log & wait $!
     - name: Undeploy Inspektor Gadget
       id: undeploy-ig
       if: always()
       shell: bash
       run: ./kubectl-gadget undeploy
+    - name: Prepare and publish test reports
+      if: always()
+      continue-on-error: true
+      uses: ./.github/actions/prepare-and-publish-test-reports
+      with:
+        test-log-file: gadgets-tests.log
+        test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
+        test-summary-suffix: "test-gadgets-k8s-${{ matrix.runtime }}"
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
