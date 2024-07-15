@@ -65,14 +65,19 @@ struct arg {
 };
 
 struct event {
-	__u64 delta;
-	enum flags_set flags_raw;
+	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
-	gadget_mntns_id mount_ns_id;
-	gadget_timestamp timestamp_raw;
+	__u32 uid;
+	__u32 gid;
+
+	__u64 delta;
+	enum flags_set flags_raw;
 	int ret;
-	char comm[TASK_COMM_LEN];
 	char fs[FS_NAME_LEN];
 	char src[PATH_MAX];
 	char dest[PATH_MAX];
@@ -134,6 +139,7 @@ static int probe_exit(void *ctx, int ret)
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
+	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct arg *argp;
 	struct event *eventp;
 
@@ -145,12 +151,14 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		goto cleanup;
 
-	eventp->mount_ns_id = gadget_get_mntns_id();
+	eventp->mntns_id = gadget_get_mntns_id();
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags_raw = argp->flags;
 	eventp->pid = pid;
 	eventp->tid = tid;
+	eventp->uid = (u32)uid_gid;
+	eventp->gid = (u32)(uid_gid >> 32);
 	eventp->ret = ret;
 	eventp->op_raw = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));

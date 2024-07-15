@@ -12,9 +12,30 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
-      mntnsid:
+      mntns_id:
         annotations:
+          description: Mount namespace inode id
           template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
       current_userns:
         annotations:
           template: ns
@@ -28,24 +49,12 @@ datasources:
         annotations:
           columns.width: 20
           columns.hidden: true
-      pid:
-        annotations:
-          template: pid
       cap_raw:
         annotations:
           columns.hidden: true
       cap:
         annotations:
           columns.hidden: true
-      tgid:
-        annotations:
-          template: pid
-      uid:
-        annotations:
-          template: uid
-      gid:
-        annotations:
-          template: uid
       audit:
         annotations:
           columns.width: 11
@@ -58,9 +67,6 @@ datasources:
       syscall:
         annotations:
           columns.width: 20
-      task:
-        annotations:
-          template: comm
       kstack_raw:
         annotations:
           columns.hidden: true

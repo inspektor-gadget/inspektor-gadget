@@ -15,15 +15,20 @@ struct value {
 };
 
 struct event {
-	__u32 pid;
-	__u32 tpid;
-	gadget_mntns_id mntns_id;
 	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
+	__u32 pid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
+
+	__u32 tpid;
+
 	gadget_signal sig_raw;
 	int ret;
-	char comm[TASK_COMM_LEN];
 };
 
 const volatile pid_t filtered_pid = 0;
@@ -193,6 +198,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 		return 0;
 
 	event->pid = pid;
+	event->tid = (__u32)pid_tgid;
 	event->tpid = tpid;
 	event->mntns_id = mntns_id;
 	event->sig_raw = sig;

@@ -33,14 +33,16 @@ type traceSNIEvent struct {
 	eventtypes.CommonData
 
 	Timestamp string `json:"timestamp"`
-	MountNsID uint64 `json:"mntns_id"`
-	NetNs     uint64 `json:"netns"`
-	Pid       uint32 `json:"pid"`
-	Tid       uint32 `json:"tid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	Task      string `json:"task"`
-	Name      string `json:"name"`
+	MntNsID   uint64 `json:"mntns_id"`
+	NetNs     uint64 `json:"netns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Name string `json:"name"`
 }
 
 func TestTraceSNI(t *testing.T) {
@@ -92,14 +94,14 @@ func TestTraceSNI(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSNIEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Task:       "wget",
+				Comm:       "wget",
 				Name:       "inspektor-gadget.io",
 				Uid:        1000,
 				Gid:        1111,
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				MountNsID: utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 				NetNs:     utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
@@ -108,7 +110,7 @@ func TestTraceSNI(t *testing.T) {
 			normalize := func(e *traceSNIEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.NetNs)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)

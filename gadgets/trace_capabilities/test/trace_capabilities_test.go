@@ -33,20 +33,22 @@ import (
 type traceCapabilitiesEvent struct {
 	eventtypes.CommonData
 
-	MountNsID     uint64 `json:"mntnsid"`
-	Timestamp     string `json:"timestamp"`
+	Timestamp string `json:"timestamp"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
 	CurrentUserNs uint64 `json:"current_user_ns"`
 	TargetUserNs  uint64 `json:"target_user_ns"`
 	CapEffective  string `json:"cap_effective"`
-	Pid           uint32 `json:"pid"`
 	Cap           string `json:"cap"`
-	Tgid          uint32 `json:"tgid"`
-	Uid           uint32 `json:"uid"`
-	Gid           uint32 `json:"gid"`
 	Audit         uint32 `json:"audit"`
 	Insetid       uint32 `json:"insetid"`
 	Syscall       string `json:"syscall"`
-	Task          string `json:"task"`
 	Kstack        string `json:"kstack"`
 	Capable       bool   `json:"capable"`
 }
@@ -104,15 +106,15 @@ func TestTraceCapabilities(t *testing.T) {
 					Syscall:    "SYS_SETPRIORITY",
 					Audit:      1,
 					Capable:    false,
-					Task:       "nice",
+					Comm:       "nice",
 
 					// Check the existence of the following fields
-					MountNsID:     utils.NormalizedInt,
+					MntNsID:       utils.NormalizedInt,
 					Timestamp:     utils.NormalizedStr,
 					Pid:           utils.NormalizedInt,
+					Tid:           utils.NormalizedInt,
 					Uid:           0,
 					Gid:           0,
-					Tgid:          0,
 					Kstack:        utils.NormalizedStr,
 					Insetid:       0,
 					CapEffective:  utils.NormalizedStr,
@@ -123,16 +125,16 @@ func TestTraceCapabilities(t *testing.T) {
 
 			normalize := func(e *traceCapabilitiesEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeString(&e.Kstack)
 				utils.NormalizeString(&e.CapEffective)
 
 				// Manually normalize fields that might contain 0
 				e.Uid = 0
 				e.Gid = 0
-				e.Tgid = 0
 				e.CurrentUserNs = 0
 				e.TargetUserNs = 0
 				e.Insetid = 0

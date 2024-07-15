@@ -32,16 +32,19 @@ import (
 type traceTCPEvent struct {
 	eventtypes.CommonData
 
-	Src       utils.L4Endpoint `json:"src"`
-	Dst       utils.L4Endpoint `json:"dst"`
-	Task      string           `json:"task"`
-	MountNsID uint64           `json:"mntns_id"`
-	Timestamp string           `json:"timestamp"`
-	Pid       uint32           `json:"pid"`
-	Uid       uint32           `json:"uid"`
-	Gid       uint32           `json:"gid"`
-	NetNsID   uint64           `json:"netns"`
-	Type      string           `json:"type"`
+	Timestamp string `json:"timestamp"`
+	MntNsID   uint64 `json:"mntns_id"`
+	NetNsID   uint64 `json:"netns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Src  utils.L4Endpoint `json:"src"`
+	Dst  utils.L4Endpoint `json:"dst"`
+	Type string           `json:"type"`
 }
 
 func TestTraceTCP(t *testing.T) {
@@ -106,15 +109,16 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   6,
 					},
-					Task: "curl",
+					Comm: "curl",
 					Uid:  0,
 					Gid:  0,
 					Type: "connect",
 
 					// Check only the existence of these fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 				{
@@ -131,15 +135,16 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   6,
 					},
-					Task: "nginx",
+					Comm: "nginx",
 					Uid:  101,
 					Gid:  101,
 					Type: "accept",
 
 					// Check only the existence of these fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 				{
@@ -156,24 +161,26 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   6,
 					},
-					Task: "curl",
+					Comm: "curl",
 					Uid:  0,
 					Gid:  0,
 					Type: "close",
 
 					// Check only the existence of these fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 			}
 
 			normalize := func(e *traceTCPEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.NetNsID)
 				// Checking the ports is a little bit complicated as successive
 				// calls to curl with --local-port fail because of

@@ -12,17 +12,29 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
-      pid:
+      mntns_id:
         annotations:
-          template: pid
+          description: Mount namespace inode id
+          template: ns
       comm:
         annotations:
+          description: Process name
           template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
       uid:
         annotations:
+          description: User ID
           template: uid
       gid:
         annotations:
+          description: Group ID
           template: uid
       flags_raw:
         annotations:
@@ -40,6 +52,7 @@ datasources:
       err:
         annotations:
           description: Error code
+          columns.minwidth: 3
           columns.width: 5
           columns.alignment: right
       fd:
@@ -52,9 +65,6 @@ datasources:
         annotations:
           columns.width: 32
           columns.minwidth: 24
-      mntns_id:
-        annotations:
-          template: ns
 ebpfParams:
   targ_failed:
     key: failed

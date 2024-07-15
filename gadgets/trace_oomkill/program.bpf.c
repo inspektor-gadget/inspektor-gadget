@@ -14,13 +14,13 @@
 #define TASK_COMM_LEN 16
 
 struct event {
+	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
 	__u32 fpid;
 	__u32 fuid;
 	__u32 fgid;
 	__u32 tpid;
 	__u64 pages;
-	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp_raw;
 	char fcomm[TASK_COMM_LEN];
 	char tcomm[TASK_COMM_LEN];
 };

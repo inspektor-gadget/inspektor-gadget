@@ -27,14 +27,19 @@ enum memop {
 };
 
 struct event {
+	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
-	char comm[TASK_COMM_LEN];
+	__u32 uid;
+	__u32 gid;
+
 	enum memop operation_raw;
 	__u64 addr;
 	__u64 size;
-	gadget_timestamp timestamp_raw;
 };
 
 /* used for context between uprobes and uretprobes of allocations */
@@ -91,6 +96,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	u32 tid;
 	u64 *size_ptr;
 	u64 size;
+	u64 uid_gid;
 
 	mntns_id = gadget_get_mntns_id();
 	if (gadget_should_discard_mntns_id(mntns_id))
@@ -108,9 +114,13 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	if (!event)
 		return 0;
 
+	uid_gid = bpf_get_current_uid_gid();
+
 	event->mntns_id = mntns_id;
 	event->pid = pid_tgid >> 32;
 	event->tid = tid;
+	event->uid = uid_gid;
+	event->gid = uid_gid >> 32;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->operation_raw = operation;
 	event->addr = addr;

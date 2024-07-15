@@ -12,17 +12,33 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
       pid:
         annotations:
+          description: Process ID
           template: pid
-      task:
+      tid:
         annotations:
-          template: comm
+          description: Thread ID
+          template: pid
       uid:
         annotations:
+          description: User ID
           template: uid
       gid:
         annotations:
+          description: Group ID
           template: uid
       src:
         annotations:
@@ -30,14 +46,6 @@ datasources:
       dst:
         annotations:
           template: l4endpoint
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      netns:
-        annotations:
-          description: Network namespace inode id
-          template: ns
       type_raw:
         annotations:
           columns.hidden: true

@@ -33,20 +33,24 @@ import (
 type traceMountEvent struct {
 	eventtypes.CommonData
 
-	Delta     uint64 `json:"delta"`
-	Flags     string `json:"flags"`
-	Pid       int    `json:"pid"`
-	Tid       int    `json:"tid"`
-	MountNsID uint64 `json:"mount_ns_id"`
 	Timestamp string `json:"timestamp"`
-	Ret       int    `json:"ret"`
-	Comm      string `json:"comm"`
-	Fs        string `json:"fs"`
-	Src       string `json:"src"`
-	Dest      string `json:"dest"`
-	Data      string `json:"data"`
-	Op        string `json:"op"`
-	Call      string `json:"call"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Delta uint64 `json:"delta"`
+	Flags string `json:"flags"`
+	Ret   int    `json:"ret"`
+	Fs    string `json:"fs"`
+	Src   string `json:"src"`
+	Dest  string `json:"dest"`
+	Data  string `json:"data"`
+	Op    string `json:"op"`
+	Call  string `json:"call"`
 }
 
 func TestTraceMount(t *testing.T) {
@@ -110,7 +114,7 @@ func TestTraceMount(t *testing.T) {
 				Delta:     utils.NormalizedInt,
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
-				MountNsID: utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 				Fs:        utils.NormalizedStr,
 				Call:      utils.NormalizedStr,
 			}
@@ -122,7 +126,7 @@ func TestTraceMount(t *testing.T) {
 				utils.NormalizeString(&e.Flags)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Fs)
 				utils.NormalizeString(&e.Call)
 			}

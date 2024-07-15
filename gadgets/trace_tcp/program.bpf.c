@@ -26,16 +26,20 @@ enum event_type : u8 {
 };
 
 struct event {
+	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+	gadget_netns_id netns_id;
+
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	char task[TASK_COMM_LEN];
-	gadget_mntns_id mntns_id;
-	gadget_timestamp timestamp_raw;
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	gadget_netns_id netns;
+
 	enum event_type type_raw;
 };
 
@@ -64,7 +68,7 @@ struct tuple_key_t {
 };
 
 struct pid_comm_t {
-	u64 pid;
+	u64 pid_tgid;
 	char comm[TASK_COMM_LEN];
 	u64 mntns_id;
 	u64 uid_gid;
@@ -144,17 +148,18 @@ static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 }
 
 static __always_inline void fill_event(struct tuple_key_t *tuple,
-				       struct event *event, __u32 pid,
+				       struct event *event, __u64 pid_tgid,
 				       __u64 uid_gid, __u16 family, __u8 type,
 				       __u64 mntns_id)
 {
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->type_raw = type;
-	event->pid = pid;
+	event->pid = pid_tgid >> 32;
+	event->tid = (__u32)pid_tgid;
 	event->uid = (__u32)uid_gid;
 	event->gid = (__u32)(uid_gid >> 32);
 	event->src.proto = event->dst.proto = IPPROTO_TCP;
-	event->netns = tuple->netns;
+	event->netns_id = tuple->netns;
 	event->mntns_id = mntns_id;
 	if (family == AF_INET) {
 		event->src.addr_raw.v4 = tuple->src.addr_raw.v4;
@@ -223,7 +228,6 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	struct pid_comm_t pid_comm = {};
 	struct sock **skpp;
 	struct sock *sk;
-	struct task_struct *task;
 
 	skpp = bpf_map_lookup_elem(&sockets, &tid);
 	if (!skpp)
@@ -237,9 +241,7 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	if (!fill_tuple(&tuple, sk, family))
 		goto end;
 
-	task = (struct task_struct *)bpf_get_current_task();
-
-	pid_comm.pid = pid;
+	pid_comm.pid_tgid = pid_tgid;
 	pid_comm.uid_gid = uid_gid;
 	pid_comm.mntns_id = gadget_get_mntns_id();
 	bpf_get_current_comm(&pid_comm.comm, sizeof(pid_comm.comm));
@@ -309,8 +311,8 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	if (!event)
 		return 0;
 
-	fill_event(&tuple, event, pid, uid_gid, family, close, mntns_id);
-	bpf_get_current_comm(&event->task, sizeof(event->task));
+	fill_event(&tuple, event, pid_tgid, uid_gid, family, close, mntns_id);
+	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -344,9 +346,9 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	if (!event)
 		goto end;
 
-	fill_event(&tuple, event, p->pid, p->uid_gid, family, connect,
+	fill_event(&tuple, event, p->pid_tgid, p->uid_gid, family, connect,
 		   p->mntns_id);
-	__builtin_memcpy(&event->task, p->comm, sizeof(event->task));
+	__builtin_memcpy(&event->comm, p->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -392,8 +394,8 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	if (!event)
 		return 0;
 
-	fill_event(&t, event, pid, uid_gid, family, accept, mntns_id);
-	bpf_get_current_comm(&event->task, sizeof(event->task));
+	fill_event(&t, event, pid_tgid, uid_gid, family, accept, mntns_id);
+	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

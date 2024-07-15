@@ -52,7 +52,7 @@ struct socket_entry {
 	struct gadget_l4endpoint_t dst;
 	__u32 state;
 	__u32 ino;
-	gadget_netns_id netns;
+	gadget_netns_id netns_id;
 };
 
 GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
@@ -114,7 +114,7 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.dst.port = bpf_htons(destp);
 	entry.state = state;
 	entry.ino = ino;
-	entry.netns = netns;
+	entry.netns_id = netns;
 
 	bpf_seq_write(seq, &entry, sizeof(entry));
 }

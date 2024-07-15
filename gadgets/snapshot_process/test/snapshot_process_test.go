@@ -33,12 +33,14 @@ type snapshotProcessEntry struct {
 	eventtypes.CommonData
 
 	MountNsID uint64 `json:"mntns_id"`
-	Pid       uint32 `json:"pid"`
-	Tid       uint32 `json:"tid"`
-	Ppid      uint32 `json:"ppid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	Comm      string `json:"comm"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Ppid uint32 `json:"ppid"`
 }
 
 func TestSnapshotProcess(t *testing.T) {

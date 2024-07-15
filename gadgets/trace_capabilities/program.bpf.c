@@ -77,22 +77,25 @@ enum cap_effective_flags_set : __u64 {
 };
 
 struct cap_event {
-	gadget_mntns_id mntnsid;
+	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
+	__u32 pid;
+	__u32 tid;
+	__u32 uid;
+	__u32 gid;
+
 	__u64 current_userns;
 	__u64 target_userns;
 	enum cap_effective_flags_set cap_effective_raw;
-	gadget_timestamp timestamp_raw;
-	__u32 pid;
 	enum capability cap_raw;
-	__u32 tgid;
-	__u32 uid;
-	__u32 gid;
 	bool capable;
 	int audit;
 	int insetid;
 	gadget_syscall syscall_raw;
 	gadget_kernel_stack kstack_raw;
-	char task[TASK_COMM_LEN];
 };
 
 #define MAX_ENTRIES 10240
@@ -231,12 +234,11 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 SEC("kretprobe/cap_capable")
 int BPF_KRETPROBE(ig_trace_cap_x)
 {
-	__u64 pid_tgid;
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct args_t *ap;
 	struct cap_event *event;
 
-	pid_tgid = bpf_get_current_pid_tgid();
 	ap = bpf_map_lookup_elem(&start, &pid_tgid);
 	if (!ap)
 		return 0; /* missed entry */
@@ -248,13 +250,13 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->current_userns = ap->current_userns;
 	event->target_userns = ap->target_userns;
 	event->cap_effective_raw = ap->cap_effective;
-	event->pid = pid_tgid;
-	event->tgid = pid_tgid >> 32;
+	event->pid = pid_tgid >> 32;
+	event->tid = (__u32)pid_tgid;
 	event->cap_raw = ap->cap;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
-	event->mntnsid = gadget_get_mntns_id();
-	bpf_get_current_comm(&event->task, sizeof(event->task));
+	event->mntns_id = gadget_get_mntns_id();
+	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	// ret=0 means the process has the requested capability, otherwise ret=-EPERM
 	event->capable = PT_REGS_RC(ctx) == 0;
 	event->kstack_raw = gadget_get_kernel_stack(ctx);
