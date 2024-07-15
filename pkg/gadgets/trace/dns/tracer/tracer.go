@@ -22,6 +22,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	log "github.com/sirupsen/logrus"
@@ -42,15 +43,21 @@ const (
 	maxPorts        = 16
 )
 
+// Configurable parameters
+type Config struct {
+	MountnsMap *ebpf.Map
+}
+
 type Tracer struct {
+	config *Config
 	*networktracer.Tracer[types.Event]
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func NewTracer() (*Tracer, error) {
-	t := &Tracer{}
+func NewTracer(config *Config) (*Tracer, error) {
+	t := &Tracer{config: config}
 
 	if err := t.install(); err != nil {
 		t.Close()
@@ -207,6 +214,10 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.
 	}
 	if err := spec.RewriteConstants(constants); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
+	}
+
+	if t.config.MountnsMap != nil {
+		t.Tracer.SetMountNsFilterMap(t.config.MountnsMap) //nolint:errcheck
 	}
 
 	if err := t.Tracer.Run(spec, types.Base, t.parseDNSPacket); err != nil {

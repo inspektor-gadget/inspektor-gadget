@@ -72,6 +72,7 @@ type attachment struct {
 type Tracer[Event any] struct {
 	socketEnricherMap *ebpf.Map
 	dispatcherMap     *ebpf.Map
+	mountNsFilterMap  *ebpf.Map
 	collection        *ebpf.Collection
 	prog              *ebpf.Program
 	perfRd            *perf.Reader
@@ -160,6 +161,10 @@ func (t *Tracer[Event]) SetSocketEnricherMap(m *ebpf.Map) {
 	t.socketEnricherMap = m
 }
 
+func (t *Tracer[Event]) SetMountNsFilterMap(m *ebpf.Map) {
+	t.mountNsFilterMap = m
+}
+
 func (t *Tracer[Event]) Run(
 	spec *ebpf.CollectionSpec,
 	baseEvent func(ev types.Event) *Event,
@@ -209,17 +214,24 @@ func (t *Tracer[Event]) Run(
 	}
 
 	usesSocketEnricher := false
+	usesMountNsFilter := false
 	for _, m := range spec.Maps {
 		if m.Name == socketenricher.SocketsMapName {
 			usesSocketEnricher = true
-			break
+		} else if m.Name == gadgets.MntNsFilterMapName {
+			usesMountNsFilter = true
 		}
 	}
 
-	if usesSocketEnricher && t.socketEnricherMap != nil {
+	if usesSocketEnricher || usesMountNsFilter {
 		mapReplacements := map[string]*ebpf.Map{}
-		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 		opts.MapReplacements = mapReplacements
+		if usesSocketEnricher && t.socketEnricherMap != nil {
+			mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
+		}
+		if usesMountNsFilter && t.mountNsFilterMap != nil {
+			mapReplacements[gadgets.MntNsFilterMapName] = t.mountNsFilterMap
+		}
 	}
 
 	t.collection, err = ebpf.NewCollectionWithOptions(spec, opts)
