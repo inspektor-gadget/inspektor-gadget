@@ -93,9 +93,10 @@ func BuildCommonData(containerName string, options ...CommonDataOption) eventtyp
 func NormalizeCommonData(e *eventtypes.CommonData) {
 	// The container image digest is not currently enriched for Docker containers:
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365
-	if e.Runtime.RuntimeName == eventtypes.RuntimeNameDocker {
-		e.Runtime.ContainerImageDigest = ""
-	}
+	// It's enriched for other runtimes like containerd and cri-o, but our
+	// testing framework doesn't provide any way to get this information, so
+	// ignore this field for now.
+	e.Runtime.ContainerImageDigest = ""
 
 	if CurrentTestComponent == KubectlGadgetTestComponent {
 		e.K8s.Node = ""
