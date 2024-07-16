@@ -29,6 +29,8 @@ const (
 	// include/gadget/buffer.h.
 	tracerMapPrefix = "gadget_map_tracer_"
 
+	mapIterPrefix = "gadget_mapiter_"
+
 	// Prefix used to mark variables used by operators
 	varPrefix = "gadget_var_"
 )
