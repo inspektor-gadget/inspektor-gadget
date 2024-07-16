@@ -101,6 +101,15 @@ type FieldAccessor interface {
 	// Flags returns the flags of the field
 	Flags() uint32
 
+	// Tags returns all tags of the field
+	Tags() []string
+
+	// HasAllTagsOf checks whether the field has all given tags
+	HasAllTagsOf(tags ...string) bool
+
+	// HasAnyTagsOf checks whether the field has any of the given tags; if tags is empty, it returns false
+	HasAnyTagsOf(tags ...string) bool
+
 	// Annotations returns stored annotations of the field
 	Annotations() map[string]string
 
@@ -377,6 +386,28 @@ func (a *fieldAccessor) IsRequested() bool {
 
 func (a *fieldAccessor) Flags() uint32 {
 	return a.f.Flags
+}
+
+func (a *fieldAccessor) Tags() []string {
+	return slices.Clone(a.f.Tags)
+}
+
+func (a *fieldAccessor) HasAllTagsOf(tags ...string) bool {
+	for _, tag := range tags {
+		if !slices.Contains(a.f.Tags, tag) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *fieldAccessor) HasAnyTagsOf(tags ...string) bool {
+	for _, tag := range tags {
+		if slices.Contains(a.f.Tags, tag) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *fieldAccessor) Annotations() map[string]string {
