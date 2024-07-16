@@ -20,6 +20,12 @@ datasources:
         annotations:
           description: Process name
           template: comm
+      cwd:
+        annotations:
+          description: The current working directory of the process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
       pcomm:
         annotations:
           template: pcomm
@@ -84,6 +90,10 @@ ebpfParams:
     key: ignore-failed
     defaultValue: "true"
     description: Ignore failed events
+  paths:
+    key: paths
+    defaultValue: "false"
+    description: Show the cwd of the process.
   targ_uid:
     key: uid
     defaultValue: ""
