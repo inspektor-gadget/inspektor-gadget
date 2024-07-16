@@ -87,10 +87,6 @@ type FlaggedField interface {
 	FieldFlags() FieldFlag
 }
 
-type HiddenField interface {
-	FieldHidden() bool
-}
-
 type ParentedField interface {
 	// FieldParent should return an index to the parent of the field, -1 for no parent
 	FieldParent() int
