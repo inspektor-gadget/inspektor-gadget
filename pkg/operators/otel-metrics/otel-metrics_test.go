@@ -34,11 +34,9 @@ import (
 func TestMetricsCounterAndGauge(t *testing.T) {
 	o := &otelMetricsOperator{skipListen: true}
 	globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
-	globalParams.Set(ParamOtelMetricsEnabled, "true")
+	globalParams.Set(ParamOtelMetricsListen, "true")
 	err := o.Init(globalParams)
 	require.NoError(t, err)
-
-	require.True(t, o.initialized)
 
 	var ds datasource.DataSource
 	var ctr datasource.FieldAccessor
@@ -51,7 +49,7 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 		var err error
 		ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "metrics")
 		require.NoError(t, err)
-		ds.AddAnnotation(AnnotationMetricsExport, "true")
+		ds.AddAnnotation(AnnotationMetricsCollect, "true")
 
 		ctr, err = ds.AddField("ctr", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
 			AnnotationMetricsType: MetricTypeCounter,
@@ -125,11 +123,9 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 func TestMetricsHistogram(t *testing.T) {
 	o := &otelMetricsOperator{skipListen: true}
 	globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
-	globalParams.Set(ParamOtelMetricsEnabled, "true")
+	globalParams.Set(ParamOtelMetricsListen, "true")
 	err := o.Init(globalParams)
 	require.NoError(t, err)
-
-	require.True(t, o.initialized)
 
 	var ds datasource.DataSource
 	var value datasource.FieldAccessor
@@ -143,7 +139,7 @@ func TestMetricsHistogram(t *testing.T) {
 		var err error
 		ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "metrics")
 		require.NoError(t, err)
-		ds.AddAnnotation(AnnotationMetricsExport, "true")
+		ds.AddAnnotation(AnnotationMetricsCollect, "true")
 		value, err = ds.AddField("duration", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
 			AnnotationMetricsType: MetricTypeHistogram,
 		}))
