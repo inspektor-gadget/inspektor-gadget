@@ -16,9 +16,11 @@ package clioperator
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
+	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -41,6 +43,11 @@ const (
 	ModeJSONPretty = "jsonpretty"
 	ModeColumns    = "columns"
 	ModeYAML       = "yaml"
+	ModeNone       = "none"
+
+	// AnnotationClearScreenBefore can be used to clear the screen before printing a new event; usually used for
+	// array events
+	AnnotationClearScreenBefore = "cli.clear-screen-before"
 )
 
 type cliOperator struct{}
@@ -165,7 +172,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		DefaultValue:   ModeColumns,
 		Description:    "output mode",
 		Alias:          "o",
-		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML},
+		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML, ModeNone},
 	}
 
 	return api.Params{fields, mode}
@@ -218,24 +225,61 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			}
 
 			formatter.SetEventCallback(func(s string) {
-				fmt.Print(s)
-				fmt.Print("\n")
+				fmt.Println(s)
 			})
 
-			p.SetEventCallback(formatter.EventHandlerFunc())
-			handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
-			if !ok {
-				gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
-					p.EventHandlerFunc())
-				continue
+			printHeader := func() {
+				fmt.Println(formatter.FormatHeader())
 			}
 
-			fmt.Println(formatter.FormatHeader())
+			headerFuncs := []func(){}
+			if ds.Annotations()[AnnotationClearScreenBefore] == "true" {
+				isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
+				if isTerminal {
+					headerFuncs = append(headerFuncs, clearScreen)
+				}
+			}
+			headerFuncs = append(headerFuncs, printHeader)
 
-			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-				handler(datasource.NewDataTuple(ds, data))
-				return nil
-			}, Priority)
+			for _, headerFunc := range headerFuncs {
+				headerFunc()
+			}
+
+			switch ds.Type() {
+			case datasource.TypeSingle:
+				p.SetEventCallback(formatter.EventHandlerFunc())
+				handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
+				if !ok {
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
+						p.EventHandlerFunc())
+					continue
+				}
+				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+					handler(datasource.NewDataTuple(ds, data))
+					return nil
+				}, Priority)
+			case datasource.TypeArray:
+				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))
+				handler, ok := p.EventHandlerFuncArray().(func(data []*datasource.DataTuple))
+				if !ok {
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T",
+						p.EventHandlerFunc())
+					continue
+				}
+
+				ds.SubscribeArray(func(ds datasource.DataSource, dataArray datasource.DataArray) error {
+					l := dataArray.Len()
+					tuples := make([]*datasource.DataTuple, 0, l)
+
+					for i := 0; i < l; i++ {
+						data := dataArray.Get(i)
+						tuples = append(tuples, datasource.NewDataTuple(ds, data))
+					}
+
+					handler(tuples)
+					return nil
+				}, Priority)
+			}
 		case ModeJSON, ModeJSONPretty, ModeYAML:
 			// var opts []json.Option
 			// if hasFields {
