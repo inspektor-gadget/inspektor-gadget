@@ -1393,8 +1393,8 @@ jobs:
         run: |
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} make -C gadgets/ sign -o push
 
-  test-gadgets:
-    name: Test gadgets
+  test-gadgets-local:
+    name: Test gadgets locally
     #level 3
     needs:
       - build-ig
@@ -1402,6 +1402,10 @@ jobs:
       - build-and-push-gadgets
       - check-secrets
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [docker, containerd]
     steps:
     - uses: actions/checkout@v4
     - name: Set container repository and determine image tag
@@ -1434,7 +1438,8 @@ jobs:
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
           IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
-          -C gadgets/ test-ig-local -o build |& tee gadgets-tests.log & wait $!
+          IG_RUNTIME=${{ matrix.runtime }} \
+          -C gadgets/ test-local -o build |& tee gadgets-tests.log & wait $!
     - name: Prepare and publish test reports
       if: always()
       continue-on-error: true
@@ -1442,7 +1447,7 @@ jobs:
       with:
         test-log-file: gadgets-tests.log
         test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
-        test-summary-suffix: "test-gadgets"
+        test-summary-suffix: "test-gadgets-local-${{ matrix.runtime }}"
 
   test-gadgets-k8s:
     name: Test gadgets K8s
@@ -1504,6 +1509,7 @@ jobs:
         GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
         KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
         IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
+        IG_RUNTIME=kubernetes \
         -C gadgets/ test-k8s -o build |& tee gadgets-tests.log & wait $!
     - name: Undeploy Inspektor Gadget
       id: undeploy-ig
@@ -1998,7 +2004,7 @@ jobs:
       - test-components
       - build-ig-cwe
       - test-ig
-      - test-gadgets
+      - test-gadgets-local
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
       - build-examples
