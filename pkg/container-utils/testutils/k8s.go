@@ -57,6 +57,17 @@ func (c *K8sContainer) Run(t *testing.T) {
 
 func (c *K8sContainer) Start(t *testing.T) {
 	// TODO: handle pid, portBindings.
+	if c.options.seccompProfile != "" {
+		t.Fatalf("testutils/kubernetes: seccomp profiles are not supported yet")
+	}
+
+	if c.options.privileged {
+		t.Fatalf("testutils/kubernetes: privileged containers are not supported yet")
+	}
+
+	if c.options.portBindings != nil {
+		t.Fatalf("testutils/kubernetes: port bindings are not supported yet")
+	}
 
 	waitCommand := waitUntilPodReadyCommand(t, c.options.namespace, c.name)
 	if c.options.waitOrOomKilled {
