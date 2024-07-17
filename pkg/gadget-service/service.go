@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -317,7 +318,18 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 		for pk := range p.ParamMap() {
 			ck := config.OperatorKey + "." + op.Name() + "." + pk
 			if config.Config.IsSet(ck) {
-				err := p.Set(pk, config.Config.GetString(ck))
+				var value string
+
+				v := config.Config.Get(ck)
+				switch v.(type) {
+				default:
+					value = config.Config.GetString(ck)
+				case []interface{}:
+					slice := config.Config.GetStringSlice(ck)
+					value = strings.Join(slice, ",")
+				}
+
+				err := p.Set(pk, value)
 				if err != nil {
 					return fmt.Errorf("setting operator parameter %s: %w", ck, err)
 				}
