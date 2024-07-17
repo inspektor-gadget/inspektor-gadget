@@ -171,6 +171,8 @@ As the SBOM was signed with our private key, you can now inspect it to track dow
 
 ## Verify image-based gadgets
 
+### With `ig`
+
 Like our container image, we sign all our image-based gadgets.
 The signature are verified by default using Inspektor Gadget public key:
 
@@ -210,6 +212,62 @@ $ sudo -E ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
 WARN[0000] image signature verification is disabled due to using corresponding CLI options
 WARN[0000] image signature verification is disabled due to using corresponding CLI options
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+```
+
+### With `kubectl-gadget`
+
+Compared to `ig`, you cannot specify information with regard to verification when calling `kubectl gadget run`:
+
+```bash
+$ kubectl gadget run --public-key="$(cat your-key.pub)" trace_exec
+Error: unknown flag: --public-key
+$ kubectl gadget run --verify-image=false trace_exec
+Error: unknown flag: --verify-image
+```
+
+Instead, all these information are set once at deploy time.
+This avoid them being tampered by any users.
+By default all image-based gadgets are verified using Inspektor Gadget public key:
+
+```bash
+$ kubectl gadget deploy
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run ghcr.io/your_repo/trace_exec -A
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your_repo/trace_exec": verifying signature: invalid signature when validating ASN.1 encoded signature
+$ kubectl gadget run trace_exec -A
+K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
+gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+...
+```
+You can specify a custom public key at deploy time using `--gadgets-public-key`:
+
+```bash
+$ kubectl gadget deploy --gadgets-public-key="$(cat your-key.pub)"
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run trace_exec -A
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "trace_exec": verifying signature: invalid signature when validating ASN.1 encoded signature
+$ kubectl-gadget run ghcr.io/your_repo/trace_exec -A
+K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
+gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+...
+```
+
+You can also skip verification at deploy time, note that we do not recommend doing so:
+
+```bash
+$ kubectl gadget deploy --verify-gadgets=false
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run trace_exec -A
+WARN[0001] minikube-docker      | image signature verification is disabled due to using corresponding CLI options
+K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME          PID       PPID RE… COMM      ARGS      K8S.NODE  TIMESTAMP
+gadget              gadget-z55jq        gadget                   55376      55357   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
+gadget              gadget-z55jq        gadget                   55375      55358   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
+...
 ```
 
 ## Verify the ebpf-builder image
@@ -252,7 +310,7 @@ Rather than signing all the assets, we only sign the checksums file.
 So, by verifying this file, you can then verify the assets themselves by
 checking their checksums.
 
-## Verifying the checksums file
+### Verifying the checksums file
 
 The following snippet show you how to verify the checksums file:
 
@@ -275,7 +333,7 @@ Verified OK
 As you can see, the checksum file was correctly verified which means this file was indeed signed by us.
 So, you can use this file to verify other release assets.
 
-## Verify an asset
+### Verify an asset
 
 Once you verified the checksums file, you can now verify the integrity of an asset using such checksums file:
 
