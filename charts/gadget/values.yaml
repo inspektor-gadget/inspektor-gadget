@@ -2,6 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+prepopulator:
+  # Gadgets to prepoluate.
+  gadgets: []
+
 config:
   # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify, fanotify+ebpf")
   hookMode: auto

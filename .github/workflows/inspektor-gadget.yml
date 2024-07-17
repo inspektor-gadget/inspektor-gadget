@@ -877,6 +877,12 @@ jobs:
               - "include/**"
               - "Dockerfiles/ebpf-builder.Dockerfile"
               - "cmd/common/image/Makefile.build"
+          - name: "prepopulator"
+            context: "tools/prepopulator"
+            dockerfile: "tools/prepopulator/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
+            filter-patterns:
+              - "tools/prepopulator/*"
     steps:
     - uses: actions/checkout@v4
     - uses: dorny/paths-filter@v3

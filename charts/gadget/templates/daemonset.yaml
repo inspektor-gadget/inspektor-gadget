@@ -38,6 +38,15 @@ spec:
       serviceAccount: {{ include "gadget.fullname" . }}
       hostPID: false
       hostNetwork: false
+      {{- if empty .Values.prepopulator.gadgets | not }}
+      initContainers:
+        - name: prepopulator
+          image: ghcr.io/eiffel-fl/prepopulator
+          args: {{ .Values.prepopulator.gadgets }}
+          volumeMounts:
+            - mountPath: /var/lib/ig
+              name: oci
+      {{- end }}
       containers:
         - name: gadget
           terminationMessagePolicy: FallbackToLogsOnError
@@ -206,6 +215,7 @@ spec:
             # For this, we use an emptyDir without size limit.
             - mountPath: /var/lib/ig
               name: oci
+              readOnly: {{ empty .Values.prepopulator.gadgets | not }}
             {{- if .Values.config.mountPullSecret }}
             - mountPath: /var/run/secrets/gadget/pull-secret
               name: pull-secret

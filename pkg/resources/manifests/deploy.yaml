@@ -302,6 +302,7 @@ spec:
             # For this, we use an emptyDir without size limit.
             - mountPath: /var/lib/ig
               name: oci
+              readOnly: false
             - mountPath: /etc/ig
               name: config
               readOnly: true
