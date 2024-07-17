@@ -379,7 +379,9 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 			nf.Flags |= uint32(s.FieldFlags())
 		}
 		if s, ok := f.(AnnotatedField); ok {
-			nf.Annotations = s.FieldAnnotations()
+			for k, v := range s.FieldAnnotations() {
+				nf.Annotations[k] = v
+			}
 		}
 		if s, ok := f.(ParentedField); ok {
 			parent := s.FieldParent()
@@ -389,9 +391,6 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 				parentFields[parent] = struct{}{}
 				checkParents[nf] = struct{}{}
 			}
-		}
-		if s, ok := f.(HiddenField); ok && s.FieldHidden() {
-			FieldFlagHidden.AddTo(&nf.Flags)
 		}
 		newFields = append(newFields, nf)
 	}

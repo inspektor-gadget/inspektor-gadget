@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"maps"
 	"reflect"
 	"slices"
 
@@ -25,12 +26,13 @@ import (
 )
 
 type Field struct {
-	Tags   []string
-	Offset uint32
-	Size   uint32
-	parent int
-	name   string
-	kind   api.Kind
+	Tags        []string
+	Annotations map[string]string
+	Offset      uint32
+	Size        uint32
+	parent      int
+	name        string
+	kind        api.Kind
 }
 
 type Struct struct {
@@ -60,6 +62,10 @@ func (f *Field) FieldType() api.Kind {
 
 func (f *Field) FieldParent() int {
 	return f.parent
+}
+
+func (f *Field) FieldAnnotations() map[string]string {
+	return maps.Clone(f.Annotations)
 }
 
 func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
