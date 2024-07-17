@@ -84,7 +84,7 @@ Install Inspektor Gadget on Kubernetes:
 $ kubectl gadget deploy
 ```
 
-Read the detailed [install instructions](docs/getting-started/_index.md) to find more information.
+Read the detailed [install instructions](https://www.inspektor-gadget.io/docs/latest/getting-started/) to find more information.
 
 ## How to use
 
