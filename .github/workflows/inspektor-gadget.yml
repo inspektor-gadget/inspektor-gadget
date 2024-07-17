@@ -1400,7 +1400,6 @@ jobs:
       - build-ig
       - build-helper-images
       - build-and-push-gadgets
-      - check-secrets
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1437,7 +1436,6 @@ jobs:
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-          IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
           IG_RUNTIME=${{ matrix.runtime }} \
           -C gadgets/ test-local -o build |& tee gadgets-tests.log & wait $!
     - name: Prepare and publish test reports

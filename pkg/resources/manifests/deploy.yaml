@@ -29,8 +29,12 @@ data:
       podman-socketpath: /run/podman/podman.sock
       operator:
         oci:
-          verify-image: true
-          public-key: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh\nIr4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==\n-----END PUBLIC KEY-----\n"
+          public-keys:
+            - |
+              -----BEGIN PUBLIC KEY-----
+              MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+              Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+              -----END PUBLIC KEY-----
 ---
 # Source: gadget/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1

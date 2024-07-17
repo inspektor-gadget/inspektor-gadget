@@ -39,6 +39,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
+	"github.com/hashicorp/go-multierror"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
@@ -60,8 +61,7 @@ type AuthOptions struct {
 }
 
 type VerifyOptions struct {
-	VerifyPublicKey bool
-	PublicKey       string
+	PublicKeys []string
 }
 
 type AllowedDigestsOptions struct {
@@ -773,11 +773,6 @@ func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	verifier, err := newVerifier([]byte(imgOpts.PublicKey))
-	if err != nil {
-		return fmt.Errorf("creating verifier: %w", err)
-	}
-
 	repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
 	if err != nil {
 		return fmt.Errorf("creating repository: %w", err)
@@ -788,9 +783,26 @@ func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error
 		return fmt.Errorf("getting signing information: %w", err)
 	}
 
-	err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(payloadBytes))
-	if err != nil {
-		return fmt.Errorf("verifying signature: %w", err)
+	verified := false
+	var errors error
+	for _, publicKey := range imgOpts.PublicKeys {
+		verifier, err := newVerifier([]byte(publicKey))
+		if err != nil {
+			return fmt.Errorf("creating verifier for %s: %w", publicKey, err)
+		}
+
+		err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(payloadBytes))
+		if err == nil {
+			verified = true
+
+			break
+		}
+
+		errors = multierror.Append(errors, err)
+	}
+
+	if !verified {
+		return fmt.Errorf("the image was not signed by the provided keys: %w", errors)
 	}
 
 	// We should not read the payload before confirming it was signed, so let's
@@ -927,8 +939,8 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
-	if !imgOpts.VerifyPublicKey {
-		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding CLI options")
+	if len(imgOpts.PublicKeys) == 0 {
+		imgOpts.Logger.Warnf("image signature verification is disabled because no public keys were provided")
 
 		return nil
 	}
