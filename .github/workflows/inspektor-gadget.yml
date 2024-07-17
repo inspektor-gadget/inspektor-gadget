@@ -1974,6 +1974,8 @@ jobs:
       - test-integration-gke
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
+      - test-gadgets-local
+      - test-gadgets-k8s
     runs-on: ubuntu-latest
     # Skip this job when running on a fork or a PR from a fork.
     if: always() && (
