@@ -309,13 +309,13 @@ datasources:
     fields:
       comm:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
       filename:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
       pid:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
 ```
 
 Let's edit the file to customize the output. We define some templates for well-known fields like
@@ -527,17 +527,17 @@ file:
 ```yaml
       gid:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
       mntns_id:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
       pid:
         annotations:
           description: PID of the process opening a file
           template: pid
       uid:
         annotations:
-          'description:': 'TODO: Fill field description'
+          description: 'TODO: Fill field description'
 ```
 
 Edit them, build and run the gadget again:
@@ -549,8 +549,8 @@ Edit them, build and run the gadget again:
           template: comm
       filename:
         annotations:
-          columns.width: "64"
           description: Path of the file being opened
+          columns.width: 64
       gid:
         annotations:
           description: Group ID opening the file
