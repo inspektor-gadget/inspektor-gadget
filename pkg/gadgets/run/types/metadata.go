@@ -179,9 +179,9 @@ func populateTracers(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) er
 	return nil
 }
 
-// validateTracerMap only checks if the map type. It does not check the map
-// value name and type because such a information is not available in the map
-// definition for perf event arrays and ring buffers.
+// validateTracerMap only checks the map type. It does not check the map name
+// and type because that information is not available in the map definition for
+// perf event arrays and ring buffers.
 func validateTracerMap(tracerMap *ebpf.MapSpec) error {
 	if tracerMap.Type != ebpf.RingBuf && tracerMap.Type != ebpf.PerfEventArray {
 		return fmt.Errorf("map %q has a wrong type, expected: ringbuf or perf event array, got: %s",
@@ -270,7 +270,7 @@ func populateDatasourceFields(ds *metadatav1.DataSource, btfStruct *btf.Struct) 
 		log.Debugf("Adding field %q", member.Name)
 		field := metadatav1.Field{
 			Annotations: map[string]string{
-				"description:": "TODO: Fill field description",
+				"description": "TODO: Fill field description",
 			},
 		}
 
@@ -326,7 +326,6 @@ type tracerInfo struct {
 }
 
 // getTracerInfo returns the tracer info generated with GADGET_TRACER().
-// If there are multiple annotations only the first one is returned.
 func getTracerInfo(spec *ebpf.CollectionSpec) ([]tracerInfo, error) {
 	tracersInfo, err := GetGadgetIdentByPrefix(spec, tracerInfoPrefix)
 	if err != nil {
