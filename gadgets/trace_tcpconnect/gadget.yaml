@@ -43,10 +43,3 @@ datasources:
         annotations:
           columns.width: 7
           columns.alignment: right
-tracers:
-  tcpconnect:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:

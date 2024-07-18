@@ -55,13 +55,6 @@ datasources:
       mntns_id:
         annotations:
           template: ns
-tracers:
-  open:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   targ_failed:
     key: failed

@@ -70,13 +70,6 @@ datasources:
             the execution succeeded.
           columns.width: 5
           columns.hidden: true
-tracers:
-  exec:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   ignore_failed:
     key: ignore-failed

@@ -47,13 +47,6 @@ datasources:
         annotations:
           description: Index of the network interface the socket is bound to
           columns.width: 10
-tracers:
-  bind:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:
 ebpfParams:
   ignore_errors:
     key: ignore_errors

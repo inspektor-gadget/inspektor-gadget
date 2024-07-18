@@ -77,10 +77,3 @@ datasources:
       anaddrcount:
         annotations:
           columns.hidden: true
-tracers:
-  dns:
-    mapName: events
-    structName: event_t
-structs:
-  event_t:
-    fields:

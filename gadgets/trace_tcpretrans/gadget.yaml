@@ -68,10 +68,3 @@ datasources:
       state:
         annotations:
           description: Connection state
-tracers:
-  tcpretrans:
-    mapName: events
-    structName: event
-structs:
-  event:
-    fields:

@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
-	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
@@ -36,7 +35,7 @@ type linkSnapshotter struct {
 }
 
 type Snapshotter struct {
-	metadatav1.Snapshotter
+	structName string
 
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
@@ -94,15 +93,6 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	i.logger.Debugf("> name       : %q", name)
 	i.logger.Debugf("> struct name: %q", structName)
 
-	snapConfig := i.config.Sub("snapshotters." + name)
-	if snapConfig != nil {
-		if configStructName := snapConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating snapshotter %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
-		}
-		i.logger.Debugf("> successfully validated with metadata")
-	}
-
 	iterators, err := i.parseSnapshotterPrograms(parts[2:])
 	if err != nil {
 		return fmt.Errorf("parsing snapshotter %q programs: %w", name, err)
@@ -120,11 +110,9 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 
 	i.logger.Debugf("adding snapshotter %q", name)
 	i.snapshotters[name] = &Snapshotter{
-		Snapshotter: metadatav1.Snapshotter{
-			StructName: btfStruct.Name,
-		},
-		iterators: iterators,
-		links:     make(map[string]*linkSnapshotter),
+		structName: btfStruct.Name,
+		iterators:  iterators,
+		links:      make(map[string]*linkSnapshotter),
 	}
 
 	err = i.populateStructDirect(btfStruct)

@@ -26,12 +26,12 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
 type Tracer struct {
-	metadatav1.Tracer
+	mapName    string
+	structName string
 
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
@@ -66,24 +66,6 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	i.logger.Debugf("> map name   : %q", mapName)
 	i.logger.Debugf("> struct name: %q", structName)
 
-	tracerConfig := i.config.Sub("tracers." + name)
-	if tracerConfig != nil {
-		if configMapName := tracerConfig.GetString("mapName"); configMapName != "" && configMapName != mapName {
-			return fmt.Errorf("validating tracer %q: mapName %q in eBPF program does not match %q from metadata file",
-				name, configMapName, mapName)
-		}
-		if configStructName := tracerConfig.GetString("structName"); configStructName != "" && configStructName != structName {
-			return fmt.Errorf("validating tracer %q: structName %q in eBPF program does not match %q from metadata file",
-				name, configStructName, structName)
-		}
-		i.logger.Debugf("> successfully validated with metadata")
-	}
-
-	if _, ok := i.tracers[name]; ok {
-		i.logger.Debugf("tracer %q already defined, skipping", name)
-		return nil
-	}
-
 	tracerMap, ok := i.collectionSpec.Maps[mapName]
 	if !ok {
 		return fmt.Errorf("map %q not found in eBPF object", mapName)
@@ -100,11 +82,9 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 
 	i.logger.Debugf("adding tracer %q", name)
 	i.tracers[name] = &Tracer{
-		Tracer: metadatav1.Tracer{
-			MapName:    mapName,
-			StructName: btfStruct.Name,
-		},
-		eventSize: btfStruct.Size,
+		mapName:    mapName,
+		structName: btfStruct.Name,
+		eventSize:  btfStruct.Size,
 	}
 
 	err := i.populateStructDirect(btfStruct)
@@ -214,13 +194,13 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 }
 
 func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Tracer) error {
-	if tracer.MapName == "" {
+	if tracer.mapName == "" {
 		return fmt.Errorf("tracer map name empty")
 	}
 
-	m, ok := i.collection.Maps[tracer.MapName]
+	m, ok := i.collection.Maps[tracer.mapName]
 	if !ok {
-		return fmt.Errorf("looking up tracer map %q: not found", tracer.MapName)
+		return fmt.Errorf("looking up tracer map %q: not found", tracer.mapName)
 	}
 
 	tracer.mapType = m.Type()
@@ -228,13 +208,13 @@ func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Trac
 	var err error
 	switch m.Type() {
 	case ebpf.RingBuf:
-		i.logger.Debugf("creating ringbuf reader for map %q", tracer.MapName)
+		i.logger.Debugf("creating ringbuf reader for map %q", tracer.mapName)
 		tracer.ringbufReader, err = ringbuf.NewReader(m)
 	case ebpf.PerfEventArray:
-		i.logger.Debugf("creating perf reader for map %q", tracer.MapName)
+		i.logger.Debugf("creating perf reader for map %q", tracer.mapName)
 		tracer.perfReader, err = perf.NewReader(m, gadgets.PerfBufferPages*os.Getpagesize())
 	default:
-		return fmt.Errorf("unknown type for tracer map %q", tracer.MapName)
+		return fmt.Errorf("unknown type for tracer map %q", tracer.mapName)
 	}
 	if err != nil {
 		return fmt.Errorf("creating BPF map reader: %w", err)
