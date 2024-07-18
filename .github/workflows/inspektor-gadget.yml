@@ -1503,12 +1503,11 @@ jobs:
       run: |
         set -o pipefail
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        ./kubectl-gadget deploy --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        ./kubectl-gadget deploy --verify-gadgets=${{ needs.check-secrets.outputs.cosign }} --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make \
         GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
         GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
         KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
-        IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
         IG_RUNTIME=kubernetes \
         -C gadgets/ test-k8s -o build |& tee gadgets-tests.log & wait $!
     - name: Undeploy Inspektor Gadget

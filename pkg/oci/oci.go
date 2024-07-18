@@ -49,6 +49,8 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type AuthOptions struct {
@@ -75,6 +77,8 @@ type ImageOptions struct {
 	VerifyOptions
 	AllowedDigestsOptions
 	AllowedRegistriesOptions
+
+	Logger logger.Logger
 }
 
 const (
@@ -924,7 +928,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 	}
 
 	if !imgOpts.VerifyPublicKey {
-		log.Warnf("you set --verify-image=false, image will not be verified")
+		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding CLI options")
 
 		return nil
 	}

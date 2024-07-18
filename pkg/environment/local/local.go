@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package local sets the environnment to Local. Imported by ig.
+// Package local sets the environment to Local. Imported by ig.
 package local
 
 import "github.com/inspektor-gadget/inspektor-gadget/pkg/environment"

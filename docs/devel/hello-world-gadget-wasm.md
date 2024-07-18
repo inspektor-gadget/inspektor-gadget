@@ -69,9 +69,9 @@ and run it:
 ```bash
 $ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
 RUNTIME.CONTAINERNAME        MNTNS_ID            PID            COMM           FILENAME
 INFO[0001] start: hello from wasm
@@ -134,9 +134,9 @@ $ sudo -E ig image build . -t mygadget:latest
 
 $ sudo -E ig run mygadget:latest --verify-image=false
 INFO[0000] Experimental features enabled
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
-WARN[0000] you set --verify-image=false, image will not be verified
+WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
 RUNTIME.CONTAINERNAME        MNTNS_ID            PID            COMM           FILENAME
 INFO[0001] start: hello from wasm

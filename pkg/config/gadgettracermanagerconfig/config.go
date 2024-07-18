@@ -24,4 +24,8 @@ const (
 	CrioSocketPath         = "crio-socketpath"
 	DockerSocketPath       = "docker-socketpath"
 	PodmanSocketPath       = "podman-socketpath"
+	Operator               = "operator"
+	Oci                    = "oci"
+	VerifyImage            = "verify-image"
+	PublicKey              = "public-key"
 )

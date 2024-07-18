@@ -105,6 +105,8 @@ var (
 	verifyImage         bool
 	publicKey           string
 	strLevels           []string
+	verifyGadgets       bool
+	gadgetsPublicKey    string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -231,6 +233,14 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&publicKey,
 		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
+	deployCmd.PersistentFlags().BoolVarP(
+		&verifyGadgets,
+		"verify-gadgets", "",
+		true,
+		"verify gadgets using the provided public key")
+	deployCmd.PersistentFlags().StringVarP(
+		&gadgetsPublicKey,
+		"gadgets-public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the gadgets")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -246,7 +256,7 @@ func info(format string, args ...any) {
 // It was adapted from:
 // https://github.com/kubernetes/client-go/issues/193#issuecomment-363318588
 func parseK8sYaml(content string) ([]runtime.Object, error) {
-	sepYamlfiles := strings.Split(content, "---")
+	sepYamlfiles := strings.Split(content, "---\n")
 	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
 	sch := runtime.NewScheme()
@@ -720,6 +730,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
 			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
 			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
+
+			opOciCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})[gadgettracermanagerconfig.Oci].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("%s.%s not found in config.yaml", gadgettracermanagerconfig.Operator, gadgettracermanagerconfig.Oci)
+			}
+
+			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
+			opOciCfg[gadgettracermanagerconfig.PublicKey] = gadgetsPublicKey
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {

@@ -16,14 +16,15 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
 func TestRunInsecure(t *testing.T) {
-	if DefaultTestComponent != InspektorGadgetTestComponent {
-		t.Skip("Skip running test with test component different than kubectl-gadget")
+	if DefaultTestComponent != IgTestComponent {
+		t.Skip("Skip running test with test component different than ig")
 	}
 
 	ns := GenerateTestNamespaceName("test-run-insecure")
@@ -60,9 +61,14 @@ func TestRunInsecure(t *testing.T) {
 	}
 	RunTestSteps(orasCpCmds, t)
 
+	err := os.Setenv("IG_EXPERIMENTAL", "true")
+	if err != nil {
+		t.Fatalf("setting IG_EXPERIMENTAL: %v\n", err)
+	}
+
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
 	// As the image was not signed, we need to set --verify-image=false.
-	cmd := fmt.Sprintf("$KUBECTL_GADGET run --verify-image=false %s:5000/trace_open:%s -n %s -o json --insecure --timeout 2", registryIP, *gadgetTag, ns)
+	cmd := fmt.Sprintf("ig run --verify-image=false %s:5000/trace_open:%s -o json --insecure --timeout 2", registryIP, *gadgetTag)
 
 	// run the gadget without verifying its output as we only need to check if it runs
 	traceOpenCmd := &Command{
@@ -70,4 +76,9 @@ func TestRunInsecure(t *testing.T) {
 		Cmd:  cmd,
 	}
 	RunTestSteps([]TestStep{traceOpenCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	err = os.Setenv("IG_EXPERIMENTAL", "false")
+	if err != nil {
+		t.Fatalf("resetting IG_EXPERIMENTAL: %v\n", err)
+	}
 }
