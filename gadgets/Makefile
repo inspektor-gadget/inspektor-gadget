@@ -7,8 +7,10 @@ GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 IG ?= ig
 KUBECTL_GADGET ?= kubectl-gadget
+IG_RUNTIME ?= docker
 IG_FLAGS ?=
 COSIGN ?= cosign
+
 GADGETS = \
 	audit_seccomp \
 	trace_bind \
@@ -89,9 +91,8 @@ clean:
 	done
 
 .PHONY:
-test-ig-local: build
-	IG_PATH=$(IG) \
-	IG_RUNTIME=docker \
+test: build
+	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
 	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
@@ -100,12 +101,9 @@ test-ig-local: build
 	go test -exec 'sudo -E' -v ./...
 
 .PHONY:
-test-k8s: build
-	IG_PATH=$(KUBECTL_GADGET) \
-	IG_RUNTIME=kubernetes \
-	CGO_ENABLED=0 \
-	IG_EXPERIMENTAL=true \
-	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	GADGET_TAG=$(GADGET_TAG) \
-	IG_FLAGS=$(IG_FLAGS) \
-	go test -exec 'sudo -E' -v ./...
+test-local: IG_PATH=$(IG)
+test-local: test
+
+.PHONY:
+test-k8s: IG_PATH=$(KUBECTL_GADGET)
+test-k8s: test
