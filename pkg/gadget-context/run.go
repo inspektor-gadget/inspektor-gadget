@@ -89,6 +89,7 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 }
 
 func (c *GadgetContext) run(dataOperatorInstances []operators.DataOperatorInstance) error {
+	defer c.cancel()
 	log := c.Logger()
 
 	for _, opInst := range dataOperatorInstances {
