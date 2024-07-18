@@ -246,6 +246,10 @@ var annotationsTemplates = map[string]map[string]string{
 		DescriptionAnnotation:     "Process name",
 		ColumnsMaxWidthAnnotation: "16",
 	},
+	"pcomm": {
+		DescriptionAnnotation:     "The process name of the parent process",
+		ColumnsMaxWidthAnnotation: "16",
+	},
 	"pid": {
 		ColumnsMinWidthAnnotation:  "7",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),

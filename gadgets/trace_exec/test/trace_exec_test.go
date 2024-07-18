@@ -46,6 +46,7 @@ type traceExecEvent struct {
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
 	Comm        string `json:"comm"`
+	Pcomm       string `json:"pcomm"`
 	Args        string `json:"args"`
 }
 
@@ -115,6 +116,7 @@ func TestTraceExec(t *testing.T) {
 					Ppid:      utils.NormalizedInt,
 					Loginuid:  utils.NormalizedInt,
 					Sessionid: utils.NormalizedInt,
+					Pcomm:     utils.NormalizedStr,
 				},
 				// inner sh
 				{
@@ -132,11 +134,13 @@ func TestTraceExec(t *testing.T) {
 					Ppid:      utils.NormalizedInt,
 					Loginuid:  utils.NormalizedInt,
 					Sessionid: utils.NormalizedInt,
+					Pcomm:     utils.NormalizedStr,
 				},
 				// sleep
 				{
 					CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
 					Comm:        "sleep",
+					Pcomm:       "sh",
 					Args:        strings.Join(sleepArgs, " "),
 					Uid:         1000,
 					Gid:         1111,
@@ -162,8 +166,13 @@ func TestTraceExec(t *testing.T) {
 				utils.NormalizeInt(&e.Ppid)
 				utils.NormalizeInt(&e.Loginuid)
 				utils.NormalizeInt(&e.Sessionid)
-			}
 
+				// We can't know the parent process of the first process inside
+				// the container as it depends on the container runtime
+				if e.Comm == "sh" {
+					utils.NormalizeString(&e.Pcomm)
+				}
+			}
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	))

@@ -38,6 +38,7 @@ struct event {
 	bool pupper_layer;
 	unsigned int args_size;
 	char comm[TASK_COMM_LEN];
+	char pcomm[TASK_COMM_LEN];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
@@ -210,6 +211,12 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 
 	event->retval = ret;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+
+	if (parent != NULL) {
+		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
+				      parent->comm);
+	}
+
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
 		gadget_output_buf(ctx, &events, event, len);
