@@ -74,6 +74,12 @@ func (o *ociHandler) GlobalParams() api.Params {
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
 		},
+		{
+			Key:         allowedDigests,
+			Title:       "Allowed Digests",
+			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
+			TypeHint:    api.TypeStringSlice,
+		},
 	}
 }
 
@@ -118,12 +124,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:       "Pull secret",
 			Description: "Secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
-		},
-		{
-			Key:         allowedDigests,
-			Title:       "Allowed Digests",
-			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
-			TypeHint:    api.TypeStringSlice,
 		},
 		{
 			Key:         allowedRegistries,

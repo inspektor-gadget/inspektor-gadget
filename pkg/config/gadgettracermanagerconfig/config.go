@@ -28,4 +28,5 @@ const (
 	Oci                    = "oci"
 	VerifyImage            = "verify-image"
 	PublicKeys             = "public-keys"
+	AllowedDigests         = "allowed-digests"
 )

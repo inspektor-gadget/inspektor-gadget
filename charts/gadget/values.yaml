@@ -38,6 +38,9 @@ config:
       Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
       -----END PUBLIC KEY-----
 
+  # -- List of allowed gadgets digests.
+  allowedDigests: []
+
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 

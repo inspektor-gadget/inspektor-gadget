@@ -108,6 +108,7 @@ var (
 	strLevels           []string
 	verifyGadgets       bool
 	gadgetsPublicKeys   string
+	allowedDigests      []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -243,6 +244,9 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&gadgetsPublicKeys,
 		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
+	deployCmd.PersistentFlags().StringSliceVar(
+		&allowedDigests,
+		"allowed-digests", []string{}, "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed.")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -742,6 +746,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
 			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
+			opOciCfg[gadgettracermanagerconfig.AllowedDigests] = allowedDigests
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {
