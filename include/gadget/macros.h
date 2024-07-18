@@ -55,4 +55,10 @@
 	const struct type *unusedevent_##name##___##type __attribute__((unused)); \
     __GADGET_SNAPSHOTTER_IMPL(name, type, __VA_ARGS__)
 
+// GADGET_MAPITER defines maps that IG should periodically fetch into data sources
+// - name is the name of the map iterator
+// - mapname is the name of the hash map used to send events to user space.
+#define GADGET_MAPITER(name, mapname) \
+	const void *gadget_mapiter_##name##___##mapname __attribute__((unused));
+
 #endif /* __MACROS_H */
