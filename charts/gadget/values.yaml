@@ -41,6 +41,9 @@ config:
   # -- List of allowed gadgets digests.
   allowedDigests: []
 
+  # -- List of allowed registries.
+  allowedRegistries: []
+
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 

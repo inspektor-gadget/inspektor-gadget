@@ -38,6 +38,8 @@ data:
               -----END PUBLIC KEY-----
           allowed-digests:
             []
+          allowed-registries:
+            []
 ---
 # Source: gadget/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
