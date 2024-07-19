@@ -41,9 +41,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION_DOC_CHECK }}
         cache: true
@@ -53,10 +53,10 @@ jobs:
         make manifests generate generate-documentation
         git diff --exit-code HEAD --
     - name: Check that there are not broken links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      uses: gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368 # v1
       with:
         use-quiet-mode: 'yes'
-    - uses: dorny/paths-filter@v3
+    - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
       id: filter
       with:
         filters: |
@@ -64,7 +64,7 @@ jobs:
             - 'docs/**'
     - name: Setup Hugo
       if: steps.filter.outputs.docs == 'true'
-      uses: peaceiris/actions-hugo@v3
+      uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f # v3.0.0
       with:
         hugo-version: '0.89.0'
         extended: true
@@ -83,7 +83,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Check workflow files
       shell: bash
       run: |
@@ -99,14 +99,14 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
       id: go
     - name: Lint
-      uses: golangci/golangci-lint-action@v6.0.1
+      uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64 # v6.0.1
       with:
         # This version number must be kept in sync with Makefile lint one.
         version: v1.59.0
@@ -128,7 +128,7 @@ jobs:
 
     steps:
       # Fetch project source with GitHub Actions Checkout.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       # Run the "semgrep ci" command on the command line of the docker image.
       - run: cd $GITHUB_WORKSPACE && semgrep ci --config $GITHUB_WORKSPACE/.semgrep_rules.yaml
 
@@ -139,7 +139,7 @@ jobs:
     needs: build-helper-images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Check ebpf formatting
         run: |
           sudo apt-get update && sudo apt-get install -y clang-format
@@ -176,9 +176,9 @@ jobs:
     if: ${{ github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Check if added dependencies do not contain CVE.
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@5a2ce3f5b92ee19cbb1541a4984c76d921601d7c # v4.3.4
 
   build-clients:
     name: clients
@@ -196,9 +196,9 @@ jobs:
           - os: windows
             arch: arm64
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -209,7 +209,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: github/codeql-action/init@v3
+    - uses: github/codeql-action/init@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -243,11 +243,11 @@ jobs:
           ${{ matrix.client }}${dot_exe} LICENSE
         rm -rf $platform
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
@@ -261,7 +261,7 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
       run: |
@@ -269,7 +269,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -299,9 +299,9 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -313,7 +313,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -339,7 +339,7 @@ jobs:
           ig LICENSE
         rm -rf ${{ matrix.platform }}
     - name: Add ig-linux-${{ matrix.platform }}.tar.gz as artifact.
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: ig-linux-${{ matrix.platform }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/ig-linux-${{ matrix.platform }}.tar.gz
@@ -355,14 +355,14 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@v3
+    - uses: github/codeql-action/init@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         languages: go
     - name: Build ig-linux-${{ matrix.platform }} for CWE checks
@@ -374,7 +374,7 @@ jobs:
           -ldflags "-extldflags '-static'" \
           github.com/inspektor-gadget/inspektor-gadget/cmd/ig
     - name: CWE checks for ig-linux-${{ matrix.platform }}
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         category: ig-linux-${{ matrix.platform }}
 
@@ -386,21 +386,21 @@ jobs:
     permissions:
       security-events: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@v3
+    - uses: github/codeql-action/init@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         languages: go
     - name: Build gadget-container-deps
       run: |
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@2d790406f505036ef40ecba973cc774a50395aac # v3.25.13
       with:
         category: gadget-container-deps
 
@@ -426,21 +426,21 @@ jobs:
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@5927c834f5b4fdf503fca6f4c7eccda82949e1ee # v3.1.0
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
     - name: Cache Docker layers
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gadget.Dockerfile') }}
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.platform }}-
     - name: Login to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -458,7 +458,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -470,7 +470,7 @@ jobs:
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
     - name: Build gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -482,13 +482,13 @@ jobs:
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
     - name: Generate SBOM for gadget ${{ matrix.os }} ${{ matrix.platform }} image
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -505,7 +505,7 @@ jobs:
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-gadget-container-images
       if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -516,7 +516,7 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@v1
+      uses: oras-project/setup-oras@ca28077386065e263c03428f4ae0c09024817c93 # v1.2.0
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: gadget-container-images-attach-sbom
@@ -571,21 +571,21 @@ jobs:
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@5927c834f5b4fdf503fca6f4c7eccda82949e1ee # v3.1.0
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
     - name: Cache Docker layers
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/ig.Dockerfile') }}
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.platform }}-
     - name: Login to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -603,7 +603,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -612,7 +612,7 @@ jobs:
         # - hash of all bpf objects
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - name: Build ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -625,13 +625,13 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
     - name: Generate ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -649,7 +649,7 @@ jobs:
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-ig-container-images
       if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -661,7 +661,7 @@ jobs:
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@v1
+      uses: oras-project/setup-oras@ca28077386065e263c03428f4ae0c09024817c93 # v1.2.0
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: ig-container-images-attach-sbom
@@ -704,7 +704,7 @@ jobs:
         platform: [ amd64 ]
     steps:
       - name: Download gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
@@ -737,11 +737,11 @@ jobs:
     outputs:
       image-digest: ${{ steps.publish-manifest-list.outputs.image-digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -798,11 +798,11 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -878,8 +878,8 @@ jobs:
               - "Dockerfiles/ebpf-builder.Dockerfile"
               - "cmd/common/image/Makefile.build"
     steps:
-    - uses: actions/checkout@v4
-    - uses: dorny/paths-filter@v3
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
       id: filter
       with:
         # https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-type-check-expression
@@ -893,10 +893,10 @@ jobs:
           echo "build=true" >> $GITHUB_OUTPUT
     - name: Set up Docker Buildx
       if: steps.check-build-helpers.outputs.build == 'true'
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
     - name: Login to Container Registry
       if: steps.check-build-helpers.outputs.build == 'true'
-      uses: docker/login-action@v3
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -911,7 +911,7 @@ jobs:
     - name: Build ${{ matrix.image.name }} image
       id: build-image
       if: steps.check-build-helpers.outputs.build == 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
@@ -960,12 +960,12 @@ jobs:
       matrix:
         example: [runc-hook, kube-container-collection]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
     - name: Login to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -977,7 +977,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Build example container
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@1ca370b3a9802c92e886402e0dd88098a2533b12 # v6.4.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
@@ -989,9 +989,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1013,9 +1013,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1035,9 +1035,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1055,7 +1055,7 @@ jobs:
     #    path: ./cache
     #    key: ${{ runner.os }}-benchmark
     - name: Store benchmark result
-      uses: benchmark-action/github-action-benchmark@v1
+      uses: benchmark-action/github-action-benchmark@4de1bed97a47495fc4c5404952da0499e31f5c29 # v1.20.3
       # Disable push from forks or PR from forks.
       # $BENCHMARKS_TOKEN will not be available in those cases.
       if: |
@@ -1092,7 +1092,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1100,7 +1100,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Install Helm
-      uses: azure/setup-helm@v4
+      uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     # chart version needs to be semver compliant so we remove the leading 'v'
@@ -1126,7 +1126,7 @@ jobs:
         export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make -C charts package
     - name: Upload Helm charts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: gadget-charts-tgz
         path: charts/bin/*.tgz
@@ -1136,9 +1136,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1178,9 +1178,9 @@ jobs:
     needs:
       - build-helper-images
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1270,9 +1270,9 @@ jobs:
     # (inspektor-gadget/inspektor-gadget) so we can catch it early.
     if: needs.check-secrets.outputs.cosign == 'true' || (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
       - name: Check if public key is up-to-date.
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
@@ -1295,14 +1295,14 @@ jobs:
       matrix:
         runtime: [ docker, containerd, cri-o ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -1345,9 +1345,9 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -1359,7 +1359,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -1368,7 +1368,7 @@ jobs:
           tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
           sudo mv ig /usr/bin/ig
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
       - name: Verify eBPF builder image
         run: |
           cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
@@ -1407,7 +1407,7 @@ jobs:
       matrix:
         runtime: [docker, containerd]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1415,7 +1415,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Get ig-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
         name: ig-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/
@@ -1424,7 +1424,7 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
         sudo mv ig /usr/bin/ig
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1464,7 +1464,7 @@ jobs:
       matrix:
         runtime: [docker, containerd, cri-o]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1472,7 +1472,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1483,7 +1483,7 @@ jobs:
         runtime: ${{ matrix.runtime }}
         multi-node: true
     - name: Get gadget-container-image-linux-amd64.tar from artifact.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
         name: gadget-container-image-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
@@ -1493,7 +1493,7 @@ jobs:
         docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
         minikube image load ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
         name: kubectl-gadget-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/
@@ -1539,14 +1539,14 @@ jobs:
       matrix:
         runtime: [ docker, containerd ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -1597,9 +1597,9 @@ jobs:
     env:
       AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1609,7 +1609,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: azure/login@v2
+    - uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
       name: Login to Azure
       with:
         client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
@@ -1635,7 +1635,7 @@ jobs:
         az extension add --name aks-preview
 
         az aks create -l eastus2 -g ${AZURE_AKS_RESOURCE_GROUP} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
-    - uses: azure/aks-set-context@v4
+    - uses: azure/aks-set-context@37037e33d3a2fc08abe40c887d81c3f6e1eb93b9 # v4.0.0
       name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
       with:
         cluster-name: ${{ env.CLUSTER_NAME }}
@@ -1652,7 +1652,7 @@ jobs:
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         test_summary_suffix: "${{ matrix.os-sku }}-${{ matrix.arch }}"
     # This step ensures we get fresh credentials before removing the cluster
-    - uses: azure/login@v2
+    - uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
       if: always()
       name: Login to Azure
       with:
@@ -1686,9 +1686,9 @@ jobs:
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1696,7 +1696,7 @@ jobs:
       # NOTE: This action generates the Kubernetes config file in the current
       # directory. Therefore, it must be run after checking out code otherwise
       # the file will be cleaned up.
-      uses: redhat-actions/oc-login@v1
+      uses: redhat-actions/oc-login@5eb45e848b168b6bf6b8fe7f1561003c12e3c99d # v1.3
       with:
         # API Server URL
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
@@ -1743,9 +1743,9 @@ jobs:
       AWS_REGION: us-east-2
       AWS_EKS_CLUSTER_PREFIX: ig-ci-eks-
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1769,7 +1769,7 @@ jobs:
         tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
         sudo mv /tmp/eksctl /usr/local/bin
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
       with:
         role-to-assume: ${{ vars.AWS_ROLE }}
         aws-region: ${{ env.AWS_REGION }}
@@ -1828,9 +1828,9 @@ jobs:
     env:
       GKE_CLUSTER_PREFIX: 'ig-ci-gke-'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1841,13 +1841,13 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Authenticate with GKE
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@71fee32a0bb7e97b4d33d548e7d957010649d8fa # v2.1.3
         with:
           project_id: ${{ secrets.GKE_PROJECT }}
           service_account: ${{ secrets.GKE_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ secrets.GKE_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200 # v2.1.0
       - name: Craft cluster name
         shell: bash
         run: |
@@ -1863,7 +1863,7 @@ jobs:
           gcloud container clusters create ${{ env.CLUSTER_NAME }} --project ${{ secrets.GKE_PROJECT }} \
             --region ${{ matrix.flavor.region }} --machine-type ${{ matrix.flavor.machine_type }} --num-nodes 1 --disk-size 50 $extra_args
       - name: Set GKE cluster ${{ env.CLUSTER_NAME }} context
-        uses: google-github-actions/get-gke-credentials@v2
+        uses: google-github-actions/get-gke-credentials@c544a3d7e92276d24e03a5632a53aa3913ad5d8a # v2.2.0
         with:
           cluster_name: ${{ env.CLUSTER_NAME }}
           location: ${{ matrix.flavor.region }}
@@ -1914,9 +1914,9 @@ jobs:
       matrix:
         runtime: [docker, containerd, cri-o]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1926,7 +1926,7 @@ jobs:
         runtime: ${{ matrix.runtime }}
         multi-node: true
     - name: Get gadget-container-image-linux-amd64.tar from artifact.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
         name: gadget-container-image-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
@@ -1981,9 +1981,9 @@ jobs:
       (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget') ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'inspektor-gadget/inspektor-gadget'))
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Get all reports
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
         name: "test-reports"
     - name: Store test reports
@@ -2020,7 +2020,7 @@ jobs:
       contents: write
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
@@ -2037,15 +2037,15 @@ jobs:
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
     - name: Create Draft Release
       id: create_release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref_name }}
         draft: true
     - name: Get all artifacts.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
     - name: Setup go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -2090,7 +2090,7 @@ jobs:
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
     - name: Install cyclonedx-gomod
-      uses: CycloneDX/gh-gomod-generate-sbom@v2
+      uses: CycloneDX/gh-gomod-generate-sbom@efc74245d6802c8cefd925620515442756c70d8f # v2.0.0
     - name: Compute SBOM for all binary artifacts
       shell: bash
       run: |
@@ -2108,7 +2108,7 @@ jobs:
         done
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
-      uses: sigstore/cosign-installer@main
+      uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
     - name: Sign checksums file
       if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
@@ -2124,73 +2124,73 @@ jobs:
         # artifact, so people can verify our signature.
         cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
     - name: Login to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Upload kubectl-gadget binary
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload IG *.tar.gz binary
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "ig-*-*-tar-gz/ig-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload gadgetctl *.tar.gz binary
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload YAML
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         file: inspektor-gadget-${{ github.ref_name }}.yaml
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload checksums file
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         file: SHA256SUMS
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload IG distributions packages
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "ig_packages/ig*"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload Inpektor Gadget Helm Charts
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "gadget-charts-tgz/gadget-*.tgz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload public key
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "*.pub"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload bundle
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "*.bundle"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload signature
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "*.sig"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload binaries SBOMs
-      uses: csexton/release-asset-action@v3
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "sbom/*.bom.json"
         github-token: ${{ secrets.GITHUB_TOKEN }}
