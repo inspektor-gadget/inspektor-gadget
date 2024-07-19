@@ -36,7 +36,7 @@ type traceOomKillEvent struct {
 	Fgid      uint32 `json:"fgid"`
 	Tpid      uint32 `json:"tpid"`
 	Pages     uint64 `json:"pages"`
-	MountNsID uint64 `json:"mntns_id"`
+	MntNsID   uint64 `json:"mntns_id"`
 	Timestamp string `json:"timestamp"`
 	Fcomm     string `json:"fcomm"`
 	Tcomm     string `json:"tcomm"`
@@ -92,7 +92,7 @@ func TestTraceOomKill(t *testing.T) {
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				MountNsID: utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 				Fpid:      utils.NormalizedInt,
 				Fuid:      utils.NormalizedInt,
 				Fgid:      utils.NormalizedInt,
@@ -106,7 +106,7 @@ func TestTraceOomKill(t *testing.T) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Runtime.ContainerID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.Fpid)
 				utils.NormalizeInt(&e.Tpid)
 				utils.NormalizeInt(&e.Pages)

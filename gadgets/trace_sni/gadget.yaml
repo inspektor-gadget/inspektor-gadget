@@ -12,30 +12,7 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
-      pid:
-        annotations:
-          description: PID of the process that sent the request
-          template: pid
-      tid:
-        annotations:
-          description: TID of the thread sending the request
-          columns.hidden: true
-          template: pid
-      task:
-        annotations:
-          template: comm
-      uid:
-        annotations:
-          hidden: true
-          template: uid
-      gid:
-        annotations:
-          hidden: true
-          template: uid
-      name:
-        annotations:
-          columns.width: 30
-      netns:
+      netns_id:
         annotations:
           description: Network namespace inode id
           template: ns
@@ -43,3 +20,26 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
+      name:
+        annotations:
+          columns.width: 30

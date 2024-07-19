@@ -8,6 +8,7 @@ datasources:
     fields:
       comm:
         annotations:
+          description: Process name
           template: comm
       pid:
         annotations:

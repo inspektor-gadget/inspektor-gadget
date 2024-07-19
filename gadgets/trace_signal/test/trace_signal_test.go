@@ -32,16 +32,18 @@ import (
 type traceSignalEvent struct {
 	eventtypes.CommonData
 
-	Pid       int    `json:"pid"`
-	Tid       int    `json:"tpid"`
-	MountNsID uint64 `json:"mntns_id"`
 	Timestamp string `json:"timestamp"`
-	Uid       int    `json:"uid"`
-	Gid       int    `json:"gid"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
 	Signal    string `json:"sig"`
 	SignalRaw int    `json:"sig_raw"`
 	Ret       int    `json:"ret"`
-	Comm      string `json:"comm"`
 }
 
 func TestTraceSignal(t *testing.T) {
@@ -101,7 +103,7 @@ func TestTraceSignal(t *testing.T) {
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
 				Timestamp: utils.NormalizedStr,
-				MountNsID: utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceSignalEvent) {
@@ -109,7 +111,7 @@ func TestTraceSignal(t *testing.T) {
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

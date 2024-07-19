@@ -34,15 +34,18 @@ union bind_options {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mount_ns_id;
+	gadget_mntns_id mntns_id;
 	struct gadget_l4endpoint_t addr;
-	// user terminology for pid:
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
+
 	int ret;
 	enum bind_options_set opts_raw;
-	char comm[TASK_COMM_LEN];
 	// TODO: How to get the name of the device?
 	__u32 bound_dev_if;
 };
@@ -194,9 +197,10 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 
 	event->opts_raw = opts.data;
 	event->pid = pid;
+	event->tid = tid;
 	event->bound_dev_if = BPF_CORE_READ(sock, __sk_common.skc_bound_dev_if);
 	event->ret = ret;
-	event->mount_ns_id = mntns_id;
+	event->mntns_id = mntns_id;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);

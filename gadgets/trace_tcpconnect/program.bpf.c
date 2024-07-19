@@ -34,15 +34,19 @@ struct ipv6_flow_key {
 };
 
 struct event {
+	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	char task[TASK_COMM_LEN];
-	gadget_timestamp timestamp_raw;
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	gadget_mntns_id mntns_id;
+
 	__u64 latency;
 	int retcode;
 };
@@ -190,7 +194,7 @@ static __always_inline void count_v6(struct sock *sk, __u16 dport)
 		__atomic_add_fetch(val, 1, __ATOMIC_RELAXED);
 }
 
-static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
+static __always_inline void trace_v4(struct pt_regs *ctx, __u64 pid_tgid,
 				     struct sock *sk, __u16 dport,
 				     __u64 mntns_id, int ret)
 {
@@ -202,7 +206,8 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event->pid = pid;
+	event->pid = pid_tgid >> 32;
+	event->tid = (u32)pid_tgid;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	event->src.version = event->dst.version = 4;
@@ -213,14 +218,14 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	event->mntns_id = mntns_id;
-	bpf_get_current_comm(event->task, sizeof(event->task));
+	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->retcode = ret;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
 
-static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
+static __always_inline void trace_v6(struct pt_regs *ctx, __u64 pid_tgid,
 				     struct sock *sk, __u16 dport,
 				     __u64 mntns_id, int ret)
 {
@@ -232,7 +237,8 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event->pid = pid;
+	event->pid = pid_tgid >> 32;
+	event->tid = (u32)pid_tgid;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	event->mntns_id = mntns_id;
@@ -244,7 +250,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	event->dst.port = dport;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	bpf_get_current_comm(event->task, sizeof(event->task));
+	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->retcode = ret;
 
@@ -254,7 +260,6 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	struct sock **skpp;
 	struct sock *sk;
@@ -282,9 +287,9 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 		mntns_id = gadget_get_mntns_id();
 
 		if (family == AF_INET)
-			trace_v4(ctx, pid, sk, dport, mntns_id, ret);
+			trace_v4(ctx, pid_tgid, sk, dport, mntns_id, ret);
 		else
-			trace_v6(ctx, pid, sk, dport, mntns_id, ret);
+			trace_v6(ctx, pid_tgid, sk, dport, mntns_id, ret);
 	}
 
 end:
@@ -324,8 +329,9 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	event->latency = ts - piddatap->ts;
 	if (targ_min_latency_ns && event->latency < targ_min_latency_ns)
 		goto cleanup;
-	__builtin_memcpy(&event->task, piddatap->comm, sizeof(event->task));
+	__builtin_memcpy(&event->comm, piddatap->comm, sizeof(event->comm));
 	event->pid = piddatap->pid;
+	event->tid = piddatap->tid;
 	event->mntns_id = piddatap->mntns_id;
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	// host expects data in host byte order

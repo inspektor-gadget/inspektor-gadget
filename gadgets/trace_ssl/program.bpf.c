@@ -46,17 +46,20 @@ enum operation {
 };
 
 struct event {
-	gadget_mntns_id mntns_id;
-	enum operation operation_raw;
 	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
+	__u32 pid;
+	__u32 tid;
+	__u32 uid;
+	__u32 gid;
+
+	enum operation operation_raw;
 	u64 latency_ns;
-	u32 pid;
-	u32 tid;
-	u32 uid;
-	u32 gid;
 	u32 len;
 	u64 retval;
-	char comm[TASK_COMM_LEN];
 	u8 buf[MAX_BUF_SIZE];
 };
 

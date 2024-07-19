@@ -20,21 +20,37 @@ datasources:
         annotations:
           description: Destination endpoint
           template: l4endpoint
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
       pid:
         annotations:
-          description: PID of the process that sent the request
+          description: Process ID
           template: pid
-      task:
+      tid:
         annotations:
-          template: comm
+          description: Thread ID
+          columns.hidden: true
+          template: pid
       uid:
         annotations:
-          template: uid
+          description: User ID
           columns.hidden: true
+          template: uid
       gid:
         annotations:
-          template: uid
+          description: Group ID
           columns.hidden: true
+          template: uid
       name:
         annotations:
           columns.width: 30
@@ -54,17 +70,6 @@ datasources:
       anaddr:
         annotations:
           columns.width: 16
-      netns:
-        annotations:
-          description: Network namespace inode id
-          template: ns
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      tid:
-        annotations:
-          columns.hidden: true
       id:
         annotations:
           columns.hidden: true

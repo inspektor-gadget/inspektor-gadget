@@ -32,15 +32,18 @@ import (
 type traceBindEvent struct {
 	eventtypes.CommonData
 
+	Timestamp string `json:"timestamp"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
 	Addr       utils.L4Endpoint `json:"addr"`
-	Timestamp  string           `json:"timestamp"`
-	MountNsID  uint64           `json:"mount_ns_id"`
-	Pid        uint32           `json:"pid"`
-	Uid        uint32           `json:"uid"`
-	Gid        uint32           `json:"gid"`
 	Ret        int32            `json:"ret"`
 	Opts       string           `json:"opts"`
-	Comm       string           `json:"comm"`
 	BoundDevIF uint32           `json:"bound_dev_if"`
 }
 
@@ -103,14 +106,16 @@ func TestTraceBind(t *testing.T) {
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
 				Pid:       utils.NormalizedInt,
-				MountNsID: utils.NormalizedInt,
+				Tid:       utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceBindEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.Tid)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

@@ -22,7 +22,7 @@ datasources:
           description: Inode number
           columns.width: 10
           columns.hidden: true
-      netns:
+      netns_id:
         annotations:
           description: Network namespace inode id
           template: ns

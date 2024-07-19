@@ -34,19 +34,22 @@ import (
 type traceExecEvent struct {
 	eventtypes.CommonData
 
-	MountNsID   uint64 `json:"mntns_id"`
-	Timestamp   string `json:"timestamp"`
-	Pid         uint32 `json:"pid"`
+	Timestamp string `json:"timestamp"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Pcomm       string `json:"pcomm"`
 	Ppid        uint32 `json:"ppid"`
-	Uid         uint32 `json:"uid"`
-	Gid         uint32 `json:"gid"`
 	Loginuid    uint32 `json:"loginuid"`
 	Sessionid   uint32 `json:"sessionid"`
 	Retval      int32  `json:"retval"`
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
-	Comm        string `json:"comm"`
-	Pcomm       string `json:"pcomm"`
 	Args        string `json:"args"`
 }
 
@@ -110,9 +113,10 @@ func TestTraceExec(t *testing.T) {
 					UpperLayer: false,
 
 					// Check the existence of the following fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					Ppid:      utils.NormalizedInt,
 					Loginuid:  utils.NormalizedInt,
 					Sessionid: utils.NormalizedInt,
@@ -128,9 +132,10 @@ func TestTraceExec(t *testing.T) {
 					UpperLayer: true,
 
 					// Check the existence of the following fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					Ppid:      utils.NormalizedInt,
 					Loginuid:  utils.NormalizedInt,
 					Sessionid: utils.NormalizedInt,
@@ -148,9 +153,10 @@ func TestTraceExec(t *testing.T) {
 					PupperLayer: true,
 
 					// Check the existence of the following fields
-					MountNsID: utils.NormalizedInt,
+					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
 					Pid:       utils.NormalizedInt,
+					Tid:       utils.NormalizedInt,
 					Ppid:      utils.NormalizedInt,
 					Loginuid:  utils.NormalizedInt,
 					Sessionid: utils.NormalizedInt,
@@ -160,9 +166,10 @@ func TestTraceExec(t *testing.T) {
 			normalize := func(e *traceExecEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Runtime.ContainerID)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Pid)
+				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.Ppid)
 				utils.NormalizeInt(&e.Loginuid)
 				utils.NormalizeInt(&e.Sessionid)

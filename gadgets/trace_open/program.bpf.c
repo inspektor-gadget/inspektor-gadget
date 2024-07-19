@@ -23,16 +23,19 @@ struct args_t {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	/* user terminology for pid: */
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	gadget_mntns_id mntns_id;
+
 	__s32 err;
 	__u32 fd;
 	int flags_raw;
 	__u16 mode_raw;
-	char comm[TASK_COMM_LEN];
 	char fname[NAME_MAX];
 };
 
@@ -128,8 +131,11 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	long int ret;
 	__u32 fd;
 	__s32 errval;
-	u32 pid = bpf_get_current_pid_tgid();
-	u64 uid_gid = bpf_get_current_uid_gid();
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u64 uid_gid = bpf_get_current_uid_gid();
+
+	// pid from kernel po
+	u32 pid = (u32)pid_tgid;
 
 	ap = bpf_map_lookup_elem(&start, &pid);
 	if (!ap)
@@ -151,7 +157,8 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	}
 
 	/* event data */
-	event->pid = bpf_get_current_pid_tgid() >> 32;
+	event->pid = pid_tgid >> 32;
+	event->tid = (__u32)pid_tgid;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));

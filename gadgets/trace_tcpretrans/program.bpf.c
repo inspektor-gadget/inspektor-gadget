@@ -43,22 +43,24 @@ enum tcp_flags_set : __u8 {
 };
 
 struct event {
+	gadget_timestamp timestamp_raw;
+	gadget_netns_id netns_id;
+	gadget_mntns_id mntns_id;
+
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	gadget_timestamp timestamp_raw;
-	__u8 state;
-	enum tcp_flags_set tcpflags_raw;
-	__u32 reason;
-	gadget_netns_id netns;
-	enum type type_raw;
-
-	gadget_mntns_id mntns_id;
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	char task[TASK_COMM_LEN];
+
+	__u8 state;
+	enum tcp_flags_set tcpflags_raw;
+	__u32 reason;
+	enum type type_raw;
 };
 
 /* Define here, because there are conflicts with include files */
@@ -159,9 +161,11 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	if (event->src.port == 0)
 		goto cleanup;
 
-	BPF_CORE_READ_INTO(&event->netns, sk, __sk_common.skc_net.net, ns.inum);
+	BPF_CORE_READ_INTO(&event->netns_id, sk, __sk_common.skc_net.net,
+			   ns.inum);
 
-	struct sockets_value *skb_val = gadget_socket_lookup(sk, event->netns);
+	struct sockets_value *skb_val =
+		gadget_socket_lookup(sk, event->netns_id);
 
 	if (skb_val != NULL) {
 		event->mntns_id = skb_val->mntns;
@@ -171,8 +175,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 
 		event->pid = skb_val->pid_tgid >> 32;
 		event->tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event->task, skb_val->task,
-				 sizeof(event->task));
+		__builtin_memcpy(&event->comm, skb_val->task,
+				 sizeof(event->comm));
 		event->uid = (__u32)skb_val->uid_gid;
 		event->gid = (__u32)(skb_val->uid_gid >> 32);
 	}

@@ -18,26 +18,39 @@ datasources:
       dst:
         annotations:
           template: l4endpoint
-      task:
+      netns_id:
         annotations:
+          description: Network namespace inode id
+          template: ns
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Process name
           template: comm
       pid:
         annotations:
+          description: Process ID
           template: pid
       tid:
         annotations:
-          description: Thread id that generated event
-          columns.hidden: true
+          description: Thread ID
           template: pid
       uid:
         annotations:
+          description: User ID
           template: uid
           columns.hidden: true
       gid:
         annotations:
-          description: Group id of the event's process
+          description: Group ID
           template: uid
           columns.hidden: true
+      task:
+        annotations:
+          template: comm
       tcpflags_raw:
         annotations:
           columns.hidden: true
@@ -50,10 +63,6 @@ datasources:
       reason:
         annotations:
           description: Reason for retransmission
-      netns:
-        annotations:
-          description: Network namespace inode id
-          template: ns
       type_raw:
         annotations:
           columns.hidden: true
@@ -61,10 +70,6 @@ datasources:
         annotations:
           description: Type of the retransmission, either RETRANS or LOSS
           columns.width: 10
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
       state:
         annotations:
           description: Connection state

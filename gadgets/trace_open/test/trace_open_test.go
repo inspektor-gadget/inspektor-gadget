@@ -33,16 +33,19 @@ type traceOpenEvent struct {
 	eventtypes.CommonData
 
 	Timestamp string `json:"timestamp"`
-	Pid       uint32 `json:"pid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	MountNsID uint64 `json:"mntns_id"`
-	Fd        uint32 `json:"fd"`
-	Err       int32  `json:"err"`
-	Flags     string `json:"flags"`
-	Mode      string `json:"mode"`
-	Comm      string `json:"comm"`
-	FName     string `json:"fname"`
+	MntNsID   uint64 `json:"mntns_id"`
+
+	Comm string `json:"comm"`
+	Pid  uint32 `json:"pid"`
+	Tid  uint32 `json:"tid"`
+	Uid  uint32 `json:"uid"`
+	Gid  uint32 `json:"gid"`
+
+	Fd    uint32 `json:"fd"`
+	Err   int32  `json:"err"`
+	Flags string `json:"flags"`
+	Mode  string `json:"mode"`
+	FName string `json:"fname"`
 }
 
 func TestTraceOpen(t *testing.T) {
@@ -102,14 +105,16 @@ func TestTraceOpen(t *testing.T) {
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
 				Pid:       utils.NormalizedInt,
-				MountNsID: utils.NormalizedInt,
+				Tid:       utils.NormalizedInt,
+				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceOpenEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeInt(&e.MntNsID)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

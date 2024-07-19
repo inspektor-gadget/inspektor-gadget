@@ -12,17 +12,29 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
       pid:
         annotations:
+          description: Process ID
           template: pid
-      task:
+      tid:
         annotations:
-          template: comm
+          description: Thread ID
+          template: pid
       uid:
         annotations:
+          description: User ID
           template: uid
       gid:
         annotations:
+          description: Group ID
           template: uid
       src:
         annotations:
@@ -35,10 +47,6 @@ datasources:
           columns.width: 16
           columns.alignment: right
           columns.hidden: true
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
       retcode:
         annotations:
           columns.width: 7

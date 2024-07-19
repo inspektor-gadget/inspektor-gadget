@@ -24,12 +24,18 @@
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
 struct event {
-	gadget_mntns_id mntns_id;
 	gadget_timestamp timestamp_raw;
+	gadget_mntns_id mntns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
-	__u32 ppid;
+	__u32 tid;
 	__u32 uid;
 	__u32 gid;
+
+	char pcomm[TASK_COMM_LEN];
+	__u32 ppid;
 	__u32 loginuid;
 	__u32 sessionid;
 	int retval;
@@ -37,8 +43,6 @@ struct event {
 	bool upper_layer;
 	bool pupper_layer;
 	unsigned int args_size;
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
@@ -106,6 +110,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
+	event->tid = pid;
 	event->uid = uid;
 	event->gid = gid;
 	event->loginuid = BPF_CORE_READ(task, loginuid.val);

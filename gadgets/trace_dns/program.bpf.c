@@ -39,12 +39,14 @@ struct event_t {
 	struct gadget_l4endpoint_t dst;
 
 	gadget_mntns_id mntns_id;
-	gadget_netns_id netns;
+	gadget_netns_id netns_id;
+
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	char task[TASK_COMM_LEN];
 
 	__u16 id;
 	unsigned short qtype;
@@ -265,7 +267,7 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 
 	__builtin_memset(event, 0, sizeof(*event));
 
-	event->netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	event->netns_id = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 
 	// Keep the timestamp in a variable on the stack as a workaround to a
 	// kernel bug causing the following issue with the verifier:
@@ -384,8 +386,8 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 		event->mntns_id = skb_val->mntns;
 		event->pid = skb_val->pid_tgid >> 32;
 		event->tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event->task, skb_val->task,
-				 sizeof(event->task));
+		__builtin_memcpy(&event->comm, skb_val->task,
+				 sizeof(event->comm));
 		event->uid = (__u32)skb_val->uid_gid;
 		event->gid = (__u32)(skb_val->uid_gid >> 32);
 	}

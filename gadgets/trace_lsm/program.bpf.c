@@ -167,14 +167,17 @@
 enum lsm_tracepoint { FOR_EACH_LSM_HOOK(ENUM_ITEM) };
 
 struct event {
-	gadget_mntns_id mntns_id;
 	gadget_timestamp timestamp_raw;
-	u32 pid;
-	u32 tid;
-	u32 uid;
-	u32 gid;
-	enum lsm_tracepoint tracepoint_raw;
+	gadget_mntns_id mntns_id;
+
 	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
+	__u32 pid;
+	__u32 tid;
+	__u32 uid;
+	__u32 gid;
+
+	enum lsm_tracepoint tracepoint_raw;
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);

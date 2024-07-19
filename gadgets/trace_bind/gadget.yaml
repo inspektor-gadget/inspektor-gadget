@@ -12,21 +12,33 @@ datasources:
       timestamp:
         annotations:
           template: timestamp
-      mount_ns_id:
+      mntns_id:
         annotations:
+          description: Mount namespace inode id
           template: ns
       addr:
         annotations:
           description: Address the socket is bound to
           columns.width: 32
+      comm:
+        annotations:
+          description: Process name
+          template: comm
       pid:
         annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
           template: pid
       uid:
         annotations:
+          description: User ID
           template: uid
       gid:
         annotations:
+          description: Group ID
           template: uid
       ret:
         annotations:
@@ -40,9 +52,6 @@ datasources:
         annotations:
           description: Socket options
           columns.hidden: true
-      comm:
-        annotations:
-          template: comm
       bound_dev_if:
         annotations:
           description: Index of the network interface the socket is bound to

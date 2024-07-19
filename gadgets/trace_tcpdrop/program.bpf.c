@@ -55,26 +55,28 @@ enum tcp_flags_set : __u8 {
 };
 
 struct event {
+	gadget_timestamp timestamp_raw;
+	gadget_netns_id netns_id;
+
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	gadget_timestamp timestamp_raw;
-	enum tcp_state state_raw;
-	enum tcp_flags_set tcpflags_raw;
-	enum skb_drop_reason reason_raw;
-	gadget_netns_id netns;
-	gadget_kernel_stack kernel_stack_raw;
 
 	// The original gadget has instances of these fields for both process context and
 	// socket context. Since sub-structures in the `event` are not yet supported, we only use
 	// socket context for now. Once sub-structures in the `event` are supported, convert the
 	// next fields to a struct.
 	gadget_mntns_id mount_ns_id;
+	char comm[TASK_COMM_LEN];
+	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	char task[TASK_COMM_LEN];
+
+	enum tcp_state state_raw;
+	enum tcp_flags_set tcpflags_raw;
+	enum skb_drop_reason reason_raw;
+	gadget_kernel_stack kernel_stack_raw;
 };
 
 /* Define here, because there are conflicts with include files */
@@ -168,14 +170,16 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 		goto cleanup;
 	}
 
-	BPF_CORE_READ_INTO(&event->netns, sk, __sk_common.skc_net.net, ns.inum);
-	struct sockets_value *skb_val = gadget_socket_lookup(sk, event->netns);
+	BPF_CORE_READ_INTO(&event->netns_id, sk, __sk_common.skc_net.net,
+			   ns.inum);
+	struct sockets_value *skb_val =
+		gadget_socket_lookup(sk, event->netns_id);
 	if (skb_val != NULL) {
 		event->mount_ns_id = skb_val->mntns;
 		event->pid = skb_val->pid_tgid >> 32;
 		event->tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event->task, skb_val->task,
-				 sizeof(event->task));
+		__builtin_memcpy(&event->comm, skb_val->task,
+				 sizeof(event->comm));
 		event->uid = (__u32)skb_val->uid_gid;
 		event->gid = (__u32)(skb_val->uid_gid >> 32);
 	}
