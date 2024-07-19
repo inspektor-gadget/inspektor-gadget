@@ -115,7 +115,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 		containers: make(map[string]*containercollection.Container),
 
-		enums:      make(map[string]*btf.Enum),
+		enums:      make([]*enum, 0),
 		formatters: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
 
 		vars: make(map[string]*ebpfVar),
@@ -172,7 +172,7 @@ type ebpfInstance struct {
 
 	containers map[string]*containercollection.Container
 
-	enums      map[string]*btf.Enum
+	enums      []*enum
 	formatters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 
 	stackIdMap *ebpf.Map

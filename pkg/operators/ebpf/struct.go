@@ -40,6 +40,11 @@ type Struct struct {
 	Size   uint32
 }
 
+type enum struct {
+	*btf.Enum
+	memberName string
+}
+
 func (f *Field) FieldName() string {
 	return f.name
 }
@@ -185,8 +190,8 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	}
 
 	// Keep enums to convert them to strings
-	if enum, ok := member.Type.(*btf.Enum); ok {
-		i.enums[member.Name] = enum
+	if en, ok := member.Type.(*btf.Enum); ok {
+		i.enums = append(i.enums, &enum{Enum: en, memberName: member.Name})
 	}
 
 	kind := getFieldKind(refType, tags)

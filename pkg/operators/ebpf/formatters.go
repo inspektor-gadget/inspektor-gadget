@@ -75,7 +75,9 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 	for _, ds := range gadgetCtx.GetDataSources() {
 		var formatters []func(ds datasource.DataSource, data datasource.Data) error
 
-		for name, enum := range i.enums {
+		for _, en := range i.enums {
+			enum := en.Enum
+			name := en.memberName
 			in := ds.GetField(name)
 			if in == nil {
 				continue
