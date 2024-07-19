@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -281,6 +281,20 @@ func (p *Params) CopyToMap(target map[string]string, prefix string) {
 	for _, param := range *p {
 		if param.TypeHint == TypeBytes {
 			target[prefix+param.Key] = compressAndB64Encode(param.String())
+		} else {
+			target[prefix+param.Key] = param.String()
+		}
+	}
+}
+
+// CopyToMapExt works like CopyToMap but additionally can return string slices
+// given the TypeHint is set to TypeStringSlice
+func (p *Params) CopyToMapExt(target map[string]any, prefix string) {
+	for _, param := range *p {
+		if param.TypeHint == TypeBytes {
+			target[prefix+param.Key] = compressAndB64Encode(param.String())
+		} else if param.TypeHint == TypeStringSlice {
+			target[prefix+param.Key] = strings.Split(param.String(), ",")
 		} else {
 			target[prefix+param.Key] = param.String()
 		}

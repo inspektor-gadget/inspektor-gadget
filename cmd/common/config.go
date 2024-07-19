@@ -104,6 +104,11 @@ func setFlagsFromConfig(f *pflag.Flag, k string) error {
 			}
 			return nil
 		}
+		// Handle string slices in a way the params pkg understands it
+		if p, ok := f.Value.(*Param); ok && p.TypeHint == params.TypeStringSlice {
+			vals := config.Config.GetStringSlice(k)
+			return p.Set(strings.Join(vals, ","))
+		}
 
 		val := config.Config.GetString(k)
 		if val == f.DefValue {
@@ -144,23 +149,23 @@ func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Comm
 		}
 
 		dataOps := operators.GetDataOperators()
-		operatorConfig := make(map[string]map[string]string, len(dataOps))
+		operatorConfig := make(map[string]map[string]any, len(dataOps))
 		for _, op := range dataOps {
 			opName := strings.ToLower(op.Name())
 			opGlobalParams := apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 			if len(opGlobalParams.ParamMap()) == 0 {
 				continue
 			}
-			operatorConfig[opName] = make(map[string]string)
-			opGlobalParams.CopyToMap(operatorConfig[opName], "")
+			operatorConfig[opName] = make(map[string]any)
+			opGlobalParams.CopyToMapExt(operatorConfig[opName], "")
 		}
 
 		_, ok := operatorConfig[ocihandler.OciHandler.Name()]
 		if !ok {
-			operatorConfig[ocihandler.OciHandler.Name()] = make(map[string]string)
+			operatorConfig[ocihandler.OciHandler.Name()] = make(map[string]any)
 		}
 		opInstanceParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
-		opInstanceParams.CopyToMap(operatorConfig[ocihandler.OciHandler.Name()], "")
+		opInstanceParams.CopyToMapExt(operatorConfig[ocihandler.OciHandler.Name()], "")
 		if len(operatorConfig) > 0 {
 			defaultConfig.Set("operator", operatorConfig)
 		}
