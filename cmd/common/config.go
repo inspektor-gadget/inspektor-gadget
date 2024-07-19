@@ -155,7 +155,10 @@ func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Comm
 			opGlobalParams.CopyToMap(operatorConfig[opName], "")
 		}
 
-		operatorConfig[ocihandler.OciHandler.Name()] = make(map[string]string)
+		_, ok := operatorConfig[ocihandler.OciHandler.Name()]
+		if !ok {
+			operatorConfig[ocihandler.OciHandler.Name()] = make(map[string]string)
+		}
 		opInstanceParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
 		opInstanceParams.CopyToMap(operatorConfig[ocihandler.OciHandler.Name()], "")
 		if len(operatorConfig) > 0 {
