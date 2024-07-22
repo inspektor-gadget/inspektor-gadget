@@ -30,12 +30,12 @@ struct event {
 	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	char pcomm[TASK_COMM_LEN];
 	__u32 ppid;
-	__u32 loginuid;
+	gadget_uid loginuid;
 	__u32 sessionid;
 	gadget_errno error_raw;
 	int args_count;
