@@ -52,7 +52,7 @@ datasources:
         annotations:
           template: uid
           columns.hidden: true
-      retval:
+      error:
         annotations:
           columns.width: 5
           columns.alignment: right

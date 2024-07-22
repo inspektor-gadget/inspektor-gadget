@@ -28,7 +28,7 @@ struct event {
 	__u32 tpid;
 
 	gadget_signal sig_raw;
-	int ret;
+	gadget_errno error_raw;
 };
 
 const volatile pid_t filtered_pid = 0;
@@ -104,7 +104,7 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		goto cleanup;
 
-	eventp->ret = ret;
+	eventp->error_raw = -ret;
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->uid = (u32)uid_gid;
 	eventp->gid = (u32)(uid_gid >> 32);
@@ -202,7 +202,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	event->tpid = tpid;
 	event->mntns_id = mntns_id;
 	event->sig_raw = sig;
-	event->ret = ret;
+	event->error_raw = -ret;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(event->comm, sizeof(event->comm));

@@ -40,11 +40,9 @@ datasources:
         annotations:
           description: Group ID
           template: uid
-      ret:
+      error_raw:
         annotations:
-          description: Return value of the bind() syscall
-          columns.width: 5
-          columns.alignment: right
+          columns.hidden: true
       opts_raw:
         annotations:
           columns.hidden: true

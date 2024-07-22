@@ -77,7 +77,7 @@ struct event {
 
 	__u64 delta;
 	enum flags_set flags_raw;
-	int ret;
+	gadget_errno error_raw;
 	char fs[FS_NAME_LEN];
 	char src[PATH_MAX];
 	char dest[PATH_MAX];
@@ -159,7 +159,7 @@ static int probe_exit(void *ctx, int ret)
 	eventp->tid = tid;
 	eventp->uid = (u32)uid_gid;
 	eventp->gid = (u32)(uid_gid >> 32);
-	eventp->ret = ret;
+	eventp->error_raw = -ret;
 	eventp->op_raw = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));
 	if (argp->src)

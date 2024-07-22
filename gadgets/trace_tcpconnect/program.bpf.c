@@ -48,7 +48,7 @@ struct event {
 	__u32 gid;
 
 	__u64 latency;
-	int retcode;
+	gadget_errno error_raw;
 };
 
 const volatile int filter_ports[MAX_PORTS];
@@ -220,7 +220,7 @@ static __always_inline void trace_v4(struct pt_regs *ctx, __u64 pid_tgid,
 	event->mntns_id = mntns_id;
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->retcode = ret;
+	event->error_raw = -ret;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
@@ -252,7 +252,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, __u64 pid_tgid,
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->retcode = ret;
+	event->error_raw = -ret;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }

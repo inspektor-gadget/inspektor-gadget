@@ -49,12 +49,9 @@ datasources:
       mode:
         annotations:
           description: File access mode
-      err:
+      error_raw:
         annotations:
-          description: Error code
-          columns.minwidth: 3
-          columns.width: 5
-          columns.alignment: right
+          columns.hidden: true
       fd:
         annotations:
           description: File descriptor. 0 in case of error

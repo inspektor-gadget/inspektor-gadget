@@ -20,14 +20,14 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-func getCallStr(op int32, source string, target string, fs string, flags string, data string, ret int32) string {
+func getCallStr(op int32, source string, target string, fs string, flags string, data string, errorRaw uint32) string {
 	switch op {
 	case 0:
 		format := `mount("%s", "%s", "%s", %s, "%s") = %d`
-		return fmt.Sprintf(format, source, target, fs, flags, data, ret)
+		return fmt.Sprintf(format, source, target, fs, flags, data, errorRaw)
 	case 1:
 		format := `umount("%s", %s) = %d`
-		return fmt.Sprintf(format, target, flags, ret)
+		return fmt.Sprintf(format, target, flags, errorRaw)
 	}
 
 	return ""
@@ -72,7 +72,7 @@ func gadgetInit() int {
 		return 1
 	}
 
-	retField, err := ds.GetField("ret")
+	errorRawField, err := ds.GetField("error_raw")
 	if err != nil {
 		api.Warnf("failed to get field: %s", err)
 		return 1
@@ -99,9 +99,9 @@ func gadgetInit() int {
 		dest, _ := destField.String(data)
 		fs, _ := fsField.String(data)
 		dataStr, _ := dataField.String(data)
-		ret, _ := retField.Int32(data)
+		errorRaw, _ := errorRawField.Uint32(data)
 
-		callField.SetString(data, getCallStr(opRaw, src, dest, fs, flags, dataStr, ret))
+		callField.SetString(data, getCallStr(opRaw, src, dest, fs, flags, dataStr, errorRaw))
 	}, 0)
 
 	return 0

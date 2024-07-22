@@ -276,4 +276,7 @@ var annotationsTemplates = map[string]map[string]string{
 		ColumnsWidthAnnotation:    "18",
 		ColumnsMaxWidthAnnotation: "28",
 	},
+	"errorString": {
+		ColumnsWidthAnnotation: "12",
+	},
 }

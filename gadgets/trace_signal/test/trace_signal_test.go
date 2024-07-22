@@ -43,7 +43,7 @@ type traceSignalEvent struct {
 
 	Signal    string `json:"sig"`
 	SignalRaw int    `json:"sig_raw"`
-	Ret       int    `json:"ret"`
+	Error     string `json:"error"`
 }
 
 func TestTraceSignal(t *testing.T) {
@@ -96,7 +96,7 @@ func TestTraceSignal(t *testing.T) {
 				Gid:        0,
 				Signal:     "SIGTERM",
 				SignalRaw:  15,
-				Ret:        0,
+				Error:      "",
 				Comm:       "sh",
 
 				// Check only the existence of these fields

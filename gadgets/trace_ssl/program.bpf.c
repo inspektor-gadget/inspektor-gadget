@@ -59,7 +59,7 @@ struct event {
 	enum operation operation_raw;
 	u64 latency_ns;
 	u32 len;
-	u64 retval;
+	gadget_errno error_raw;
 	u8 buf[MAX_BUF_SIZE];
 };
 
@@ -181,7 +181,7 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	event->uid = uid_gid;
 	event->gid = uid_gid >> 32;
 	event->len = len;
-	event->retval = PT_REGS_RC(ctx);
+	event->error_raw = -PT_REGS_RC(ctx);
 
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
@@ -276,7 +276,7 @@ int trace_uretprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 	event->uid = uid_gid;
 	event->gid = uid_gid >> 32;
 	event->len = 0;
-	event->retval = PT_REGS_RC(ctx);
+	event->error_raw = -PT_REGS_RC(ctx);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, BASE_EVENT_SIZE);
@@ -361,7 +361,7 @@ static __always_inline int probe_crypto_exit(struct pt_regs *ctx,
 	event->uid = uid_gid;
 	event->gid = uid_gid >> 32;
 	event->len = 0;
-	event->retval = PT_REGS_RC(ctx);
+	event->error_raw = -PT_REGS_RC(ctx);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, BASE_EVENT_SIZE);

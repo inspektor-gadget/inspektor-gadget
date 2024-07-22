@@ -44,7 +44,7 @@ type traceMountEvent struct {
 
 	Delta uint64 `json:"delta"`
 	Flags string `json:"flags"`
-	Ret   int    `json:"ret"`
+	Error string `json:"error"`
 	Fs    string `json:"fs"`
 	Src   string `json:"src"`
 	Dest  string `json:"dest"`
@@ -105,7 +105,7 @@ func TestTraceMount(t *testing.T) {
 				Op:         "MOUNT",
 				Src:        "/mnt",
 				Dest:       "/mnt",
-				Ret:        -int(unix.ENOENT),
+				Error:      unix.ErrnoName(unix.ENOENT),
 				Data:       "",
 
 				// Check only the existence of these fields
