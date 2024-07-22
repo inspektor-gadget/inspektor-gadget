@@ -123,13 +123,13 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Key:         allowedDigests,
 			Title:       "Allowed Digests",
 			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
-			TypeHint:    api.TypeString,
+			TypeHint:    api.TypeStringSlice,
 		},
 		{
 			Key:         allowedRegistries,
 			Title:       "Allowed registries",
 			Description: "Only run image-based gadgets from these registries",
-			TypeHint:    api.TypeString,
+			TypeHint:    api.TypeStringSlice,
 		},
 	}
 }

@@ -462,6 +462,30 @@ func TestBytesHandling(t *testing.T) {
 	require.Equal(t, testString, string(params[0].AsBytes()), "decompression + B64 decoding failed")
 }
 
+func TestStringSlice(t *testing.T) {
+	const testStringSlice = "foo,bar,quux"
+	testStringSliceExpected := []string{"foo", "bar", "quux"}
+	params := Params{
+		&Param{
+			ParamDesc: &ParamDesc{
+				Key:      "[]string",
+				TypeHint: TypeStringSlice,
+			},
+		},
+	}
+	params[0].Set(testStringSlice)
+
+	// CopyToMapExt
+	testMapExt := map[string]any{}
+	params.CopyToMapExt(testMapExt, "")
+	require.Equal(t, testStringSliceExpected, testMapExt["[]string"], "converting to []string failed")
+
+	// CopyToMap
+	testMap := map[string]string{}
+	params.CopyToMap(testMap, "")
+	require.Equal(t, testStringSlice, testMap["[]string"], "converting to string failed")
+}
+
 func TestIsSet(t *testing.T) {
 	pd := ParamDesc{
 		DefaultValue: "foo",
