@@ -255,6 +255,10 @@ func validateSnapshotterPrograms(spec *ebpf.CollectionSpec, programs []string) e
 }
 
 func populateDatasourceFields(ds *metadatav1.DataSource, btfStruct *btf.Struct) error {
+	if ds.Fields == nil {
+		ds.Fields = make(map[string]metadatav1.Field)
+	}
+
 	existingFields := make(map[string]struct{})
 	for name := range ds.Fields {
 		existingFields[name] = struct{}{}
