@@ -8,10 +8,10 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Update new version in krew-index
       if: github.repository == 'inspektor-gadget/inspektor-gadget'
-      uses: rajatjindal/krew-release-bot@v0.0.46
+      uses: rajatjindal/krew-release-bot@df3eb197549e3568be8b4767eec31c5e8e8e6ad8 # v0.0.46
       with:
         workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
         krew_template_file: .krew.yaml
@@ -44,7 +44,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
     - name: Create PR
       if: ${{ steps.bump_gadgets.outputs.changes != '' }}
-      uses: peter-evans/create-pull-request@v6
+      uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: 'Artifact Hub: Update gadgets version to v${{ steps.bump_gadgets.outputs.version }}'
