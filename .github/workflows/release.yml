@@ -3,6 +3,8 @@ on:
   release:
     types: [published]
 
+permissions: read-all
+
 jobs:
   release:
     name: Release
