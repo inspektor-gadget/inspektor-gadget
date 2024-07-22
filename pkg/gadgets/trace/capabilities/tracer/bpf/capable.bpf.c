@@ -71,9 +71,25 @@ struct syscall_context {
 	// We could add more fields for the arguments if desired
 };
 
+// man clone(2):
+//   If any of the threads in a thread group performs an
+//   execve(2), then all threads other than the thread group
+//   leader are terminated, and the new program is executed in
+//   the thread group leader.
+//
+// sys_enter_execve might be called from a thread and the corresponding
+// sys_exit_execve will be called from the thread group leader in case of
+// execve success, or from the same thread in case of execve failure.
+//
+// Moreover, checking ctx->ret == 0 is not a reliable way to distinguish
+// successful execve from failed execve because seccomp can change ctx->ret.
+//
+// Therefore, use two different tracepoints to handle the map cleanup:
+// - tracepoint/sched/sched_process_exec is called after a successful execve
+// - tracepoint/syscalls/sys_exit_execve is always called
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(key_size, sizeof(u64));
+	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(struct syscall_context));
 	__uint(max_entries,
 	       1048576); // There can be many threads sleeping in some futex/poll syscalls
@@ -197,7 +213,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	}
 
 	struct syscall_context *sc_ctx;
-	sc_ctx = bpf_map_lookup_elem(&current_syscall, &pid_tgid);
+	sc_ctx = bpf_map_lookup_elem(&current_syscall, &event.pid);
 	if (sc_ctx) {
 		event.syscall = sc_ctx->nr;
 	} else {
@@ -212,32 +228,13 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	return 0;
 }
 
-/*
- * Taken from:
- * https://github.com/seccomp/libseccomp/blob/afbde6ddaec7c58c3b281d43b0b287269ffca9bd/src/syscalls.csv
- */
-#if defined(__TARGET_ARCH_arm64)
-#define __NR_rt_sigreturn 139
-#define __NR_exit_group 94
-#define __NR_exit 93
-#elif defined(__TARGET_ARCH_x86)
-#define __NR_rt_sigreturn 15
-#define __NR_exit_group 231
-#define __NR_exit 60
-#else
-#error "The trace capabilities gadget is not supported on your architecture."
-#endif
-
-static __always_inline int skip_exit_probe(int nr)
-{
-	return !!(nr == __NR_exit || nr == __NR_exit_group ||
-		  nr == __NR_rt_sigreturn);
-}
-
+// raw_tracepoint/sys_enter is updating the current_syscall map with the syscall
+// number. The map will be cleaned up by various tracepoints depending on the
+// syscall.
 SEC("raw_tracepoint/sys_enter")
 int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 {
-	u64 pid_tgid = bpf_get_current_pid_tgid();
+	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct pt_regs regs = {};
 	struct syscall_context sc_ctx = {};
 
@@ -249,19 +246,39 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	u64 nr = ctx->args[1];
 	sc_ctx.nr = nr;
 
-	// The sys_exit tracepoint is not called for some syscalls.
-	if (!skip_exit_probe(nr))
-		bpf_map_update_elem(&current_syscall, &pid_tgid, &sc_ctx,
-				    BPF_ANY);
+	bpf_map_update_elem(&current_syscall, &pid, &sc_ctx, BPF_ANY);
 
 	return 0;
 }
 
+// raw_tracepoint/sys_exit cleans up the current_syscall map in most cases
 SEC("raw_tracepoint/sys_exit")
 int ig_cap_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 {
-	u64 pid_tgid = bpf_get_current_pid_tgid();
-	bpf_map_delete_elem(&current_syscall, &pid_tgid);
+	u32 pid = (u32)bpf_get_current_pid_tgid();
+	bpf_map_delete_elem(&current_syscall, &pid);
+	return 0;
+}
+
+// tracepoint/sched/sched_process_exec cleans up the current_syscall map after
+// a successful execve because raw_tracepoint/sys_exit might not have access to
+// the correct pid if the execve was performed by a thread
+SEC("tracepoint/sched/sched_process_exec")
+int ig_cap_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
+{
+	u32 pid = ctx->old_pid;
+	bpf_map_delete_elem(&current_syscall, &pid);
+	return 0;
+}
+
+// tracepoint/sched/sched_process_exit cleans up the current_syscall map after
+// exit() and exit_group() because raw_tracepoint/sys_exit is not called in
+// that case.
+SEC("tracepoint/sched/sched_process_exit")
+int ig_cap_sched_exit(void *ctx)
+{
+	u32 pid = (u32)bpf_get_current_pid_tgid();
+	bpf_map_delete_elem(&current_syscall, &pid);
 	return 0;
 }
 
