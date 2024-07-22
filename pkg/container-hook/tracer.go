@@ -177,6 +177,8 @@ var runtimePaths []string = append(
 func initFanotify() (*fanotify.NotifyFD, error) {
 	// Flags for the fanotify fd
 	var fanotifyFlags uint
+	// FAN_REPORT_TID is required so that kretprobe/fsnotify_remove_first_event can report the tid
+	fanotifyFlags |= uint(unix.FAN_REPORT_TID)
 	// FAN_CLOEXEC is required to avoid leaking the fd to child processes
 	fanotifyFlags |= uint(unix.FAN_CLOEXEC)
 	// FAN_CLASS_CONTENT is required for perm events such as FAN_OPEN_EXEC_PERM
@@ -274,6 +276,12 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	n.links = append(n.links, l)
 
 	l, err = link.Tracepoint("syscalls", "sys_enter_execve", n.objs.IgExecveE, nil)
+	if err != nil {
+		return fmt.Errorf("attaching tracepoint: %w", err)
+	}
+	n.links = append(n.links, l)
+
+	l, err = link.Tracepoint("sched", "sched_process_exec", n.objs.IgSchedExec, nil)
 	if err != nil {
 		return fmt.Errorf("attaching tracepoint: %w", err)
 	}

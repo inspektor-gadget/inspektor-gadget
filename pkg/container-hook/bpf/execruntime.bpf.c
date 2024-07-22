@@ -28,13 +28,6 @@ struct {
 	__type(value, struct record);
 } ig_fa_records SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 128);
-	__type(key, u32); // pid (not tgid)
-	__type(value, struct record);
-} exec_args SEC(".maps");
-
 // man clone(2):
 //   If any of the threads in a thread group performs an
 //   execve(2), then all threads other than the thread group
@@ -43,31 +36,20 @@ struct {
 //
 // sys_enter_execve might be called from a thread and the corresponding
 // sys_exit_execve will be called from the thread group leader in case of
-// execve success, or from the same thread in case of execve failure. So we
-// need to lookup the pid from the tgid in sys_exit_execve.
+// execve success, or from the same thread in case of execve failure.
 //
-// We don't know in advance which execve(2) will succeed, so we need to keep
-// track of all tgid<->pid mappings in a BPF map.
+// Moreover, checking ctx->ret == 0 is not a reliable way to distinguish
+// successful execve from failed execve because seccomp can change ctx->ret.
 //
-// We don't want to use bpf_for_each_map_elem() because it requires Linux 5.13.
-//
-// If several execve(2) are performed in parallel from different threads, only
-// one can succeed. The kernel will run the tracepoint syscalls/sys_exit_execve
-// for the failing execve(2) first and then for the successful one last.
-//
-// So we can insert a tgid->pid mapping in the same hash entry by adding
-// the pid in value and removing it by subtracting. By the time we need to
-// lookup the pid by the tgid, there will be only one pid left in the hash entry.
-struct pid_set {
-	__u64 pid_sum;
-	__u64 pid_count;
-};
+// Therefore, use two different tracepoints to handle the map cleanup:
+// - tracepoint/sched/sched_process_exec is called after a successful execve
+// - tracepoint/syscalls/sys_exit_execve is always called
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, pid_t); // tgid
-	__type(value, struct pid_set);
-	__uint(max_entries, 1024);
-} pid_by_tgid SEC(".maps");
+	__uint(max_entries, 128);
+	__type(key, u32); // pid (not tgid)
+	__type(value, struct record);
+} exec_args SEC(".maps");
 
 SEC("kprobe/fsnotify_remove_first_event")
 int BPF_KPROBE(ig_fa_pick_e, struct fsnotify_group *group)
@@ -91,10 +73,8 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 {
 	struct record *record;
 	u64 current_pid_tgid;
-	u32 event_tgid;
-	u32 pid;
+	u32 event_pid;
 	u64 *exists;
-	struct pid_set *pid_set;
 
 	// current_pid_tgid is the Inspektor Gadget task
 	current_pid_tgid = bpf_get_current_pid_tgid();
@@ -103,20 +83,12 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 	if (!exists)
 		return 0;
 
-	// event_tgid is the tgid of the process that triggered the fanotify event.
-	// Since Inspektor Gadget didn't use FAN_REPORT_TID, this is the process id
-	// and not the thread id.
-	event_tgid = BPF_CORE_READ(ret, pid, numbers[0].nr);
+	// event_pid is the thread that triggered the fanotify event.
+	// Since Inspektor Gadget uses FAN_REPORT_TID, this is the thread id
+	// and not the process id.
+	event_pid = BPF_CORE_READ(ret, pid, numbers[0].nr);
 
-	pid_set = bpf_map_lookup_elem(&pid_by_tgid, &event_tgid);
-	if (!pid_set)
-		goto fail;
-
-	if (pid_set->pid_count != 1)
-		goto fail;
-	pid = pid_set->pid_sum;
-
-	record = bpf_map_lookup_elem(&exec_args, &pid);
+	record = bpf_map_lookup_elem(&exec_args, &event_pid);
 	if (!record) {
 		// no record found but we need to push an empty record in the queue to
 		// ensure userspace understands that there is no record for this event
@@ -141,8 +113,6 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	struct record *record;
 	struct task_struct *task;
 	uid_t uid = (u32)bpf_get_current_uid_gid();
-	struct pid_set zero_pid_set = { 0, 0 };
-	struct pid_set *pid_set;
 	u64 *pid_sum;
 
 	int ret;
@@ -153,15 +123,6 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	pid_tgid = bpf_get_current_pid_tgid();
 	tgid = pid_tgid >> 32;
 	pid = (u32)pid_tgid;
-
-	bpf_map_update_elem(&pid_by_tgid, &tgid, &zero_pid_set, BPF_NOEXIST);
-
-	pid_set = bpf_map_lookup_elem(&pid_by_tgid, &tgid);
-	if (!pid_set)
-		return 0;
-
-	__atomic_add_fetch(&pid_set->pid_sum, (u64)pid, __ATOMIC_RELAXED);
-	__atomic_add_fetch(&pid_set->pid_count, 1, __ATOMIC_RELAXED);
 
 	// Add new entry but not from the stack due to size limitations
 	if (bpf_map_update_elem(&exec_args, &pid, &empty_record, 0))
@@ -207,38 +168,33 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	return 0;
 }
 
+// tracepoint/sched/sched_process_exec is called after a successful execve
+SEC("tracepoint/sched/sched_process_exec")
+int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
+{
+	// Don't use the pid from bpf_get_current_pid_tgid() as a key: the pid
+	// might have changed since sys_enter_execve if the execve was performed by
+	// a thread. Thankfully, the old thread id is passed in ctx->old_pid.
+	u32 execs_lookup_key = ctx->old_pid;
+	bpf_map_delete_elem(&exec_args, &execs_lookup_key);
+	return 0;
+}
+
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct syscall_trace_exit *ctx)
 {
-	u64 pid_tgid;
-	u32 tgid, pid;
-	u32 execs_lookup_key;
-	int ret;
-	struct pid_set *pid_set;
-
-	pid_tgid = bpf_get_current_pid_tgid();
-	tgid = pid_tgid >> 32;
-	pid = (u32)pid_tgid;
-	ret = ctx->ret;
-
-	pid_set = bpf_map_lookup_elem(&pid_by_tgid, &tgid);
-	if (!pid_set)
-		return 0;
-
-	// sys_enter_execve and sys_exit_execve might be called from different
-	// threads. We need to lookup the pid from the tgid.
-	execs_lookup_key = (ret == 0) ? pid_set->pid_sum : pid;
-	bpf_map_delete_elem(&exec_args, &execs_lookup_key);
-
-	// Remove the tgid->pid mapping if the value reaches 0
-	// or the execve() call was successful
-	// Convert pid to u64 before applying the negative sign to ensure it's not
-	// truncated
-	__atomic_add_fetch(&pid_set->pid_sum, -((u64)pid), __ATOMIC_RELAXED);
-	__atomic_add_fetch(&pid_set->pid_count, -1ULL, __ATOMIC_RELAXED);
-	if (pid_set->pid_sum == 0 || ret == 0)
-		bpf_map_delete_elem(&pid_by_tgid, &tgid);
-
+	// - If the execve was successful, ig_sched_exec would have deleted the
+	//   entry already. Deleting it again is harmless.
+	// - If the execve failed, we need to delete the entry here.
+	//   bpf_get_current_pid_tgid() returns the same pid as in
+	//   sys_enter_execve.
+	// - If the execve was blocked by seccomp, sys_enter_execve was not called.
+	//   But deleting the entry that was not added is harmless.
+	// - We cannot reliably distinguish successful execve from failed execve
+	//   with ctx->ret because it can be changed by seccomp with
+	//   SCMP_ACT_ERRNO(0).
+	u32 pid = (u32)bpf_get_current_pid_tgid();
+	bpf_map_delete_elem(&exec_args, &pid);
 	return 0;
 }
 
