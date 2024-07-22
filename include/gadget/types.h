@@ -45,6 +45,14 @@ typedef __u32 gadget_signal;
 // as string.
 typedef __u32 gadget_errno;
 
+// gadget_uid is used to represent a uid. A field is automatically added that contains the corresponding user
+// name on the host system
+typedef __u32 gadget_uid;
+
+// gadget_gid is used to represent a uid. A field is automatically added that contains the corresponding group
+// name on the host system
+typedef __u32 gadget_gid;
+
 // gadget_syscall is used to represent a unix syscall. A field is automatically added that contains the name
 // as string.
 typedef __u64 gadget_syscall;
