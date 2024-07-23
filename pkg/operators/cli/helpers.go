@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ebpfoperator
+package clioperator
 
-// Keep this aligned with include/gadget/macros.h
-const (
-	// Prefix used to mark trace maps
-	tracerInfoPrefix = "gadget_tracer_"
-
-	// Prefix used to mark eBPF params
-	paramPrefix = "gadget_param_"
-
-	// Prefix used to mark snapshotters structs
-	snapshottersPrefix = "gadget_snapshotter_"
-
-	// Prefix used to mark tracer map created with GADGET_TRACER_MAP() defined in
-	// include/gadget/buffer.h.
-	tracerMapPrefix = "gadget_map_tracer_"
-
-	mapIterPrefix = "gadget_mapiter_"
-
-	// Prefix used to mark variables used by operators
-	varPrefix = "gadget_var_"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 )
+
+func clearScreen() {
+	switch runtime.GOOS {
+	case "linux":
+		fmt.Print("\033[H\033[2J")
+	case "windows":
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	default:
+		// It's a best effort approach here as we aren't 100% it'll work
+		// on all cases.
+		fmt.Print("\033[H\033[2J")
+	}
+}
