@@ -1,8 +1,7 @@
 ---
 title: Hello world gadget
-sidebar_position: 110
-description: >
-  Hello world gadget
+sidebar_position: 200
+description: Hello world gadget
 ---
 
 :::warning
@@ -175,10 +174,14 @@ int enter_openat(struct syscall_trace_enter *ctx)
 char LICENSE[] SEC("license") = "GPL";
 ```
 
+Check [Gadget eBPF API](./gadget-ebpf-api.md) to learn all functions, macros and
+types that Inspektor Gadget exposes to the eBPF programs.
+
 ## Building the gadget for the first time
 
-We can now compile our gadget. You don't need to have any dependency on the machine, the `image
-build` by default uses docker to run a container with all dependencies to compile the code.
+We can now compile our gadget. You don't need to have any build tools installed on the
+machine, the [`image build`](./building.md) by default uses docker to run a
+container with all dependencies to compile the code.
 
 ```bash
 $ cd mygadget
@@ -187,9 +190,9 @@ INFO[0000] Experimental features enabled
 Successfully built ghcr.io/inspektor-gadget/gadget/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
-Take into account that it is possible to customize the build process by defining a `build.yaml` file.
-Check the [Customizing your build](../../docs/core-concepts/images.md#customizing-your-build)
-section for more details.
+Take into account that it is possible to customize the build process by defining
+a `build.yaml` file. Check the [Building a Gadget](./building.md) section for
+more details.
 
 ## (Optional) Pushing the gadget image to a container registry
 
@@ -207,14 +210,9 @@ Pushing ghcr.io/my-org/mygadget:latest...
 Successfully pushed ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef86942e36f4c851933eec4b32ba65ee375acb1c514f628
 ```
 
-## Signing the gadget image
-
-Once you have pushed your gadget image to a container registry, it's highly recommended to sign it for security reasons.
-Tools like [cosign](https://docs.sigstore.dev/signing/signing_with_containers/) can be used for this purpose.
-Signed images ensure integrity and authenticity, adding an extra layer of trust.
-By default, Inspektor Gadget forbids running unsigned gadget images, but you can skip the verification using the `--verify-image=false` flag at your own risks.
-
-For more details on the verification process, refer to the [verification documentation](../getting-started/verify.md#verify-image-based-gadgets).
+For the sake of simplicity this guide doesn't cover signing the gadget image, however, we
+strongly encourage you to sign them. Please check [signing](./signing.md) to get
+more details.
 
 ## Running the gadget
 
@@ -289,9 +287,10 @@ PID                      COMM                     FILENAME
 
 ## Creating a metadata file
 
-The above formatting is not totally great, the pid column is taking a lot of space while the
-filename is being trimmed. The metadata file contains extra information about the gadget, among
-other things, it can be used to specify the format to be used.
+The above formatting is not totally great, the pid column is taking a lot of
+space while the filename is being trimmed. The [metadata file](./metadata.md)
+contains extra information about the gadget, among other things, it can be used
+to specify the format to be used.
 
 An initial version of the metadata file can be created by passing `--update-metadata` to the build command:
 
@@ -375,7 +374,7 @@ $ sudo -E ig run mygadget:latest --verify-image=false
 
 Now the output is much better.
 
-### Filtering and container enrichement
+## Filtering and container enrichement
 
 The gadget we created provides information about all events happening on the host, however it (a)
 doesn't provide any information about the container generating the event nor (b) allows it to filter
@@ -418,9 +417,8 @@ Inspektor Gadget to get the current mount namespace.
 Finally, we need to discard the events we're not interested in:
 
 ```c
-	if (gadget_should_discard_mntns_id(mntns_id)) {
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
-	}
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
@@ -584,127 +582,7 @@ RUNTIME.CONTAINERN…        PID COMM       FILENAME                            
 Now, the UID and GID columns have the expected format. Notice also that the MNTNS_ID column is
 not showed because the template `ns` hides it by default.
 
-## Adding tests for the gadget
-
-In order to ensure the gadget works as expected, you can create a corresponding test file.
-To do so, you need to call it `mygadget_test.go` and import some packages, like:
-
-```golang
-package main
-
-import (
-  "testing"
-
-  "github.com/stretchr/testify/require"
-
-  // helper functions for creating and running commands in a container.
-  "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
-
-  igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
-
-  // wrapper function for ig binary
-  igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
-
-  // helper functions for parsing and comparing output.
-  "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
-
-  // Event struct for fields enriched by ig.
-  eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-)
-```
-
-Then, we create a structure with all the information the gadget provides.
-
-```golang
-type mygadgetEvent struct {
-  eventtypes.Event
-
-  MountNsID uint64 `json:"mountnsid"`
-  Pid       uint32 `json:"pid"`
-  Uid       uint32 `json:"uid"`
-  Gid       uint32 `json:"gid"`
-  Comm      string `json:"comm"`
-  Filename  string `json:"filename"`
-}
-```
-
-Later we create a test function called `TestMyGadget()`.
-In this, we first create a container manager (can be either `docker` or `containerd`). After that, we create a command to run the gadget with various options.
-Finally, these commands are used as arguments in `RunTestSteps()`:
-
-```golang
-func TestMyGadget(t *testing.T) {
-  cn := "test-mygadget"
-
-  // returns a container manager which implements an interface with methods for creating new container
-  // and running commands within that container.
-  containerFactory, err := containers.NewContainerFactory("docker")
-  require.NoError(t, err, "new container factory")
-
-  mygadgetCmd := igrunner.New(
-    // gadget repository and tag can be added with the following environment variables:
-    // - $GADGET_REPOSITORY
-    // - $GADGET_TAG
-    "mygadget",
-    igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
-    igrunner.WithValidateOutput(
-      func(t *testing.T, output string) {
-        expectedEntry := &mygadgetEvent{
-          Event: eventtypes.Event{
-            CommonData: eventtypes.CommonData{
-              Runtime: eventtypes.BasicRuntimeMetadata{
-                RuntimeName:   eventtypes.String2RuntimeName("docker"),
-                ContainerName: cn,
-              },
-            },
-          },
-          Comm:     "cat",
-          Filename: "/dev/null",
-          Uid:      1000,
-          Gid:      1111,
-        }
-
-        // used to "normalize" the output, sets random value fields to a default value
-        // so that it only includes non-default values for the fields we can verify.
-        normalize := func(e *mygadgetEvent) {
-          e.MountNsID = 0
-          e.Pid = 0
-
-          e.Runtime.ContainerID = ""
-          e.Runtime.ContainerImageName = ""
-          e.Runtime.ContainerImageDigest = ""
-        }
-
-        // parses the output and matches it to expectedEntry.
-        match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
-      },
-    ),
-  )
-
-  testSteps := []igtesting.TestStep{
-    // WithStartAndStop used to start the container command, then, wait for other commands to run
-    // and stop later and verify the output.
-    containerFactory.NewContainer(cn, "while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done", containers.WithStartAndStop()),
-    mygadgetCmd,
-  }
-
-  igtesting.RunTestSteps(testSteps, t)
-}
-```
-
-(Optional) If running the test for a gadget whose image resides in a remote container registry, you can define environment variables for the gadget repository and tag.
-
-```bash
-$ export GADGET_REPOSITORY=ghcr.io/my-org GADGET_TAG=latest
-```
-
-We are all set now to run the test.
-
-```bash
-$ go test -exec 'sudo -E' -v ./mygadget_test.go
-```
-
 ### Closing
 
-Congratulations! You've implemented your first gadget. Check out our documentation to get more
+Congratulations! You've implemented your first gadget. Check out our [documentation](./index.mdx) to get more
 information.

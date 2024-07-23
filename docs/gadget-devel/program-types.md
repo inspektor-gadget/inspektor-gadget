@@ -1,7 +1,7 @@
 ---
 title: 'eBPF Program Types'
-sidebar_position: 50
-description: 'Reference documentation for different eBPF programs supported by Inspektor Gadget'
+sidebar_position: 310
+description: 'Different eBPF programs supported by Inspektor Gadget'
 ---
 
 Inspektor Gadget automatically loads and attaches the eBPF programs contained in a gadget. This
@@ -72,10 +72,12 @@ For common libraries, `<file_path>` can also be the library's name, such as `lib
 `<symbol>` is a debugging symbol that can be found in the file mentioned above.
 
 ### User-Level Statically Defined Tracing (USDT)
+
 The section name must use the `usdt/<file_path>:<providerName>:<probeName>` format.
 `<file_path>` can be either an absolute path or a library name, same as the field in Uprobe.
 `<providerName>` and `<probeName>` are two fields that can jointly identify a USDT trace point.
 
 ### Tracing with Linux Security Modules (LSM)
+
 The section name must use the `lsm/<hook>` format.
 The hook points could be found in [`<include/linux/lsm_hook_defs.h>`](https://elixir.bootlin.com/linux/latest/source/include/linux/lsm_hook_defs.h).
