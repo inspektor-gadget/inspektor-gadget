@@ -67,7 +67,7 @@ $ sudo -E ig image build . -t mygadget:latest
 and run it:
 
 ```bash
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
@@ -132,7 +132,7 @@ $ sudo -E ig image build . -t mygadget:latest
 ...
 
 
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 WARN[0000] image signature verification is disabled due to using corresponding CLI options
 INFO[0000] init: hello from wasm
@@ -221,7 +221,7 @@ output from it:
 $ sudo -E ig image build . -t mygadget:latest
 ...
 
-$ sudo -E ig run mygadget:latest --verify-image=false -o jsonpretty
+$ sudo -E ig run mygadget:latest --public-keys='' -o jsonpretty
 {
   "comm": "cat",
   "filename": "/home/***/xxx.txt",

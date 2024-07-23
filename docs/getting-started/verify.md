@@ -190,10 +190,10 @@ Error: fetching gadget information: initializing and preparing operators: instan
 
 As the image was not signed, no signature was found in the repository, so the execution is denied.
 
-You can set your own public key with `--public-key`:
+You can set your own public keys with `--public-keys`:
 
 ```bash
-$ sudo -E ig run --public-key="$(cat your-key.pub)" ghcr.io/your-repo/gadget/trace_open
+$ sudo -E ig run --public-keys="$(cat your-key.pub)" ghcr.io/your-repo/gadget/trace_open
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
@@ -204,13 +204,25 @@ $ sudo -E ig run ghcr.io/your-repo/gadget/trace_open
 Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your-repo/gadget/trace_open": verifying signature: invalid signature when validating ASN.1 encoded signature
 ```
 
-You can also skip verifying image-based gadget signature with `--verify-image=false`.
+You can specify several public keys:
+
+```bash
+$ sudo -E ig run --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" ghcr.io/your-repo/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+$ sudo -E ig run --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" ghcr.io/inspektor-gadget/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+```
+
+You can also skip verifying image-based gadget signature with `--public-keys=''`.
 Note that we do not recommend using this:
 
 ```bash
-$ sudo -E ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
-WARN[0000] image signature verification is disabled due to using corresponding CLI options
-WARN[0000] image signature verification is disabled due to using corresponding CLI options
+$ sudo -E ig run --public-keys='' ghcr.io/your-repo/gadget/trace_open
+...
+WARN[0000] image signature verification is disabled because no public keys were provided
+WARN[0000] image signature verification is disabled because no public keys were provided
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
@@ -219,10 +231,8 @@ RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL…
 Compared to `ig`, you cannot specify information with regard to verification when calling `kubectl gadget run`:
 
 ```bash
-$ kubectl gadget run --public-key="$(cat your-key.pub)" trace_exec
-Error: unknown flag: --public-key
-$ kubectl gadget run --verify-image=false trace_exec
-Error: unknown flag: --verify-image
+$ kubectl gadget run --public-keys="$(cat your-key.pub)" trace_exec
+Error: unknown flag: --public-keys
 ```
 
 Instead, all these information are set once at deploy time.
@@ -241,10 +251,10 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0  
 gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
 ...
 ```
-You can specify a custom public key at deploy time using `--gadgets-public-key`:
+You can specify a custom public key at deploy time using `--gadgets-public-keys`:
 
 ```bash
-$ kubectl gadget deploy --gadgets-public-key="$(cat your-key.pub)"
+$ kubectl gadget deploy --gadgets-public-keys="$(cat your-key.pub)"
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A
@@ -259,11 +269,11 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0  
 You can also skip verification at deploy time, note that we do not recommend doing so:
 
 ```bash
-$ kubectl gadget deploy --verify-gadgets=false
+$ kubectl gadget deploy --gadgets-public-keys=''
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A
-WARN[0001] minikube-docker      | image signature verification is disabled due to using corresponding CLI options
+WARN[0001] minikube-docker      | image signature verification is disabled because no public keys were provided
 K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME          PID       PPID RE… COMM      ARGS      K8S.NODE  TIMESTAMP
 gadget              gadget-z55jq        gadget                   55376      55357   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
 gadget              gadget-z55jq        gadget                   55375      55358   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…

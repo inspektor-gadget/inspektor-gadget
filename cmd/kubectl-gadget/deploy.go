@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -106,7 +107,7 @@ var (
 	publicKey           string
 	strLevels           []string
 	verifyGadgets       bool
-	gadgetsPublicKey    string
+	gadgetsPublicKeys   string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -238,9 +239,12 @@ func init() {
 		"verify-gadgets", "",
 		true,
 		"verify gadgets using the provided public key")
-	deployCmd.PersistentFlags().StringVarP(
-		&gadgetsPublicKey,
-		"gadgets-public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the gadgets")
+	// WARNING For now, use StringVar() instead of StringSliceVar() as only the
+	// first line of the file will be taken when used with
+	// --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)"
+	deployCmd.PersistentFlags().StringVar(
+		&gadgetsPublicKeys,
+		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -256,7 +260,9 @@ func info(format string, args ...any) {
 // It was adapted from:
 // https://github.com/kubernetes/client-go/issues/193#issuecomment-363318588
 func parseK8sYaml(content string) ([]runtime.Object, error) {
-	sepYamlfiles := strings.Split(content, "---\n")
+	// We need to use a regex due to public key which contains "-----".
+	pattern := regexp.MustCompile(`(?m)^---$`)
+	sepYamlfiles := pattern.Split(content, -1)
 	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
 	sch := runtime.NewScheme()
@@ -736,8 +742,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("%s.%s not found in config.yaml", gadgettracermanagerconfig.Operator, gadgettracermanagerconfig.Oci)
 			}
 
-			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
-			opOciCfg[gadgettracermanagerconfig.PublicKey] = gadgetsPublicKey
+			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {

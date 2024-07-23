@@ -26,6 +26,5 @@ const (
 	PodmanSocketPath       = "podman-socketpath"
 	Operator               = "operator"
 	Oci                    = "oci"
-	VerifyImage            = "verify-image"
-	PublicKey              = "public-key"
+	PublicKeys             = "public-keys"
 )

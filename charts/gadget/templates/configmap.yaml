@@ -19,5 +19,4 @@ data:
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       operator:
         oci:
-          verify-image: {{ .Values.config.verifyGadgets }}
-          public-key: {{ .Values.config.gadgetsPublicKey | quote }}
+          public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}

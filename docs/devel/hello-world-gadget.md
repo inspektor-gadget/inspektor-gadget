@@ -209,7 +209,7 @@ Successfully pushed ghcr.io/my-org/mygadget:latest@sha256:dd3f5c357983bb863ef869
 Once you have pushed your gadget image to a container registry, it's highly recommended to sign it for security reasons.
 Tools like [cosign](https://docs.sigstore.dev/signing/signing_with_containers/) can be used for this purpose.
 Signed images ensure integrity and authenticity, adding an extra layer of trust.
-By default, Inspektor Gadget forbids running unsigned gadget images, but you can skip the verification using the `--verify-image=false` flag at your own risks.
+By default, Inspektor Gadget forbids running unsigned gadget images, but you can skip the verification using the `--public-keys=''` flag at your own risks.
 
 For more details on the verification process, refer to the [verification documentation](../getting-started/verify.md#verify-image-based-gadgets).
 
@@ -218,7 +218,7 @@ For more details on the verification process, refer to the [verification documen
 We're now all set to run our gadget for the first time.
 
 ```bash
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 PID
 1113
@@ -271,7 +271,7 @@ Build and run the gadget again. Now it provides more information.
 ```bash
 $ sudo -E ig image build -t mygadget:latest .
 ....
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 PID                      COMM                     FILENAME
 11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
@@ -350,7 +350,7 @@ Now we can build and run the gadget again
 $ sudo -E ig image build . -t mygadget
 ...
 
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
               PID COMM              FILENAME
              1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
              1094 systemd-oomd      /sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/memor…
@@ -434,7 +434,7 @@ After adding the `gadget_mntns_id` field to the event structure, compiling and r
 Inspektor Gadget will automatically add the container name column to the output:
 
 ```bash
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME        PID             COMM            FILENAME                        MNTNS_ID
 ```
@@ -450,7 +450,7 @@ Only events generated in containers are now printed, and they include the name o
 generating them.
 
 ```bash
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 RUNTIME.CONTAINERNAME MNTNS_ID            PID COMM        FILENAME
 mycontainer           4026536181       119341 runc:[2:IN… /proc/self/fd
 mycontainer           4026536181       119341 sh          /etc/ld.so.cache
@@ -476,7 +476,7 @@ events by container name.
 The following command doesn't show any event as there is no container with the specified name:
 
 ```bash
-$ sudo -E ig run mygadget:latest -c non_existing_container --verify-image=false
+$ sudo -E ig run mygadget:latest -c non_existing_container --public-keys=''
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME MNTNS_ID            PID COMM        FILENAME
 ```
@@ -573,7 +573,7 @@ Edit them, build and run the gadget again:
 $ sudo -E ig image build . -t mygadget --update-metadata -v
 ...
 
-$ sudo -E ig run mygadget:latest --verify-image=false
+$ sudo -E ig run mygadget:latest --public-keys=''
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERN…        PID COMM       FILENAME                                       UID       GID
 ```
