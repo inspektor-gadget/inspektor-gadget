@@ -2050,7 +2050,7 @@ jobs:
       id: go
     - name: Build ig distributions packages
       run: |
-        go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+        go install github.com/goreleaser/nfpm/v2/cmd/nfpm@d33a9233bb7acf04621b78114114476196d7977 # v2.38.0
 
         mkdir ig_packages
         for ig_archive in ig-*-*-tar-gz/ig-*-*.tar.gz; do
