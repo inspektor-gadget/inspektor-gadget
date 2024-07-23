@@ -73,8 +73,9 @@ type execsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopProgramSpecs struct {
-	IgExecveE *ebpf.ProgramSpec `ebpf:"ig_execve_e"`
-	IgExecveX *ebpf.ProgramSpec `ebpf:"ig_execve_x"`
+	IgExecveE   *ebpf.ProgramSpec `ebpf:"ig_execve_e"`
+	IgExecveX   *ebpf.ProgramSpec `ebpf:"ig_execve_x"`
+	IgSchedExec *ebpf.ProgramSpec `ebpf:"ig_sched_exec"`
 }
 
 // execsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -84,7 +85,6 @@ type execsnoopMapSpecs struct {
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	Execs                *ebpf.MapSpec `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
-	IgPidByTgid          *ebpf.MapSpec `ebpf:"ig_pid_by_tgid"`
 }
 
 // execsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -109,7 +109,6 @@ type execsnoopMaps struct {
 	Events               *ebpf.Map `ebpf:"events"`
 	Execs                *ebpf.Map `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
-	IgPidByTgid          *ebpf.Map `ebpf:"ig_pid_by_tgid"`
 }
 
 func (m *execsnoopMaps) Close() error {
@@ -117,7 +116,6 @@ func (m *execsnoopMaps) Close() error {
 		m.Events,
 		m.Execs,
 		m.GadgetMntnsFilterMap,
-		m.IgPidByTgid,
 	)
 }
 
@@ -125,14 +123,16 @@ func (m *execsnoopMaps) Close() error {
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopPrograms struct {
-	IgExecveE *ebpf.Program `ebpf:"ig_execve_e"`
-	IgExecveX *ebpf.Program `ebpf:"ig_execve_x"`
+	IgExecveE   *ebpf.Program `ebpf:"ig_execve_e"`
+	IgExecveX   *ebpf.Program `ebpf:"ig_execve_x"`
+	IgSchedExec *ebpf.Program `ebpf:"ig_sched_exec"`
 }
 
 func (p *execsnoopPrograms) Close() error {
 	return _ExecsnoopClose(
 		p.IgExecveE,
 		p.IgExecveX,
+		p.IgSchedExec,
 	)
 }
 

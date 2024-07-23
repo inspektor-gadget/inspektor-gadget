@@ -85,10 +85,12 @@ type capabilitiesSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesProgramSpecs struct {
-	IgCapSysEnter *ebpf.ProgramSpec `ebpf:"ig_cap_sys_enter"`
-	IgCapSysExit  *ebpf.ProgramSpec `ebpf:"ig_cap_sys_exit"`
-	IgTraceCapE   *ebpf.ProgramSpec `ebpf:"ig_trace_cap_e"`
-	IgTraceCapX   *ebpf.ProgramSpec `ebpf:"ig_trace_cap_x"`
+	IgCapSchedExec *ebpf.ProgramSpec `ebpf:"ig_cap_sched_exec"`
+	IgCapSchedExit *ebpf.ProgramSpec `ebpf:"ig_cap_sched_exit"`
+	IgCapSysEnter  *ebpf.ProgramSpec `ebpf:"ig_cap_sys_enter"`
+	IgCapSysExit   *ebpf.ProgramSpec `ebpf:"ig_cap_sys_exit"`
+	IgTraceCapE    *ebpf.ProgramSpec `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX    *ebpf.ProgramSpec `ebpf:"ig_trace_cap_x"`
 }
 
 // capabilitiesMapSpecs contains maps before they are loaded into the kernel.
@@ -142,14 +144,18 @@ func (m *capabilitiesMaps) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesPrograms struct {
-	IgCapSysEnter *ebpf.Program `ebpf:"ig_cap_sys_enter"`
-	IgCapSysExit  *ebpf.Program `ebpf:"ig_cap_sys_exit"`
-	IgTraceCapE   *ebpf.Program `ebpf:"ig_trace_cap_e"`
-	IgTraceCapX   *ebpf.Program `ebpf:"ig_trace_cap_x"`
+	IgCapSchedExec *ebpf.Program `ebpf:"ig_cap_sched_exec"`
+	IgCapSchedExit *ebpf.Program `ebpf:"ig_cap_sched_exit"`
+	IgCapSysEnter  *ebpf.Program `ebpf:"ig_cap_sys_enter"`
+	IgCapSysExit   *ebpf.Program `ebpf:"ig_cap_sys_exit"`
+	IgTraceCapE    *ebpf.Program `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX    *ebpf.Program `ebpf:"ig_trace_cap_x"`
 }
 
 func (p *capabilitiesPrograms) Close() error {
 	return _CapabilitiesClose(
+		p.IgCapSchedExec,
+		p.IgCapSchedExit,
 		p.IgCapSysEnter,
 		p.IgCapSysExit,
 		p.IgTraceCapE,

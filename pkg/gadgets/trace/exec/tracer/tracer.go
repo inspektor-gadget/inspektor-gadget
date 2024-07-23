@@ -88,10 +88,11 @@ type Tracer struct {
 	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
 
-	objs      execsnoopObjects
-	enterLink link.Link
-	exitLink  link.Link
-	reader    *perf.Reader
+	objs          execsnoopObjects
+	enterLink     link.Link
+	schedExecLink link.Link
+	exitLink      link.Link
+	reader        *perf.Reader
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
@@ -121,6 +122,7 @@ func (t *Tracer) Stop() {
 
 func (t *Tracer) close() {
 	t.enterLink = gadgets.CloseLink(t.enterLink)
+	t.schedExecLink = gadgets.CloseLink(t.schedExecLink)
 	t.exitLink = gadgets.CloseLink(t.exitLink)
 
 	if t.reader != nil {
@@ -154,6 +156,11 @@ func (t *Tracer) install() error {
 	t.enterLink, err = link.Tracepoint("syscalls", "sys_enter_execve", t.objs.IgExecveE, nil)
 	if err != nil {
 		return fmt.Errorf("attaching enter tracepoint: %w", err)
+	}
+
+	t.schedExecLink, err = link.Tracepoint("sched", "sched_process_exec", t.objs.IgSchedExec, nil)
+	if err != nil {
+		return fmt.Errorf("attaching sched_process_exec tracepoint: %w", err)
 	}
 
 	t.exitLink, err = link.Tracepoint("syscalls", "sys_exit_execve", t.objs.IgExecveX, nil)
