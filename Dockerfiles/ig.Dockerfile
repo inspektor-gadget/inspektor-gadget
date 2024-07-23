@@ -1,5 +1,5 @@
-ARG BUILDER_IMAGE=golang:1.22
-ARG BASE_IMAGE=gcr.io/distroless/static-debian11
+ARG BUILDER_IMAGE=golang:1.22@sha256:829eff99a4b2abffe68f6a3847337bf6455d69d17e49ec1a97dac78834754bd6
+ARG BASE_IMAGE=gcr.io/distroless/static-debian11:latest@sha256:1dbe426d60caed5d19597532a2d74c8056cd7b1674042b88f7328690b5ead8ed
 
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
 
