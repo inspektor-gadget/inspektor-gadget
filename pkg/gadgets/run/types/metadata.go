@@ -36,6 +36,9 @@ const (
 	// Prefix used to mark snapshotters structs
 	snapshottersPrefix = "gadget_snapshotter_"
 
+	// Prefix used to mark mapIters info
+	mapIterInfoPrefix = "gadget_mapiter_"
+
 	// Prefix used to mark eBPF params
 	paramPrefix = "gadget_param_"
 )
@@ -124,6 +127,10 @@ func Populate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 		return fmt.Errorf("handling tracers: %w", err)
 	}
 
+	if err := populateMapIters(m, spec); err != nil {
+		return fmt.Errorf("handling mapIters: %w", err)
+	}
+
 	if err := populateSnapshotters(m, spec); err != nil {
 		return fmt.Errorf("handling snapshotters: %w", err)
 	}
@@ -186,6 +193,70 @@ func validateTracerMap(tracerMap *ebpf.MapSpec) error {
 	if tracerMap.Type != ebpf.RingBuf && tracerMap.Type != ebpf.PerfEventArray {
 		return fmt.Errorf("map %q has a wrong type, expected: ringbuf or perf event array, got: %s",
 			tracerMap.Name, tracerMap.Type)
+	}
+	return nil
+}
+
+func populateMapIters(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
+	mapItersInfo, err := getMapIterInfo(spec)
+	if err != nil {
+		return err
+	}
+
+	for _, mapIterInfo := range mapItersInfo {
+		iterMap, ok := spec.Maps[mapIterInfo.mapName]
+		if !ok {
+			return fmt.Errorf("map %q not found in eBPF object", mapIterInfo.mapName)
+		}
+
+		if err := validateMapToIter(iterMap); err != nil {
+			return fmt.Errorf("mapIter map is invalid: %w", err)
+		}
+
+		keyStruct, ok := iterMap.Key.(*btf.Struct)
+		if !ok {
+			return fmt.Errorf("map %q key is not a struct", mapIterInfo.mapName)
+		}
+
+		valStruct, ok := iterMap.Value.(*btf.Struct)
+		if !ok {
+			return fmt.Errorf("map %q value is not a struct", mapIterInfo.mapName)
+		}
+
+		if iterMap.KeySize != keyStruct.Size || iterMap.ValueSize != valStruct.Size {
+			return fmt.Errorf("key/value sizes of map %q does not match size of structs", mapIterInfo.name)
+		}
+
+		if _, found := m.DataSources[mapIterInfo.name]; !found {
+			log.Debugf("Adding datasource %q for mapIter with map %q, key %q and value %q",
+				mapIterInfo.name, iterMap.Name, keyStruct.Name, valStruct.Name)
+
+			m.DataSources[mapIterInfo.name] = &metadatav1.DataSource{
+				Fields: make(map[string]metadatav1.Field),
+			}
+		}
+
+		ds := m.DataSources[mapIterInfo.name]
+
+		if err := populateDatasourceFields(ds, keyStruct); err != nil {
+			return fmt.Errorf("populating struct: %w", err)
+		}
+
+		if err := populateDatasourceFields(ds, valStruct); err != nil {
+			return fmt.Errorf("populating struct: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// validateMapToIter only checks the map type. It does not check the map name
+// and type because that information is not available in the map definition for
+// perf event arrays and ring buffers.
+func validateMapToIter(mapToIter *ebpf.MapSpec) error {
+	if mapToIter.Type != ebpf.Hash {
+		return fmt.Errorf("map %q has a wrong type, expected: hash, got: %s",
+			mapToIter.Name, mapToIter.Type)
 	}
 	return nil
 }
@@ -348,6 +419,35 @@ func getTracerInfo(spec *ebpf.CollectionSpec) ([]tracerInfo, error) {
 			name:       parts[0],
 			mapName:    parts[1],
 			structName: parts[2],
+		})
+	}
+
+	return ret, nil
+}
+
+type mapIterInfo struct {
+	name    string
+	mapName string
+}
+
+// getMapIterInfo returns the mapIter info generated with GADGET_MAPITER().
+func getMapIterInfo(spec *ebpf.CollectionSpec) ([]mapIterInfo, error) {
+	mapItersInfo, err := GetGadgetIdentByPrefix(spec, mapIterInfoPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]mapIterInfo, 0, len(mapItersInfo))
+
+	for _, info := range mapItersInfo {
+		parts := strings.Split(info, "___")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid mapIter info: %q", mapItersInfo[0])
+		}
+
+		ret = append(ret, mapIterInfo{
+			name:    parts[0],
+			mapName: parts[1],
 		})
 	}
 
