@@ -4,7 +4,7 @@ ARG BUILDER_IMAGE=golang:1.22-bullseye
 ARG BASE_IMAGE=gcr.io/distroless/static-debian12
 
 # Prepare and build gadget artifacts in a container
-FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
+FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
 
 ARG TARGETARCH
 ARG BUILDARCH

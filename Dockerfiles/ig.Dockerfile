@@ -1,7 +1,7 @@
 ARG BUILDER_IMAGE=golang:1.22
 ARG BASE_IMAGE=gcr.io/distroless/static-debian11
 
-FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
+FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
 
 ARG TARGETOS
 ARG TARGETARCH

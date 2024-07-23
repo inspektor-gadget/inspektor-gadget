@@ -329,7 +329,7 @@ In order to add `ig` in your own container image, you can take example on the fo
 # In production, you should use a specific version of ig instead of latest:
 # --build-arg BASE_IMAGE=ghcr.io/inspektor-gadget/ig:v0.18.1
 ARG BASE_IMAGE=ghcr.io/inspektor-gadget/ig:latest
-FROM ${BASE_IMAGE} as ig
+FROM ${BASE_IMAGE} AS ig
 
 # Your own image
 FROM alpine:3.17

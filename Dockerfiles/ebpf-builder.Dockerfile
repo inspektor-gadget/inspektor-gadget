@@ -6,7 +6,7 @@ ARG TINYGO_VERSION=0.31.2
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM golang:1.22 as builder
+FROM golang:1.22 AS builder
 ARG BPFTOOL_VERSION
 ARG LIBBPF_VERSION
 
