@@ -5,6 +5,8 @@ on:
   schedule:
     - cron: "0 */3 * * *"
 
+permissions: read-all
+
 jobs:
   eks-cleanup:
     runs-on: ubuntu-latest
