@@ -48,6 +48,7 @@ type GadgetContext interface {
 	SetParams([]*api.Param)
 	SetMetadata([]byte)
 	OrasTarget() oras.ReadOnlyTarget
+	IsRemoteCall() bool
 }
 
 type (

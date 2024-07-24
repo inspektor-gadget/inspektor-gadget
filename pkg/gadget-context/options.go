@@ -15,6 +15,7 @@
 package gadgetcontext
 
 import (
+	"context"
 	"slices"
 	"time"
 
@@ -22,6 +23,12 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+)
+
+type contextKey string
+
+const (
+	remoteKey contextKey = "gadgetRemote"
 )
 
 type Option func(gadgetCtx *GadgetContext)
@@ -47,5 +54,11 @@ func WithTimeout(timeout time.Duration) Option {
 func WithOrasReadonlyTarget(ociStore oras.ReadOnlyTarget) Option {
 	return func(c *GadgetContext) {
 		c.orasTarget = ociStore
+	}
+}
+
+func WithAsRemoteCall(val bool) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.ctx = context.WithValue(gadgetCtx.ctx, remoteKey, val)
 	}
 }
