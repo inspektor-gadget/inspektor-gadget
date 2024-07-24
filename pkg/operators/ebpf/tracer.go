@@ -33,8 +33,9 @@ type Tracer struct {
 	mapName    string
 	structName string
 
-	ds       datasource.DataSource
-	accessor datasource.FieldAccessor
+	ds         datasource.DataSource
+	accessor   datasource.FieldAccessor
+	vlfieldAcc datasource.FieldAccessor
 
 	mapType       ebpf.MapType
 	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array
@@ -133,12 +134,22 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 			lastSlowLen = len(rec.RawSample)
 			sample = slowBuf
 		}
-		err = t.accessor.Set(pSingle, sample)
+		err = t.accessor.Set(pSingle, sample[:t.eventSize])
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
 			t.ds.Release(pSingle)
 			continue
 		}
+
+		if t.vlfieldAcc != nil {
+			err = t.vlfieldAcc.Set(pSingle, sample[t.eventSize:])
+			if err != nil {
+				gadgetCtx.Logger().Warnf("error setting variable length buffer: %v", err)
+				t.ds.Release(pSingle)
+				continue
+			}
+		}
+
 		err = t.ds.EmitAndRelease(pSingle)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
@@ -174,7 +185,16 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 			lastSlowLen = sampleLen
 			sample = slowBuf
 		} else if uint32(sampleLen) > t.eventSize {
-			// event has trailing garbage, remove it
+			if t.vlfieldAcc != nil {
+				err = t.vlfieldAcc.Set(pSingle, sample[t.eventSize:])
+				if err != nil {
+					gadgetCtx.Logger().Warnf("error setting variable length buffer: %v", err)
+					t.ds.Release(pSingle)
+					continue
+				}
+			}
+
+			// trim event only to the size of the struct
 			sample = sample[:t.eventSize]
 		}
 		err = t.accessor.Set(pSingle, sample)

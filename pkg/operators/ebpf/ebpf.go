@@ -347,7 +347,9 @@ func (i *ebpfInstance) addDataSource(
 	}
 	staticFields := make([]datasource.StaticField, 0, len(fields))
 	for _, field := range fields {
-		staticFields = append(staticFields, field)
+		if field.Size != 0 {
+			staticFields = append(staticFields, field)
+		}
 	}
 	accessor, err := ds.AddStaticFields(size, staticFields)
 	if err != nil {
@@ -359,12 +361,33 @@ func (i *ebpfInstance) addDataSource(
 func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 	// register datasources
 	for name, m := range i.tracers {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
+		fields := i.structs[m.structName].Fields
+		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.structName].Size, fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
 		m.accessor = accessor
 		m.ds = ds
+
+		// look for zero-length field
+		for _, field := range fields {
+			if field.Size == 0 {
+				ann := field.Annotations
+				if ann == nil {
+					ann = make(map[string]string)
+				}
+
+				vlfieldacc, err := ds.AddField(field.name, api.Kind_Bytes,
+					datasource.WithTags(field.Tags...),
+					datasource.WithAnnotations(ann),
+				)
+				if err != nil {
+					return fmt.Errorf("adding zero length field: %w", err)
+				}
+				m.vlfieldAcc = vlfieldacc
+			}
+		}
+
 	}
 	for name, m := range i.snapshotters {
 		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)

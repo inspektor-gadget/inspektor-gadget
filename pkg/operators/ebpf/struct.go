@@ -123,6 +123,11 @@ func getFieldKind(typ reflect.Type, tags []string) api.Kind {
 		if typ.Elem().Kind() == reflect.Int8 && slices.Contains(tags, "type:char") {
 			return api.Kind_CString
 		}
+
+		// Support zero length arrays
+		if typ.Len() == 0 {
+			return api.Kind_Bytes
+		}
 	}
 
 	return api.Kind_Invalid
@@ -178,8 +183,8 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	fsize := uint32(refType.Size())
 	fieldType := refType.String()
 
-	if fsize == 0 {
-		i.logger.Debugf(" skipping field %q (%T)", prefix+member.Name, member.Type)
+	if fsize == 0 && refType.Kind() != reflect.Array {
+		i.logger.Infof(" skipping field %q (%T)", prefix+member.Name, member.Type)
 		return
 	}
 
