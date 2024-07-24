@@ -108,8 +108,7 @@ func TestSnapshotProcess(t *testing.T) {
 				utils.NormalizeInt(&e.Ppid)
 			}
 
-			// TODO: Use match.JSONSingleArrayMode once the combiner operator is implemented
-			match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
 		},
 	))
 
