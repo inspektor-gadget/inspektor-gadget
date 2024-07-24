@@ -7,7 +7,7 @@
 # between size and tools available in the image.
 
 ARG BUILDER_IMAGE=golang:1.22-bullseye@sha256:11ff2c5de8044d8d749cc684f6f3cdfbc9b2755960a62d4948b3483dc090e7aa
-ARG BASE_IMAGE=alpine:3.18@ sha256:1875c923b73448b558132e7d4a44b815d078779ed7a73f76209c6372de95ea8d
+ARG BASE_IMAGE=alpine:3.18@sha256:1875c923b73448b558132e7d4a44b815d078779ed7a73f76209c6372de95ea8d
 
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
 
