@@ -66,10 +66,6 @@ enum pkt_type_t : __u8 {
 	KERNEL,
 };
 
-// TODO: what's a reasonable value for this?
-// Or can we remove this altogether?
-#define MAX_PACKET (1024 * 9) // 9KB
-
 #define TASK_COMM_LEN 16
 
 struct event_t {
@@ -94,36 +90,8 @@ struct event_t {
 	__u16 dns_off; // DNS offset in the packet
 	__u32 data_len;
 
-	// Only on this structure
-	__u8 data[MAX_PACKET];
-};
-
-// TODO: We need this header structure as the packet itself is appended by
-// bpf_perf_event_output(). Hence the event we send over the perf ring buffer is
-// only the header without the packet. We can use the full structure above as
-// it exceeds the stack limit of 512 bytes in bpf.
-// TODO: We'll need to find a clearer way to implement this
-struct event_header_t {
-	gadget_timestamp timestamp_raw;
-
-	struct gadget_l4endpoint_t src;
-	struct gadget_l4endpoint_t dst;
-
-	gadget_mntns_id mntns_id;
-	gadget_netns_id netns_id;
-
-	char comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
-
-	enum pkt_type_t pkt_type_raw;
-	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
-
-	__u16 dns_off; // DNS offset in the packet
-	__u32 data_len;
+	// Zero-length array to indicate where the packet starts.
+	__u8 data[0];
 };
 
 struct {
@@ -190,7 +158,7 @@ struct {
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
-	struct event_header_t event;
+	struct event_t event;
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
 	int i;
