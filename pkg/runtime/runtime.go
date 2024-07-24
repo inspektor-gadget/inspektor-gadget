@@ -55,6 +55,7 @@ type GadgetContext interface {
 	SetParams([]*api.Param)
 	DataOperators() []operators.DataOperator
 	OrasTarget() oras.ReadOnlyTarget
+	IsRemoteCall() bool
 
 	Run(paramValues api.ParamValues) error
 	PrepareGadgetInfo(paramValues api.ParamValues) error

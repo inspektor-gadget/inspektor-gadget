@@ -189,6 +189,18 @@ func (c *GadgetContext) DataOperators() []operators.DataOperator {
 	return slices.Clone(c.dataOperators)
 }
 
+func (c *GadgetContext) IsRemoteCall() bool {
+	val := c.ctx.Value(remoteKey)
+	if val == nil {
+		return false
+	}
+	bVal, ok := val.(bool)
+	if !ok {
+		return false
+	}
+	return bVal
+}
+
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
