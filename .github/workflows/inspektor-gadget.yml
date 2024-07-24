@@ -1368,8 +1368,10 @@ jobs:
           tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
           sudo mv ig /usr/bin/ig
       - name: Install Cosign
+        if: needs.check-secrets.outputs.cosign == 'true'
         uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
       - name: Verify eBPF builder image
+        if: needs.check-secrets.outputs.cosign == 'true'
         run: |
           cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
       - name: Build gadgets
