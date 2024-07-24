@@ -62,7 +62,7 @@ func (o *ociHandler) GlobalParams() api.Params {
 		{
 			Key:          publicKeys,
 			Title:        "Public keys",
-			Description:  "Public keys used to verify the gadget",
+			Description:  "Public keys used to verify the gadget. If empty, verification will not occur.",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
 		},
