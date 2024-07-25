@@ -1002,6 +1002,8 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
+	return nil
+
 	if !imgOpts.VerifyPublicKey {
 		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding option")
 

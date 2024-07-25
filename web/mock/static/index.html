@@ -1,0 +1,60 @@
+<!--
+  ~ Copyright 2024 The Inspektor Gadget authors
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <script src="/static/wasm.js"></script>
+    <script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("/static/main.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+
+            // create a new WebSocket to K8s Portforward with IG's gRPC port as target
+            const ws = new WebSocket('/grpc');
+            const ig = wrapWebSocket(ws, {});
+            setTimeout(() => {
+                // Get information about a specific gadget
+                ig.getGadgetInfo({
+                    version: 1,
+                    imageName: 'trace_exec'
+                }, (info) => {
+                    console.info(info);
+                }, (err) => {
+                    console.error(err);
+                })
+
+                // Run a gadget
+                ig.runGadget({
+                    version: 1,
+                    imageName: 'trace_exec',
+                    paramValues: {
+                        "operator.LocalManager.host": "true"
+                    }
+                }, {
+                    onGadgetInfo: (gi) => { console.log('gadgetInfo', gi); },
+                    onData: (dsID, data) => { console.log('data', dsID, data) }
+                }, (err) => {
+                    console.error(err);
+                })
+            }, 1000);
+        });
+    </script>
+    <title>Inspektor Gadget Mock Server</title>
+</head>
+<body></body>
+</html>
