@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cilium/ebpf v0.15.0
+	github.com/cilium/ebpf v0.16.0
 	github.com/containerd/containerd v1.7.20
 	github.com/containerd/nri v0.6.1
 	github.com/containers/common v0.59.2
@@ -144,8 +144,8 @@ require (
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mdlayher/netlink v1.6.0 // indirect
-	github.com/mdlayher/socket v0.1.1 // indirect
+	github.com/mdlayher/netlink v1.7.2 // indirect
+	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
