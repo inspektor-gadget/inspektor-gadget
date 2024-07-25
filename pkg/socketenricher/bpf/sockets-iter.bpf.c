@@ -9,6 +9,7 @@
 
 #include <bpf/bpf_helpers.h>
 
+#include <gadget/filesystem.h>
 #include <gadget/sockets-map.h>
 #include "socket-enricher-helpers.h"
 
@@ -16,6 +17,10 @@
 #define AF_INET6 10 /* IP version 6 */
 
 const volatile __u64 socket_file_ops_addr = 0;
+
+static const struct sockets_value empty_sockets_value = {};
+// The iterator is called one time, we don't need BPF per-cpu array map.
+static struct sockets_value socket_value = {};
 
 static __always_inline void insert_socket_from_iter(struct sock *sock,
 						    struct task_struct *task)
@@ -25,10 +30,13 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 	};
 	prepare_socket_key(&socket_key, sock);
 
-	struct sockets_value socket_value = {
-		0,
-	};
+	bpf_probe_read_kernel(&socket_value, sizeof(socket_value),
+			      &empty_sockets_value);
+
 	// use given task
+	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+	struct fs_struct *fs = BPF_CORE_READ(task, fs);
+	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 	socket_value.pid_tgid = ((u64)task->tgid) << 32 | task->pid;
 	// The VFS code might temporary substitute task->cred by other creds during overlayfs
 	// copyup. In this case, we want the real creds of the process, not the creds temporarily
@@ -39,6 +47,19 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 	__builtin_memcpy(&socket_value.task, task->comm,
 			 sizeof(socket_value.task));
 	socket_value.mntns = (u64)task->nsproxy->mnt_ns->ns.inum;
+
+	if (parent != NULL) {
+		bpf_probe_read_kernel(&socket_value.ptask,
+				      sizeof(socket_value.ptask), parent->comm);
+		socket_value.ppid = (__u32)BPF_CORE_READ(parent, tgid);
+	}
+	char *cwd = get_path_str(&fs->pwd);
+	bpf_probe_read_kernel_str(socket_value.cwd, sizeof(socket_value.cwd),
+				  cwd);
+	char *exepath = get_path_str(&exe_file->f_path);
+	bpf_probe_read_kernel_str(socket_value.exepath,
+				  sizeof(socket_value.exepath), exepath);
+
 	socket_value.sock = (__u64)sock;
 	socket_value.ipv6only =
 		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
