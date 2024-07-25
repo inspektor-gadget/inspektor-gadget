@@ -1434,18 +1434,10 @@ jobs:
       shell: bash
       run: |
           set -o pipefail
-
-          # This is needed by dependabot, as the gadgets would not be signed in
-          # this case as the bot does not have access to the secrets.
-          # So let's deactivate the verifying.
-          if [ ${{ needs.check-secrets.outputs.cosign }} == 'false' ]; then
-            public_keys_flag='--public-keys='
-          fi
-
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-          IG_FLAGS="${public_keys_flag}" \
+          IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
           IG_RUNTIME=${{ matrix.runtime }} \
           -C gadgets/ test-local -o build |& tee gadgets-tests.log & wait $!
     - name: Prepare and publish test reports
@@ -1510,19 +1502,8 @@ jobs:
       shell: bash
       run: |
         set -o pipefail
-
-        # This is needed by dependabot, as the gadgets would not be signed in
-        # this case as the bot does not have access to the secrets.
-        # So let's deactivate the verifying.
-        if [ "${{ needs.check-secrets.outputs.cosign }}" == 'false' ]; then
-          gadgets_public_keys_flag='--gadgets-public-keys=""'
-          echo "Public key verification deactivated"
-        fi
-
-        echo "gadgets_public_keys_flag: ${gadgets_public_keys_flag}"
-
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        ./kubectl-gadget deploy ${gadgets_public_keys_flag} --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        ./kubectl-gadget deploy --verify-gadgets=${{ needs.check-secrets.outputs.cosign }} --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make \
         GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
         GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \

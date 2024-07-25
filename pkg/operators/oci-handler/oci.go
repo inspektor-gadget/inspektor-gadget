@@ -39,6 +39,7 @@ const (
 	insecureParam         = "insecure"
 	pullParam             = "pull"
 	pullSecret            = "pull-secret"
+	verifyImage           = "verify-image"
 	publicKeys            = "public-keys"
 	allowedDigests        = "allowed-digests"
 	allowedRegistries     = "allowed-registries"
@@ -60,9 +61,16 @@ func (o *ociHandler) Init(params *params.Params) error {
 func (o *ociHandler) GlobalParams() api.Params {
 	return api.Params{
 		{
+			Key:          verifyImage,
+			Title:        "Verify image",
+			Description:  "Verify image using the provided public key",
+			DefaultValue: "true",
+			TypeHint:     api.TypeBool,
+		},
+		{
 			Key:          publicKeys,
 			Title:        "Public keys",
-			Description:  "Public keys used to verify the gadget. If empty, verification will not occur.",
+			Description:  "Public keys used to verify the gadgets",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
 		},
@@ -198,7 +206,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
-			PublicKeys: o.ociParams.Get(publicKeys).AsStringSlice(),
+			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
+			PublicKeys:      o.ociParams.Get(publicKeys).AsStringSlice(),
 		},
 		AllowedDigestsOptions: oci.AllowedDigestsOptions{
 			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),

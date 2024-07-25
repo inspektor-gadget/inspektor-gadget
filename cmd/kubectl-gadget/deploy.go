@@ -106,6 +106,7 @@ var (
 	verifyImage         bool
 	publicKey           string
 	strLevels           []string
+	verifyGadgets       bool
 	gadgetsPublicKeys   string
 )
 
@@ -233,12 +234,15 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&publicKey,
 		"public-key", "", resources.InspektorGadgetPublicKey, "Public key used to verify the container image")
+	deployCmd.PersistentFlags().BoolVar(
+		&verifyGadgets,
+		"verify-gadgets", true, "Verify gadgets using the provided public keys")
 	// WARNING For now, use StringVar() instead of StringSliceVar() as only the
 	// first line of the file will be taken when used with
 	// --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)"
 	deployCmd.PersistentFlags().StringVar(
 		&gadgetsPublicKeys,
-		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets. If empty, verification will not occur.")
+		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -736,6 +740,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("%s.%s not found in config.yaml", gadgettracermanagerconfig.Operator, gadgettracermanagerconfig.Oci)
 			}
 
+			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
 			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
 
 			data, err := yaml.Marshal(cfg)

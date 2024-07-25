@@ -196,8 +196,8 @@ $ export INSPEKTOR_GADGET_OPERATOR_OCI_VERIFY_IMAGE=false
 $ sudo ig run trace_open
 INFO[0000] Experimental features enabled
 WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
-WARN[0000] image signature verification is disabled due to using corresponding CLI options
-WARN[0000] image signature verification is disabled due to using corresponding CLI options
+WARN[0000] image signature verification is disabled due to using corresponding option
+WARN[0000] image signature verification is disabled due to using corresponding option
 ...
 ```
 

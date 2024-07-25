@@ -67,9 +67,8 @@ func TestRunInsecure(t *testing.T) {
 	}
 
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
-	// As the image was not signed, we need to set --public-keys="" to deactivate
-	// image signature verification.
-	cmd := fmt.Sprintf("ig run --public-keys='' %s:5000/trace_open:%s -o json --insecure --timeout 2", registryIP, *gadgetTag)
+	// As the image was not signed, we need to set --verify-image=false.
+	cmd := fmt.Sprintf("ig run --verify-image=false %s:5000/trace_open:%s -o json --insecure --timeout 2", registryIP, *gadgetTag)
 
 	// run the gadget without verifying its output as we only need to check if it runs
 	traceOpenCmd := &Command{
