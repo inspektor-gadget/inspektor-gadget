@@ -215,11 +215,11 @@ RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL…
 ...
 ```
 
-You can also skip verifying image-based gadget signature with `--public-keys=''`.
+You can also skip verifying image-based gadget signature with `--public-keys=`.
 Note that we do not recommend using this:
 
 ```bash
-$ sudo -E ig run --public-keys='' ghcr.io/your-repo/gadget/trace_open
+$ sudo -E ig run --public-keys= ghcr.io/your-repo/gadget/trace_open
 ...
 WARN[0000] image signature verification is disabled because no public keys were provided
 WARN[0000] image signature verification is disabled because no public keys were provided
@@ -269,7 +269,7 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0  
 You can also skip verification at deploy time, note that we do not recommend doing so:
 
 ```bash
-$ kubectl gadget deploy --gadgets-public-keys=''
+$ kubectl gadget deploy --gadgets-public-keys=
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A

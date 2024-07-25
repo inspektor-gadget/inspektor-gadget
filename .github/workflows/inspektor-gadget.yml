@@ -1439,7 +1439,7 @@ jobs:
           # this case as the bot does not have access to the secrets.
           # So let's deactivate the verifying.
           if [ ${{ needs.check-secrets.outputs.cosign }} == 'false' ]; then
-            public_keys_flag='--public-keys=""'
+            public_keys_flag='--public-keys='
           fi
 
           make \
@@ -1515,7 +1515,7 @@ jobs:
         # this case as the bot does not have access to the secrets.
         # So let's deactivate the verifying.
         if [ "${{ needs.check-secrets.outputs.cosign }}" == 'false' ]; then
-          gadgets_public_keys_flag='--gadgets-public-keys=""'
+          gadgets_public_keys_flag='--gadgets-public-keys='
         fi
 
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz

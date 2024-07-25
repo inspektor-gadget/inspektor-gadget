@@ -345,7 +345,7 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || \
 		(echo "Image $(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG) was not correctly loaded into Minikube" && false)
 	@echo
-	./kubectl-gadget deploy $(if $(findstring false,$(VERIFY_GADGETS)),--gadgets-public-keys='') --liveness-probe=$(LIVENESS_PROBE) \
+	./kubectl-gadget deploy $(if $(findstring false,$(VERIFY_GADGETS)),--gadgets-public-keys=) --liveness-probe=$(LIVENESS_PROBE) \
 		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
