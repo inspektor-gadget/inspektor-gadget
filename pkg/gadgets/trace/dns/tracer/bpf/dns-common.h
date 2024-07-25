@@ -2,6 +2,7 @@
 #define GADGET_DNS_COMMON_H
 
 #define TASK_COMM_LEN 16
+#define MAX_STRING_SIZE 4096
 
 struct event_t {
 	// Keep netns at the top: networktracer depends on it
@@ -11,9 +12,11 @@ struct event_t {
 	__u64 mount_ns_id;
 	__u32 pid;
 	__u32 tid;
+	__u32 ppid;
 	__u32 uid;
 	__u32 gid;
-	__u8 task[TASK_COMM_LEN];
+	__u8 comm[TASK_COMM_LEN];
+	__u8 pcomm[TASK_COMM_LEN];
 
 	union {
 		__u8 saddr_v6[16];
@@ -33,6 +36,9 @@ struct event_t {
 
 	unsigned char pkt_type;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
+
+	__u8 cwd[MAX_STRING_SIZE];
+	__u8 exepath[MAX_STRING_SIZE];
 };
 
 #endif

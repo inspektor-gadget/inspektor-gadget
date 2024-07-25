@@ -35,9 +35,13 @@ type Event struct {
 	eventtypes.WithMountNsID
 	eventtypes.WithNetNsID
 
-	Pid  uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Tid  uint32 `json:"tid,omitempty" column:"tid,template:pid"`
-	Comm string `json:"comm,omitempty" column:"comm,template:comm"`
+	Pid     uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid     uint32 `json:"tid,omitempty" column:"tid,template:pid"`
+	Ppid    uint32 `json:"ppid,omitempty" column:"ppid,template:pid"`
+	Comm    string `json:"comm,omitempty" column:"comm,template:comm"`
+	Pcomm   string `json:"pcomm,omitempty" column:"pcomm,template:comm"`
+	Cwd     string `json:"cwd,omitempty" column:"cwd,width:40"`
+	Exepath string `json:"exepath,omitempty" column:"exepath,width:40"`
 
 	Uid uint32 `json:"uid" column:"uid,template:uid,hide"`
 	Gid uint32 `json:"gid" column:"gid,template:gid,hide"`
