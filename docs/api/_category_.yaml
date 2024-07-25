@@ -1,0 +1,7 @@
+customProps:
+  description: 'APIs supported by Inspektor Gadget.'
+label: APIs
+link:
+  title: APIs
+  type: generated-index
+position: 31

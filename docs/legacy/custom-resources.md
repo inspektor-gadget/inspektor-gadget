@@ -8,7 +8,7 @@ description: >
 :::warning
 
 We are currently removing the Trace resource and using a [gRPC
-API](../reference/grpc.md) instead. Once done, the Trace resource will be
+API](../api/grpc.md) instead. Once done, the Trace resource will be
 deprecated.
 
 :::
