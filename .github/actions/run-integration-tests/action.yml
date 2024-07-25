@@ -52,7 +52,7 @@ runs:
         # this case as the bot does not have access to the secrets.
         # So let's deactivate the verifying.
         if [ "${{ inputs.gadget_verify_image }}" == 'false' ]; then
-          EXTRA_FLAGS="${EXTRA_FLAGS} --gadgets-public-keys=''"
+          EXTRA_FLAGS="${EXTRA_FLAGS} --gadgets-public-keys="
         fi
 
         ./kubectl-gadget deploy $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
