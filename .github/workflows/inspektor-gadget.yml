@@ -1515,8 +1515,11 @@ jobs:
         # this case as the bot does not have access to the secrets.
         # So let's deactivate the verifying.
         if [ "${{ needs.check-secrets.outputs.cosign }}" == 'false' ]; then
-          gadgets_public_keys_flag='--gadgets-public-keys='
+          gadgets_public_keys_flag='--gadgets-public-keys=""'
+          echo "Public key verification deactivated"
         fi
+
+        echo "gadgets_public_keys_flag: ${gadgets_public_keys_flag}"
 
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         ./kubectl-gadget deploy ${gadgets_public_keys_flag} --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
