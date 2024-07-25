@@ -126,14 +126,36 @@ You can specify the pull secret as part of configuration file to avoid specifyin
 
 ```yaml
 # ~/.ig/config.yaml
-...
 operator:
   oci:
     pull-secret: "my-pull-secret"
-...
 ```
 
 For more information about the configuration file, check the [configuration guide](#configuration-file).
+
+### Restricting gadget images (by registry or digest)
+
+This is possible to restrict the executed gadgets by using the `--allowed-digests` and `--allowed-regisitries`.
+By default, all gadgets digests and gadgets from all regisitries are allowed.
+You can specify these options only at deploy time:
+
+```bash
+$ kubectl gadget deploy --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)" --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:digest_of_your_gadget' --allowed-registries='ghcr.io/inspektor-gadget/gadget,ghcr.io/your-repo/gadget'
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run trace_exec
+K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNA… COMM            PID      TID PCOMM        PPID ARGS     K8S.NODE E… TIMESTAMP
+gadget           gadget-fdpxp     gadget           gadgettr…    131299   131299 runc       131281 /bin/ga… minikub…    2024-07-25T08:22:…
+gadget           gadget-fdpxp     gadget           gadgettr…    131298   131298 runc       131280 /bin/ga… minikub…    2024-07-25T08:22:…
+^C
+$ kubectl gadget run trace_open
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: image digest not allowed: "sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d" not in "sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, sha256:digest_of_your_gadget"
+$ kubectl gadget run ghcr./io/your-repo/gadget/your_gadget
+K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… TIMEST… PID     UID     GID     MNTNS_… ERR     FD      FLAGS   MODE    COMM   FNAME  K8S.N…
+gadget         gadget-8rcdz   gadget         500159… 134426  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+gadget         gadget-8rcdz   gadget         500159… 134427  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+^C
+```
 
 ## With `ig`
 
@@ -177,6 +199,27 @@ mycontainer3                                        122110  cat              0  
 mycontainer3                                        122110  cat              0        0        3         /lib/libresolv.so.2
 mycontainer3                                        122110  cat              0        0        3         /lib/libc.so.6
 mycontainer3                                        122110  cat              0        0        3         /dev/null
+```
+
+### Restricting gadget images (by registry or digest)
+
+We also offer this possibility with `ig` by using the same flags at run time:
+
+```bash
+$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
+minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
+^C
+$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_open
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+minikube-docker    kubelet         11713     11715         0         0  20 /sys/fs/cgroup/kubepods… --------…        2024-07-25T10:30:44…
+minikube-docker    kubelet         11713     11715         0         0  20 /proc/2136/fd            --------…        2024-07-25T10:30:44…
+^C
+$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_signal
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: image digest not allowed: "sha256:bd5acefb4372832ca30fe3814b6bace8141882ee8e20c661d82cb3c5a64bc48a" not in "sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d"
+$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' ghcr.io/your-repo/gadget/your-gadget
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget:latest not originating from allowed registries: ghcr.io/inspektor-gadget/gadget
 ```
 
 ## Environment Variables
