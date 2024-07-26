@@ -1,0 +1,8 @@
+label: Gadgets
+link:
+  slug: gadgets/
+  title: Gadgets
+  type: generated-index
+position: 30
+customProps:
+  description: "Documentation about the official gadgets"
