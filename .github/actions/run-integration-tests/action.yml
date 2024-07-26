@@ -47,15 +47,7 @@ runs:
           # Inspektor-Gadget container image is loaded into the cluster using "minikube image load" instead of pushing the container image to a registry.
           EXTRA_FLAGS='--image-pull-policy=Never'
         fi
-
-        # This is needed by dependabot, as the gadgets would not be signed in
-        # this case as the bot does not have access to the secrets.
-        # So let's deactivate the verifying.
-        if [ "${{ inputs.gadget_verify_image }}" == 'false' ]; then
-          EXTRA_FLAGS="${EXTRA_FLAGS} --gadgets-public-keys="
-        fi
-
-        ./kubectl-gadget deploy $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
+        ./kubectl-gadget deploy --verify-gadgets=${{ inputs.gadget_verify_image }} $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
     - name: Integration tests
       id: integration-tests
       shell: bash

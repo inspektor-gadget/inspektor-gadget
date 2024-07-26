@@ -39,7 +39,6 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
-	"github.com/hashicorp/go-multierror"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
@@ -61,7 +60,8 @@ type AuthOptions struct {
 }
 
 type VerifyOptions struct {
-	PublicKeys []string
+	VerifyPublicKey bool
+	PublicKeys      []string
 }
 
 type AllowedDigestsOptions struct {
@@ -784,7 +784,7 @@ func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error
 	}
 
 	verified := false
-	var errors error
+	var errs error
 	for _, publicKey := range imgOpts.PublicKeys {
 		verifier, err := newVerifier([]byte(publicKey))
 		if err != nil {
@@ -798,11 +798,11 @@ func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error
 			break
 		}
 
-		errors = multierror.Append(errors, err)
+		errs = errors.Join(errs, err)
 	}
 
 	if !verified {
-		return fmt.Errorf("the image was not signed by the provided keys: %w", errors)
+		return fmt.Errorf("the image was not signed by the provided keys: %w", errs)
 	}
 
 	// We should not read the payload before confirming it was signed, so let's
@@ -939,8 +939,8 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
-	if len(imgOpts.PublicKeys) == 0 {
-		imgOpts.Logger.Warnf("image signature verification is disabled because no public keys were provided")
+	if !imgOpts.VerifyPublicKey {
+		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding option")
 
 		return nil
 	}

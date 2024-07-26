@@ -29,6 +29,7 @@ data:
       podman-socketpath: /run/podman/podman.sock
       operator:
         oci:
+          verify-image: true
           public-keys:
             - |
               -----BEGIN PUBLIC KEY-----

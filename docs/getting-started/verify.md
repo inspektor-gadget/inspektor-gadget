@@ -215,14 +215,14 @@ RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL…
 ...
 ```
 
-You can also skip verifying image-based gadget signature with `--public-keys=`.
+
+You can also skip verifying image-based gadget signature with `--verify-image=false`.
 Note that we do not recommend using this:
 
 ```bash
-$ sudo -E ig run --public-keys= ghcr.io/your-repo/gadget/trace_open
-...
-WARN[0000] image signature verification is disabled because no public keys were provided
-WARN[0000] image signature verification is disabled because no public keys were provided
+$ sudo -E ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
+WARN[0000] image signature verification is disabled due to using corresponding option
+WARN[0000] image signature verification is disabled due to using corresponding option
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 
@@ -233,6 +233,8 @@ Compared to `ig`, you cannot specify information with regard to verification whe
 ```bash
 $ kubectl gadget run --public-keys="$(cat your-key.pub)" trace_exec
 Error: unknown flag: --public-keys
+$ kubectl gadget run --verify-image=false trace_exec
+Error: unknown flag: --verify-image
 ```
 
 Instead, all these information are set once at deploy time.
@@ -273,7 +275,7 @@ $ kubectl gadget deploy --gadgets-public-keys=
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A
-WARN[0001] minikube-docker      | image signature verification is disabled because no public keys were provided
+WARN[0001] minikube-docker      | image signature verification is disabled due to using corresponding option
 K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME          PID       PPID RE… COMM      ARGS      K8S.NODE  TIMESTAMP
 gadget              gadget-z55jq        gadget                   55376      55357   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
 gadget              gadget-z55jq        gadget                   55375      55358   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
