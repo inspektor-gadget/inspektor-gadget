@@ -53,11 +53,15 @@ func TestSnapshotSocket(t *testing.T) {
 
 	nodeName := GetPodNode(t, ns, "test-pod")
 
+	t.Log("Node name:", nodeName)
+
 	commands := []TestStep{
 		&Command{
 			Name: "RunSnapshotSocketGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ValidateOutput: func(t *testing.T, output string) {
+				t.Log("Output:", output)
+
 				expectedEntry := &snapshotsocketTypes.Event{
 					Event:    BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Protocol: "TCP",
@@ -68,6 +72,90 @@ func TestSnapshotSocket(t *testing.T) {
 							Kind:    eventtypes.EndpointKindRaw,
 						},
 						Port: 9090,
+					},
+					DstEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr:    "0.0.0.0",
+							Version: 4,
+							Kind:    eventtypes.EndpointKindRaw,
+						},
+						Port: 0,
+					},
+					Status: "LISTEN",
+				}
+				expectedEntry.K8s.Node = nodeName
+
+				// Socket gadget doesn't provide container data yet. See issue #744.
+				expectedEntry.K8s.ContainerName = ""
+
+				normalize := func(e *snapshotsocketTypes.Event) {
+					e.InodeNumber = 0
+					e.NetNsID = 0
+
+					e.K8s.ContainerName = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
+					e.Runtime.ContainerImageDigest = ""
+					e.Runtime.ContainerStartedAt = 0
+				}
+
+				match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
+			},
+		},
+	}
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
+
+func TestSnapshotUDPSocket(t *testing.T) {
+	if DefaultTestComponent != InspektorGadgetTestComponent {
+		t.Skip("Skip running test with test component different than kubectl-gadget")
+	}
+
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running snapshot socket gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
+	ns := GenerateTestNamespaceName("test-udp-socket-collector")
+
+	t.Parallel()
+
+	commandsPreTest := []TestStep{
+		CreateTestNamespaceCommand(ns),
+		BusyboxPodCommand(ns, "nc -u -l -p 9091"),
+		WaitUntilTestPodReadyCommand(ns),
+	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	t.Cleanup(func() {
+		commandsPostTest := []TestStep{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	nodeName := GetPodNode(t, ns, "test-pod")
+
+	t.Log("Node name:", nodeName)
+
+	commands := []TestStep{
+		&Command{
+			Name: "RunSnapshotUDPSocketGadget",
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
+			ValidateOutput: func(t *testing.T, output string) {
+				t.Log("Output:", output)
+
+				expectedEntry := &snapshotsocketTypes.Event{
+					Event:    BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Protocol: "UDP",
+					SrcEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr:    "0.0.0.0",
+							Version: 4,
+							Kind:    eventtypes.EndpointKindRaw,
+						},
+						Port: 9091,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
