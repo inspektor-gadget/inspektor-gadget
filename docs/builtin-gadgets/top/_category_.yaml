@@ -1,0 +1,11 @@
+customProps:
+  description: 'The top gadgets show the current activity sorted by the highest to
+    the lowest in the resource being observed, generating the output every few seconds.
+
+    '
+label: Using top gadgets
+link:
+  slug: builtin-gadgets/top/
+  title: Using top gadgets
+  type: generated-index
+position: 20

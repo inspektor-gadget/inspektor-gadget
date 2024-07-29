@@ -53,14 +53,13 @@ datasources:
         annotations:
           columns.hidden: true
       cap:
-        annotations:
-          columns.hidden: true
       audit:
         annotations:
           columns.width: 11
       insetid:
         annotations:
           columns.width: 11
+          columns.hidden: true
       syscall_raw:
         annotations:
           columns.hidden: true
@@ -79,7 +78,6 @@ datasources:
         annotations:
           description: if the process has the requested capability
           columns.width: 10
-          columns.hidden: true
 ebpfParams:
   audit_only:
     key: audit_only

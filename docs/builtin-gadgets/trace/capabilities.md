@@ -1,6 +1,6 @@
 ---
 title: 'Using trace capabilities'
-weight: 20
+sidebar_position: 20
 description: >
   Trace security capability checks.
 ---

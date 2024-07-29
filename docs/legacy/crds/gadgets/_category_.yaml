@@ -1,0 +1,8 @@
+customProps:
+  description: 'Syntax reference for using the Trace custom resource with each gadget.'
+label: CR Usage Reference
+link:
+  slug: crds/gadgets/
+  title: CR Usage Reference
+  type: generated-index
+position: 30

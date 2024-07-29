@@ -1,6 +1,6 @@
 ---
 title: 'Using audit seccomp'
-weight: 20
+sidebar_position: 20
 description: >
   Trace syscalls that seccomp sent to the audit log.
 ---

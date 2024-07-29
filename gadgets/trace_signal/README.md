@@ -5,11 +5,11 @@ trace signal
 ## Getting started
 Pulling the gadget:
 ```
-sudo IG_EXPERIMENTAL=true ig image pull ghcr.io/inspektor-gadget/gadget/trace_signal:latest
+sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_signal:latest
 ```
 Running the gadget:
 ```
-sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_signal:latest [flags]
+sudo ig run ghcr.io/inspektor-gadget/gadget/trace_signal:latest [flags]
 kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_signal:latest [flags]
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: 'Using advise seccomp-profile'
-weight: 20
+sidebar_position: 20
 description: >
   Generate seccomp profiles based on recorded syscalls activity.
 ---

@@ -1,6 +1,6 @@
 ---
 title: 'Using trace bind'
-weight: 20
+sidebar_position: 20
 description: >
   Trace the kernel functions performing socket binding.
 ---

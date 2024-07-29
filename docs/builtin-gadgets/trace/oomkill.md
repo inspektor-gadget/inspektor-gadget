@@ -1,6 +1,6 @@
 ---
 title: 'Using trace oomkill'
-weight: 20
+sidebar_position: 20
 description: >
   Trace when OOM killer is triggered and kills a process.
 ---

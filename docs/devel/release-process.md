@@ -1,6 +1,6 @@
 ---
 title: Releasing
-weight: 220
+sidebar_position: 220
 description: >
   How to release Inspektor Gadget
 ---

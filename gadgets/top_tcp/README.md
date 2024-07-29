@@ -5,11 +5,11 @@ Periodically report tcp send receive activity by connection
 ## Getting started
 Pulling the gadget:
 ```
-sudo IG_EXPERIMENTAL=true ig image pull ghcr.io/inspektor-gadget/gadget/top_tcp:latest
+sudo ig image pull ghcr.io/inspektor-gadget/gadget/top_tcp:latest
 ```
 Running the gadget:
 ```
-sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/top_tcp:latest [flags]
+sudo ig run ghcr.io/inspektor-gadget/gadget/top_tcp:latest [flags]
 kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_tcp:latest [flags]
 ```
 

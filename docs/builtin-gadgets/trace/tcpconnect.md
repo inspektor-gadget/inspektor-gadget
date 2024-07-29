@@ -1,6 +1,6 @@
 ---
 title: 'Using trace tcpconnect'
-weight: 20
+sidebar_position: 20
 description: >
   Trace connect system calls.
 ---
