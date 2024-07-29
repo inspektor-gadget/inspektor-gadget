@@ -19,6 +19,7 @@ handing them over to a specified runtime.
 package gadgetcontext
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -308,6 +309,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		return nil
 	}
 
+	c.metadata = info.Metadata
 	c.dataSources = make(map[string]datasource.DataSource)
 	for _, inds := range info.DataSources {
 		ds, err := datasource.NewFromAPI(inds)
@@ -322,6 +324,17 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	c.lock.Unlock()
 
 	c.Logger().Debug("loaded gadget info")
+
+	if c.metadata != nil {
+		v := viper.New()
+		v.SetConfigType("yaml")
+		err := v.ReadConfig(bytes.NewReader(c.metadata))
+		if err != nil {
+			return fmt.Errorf("unmarshalling metadata: %w", err)
+		}
+		c.logger.Debugf("loaded metadata as config")
+		c.SetVar("config", v)
+	}
 
 	// After loading gadget info, start local operators as well
 	localOperators, err := c.initAndPrepareOperators(paramValues)
