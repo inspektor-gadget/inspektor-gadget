@@ -1,0 +1,13 @@
+name: profile tcprtt
+description: TODO
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+dataSources:
+  tcprtt:
+    annotations:
+      cli.output: "none"
+      metrics.print: "true"
+  renderedmetrics:
+    annotations:
+      cli.clear-screen-before: "true"
