@@ -1,17 +1,5 @@
-# trace oomkill
+# trace_oomkill
 
-trace OOM killer
+The `trace_oomkill` gadget traces OOM kill events.
 
-## Getting started
-Pulling the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig image pull ghcr.io/inspektor-gadget/gadget/trace_oomkill:latest
-```
-Running the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_oomkill:latest [flags]
-kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_oomkill:latest [flags]
-```
-
-## Flags
-No flags.
+Check the full documentation on https://inspektor-gadget.io/docs/latest/gadgets/trace_oomkill

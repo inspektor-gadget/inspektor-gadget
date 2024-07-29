@@ -1,17 +1,5 @@
-# trace dns
+# trace_dns
 
-trace dns requests and responses
+The `trace_dns` gadget is used to trace DNS queries and responses.
 
-## Getting started
-Pulling the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig image pull ghcr.io/inspektor-gadget/gadget/trace_dns:latest
-```
-Running the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
-kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
-```
-
-## Flags
-No flags.
+Check the full documentation on https://inspektor-gadget.io/docs/latest/gadgets/trace_dns

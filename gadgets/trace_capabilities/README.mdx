@@ -1,0 +1,171 @@
+---
+title: trace_capabilities
+sidebar_position: 70
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_capabilities
+
+The trace_capabilities gadget allows us to see what capability security checks are triggered by applications
+running in a container.
+
+Linux [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) allow for a finer
+privilege control because they can give root-like capabilities to processes without giving them full
+root access. They can also be taken away from root processes. If a pod is directly executing
+programs as root, we can further lock it down by taking capabilities away. Sometimes we need to add
+capabilities which are not there by default. You can see the list of default and available
+capabilities [in
+Docker](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
+Specially if our pod is directly run as user instead of root (runAsUser: ID), we can give some more
+capabilities (think as partly root) and still take all unused capabilities to really lock it down.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_capabilities:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_capabilities:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+## Flags
+
+### `--audit_only`
+
+Only show audit checks
+
+Default value: "false"
+
+### `--unique`
+
+Only show a capability once on the same container
+
+Default value: "false"
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Here we have a small demo app which logs failures due to lacking capabilities.
+        Since none of the default capabilities is dropped, we have to find
+        out what non-default capability we have to add.
+
+        ```bash
+        $ kubectl run set-priority-0 --image=busybox --labels=name=set-priority-0 --restart=Never -- /bin/sh -c "while /bin/true ; do nice -n -20 echo ; sleep 5; done"
+        pod/set-priority created
+        $ kubectl logs -lname=set-priority
+        nice: setpriority(-20): Permission denied
+        nice: setpriority(-20): Permission denied
+        ```
+
+        We could see the error messages in the pod's log.
+        Let's use Inspektor Gadget to watch the capability checks:
+
+        ```bash
+        $ kubectl gadget run trace_capabilities --selector name=set-priority-0
+        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          K8S.NODE     SYSCALL         TIMESTAMP
+        default                  set-priority             set-priority             nice                 169528       169528            0            0 false   1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T12:19:02.100348…
+        default                  set-priority             set-priority             nice                 169594       169594            0            0 false   1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T12:19:07.102775…
+        default                  set-priority             set-priority             nice                 169661       169661            0            0 false   1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T12:19:12.105665…
+        default                  set-priority             set-priority             nice                 169736       169736            0            0 false   1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T12:19:17.107993…
+        ^C
+        ```
+
+        We can stop the gadget with Ctrl-C.
+        In the output we see that the `CAP_SYS_NICE` capability got checked when `nice` was run.
+        We should probably add it to our pod template for `nice` to work. We can also drop
+        all other capabilities from the default list (see link above) since `nice`
+        did not use them:
+
+        The meaning of the columns is:
+
+        * `SYSCALL`: the system call that caused the capability to be exercised
+        * `CAP`: capability name in a human friendly format
+        * `AUDIT`: whether the kernel should audit the security request or not
+        * `CAPABLE`: whether the process has the capability or not
+
+        Let's create a new pod with the missing capability:
+
+        ```bash
+        $ kubectl run set-priority-1 --image=busybox --labels=name=set-priority-1 --restart=Always --overrides='{"spec":{"containers":[{"name":"set-priority-1","command":["sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done"],"image":"busybox","securityContext":{"capabilities":{"add":["SYS_NICE"],"drop":["ALL"]}}}]}}'
+        pod/set-priority-1 created
+        $ kubectl logs -lname=set-priority-1
+        ```
+
+        The logs are clean, so everything works!
+
+        We can see the same checks but this time with the `CAPABLE` column set to `true`:
+
+        ```bash
+        $ kubectl gadget run trace_capabilities --selector name=set-priority-1
+        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          K8S.NODE     SYSCALL         TIMESTAMP
+        default                  set-priority-1           set-priority-1           nice                 225549       225549            0            0 true    1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T13:25:42.571989…
+        default                  set-priority-1           set-priority-1           nice                 225615       225615            0            0 true    1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T13:25:47.575287…
+        default                  set-priority-1           set-priority-1           nice                 225688       225688            0            0 true    1        CAP_SYS_NICE minikube-do… SYS_SETPRIORITY 2024-08-01T13:25:52.578731…
+        ^C
+        ```
+
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run trace_capabilities:latest --containername test-trace-capabilities
+        WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
+        ...
+        ```
+
+        Start the test container (in another terminal) exercising the capabilities:
+
+        ```bash
+        $ docker run -ti --rm --name=test-trace-capabilities --privileged busybox
+        / # touch /aaa ; chown 1:1 /aaa ; chmod 400 /aaa
+        / # chroot /
+        / # mkdir /mnt ; mount -t tmpfs tmpfs /mnt
+        / # export PPID=$$;/bin/unshare -i sh -c "/bin/nsenter -i -t $PPID echo OK"
+        OK
+        ```
+
+        Observe the resulting trace:
+
+        ```bash
+        RUNTIME.CONTAINERNAME              COMM                            PID                TID                UID               GID CAPABLE     AUDIT        CAP               SYSCALL                TIMESTAMP
+        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN              2024-08-01T15:57:47.208570604+02:00
+        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN              2024-08-01T15:57:47.208576069+02:00
+        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FOWNER        SYS_CHMOD              2024-08-01T15:57:47.209611847+02:00
+        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FSETID        SYS_CHMOD              2024-08-01T15:57:47.209616523+02:00
+        test-trace-capabilities            chroot                       253214             253214                  0                 0 true        1            CAP_SYS_CHROOT    SYS_CHROOT             2024-08-01T15:57:51.273301121+02:00
+        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT              2024-08-01T15:57:55.193068083+02:00
+        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT              2024-08-01T15:57:55.193076333+02:00
+        test-trace-capabilities            unshare                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_UNSHARE            2024-08-01T15:57:59.132320220+02:00
+        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS              2024-08-01T15:57:59.133934337+02:00
+        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS              2024-08-01T15:57:59.133938341+02:00
+        ```
+
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod set-priority-0 set-priority-1
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-capabilities
+        ```
+    </TabItem>
+</Tabs>

@@ -1,17 +1,13 @@
-# audit seccomp
+# audit_seccomp
 
-Audit syscalls according to the seccomp profile
+The audit seccomp gadget provides a stream of events with syscalls that had
+their seccomp filters generating an audit log. An audit log can be generated in
+one of these two conditions:
 
-## Getting started
-Pulling the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig image pull ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest
-```
-Running the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest [flags]
-kubectl gadget run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest [flags]
-```
+* The Seccomp profile has the flag `SECCOMP_FILTER_FLAG_LOG` (currently
+  [unsupported by runc](https://github.com/opencontainers/runc/pull/3390)) and
+  returns any action other than `SECCOMP_RET_ALLOW`.
+* The Seccomp profile does not have the flag `SECCOMP_FILTER_FLAG_LOG` but
+  returns `SCMP_ACT_LOG` or `SCMP_ACT_KILL*`.
 
-## Flags
-No flags.
+Check the full documentation on https://inspektor-gadget.io/docs/latest/gadgets/audit_seccomp

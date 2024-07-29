@@ -1,6 +1,6 @@
 ---
 title: Reporting security issues
-weight: 90
+sidebar_position: 120
 description: >
   Instructions to report security issues found in Inspektor Gadget
 ---

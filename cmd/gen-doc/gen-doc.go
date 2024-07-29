@@ -128,7 +128,7 @@ func main() {
 			}
 		})
 
-		f, err := os.Create(filepath.Join(repo, "docs/crds/gadgets", gadget.Name+".md"))
+		f, err := os.Create(filepath.Join(repo, "docs/legacy/crds/gadgets", gadget.Name+".md"))
 		if err != nil {
 			panic(err)
 		}
