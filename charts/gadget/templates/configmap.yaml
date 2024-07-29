@@ -21,5 +21,4 @@ data:
         oci:
           verify-image: {{ .Values.config.verifyGadgets }}
           public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}
-          allowed-digests:{{ toYaml .Values.config.allowedDigests | nindent 12 }}
-          allowed-registries:{{toYaml .Values.config.allowedRegistries | nindent 12 }}
+          allowed-gadgets:{{ toYaml .Values.config.allowedGadgets | nindent 12 }}

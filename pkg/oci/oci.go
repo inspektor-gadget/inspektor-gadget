@@ -66,19 +66,14 @@ type VerifyOptions struct {
 	PublicKeys      []string
 }
 
-type AllowedDigestsOptions struct {
-	AllowedDigests []string
-}
-
-type AllowedRegistriesOptions struct {
-	AllowedRegistries []string
+type AllowedGadgetsOptions struct {
+	AllowedGadgets []string
 }
 
 type ImageOptions struct {
 	AuthOptions
 	VerifyOptions
-	AllowedDigestsOptions
-	AllowedRegistriesOptions
+	AllowedGadgetsOptions
 
 	Logger logger.Logger
 }
@@ -898,50 +893,40 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
-	if len(imgOpts.AllowedRegistries) > 0 {
-		targetImage, err := normalizeImageName(image)
+	if len(imgOpts.AllowedGadgets) > 0 {
+		found := false
+
+		normalizedImage, err := normalizeImageName(image)
 		if err != nil {
 			return fmt.Errorf("normalizing image: %w", err)
 		}
 
-		image := targetImage.String()
-		found := false
+		imageStr := normalizedImage.String()
 
-		for _, registry := range imgOpts.AllowedRegistries {
-			found = strings.HasPrefix(image, registry)
-			if found {
-				break
-			}
-		}
-
-		if !found {
-			return fmt.Errorf("%s not originating from allowed registries: %v", image, strings.Join(imgOpts.AllowedRegistries, ", "))
-		}
-	}
-
-	if len(imgOpts.AllowedDigests) > 0 {
-		targetImage, err := normalizeImageName(image)
+		desc, err := imageStore.Resolve(ctx, imageStr)
 		if err != nil {
-			return fmt.Errorf("normalizing image: %w", err)
+			return fmt.Errorf("resolving image %q on local registry: %w", imageStr, err)
 		}
 
-		desc, err := imageStore.Resolve(ctx, targetImage.String())
-		if err != nil {
-			return fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
-		}
+		imageDigest := normalizedImage.Name() + "@" + desc.Digest.String()
 
-		digestString := desc.Digest.String()
-		found := false
-		for _, digest := range imgOpts.AllowedDigests {
-			if digestString == digest {
+		for _, allowedGadget := range imgOpts.AllowedGadgets {
+			// Check full match on digest or name
+			if imageDigest == allowedGadget || imageStr == allowedGadget {
 				found = true
-
 				break
+			}
+			// Check prefix match
+			if allowedGadget[len(allowedGadget)-1] == '*' {
+				if strings.HasPrefix(imageStr, allowedGadget[:len(allowedGadget)-1]) {
+					found = true
+					break
+				}
 			}
 		}
 
 		if !found {
-			return fmt.Errorf("image digest not allowed: %q not in %q", digestString, strings.Join(imgOpts.AllowedDigests, ", "))
+			return fmt.Errorf("%s is not part of allowed gadgets: %v", image, strings.Join(imgOpts.AllowedGadgets, ", "))
 		}
 	}
 

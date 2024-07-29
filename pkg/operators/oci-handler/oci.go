@@ -41,8 +41,7 @@ const (
 	pullSecret              = "pull-secret"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
-	allowedDigests          = "allowed-digests"
-	allowedRegistries       = "allowed-registries"
+	allowedGadgets          = "allowed-gadgets"
 )
 
 type ociHandler struct {
@@ -75,15 +74,9 @@ func (o *ociHandler) GlobalParams() api.Params {
 			TypeHint:     api.TypeStringSlice,
 		},
 		{
-			Key:         allowedDigests,
-			Title:       "Allowed Digests",
-			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
-			TypeHint:    api.TypeStringSlice,
-		},
-		{
-			Key:         allowedRegistries,
-			Title:       "Allowed registries",
-			Description: "List of allowed registries, if image-based gadget is not from one of these registries, execution will be denied. By default, all registries are allowed",
+			Key:         allowedGadgets,
+			Title:       "Allowed Gadgets",
+			Description: "List of allowed gadgets, if gadget is not part of it, execution will be denied. By default, all digests are allowed",
 			TypeHint:    api.TypeStringSlice,
 		},
 		{
@@ -208,11 +201,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
 			PublicKeys:      o.ociParams.Get(publicKeys).AsStringSlice(),
 		},
-		AllowedDigestsOptions: oci.AllowedDigestsOptions{
-			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
-		},
-		AllowedRegistriesOptions: oci.AllowedRegistriesOptions{
-			AllowedRegistries: o.ociParams.Get(allowedRegistries).AsStringSlice(),
+		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
+			AllowedGadgets: o.ociParams.Get(allowedGadgets).AsStringSlice(),
 		},
 		Logger: gadgetCtx.Logger(),
 	}
