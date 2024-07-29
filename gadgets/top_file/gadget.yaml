@@ -17,6 +17,16 @@ datasources:
           description: Thread ID
           template: pid
           columns.hidden: true
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
+          columns.hidden: true
       comm:
         annotations:
           description: Command name

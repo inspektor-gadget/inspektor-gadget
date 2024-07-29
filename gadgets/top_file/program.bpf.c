@@ -36,6 +36,8 @@ struct file_id {
 
 struct file_stat {
 	gadget_mntns_id mntns_id;
+	__u32 uid;
+	__u32 gid;
 	__u64 reads;
 	__u64 rbytes;
 	__u64 writes;
@@ -76,6 +78,7 @@ static void get_file_path(struct file *file, __u8 *buf, size_t size)
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		       enum op op)
 {
+	__u64 uid_gid;
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
@@ -116,6 +119,9 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		} else {
 			valuep->t_raw = O;
 		}
+		uid_gid = bpf_get_current_uid_gid();
+		valuep->uid = uid_gid;
+		valuep->gid = uid_gid >> 32;
 	}
 	if (op == READ) {
 		valuep->reads++;
