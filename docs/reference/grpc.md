@@ -1,6 +1,6 @@
 ---
 title: 'Gadget gRPC API'
-weight: 30
+sidebar_position: 30
 description: 'Reference documentation for the gRPC API'
 ---
 

@@ -1,0 +1,10 @@
+customProps:
+  description: 'This section provides guides for built-in gadgets.
+
+    '
+label: Built-in gadgets
+link:
+  slug: builtin-gadgets/
+  title: Built-in gadgets
+  type: generated-index
+position: 40

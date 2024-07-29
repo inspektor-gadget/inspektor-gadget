@@ -1,6 +1,6 @@
 ---
 title: 'btfgen'
-weight: 100
+sidebar_position: 100
 description: 'Using btfgen to enable the gadget in systems without BTF'
 ---
 

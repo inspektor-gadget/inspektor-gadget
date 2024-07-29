@@ -1,6 +1,6 @@
 ---
 title: 'Using trace sni'
-weight: 20
+sidebar_position: 20
 description: >
   Trace Server Name Indication (SNI) from TLS requests.
 ---

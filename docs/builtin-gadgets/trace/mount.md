@@ -1,6 +1,6 @@
 ---
 title: 'Using trace mount'
-weight: 20
+sidebar_position: 20
 description: >
   Trace mount and umount system calls.
 ---

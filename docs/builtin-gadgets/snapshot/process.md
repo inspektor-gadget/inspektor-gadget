@@ -1,6 +1,6 @@
 ---
 title: 'Using snapshot process'
-weight: 20
+sidebar_position: 20
 description: >
   Gather information about running processes.
 ---

@@ -1,6 +1,6 @@
 ---
 title: 'eBPF Program Types'
-weight: 50
+sidebar_position: 50
 description: 'Reference documentation for different eBPF programs supported by Inspektor Gadget'
 ---
 

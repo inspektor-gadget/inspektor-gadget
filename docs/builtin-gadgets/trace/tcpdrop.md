@@ -1,6 +1,6 @@
 ---
 title: 'Using trace tcpdrop'
-weight: 20
+sidebar_position: 20
 description: >
     Trace TCP kernel-dropped packets/segments.
 ---

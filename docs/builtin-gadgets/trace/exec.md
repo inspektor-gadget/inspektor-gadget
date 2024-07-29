@@ -1,6 +1,6 @@
 ---
 title: 'Using trace exec'
-weight: 20
+sidebar_position: 20
 description: >
   Trace new processes.
 ---

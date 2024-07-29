@@ -1,6 +1,6 @@
 ---
 title: ig
-weight: 80
+sidebar_position: 80
 description: >
   Description of the ig tool.
 ---

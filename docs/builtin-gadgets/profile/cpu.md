@@ -1,6 +1,6 @@
 ---
 title: 'Using profile cpu'
-weight: 20
+sidebar_position: 20
 description: >
   Analyze CPU performance by sampling stack traces.
 ---

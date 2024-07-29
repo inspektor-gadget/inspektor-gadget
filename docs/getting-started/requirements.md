@@ -1,6 +1,6 @@
 ---
 title: Requirements
-weight: 110
+sidebar_position: 110
 description: >
   Requirements for running Inspektor Gadget.
 ---

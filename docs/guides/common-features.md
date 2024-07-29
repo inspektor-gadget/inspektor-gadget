@@ -1,6 +1,6 @@
 ---
 title: 'Common Features'
-weight: 10
+sidebar_position: 10
 description: 'An overview of the common features shared across gadgets'
 ---
 

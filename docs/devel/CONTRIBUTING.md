@@ -1,6 +1,6 @@
 ---
 title: Contributing
-weight: 50
+sidebar_position: 50
 description: >
   How to contribute to Inspektor Gadget.
 ---

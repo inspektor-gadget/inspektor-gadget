@@ -1,6 +1,6 @@
 ---
 title: 'Gadgets as OCI artifacts'
-weight: 20
+sidebar_position: 20
 description: 'Reference documentation for the format of a gadget OCI artifact'
 ---
 

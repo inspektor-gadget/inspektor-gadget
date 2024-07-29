@@ -3,7 +3,7 @@ content_type: inspektor-gadget
 title: Inspektor Gadget
 linktitle: Inspektor Gadget
 main_menu: true
-weight: 40
+sidebar_position: 1
 ---
 
 Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
@@ -24,6 +24,6 @@ utilities fetch the log data from ring buffers and display it. What eBPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
 * [Read more about the architecture](core-concepts/architecture.md)
-* [Learn how to install Inspektor Gadget](getting-started/_index.md)
+* [Learn how to install Inspektor Gadget](getting-started/)
 * [Kernel requirements for each gadget](getting-started/requirements.md)
 * [Verify release assets](getting-started/verify.md)

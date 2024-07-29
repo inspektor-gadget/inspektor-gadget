@@ -1,6 +1,6 @@
 ---
 title: 'Golang API'
-weight: 40
+sidebar_position: 40
 description: 'Reference documentation for Inspektor Gadget Golang API'
 ---
 
