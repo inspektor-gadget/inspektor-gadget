@@ -3,56 +3,86 @@ description: Periodically report read/write activity by file
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://inspektor-gadget.io/docs
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
-toppers:
+datasources:
   file:
-    mapName: stats
-    structName: file_stat
-structs:
-  file_stat:
+    annotations:
+      cli.clear-screen-before: "true"
     fields:
-    - name: pid
-      description: Process ID
-      attributes:
-        template: pid
-    - name: tid
-      description: Thread ID
-      attributes:
-        hidden: true
-        template: pid
-    - name: comm
-      description: Command name
-      attributes:
-        template: comm
-    - name: reads
-      description: Reads by file
-      attributes:
-        width: 8
-    - name: writes
-      description: Writes by file
-      attributes:
-        width: 8
-    - name: rbytes
-      description: Bytes read by file
-      attributes:
-        width: 8
-    - name: wbytes
-      description: Bytes written by file
-      attributes:
-        width: 8
-    - name: t
-      description: Type of file, 'R' for regular files, 'S' for sockets and 'O' for
-        others (including pipes). By default only regular files are shown; use the
-        --all-files option to show all file types.
-      attributes:
-        width: 1
-    - name: file
-      description: File name
-      attributes:
-        width: 30
-    - name: mntns_id
-      description: Mount namespace ID
-      attributes:
-        template: ns
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+          columns.hidden: true
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
+          columns.hidden: true
+      comm:
+        annotations:
+          description: Command name
+          template: comm
+      reads:
+        annotations:
+          description: Reads by file
+          columns.width: 8
+          columns.alignment: right
+      writes:
+        annotations:
+          description: Writes by file
+          columns.width: 8
+          columns.alignment: right
+      rbytes:
+        annotations:
+          description: Bytes read by file
+          columns.width: 8
+          columns.alignment: right
+      wbytes:
+        annotations:
+          description: Bytes written by file
+          columns.width: 8
+          columns.alignment: right
+      t:
+        annotations:
+          description: Type of file, 'R' for regular files, 'S' for sockets and 'O'
+            for others (including pipes). By default, only regular files are shown;
+            use the --all-files flag to include all file types.
+          columns.width: 1
+      t_raw:
+        annotations:
+          description: Raw value of file type. '0' for regular files, '1' for sockets
+            and '2' for others.
+          columns.width: 1
+          columns.hidden: true
+      file:
+        annotations:
+          description: File name
+          columns.width: 30
+      dev:
+        annotations:
+          description: The device on which the file resides
+          columns.hidden: true
+          columns.width: 12
+          columns.alignment: right
+      inode:
+        annotations:
+          description: The inode id of the file
+          columns.hidden: true
+          columns.width: 12
+          columns.alignment: right
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
 ebpfParams:
   all_files:
     key: all-files

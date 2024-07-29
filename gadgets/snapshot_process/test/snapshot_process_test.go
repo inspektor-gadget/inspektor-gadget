@@ -32,7 +32,7 @@ import (
 type snapshotProcessEntry struct {
 	eventtypes.CommonData
 
-	MountNsID uint64 `json:"mntns_id"`
+	MntNsID uint64 `json:"mntns_id"`
 
 	Comm string `json:"comm"`
 	Pid  uint32 `json:"pid"`
@@ -94,15 +94,15 @@ func TestSnapshotProcess(t *testing.T) {
 				Gid:        1111,
 
 				// Check the existence of the following fields
-				MountNsID: utils.NormalizedInt,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
-				Ppid:      utils.NormalizedInt,
+				MntNsID: utils.NormalizedInt,
+				Pid:     utils.NormalizedInt,
+				Tid:     utils.NormalizedInt,
+				Ppid:    utils.NormalizedInt,
 			}
 
 			normalize := func(e *snapshotProcessEntry) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MountNsID)
+				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.Pid)
 				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.Ppid)
