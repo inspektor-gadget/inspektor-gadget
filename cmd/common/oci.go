@@ -31,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
@@ -140,6 +141,12 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 					continue
 				}
 				param := apihelpers.ParamToParamDesc(p).ToParam()
+
+				// Skip duplicate params (can happen if an operator is running on both client + server)
+				if _, ok := paramLookup[p.Prefix+p.Key]; ok {
+					continue
+				}
+
 				paramLookup[p.Prefix+p.Key] = param
 				gadgetParams.Add(param)
 			}
