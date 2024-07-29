@@ -34,15 +34,15 @@ import (
 )
 
 const (
-	validateMetadataParam = "validate-metadata"
-	authfileParam         = "authfile"
-	insecureParam         = "insecure"
-	pullParam             = "pull"
-	pullSecret            = "pull-secret"
-	verifyImage           = "verify-image"
-	publicKeys            = "public-keys"
-	allowedDigests        = "allowed-digests"
-	allowedRegistries     = "allowed-registries"
+	validateMetadataParam   = "validate-metadata"
+	authfileParam           = "authfile"
+	insecureRegistriesParam = "insecure-registries"
+	pullParam               = "pull"
+	pullSecret              = "pull-secret"
+	verifyImage             = "verify-image"
+	publicKeys              = "public-keys"
+	allowedDigests          = "allowed-digests"
+	allowedRegistries       = "allowed-registries"
 )
 
 type ociHandler struct {
@@ -86,6 +86,12 @@ func (o *ociHandler) GlobalParams() api.Params {
 			Description: "List of allowed registries, if image-based gadget is not from one of these registries, execution will be denied. By default, all registries are allowed",
 			TypeHint:    api.TypeStringSlice,
 		},
+		{
+			Key:         insecureRegistriesParam,
+			Title:       "Insecure registries",
+			Description: "List of registries to access over plain HTTP",
+			TypeHint:    api.TypeStringSlice,
+		},
 	}
 }
 
@@ -104,13 +110,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:        "Validate metadata",
 			Description:  "Validate the gadget metadata before running the gadget",
 			DefaultValue: "true",
-			TypeHint:     api.TypeBool,
-		},
-		{
-			Key:          insecureParam,
-			Title:        "Insecure connection",
-			Description:  "Allow connections to HTTP only registries",
-			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
 		},
 		{
@@ -201,9 +200,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	imgOpts := &oci.ImageOptions{
 		AuthOptions: oci.AuthOptions{
-			AuthFile:    o.ociParams.Get(authfileParam).AsString(),
-			SecretBytes: secretBytes,
-			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
+			AuthFile:           o.ociParams.Get(authfileParam).AsString(),
+			SecretBytes:        secretBytes,
+			InsecureRegistries: o.ociParams.Get(insecureRegistriesParam).AsStringSlice(),
 		},
 		VerifyOptions: oci.VerifyOptions{
 			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),

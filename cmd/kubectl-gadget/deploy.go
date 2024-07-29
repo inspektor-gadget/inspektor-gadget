@@ -110,6 +110,7 @@ var (
 	gadgetsPublicKeys   string
 	allowedDigests      []string
 	allowedRegistries   []string
+	insecureRegistries  []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -251,6 +252,12 @@ func init() {
 	deployCmd.PersistentFlags().StringSliceVar(
 		&allowedRegistries,
 		"allowed-registries", []string{}, "List of allowed registries, if image-based gadget is not from one of these registries, execution will be denied. By default, all registries are allowed")
+	deployCmd.PersistentFlags().StringSliceVar(
+		&insecureRegistries,
+		"insecure-registries",
+		[]string{},
+		"List of registries to access over plain HTTP",
+	)
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -752,6 +759,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
 			opOciCfg[gadgettracermanagerconfig.AllowedDigests] = allowedDigests
 			opOciCfg[gadgettracermanagerconfig.AllowedRegistries] = allowedRegistries
+			opOciCfg[gadgettracermanagerconfig.InsecureRegistries] = insecureRegistries
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {

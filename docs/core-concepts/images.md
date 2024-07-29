@@ -276,9 +276,9 @@ Usage:
   ig image pull IMAGE [flags]
 
 Flags:
-      --authfile string   Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable (default "/var/lib/ig/config.json")
-  -h, --help              help for pull
-      --insecure          Allow connections to HTTP only registries
+      --authfile string               Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable (default "/var/lib/ig/config.json")
+  -h, --help                          help for pull
+      --insecure-registries strings   List of registries to access over plain HTTP
 ```
 
 ```bash
@@ -301,9 +301,9 @@ Usage:
   ig image push IMAGE [flags]
 
 Flags:
-      --authfile string   Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable (default "/var/lib/ig/config.json")
-  -h, --help              help for push
-      --insecure          Allow connections to HTTP only registrie
+      --authfile string               Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable (default "/var/lib/ig/config.json")
+  -h, --help                          help for push
+      --insecure-registries strings   List of registries to access over plain HTTP
 ```
 
 ```bash
