@@ -41,8 +41,8 @@ type traceTcpconnectEvent struct {
 	Gid  uint32 `json:"gid"`
 
 	Latency     uint64           `json:"latency,omitempty"`
-	SrcEndpoint utils.L4Endpoint `json:"src_endpoint"`
-	DstEndpoint utils.L4Endpoint `json:"dst_endpoint"`
+	SrcEndpoint utils.L4Endpoint `json:"src"`
+	DstEndpoint utils.L4Endpoint `json:"dst"`
 }
 
 func TestTraceTcpconnect(t *testing.T) {
