@@ -1,6 +1,6 @@
 ---
 title: Continuous Integration
-weight: 210
+sidebar_position: 210
 description: >
   Inspektor Gadget continuous integration workflow
 ---

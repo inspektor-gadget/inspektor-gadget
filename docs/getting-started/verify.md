@@ -1,6 +1,6 @@
 ---
 title: Verifying
-weight: 120
+sidebar_position: 120
 description: >
   Verify Inspektor Gadget
 ---

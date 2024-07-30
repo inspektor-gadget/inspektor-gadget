@@ -1,16 +1,19 @@
 ---
 title: Hello world gadget
-weight: 110
+sidebar_position: 110
 description: >
   Hello world gadget
 ---
 
-> [!WARNING]
-> This feature is experimental. To activate the commands, you must set the `IG_EXPERIMENTAL` environment variable to `true`.
->
-> ```bash
-> $ export IG_EXPERIMENTAL=true
-> ```
+:::warning
+
+This feature is experimental. To activate the commands, you must set the `IG_EXPERIMENTAL` environment variable to `true`.
+
+```bash
+$ export IG_EXPERIMENTAL=true
+```
+
+:::
 
 This is a short getting started guide to write your first gadget. This guide will get you familiar
 with the key concepts by implementing a simplified version of the "trace open" (opensnoop) tool.

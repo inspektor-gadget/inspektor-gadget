@@ -1,6 +1,6 @@
 ---
 title: 'Using top ebpf'
-weight: 20
+sidebar_position: 20
 description: >
   Periodically report ebpf runtime stats.
 ---

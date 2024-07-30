@@ -1,6 +1,6 @@
 ---
 title: 'Using trace tcpretrans'
-weight: 20
+sidebar_position: 20
 description: >
     Trace TCP retransmissions.
 ---

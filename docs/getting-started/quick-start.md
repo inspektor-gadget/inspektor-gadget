@@ -1,6 +1,6 @@
 ---
 title: Quick Start
-weight: 10
+sidebar_position: 10
 description: >
   Quick start for running Inspektor Gadget.
 ---

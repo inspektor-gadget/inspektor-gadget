@@ -1,6 +1,6 @@
 ---
 title: 'Using top block-io'
-weight: 20
+sidebar_position: 20
 description: >
   Periodically report block device I/O activity.
 ---

@@ -1,6 +1,6 @@
 ---
 title: 'Using advise network-policy'
-weight: 20
+sidebar_position: 20
 description: >
   Generate network policies based on recorded network activity.
 ---

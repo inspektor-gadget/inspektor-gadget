@@ -1,6 +1,6 @@
 ---
 title: 'Using top file'
-weight: 20
+sidebar_position: 20
 description: >
   Periodically report read/write activity by file.
 ---

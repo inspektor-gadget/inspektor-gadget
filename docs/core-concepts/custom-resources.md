@@ -1,14 +1,17 @@
 ---
 title: Custom Trace Resource
-weight: 200
+sidebar_position: 200
 description: >
   Basic usage of the Trace resource
 ---
 
-> [!WARNING]
-> We are currently removing the Trace resource and using a [gRPC
-> API](../reference/grpc.md) instead. Once done, the Trace resource will be
-> deprecated.
+:::warning
+
+We are currently removing the Trace resource and using a [gRPC
+API](../reference/grpc.md) instead. Once done, the Trace resource will be
+deprecated.
+
+:::
 
 Inspektor Gadget uses a custom `Trace` resource to communicate between the
 endpoints and the `gadget` DaemonSet running on the cluster. These
@@ -41,7 +44,7 @@ resource when `ExternalResource` is selected. If `outputMode` is set to
 `Status`, the output of the trace will be stored in the status field of the
 trace resource.
 
-See the corresponding [gadgets specs](../crds/gadgets/_index.md) to
+See the corresponding [gadgets specs](../crds/gadgets/) to
 find out what's available.
 
 Note that **all traces should be created in the `gadget` namespace**. And,

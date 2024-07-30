@@ -1,12 +1,15 @@
 ---
 title: 'Running a gadget'
-weight: 20
+sidebar_position: 20
 description: >
   The run command allows to create an instance of a gadget.
 ---
 
-> [!WARNING]
-> This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
+:::warning
+
+This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
+
+:::
 Check the installation guide to enable [experimental features](../getting-started/install-linux.md#experimental-features).
 
 The `run` command runs a gadget from an OCI image. By default, the `run` command will use following defaults to refer the OCI image:
@@ -224,7 +227,7 @@ Error: fetching gadget information: initializing and preparing operators: instan
 
 ## Environment Variables
 
-You can use environment variables to configure the behavior of the `run` command. The environment variables use fully qualified names (as in the [configuration file]())
+You can use environment variables to configure the behavior of the `run` command. The environment variables use fully qualified names (as in the [configuration file)
 with the prefix `INSPEKTOR_GADGET_`.
 
 ```bash

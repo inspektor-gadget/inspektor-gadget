@@ -1,6 +1,6 @@
 ---
 title: 'Using top tcp'
-weight: 20
+sidebar_position: 20
 description: >
   Periodically report TCP activity.
 ---

@@ -1,6 +1,6 @@
 ---
 title: 'Using trace fsslower'
-weight: 20
+sidebar_position: 20
 description: >
   Trace open, read, write and fsync operations slower than a threshold.
 ---

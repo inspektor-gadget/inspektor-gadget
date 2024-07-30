@@ -1,6 +1,6 @@
 ---
 title: 'Gadget helper API'
-weight: 10
+sidebar_position: 10
 description: 'Reference documentation for the gadget helper API'
 ---
 

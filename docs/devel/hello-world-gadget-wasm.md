@@ -1,16 +1,19 @@
 ---
 title: Hello world gadget with wasm module
-weight: 120
+sidebar_position: 120
 description: >
   Hello world gadget with wasm module
 ---
 
-> [!WARNING]
-> This feature is experimental. To activate the commands, you must set the `IG_EXPERIMENTAL` environment variable to `true`.
->
-> ```bash
-> $ export IG_EXPERIMENTAL=true
-> ```
+:::warning
+
+This feature is experimental. To activate the commands, you must set the `IG_EXPERIMENTAL` environment variable to `true`.
+
+```bash
+$ export IG_EXPERIMENTAL=true
+```
+
+:::
 
 This guide explores the wasm support to implement complex logic in our gadget.
 This is a continuation of [hello world gadget](./hello-world-gadget.md), be sure

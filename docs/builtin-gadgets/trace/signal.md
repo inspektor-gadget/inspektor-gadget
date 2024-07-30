@@ -1,6 +1,6 @@
 ---
 title: 'Using trace signal'
-weight: 20
+sidebar_position: 20
 description: >
   Trace signals received by processes.
 ---

@@ -1,6 +1,6 @@
 ---
 title: 'Using prometheus'
-weight: 30
+sidebar_position: 30
 description: >
   Expose metrics using prometheus
 ---

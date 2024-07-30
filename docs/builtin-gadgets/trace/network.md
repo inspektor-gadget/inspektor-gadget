@@ -1,6 +1,6 @@
 ---
 title: 'Using trace network'
-weight: 10
+sidebar_position: 10
 ---
 
 The network gadget monitors the network activity in the specified pods

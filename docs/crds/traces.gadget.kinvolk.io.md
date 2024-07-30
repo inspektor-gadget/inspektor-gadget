@@ -7,7 +7,7 @@ title: Trace CRD schema reference (group gadget.kinvolk.io)
 linkTitle: Trace
 description: |
   Trace is the Schema for the traces API
-weight: 100
+sidebar_position: 100
 crd:
   name_camelcase: Trace
   name_plural: traces

@@ -1,6 +1,6 @@
 ---
 title: 'Using profile block-io'
-weight: 20
+sidebar_position: 20
 description: >
   Analyze block I/O performance through a latency distribution.
 ---

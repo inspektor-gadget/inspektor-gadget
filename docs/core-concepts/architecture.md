@@ -1,6 +1,6 @@
 ---
 title: Architecture
-weight: 20
+sidebar_position: 20
 description: >
   Understand how everything comes together.
 ---

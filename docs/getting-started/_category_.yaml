@@ -1,0 +1,10 @@
+customProps:
+  description: 'Installation and running your first gadget.
+
+    '
+label: Getting started
+link:
+  slug: getting-started/
+  title: Getting started
+  type: generated-index
+position: 10

@@ -1,6 +1,6 @@
 ---
 title: 'Using trace tcp'
-weight: 20
+sidebar_position: 20
 description: >
   Trace tcp connect, accept and close.
 ---

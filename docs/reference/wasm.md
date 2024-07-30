@@ -1,6 +1,6 @@
 ---
 title: 'wasm'
-weight: 110
+sidebar_position: 110
 description: 'Wasm API'
 ---
 
