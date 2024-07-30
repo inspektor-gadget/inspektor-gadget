@@ -50,6 +50,7 @@ type traceExecEvent struct {
 	Error       string `json:"error"`
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
+	Cwd         string `json:"cwd"`
 	Args        string `json:"args"`
 }
 
@@ -74,7 +75,7 @@ func TestTraceExec(t *testing.T) {
 	}
 
 	sleepArgs := []string{"/bin/sleep", "1"}
-	innerCmd := fmt.Sprintf("while true ; do %s; done", strings.Join(sleepArgs, " "))
+	innerCmd := fmt.Sprintf("cd tmp ; while true ; do %s; done", strings.Join(sleepArgs, " "))
 	// copies /bin/sh to /usr/bin/sh to check that the upper_layer is true when executing /usr/bin/sh
 	cmd := fmt.Sprintf("cp /bin/sh /usr/bin/sh ; setuidgid 1000:1111 /usr/bin/sh -c '%s'", innerCmd)
 	shArgs := []string{"/bin/sh", "-c", cmd}
@@ -102,87 +103,91 @@ func TestTraceExec(t *testing.T) {
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
 
-	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
-		func(t *testing.T, output string) {
-			expectedEntries := []*traceExecEvent{
-				// outer sh
-				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Comm:       "sh",
-					Args:       strings.Join(shArgs, " "),
-					UpperLayer: false,
+	runnerOpts = append(runnerOpts,
+		igrunner.WithFlags("--paths"),
+		igrunner.WithValidateOutput(
+			func(t *testing.T, output string) {
+				expectedEntries := []*traceExecEvent{
+					// outer sh
+					{
+						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+						Comm:       "sh",
+						Cwd:        "/",
+						Args:       strings.Join(shArgs, " "),
+						UpperLayer: false,
 
-					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					Ppid:      utils.NormalizedInt,
-					Loginuid:  utils.NormalizedInt,
-					Sessionid: utils.NormalizedInt,
-					Pcomm:     utils.NormalizedStr,
-				},
-				// inner sh
-				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Comm:       "sh",
-					Args:       strings.Join(innerShArgs, " "),
-					Uid:        1000,
-					Gid:        1111,
-					UpperLayer: true,
+						// Check the existence of the following fields
+						MntNsID:   utils.NormalizedInt,
+						Timestamp: utils.NormalizedStr,
+						Pid:       utils.NormalizedInt,
+						Tid:       utils.NormalizedInt,
+						Ppid:      utils.NormalizedInt,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+						Pcomm:     utils.NormalizedStr,
+					},
+					// inner sh
+					{
+						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+						Comm:       "sh",
+						Cwd:        "/",
+						Args:       strings.Join(innerShArgs, " "),
+						Uid:        1000,
+						Gid:        1111,
+						UpperLayer: true,
 
-					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					Ppid:      utils.NormalizedInt,
-					Loginuid:  utils.NormalizedInt,
-					Sessionid: utils.NormalizedInt,
-					Pcomm:     utils.NormalizedStr,
-				},
-				// sleep
-				{
-					CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-					Comm:        "sleep",
-					Pcomm:       "sh",
-					Args:        strings.Join(sleepArgs, " "),
-					Uid:         1000,
-					Gid:         1111,
-					UpperLayer:  false,
-					PupperLayer: true,
+						// Check the existence of the following fields
+						MntNsID:   utils.NormalizedInt,
+						Timestamp: utils.NormalizedStr,
+						Pid:       utils.NormalizedInt,
+						Tid:       utils.NormalizedInt,
+						Ppid:      utils.NormalizedInt,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+						Pcomm:     utils.NormalizedStr,
+					},
+					// sleep
+					{
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Comm:        "sleep",
+						Cwd:         "/tmp",
+						Pcomm:       "sh",
+						Args:        strings.Join(sleepArgs, " "),
+						Uid:         1000,
+						Gid:         1111,
+						UpperLayer:  false,
+						PupperLayer: true,
 
-					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					Ppid:      utils.NormalizedInt,
-					Loginuid:  utils.NormalizedInt,
-					Sessionid: utils.NormalizedInt,
-				},
-			}
-
-			normalize := func(e *traceExecEvent) {
-				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeString(&e.Runtime.ContainerID)
-				utils.NormalizeInt(&e.MntNsID)
-				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.Ppid)
-				utils.NormalizeInt(&e.Loginuid)
-				utils.NormalizeInt(&e.Sessionid)
-
-				// We can't know the parent process of the first process inside
-				// the container as it depends on the container runtime
-				if e.Comm == "sh" {
-					utils.NormalizeString(&e.Pcomm)
+						// Check the existence of the following fields
+						MntNsID:   utils.NormalizedInt,
+						Timestamp: utils.NormalizedStr,
+						Pid:       utils.NormalizedInt,
+						Tid:       utils.NormalizedInt,
+						Ppid:      utils.NormalizedInt,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+					},
 				}
-			}
-			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
-		},
-	))
+				normalize := func(e *traceExecEvent) {
+					utils.NormalizeCommonData(&e.CommonData)
+					utils.NormalizeString(&e.Runtime.ContainerID)
+					utils.NormalizeInt(&e.MntNsID)
+					utils.NormalizeString(&e.Timestamp)
+					utils.NormalizeInt(&e.Pid)
+					utils.NormalizeInt(&e.Tid)
+					utils.NormalizeInt(&e.Ppid)
+					utils.NormalizeInt(&e.Loginuid)
+					utils.NormalizeInt(&e.Sessionid)
+
+					// We can't know the parent process of the first process inside
+					// the container as it depends on the container runtime
+					if e.Comm == "sh" || e.Pcomm == "containerd-shim" {
+						utils.NormalizeString(&e.Pcomm)
+					}
+				}
+				match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
+			},
+		))
 
 	runnerOpts = append(runnerOpts, igrunner.WithStartAndStop())
 	traceExecCmd := igrunner.New("trace_exec", runnerOpts...)

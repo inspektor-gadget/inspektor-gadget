@@ -9,6 +9,7 @@
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
+#include <gadget/filesystem.h>
 
 // Defined in include/uapi/linux/magic.h
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
@@ -42,15 +43,18 @@ struct event {
 	bool upper_layer;
 	bool pupper_layer;
 	unsigned int args_size;
+	char cwd[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
 const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile int max_args = DEFAULT_MAXARGS;
+const volatile bool paths = false;
 
 GADGET_PARAM(ignore_failed);
 GADGET_PARAM(targ_uid);
+GADGET_PARAM(paths);
 
 static const struct event empty_event = {};
 
@@ -132,6 +136,12 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	event->args_count = 0;
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
+
+	if (paths) {
+		struct fs_struct *fs = BPF_CORE_READ(task, fs);
+		char *cwd = get_path_str(&fs->pwd);
+		bpf_probe_read_kernel_str(event->cwd, MAX_STRING_SIZE, cwd);
+	}
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE,
 				      (const char *)ctx->args[0]);

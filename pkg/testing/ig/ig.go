@@ -57,7 +57,7 @@ func WithPath(path string) Option {
 // WithFlags args should be in form: "--flag_name=value" or "-shorthand=value".
 func WithFlags(flags ...string) Option {
 	return func(ig *runner) {
-		ig.flags = flags
+		ig.flags = append(ig.flags, flags...)
 	}
 }
 
