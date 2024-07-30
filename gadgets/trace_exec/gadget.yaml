@@ -42,11 +42,13 @@ datasources:
           description: User ID
           template: uid
           columns.hidden: true
+          uidgidresolver.target: user
       gid:
         annotations:
           description: Group ID
           template: uid
           columns.hidden: true
+          uidgidresolver.target: group
       ppid:
         annotations:
           template: pid
@@ -54,6 +56,7 @@ datasources:
         annotations:
           template: uid
           columns.hidden: true
+          uidgidresolver.target: loginuser
       sessionid:
         annotations:
           template: uid
