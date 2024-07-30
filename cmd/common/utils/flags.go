@@ -149,11 +149,11 @@ func AddRegistryAuthVariablesAndFlags(cmd *cobra.Command, authOptions *oci.AuthO
 	viper.BindPFlag("registry.auth_file", cmd.Flags().Lookup("authfile"))
 	viper.BindEnv("registry.auth_file", "REGISTRY_AUTH_FILE")
 
-	cmd.Flags().BoolVar(
-		&authOptions.Insecure,
-		"insecure",
-		false,
-		"Allow connections to HTTP only registries",
+	cmd.Flags().StringSliceVar(
+		&authOptions.InsecureRegistries,
+		"insecure-registries",
+		[]string{},
+		"List of registries to access over plain HTTP",
 	)
 }
 

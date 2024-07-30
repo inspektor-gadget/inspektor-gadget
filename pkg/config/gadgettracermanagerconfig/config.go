@@ -30,4 +30,5 @@ const (
 	PublicKeys             = "public-keys"
 	AllowedDigests         = "allowed-digests"
 	AllowedRegistries      = "allowed-registries"
+	InsecureRegistries     = "insecure-registries"
 )

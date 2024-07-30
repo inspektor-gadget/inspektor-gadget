@@ -56,7 +56,9 @@ import (
 type AuthOptions struct {
 	AuthFile    string
 	SecretBytes []byte
-	Insecure    bool
+	// InsecureRegistries is a list of registries that should be accessed over
+	// plain HTTP.
+	InsecureRegistries []string
 }
 
 type VerifyOptions struct {
@@ -823,8 +825,12 @@ func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Reposi
 	if err != nil {
 		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
-	repo.PlainHTTP = authOpts.Insecure
-	if !authOpts.Insecure {
+
+	registryDomain := reference.Domain(image)
+	insecure := slices.Contains(authOpts.InsecureRegistries, registryDomain)
+
+	repo.PlainHTTP = insecure
+	if !insecure {
 		client, err := newAuthClient(image.Name(), authOpts)
 		if err != nil {
 			return nil, fmt.Errorf("creating auth client: %w", err)
