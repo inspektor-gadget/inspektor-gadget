@@ -1,0 +1,500 @@
+---
+title: Running Gadgets
+sidebar_position: 300
+description: The run command allows to run a gadget.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Once you have installed Inspektor Gadget either on
+[Kubernetes](./install-kubernetes.md) or on the [local
+host](./install-linux.md#installing-ig),  you can run Gadgets with the `run`
+command:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest
+K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNA… COMM           PID      TID PCOMM        PPID ARGS     K8S.NODE E… TIMESTAMP         USER     LOGINUS… GROUP
+default          mypod2           mypod2           ping        425494   425494 sh         343042 /bin/pi… minikube    2024-07-31T18:08… root     uid:429… root
+default          mypod2           mypod2           wget        425719   425719 sh         343042 /bin/wg… minikube    2024-07-31T18:09… root     uid:429… root
+^C
+
+$ kubectl gadget run snapshot_process:latest -A
+K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID           TID           UID           GID         PPID K8S.NODE
+kube-system              kube-control…er-minikube kube-controller-manager  kube-control…        336554        336554             0             0       336505 minikube
+kube-system              kube-apiserver-minikube  kube-apiserver           kube-apiserv…        336561        336561             0             0       336532 minikube
+kube-system              etcd-minikube            etcd                     etcd                 336644        336644             0             0       336577 minikube
+kube-system              kube-scheduler-minikube  kube-scheduler           kube-schedul…        336737        336737             0             0       336713 minikube
+kube-system              kube-proxy-vgp6m         kube-proxy               kube-proxy           337401        337401             0             0       337339 minikube
+kube-system              coredns-7db6d8ff4d-xskcm coredns                  coredns              337598        337598         65532         65532       337566 minikube
+kube-system              storage-provisioner      storage-provisioner      storage-prov…        338431        338431             0             0       338410 minikube
+gadget                   gadget-ptnct             gadget                   gadgettracer…        341345        341345             0             0       341324 minikube
+default                  mypod2                   mypod2                   sh                   343042        343042             0             0       343021 minikube
+^C
+```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest
+RUNTIME.CONTAINERNA… COMM                PID         TID PCOMM            PPID ARGS       ER… TIMESTAMP              USER       LOGINUSER  GROUP
+mycontainer          sh               439180      439180 container…     439157 /bin/sh        2024-07-31T13:20:49.9… root       uid:42949… root
+mycontainer          ping             439211      439211 sh             439180 /bin/ping…     2024-07-31T13:20:53.7… root       uid:42949… root
+mycontainer          wget             439219      439219 sh             439180 /bin/wget…     2024-07-31T13:20:56.3… root       uid:42949… root
+^C
+
+$ sudo ig run snapshot_process:latest
+RUNTIME.CONTAINERNAME               COMM                             PID                 TID                UID                GID               PPID
+registry                            registry                        3320                3320                  0                  0               3301
+mycontainer                         sh                            439180              439180                  0                  0             439157
+^C
+```
+    </TabItem>
+</Tabs>
+
+The `run` command runs a gadget from an OCI image. The `run` command will use
+the following defaults to refer an OCI image:
+- `ghcr.io` as the registry
+- `inspektor-gadget/gadget` as the repository prefix
+- `latest` as the tag
+
+You can find a growing collection of Gadgets on [Artifact
+HUB](https://artifacthub.io/packages/search?kind=22). This includes both in-tree
+Gadgets (hosted in this git repository in the
+[/gadgets](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets)
+directory and third-party Gadgets).
+
+## Event Filtering
+
+Inspektor Gadget supports filtering the events that are gathered by a Gadget.
+It's useful to (1) reduce the performance overhead of the tracing and (2) remove
+the noise to focus on relevant information.
+
+The filtering is supported in two different ways:
+
+### In Kernel Filtering
+
+Inspektor Gadget supports to efficiently filter events directly on eBPF for some
+common fields:
+
+ * `--node string`, show only data from pods running in that node
+ * `-n string`, `--namespace string`, show data from pods in that namespace
+ * `-A`, `--all-namespaces`, show data from pods in all namespaces
+ * `-p string`, `--podname string`, show only data from pods with that name
+ * `-c string`, `--containername string`, show only data from containers with that name
+ * `-l string`, `--selector string`: show only data that matches the given
+   label or selector. Only `=` is currently supported (e.g. `key1=value1,key2=value2`).
+
+We can use one or more of these parameters to choose which pods or
+containers will be inspected by our gadgets. For example:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest -n demo -l app=myapp
+```
+
+Runs the `trace_exec` gadget filtering events generated by for all pods in the
+`demo` namespace that have the `app=myapp` label.
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest --podname mycontainer
+```
+
+Runs the `trace_exec` gadget filtering events generated by the pod
+`mycontainer`.
+    </TabItem>
+</Tabs>
+
+### Filtering in User Space
+
+TODO
+
+## Output Format
+
+The `-o` or `--output` flag lets us decide the output format. The default
+`columns` output shows some of the information gathered, arranged in text
+columns on the console.
+
+This can be overridden with:
+- `json`
+- `jsonpretty`
+- `yaml`
+- `columns`
+
+### JSON Output
+
+Passing `-o json` will print all the information gathered in JSON format.
+Each entry is printed on a single line, so the output can be easily parsed line by line.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_tcp:latest -A -o json
+{"comm":"wget","dst":{"addr":"1.1.1.1","port":80,"proto":6,"version":4},"gid":0,"k8s":{"containerName":"mypod2","hostnetwork":false,"namespace":"default","node":"minikube","podName":"mypod2"},"mntns_id":4026536533,"netns_id":4026535383,"pid":446916,"runtime":{"containerId":"53225e24386f30ac68a58cd57c1689590875e4904f9449d0c19835f68da0c0b6","containerImageDigest":"","containerImageName":"","containerName":"","runtimeName":""},"src":{"addr":"10.244.0.8","port":41464,"proto":6,"version":4},"tid":446916,"timestamp":"2024-07-31T18:38:31.977700392Z","timestamp_raw":1722451111977700392,"type":"connect","type_raw":0,"uid":0}
+```
+
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_tcp:latest -o json
+{"comm":"wget","dst":{"addr":"1.1.1.1","port":80,"proto":6,"version":4},"gid":0,"k8s":{"containerName":"","hostnetwork":false,"namespace":"","node":"","podName":""},"mntns_id":4026535102,"netns_id":4026535106,"pid":447673,"runtime":{"containerId":"88df7f962685e0452e130937696a0686a3fb21466dbd4ba7b5e46574876756f6","containerImageDigest":"sha256:5eef5ed34e1e1ff0a4ae850395cbf665c4de6b4b83a32a0bc7bcb998e24e7bbb","containerImageName":"docker.io/library/busybox:latest","containerName":"mycontainer","runtimeName":"docker"},"src":{"addr":"172.17.0.3","port":45942,"proto":6,"version":4},"tid":447673,"timestamp":"2024-07-31T13:39:16.455283441-05:00","timestamp_raw":1722451156455283441,"type":"connect","type_raw":0,"uid":0}
+```
+    </TabItem>
+</Tabs>
+
+### JSON Pretty Output
+
+Passing `-o jsonpretty` will print all the information gathered in JSON format but with indentation making it easier to read.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_tcp:latest -o jsonpretty
+{
+  "comm": "wget",
+  "dst": {
+    "addr": "1.1.1.1",
+    "port": 80,
+    "proto": 6,
+    "version": 4
+  },
+  "gid": 0,
+  "k8s": {
+    "containerName": "mypod2",
+    "hostnetwork": false,
+    "namespace": "default",
+    "node": "minikube",
+    "podName": "mypod2"
+  },
+  "mntns_id": 4026536533,
+  "netns_id": 4026535383,
+  "pid": 450698,
+  "runtime": {
+    "containerId": "53225e24386f30ac68a58cd57c1689590875e4904f9449d0c19835f68da0c0b6",
+    "containerImageDigest": "",
+    "containerImageName": "",
+    "containerName": "",
+    "runtimeName": ""
+  },
+  "src": {
+    "addr": "10.244.0.8",
+    "port": 51080,
+    "proto": 6,
+    "version": 4
+  },
+  "tid": 450698,
+  "timestamp": "2024-07-31T18:42:09.094958020Z",
+  "timestamp_raw": 1722451329094958020,
+  "type": "connect",
+  "type_raw": 0,
+  "uid": 0
+}
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_tcp:latest -o jsonpretty
+{
+  "comm": "wget",
+  "dst": {
+    "addr": "1.1.1.1",
+    "port": 80,
+    "proto": 6,
+    "version": 4
+  },
+  "gid": 0,
+  "k8s": {
+    "containerName": "",
+    "hostnetwork": false,
+    "namespace": "",
+    "node": "",
+    "podName": ""
+  },
+  "mntns_id": 4026535102,
+  "netns_id": 4026535106,
+  "pid": 449647,
+  "runtime": {
+    "containerId": "88df7f962685e0452e130937696a0686a3fb21466dbd4ba7b5e46574876756f6",
+    "containerImageDigest": "sha256:5eef5ed34e1e1ff0a4ae850395cbf665c4de6b4b83a32a0bc7bcb998e24e7bbb",
+    "containerImageName": "docker.io/library/busybox:latest",
+    "containerName": "mycontainer",
+    "runtimeName": "docker"
+  },
+  "src": {
+    "addr": "172.17.0.3",
+    "port": 57210,
+    "proto": 6,
+    "version": 4
+  },
+  "tid": 449647,
+  "timestamp": "2024-07-31T13:41:09.379465891-05:00",
+  "timestamp_raw": 1722451269379465891,
+  "type": "connect",
+  "type_raw": 0,
+  "uid": 0
+}
+```
+
+</TabItem>
+</Tabs>
+
+### YAML Output
+
+Passing `-o yaml` will print all the information gathered in YAML format.
+Each entry is preceded by the end of directives markers (`---`).
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_tcp:latest -o yaml
+---
+comm: wget
+dst:
+  addr: 1.1.1.1
+  port: 80
+  proto: 6
+  version: 4
+gid: 0
+k8s:
+  containerName: mypod2
+  hostnetwork: false
+  namespace: default
+  node: minikube
+  podName: mypod2
+mntns_id: 4026536533
+netns_id: 4026535383
+pid: 452381
+runtime:
+  containerId: 53225e24386f30ac68a58cd57c1689590875e4904f9449d0c19835f68da0c0b6
+  containerImageDigest: ""
+  containerImageName: ""
+  containerName: ""
+  runtimeName: ""
+src:
+  addr: 10.244.0.8
+  port: 55282
+  proto: 6
+  version: 4
+tid: 452381
+timestamp: "2024-07-31T18:43:51.457963290Z"
+timestamp_raw: 1722451431457963290
+type: connect
+type_raw: 0
+uid: 0
+---
+```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_tcp:latest -o yaml
+---
+comm: wget
+dst:
+  addr: 1.1.1.1
+  port: 80
+  proto: 6
+  version: 4
+gid: 0
+k8s:
+  containerName: ""
+  hostnetwork: false
+  namespace: ""
+  node: ""
+  podName: ""
+mntns_id: 4026535102
+netns_id: 4026535106
+pid: 455094
+runtime:
+  containerId: 88df7f962685e0452e130937696a0686a3fb21466dbd4ba7b5e46574876756f6
+  containerImageDigest: sha256:5eef5ed34e1e1ff0a4ae850395cbf665c4de6b4b83a32a0bc7bcb998e24e7bbb
+  containerImageName: docker.io/library/busybox:latest
+  containerName: mycontainer
+  runtimeName: docker
+src:
+  addr: 172.17.0.3
+  port: 37088
+  proto: 6
+  version: 4
+tid: 455094
+timestamp: "2024-07-31T13:46:27.686093841-05:00"
+timestamp_raw: 1722451587686093841
+type: connect
+type_raw: 0
+uid: 0
+---
+```
+
+    </TabItem>
+</Tabs>
+
+## Selecting Specific Fields
+
+The `--fields` flag allows to choose which columns to
+print. You can use `run [gadget] -h` to see which columns are available:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest -h
+...
+  --fields string               Available data sources / fields
+                                  "exec" (data source):
+                                    args
+                                    args_count
+                                    args_size
+                                    comm
+                                      Process name
+                                    cwd
+                                      The current working directory of the process (require --paths flag)
+                                    error
+                                    error_raw
+                                    gid
+                                      Group ID
+                                    group
+                                    k8s.containerName
+                                    k8s.hostnetwork
+                                    k8s.namespace
+                                    k8s.node
+                                    k8s.podName
+                                    loginuid
+                                    loginuser
+                                    mntns_id
+                                      Mount namespace inode id
+                                    pcomm
+                                      The process name of the parent process
+                                    pid
+                                      Process ID
+                                    ppid
+                                    pupper_layer
+                                      Whether the executable's parent in the process hierarchy is in the upper layer of the overlay filesystem. Only initialized when the execution succeeded.
+                                    runtime.containerId
+                                    runtime.containerImageDigest
+                                    runtime.containerImageName
+                                    runtime.containerName
+                                    runtime.runtimeName
+                                    sessionid
+                                    tid
+                                      Thread ID
+                                    timestamp
+                                    timestamp_raw
+                                    uid
+                                      User ID
+                                    upper_layer
+                                      Whether the executable is in the upper layer of the overlay filesystem
+                                    user
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest -h
+...
+  --fields string                  Available data sources / fields
+                                         "exec" (data source):
+                                           args
+                                           args_count
+                                           args_size
+                                           comm
+                                             Process name
+                                           cwd
+                                             The current working directory of the process (require --paths flag)
+                                           error
+                                           error_raw
+                                           gid
+                                             Group ID
+                                           group
+                                           k8s.containerName
+                                           k8s.hostnetwork
+                                           k8s.namespace
+                                           k8s.node
+                                           k8s.podName
+                                           loginuid
+                                           loginuser
+                                           mntns_id
+                                             Mount namespace inode id
+                                           pcomm
+                                             The process name of the parent process
+                                           pid
+                                             Process ID
+                                           ppid
+...
+```
+
+</TabItem>
+</Tabs>
+
+For example, we can only show the containername, comm, pid and ppid of new
+executed processes:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest --fields=k8s.containername,comm,pid,ppid
+K8S.CONTAINERNAME                COMM              PID              PPID
+mypod2                           wget           478644            44638
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest --fields=runtime.containername,comm,pid,ppid
+RUNTIME.CONTAINERNAME            COMM              PID              PPID
+mycontainer                      wget           477678            44591
+```
+
+</TabItem>
+</Tabs>
+
+## Run for a specific amount of time
+
+Many gadgets will run forever, printing the gathered output until we press
+Ctrl-C to stop them. If we want to run a gadget only for a window of time,
+we can use the `--timeout int` flag, passing the number of seconds during which
+we want to run the gadget.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest --timeout 5
+K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… COMM        PID     TID PCOMM      PPID ARGS    K8S.NO… E… TIMESTAMP       USER   LOGIN… GROUP
+default        mypod2         mypod2         wget     509661  509661 sh       446383 /bin/w… miniku…    2024-07-31T19:… root   uid:4… root
+default        mypod2         mypod2         wget     509732  509732 sh       446383 /bin/w… miniku…    2024-07-31T19:… root   uid:4… root
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest --timeout 5
+RUNTIME.CONTAINERN… COMM              PID        TID PCOMM            PPID ARGS      ER… TIMESTAMP             USER      LOGINUSER GROUP
+mycontainer         wget           510384     510384 sh             445912 /bin/wge…     2024-07-31T14:33:43.… root      uid:4294… root
+```
+
+</TabItem>
+</Tabs>

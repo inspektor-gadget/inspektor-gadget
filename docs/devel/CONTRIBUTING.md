@@ -78,7 +78,7 @@ Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 
 ### Building `ig`
 
-Inspektor Gadget also provides the [`ig`](../ig.md) tool to
+Inspektor Gadget also provides the [`ig`](../reference/ig.md) tool to
 trace containers without Kubernetes. It can be built independently from the
 `kubectl-gadget` and the gadget container image.
 

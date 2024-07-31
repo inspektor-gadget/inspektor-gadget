@@ -5,6 +5,12 @@ description: >
   Understand how everything comes together.
 ---
 
+:::warning
+
+This document is outdated!
+
+:::
+
 Inspektor Gadget comes with several tools which permit monitoring different
 events related to specific kernel subsystems.
 
@@ -80,7 +86,7 @@ pod did not already crash).
 
 ## `ig`
 
-The job of the [`ig`](../ig.md) can be divided into four main
+The job of the [`ig`](../reference/ig.md) can be divided into four main
 tasks, each of them is managed by the following packages:
 - [Tracers](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@v0.22.0/pkg/gadgets): They are in charge of collecting events from the
   host, like process creation, file access, etc.
@@ -101,7 +107,3 @@ We wrote a
 [blogpost](https://www.inspektor-gadget.io/blog/2022/09/using-inspektor-gadget-from-golang-applications/)
 describing each of this modules, it also provides some examples to test them
 together and separately.
-
-## Previous talks
-
-- Introducing Flatcar Container Linux Edge, [Cloud Native Computing Meetup Berlin](https://www.meetup.com/Cloud-Native-Computing-Berlin/events/260143677/) ([slides](https://docs.google.com/presentation/d/1YF7R2b9HHYrcdpz2BuBznpISuVVZsXZEwD8a6SJoDwQ/edit))

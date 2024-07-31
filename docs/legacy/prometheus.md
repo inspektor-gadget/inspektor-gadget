@@ -5,6 +5,13 @@ description: >
   Expose metrics using prometheus
 ---
 
+:::warning
+
+This is an outdated way to use Prometheus in Inspektor Gadget. We'll soon provide
+documentation for the new mechanism.
+
+:::
+
 The Prometheus gadget collects and exposes metrics in Prometheus format. It's available in both, for
 Kubernetes (`ig-k8s`) and in Linux hosts (`ig`).
 

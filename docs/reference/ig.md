@@ -1,9 +1,11 @@
 ---
 title: ig
-sidebar_position: 80
+sidebar_position: 2000
 description: >
   Description of the ig tool.
 ---
+
+TODO: What to do with this document?
 
 Inspektor Gadget relies on the Kubernetes API server to work. However, there are
 [some cases](#use-cases) where it is necessary, or preferred, to trace
@@ -20,7 +22,7 @@ Some characteristics of `ig`:
 - Easy to install as it is a single binary (statically linked).
 
 The architecture of `ig` is described in the main
-[architecture](core-concepts/architecture.md#ig) document.
+[architecture](architecture.md#ig) document.
 
 ## Use cases
 
@@ -41,7 +43,7 @@ The architecture of `ig` is described in the main
 ## Installation
 
 The instruction to install `ig` are available in the main
-[installation](getting-started/install-linux.md#installing-ig) guide.
+[installation](../reference/install-linux.md#installing-ig) guide.
 
 ## Usage
 

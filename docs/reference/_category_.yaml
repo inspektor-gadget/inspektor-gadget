@@ -1,10 +1,8 @@
 customProps:
-  description: 'This section provides reference documentation defining different interfaces.
-
-    '
-label: Reference documentation
+  description: 'Reference Documentation'
+label: Reference
 link:
   slug: reference/
-  title: Reference documentation
+  title: Reference
   type: generated-index
-position: 200
+position: 20

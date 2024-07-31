@@ -35,9 +35,7 @@ Inspektor Gadget is a set of tools and framework for data collection and system 
 
 This assumes you have the required Inspektor Gadget tools installed as outlined in the [Installation instructions](#installation).
 
-TODO[mauricio]: Fix this link
-
-The following examples use the [trace_open Gadget](/gadgets/trace_open/README.md) which triggers when a file is open on the system.
+The following examples use the [trace_open Gadget](https://www.inspektor-gadget.io/docs/latest/gadgets/trace_open) which triggers when a file is open on the system.
 
 ### Kubernetes
 
@@ -82,9 +80,7 @@ Use the `gadgetctl` client to connect and run commands remote Linux servers.
 gadgetctl run trace_open --remote-address=tcp://$IP:1234
 ```
 
-TODO[mauricio]: Update this link
-
-***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](/docs/guides/run.md) command***.
+***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](https://www.inspektor-gadget.io/docs/latest/reference/run) command***.
 
 ## Core concepts
 
@@ -94,11 +90,9 @@ Gadgets are the central component in the Inspektor Gadget framework. A Gadget is
 As OCI images, they can be stored in a container registry (compliant with the OCI specifications), making them easy to distribute and share.
 Gadgets are built using the [`ig image build`](/docs/gadg) command.
 
-TODO[maurico]: Update link to gadgets
+You can find a growing collection of Gadgets on [Artifact HUB](https://artifacthub.io/packages/search?kind=22). This includes both in-tree Gadgets (hosted in this git repository in the [/gadgets](./gadgets/README.md) directory and third-party Gadgets).
 
-You can find a growing collection of Gadgets on [Artifact HUB](https://artifacthub.io/packages/search?kind=22). This includes both in-tree Gadgets (hosted in this git repository in the [/gadgets](/gadgets/README.md) directory and third-party Gadgets).
-
-See the [Gadget documentation](/gadgets/README.md) for more information.
+See the [Gadget documentation](https://www.inspektor-gadget.io/docs/latest/gadgets/) for more information.
 
 #### :warning: For versions prior to v0.31.0
 
@@ -119,7 +113,7 @@ names, etc.; automatically translating these to the corresponding low-level kern
 
 See the [enrichment documentation](docs/enrichment)
 
-### What is an operator
+### What is an operator?
 
 In Inspektor Gadget, an operator is any part of the framework where an action is taken. Some operators are under-the-hood (i.e. fetching and loading Gadgets) while others are user-exposed (enrichment, filtering, export, etc.) and can be reordered and overridden.
 

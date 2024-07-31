@@ -1,22 +1,8 @@
 ---
 title: Installing on Linux
-sidebar_position: 30
-description: >
-  How to install Inspektor Gadget on Linux
+sidebar_position: 200
+description: How to install Inspektor Gadget on Linux
 ---
-
-<!-- toc -->
-- [Installing `ig`](#installing-ig)
-  * [Install a specific release](#install-a-specific-release-1)
-  * [Compile from source](#compile-from-source-1)
-- [Experimental features](#experimental-features)
-<!-- /toc -->
-
-## Installing `ig`
-
-The [`ig`](../ig.md) tool can be built and installed
-independently. The result is a single binary (statically linked) that can be
-copied to a Kubernetes node or any host to trace its containers.
 
 ### Install a specific release
 
@@ -32,7 +18,7 @@ $ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/downloa
 $ ig version
 ```
 
-We strongly advise you to verify `ig` by following our [detailed instructions](./verify.md#verify-an-asset).
+We strongly advise you to verify `ig` by following our [detailed instructions](./verify-assets.md#verify-an-asset).
 
 ### Compile from source
 
@@ -52,14 +38,13 @@ features, however they don't provide any stability and could be removed at any t
 Experimental features can be enabled in `ig` by using the `IG_EXPERIMENTAL` env variable.
 
 ```bash
-$ sudo IG_EXPERIMENTAL=true ig trace exec
+$ sudo IG_EXPERIMENTAL=true ig run trace_exec
 INFO[0000] Experimental features enabled
 ...
 
 # pass -E if using export and sudo
 $ export IG_EXPERIMENTAL=true
-$ sudo -E ig trace exec
+$ sudo -E ig run trace_exec
 INFO[0000] Experimental features enabled
 ...
 ```
-

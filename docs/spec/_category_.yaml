@@ -1,0 +1,8 @@
+customProps:
+  description: 'This section provides reference documentation defining different interfaces.'
+label: Specification documentation
+link:
+  slug: specs/
+  title: Specification documentation
+  type: generated-index
+position: 200

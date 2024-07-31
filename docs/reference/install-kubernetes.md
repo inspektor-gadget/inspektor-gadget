@@ -1,32 +1,8 @@
 ---
 title: Installing on Kubernetes
-sidebar_position: 20
-description: >
-  How to install Inspektor Gadget on Kubernetes
+sidebar_position: 100
+description: Getting Started on Kubernetes
 ---
-
-<!-- toc -->
-- [Installing kubectl gadget](#installing-kubectl-gadget)
-  - [Using krew](#using-krew)
-  - [Install a specific release](#install-a-specific-release)
-  - [Compile from source](#compile-from-source)
-- [Installing in the cluster](#installing-in-the-cluster)
-  - [Quick installation](#quick-installation)
-  - [Choosing the gadget image](#choosing-the-gadget-image)
-  - [Deploy to specific nodes](#deploy-to-specific-nodes)
-  - [Deploying into a custom namespace](#deploying-into-a-custom-namespace)
-  - [Hook Mode](#hook-mode)
-  - [Deploying with an AppArmor profile](#deploying-with-an-apparmor-profile)
-  - [Helm Chart Installation](#helm-chart-installation)
-  - [Specific Information for Different Platforms](#specific-information-for-different-platforms)
-    - [Minikube](#minikube)
-- [Uninstalling from the cluster](#uninstalling-from-the-cluster)
-- [Version skew policy](#version-skew-policy)
-- [Installing `ig`](#installing-ig)
-  - [Install a specific release](#install-a-specific-release-1)
-  - [Compile from source](#compile-from-source-1)
-- [Experimental features](#experimental-features)
-<!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.
@@ -197,6 +173,95 @@ For more information on the Helm chart, please refer to the [Helm Chart document
 
 Also, all the above configurations options can be passed as [values](https://artifacthub.io/packages/helm/gadget/gadget#values) to the Helm chart.
 
+### Verifying the Inspektor Gadget Image
+
+When deploying Inspektor Gadget using `kubectl gadget deploy`, the image will be automatically verified if the `policy-controller` is deployed on your Kubernetes cluster.
+To do so, you first need to [install](https://docs.sigstore.dev/policy-controller/installation/) this component.
+Now, let's deploy Inspektor Gadget in a cluster where the `policy-controller` is present:
+
+```bash
+$ kubectl get pod -n cosign-system
+NAME                                         READY   STATUS    RESTARTS   AGE
+policy-controller-webhook-7c7f55dfcf-qkpw4   1/1     Running   0          10s
+$ kubectl gadget deploy
+...
+1/1 gadget pod(s) ready
+...
+Inspektor Gadget successfully deployed
+```
+
+As you can see, everything was successfully deployed.
+Now, let's undeploy Inspektor Gadget and try to deploy an old release which was not signed:
+
+```bash
+$ kubectl gadget undeploy
+...
+Inspektor Gadget successfully removed
+$ kubectl gadget deploy --image 'ghcr.io/inspektor-gadget/inspektor-gadget:v0.22.0'
+...
+Creating DaemonSet/gadget...
+Error: problem while creating resource: creating "DaemonSet": admission webhook "policy.sigstore.dev" denied the request: validation failed: failed policy: gadget-image-policy: spec.template.spec.containers[0].image
+ghcr.io/inspektor-gadget/inspektor-gadget@sha256:9272c2be979a9857971fc8b6f7226e609cadec8352f97e9769081930121ef27f signature key validation failed for authority authority-0 for ghcr.io/inspektor-gadget/inspektor-gadget@sha256:9272c2be979a9857971fc8b6f7226e609cadec8352f97e9769081930121ef27f: no matching signatures
+```
+
+As this image is not signed, the verification failed and the container was not deployed to the cluster.
+
+In case the `policy-controller` is not present, a warning message will be printed to inform you the verification will not take place:
+
+```bash
+$ kubectl get pod -n cosign-system
+No resources found in cosign-system namespace.
+$ kubectl gadget deploy
+WARN[0000] No policy controller found, the container image will not be verified
+...
+Inspektor Gadget successfully deployed
+```
+
+#### Skipping verification
+
+You can also decide to not verify the image, using `--verify-image=false`.
+However, we definitely recommend enabling this security feature.
+
+```bash
+$ kubectl gadget deploy --verify-image=false
+WARN[0000] You used --verify-image=false, the container image will not be verified
+...
+Inspektor Gadget successfully deployed
+```
+
+#### Using custom public key for verification
+
+To verify the image with a specific key, you can use the `--public-key` flag:
+
+```bash
+$ kubectl gadget deploy --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
+```
+
+### Other Deploy Options
+
+Please check the following documents to learn more about different options:
+- [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
+- [Using Insecure Registries](./insecure-registries.mdx)
+- [Verifying Gadget Images](./verify-assets.md#verify-image-based-gadgets)
+
+### Experimental features
+
+Inspektor Gadget has some experimental features disabled by default. Users can enable those
+features, however they don't provide any stability and could be removed at any time.
+
+`kubectl gadget deploy` provides an `--experimental` flag to enabled them.
+
+```bash
+$ kubectl gadget deploy --experimental
+$ kubectl logs -n gadget $PODNAME -f | grep -i experimental
+...
+time="2023-06-15T15:20:03Z" level=info msg="Experimental features enabled"
+...
+
+$ kubectl gadget run trace_exec
+INFO[0000] Experimental features enabled
+...
+```
 ### Specific Information for Different Platforms
 
 This section explains the additional steps that are required to run Inspektor
@@ -223,6 +288,76 @@ $ minikube start --driver=kvm2
 # Deploy Inspektor Gadget in the cluster as described above
 ```
 
+### Private registries
+
+In order to use private registries, you will need a [Kubernetes secret](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) having credentials to access the registry.
+
+There are two different ways to use this support:
+
+#### Defining a default secret when deploying Inspektor Gadget
+
+This approach creates a secret that will be used by default when pulling the gadget images. It requires to have a `docker-registry` secret named `gadget-pull-secret` in the `gadget` namespace:
+
+Let's create the `gadget` namespace if it doesn't exist:
+
+```bash
+$ kubectl create namespace gadget
+```
+
+then create the secret:
+
+```bash
+$ kubectl create secret docker-registry gadget-pull-secret -n gadget --docker-server=MYSERVER --docker-username=MYUSERNAME --docker-password=MYPASSWORD
+```
+
+or you can create the secret from a file:
+
+```bash
+$ kubectl create secret docker-registry gadget-pull-secret -n gadget --from-file=.dockerconfigjson=$HOME/.docker/config.json
+```
+
+then, deploy Inspektor Gadget:
+
+```bash
+$ kubectl gadget deploy ...
+```
+
+this secret will be used by default when running a gadget:
+
+
+```bash
+$ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest
+```
+
+#### Specifying the secret when running a gadget
+
+It's possible to pass a secret each time a gadget is run, you'd need to follow a similar approach as above to create the secret:
+
+```bash
+# from credentials
+$ kubectl create secret docker-registry my-pull-secret -n gadget --docker-server=MYSERVER --docker-username=MYUSERNAME --docker-password=MYPASSWORD
+
+# from a file
+$ kubectl create secret docker-registry my-pull-secret -n gadget --from-file=.dockerconfigjson=$HOME/.docker/config.json
+```
+
+Then, it can be used each time a gadget is run:
+
+```bash
+$ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest --pull-secret my-pull-secret
+```
+
+You can specify the pull secret as part of configuration file to avoid specifying it each time you run a gadget:
+
+```yaml
+# ~/.ig/config.yaml
+operator:
+  oci:
+    pull-secret: "my-pull-secret"
+```
+
+For more information about the configuration file, check the [configuration guide](#configuration-file).
+
 ## Uninstalling from the cluster
 
 The following command will remove all the resources created by Inspektor
@@ -239,53 +374,3 @@ deployed on the cluster to be the exact same version. Even if this is
 possible that different versions work well together, we don't provide
 any guarantee in those cases. We'll visit this policy again once we
 approach to the v1.0 release.
-
-## Installing `ig`
-
-The [`ig`](../ig.md) tool can be built and installed
-independently. The result is a single binary (statically linked) that can be
-copied to a Kubernetes node or any host to trace its containers.
-
-### Install a specific release
- 
-It is possible to download the asset for a given release and platform from the
-[releases page](https://github.com/inspektor-gadget/inspektor-gadget/releases/).
-
-For instance, to download the latest release for linux-amd64:
-
-```bash
-$ IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
-$ IG_ARCH=amd64
-$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
-$ ig version
-```
-
-### Compile from source
-
-`ig` is built using a Docker container relying on [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx), so you don't have to worry
-about installing dependencies:
-
-```bash
-$ make ig
-$ sudo cp ig /usr/local/bin/
-```
-
-## Experimental features
-
-Inspektor Gadget has some experimental features disabled by default. Users can enable those
-features, however they don't provide any stability and could be removed at any time.
-
-`kubectl gadget deploy` provides an `--experimental` flag to enabled them.
-
-```bash
-$ kubectl gadget deploy --experimental
-$ kubectl logs -n gadget $PODNAME -f | grep -i experimental
-...
-time="2023-06-15T15:20:03Z" level=info msg="Experimental features enabled"
-...
-
-
-$ kubectl gadget trace exec
-INFO[0000] Experimental features enabled
-...
-```

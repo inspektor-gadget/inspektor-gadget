@@ -1,8 +1,0 @@
-customProps:
-  description: "This section describes the core concepts of Inspektor Gadget. \n"
-label: Core concepts
-link:
-  slug: core-concepts/
-  title: Core concepts
-  type: generated-index
-position: 30
