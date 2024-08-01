@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,20 +15,25 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
+	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
 )
 
 func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
@@ -42,6 +47,9 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 	var socket string
 	var group string
 	var eventBufferLength uint64
+	var serverKey string
+	var serverCert string
+	var clientCA string
 
 	daemonCmd.PersistentFlags().StringVarP(
 		&group,
@@ -64,6 +72,24 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		"",
 		16384,
 		"The events buffer length. A low value could impact horizontal scaling.")
+
+	daemonCmd.PersistentFlags().StringVar(
+		&serverKey,
+		"tls-key-file",
+		"",
+		"Path to TLS key file")
+
+	daemonCmd.PersistentFlags().StringVar(
+		&serverCert,
+		"tls-cert-file",
+		"",
+		"Path to TLS cert file")
+
+	daemonCmd.PersistentFlags().StringVar(
+		&clientCA,
+		"tls-client-ca-file",
+		"",
+		"Path to CA certificate for client validation")
 
 	service := gadgetservice.NewService(log.StandardLogger())
 
@@ -100,11 +126,54 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 			log.Warnf("reading config: %v", err)
 		}
 
+		tlsOptionsSet := 0
+		for _, tlsOption := range []string{serverKey, serverCert, clientCA} {
+			if len(tlsOption) != 0 {
+				tlsOptionsSet++
+			}
+		}
+
+		if tlsOptionsSet > 1 && tlsOptionsSet < 3 {
+			return fmt.Errorf(`
+missing at least one the TLS related options:
+	* tls-key-file: %q
+	* tls-cert-file: %q
+	* tls-client-ca-file: %q
+All these options should be set at the same time to enable TLS connection`,
+				serverKey, serverCert, clientCA)
+		}
+
+		var options []grpc.ServerOption
+
+		if tlsOptionsSet == 3 {
+			cert, err := gadgettls.LoadTLSCert(serverCert, serverKey)
+			if err != nil {
+				return fmt.Errorf("creating TLS certificate: %w", err)
+			}
+
+			ca, err := gadgettls.LoadTLSCA(clientCA)
+			if err != nil {
+				return fmt.Errorf("creating TLS certificate authority: %w", err)
+			}
+
+			tlsConfig := &tls.Config{
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				Certificates: []tls.Certificate{cert},
+				ClientCAs:    ca,
+			}
+
+			options = append(options, grpc.Creds(credentials.NewTLS(tlsConfig)))
+
+			log.Debugf("TLS is enabled using %v, %v and %v", serverKey, serverCert, clientCA)
+		} else if !strings.HasPrefix(socketPath, "unix") {
+			log.Warnf("no TLS configuration provided, communication between daemon and CLI will not be encrypted")
+		}
+
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,
 			SocketPath: socketPath,
 			SocketGID:  gid,
-		})
+		}, options...)
 	}
 
 	return daemonCmd
