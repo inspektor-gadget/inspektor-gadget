@@ -1,12 +1,13 @@
 ---
-title: 'wasm'
-sidebar_position: 110
-description: 'Wasm API'
+title: 'Wasm API'
+sidebar_position: 420
+description: 'Wasm API for other programming languages'
 ---
 
 Inspektor Gadget exposes some functions to wasm modules implemented in gadgets.
-We provide a Golang wrapper for this functionality, but these functions can be
-used directly from any programming language that can be compiled to wasm.
+We provide a [Golang](./gadget-wasm-api-go.md) wrapper for this functionality,
+but these functions can be used directly from any programming language that can
+be compiled to wasm.
 
 ## Data types
 

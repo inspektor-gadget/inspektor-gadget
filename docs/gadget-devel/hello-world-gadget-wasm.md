@@ -1,8 +1,7 @@
 ---
-title: Hello world gadget with wasm module
-sidebar_position: 120
-description: >
-  Hello world gadget with wasm module
+title: Hello world gadget with Wasm
+sidebar_position: 410
+description: Hello world gadget with Wasm module
 ---
 
 :::warning
@@ -25,7 +24,7 @@ Create a folder named `go` next to the `program.bpf.c` file. In there
 we create a new file named `program.go`. As a first step, let's define the
 `init`, `start` and `stop` functions and emit some log messages from them:
 
-```golang
+```go
 package main
 
 import (
@@ -96,7 +95,7 @@ by `***`) the user name part. This can be done by using a regular expression.
 
 Let's add it to the `gadgetInit` function like this:
 
-```golang
+```go
 //export gadgetInit
 func gadgetInit() int {
 	api.Info("init: hello from wasm")
@@ -170,7 +169,7 @@ add a field that contains a human readable representation of the event.
 
 The `gadgetInit` functions now looks like:
 
-```golang
+```go
 //export gadgetInit
 func gadgetInit() int {
 	api.Info("init: hello from wasm")
