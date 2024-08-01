@@ -30,6 +30,7 @@ GADGETS = \
 	trace_tcpdrop \
 	trace_tcpretrans \
 	top_file \
+	top_tcp \
 	snapshot_process \
 	snapshot_socket \
 	ci/sched_cls_drop \
