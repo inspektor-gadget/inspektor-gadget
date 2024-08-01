@@ -145,7 +145,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
-	t.ioStartLink, err = link.AttachTracing(link.TracingOptions{
+	t.doneLink, err = link.AttachTracing(link.TracingOptions{
 		Program:    t.objs.IgTopioDoneTp,
 		AttachType: ebpf.AttachTraceRawTp,
 	})
