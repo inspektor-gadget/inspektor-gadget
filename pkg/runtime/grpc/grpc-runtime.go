@@ -16,6 +16,7 @@ package grpcruntime
 
 import (
 	"context"
+	"crypto/tls"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -40,6 +42,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
+	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
 )
 
 type ConnectionMode int
@@ -60,6 +63,11 @@ const (
 	ParamRemoteAddress     = "remote-address"
 	ParamConnectionMethod  = "connection-method"
 	ParamConnectionTimeout = "connection-timeout"
+
+	ParamTLSKey        = "tls-key-file"
+	ParamTLSCert       = "tls-cert-file"
+	ParamTLSServerCA   = "tls-server-ca-file"
+	ParamTLSServerName = "tls-server-name"
 
 	// ParamGadgetServiceTCPPort is only used in combination with KubernetesProxyConnectionMethodTCP
 	ParamGadgetServiceTCPPort = "tcp-port"
@@ -171,6 +179,26 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 				Description:  "Comma-separated list of remote address (gRPC) to connect to",
 				DefaultValue: api.DefaultDaemonPath,
 				Validator:    checkForDuplicates("address"),
+			},
+			{
+				Key:         ParamTLSKey,
+				Description: "TLS client key",
+				TypeHint:    params.TypeString,
+			},
+			{
+				Key:         ParamTLSCert,
+				Description: "TLS client certificate",
+				TypeHint:    params.TypeString,
+			},
+			{
+				Key:         ParamTLSServerCA,
+				Description: "TLS server CA certificate",
+				TypeHint:    params.TypeString,
+			},
+			{
+				Key:         ParamTLSServerName,
+				Description: "override TLS server name (if omitted, using target server name)",
+				TypeHint:    params.TypeString,
 			},
 		}...)
 		return p
@@ -364,9 +392,68 @@ func (r *Runtime) runBuiltInGadgetOnTargets(
 
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		//nolint:staticcheck
 		grpc.WithBlock(),
+		//nolint:staticcheck
+		grpc.WithReturnConnectionError(),
+	}
+
+	tlsKey := r.globalParams.Get(ParamTLSKey).String()
+	tlsCert := r.globalParams.Get(ParamTLSCert).String()
+	tlsCA := r.globalParams.Get(ParamTLSServerCA).String()
+
+	tlsOptionsSet := 0
+	for _, tlsOption := range []string{tlsKey, tlsCert, tlsCA} {
+		if len(tlsOption) != 0 {
+			tlsOptionsSet++
+		}
+	}
+
+	if tlsOptionsSet > 1 && tlsOptionsSet < 3 {
+		return nil, fmt.Errorf(`
+missing at least one the TLS related options:
+	* %s: %q
+	* %s: %q
+	* %s: %q
+All these options should be set at the same time to enable TLS connection`,
+			ParamTLSKey, tlsKey,
+			ParamTLSCert, tlsCert,
+			ParamTLSServerCA, tlsCA)
+	}
+
+	if tlsOptionsSet == 3 {
+		cert, err := gadgettls.LoadTLSCert(tlsCert, tlsKey)
+		if err != nil {
+			return nil, fmt.Errorf("creating TLS certificate: %w", err)
+		}
+
+		ca, err := gadgettls.LoadTLSCA(tlsCA)
+		if err != nil {
+			return nil, fmt.Errorf("creating TLS certificate authority: %w", err)
+		}
+
+		purl, err := url.Parse(target.addressOrPod)
+		if err != nil {
+			return nil, fmt.Errorf("parsing address %v: %w", target.addressOrPod, err)
+		}
+
+		tlsConfig := &tls.Config{
+			ServerName:   purl.Hostname(),
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      ca,
+		}
+
+		if serverName := r.globalParams.Get(ParamTLSServerName).String(); serverName != "" {
+			tlsConfig.ServerName = serverName
+		}
+
+		if tlsConfig.ServerName == "" {
+			return nil, fmt.Errorf("invalid hostname, use %s to override", ParamTLSServerName)
+		}
+
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// If we're in Kubernetes connection mode, we need a custom dialer

@@ -46,7 +46,7 @@ func TestRunInsecure(t *testing.T) {
 		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	registryIP := GetTestPodIP(t, ns, "registry")
+	registry := GetTestPodIP(t, ns, "registry") + ":5000"
 
 	// copy gadget image to insecure registry
 	orasCpCmds := []TestStep{
@@ -55,7 +55,7 @@ func TestRunInsecure(t *testing.T) {
 			"copy",
 			"--to-plain-http",
 			fmt.Sprintf("%s/trace_open:%s", *gadgetRepository, *gadgetTag),
-			fmt.Sprintf("%s:5000/trace_open:%s", registryIP, *gadgetTag),
+			fmt.Sprintf("%s/trace_open:%s", registry, *gadgetTag),
 		),
 		WaitUntilJobCompleteCommand(ns, "copier"),
 	}
@@ -68,7 +68,8 @@ func TestRunInsecure(t *testing.T) {
 
 	// TODO: Ideally it should not depend on a real gadget, but we don't have a "test gadget" available yet.
 	// As the image was not signed, we need to set --verify-image=false.
-	cmd := fmt.Sprintf("ig run --verify-image=false %s:5000/trace_open:%s -o json --insecure --timeout 2", registryIP, *gadgetTag)
+	cmd := fmt.Sprintf("ig run --verify-image=false %s/trace_open:%s -o json --insecure-registries %s --timeout 2",
+		registry, *gadgetTag, registry)
 
 	// run the gadget without verifying its output as we only need to check if it runs
 	traceOpenCmd := &Command{

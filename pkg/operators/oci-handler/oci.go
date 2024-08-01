@@ -34,15 +34,14 @@ import (
 )
 
 const (
-	validateMetadataParam = "validate-metadata"
-	authfileParam         = "authfile"
-	insecureParam         = "insecure"
-	pullParam             = "pull"
-	pullSecret            = "pull-secret"
-	verifyImage           = "verify-image"
-	publicKeys            = "public-keys"
-	allowedDigests        = "allowed-digests"
-	allowedRegistries     = "allowed-registries"
+	validateMetadataParam   = "validate-metadata"
+	authfileParam           = "authfile"
+	insecureRegistriesParam = "insecure-registries"
+	pullParam               = "pull"
+	pullSecret              = "pull-secret"
+	verifyImage             = "verify-image"
+	publicKeys              = "public-keys"
+	allowedGadgets          = "allowed-gadgets"
 )
 
 type ociHandler struct {
@@ -75,15 +74,15 @@ func (o *ociHandler) GlobalParams() api.Params {
 			TypeHint:     api.TypeStringSlice,
 		},
 		{
-			Key:         allowedDigests,
-			Title:       "Allowed Digests",
-			Description: "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed",
+			Key:         allowedGadgets,
+			Title:       "Allowed Gadgets",
+			Description: "List of allowed gadgets, if gadget is not part of it, execution will be denied. By default, all digests are allowed",
 			TypeHint:    api.TypeStringSlice,
 		},
 		{
-			Key:         allowedRegistries,
-			Title:       "Allowed registries",
-			Description: "List of allowed registries, if image-based gadget is not from one of these registries, execution will be denied. By default, all registries are allowed",
+			Key:         insecureRegistriesParam,
+			Title:       "Insecure registries",
+			Description: "List of registries to access over plain HTTP",
 			TypeHint:    api.TypeStringSlice,
 		},
 	}
@@ -104,13 +103,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:        "Validate metadata",
 			Description:  "Validate the gadget metadata before running the gadget",
 			DefaultValue: "true",
-			TypeHint:     api.TypeBool,
-		},
-		{
-			Key:          insecureParam,
-			Title:        "Insecure connection",
-			Description:  "Allow connections to HTTP only registries",
-			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
 		},
 		{
@@ -201,19 +193,16 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	imgOpts := &oci.ImageOptions{
 		AuthOptions: oci.AuthOptions{
-			AuthFile:    o.ociParams.Get(authfileParam).AsString(),
-			SecretBytes: secretBytes,
-			Insecure:    o.ociParams.Get(insecureParam).AsBool(),
+			AuthFile:           o.ociParams.Get(authfileParam).AsString(),
+			SecretBytes:        secretBytes,
+			InsecureRegistries: o.ociParams.Get(insecureRegistriesParam).AsStringSlice(),
 		},
 		VerifyOptions: oci.VerifyOptions{
 			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
 			PublicKeys:      o.ociParams.Get(publicKeys).AsStringSlice(),
 		},
-		AllowedDigestsOptions: oci.AllowedDigestsOptions{
-			AllowedDigests: o.ociParams.Get(allowedDigests).AsStringSlice(),
-		},
-		AllowedRegistriesOptions: oci.AllowedRegistriesOptions{
-			AllowedRegistries: o.ociParams.Get(allowedRegistries).AsStringSlice(),
+		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
+			AllowedGadgets: o.ociParams.Get(allowedGadgets).AsStringSlice(),
 		},
 		Logger: gadgetCtx.Logger(),
 	}

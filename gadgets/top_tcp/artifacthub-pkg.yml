@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.30.0
+name: "top tcp"
+category: monitoring-logging
+displayName: "top tcp"
+createdAt: "2024-07-026T09:22:04Z"
+digest: "2024-07-026T09:22:04Z"
+description: Periodically report tcp send receive activity by connection
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/top_tcp:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+install: |
+    # Run
+    ```bash
+    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/top_tcp:latest
+    ```
+provider:
+    name: Inspektor Gadget

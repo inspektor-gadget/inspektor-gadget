@@ -117,7 +117,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "push",
 			cmd:  commonImage.NewPushCmd(),
-			args: []string{testRegistryImage, "--insecure"},
+			args: []string{testRegistryImage, "--insecure-registries", registryAddr},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully pushed %s", testRegistryImage),
 			},
@@ -125,7 +125,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "push-invalid-image",
 			cmd:  commonImage.NewPushCmd(),
-			args: []string{"unknown", "--insecure"},
+			args: []string{"unknown", "--insecure-registries", registryAddr},
 			expectedStderr: []string{
 				"failed to resolve ghcr.io/inspektor-gadget/gadget/unknown:latest: not found",
 			},
@@ -133,7 +133,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "push-unknown-tag",
 			cmd:  commonImage.NewPushCmd(),
-			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure"},
+			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure-registries", registryAddr},
 			expectedStderr: []string{
 				fmt.Sprintf("%s/%s:%s: not found", registryAddr, testRepo, "unknown"),
 			},
@@ -168,7 +168,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "pull",
 			cmd:  commonImage.NewPullCmd(),
-			args: []string{testRegistryImage, "--insecure"},
+			args: []string{testRegistryImage, "--insecure-registries", registryAddr},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully pulled %s", testRegistryImage),
 			},
@@ -185,7 +185,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "pull-invalid-image",
 			cmd:  commonImage.NewPullCmd(),
-			args: []string{"unknown", "--insecure"},
+			args: []string{"unknown", "--insecure-registries", registryAddr},
 			expectedStderr: []string{
 				"failed to resolve ghcr.io/inspektor-gadget/gadget/unknown:latest",
 			},
@@ -193,7 +193,7 @@ func TestImage(t *testing.T) {
 		{
 			name: "pull-unknown-tag",
 			cmd:  commonImage.NewPullCmd(),
-			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure"},
+			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure-registries", registryAddr},
 			expectedStderr: []string{
 				fmt.Sprintf("%s/%s:%s: not found", registryAddr, testRepo, "unknown"),
 			},
