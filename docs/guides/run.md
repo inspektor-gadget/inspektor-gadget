@@ -135,12 +135,12 @@ For more information about the configuration file, check the [configuration guid
 
 ### Restricting gadget images (by registry or digest)
 
-This is possible to restrict the executed gadgets by using the `--allowed-digests` and `--allowed-regisitries`.
-By default, all gadgets digests and gadgets from all regisitries are allowed.
+This is possible to restrict the executed gadgets by using the `--allowed-gadgets` flag.
+By default, all gadgets are allowed.
 You can specify these options only at deploy time:
 
 ```bash
-$ kubectl gadget deploy --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)" --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:digest_of_your_gadget' --allowed-registries='ghcr.io/inspektor-gadget/gadget,ghcr.io/your-repo/gadget'
+$ kubectl gadget deploy --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)" --allowed-gadgets='ghcr.io/inspektor-gadget/gadget@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget@sha256:digest_of_your_gadget'
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec
@@ -149,7 +149,7 @@ gadget           gadget-fdpxp     gadget           gadgettr…    131299   13129
 gadget           gadget-fdpxp     gadget           gadgettr…    131298   131298 runc       131280 /bin/ga… minikub…    2024-07-25T08:22:…
 ^C
 $ kubectl gadget run trace_open
-Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: image digest not allowed: "sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d" not in "sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, sha256:digest_of_your_gadget"
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/your-repo/gadget@sha256:digest_of_your_gadget
 $ kubectl gadget run ghcr./io/your-repo/gadget/your_gadget
 K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… TIMEST… PID     UID     GID     MNTNS_… ERR     FD      FLAGS   MODE    COMM   FNAME  K8S.N…
 gadget         gadget-8rcdz   gadget         500159… 134426  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
@@ -206,20 +206,20 @@ mycontainer3                                        122110  cat              0  
 We also offer this possibility with `ig` by using the same flags at run time:
 
 ```bash
-$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_exec
+$ sudo -E ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' trace_exec
 RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
 minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
 minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
 ^C
-$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_open
+$ sudo -E ig run ---allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' trace_open
 RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
 minikube-docker    kubelet         11713     11715         0         0  20 /sys/fs/cgroup/kubepods… --------…        2024-07-25T10:30:44…
 minikube-docker    kubelet         11713     11715         0         0  20 /proc/2136/fd            --------…        2024-07-25T10:30:44…
 ^C
-$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' trace_signal
-Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: image digest not allowed: "sha256:bd5acefb4372832ca30fe3814b6bace8141882ee8e20c661d82cb3c5a64bc48a" not in "sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d"
-$ sudo -E ig run --allowed-digests='sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' --allowed-registries='ghcr.io/inspektor-gadget/gadget' ghcr.io/your-repo/gadget/your-gadget
-Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget:latest not originating from allowed registries: ghcr.io/inspektor-gadget/gadget
+$ sudo -E ig run --allowed-gadgetss='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' trace_signal
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_signal is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d
+$ sudo -E ig run --allowed-gadgetss='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d' ghcr.io/your-repo/gadget/your-gadget
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d
 ```
 
 ## Environment Variables

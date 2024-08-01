@@ -108,8 +108,7 @@ var (
 	strLevels           []string
 	verifyGadgets       bool
 	gadgetsPublicKeys   string
-	allowedDigests      []string
-	allowedRegistries   []string
+	allowedGadgets      []string
 	insecureRegistries  []string
 )
 
@@ -247,11 +246,8 @@ func init() {
 		&gadgetsPublicKeys,
 		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
 	deployCmd.PersistentFlags().StringSliceVar(
-		&allowedDigests,
-		"allowed-digests", []string{}, "List of allowed digests, if image digest is not part of it, execution will be denied. By default, all digests are allowed.")
-	deployCmd.PersistentFlags().StringSliceVar(
-		&allowedRegistries,
-		"allowed-registries", []string{}, "List of allowed registries, if image-based gadget is not from one of these registries, execution will be denied. By default, all registries are allowed")
+		&allowedGadgets,
+		"allowed-gadgets", []string{}, "List of allowed gadgets, if gadget is not part of it, execution will be denied. By default, all gadgets are allowed.")
 	deployCmd.PersistentFlags().StringSliceVar(
 		&insecureRegistries,
 		"insecure-registries",
@@ -757,8 +753,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
 			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
-			opOciCfg[gadgettracermanagerconfig.AllowedDigests] = allowedDigests
-			opOciCfg[gadgettracermanagerconfig.AllowedRegistries] = allowedRegistries
+			opOciCfg[gadgettracermanagerconfig.AllowedGadgets] = allowedGadgets
 			opOciCfg[gadgettracermanagerconfig.InsecureRegistries] = insecureRegistries
 
 			data, err := yaml.Marshal(cfg)
