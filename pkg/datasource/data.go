@@ -209,7 +209,7 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 	for _, f := range in.Fields {
 		ds.fields = append(ds.fields, (*field)(f))
 		if !FieldFlagUnreferenced.In(f.Flags) {
-			ds.fieldMap[f.Name] = (*field)(f)
+			ds.fieldMap[f.FullName] = (*field)(f)
 		}
 	}
 	if in.Flags&api.DataSourceFlagsBigEndian != 0 {
