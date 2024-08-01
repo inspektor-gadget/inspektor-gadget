@@ -140,6 +140,15 @@ func (d *DockerContainer) Run(t *testing.T) {
 		t.Fatalf("Failed to inspect container: %s", err)
 	}
 	d.pid = containerJSON.State.Pid
+
+	if len(containerJSON.NetworkSettings.Networks) > 1 {
+		t.Fatal("Multiple networks are not supported")
+	}
+
+	if len(containerJSON.NetworkSettings.Networks) == 1 {
+		d.ip = containerJSON.NetworkSettings.IPAddress
+	}
+
 	d.portBindings = containerJSON.NetworkSettings.Ports
 
 	if d.options.logs {

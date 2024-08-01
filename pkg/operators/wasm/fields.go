@@ -157,7 +157,7 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 	}
 
 	if err != nil {
-		i.logger.Warnf("fieldGet failed: %v", err)
+		i.logger.Warnf("fieldGet for field %q failed: %v", field.Name(), err)
 		stack[0] = 0
 		return
 	}
@@ -241,7 +241,7 @@ func (i *wasmOperatorInstance) fieldSet(ctx context.Context, m wapi.Module, stac
 	}
 
 	if err != nil {
-		i.logger.Warnf("fieldSet failed: %v", err)
+		i.logger.Warnf("fieldSet for field %q failed: %v", field.Name(), err)
 		stack[0] = 1
 		return
 	}
