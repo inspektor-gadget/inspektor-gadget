@@ -19,6 +19,7 @@ handing them over to a specified runtime.
 package gadgetcontext
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -189,6 +190,19 @@ func (c *GadgetContext) DataOperators() []operators.DataOperator {
 	return slices.Clone(c.dataOperators)
 }
 
+func (c *GadgetContext) IsRemoteCall() bool {
+	val := c.ctx.Value(remoteKey)
+	if val == nil {
+		return false
+	}
+	bVal, ok := val.(bool)
+	if !ok {
+		c.logger.Errorf("invalid type of variable %s on context, expected bool, got %T", remoteKey, val)
+		return false
+	}
+	return bVal
+}
+
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -295,6 +309,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		return nil
 	}
 
+	c.metadata = info.Metadata
 	c.dataSources = make(map[string]datasource.DataSource)
 	for _, inds := range info.DataSources {
 		ds, err := datasource.NewFromAPI(inds)
@@ -309,6 +324,17 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	c.lock.Unlock()
 
 	c.Logger().Debug("loaded gadget info")
+
+	if c.metadata != nil {
+		v := viper.New()
+		v.SetConfigType("yaml")
+		err := v.ReadConfig(bytes.NewReader(c.metadata))
+		if err != nil {
+			return fmt.Errorf("unmarshalling metadata: %w", err)
+		}
+		c.logger.Debugf("loaded metadata as config")
+		c.SetVar("config", v)
+	}
 
 	// After loading gadget info, start local operators as well
 	localOperators, err := c.initAndPrepareOperators(paramValues)

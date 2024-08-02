@@ -69,7 +69,12 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		ops = append(ops, op)
 	}
 
-	gadgetCtx := gadgetcontext.New(ctx, req.ImageName, gadgetcontext.WithDataOperators(ops...))
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		req.ImageName,
+		gadgetcontext.WithDataOperators(ops...),
+		gadgetcontext.WithAsRemoteCall(true),
+	)
 
 	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)
 	if err != nil {
@@ -233,6 +238,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		gadgetcontext.WithLogger(logger),
 		gadgetcontext.WithDataOperators(ops...),
 		gadgetcontext.WithTimeout(time.Duration(ociRequest.Timeout)),
+		gadgetcontext.WithAsRemoteCall(true),
 	)
 
 	runtimeParams := s.runtime.ParamDescs().ToParams()

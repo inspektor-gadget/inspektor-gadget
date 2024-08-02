@@ -44,6 +44,7 @@ const (
 	ModeColumns    = "columns"
 	ModeYAML       = "yaml"
 	ModeNone       = "none"
+	ModeRaw        = "raw"
 
 	// AnnotationClearScreenBefore can be used to clear the screen before printing a new event; usually used for
 	// array events
@@ -172,7 +173,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		DefaultValue:   ModeColumns,
 		Description:    "output mode",
 		Alias:          "o",
-		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML, ModeNone},
+		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML, ModeNone, ModeRaw},
 	}
 
 	return api.Params{fields, mode}
@@ -196,7 +197,6 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	}
 
 	o.mode = params.Get(ParamMode).AsString()
-
 	for _, ds := range gadgetCtx.GetDataSources() {
 		gadgetCtx.Logger().Debugf("subscribing to %s", ds.Name())
 
@@ -205,7 +205,26 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			fields, hasFields = fieldLookup[""] // fall back to default
 		}
 
-		switch o.mode {
+		mode := o.mode
+		if annotatedMode := ds.Annotations()["cli.output"]; annotatedMode != "" {
+			mode = annotatedMode
+		}
+
+		switch mode {
+		case ModeRaw:
+			before := func() {}
+			if ds.Annotations()[AnnotationClearScreenBefore] == "true" && term.IsTerminal(int(os.Stdout.Fd())) {
+				before = clearScreen
+			}
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				before()
+				for _, f := range ds.Accessors(false) {
+					if s, err := f.String(data); err == nil {
+						fmt.Print(s)
+					}
+				}
+				return nil
+			}, Priority)
 		case ModeColumns:
 			p, err := ds.Parser()
 			if err != nil {

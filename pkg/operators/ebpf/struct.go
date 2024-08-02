@@ -123,8 +123,13 @@ func getFieldKind(typ reflect.Type, tags []string) api.Kind {
 		if typ.Elem().Kind() == reflect.Int8 && slices.Contains(tags, "type:char") {
 			return api.Kind_CString
 		}
+		kind := getFieldKind(typ.Elem(), tags)
+		if api.IsArrayKind(kind) {
+			// we don't support arrays of arrays for now
+			return api.Kind_Invalid
+		}
+		return api.ArrayOf(kind)
 	}
-
 	return api.Kind_Invalid
 }
 

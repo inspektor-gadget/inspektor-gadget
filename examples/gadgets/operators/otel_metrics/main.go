@@ -45,7 +45,7 @@ func do() error {
 			if err != nil {
 				return err
 			}
-			ds.AddAnnotation(otelmetrics.AnnotationMetricsExport, "true")
+			ds.AddAnnotation(otelmetrics.AnnotationMetricsCollect, "true")
 
 			// The node name will be used as key
 			node, err := ds.AddField(
@@ -140,7 +140,7 @@ func do() error {
 
 	// Initialize operator with default settings
 	globalParams := apihelpers.ToParamDescs(otelmetrics.Operator.GlobalParams()).ToParams()
-	globalParams.Set(otelmetrics.ParamOtelMetricsEnabled, "true")
+	globalParams.Set(otelmetrics.ParamOtelMetricsListen, "true")
 	otelmetrics.Operator.Init(globalParams)
 
 	l := logger.DefaultLogger()
