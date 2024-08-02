@@ -59,4 +59,12 @@ typedef __u64 gadget_syscall;
 
 typedef __u32 gadget_kernel_stack;
 
+// typedefs used for metrics
+typedef __u32 gadget_counter__u32;
+typedef __u64 gadget_counter__u64;
+typedef __u32 gadget_gauge__u32;
+typedef __u64 gadget_gauge__u64;
+typedef __u32 gadget_histogram_slot__u32;
+typedef __u64 gadget_histogram_slot__u64;
+
 #endif /* __TYPES_H */
