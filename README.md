@@ -33,51 +33,78 @@ Inspektor Gadget is a set of tools and framework for data collection and system 
 
 ## Quick start
 
-This assumes you have the required Inspektor Gadget tools installed as outlined in the [Installation instructions](#installation).
-
-The following examples use the [trace_open Gadget](https://www.inspektor-gadget.io/docs/latest/gadgets/trace_open) which triggers when a file is open on the system.
+The following examples use the [trace_open](https://www.inspektor-gadget.io/docs/latest/gadgets/trace_open) Gadget which triggers when a file is open on the system.
 
 ### Kubernetes
 
-Deploy and run on a Kubernetes cluster
+#### Deployed to the Cluster
+
+[krew](https://sigs.k8s.io/krew) is the recommended way to install
+`kubectl gadget`. You can follow the
+[krew's quickstart](https://krew.sigs.k8s.io/docs/user-guide/quickstart/)
+to install it and then install `kubectl gadget` by executing the following
+commands.
 
 ```bash
+kubectl krew install gadget
 kubectl gadget deploy
-kubectl gadget run trace_open
+kubectl gadget run trace_open:latest
 ```
 
-Or use via `kubectl debug` (requires no installation) for a single node
+Check [Installing on Kubernetes](https://www.inspektor-gadget.io/docs/latest/reference/install-kubernetes) to learn more about different options.
+
+### Kubectl Node Debug
+
+We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
 
 ```bash
-kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig run trace_open
+kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig run trace_open:latest
 ```
+
+For more information on how to use `ig` without installation on Kubernetes, please refer to the [ig documentation](https://www.inspektor-gadget.io/docs/latest/reference/ig#using-ig-with-kubectl-debug-node).
 
 ### Linux
 
-Runs Inspektor Gadget locally on Linux.
+#### Install Locally
+
+Install the `ig` binary locally on Linux and run a Gadget:
 
 ```bash
-ig run trace_open
+IG_ARCH=amd64
+IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
+
+curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
+
+sudo ig run trace_open:latest
 ```
 
-### Via Docker
+Check [Installing on Linux](https://www.inspektor-gadget.io/docs/latest/reference/install-linux) to learn more.
+
+#### Run in a Container
 
 ```bash
-docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig run trace_open
+docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig run trace_open:latest
 ```
 
-### MacOS or Windows (but not exclusively)
+For more information on how to use `ig` without installation on Linux, please check [Using ig in a container](https://www.inspektor-gadget.io/docs/latest/reference/ig#using-ig-in-a-container).
+
+### MacOS or Windows
+
+It's possible to control an `ig` running in Linux from different operating systems by using the `gadgetctl` binary.
 
 Run the following on a Linux machine to make `ig` available to clients.
 
 ```bash
-ig daemon --host=tcp://0.0.0.0:1234
+sudo ig daemon --host=tcp://0.0.0.0:1234
 ```
 
-Use the `gadgetctl` client to connect and run commands remote Linux servers.
+Download the `gadgetctl` tools for MacOS
+([amd64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-amd64-v0.30.0.tar.gz),
+[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz)) or [windows](https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/gadgetctl-windows-amd64-v0.30.0.tar.gz) and run the Gadget specifying the IP address of the Linux machine:
+
 
 ```bash
-gadgetctl run trace_open --remote-address=tcp://$IP:1234
+gadgetctl run trace_open:latest --remote-address=tcp://$IP:1234
 ```
 
 ***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](https://www.inspektor-gadget.io/docs/latest/reference/run) command***.
@@ -88,7 +115,7 @@ gadgetctl run trace_open --remote-address=tcp://$IP:1234
 
 Gadgets are the central component in the Inspektor Gadget framework. A Gadget is an [OCI image](https://opencontainers.org/) that includes one or more eBPF programs, metadata YAML file and, optionally, WASM modules for post processing.
 As OCI images, they can be stored in a container registry (compliant with the OCI specifications), making them easy to distribute and share.
-Gadgets are built using the [`ig image build`](/docs/gadg) command.
+Gadgets are built using the [`ig image build`](https://www.inspektor-gadget.io/docs/latest/gadget-devel/building) command.
 
 You can find a growing collection of Gadgets on [Artifact HUB](https://artifacthub.io/packages/search?kind=22). This includes both in-tree Gadgets (hosted in this git repository in the [/gadgets](./gadgets/README.md) directory and third-party Gadgets).
 
@@ -121,61 +148,11 @@ See the [operator documentation](docs/operators.md) for more information.
 
 ### Further learning
 
-Use the [project documentation](/docs/_index.md) to learn more about:
+Use the [project documentation](https://www.inspektor-gadget.io/docs/) to learn more about:
 
-* [Overview](/docs/_index.md)
-* [Concepts](/docs/core_concepts/_index.md)
-* [Components](https://inspektor-gadget.io/docs/components)
-* [Gadgets](https://inspektor-gadget.io/docs/gadgets)
-* [Reference](https://inspektor-gadget.io/docs/reference)
-* [Contributing]()
-
-## Installation
-
-Inspektor Gadget can be installed in several different ways depending on your environment and needs.
-
-### For Kubernetes
-
-Use the [krew](https://sigs.k8s.io/krew) plugin manager to install the gadget `kubectl` plugin and
-deploy Inspektor Gadget into a Kubernetes cluster.
-
-```bash
-kubectl krew install gadget
-kubectl gadget deploy
-```
-### On Linux
-
-This installs the `ig` and `gadgetctl` tools
-
-```bash
-IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
-IG_ARCH=amd64
-
-# ig binary
-curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
-
-# gadgetctl binary
-curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/gadgetctl-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - gadgetctl
-```
-
-### On MacOS
-
-Download the `gadgetctl` client tool
-([amd64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-amd64-v0.30.0.tar.gz),
-[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz))
-which enables communicating with `ig` running in daemon mode on a Linux host.
-
-### On Windows
-
-Download the
-[gadgetctl](https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/gadgetctl-windows-amd64-v0.30.0.tar.gz)
-client tool which enables communicating with ig running in daemon mode on a
-Linux host.
-
-Download the  directly
-
-Read the detailed [install
-instructions](https://www.inspektor-gadget.io/docs/latest/getting-started/) for more information.
+* [Reference](https://www.inspektor-gadget.io/docs/latest/reference)
+* [Gadgets](https://www.inspektor-gadget.io/docs/latest/gadgets)
+* [Contributing](https://www.inspektor-gadget.io/docs/latest/devel/CONTRIBUTING)
 
 ## Kernel requirements
 
@@ -184,7 +161,7 @@ The eBPF functionality available to Gadgets depend on the version and configurat
 running in the node/machine where the Gadget is being loaded. Gadgets developed by the Inspektor
 Gadget project require at least Linux 5.10 with [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled.
 
-Refer to the [documentation for a specific Gadget](/gadgets/README.md) for any notes regarding requirements.
+Refer to the [documentation for a specific Gadget](https://www.inspektor-gadget.io/docs/latest/gadgets) for any notes regarding requirements.
 
 ## Code examples
 
