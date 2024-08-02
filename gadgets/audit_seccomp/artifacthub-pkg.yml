@@ -23,7 +23,7 @@ links:
 install: |
     # Run
     ```bash
-    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest
+    sudo ig run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest
     ```
 provider:
     name: Inspektor Gadget
