@@ -11,16 +11,10 @@ all: $(TEST_ARTIFACTS)
 .PHONY: $(TEST_ARTIFACTS)
 $(TEST_ARTIFACTS):
 	@echo "Building $@"
-	@sudo -E IG_EXPERIMENTAL=true \
-		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) \
-		ig image build \
-		-t $@:latest \
-		$@
-	@sudo -E IG_EXPERIMENTAL=true \
-		ig image export $@:latest $@.tar
+	@sudo IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/../../../..) ig image build -t $@:latest $@
+	@sudo ig image export $@:latest $@.tar
 	# TODO: This fails with "Error: removing gadget image: unable to reload index:"
-	#@sudo -E IG_EXPERIMENTAL=true \
-	#	ig image remove $@:latest
+	#@sudo ig image remove $@:latest
 
 .PHONY:
 clean:
