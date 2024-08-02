@@ -212,10 +212,26 @@ func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (data
 	return ds, nil
 }
 
-func (c *GadgetContext) GetDataSources() map[string]datasource.DataSource {
+func (c *GadgetContext) getDataSources(all bool) map[string]datasource.DataSource {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return maps.Clone(c.dataSources)
+
+	ret := maps.Clone(c.dataSources)
+	for name, ds := range ret {
+		// Don't forward unrequested data sources if all is false
+		if !all && !ds.IsRequested() {
+			delete(ret, name)
+		}
+	}
+	return ret
+}
+
+func (c *GadgetContext) GetDataSources() map[string]datasource.DataSource {
+	return c.getDataSources(false)
+}
+
+func (c *GadgetContext) GetAllDataSources() map[string]datasource.DataSource {
+	return c.getDataSources(true)
 }
 
 func (c *GadgetContext) SetVar(varName string, value any) {
@@ -301,7 +317,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	if run {
-		go c.run(localOperators)
+		if err := c.start(localOperators); err != nil {
+			return fmt.Errorf("starting local operators: %w", err)
+		}
+
+		c.Logger().Debugf("running...")
+
+		go func() {
+			// TODO: Client shouldn't need to wait for the timeout. It should be
+			// managed only on the server side.
+			WaitForTimeoutOrDone(c)
+			c.stop(localOperators)
+		}()
 	}
 
 	return nil

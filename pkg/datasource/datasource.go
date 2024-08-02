@@ -166,6 +166,7 @@ type DataSource interface {
 
 	Accessors(rootOnly bool) []FieldAccessor
 
+	SetRequested(bool)
 	IsRequested() bool
 
 	// ByteOrder returns a binary accessor using the byte order of the creator of the DataSource
@@ -176,6 +177,8 @@ type DataSource interface {
 
 	Annotations() map[string]string
 	Tags() []string
+
+	CopyFieldsTo(DataSource) error
 }
 
 type DataSourceOption func(*dataSource)

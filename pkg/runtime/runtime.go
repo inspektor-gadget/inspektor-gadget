@@ -29,6 +29,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	// NumRunTargets is the number of targets that the gadget will run on
+	NumRunTargets = "n-run-targets"
+)
+
 type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser
@@ -46,6 +51,7 @@ type GadgetContext interface {
 	ImageName() string
 	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
 	GetDataSources() map[string]datasource.DataSource
+	GetAllDataSources() map[string]datasource.DataSource
 	SetVar(string, any)
 	GetVar(string) (any, bool)
 	SerializeGadgetInfo() (*api.GadgetInfo, error)

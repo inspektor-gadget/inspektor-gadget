@@ -136,8 +136,8 @@ func (i *ebpfInstance) evaluateMapParams(paramValues api.ParamValues) error {
 		if iter.count == 0 {
 			iter.count = globalCount
 		}
-		iter.ds.AddAnnotation("fetch-count", fmt.Sprintf("%d", iter.count))
-		iter.ds.AddAnnotation("fetch-interval", iter.interval.String())
+		iter.ds.AddAnnotation(api.FetchCountAnnotation, fmt.Sprintf("%d", iter.count))
+		iter.ds.AddAnnotation(api.FetchIntervalAnnotation, iter.interval.String())
 	}
 	return nil
 }

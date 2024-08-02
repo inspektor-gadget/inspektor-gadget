@@ -30,6 +30,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/combiner"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -116,7 +117,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 				}
 				ops = append(ops, op)
 			}
-			ops = append(ops, clioperator.CLIOperator)
+			ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
 
 			gadgetCtx := gadgetcontext.New(
 				context.Background(),
@@ -181,7 +182,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			for _, op := range operators.GetDataOperators() {
 				ops = append(ops, op)
 			}
-			ops = append(ops, clioperator.CLIOperator)
+			ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
 
 			timeoutDuration := time.Duration(timeoutSeconds) * time.Second
 
