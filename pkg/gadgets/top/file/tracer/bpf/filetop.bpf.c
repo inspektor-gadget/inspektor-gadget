@@ -7,6 +7,7 @@
 #include "filetop.h"
 #include "stat.h"
 #include <gadget/mntns_filter.h>
+#include <gadget/filesystem.h>  // using get_path_str function
 
 #define MAX_ENTRIES 10240
 
@@ -23,10 +24,18 @@ struct {
 
 static void get_file_path(struct file *file, __u8 *buf, size_t size)
 {
-	struct qstr dname;
+	struct path f_path;
+	bpf_probe_read(&f_path, sizeof(struct path), &file->f_path);
 
-	dname = BPF_CORE_READ(file, f_path.dentry, d_name);
-	bpf_probe_read_kernel(buf, size, dname.name);
+	char *path_str = get_path_str(&f_path);
+	if(path_str) {
+		bpf_probe_read_str(buf, PATH_MAX, path_str);
+	} else {
+		struct qstr dname;
+		dname = BPF_CORE_READ(file, f_path.dentry, d_name);
+		bpf_probe_read_kernel(buf, size, dname.name);
+	}
+
 }
 
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,

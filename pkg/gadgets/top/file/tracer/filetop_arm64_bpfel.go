@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type filetopBufT struct{ Buf [32768]uint8 }
+
 type filetopFileId struct {
 	Inode uint64
 	Dev   uint32
@@ -83,6 +85,7 @@ type filetopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type filetopMapSpecs struct {
+	Bufs                 *ebpf.MapSpec `ebpf:"bufs"`
 	Entries              *ebpf.MapSpec `ebpf:"entries"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
@@ -106,12 +109,14 @@ func (o *filetopObjects) Close() error {
 //
 // It can be passed to loadFiletopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type filetopMaps struct {
+	Bufs                 *ebpf.Map `ebpf:"bufs"`
 	Entries              *ebpf.Map `ebpf:"entries"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
 }
 
 func (m *filetopMaps) Close() error {
 	return _FiletopClose(
+		m.Bufs,
 		m.Entries,
 		m.GadgetMntnsFilterMap,
 	)
