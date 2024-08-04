@@ -259,10 +259,14 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				}
 			}
 			headerFuncs = append(headerFuncs, printHeader)
-
+			
+			printedHeader := false
 			for _, headerFunc := range headerFuncs {
-				headerFunc()
-			}
+				if !printedHeader {
+					headerFunc()
+					printedHeader = true
+				}
+			}			
 
 			switch ds.Type() {
 			case datasource.TypeSingle:
