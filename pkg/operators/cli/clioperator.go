@@ -179,6 +179,37 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	return api.Params{fields, mode}
 }
 
+func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
+    fields := strings.Split(fieldsString, ",")
+    result := make([]string, 0, len(fields))
+    for _, field := range fields {
+        field = strings.TrimSpace(field)
+        if field == "" {
+            continue
+        }
+        switch field[0] {
+        case '+':
+            result = append(result, defaultFields...)
+            result = append(result, field[1:])
+        case '-':
+            result = removeField(defaultFields, field[1:])
+        default:
+            result = append(result, field)
+        }
+    }
+    return result, nil
+}
+
+func removeField(fields []string, fieldToRemove string) []string {
+    result := make([]string, 0, len(fields))
+    for _, field := range fields {
+        if field != fieldToRemove {
+            result = append(result, field)
+        }
+    }
+    return result
+}
+
 func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	params := apihelpers.ToParamDescs(o.ExtraParams(gadgetCtx)).ToParams()
 	params.CopyFromMap(o.paramValues, "")
@@ -237,7 +268,11 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			formatter := p.GetTextColumnsFormatter()
 
 			if hasFields {
-				err := formatter.SetShowColumns(strings.Split(fields, ","))
+				parseFields, err := parseFields(fields, defCols)
+				if err != nil {
+					return fmt.Errorf("parsing fields: %w", err)
+				}
+				err = formatter.SetShowColumns(parseFields)
 				if err != nil {
 					return fmt.Errorf("setting fields: %w", err)
 				}
