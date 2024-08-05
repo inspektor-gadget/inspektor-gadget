@@ -1,0 +1,61 @@
+name: trace gc
+description: use uprobe to trace garbage collection in Java and Python
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+tracers:
+  gc:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: mntns_id
+      description: mount namespace inode id
+      attributes:
+        template: ns
+    - name: lang_raw
+      description: language of the application
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: timestamp
+      attributes:
+        template: timestamp
+    - name: interval_ns
+      attributes:
+        template: timestamp
+    - name: pid
+      attributes:
+        template: pid
+    - name: tid
+      attributes:
+        template: pid
+    - name: comm
+      attributes:
+        template: comm
+    - name: py_generation
+      description: gc generation, for python
+      attributes:
+        width: 11
+        alignment: left
+        ellipsis: end
+    - name: py_n_objects
+      description: number of gc-ed objects, for python
+      attributes:
+        width: 11
+        alignment: left
+        ellipsis: end
+    - name: java_start_used_bytes
+      description: used bytes when gc starts, for java
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
+    - name: java_end_used_bytes
+      description: used bytes when gc ends, for java
+      attributes:
+        width: 20
+        alignment: left
+        ellipsis: end
