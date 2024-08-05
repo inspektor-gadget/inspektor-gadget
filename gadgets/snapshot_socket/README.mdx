@@ -1,0 +1,88 @@
+---
+title: snapshot_socket
+sidebar_position: 35
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `snapshot_socket` shows existing sockets.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/snapshot_socket:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/snapshot_socket:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+Run a pod / container:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=nginx test-snapshot-socket
+pod/test-snapshot-socket created
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-snapshot-socket -d nginx
+...
+```
+</TabItem>
+</Tabs>
+
+Then, run the gadget and see how it shows the sockets used by nginx:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run snapshot_socket:latest
+K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                        DST                        STATE  K8S.NODE
+default               test-snapshot-socket  test-snapshot-socket  :::80                      :::0                       10     minikube-…
+default               test-snapshot-socket  test-snapshot-socket  0.0.0.0:80                 0.0.0.0:0                  10     minikube-…
+^C
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run snapshot_socket:latest -c test-snapshot-socket
+RUNTIME.CONTAINERNAME              SRC                                           DST                                          STATE
+test-snapshot-socket               :::80                                         :::0                                         10
+test-snapshot-socket               0.0.0.0:80                                    0.0.0.0:0                                    10
+^C
+```
+</TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod test-snapshot-socket
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-snapshot-socket
+```
+</TabItem>
+</Tabs>

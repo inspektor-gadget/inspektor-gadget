@@ -8,7 +8,7 @@ digest: "2024-07-01T13:58:59Z"
 description: "monitor connect, accept and close events of TCP connections"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
-homeURL: "https://inspektor-gadget.io/"
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_tcp"
 containersImages:
     - name: gadget
       image: "ghcr.io/inspektor-gadget/gadget/trace_tcp:latest"
@@ -19,7 +19,7 @@ keywords:
     - gadget
 links:
     - name: source
-      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_tcp"
 install: |
     # Run
     ```bash

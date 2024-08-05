@@ -1,16 +1,18 @@
 ---
 title: Contributing
-weight: 50
+sidebar_position: 50
 description: >
   How to contribute to Inspektor Gadget.
 ---
 
-Here you can learn how you can contribute to Inspektor Gadget.
+Here you can learn how you can contribute to Inspektor Gadget. If you are
+looking to develop Gadgets, please check the [Gadget
+Development](../gadget-devel) documentation.
 
 ## Getting started
 
 To better understand how the pieces fit together, we recommend reading the
-[architecture](../core-concepts/architecture.md) documentation before starting to play with
+[architecture](../reference/architecture.md) documentation before starting to play with
 Inspektor Gadget.
 
 ### Setup developer environment
@@ -78,7 +80,7 @@ Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 
 ### Building `ig`
 
-Inspektor Gadget also provides the [`ig`](../ig.md) tool to
+Inspektor Gadget also provides the [`ig`](../reference/ig.md) tool to
 trace containers without Kubernetes. It can be built independently from the
 `kubectl-gadget` and the gadget container image.
 
@@ -94,7 +96,7 @@ For faster iteration, it's possible to make changes to Inspektor Gadget and
 test them on minikube locally without pushing container images to any
 registry.
 
-* Follow the specific [installation instructions](../getting-started/install-kubernetes.md#minikube) for minikube or use `make minikube-start` to start it.
+* Follow the specific [installation instructions](../reference/install-kubernetes.md#minikube) for minikube or use `make minikube-start` to start it.
 * Deploy the locally modified version of Inspektor Gadget to an already
   running minikube cluster with `make minikube-deploy`.
 
@@ -299,6 +301,10 @@ a new tag is pushed. It's also possible to run those by pusing a branch named `c
 notice that the container images will be pushed to
 https://github.com/inspektor-gadget/inspektor-gadget/pkgs/container/inspektor-gadget and those
 should be manually cleaned up.
+
+## Documentation
+
+We kindly request that any contributions to the project also include updates to the respective portions of the documentation. This ensures that members of the community can easily learn about and utilize newly developed features.
 
 ## Getting Help
 

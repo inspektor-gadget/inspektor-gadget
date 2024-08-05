@@ -1,0 +1,111 @@
+---
+title: trace_tcpretrans
+sidebar_position: 160
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_tcpretrans
+
+The trace_tcpretrans gadget tracks TCP retransmissions.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        In terminal 1, start the trace_tcpretrans gadget:
+
+        ```bash
+        $ kubectl gadget run trace_tcpretrans:latest
+        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    K8S.NODE     TIMESTAMP
+        ```
+
+        In terminal 2, start a pod and configure the network emulator to drop 25% of the packets. This will cause TCP retransmissions:
+
+        ```bash
+        $ kubectl create service nodeport nginx --tcp=80:80
+        $ kubectl create deployment nginx --image=nginx
+        $ kubectl run --rm -ti --privileged --image ubuntu shell -- bash
+        root@shell:/# apt-get update
+        root@shell:/# apt install -y iproute2 curl
+        root@shell:/# tc qdisc add dev eth0 root netem drop 25%
+        root@shell:/# curl nginx
+        ```
+
+        The results in terminal 1 will show that some TCP transmissions cause by the dropped packets:
+
+        ```
+        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    K8S.NODE     TIMESTAMP
+        default                  shell                    shell                    10.244.0.40:45638                10.98.34.183:80                  curl                 874866        874866 2             0             SYN          RETRANS minikube-do… 2024-08-02T10:51:08.918253…
+        ```
+
+        The network emulator uses a random generator to drop 25% of the packets.
+        The results may vary.
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        In terminal 1, start the trace_tcpretrans gadget:
+
+        ```bash
+        $ sudo ig run trace_tcpretrans:latest --containername test-trace-tcpretrans
+        RUNTIME.CONTAINERNAME            SRC                                         DST                                         COMM                            PID               TID STATE            REASON           TCPFLAGS         TYPE       TIMESTAMP
+        ```
+
+        In terminal 2, start a container, configure the network emulator to drop 25% of the packets, and download a web page:
+
+        ```bash
+        $ docker run -ti --cap-add NET_ADMIN --name=test-trace-tcpretrans wbitt/network-multitool -- /bin/bash
+        # tc qdisc add dev eth0 root netem drop 25%
+        # wget 1.1.1.1
+        ```
+
+        The container needs NET_ADMIN capability to manage network interfaces
+
+        The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
+        ```
+        RUNTIME.CONTAINERNAME            SRC                                         DST                                         COMM                            PID               TID STATE            REASON           TCPFLAGS         TYPE       TIMESTAMP
+        test-trace-tcpretrans            172.17.0.3:44962                            1.1.1.1:443                                 wget                         879368            879368 1                0                                 LOSS       2024-08-02T12:55:16.658215038+02:00
+        test-trace-tcpretrans            172.17.0.3:44962                            1.1.1.1:443                                 wget                         879368            879368 1                0                PSH|ACK          RETRANS    2024-08-02T12:55:16.658236872+02:00
+        test-trace-tcpretrans            172.17.0.3:46944                            1.0.0.1:443                                 wget                         879368            879368 1                0                                 LOSS       2024-08-02T12:55:19.494288778+02:00
+        test-trace-tcpretrans            172.17.0.3:46944                            1.0.0.1:443                                 wget                         879368            879368 1                0                PSH|ACK          RETRANS    2024-08-02T12:55:19.494311420+02:00
+        ```
+    </TabItem>
+</Tabs>
+
+Congratulations! You reached the end of this guide!
+You can now delete the pod you created:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete service nginx
+        $ kubectl delete deployment nginx
+        $ kubectl delete pod shell
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-tcpretrans
+        ```
+    </TabItem>
+</Tabs>

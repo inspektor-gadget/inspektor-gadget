@@ -1,0 +1,11 @@
+customProps:
+  description: 'This audit gadgets help to audit specific functionalities or security
+    settings.
+
+    '
+label: Using audit gadgets
+link:
+  slug: builtin-gadgets/audit/
+  title: Using audit gadgets
+  type: generated-index
+position: 20

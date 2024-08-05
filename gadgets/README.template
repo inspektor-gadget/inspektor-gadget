@@ -6,7 +6,7 @@
 ## Getting started
 Pulling the gadget:
 ```
-sudo IG_EXPERIMENTAL=true ig image pull {{ $image }}
+sudo ig image pull {{ $image }}
 ```
 Running the gadget:
 ```

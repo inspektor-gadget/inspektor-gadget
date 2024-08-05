@@ -33,7 +33,7 @@ import (
 )
 
 // embed the tarball containing the gadget image. It was created with
-// $ sudo -E ig image export trace_open:latest trace_open.tar
+// $ sudo ig image export trace_open:latest trace_open.tar
 
 //go:embed trace_open.tar
 var traceOpenBytes []byte

@@ -1,0 +1,10 @@
+customProps:
+  description: 'The trace gadgets capture and print system events.
+
+    '
+label: Using trace gadgets
+link:
+  slug: builtin-gadgets/trace/
+  title: Using trace gadgets
+  type: generated-index
+position: 20

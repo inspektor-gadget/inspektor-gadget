@@ -1,0 +1,107 @@
+---
+title: trace_sni
+sidebar_position: 130
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_sni
+
+The trace_sni gadget tracks Server Name Indication (SNI) from TLS requests.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_sni:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_sni:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Run the gadget in a terminal:
+
+        ```bash
+        $ kubectl gadget run trace_sni:latest
+        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       K8S.NODE      TIMESTAMP
+        ```
+
+        Run a pod on a different terminal and perform some requests:
+
+        ```bash
+        $ kubectl run -it ubuntu --image ubuntu:latest -- /bin/bash
+        root@ubuntu:/# apt update && apt install -y wget && wget wikimedia.org
+        (...)
+        HTTP request sent, awaiting response... 301 Moved Permanently
+        Location: https://www.wikimedia.org/ [following]
+        (...)
+        root@ubuntu:/# wget www.github.com
+        (...)
+        HTTP request sent, awaiting response... 301 Moved Permanently
+        Location: https://github.com/ [following]
+        (...)
+        ```
+
+        Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
+
+        ```bash
+        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       K8S.NODE      TIMESTAMP
+        default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 wikimedia.org              minikube-doc… 2024-08-01T22:01:54.129330541Z
+        default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 www.wikimedia.org          minikube-doc… 2024-08-01T22:01:54.234518638Z
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run trace_sni:latest --containername test-trace-sni
+        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    UID                   GID NAME                                      TIMESTAMP
+        ```
+
+        Launch a container (in another terminal) that makes requests:
+
+        ```bash
+        $ docker run -it --name test-trace-sni busybox /bin/sh -c "wget https://example.com"
+        ```
+
+        Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
+        ```bash
+        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    UID                   GID NAME                                      TIMESTAMP
+        test-trace-sni                             wget                             697854                 697854                      0                     0 example.com                               2024-08-02T00:06:05.941143989+02:00
+        ```
+    </TabItem>
+</Tabs>
+
+We can see that each time our `wget` client connected to a different
+server, our tracer caught the Server Name Indication requested.
+
+Congratulations! You reached the end of this guide!
+You can now delete the pod you created:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod ubuntu
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-sni
+        ```
+    </TabItem>
+</Tabs>

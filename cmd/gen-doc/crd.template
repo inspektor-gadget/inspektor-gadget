@@ -9,7 +9,7 @@ description: |
 {{- if .Description }}
 {{ .Description | indent 2 }}
 {{- end }}
-weight: {{ .Weight }}
+sidebar_position: {{ .Weight }}
 crd:
   name_camelcase: {{ .Title }}
   name_plural: {{ .NamePlural }}
