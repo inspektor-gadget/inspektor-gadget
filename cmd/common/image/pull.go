@@ -44,5 +44,5 @@ func NewPullCmd() *cobra.Command {
 		},
 	}
 	utils.AddRegistryAuthVariablesAndFlags(cmd, &authOpts)
-	return utils.MarkExperimental(cmd)
+	return cmd
 }

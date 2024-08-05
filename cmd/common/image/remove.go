@@ -20,7 +20,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
@@ -44,5 +43,5 @@ func NewRemoveCmd() *cobra.Command {
 		},
 	}
 
-	return utils.MarkExperimental(cmd)
+	return cmd
 }
