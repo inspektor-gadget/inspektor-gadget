@@ -218,7 +218,7 @@ Export the SRC_IMAGE images to DST_FILE.
 
 ```bash
 $ sudo ig image export -h
-Export the SRC_IMAGE images to DST_FILE (experimental)
+Export the SRC_IMAGE images to DST_FILE
 
 Usage:
   ig image export SRC_IMAGE [SRC_IMAGE n] DST_FILE [flags]
@@ -244,7 +244,7 @@ $ ls -lnh trace_open.tar
 
 ```bash
 $ sudo ig image import -h
-Import images from SRC_FILE (experimental)
+Import images from SRC_FILE
 
 Usage:
   ig image import SRC_FILE [flags]
