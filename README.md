@@ -138,17 +138,13 @@ Enrichment flows the other way, too. Inspektor Gadget enables users to do high-p
 in-kernel filtering by only referencing high-level concepts such as Kubernetes pods, container
 names, etc.; automatically translating these to the corresponding low-level kernel resources.
 
-See the [enrichment documentation](docs/enrichment)
-
 ### What is an operator?
 
 In Inspektor Gadget, an operator is any part of the framework where an action is taken. Some operators are under-the-hood (i.e. fetching and loading Gadgets) while others are user-exposed (enrichment, filtering, export, etc.) and can be reordered and overridden.
 
-See the [operator documentation](docs/operators.md) for more information.
-
 ### Further learning
 
-Use the [project documentation](https://www.inspektor-gadget.io/docs/) to learn more about:
+Use the [project documentation](https://www.inspektor-gadget.io/docs/latest/) to learn more about:
 
 * [Reference](https://www.inspektor-gadget.io/docs/latest/reference)
 * [Gadgets](https://www.inspektor-gadget.io/docs/latest/gadgets)
