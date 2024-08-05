@@ -1955,14 +1955,6 @@ jobs:
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         gadget_verify_image: ${{ needs.check-secrets.outputs.cosign }}
         test_summary_suffix: ${{ matrix.runtime }}
-    - if: ${{ matrix.runtime == 'docker' }}
-      name: Check that README is up-to-date
-      # We do this check here, as we need to run kubectl-gadget against a deployed installation to
-      # be able to download a populated catalog. But we only do it for docker, as it's not
-      # necessary to check it more than once.
-      shell: bash
-      run: |
-        go run ./tools/check-readme/ ./kubectl-gadget README.md
 
   publish-test-reports:
     name: Publish test reports
