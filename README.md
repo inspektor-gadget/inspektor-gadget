@@ -102,12 +102,12 @@ Available Commands:
   advise      Recommend system configurations based on collected information
   audit       Audit a subsystem
   completion  Generate the autocompletion script for the specified shell
-  config      Configuration commands (experimental)
+  config      Configuration commands
   deploy      Deploy Inspektor Gadget on the cluster
   help        Help about any command
   profile     Profile different subsystems
   prometheus  Expose metrics using prometheus
-  run         Run a gadget (experimental)
+  run         Run a gadget
   snapshot    Take a snapshot of a subsystem and print it
   sync        Synchronize gadget information with server
   top         Gather, sort and periodically report events according to a given criteria

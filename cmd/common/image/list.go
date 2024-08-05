@@ -95,5 +95,5 @@ func NewListCmd() *cobra.Command {
 		fmt.Sprintf("Output mode, possible values are, %s", strings.Join(outputModes, ", ")),
 	)
 
-	return utils.MarkExperimental(cmd)
+	return cmd
 }

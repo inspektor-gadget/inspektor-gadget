@@ -23,7 +23,7 @@ links:
 install: |
     # Run
     ```bash
-    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:latest
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:latest
     ```
 provider:
     name: Inspektor Gadget

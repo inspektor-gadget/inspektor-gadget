@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -205,9 +204,9 @@ func NewConfigCmd(runtime runtime.Runtime, rootFlags *pflag.FlagSet) *cobra.Comm
 		return nil
 	}
 
-	cmd.AddCommand(utils.MarkExperimental(defaultCmd))
-	cmd.AddCommand(utils.MarkExperimental(viewCmd))
+	cmd.AddCommand(defaultCmd)
+	cmd.AddCommand(viewCmd)
 	AddConfigFlag(cmd)
 
-	return utils.MarkExperimental(cmd)
+	return cmd
 }

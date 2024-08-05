@@ -22,7 +22,6 @@ import (
 	"github.com/containers/image/v5/types"
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
@@ -46,5 +45,5 @@ func NewLoginCmd() *cobra.Command {
 	loginFlagSet := auth.GetLoginFlags(&o.loginOpts)
 	loginFlagSet.Lookup("authfile").Value.Set(oci.DefaultAuthFile)
 	cmd.Flags().AddFlagSet(loginFlagSet)
-	return utils.MarkExperimental(cmd)
+	return cmd
 }

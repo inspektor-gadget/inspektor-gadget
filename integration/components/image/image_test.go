@@ -32,9 +32,6 @@ import (
 )
 
 func TestImage(t *testing.T) {
-	// ensure that experimental is enabled
-	os.Setenv("IG_EXPERIMENTAL", "true")
-
 	// start registry
 	r := StartRegistry(t, "test-image-registry")
 	t.Cleanup(func() {
@@ -272,9 +269,6 @@ func runCmd(t *testing.T, cmd *cobra.Command, args []string) {
 }
 
 func TestExportDeterministic(t *testing.T) {
-	// ensure that experimental is enabled
-	os.Setenv("IG_EXPERIMENTAL", "true")
-
 	testImage := "test-image-export"
 	tmpFolder := t.TempDir()
 	gadgetSrcFolder := path.Join(tmpFolder, "gadget")

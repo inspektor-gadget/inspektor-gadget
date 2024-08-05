@@ -168,8 +168,3 @@ type GadgetInstantiate interface {
 	// should not run any code that depends on cleanup
 	NewInstance() (Gadget, error)
 }
-
-// GadgetExperimental allows to mark a gadget as experimental.
-type GadgetExperimental interface {
-	Experimental() bool
-}

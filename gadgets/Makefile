@@ -53,7 +53,7 @@ readmes: $(GADGETS_README)
 .PHONY: $(GADGETS)
 $(GADGETS):
 	@echo "Building $@"
-	@sudo -E IG_EXPERIMENTAL=true \
+	@sudo -E \
 		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
 		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
@@ -76,27 +76,26 @@ $(GADGETS_README):
 push: build
 	@echo "Pushing all gadgets"
 	for GADGET in $(GADGETS); do \
-		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
+		sudo -E $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
 	done
 
 sign: push
 	@echo "Signing all gadgets"
 	for GADGET in $(GADGETS); do \
-		digest=$$(sudo -E IG_EXPERIMENTAL=true $(IG) image list --no-trunc | grep "$$GADGET " | awk '{ print $$3 }') ; \
+		digest=$$(sudo -E $(IG) image list --no-trunc | grep "$$GADGET " | awk '{ print $$3 }') ; \
 		cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$$GADGET@$$digest || exit 1 ; \
 	done
 
 .PHONY:
 clean:
 	for GADGET in $(GADGETS); do \
-		sudo -E IG_EXPERIMENTAL=true $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+		sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
 .PHONY:
 test: build
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
-	IG_EXPERIMENTAL=true \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
