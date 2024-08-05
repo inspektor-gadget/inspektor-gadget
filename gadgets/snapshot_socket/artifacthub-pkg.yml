@@ -8,7 +8,7 @@ digest: "2024-07-01T13:58:59Z"
 description: "Show TCP and UDP sockets"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
-homeURL: "https://inspektor-gadget.io/"
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/snapshot_socket"
 containersImages:
     - name: gadget
       image: "ghcr.io/inspektor-gadget/gadget/snapshot_socket:latest"
@@ -19,7 +19,7 @@ keywords:
     - gadget
 links:
     - name: source
-      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_socket"
 install: |
     # Run
     ```bash
