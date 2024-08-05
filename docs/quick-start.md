@@ -78,4 +78,4 @@ Download the `gadgetctl` tools for MacOS
 gadgetctl run trace_open:latest --remote-address=tcp://$IP:1234
 ```
 
-***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](./reference/run.md) command***.
+***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](./reference/run.mdx) command***.
