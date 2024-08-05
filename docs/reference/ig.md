@@ -5,7 +5,11 @@ description: >
   Description of the ig tool.
 ---
 
-TODO: What to do with this document?
+:::warning
+
+This document is outdated
+
+:::
 
 Inspektor Gadget relies on the Kubernetes API server to work. However, there are
 [some cases](#use-cases) where it is necessary, or preferred, to trace

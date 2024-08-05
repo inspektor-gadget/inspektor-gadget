@@ -5,12 +5,14 @@ description: >
   How to contribute to Inspektor Gadget.
 ---
 
-Here you can learn how you can contribute to Inspektor Gadget.
+Here you can learn how you can contribute to Inspektor Gadget. If you are
+looking to develop Gadgets, please check the [Gadget
+Development](../gadget-devel) documentation.
 
 ## Getting started
 
 To better understand how the pieces fit together, we recommend reading the
-[architecture](../core-concepts/architecture.md) documentation before starting to play with
+[architecture](../reference/architecture.md) documentation before starting to play with
 Inspektor Gadget.
 
 ### Setup developer environment
@@ -302,7 +304,7 @@ should be manually cleaned up.
 
 ## Documentation
 
-We kindly request that any contributions to the project also include updates to the respective portions of the documentation. This ensures that members of the community can easily learn about and utilize newly developed features. 
+We kindly request that any contributions to the project also include updates to the respective portions of the documentation. This ensures that members of the community can easily learn about and utilize newly developed features.
 
 ## Getting Help
 

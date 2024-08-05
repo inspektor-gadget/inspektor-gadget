@@ -4,6 +4,14 @@ sidebar_position: 710
 description: 'Testing a Gadget'
 ---
 
+:::warning
+
+This document is slighty outdated, please check the [existing
+gadgets](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets)
+to learn how they implement the tests.
+
+:::
+
 Inspektor Gadget provides a set of helpers to implement tests for your gadget. This document is a small guide showing how to implement tests for the [hello-world gadget](./hello-world-gadget.md).
 
 First, create the testing file, `mygadget_test.go` and import some packages, like:
@@ -47,9 +55,13 @@ Later we create a test function called `TestMyGadget()`.
 In this, we first create a container manager (can be either `docker` or `containerd`). After that, we create a command to run the gadget with various options.
 Finally, these commands are used as arguments in `RunTestSteps()`:
 
-TODO: Update it:
+:::warning
+
+TODO: Update this document with:
 - Use new normalize functions
 - Support other container runtimes than docker
+
+:::
 
 ```go
 func TestMyGadget(t *testing.T) {
