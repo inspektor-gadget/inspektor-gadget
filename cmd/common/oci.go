@@ -234,5 +234,5 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		AddFlags(cmd, operatorParams, nil, runtime)
 	}
 
-	return utils.MarkExperimental(cmd)
+	return cmd
 }
