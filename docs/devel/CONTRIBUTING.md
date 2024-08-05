@@ -300,6 +300,10 @@ notice that the container images will be pushed to
 https://github.com/inspektor-gadget/inspektor-gadget/pkgs/container/inspektor-gadget and those
 should be manually cleaned up.
 
+## Documentation
+
+We kindly request that any contributions to the project also include updates to the respective portions of the documentation. This ensures that members of the community can easily learn about and utilize newly developed features. 
+
 ## Getting Help
 
 If you are having any issues with your contribution, or want to discuss anything about it, feel free
