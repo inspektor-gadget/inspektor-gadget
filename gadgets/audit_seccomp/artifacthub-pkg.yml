@@ -8,7 +8,7 @@ digest: "2024-07-15T22:05:24Z"
 description: "Audit syscalls according to the seccomp profile"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
-homeURL: "https://inspektor-gadget.io/"
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/audit_seccomp"
 containersImages:
     - name: gadget
       image: "ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest"
@@ -19,7 +19,7 @@ keywords:
     - gadget
 links:
     - name: source
-      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/audit_seccomp"
 install: |
     # Run
     ```bash
