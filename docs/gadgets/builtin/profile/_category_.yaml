@@ -1,0 +1,12 @@
+customProps:
+  description: 'The profile gadgets provide a way to measure the performance of a
+    sub-system. These gadgets capture system events for a period and then print a
+    report.
+
+    '
+label: Using profile gadgets
+link:
+  slug: builtin-gadgets/profile/
+  title: Using profile gadgets
+  type: generated-index
+position: 20

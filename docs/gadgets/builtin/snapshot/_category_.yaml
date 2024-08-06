@@ -1,0 +1,11 @@
+customProps:
+  description: 'The snapshot gadgets capture and print the status of a system at a
+    specific point in time.
+
+    '
+label: Using snapshot gadgets
+link:
+  slug: builtin-gadgets/snapshot/
+  title: Using snapshot gadgets
+  type: generated-index
+position: 20

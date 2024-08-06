@@ -1,6 +1,6 @@
 ---
 title: UidGidResolver
-weight: 100
+sidebar_position: 100
 description: >
   Resolving UID and GID to username and groupname
 ---

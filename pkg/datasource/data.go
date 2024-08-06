@@ -419,7 +419,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	ds.fields = append(ds.fields, newFields...)
 
 	for _, f := range newFields {
-		ds.fieldMap[f.Name] = f
+		ds.fieldMap[f.FullName] = f
 	}
 
 	ds.payloadCount++
@@ -724,7 +724,7 @@ func (ds *dataSource) CopyFieldsTo(out DataSource) error {
 		nf, _ := msg.(*api.Field)
 		outDs.fields = append(outDs.fields, (*field)(nf))
 		if !FieldFlagUnreferenced.In(f.Flags) {
-			outDs.fieldMap[nf.Name] = (*field)(nf)
+			outDs.fieldMap[nf.FullName] = (*field)(nf)
 		}
 	}
 

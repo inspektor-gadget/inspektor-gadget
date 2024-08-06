@@ -1,0 +1,108 @@
+---
+title: trace_dns
+sidebar_position: 80
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_dns
+
+The trace_dns gadget is used to trace DNS queries and responses.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Start by creating a namespace:
+
+        ```bash
+        $ kubectl create namespace demo
+        namespace/demo created
+        ```
+
+        Run the gadget in a terminal:
+
+        ```bash
+        $ kubectl gadget run trace_dns:latest --namespace demo
+        K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES  K8S.NODE   TIMESTAMP
+        ```
+
+        Run a pod on a different terminal and perform some DNS requests:
+
+        ```bash
+        $ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
+        # nslookup -querytype=a inspektor-gadget.io.
+        # nslookup -querytype=aaaa inspektor-gadget.io.
+        # nslookup -querytype=mx inspektor-gadget.io.
+        ```
+
+        The requests will be logged by the DNS gadget:
+        ```bash
+        K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES  K8S.NODE   TIMESTAMP
+        demo                 mypod                mypod                10.244.0.26:42448           10.96.0.10:53               isc-net-0…     669808 Q  A          inspektor-gadget.i…                     minikube-… 2024-08-01T21:40:58.1…
+        demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:42448           isc-net-0…     669808 R  A          inspektor-gadget.i… Success  104.21.11… minikube-… 2024-08-01T21:40:58.1…
+        demo                 mypod                mypod                10.244.0.26:56070           10.96.0.10:53               isc-net-0…     669891 Q  AAAA       inspektor-gadget.i…                     minikube-… 2024-08-01T21:41:05.0…
+        demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:56070           isc-net-0…     669891 R  AAAA       inspektor-gadget.i… Success  2606:4700… minikube-… 2024-08-01T21:41:05.0…
+        demo                 mypod                mypod                10.244.0.26:41468           10.96.0.10:53               isc-net-0…     669959 Q  MX         inspektor-gadget.i…                     minikube-… 2024-08-01T21:41:09.8…
+        demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:41468           isc-net-0…     669959 R  MX         inspektor-gadget.i… Success  ,,         minikube-… 2024-08-01T21:41:09.9…
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run trace_dns:latest --containername test-trace-dns
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES     TIMESTAMP
+        ```
+
+        Launch a container that makes DNS requests:
+
+        ```bash
+        $ docker run --name test-trace-dns -it --rm wbitt/network-multitool /bin/sh
+        / # nslookup -querytype=a inspektor-gadget.io.
+        ```
+
+        The requests will be logged by the DNS gadget:
+        ```bash
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES     TIMESTAMP
+        test-trace-dns              172.17.0.2:36282                    192.168.0.1:53                      isc-net-0000           675195 Q  A              inspektor-gadget.io.                              2024-08-01T23:46:19.547412887…
+        test-trace-dns              192.168.0.1:53                      172.17.0.2:36282                    isc-net-0000           675195 R  A              inspektor-gadget.io.       Success  104.21.11.16… 2024-08-01T23:46:19.553035092…
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete namespace demo
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-dns
+        ```
+    </TabItem>
+</Tabs>

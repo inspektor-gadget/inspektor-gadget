@@ -1,0 +1,39 @@
+---
+title: 'Insecure Registries'
+sidebar_position: 600
+description: Using Insecure Registries
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Inspektor Gadget allows pulling, pushing and running Gadget images from insecure
+(plain-HTTP) only registries. This is controlled with the
+`--insecure-registries` flag:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+For `kubectl gadget`, it can only be configured at deploy time:
+
+```bash
+$ kubectl gadget deploy --insecure-registries=192.168.1.16:5000
+...
+
+$ kubectl gadget run 192.168.1.16:5000/trace_exec:latest
+...
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig image pull 192.168.1.16:5000/trace_exec:latest --insecure-registries="192.168.1.16:5000"
+...
+
+$ sudo ig run 192.168.1.16:5000/trace_exec:latest --insecure-registries="192.168.1.16:5000"
+```
+
+</TabItem>
+</Tabs>

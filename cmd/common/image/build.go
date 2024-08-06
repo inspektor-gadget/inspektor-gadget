@@ -39,7 +39,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
@@ -112,7 +111,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
 
-	return utils.MarkExperimental(cmd)
+	return cmd
 }
 
 func runBuild(cmd *cobra.Command, opts *cmdOpts) error {

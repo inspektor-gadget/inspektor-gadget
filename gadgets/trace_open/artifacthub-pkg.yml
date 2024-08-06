@@ -8,7 +8,7 @@ digest: "2024-07-01T13:58:59Z"
 description: "trace open files"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
-homeURL: "https://inspektor-gadget.io/"
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_open"
 containersImages:
     - name: gadget
       image: "ghcr.io/inspektor-gadget/gadget/trace_open:latest"
@@ -19,11 +19,11 @@ keywords:
     - gadget
 links:
     - name: source
-      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_open"
 install: |
     # Run
     ```bash
-    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_open:latest
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:latest
     ```
 provider:
     name: Inspektor Gadget

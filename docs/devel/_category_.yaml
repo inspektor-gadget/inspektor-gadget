@@ -1,0 +1,8 @@
+customProps:
+  description: 'This section provides information for developers.'
+label: Development
+link:
+  slug: devel/
+  title: Development
+  type: generated-index
+position: 40

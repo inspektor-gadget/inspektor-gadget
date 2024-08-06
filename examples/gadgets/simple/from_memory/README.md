@@ -6,7 +6,7 @@ and how it can be run from there.
 The `trace_open.tar` file was created with:
 
 ```bash
-$ sudo -E ig image export trace_open:latest trace_open.tar
+$ sudo ig image export trace_open:latest trace_open.tar
 ```
 
 ### How to compile
