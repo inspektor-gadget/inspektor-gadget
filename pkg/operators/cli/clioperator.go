@@ -179,9 +179,45 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	return api.Params{fields, mode}
 }
 
+// func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
+//     fields := strings.Split(fieldsString, ",")
+//     result := make([]string, len(defaultFields))
+//     copy(result, defaultFields)
+    
+//     hasExplicitFields := false
+
+//     for _, field := range fields {
+//         field = strings.TrimSpace(field)
+//         if field == "" {
+//             continue
+//         }
+//         switch field[0] {
+//         case '+':
+//             result = append(result, field[1:])
+//         case '-':
+//             result = removeField(result, field[1:])
+//         default:
+//             if !hasExplicitFields {
+//                 result = []string{field}
+//                 hasExplicitFields = true
+//             } else {
+//                 result = append(result, field)
+//             }
+//         }
+//     }
+//     return result, nil
+// }
 func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
     fields := strings.Split(fieldsString, ",")
-    result := make([]string, 0, len(fields))
+    showFields := make(map[string]struct{})
+    hideFields := make(map[string]struct{})
+    addedFields := make(map[string]struct{})
+    
+    // Initially, all default fields are shown
+    for _, field := range defaultFields {
+        showFields[field] = struct{}{}
+    }
+
     for _, field := range fields {
         field = strings.TrimSpace(field)
         if field == "" {
@@ -189,25 +225,39 @@ func parseFields(fieldsString string, defaultFields []string) ([]string, error) 
         }
         switch field[0] {
         case '+':
-            result = append(result, defaultFields...)
-            result = append(result, field[1:])
+            fieldName := field[1:]
+            if _, ok := hideFields[fieldName]; ok {
+                return nil, fmt.Errorf("field %q both added (+) and removed (-)", fieldName)
+            }
+            addedFields[fieldName] = struct{}{}
         case '-':
-            result = removeField(defaultFields, field[1:])
+            fieldName := field[1:]
+            if _, ok := addedFields[fieldName]; ok {
+                return nil, fmt.Errorf("field %q both added (+) and removed (-)", fieldName)
+            }
+            hideFields[fieldName] = struct{}{}
         default:
-            result = append(result, field)
+            // If no prefix, return only these fields
+            return strings.Split(fieldsString, ","), nil
         }
     }
-    return result, nil
-}
 
-func removeField(fields []string, fieldToRemove string) []string {
-    result := make([]string, 0, len(fields))
-    for _, field := range fields {
-        if field != fieldToRemove {
-            result = append(result, field)
-        }
+    // Add addedFields to showFields
+    for field := range addedFields {
+        showFields[field] = struct{}{}
     }
-    return result
+
+    // Remove hideFields from showFields
+    for field := range hideFields {
+        delete(showFields, field)
+    }
+
+    result := make([]string, 0, len(showFields))
+    for field := range showFields {
+        result = append(result, field)
+    }
+
+    return result, nil
 }
 
 func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
@@ -268,11 +318,11 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			formatter := p.GetTextColumnsFormatter()
 
 			if hasFields {
-				parseFields, err := parseFields(fields, defCols)
+				parsedFields, err := parseFields(fields, defCols)
 				if err != nil {
 					return fmt.Errorf("parsing fields: %w", err)
 				}
-				err = formatter.SetShowColumns(parseFields)
+				err = formatter.SetShowColumns(parsedFields)
 				if err != nil {
 					return fmt.Errorf("setting fields: %w", err)
 				}
