@@ -475,7 +475,6 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 
 func (t *Tracer) init(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
-	t.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
 	t.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
 	t.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
 
