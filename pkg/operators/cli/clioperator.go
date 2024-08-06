@@ -179,34 +179,6 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	return api.Params{fields, mode}
 }
 
-// func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
-//     fields := strings.Split(fieldsString, ",")
-//     result := make([]string, len(defaultFields))
-//     copy(result, defaultFields)
-    
-//     hasExplicitFields := false
-
-//     for _, field := range fields {
-//         field = strings.TrimSpace(field)
-//         if field == "" {
-//             continue
-//         }
-//         switch field[0] {
-//         case '+':
-//             result = append(result, field[1:])
-//         case '-':
-//             result = removeField(result, field[1:])
-//         default:
-//             if !hasExplicitFields {
-//                 result = []string{field}
-//                 hasExplicitFields = true
-//             } else {
-//                 result = append(result, field)
-//             }
-//         }
-//     }
-//     return result, nil
-// }
 func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
     fields := strings.Split(fieldsString, ",")
     showFields := make(map[string]struct{})
