@@ -418,7 +418,7 @@ We can see how the counter for `mycontainer` is increased in http://localhost:90
 #### Grafana
 
 It's possible to visualize the metrics in Grafana. As an example we will plot a histogram for DNS requests latency. We
-can use the [docker compose file](../../tools/monitoring/docker-compose.yml) to prepare the environment:
+can use the [docker compose file](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/tools/monitoring/docker-compose.yml) to prepare the environment:
 
 ```bash
 $ pushd tools/monitoring
