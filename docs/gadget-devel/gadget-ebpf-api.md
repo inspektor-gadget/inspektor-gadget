@@ -141,6 +141,10 @@ When a gadget emits an event with one of the following fields, it will be
 automatically enriched, i.e. new field(s) containing more information will be
 added to the event.
 
+In some cases, these enrichments can be customized further by applying field
+annotations. For further information about field annotations, see the
+[metadata](metadata.md#field) documentation.
+
 ### `gadget_mntns_id` and `gadget_netns_id`
 
 See [Container enrichment](#container-enrichment)
