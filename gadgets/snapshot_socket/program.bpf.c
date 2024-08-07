@@ -57,40 +57,6 @@ struct socket_entry {
 
 GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
 
-typedef enum  {
-    STATE_UNKNOWN = 0,
-    STATE_ESTABLISHED = 1,
-    STATE_SYN_SENT = 2,
-    STATE_SYN_RECV = 3,
-    STATE_FIN_WAIT1 = 4,
-    STATE_FIN_WAIT2 = 5,
-    STATE_TIME_WAIT = 6,
-    STATE_CLOSE = 7,
-    STATE_CLOSE_WAIT = 8,
-    STATE_LAST_ACK = 9,
-    STATE_LISTEN = 10,
-    STATE_CLOSING = 11,
-} socket_state;
-
-
-static const char *state_to_string(__u32 state)
-{
-    switch (state) {
-        case STATE_ESTABLISHED: return "ESTABLISHED";
-        case STATE_SYN_SENT: return "SYN_SENT";
-        case STATE_SYN_RECV: return "SYN_RECV";
-        case STATE_FIN_WAIT1: return "FIN_WAIT1";
-        case STATE_FIN_WAIT2: return "FIN_WAIT2";
-        case STATE_TIME_WAIT: return "TIME_WAIT";
-        case STATE_CLOSE: return "CLOSE";
-        case STATE_CLOSE_WAIT: return "CLOSE_WAIT";
-        case STATE_LAST_ACK: return "LAST_ACK";
-        case STATE_LISTEN: return "LISTEN";
-        case STATE_CLOSING: return "CLOSING";
-        default: return "UNKNOWN";
-    }
-}
-
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.
  * @sk: The socket whom inode identifier will be returned.
@@ -125,8 +91,6 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 		     __u8 state, __u64 ino, __u32 netns)
 {
 	struct socket_entry entry = {};
-	    const char *state_str = state_to_string(state);
-
 
 	switch (family) {
 	case AF_INET:
