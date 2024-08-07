@@ -49,10 +49,6 @@ func TestTraceSNI(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
-	if utils.CurrentTestComponent == utils.IgLocalTestComponent && utils.Runtime == "containerd" {
-		t.Skip("Skipping test as containerd test utils can't use the network")
-	}
-
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-sni"
@@ -68,8 +64,8 @@ func TestTraceSNI(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io; sleep 0.1; done",
-		containerOpts...,
+		"while true; do setuidgid 1000:1111 wget --no-check-certificate -T 1 -t 2 -q -O /dev/null https://inspektor-gadget.io || true; sleep 1; done",		containers.WithContainerImage(containerImage),
+		containers.WithContainerImage(containerImage),
 	)
 
 	testContainer.Start(t)
@@ -106,6 +102,7 @@ func TestTraceSNI(t *testing.T) {
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
 			}
+			expectedEntry.CommonData.K8s.HostNetwork = true
 
 			normalize := func(e *traceSNIEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
