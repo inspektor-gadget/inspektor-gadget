@@ -50,6 +50,7 @@
 struct socket_entry {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
+	char state[16];
 	__u32 state;
 	__u32 ino;
 	gadget_netns_id netns_id;
@@ -148,7 +149,7 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.src.proto = entry.dst.proto = proto;
 	entry.src.port = bpf_htons(srcp);
 	entry.dst.port = bpf_htons(destp);
-	entry.state = state;
+    bpf_probe_read_kernel(&entry.state, sizeof(entry.state), state_to_string(state));
 	entry.ino = ino;
 	entry.netns_id = netns;
 
