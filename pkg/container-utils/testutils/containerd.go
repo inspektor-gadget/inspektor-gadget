@@ -119,6 +119,8 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.expectStartError {
 		t.Fatalf("testutils/containerd: ExpectStartError is not supported yet")
 	}
+	specOpts = append(specOpts, oci.WithHostNamespace(specs.NetworkNamespace))
+	specOpts = append(specOpts, oci.WithHostHostsFile, oci.WithHostResolvconf)
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,
