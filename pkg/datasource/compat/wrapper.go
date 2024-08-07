@@ -44,6 +44,8 @@ type EventWrapperBase struct {
 	containerimagenameAccessor   datasource.FieldAccessor
 	containerimagedigestAccessor datasource.FieldAccessor
 	hostNetworkAccessor          datasource.FieldAccessor
+	ownerKindAccessor            datasource.FieldAccessor
+	ownerNameAccessor            datasource.FieldAccessor
 }
 
 type (
@@ -185,6 +187,29 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		return nil, err
 	}
 
+	owner, err := k8s.AddSubField("owner", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
+	if err != nil {
+		return nil, err
+	}
+	ev.ownerKindAccessor, err = owner.AddSubField(
+		"kind",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ownerNameAccessor, err = owner.AddSubField(
+		"name",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: Instead of just hiding fields, we can skip adding them in the first place (integration tests don't like
 	// that right now, though)
 	if environment.Environment != environment.Kubernetes {
@@ -302,6 +327,12 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 			if container.UsesHostNetwork() {
 				ev.hostNetworkAccessor.PutInt8(ev.Data, 1)
 			}
+		}
+		if ev.ownerKindAccessor.IsRequested() {
+			ev.ownerKindAccessor.PutString(ev.Data, container.K8sOwnerReference().Kind)
+		}
+		if ev.ownerNameAccessor.IsRequested() {
+			ev.ownerNameAccessor.PutString(ev.Data, container.K8sOwnerReference().Name)
 		}
 	}
 	rt := container.RuntimeMetadata()

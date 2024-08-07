@@ -226,3 +226,13 @@ func (c *Container) RuntimeMetadata() *types.BasicRuntimeMetadata {
 func (c *Container) UsesHostNetwork() bool {
 	return c.HostNetwork
 }
+
+func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {
+	if c.K8s.ownerReference == nil {
+		return &types.K8sOwnerReference{}
+	}
+	return &types.K8sOwnerReference{
+		Kind: c.K8s.ownerReference.Kind,
+		Name: c.K8s.ownerReference.Name,
+	}
+}
