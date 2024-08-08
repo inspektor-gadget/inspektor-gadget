@@ -222,6 +222,62 @@ WARN[0000] image signature verification is disabled due to using corresponding o
 RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
 ```
 </TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+
+Like `kubectl-gadget`, you cannot specify information with regard to verification when calling `gadgetctl run`:
+
+```bash
+$ gadgetctl run --public-keys="$(cat your-key.pub)" trace_exec
+Error: unknown flag: --public-keys
+$ gadgetctl run --verify-image=false trace_exec
+Error: unknown flag: --verify-image
+```
+
+Instead, all these information are set once when starting `ig` as a daemon.
+This avoids them being tampered by any users.
+By default all image-based gadgets are verified using Inspektor Gadget public key:
+
+```bash
+$ sudo ig daemon --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)"
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your_repo/trace_exec
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your_repo/trace_exec:latest": the image was not signed by the provided keys: invalid signature when validating ASN.1 encoded signature
+$ gadgetctl run trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+```
+
+You can specify several public keys, by using a comma to separate them:
+
+```bash
+$ IP='your_ip'
+$ PORT='your_port'
+$ ADDR=tcp://$IP:$PORT
+$ sudo ig daemon --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" --host=$ADDR
+...
+# Switch to another terminal
+$ gadgetctl run trace_open:latest
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+...
+^C
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:latest
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+
+You can also make Inspektor Gadget skip the verification on the daemon side.
+Please note that we do not recommend doing so and that it should only be used for development purposes:
+
+```bash
+$ sudo ig daemon --verify-image=false
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:latest
+WARN[0000] your_ip              | image signature verification is disabled due to using corresponding option
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+
+</TabItem>
 </Tabs>
 
 ## Verify the ebpf-builder image
