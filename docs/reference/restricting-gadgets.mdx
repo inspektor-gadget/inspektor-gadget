@@ -15,7 +15,7 @@ It is possible to limit the gadgets that can be run by using the
 You can specify these options only at deploy time:
 
 ```bash
-$ kubectl gadget deploy --allowed-gadgets='ghcr.io/inspektor-gadget/gadget@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget@sha256:digest_of_your_gadget'
+$ kubectl gadget deploy --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget/your_gadget@sha256:digest_of_your_gadget'
 ...
 Inspektor Gadget successfully deployed
 
@@ -26,7 +26,7 @@ gadget           gadget-fdpxp     gadget           gadgettr…    131298   13129
 ^C
 
 $ kubectl gadget run trace_open
-Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/your-repo/gadget@sha256:digest_of_your_gadget
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/your-repo/gadget/your_gadget@sha256:digest_of_your_gadget
 
 $ kubectl gadget run ghcr./io/your-repo/gadget/your_gadget
 K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… TIMEST… PID     UID     GID     MNTNS_… ERR     FD      FLAGS   MODE    COMM   FNAME  K8S.N…
