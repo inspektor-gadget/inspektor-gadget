@@ -59,4 +59,19 @@ $ sudo ig run --allowed-gadgetss='ghcr.io/inspektor-gadget/gadget/trace_exec@sha
 Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/inspektor-gadget/gadget/trace_open@sha256:be8dd66efc69a14f2812b7d5472b378b095a2002ef89fa7aa1e33b7133da762d
 ```
 </TabItem>
+<TabItem value="ig-daemon" label="ig daemon">
+You can specify these options only at start time:
+
+```bash
+$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget/your_gadget@sha256:digest_of_your_gadget'
+...
+# Switch to another terminal
+$ gadgetctl run trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+$ gadgetctl run trace_open
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/your_repo/gadget/your_gadget@sha256:digest_of_your_gadget
+$ gadgetctl run ghcr./io/your-repo/gadget/your_gadget
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+</TabItem>
 </Tabs>
