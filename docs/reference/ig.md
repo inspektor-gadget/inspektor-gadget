@@ -25,9 +25,6 @@ Some characteristics of `ig`:
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
 
-The architecture of `ig` is described in the main
-[architecture](architecture.md#ig) document.
-
 ## Use cases
 
 - In a Kubernetes environment, when the Kubernetes API server is not working
@@ -47,7 +44,7 @@ The architecture of `ig` is described in the main
 ## Installation
 
 The instruction to install `ig` are available in the main
-[installation](../reference/install-linux.md#installing-ig) guide.
+[installation](../reference/install-linux.md) guide.
 
 ## Usage
 

@@ -356,7 +356,7 @@ operator:
     pull-secret: "my-pull-secret"
 ```
 
-For more information about the configuration file, check the [configuration guide](#configuration-file).
+For more information about the configuration file, check the [configuration guide](./configuration.md).
 
 ## Uninstalling from the cluster
 

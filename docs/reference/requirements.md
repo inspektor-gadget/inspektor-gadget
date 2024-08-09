@@ -33,9 +33,9 @@ project require at least Linux 5.10 with
 | Kubernetes        | containerd        | runc              | ✔️                                                                                |
 | Kubernetes        | containerd        | wasm              | ❌ (see [#1899](https://github.com/inspektor-gadget/inspektor-gadget/issues/1899)) |
 | Kubernetes        | containerd        | katacontainers    | ❌                                                                                 |
-| Kubernetes        | CRI-O             | runc / crun       | Kubernetes v1.20+ (see [below](#CRI-O))                                           |
+| Kubernetes        | CRI-O             | runc / crun       | Kubernetes v1.20+ (see [below](#cri-o))                                           |
 | Podman (root)     | podman            | runc / crun       | ✔️                                                                                |
-| Podman (rootless) | podman            | runc / crun       | Only with Podman API enabled (see [below](#Podman-rootless))                      |
+| Podman (rootless) | podman            | runc / crun       | Only with Podman API enabled (see [below](#podman-rootless))                      |
 
 ### CRI-O
 

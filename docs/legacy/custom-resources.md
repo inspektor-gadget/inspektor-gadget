@@ -44,7 +44,7 @@ resource when `ExternalResource` is selected. If `outputMode` is set to
 `Status`, the output of the trace will be stored in the status field of the
 trace resource.
 
-See the corresponding [gadgets specs](./crds/gadgets/) to
+See the corresponding [gadgets specs](./crds/) to
 find out what's available.
 
 Note that **all traces should be created in the `gadget` namespace**. And,

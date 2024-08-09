@@ -83,7 +83,6 @@ See the [operator documentation](./reference/operators) for more information.
 Use the following documents to learn more:
 
 * [Quick Start](./quick-start.md)
-* [Components](TODO)
 * [Gadgets](./gadgets/)
 * [Reference](./reference/)
 * [Contributing](./devel/CONTRIBUTING.md)
