@@ -29,7 +29,7 @@ import (
 const (
 	name        = "sort"
 	ParamSortBy = "sort"
-	Priority    = 1000
+	Priority    = 9500
 )
 
 type sortOperator struct{}
