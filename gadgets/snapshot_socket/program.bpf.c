@@ -50,12 +50,47 @@
 struct socket_entry {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
+	char state[16];
 	__u32 state;
 	__u32 ino;
 	gadget_netns_id netns_id;
 };
 
 GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
+
+typedef enum  {
+    STATE_UNKNOWN = 0,
+    STATE_ESTABLISHED = 1,
+    STATE_SYN_SENT = 2,
+    STATE_SYN_RECV = 3,
+    STATE_FIN_WAIT1 = 4,
+    STATE_FIN_WAIT2 = 5,
+    STATE_TIME_WAIT = 6,
+    STATE_CLOSE = 7,
+    STATE_CLOSE_WAIT = 8,
+    STATE_LAST_ACK = 9,
+    STATE_LISTEN = 10,
+    STATE_CLOSING = 11,
+} socket_state;
+
+
+static const char *state_to_string(__u32 state)
+{
+    switch (state) {
+        case STATE_ESTABLISHED: return "ESTABLISHED";
+        case STATE_SYN_SENT: return "SYN_SENT";
+        case STATE_SYN_RECV: return "SYN_RECV";
+        case STATE_FIN_WAIT1: return "FIN_WAIT1";
+        case STATE_FIN_WAIT2: return "FIN_WAIT2";
+        case STATE_TIME_WAIT: return "TIME_WAIT";
+        case STATE_CLOSE: return "CLOSE";
+        case STATE_CLOSE_WAIT: return "CLOSE_WAIT";
+        case STATE_LAST_ACK: return "LAST_ACK";
+        case STATE_LISTEN: return "LISTEN";
+        case STATE_CLOSING: return "CLOSING";
+        default: return "UNKNOWN";
+    }
+}
 
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.
@@ -91,6 +126,8 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 		     __u8 state, __u64 ino, __u32 netns)
 {
 	struct socket_entry entry = {};
+	    const char *state_str = state_to_string(state);
+
 
 	switch (family) {
 	case AF_INET:
@@ -112,7 +149,7 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.src.proto = entry.dst.proto = proto;
 	entry.src.port = bpf_htons(srcp);
 	entry.dst.port = bpf_htons(destp);
-	entry.state = state;
+    bpf_probe_read_kernel(&entry.state, sizeof(entry.state), state_to_string(state));
 	entry.ino = ino;
 	entry.netns_id = netns;
 
