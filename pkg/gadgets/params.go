@@ -25,7 +25,8 @@ import (
 const (
 	ParamInterval = "interval"
 	ParamSortBy   = "sort"
-	ParamMaxRows  = "max-rows"
+
+// ParamMaxRows  = "max-rows"
 )
 
 const (
@@ -80,14 +81,6 @@ func SortableParams(gadget GadgetDesc, parser parser.Parser) params.ParamDescs {
 	}
 
 	return params.ParamDescs{
-		{
-			Key:          ParamMaxRows,
-			Title:        "Max Rows",
-			Alias:        "m",
-			DefaultValue: "50",
-			TypeHint:     params.TypeUint32,
-			Description:  "Maximum number of rows to return",
-		},
 		{
 			Key:          ParamSortBy,
 			Title:        "Sort By",
