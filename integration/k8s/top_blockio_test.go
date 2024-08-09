@@ -63,8 +63,9 @@ func TestTopBlockIO(t *testing.T) {
 	version, err := kernel.GetKernelVersion()
 	require.Nil(t, err, "Failed to get kernel version: %s", err)
 	v5_17 := kernel.VersionInfo{Kernel: 5, Major: 17, Minor: 0}
-	if kernel.CompareKernelVersion(*version, v5_17) >= 0 {
-		t.Skip("Skip running top block-io on kernels 5.17+. See issue #2029")
+	v6_5 := kernel.VersionInfo{Kernel: 6, Major: 5, Minor: 0}
+	if kernel.CompareKernelVersion(*version, v5_17) >= 0 && kernel.CompareKernelVersion(*version, v6_5) < 0 {
+		t.Skip("Skip running top block-io on kernels 5.17 - 6.5. See issue #2029")
 	}
 
 	t.Parallel()
