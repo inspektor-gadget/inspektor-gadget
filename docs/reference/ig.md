@@ -30,15 +30,13 @@ The architecture of `ig` is described in the main
 
 ## Use cases
 
-- In a Kubernetes environment, when the Kubernetes API server is not working
-  properly, we cannot deploy Inspektor Gadget. Therefore, we still need a way to
-  debug the containers of the cluster.
-- In some cases, you might have root SSH access to the Kubernetes nodes of a
-  cluster, but not to the `kubeconfig`.
+- In a Kubernetes environment, even when the Kubernetes API server is working properly, you might prefer to trace
+  containers without relying on Kubernetes itself.
+- In some cases, you might have root SSH access to the Kubernetes nodes of a cluster, but not to the `kubeconfig`.
 - If you don't want to install `kubectl-gadget` on your machine, you can run
-  `ig` in a Kubernetes pod and read the output directly.
-- If you are implementing an application that needs to get insights from the
-  Kubernetes node, you could include the `ig` binary in your container
+  `ig` in a Kubernetes pod and read the   output directly.
+- If you are implementing an application that needs to get insights from the Kubernetes node, you could include the `ig` binary 
+  in your container
   image, and your app simply execs it. In such a case, it is suggested to use
   the JSON output format to ease the parsing.
 - Outside a Kubernetes environment, for observing and debugging standalone
@@ -110,63 +108,34 @@ RUNTIME.RUNTIMENAME RUNTIME.CONTAINERID                                         
 docker              b72558e589cb95e835c4840de19f0306d4081091c34045246d62b6efed3549f4 myContainer
 ```
 
-### Common features
+### TLS Support
 
-Notice that most of the commands support the following features even if, for
-simplicity, they are not demonstrated in each command guide:
+`ig` supports TLS to secure communications between the client and server. To enable TLS, you need to provide the paths to the certificate and key files using the appropriate flags.
 
-- JSON format and `columns` output mode are supported through the
-  `--output` flag.
-- It is possible to filter events by container name using the `--containername`
-  flag.
-- It is possible to trace events from all the running processes, even though
-  they were not generated from containers, using the `--host` flag.
+#### Server-side TLS Configuration
 
-For instance, for the `list-containers` command:
+To run `ig` with TLS enabled on the server side, use the following flags:
 
-```bash
-$ sudo ig list-containers -o json --containername kube-proxy
-[
-  {
-    "runtime": {
-      "runtimeName": "containerd",
-      "containerId": "a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46",
-      "containerName": "kube-proxy"
-    },
-    "k8s": {
-      "namespace": "kube-system",
-      "podName": "kube-proxy-tcbn4",
-      "containerName": "kube-proxy",
-      "podUID": "87c52d60-fefd-45a9-a420-895256fc03b5"
-    },
-    "pid": 454674,
-    "mntns": 4026532232,
-    "netns": 4026531840,
-    "hostNetwork": true,
-    "cgroupPath": "/sys/fs/cgroup/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod87c52d60_fefd_45a9_a420_895256fc03b5.slice/cri-containerd-a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46.scope",
-    "cgroupID": 41286,
-    "cgroupV2": "/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod87c52d60_fefd_45a9_a420_895256fc03b5.slice/cri-containerd-a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46.scope"
-  }
-]
-```
+- `--tls-cert-file`: Path to the TLS certificate file.
+- `--tls-private-key-file`: Path to the TLS private key file.
 
-For example, with `--host`, you can get the following output:
+Example:
 
 ```bash
-$ sudo ig trace exec --host
-RUNTIME.CONTAINERNAME    PID        PPID       COMM             RET ARGS
-
-# Open another terminal.
-$ cat /dev/null
-$ docker run --name test-host --rm -t debian sh -c 'ls > /dev/null'
-# Go back to first terminal.
-RUNTIME.CONTAINERNAME    PID        PPID       COMM             RET ARGS
-                         3326022    308789     cat              0   /usr/bin/cat /dev/null
-test-host                3326093    3326070    sh               0   /usr/bin/sh -c ls > /dev/null
-test-host                3326123    3326093    ls               0   /usr/bin/ls
+$ sudo ig daemon --tls-cert-file /path/to/cert.pem --tls-private-key-file /path/to/key.pem
 ```
 
-Events generated from containers have their container field set, while events which are generated from the host do not.
+### Client-side TLS Configuration
+
+To connect to an `ig` server with TLS enabled, you need to specify the CA certificate file using the `--tls-ca-file` flag.
+
+Example:
+
+```bash
+$ ig list-containers --tls-ca-file /path/to/ca.pem --remote-address https://ig-server-address
+```
+
+With these configurations, you can ensure that the communication between the ig client and server is encrypted and secure.
 
 ### Using ig with "kubectl debug node"
 
