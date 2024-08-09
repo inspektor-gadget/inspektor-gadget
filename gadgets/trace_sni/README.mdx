@@ -36,7 +36,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_sni:latest
-        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       K8S.NODE      TIMESTAMP
+        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       TIMESTAMP
         ```
 
         Run a pod on a different terminal and perform some requests:
@@ -58,9 +58,9 @@ Running the gadget:
         Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
 
         ```bash
-        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       K8S.NODE      TIMESTAMP
-        default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 wikimedia.org              minikube-doc… 2024-08-01T22:01:54.129330541Z
-        default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 www.wikimedia.org          minikube-doc… 2024-08-01T22:01:54.234518638Z
+        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME                       TIMESTAMP
+        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 wikimedia.org              2024-08-01T22:01:54.129330541Z
+        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 www.wikimedia.org          2024-08-01T22:01:54.234518638Z
         ```
     </TabItem>
 

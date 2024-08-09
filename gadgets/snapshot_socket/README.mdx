@@ -52,9 +52,9 @@ Then, run the gadget and see how it shows the sockets used by nginx:
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
 $ kubectl gadget run snapshot_socket:latest
-K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                        DST                        STATE  K8S.NODE
-default               test-snapshot-socket  test-snapshot-socket  :::80                      :::0                       10     minikube-…
-default               test-snapshot-socket  test-snapshot-socket  0.0.0.0:80                 0.0.0.0:0                  10     minikube-…
+K8S.NODE            K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                        DST                        STATE
+minikube-docker     default               test-snapshot-socket  test-snapshot-socket  :::80                      :::0                       10
+minikube-docker     default               test-snapshot-socket  test-snapshot-socket  0.0.0.0:80                 0.0.0.0:0                  10
 ^C
 ```
 
