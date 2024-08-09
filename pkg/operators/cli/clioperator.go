@@ -179,6 +179,59 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	return api.Params{fields, mode}
 }
 
+func parseFields(fieldsString string, defaultFields []string) ([]string, error) {
+    fields := strings.Split(fieldsString, ",")
+    showFields := make(map[string]struct{})
+    hideFields := make(map[string]struct{})
+    addedFields := make(map[string]struct{})
+    
+    // Initially, all default fields are shown
+    for _, field := range defaultFields {
+        showFields[field] = struct{}{}
+    }
+
+    for _, field := range fields {
+        field = strings.TrimSpace(field)
+        if field == "" {
+            continue
+        }
+        switch field[0] {
+        case '+':
+            fieldName := field[1:]
+            if _, ok := hideFields[fieldName]; ok {
+                return nil, fmt.Errorf("field %q both added (+) and removed (-)", fieldName)
+            }
+            addedFields[fieldName] = struct{}{}
+        case '-':
+            fieldName := field[1:]
+            if _, ok := addedFields[fieldName]; ok {
+                return nil, fmt.Errorf("field %q both added (+) and removed (-)", fieldName)
+            }
+            hideFields[fieldName] = struct{}{}
+        default:
+            // If no prefix, return only these fields
+            return strings.Split(fieldsString, ","), nil
+        }
+    }
+
+    // Add addedFields to showFields
+    for field := range addedFields {
+        showFields[field] = struct{}{}
+    }
+
+    // Remove hideFields from showFields
+    for field := range hideFields {
+        delete(showFields, field)
+    }
+
+    result := make([]string, 0, len(showFields))
+    for field := range showFields {
+        result = append(result, field)
+    }
+
+    return result, nil
+}
+
 func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	params := apihelpers.ToParamDescs(o.ExtraParams(gadgetCtx)).ToParams()
 	params.CopyFromMap(o.paramValues, "")
@@ -237,7 +290,11 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			formatter := p.GetTextColumnsFormatter()
 
 			if hasFields {
-				err := formatter.SetShowColumns(strings.Split(fields, ","))
+				parsedFields, err := parseFields(fields, defCols)
+				if err != nil {
+					return fmt.Errorf("parsing fields: %w", err)
+				}
+				err = formatter.SetShowColumns(parsedFields)
 				if err != nil {
 					return fmt.Errorf("setting fields: %w", err)
 				}
