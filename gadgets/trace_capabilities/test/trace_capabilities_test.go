@@ -65,7 +65,6 @@ func TestTraceCapabilities(t *testing.T) {
 	var ns string
 	containerOpts := []containers.ContainerOption{
 		containers.WithContainerImage(containerImage),
-		containers.WithStartAndStop(),
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {

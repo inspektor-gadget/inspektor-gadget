@@ -30,6 +30,7 @@ GADGETS = \
 	trace_tcpconnect \
 	trace_tcpdrop \
 	trace_tcpretrans \
+	top_blockio \
 	top_file \
 	top_tcp \
 	snapshot_process \

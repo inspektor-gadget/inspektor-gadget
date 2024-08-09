@@ -1,0 +1,50 @@
+name: top blockio
+description: Periodically report input/output block device activity. This gadget requires
+  Linux Kernel Version 6.5+
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+datasources:
+  blockio:
+    annotations:
+      cli.clear-screen-before: "true"
+    fields:
+      bytes:
+        annotations:
+          description: Amount of bytes read or written
+      io:
+        annotations:
+          description: Amount of io operations
+      major:
+        annotations:
+          description: Major device number
+      minor:
+        annotations:
+          description: Minor device number
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Command name
+          template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+          columns.hidden: true
+      rw_raw:
+        annotations:
+          columns.hidden: true
+      rw:
+        annotations:
+          description: Indicates if the operation was a read or a write
+          columns.width: 5
+      us:
+        annotations:
+          description: Time spent in microseconds

@@ -1,0 +1,82 @@
+---
+title: top_blockio
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The top blockio gadget provides a periodic list of input/output block device activity. This gadget requires Linux Kernel Version 6.5+
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_blockio:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_blockio:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+Run a pod / container:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run --restart=Never --image=busybox test-top-blockio -- sh -c 'while true; do dd if=/dev/zero of=/tmp/test count=4096; sync; sleep 0.2; done'
+        pod/test-top-blockio created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-top-blockio -d busybox /bin/sh -c 'while true; do dd if=/dev/zero of=/tmp/test count=4096; sync; sleep 0.2; done'
+        ...
+        ```
+    </TabItem>
+</Tabs>
+
+Then, run the gadget and see how it shows the sleep process:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run top_blockio:latest
+        TODO. Need to create a VM without disk encryption
+        ^C
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run top_blockio:latest -c test-top-blockio
+        TODO. Need to create a VM without disk encryption
+        ^C
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod test-top-blockio
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-top-blockio
+```
+</TabItem>
+</Tabs>

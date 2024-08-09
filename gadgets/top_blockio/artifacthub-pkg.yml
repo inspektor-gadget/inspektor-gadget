@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.30.0
+name: "top blockio"
+category: monitoring-logging
+displayName: "top blockio"
+createdAt: "2024-08-01T09:22:04Z"
+digest: "2024-08-01T13:58:59Z"
+description: "Periodically report input/output block device activity. This gadget requires Linux Kernel Version 6.5+"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/top_blockio"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/top_blockio:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_blockio"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/top_blockio:latest
+    ```
+provider:
+    name: Inspektor Gadget

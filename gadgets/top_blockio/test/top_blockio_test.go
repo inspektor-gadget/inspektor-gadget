@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
@@ -29,7 +30,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type topFileEntry struct {
+type topBlockioEntry struct {
 	eventtypes.CommonData
 
 	MntNsID uint64 `json:"mntns_id"`
@@ -37,27 +38,29 @@ type topFileEntry struct {
 	Comm string `json:"comm"`
 	Pid  uint32 `json:"pid"`
 	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
 
-	Reads      uint64 `json:"reads"`
-	Writes     uint64 `json:"writes"`
-	ReadBytes  uint64 `json:"rbytes"`
-	WriteBytes uint64 `json:"wbytes"`
-
-	FileType  string `json:"t"`
-	FileName  string `json:"file"`
-	FileInode uint64 `json:"inode"`
-	FileDev   uint64 `json:"dev"`
+	Bytes uint64 `json:"bytes"`
+	Io    uint32 `json:"io"`
+	Major int    `json:"major"`
+	Minor int    `json:"minor"`
+	Rw    string `json:"rw"`
+	Us    uint64 `json:"us"`
 }
 
-func TestTopFile(t *testing.T) {
+func TestTopBlockio(t *testing.T) {
+	version, err := kernel.GetKernelVersion()
+	require.Nil(t, err, "Failed to get kernel version: %s", err)
+	v6_5 := kernel.VersionInfo{Kernel: 6, Major: 5, Minor: 0}
+	if kernel.CompareKernelVersion(*version, v6_5) < 0 {
+		t.Skip("Skip running top_blockio on kernel versions lower than 6.5")
+	}
+
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-top-file"
+	containerName := "test-top-blockio"
 	containerImage := "docker.io/library/busybox:latest"
 
 	var ns string
@@ -66,13 +69,13 @@ func TestTopFile(t *testing.T) {
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-top-file")
+		ns = utils.GenerateTestNamespaceName(t, "test-top-blockio")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do echo -n foo > bar ; sleep 1; done",
+		"while true; do dd if=/dev/zero of=/tmp/test count=4096; sleep 0.2; done",
 		containerOpts...,
 	)
 
@@ -106,48 +109,40 @@ func TestTopFile(t *testing.T) {
 		igrunner.WithStartAndStop(),
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
-				expectedEntry := &topFileEntry{
+				expectedEntry := &topBlockioEntry{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 
-					// Workload writes "foo" with "echo" (so "sh") command into
-					// a regular file ('R') named "bar" once per second. The
-					// gadget runs every second, so we expect 1 write operation
-					// with 3 bytes.
-					Comm:       "sh",
-					FileType:   "R",
-					FileName:   "bar",
-					Writes:     1,
-					WriteBytes: 3,
-
-					// Nothing is read
-					Reads:     0,
-					ReadBytes: 0,
+					Comm: "dd",
+					// bytes manipulated by dd are given by count * bs
+					// where bs is 512 by default and we set 4096 for count
+					Bytes: 512 * 4096,
+					Rw:    "write",
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					FileInode: utils.NormalizedInt,
+					MntNsID: utils.NormalizedInt,
+					Pid:     utils.NormalizedInt,
+					Tid:     utils.NormalizedInt,
+					Us:      utils.NormalizedInt,
+					Io:      utils.NormalizedInt,
 
 					// Manually normalize fields that might contain 0, so we
 					// can't use NormalizedInt and NormalizeInt()
 					// TODO: Support checking for the presence of a field, even if it's 0
-					Uid:     0,
-					Gid:     0,
-					FileDev: 0,
+					Major: 0,
+					Minor: 0,
 				}
 
-				normalize := func(e *topFileEntry) {
+				normalize := func(e *topBlockioEntry) {
 					utils.NormalizeCommonData(&e.CommonData)
 					utils.NormalizeInt(&e.MntNsID)
 					utils.NormalizeInt(&e.Pid)
 					utils.NormalizeInt(&e.Tid)
-					utils.NormalizeInt(&e.FileInode)
+					utils.NormalizeInt(&e.Us)
+					utils.NormalizeInt(&e.Io)
 
 					// Manually normalize fields that might contain 0
-					e.Uid = 0
-					e.Gid = 0
-					e.FileDev = 0
+					e.Major = 0
+					e.Minor = 0
 				}
 
 				match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
@@ -155,7 +150,7 @@ func TestTopFile(t *testing.T) {
 		),
 	)
 
-	topFileCmd := igrunner.New("top_file", runnerOpts...)
+	topBlockioCmd := igrunner.New("top_blockio", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{topFileCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{topBlockioCmd}, t, testingOpts...)
 }
