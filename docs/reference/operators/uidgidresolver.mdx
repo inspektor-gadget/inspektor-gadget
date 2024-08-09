@@ -1,0 +1,58 @@
+---
+title: UidGidResolver
+sidebar_position: 10
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# UidGidResolver
+
+The `UidGidResolver` data operator resolves `uid` and `gid` values to the corresponding username and groupname.
+It does this by monitoring the `/etc/passwd` and `/etc/group` files on the host.
+This leads to the restrictions that user and groupnames inside the guest might not be correctly resolved.
+
+## Usage
+
+To use the `UidGidResolver` one has to use the `gadget_uid` and `gadget_gid` typedefs in the eBPF code and write the `uid` and `gid` values into it.
+Finally either of the following requirements has to be met:
+1. The variablename has a `_raw` suffix.
+   This leaves the `gadget.yaml` untouched.
+2. There exists an `uidgidresolver.target` annotation in the `gadget.yaml`.
+   This brings full flexibility and decouples the id variable name from the resolved name.
+
+<Tabs groupId="env">
+    <TabItem value="raw_suffix" label="_raw suffix">
+        `eBPF`:
+        ```c
+        struct event {
+            gadget_uid uid_raw;
+            gadget_gid gid_raw;
+            //...
+        };
+        ```
+    </TabItem>
+
+    <TabItem value="target" label="target annotation">
+        `eBPF`:
+        ```c
+        struct event {
+            gadget_uid uid;
+            gadget_gid gid;
+            //...
+        };
+        ```
+        `gadget.yaml`:
+        ```yaml
+        datasources:
+            my_gadget:
+                fields:
+                    uid:
+                        annotations:
+                            uidgidresolver.target: user
+                    gid:
+                        annotations:
+                            uidgidresolver.target: group
+        ```
+    </TabItem>
+</Tabs>
