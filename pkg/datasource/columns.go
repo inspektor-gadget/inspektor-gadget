@@ -39,6 +39,7 @@ const (
 	ColumnsEllipsisAnnotation  = "columns.ellipsis"
 	ColumnsHiddenAnnotation    = "columns.hidden"
 	ColumnsFixedAnnotation     = "columns.fixed"
+	ColumnsHexAnnotation       = "columns.hex"
 
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
@@ -134,6 +135,10 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 			case ColumnsFixedAnnotation:
 				if v == "true" {
 					attributes.FixedWidth = true
+				}
+			case ColumnsHexAnnotation:
+				if v == "true" {
+					attributes.Hex = true
 				}
 			}
 		}
@@ -261,6 +266,9 @@ var annotationsTemplates = map[string]map[string]string{
 	"gid": {
 		ColumnsMinWidthAnnotation:  "8",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"address": {
+		ColumnsHexAnnotation: "true",
 	},
 	"ns": {
 		ColumnsHiddenAnnotation:    "true",

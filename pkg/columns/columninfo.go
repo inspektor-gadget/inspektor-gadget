@@ -67,6 +67,8 @@ type Attributes struct {
 	FixedWidth bool `yaml:"fixed_width"`
 	// Precision defines how many decimals should be shown on float values, default: 2
 	Precision int `yaml:"precision"`
+	// Hex defines whether the value should be shown as a hexadecimal number
+	Hex bool `yaml:"hex"`
 	// Description can hold a short description of the field that can be used to aid the user
 	Description string `yaml:"description"`
 	// Order defines the default order in which columns are shown
@@ -189,6 +191,11 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			default:
 				return fmt.Errorf("invalid ellipsis value %q for field %q", params[1], ci.Name)
 			}
+		case "hex":
+			if paramsLen != 1 {
+				return fmt.Errorf("parameter hex on field %q must not have a value", ci.Name)
+			}
+			ci.Hex = true
 		case "fixed":
 			if paramsLen != 1 {
 				return fmt.Errorf("parameter fixed on field %q must not have a value", ci.Name)
