@@ -46,6 +46,7 @@ datasources:
         annotations:
           description: address of malloc/free operations
           columns.width: 20
+          columns.hex: true
       size:
         annotations:
           description: size of malloc operations

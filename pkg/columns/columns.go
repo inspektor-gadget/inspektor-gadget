@@ -571,7 +571,7 @@ func SetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T, val OT) 
 	}
 }
 
-func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatPrecision int) func(entry *T) string {
+func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatPrecision int, hex bool) func(entry *T) string {
 	switch column.(*Column[T]).Kind() {
 	case reflect.Int,
 		reflect.Int8,
@@ -579,6 +579,11 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		reflect.Int32,
 		reflect.Int64:
 		ff := GetFieldAsNumberFunc[int64, T](column)
+		if hex {
+			return func(entry *T) string {
+				return "0x" + strings.ToUpper(strconv.FormatInt(ff(entry), 16))
+			}
+		}
 		return func(entry *T) string {
 			return strconv.FormatInt(ff(entry), 10)
 		}
@@ -588,6 +593,11 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		reflect.Uint32,
 		reflect.Uint64:
 		ff := GetFieldAsNumberFunc[uint64, T](column)
+		if hex {
+			return func(entry *T) string {
+				return "0x" + strings.ToUpper(strconv.FormatUint(ff(entry), 16))
+			}
+		}
 		return func(entry *T) string {
 			return strconv.FormatUint(ff(entry), 10)
 		}
@@ -662,7 +672,7 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 }
 
 func GetFieldAsString[T any](column ColumnInternals) func(entry *T) string {
-	return GetFieldAsStringExt[T](column, 'E', -1)
+	return GetFieldAsStringExt[T](column, 'E', -1, false)
 }
 
 // GetFieldAsNumberFunc returns a helper function to access a field of struct T as a number.
