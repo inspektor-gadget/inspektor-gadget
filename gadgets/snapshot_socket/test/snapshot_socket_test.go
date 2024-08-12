@@ -17,6 +17,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -96,8 +97,9 @@ func TestSnapshotSocket(t *testing.T) {
 					Addr:    "0.0.0.0",
 					Version: 4,
 					Port:    0,
+					Proto:  6,
 				},
-				Status:      10,
+				Status:      0,
 				NetNsID:     utils.NormalizedInt,
 				InodeNumber: utils.NormalizedInt,
 			}
@@ -112,7 +114,8 @@ func TestSnapshotSocket(t *testing.T) {
 		},
 	))
 
-	snashotSocketCmd := igrunner.New("snapshot_socket", runnerOpts...)
+	snapshotSocketCmd := igrunner.New("snapshot_socket", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{snashotSocketCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{snapshotSocketCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{utils.Sleep(5 * time.Second), snapshotSocketCmd}, t, testingOpts...)
 }
