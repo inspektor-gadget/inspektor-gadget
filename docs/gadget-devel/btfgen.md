@@ -31,6 +31,6 @@ $ sudo ig image build . --btfgen --btfhub-archive $HOME/btfhub-archive -t myimag
 The resulting image will contain the BTF information and can be pushed, run or
 tagged as any other gadget image.
 
-[btfgen]: https://kinvolk.io/blog/2022/03/btfgen-one-step-closer-to-truly-portable-ebpf-programs/
+[btfgen]: https://www.inspektor-gadget.io/blog/2022/03/btfgen-one-step-closer-to-truly-portable-ebpf-programs
 [btfhub]: https://github.com/aquasecurity/btfhub
 [btfhub-archive]: https://github.com/aquasecurity/btfhub-archive/

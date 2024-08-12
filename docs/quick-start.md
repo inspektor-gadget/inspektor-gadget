@@ -4,6 +4,7 @@ sidebar_position: 10
 description: Quick start for running Inspektor Gadget.
 ---
 
+<!-- markdown-link-check-disable-next-line -->
 The following examples use the [trace_open](./gadgets/trace_open) Gadget which triggers when a file is open on the system.
 
 ### Kubernetes
@@ -71,7 +72,7 @@ sudo ig daemon --host=tcp://0.0.0.0:1234
 
 Download the `gadgetctl` tools for MacOS
 ([amd64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-amd64-v0.30.0.tar.gz),
-[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz)) or [windows](https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/gadgetctl-windows-amd64-v0.30.0.tar.gz) and run the Gadget specifying the IP address of the Linux machine:
+[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz)) or [windows](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-windows-amd64-v0.30.0.tar.gz) and run the Gadget specifying the IP address of the Linux machine:
 
 
 ```bash

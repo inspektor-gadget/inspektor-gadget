@@ -4,11 +4,11 @@ sidebar_position: 500
 ---
 
 > These instructions explain how to implement metrics collection if you're developing your own or extending an existing
-> gadget. For the user perspective of things (actually exporting the metrics to a third party), please read 
-> [this](!FIXME_LINK_TO_USER_GUIDE).
+> gadget. For the user perspective of things (actually exporting the metrics to a third party), please read
+> this (TODO).
 
 Inspektor Gadget allows you to easily add metrics to your gadgets that then can be exported to OpenTelemetry compatible
-software (like Prometheus), the CLI, or other third parties by [implementing a dedicated operator for that](!FIXME_LINK_TO_OPERATOR_GUIDE).
+software (like Prometheus), the CLI, or other third parties by implementing a dedicated operator for that.
 
 Inspektor Gadget currently supports counters, gauges and histograms - fields must be of any integer or float type. For
 histograms, we also support handing over all buckets at once as an array of int32 or int64 and adding their values up.
@@ -17,10 +17,10 @@ Metrics can either be collected in user-space or directly inside your eBPF progr
 choose depends on how you collect the data and the quantity of it.
 
 If you're sending events to user-space, you can create metrics from those by just adding a couple of annotations to your
-`gadget.yaml` file, or by using some [well-known types](!FIXME_LINK_TO_MACROS_AND_TYPES) inside your struct definition inside eBPF code.
+`gadget.yaml` file, or by using some well-known types (TODO links to macros) inside your struct definition inside eBPF code.
 
 If you don't want to emit events, because it would just be too much throughput, you can choose to write the metrics into
-eBPF maps instead and let IG create a [data source](!FIXME_LINK_TO_DATASOURCE_EXPLANATION) from it. Those can then be
+eBPF maps instead and let IG create a data source (TODO link to data source) from it. Those can then be
 exported to for example Prometheus.
 
 | Source     | Application                                                                             | Performance |
@@ -76,7 +76,7 @@ values.
 
 ### Using well-known types in the eBPF code
 
-You can also edit your eBPF source code and use [well-known types](!FIXME_LINK_TO_WELL_KNOWN_TYPES) instead of annotating
+You can also edit your eBPF source code and use well-known types (TODO links to well known types) instead of annotating
 the individual fields. An event struct using this could look like:
 
 ```c
