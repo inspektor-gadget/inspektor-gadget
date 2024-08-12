@@ -17,6 +17,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -114,5 +115,5 @@ func TestSnapshotProcess(t *testing.T) {
 
 	snashotProcessCmd := igrunner.New("snapshot_process", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{snashotProcessCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{utils.Sleep(5 * time.Second), snashotProcessCmd}, t, testingOpts...)
 }
