@@ -17,7 +17,7 @@ jobs:
       with:
         workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
         krew_template_file: .krew.yaml
-    - name: Update gadgets' version on artifact hub
+    - name: Update version in various files
       id: bump_gadgets
       if: github.repository == 'inspektor-gadget/inspektor-gadget'
       run: |
@@ -39,6 +39,9 @@ jobs:
                 $PKGFILE
         done
 
+        # Update links to release assets
+        sed -i "s|\([-/]\)v[0-9]\.[0-9]*\.[0-9]*|\1v${inspektor_gadget_version}|g" README.md
+
         # The following is to support multiline with GITHUB_OUTPUT, see:
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         echo "changes<<EOF" >> $GITHUB_OUTPUT
@@ -49,11 +52,11 @@ jobs:
       uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: 'Artifact Hub: Update gadgets version to v${{ steps.bump_gadgets.outputs.version }}'
+        commit-message: 'Post-release: update version to v${{ steps.bump_gadgets.outputs.version }}'
         branch: 'auto_bump_gadgets_v${{ steps.bump_gadgets.outputs.version }}'
         base: main
         delete-branch: true
-        title: 'Artifact Hub: Update gadgets version to v${{ steps.bump_gadgets.outputs.version }}'
+        title: 'Post-release: update version to v${{ steps.bump_gadgets.outputs.version }}'
         body: |
           Hi.
 
