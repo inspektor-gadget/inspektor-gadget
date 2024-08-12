@@ -18,7 +18,7 @@ $ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/downloa
 $ ig version
 ```
 
-We strongly advise you to verify `ig` by following our [detailed instructions](./verify-assets.md#verify-an-asset).
+We strongly advise you to verify `ig` by following our [detailed instructions](./verify-assets.mdx#verify-an-asset).
 
 ### Compile from source
 
