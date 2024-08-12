@@ -732,8 +732,6 @@ jobs:
       # in case of public fork repo/packages permissions will always be read
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
     outputs:
       image-digest: ${{ steps.publish-manifest-list.outputs.image-digest }}
     steps:
