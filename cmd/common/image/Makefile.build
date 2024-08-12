@@ -25,7 +25,8 @@ wasm:
 	# No wasm file found. Nothing to do.
 else ifeq (go,$(patsubst %.go,go,$(WASM)))
 wasm: $(WASM)
-	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasi --no-debug $^
+	cd $(dir $(WASM)) && \
+	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasi --no-debug $(notdir $(WASM))
 else ifeq (wasm,$(patsubst %.wasm,wasm,$(WASM)))
 wasm:
 	# Wasm file already compiled. Nothing to do.
