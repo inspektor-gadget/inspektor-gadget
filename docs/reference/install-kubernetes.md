@@ -242,7 +242,7 @@ $ kubectl gadget deploy --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
 Please check the following documents to learn more about different options:
 - [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
 - [Using Insecure Registries](./insecure-registries.mdx)
-- [Verifying Gadget Images](./verify-assets.md#verify-image-based-gadgets)
+- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
 
 ### Experimental features
 
