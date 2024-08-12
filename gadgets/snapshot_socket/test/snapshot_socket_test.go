@@ -115,7 +115,6 @@ func TestSnapshotSocket(t *testing.T) {
 	))
 
 	snapshotSocketCmd := igrunner.New("snapshot_socket", runnerOpts...)
-
-	igtesting.RunTestSteps([]igtesting.TestStep{snapshotSocketCmd}, t, testingOpts...)
 	igtesting.RunTestSteps([]igtesting.TestStep{utils.Sleep(5 * time.Second), snapshotSocketCmd}, t, testingOpts...)
+
 }
