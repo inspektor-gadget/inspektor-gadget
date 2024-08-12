@@ -1,0 +1,19 @@
+name: Trigger Website Update
+on:
+  push:
+    paths:
+    - 'docs/**'
+    branches:
+    - main
+permissions:
+  contents: read
+jobs:
+  trigger_website_update:
+    name: Trigger Website Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger via gh
+        env:
+          GH_TOKEN: ${{ secrets.IG_WEBSITE_TOKEN }}
+        run: |
+           gh workflow run -R inspektor-gadget/website azure-static-web-apps-polite-mushroom-00d947803.yml
