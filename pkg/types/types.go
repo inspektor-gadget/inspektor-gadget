@@ -110,6 +110,7 @@ type Container interface {
 	K8sMetadata() *BasicK8sMetadata
 	RuntimeMetadata() *BasicRuntimeMetadata
 	UsesHostNetwork() bool
+	K8sOwnerReference() *K8sOwnerReference
 }
 
 type BasicRuntimeMetadata struct {
@@ -155,6 +156,11 @@ type BasicK8sMetadata struct {
 	ContainerName string            `json:"containerName,omitempty" column:"containerName,template:container"`
 }
 
+type K8sOwnerReference struct {
+	Kind string `json:"kind,omitempty" column:"kind,hide"`
+	Name string `json:"name,omitempty" column:"name,hide"`
+}
+
 func (b *BasicK8sMetadata) IsEnriched() bool {
 	return b.Namespace != "" && b.PodName != "" && b.ContainerName != "" && b.PodLabels != nil
 }
@@ -166,6 +172,8 @@ type K8sMetadata struct {
 
 	// HostNetwork is true if the container uses the host network namespace
 	HostNetwork bool `json:"hostNetwork,omitempty" column:"hostnetwork,hide"`
+
+	Owner K8sOwnerReference `json:"owner,omitempty" column:"owner,hide"`
 }
 
 type CommonData struct {
@@ -189,6 +197,7 @@ func (c *CommonData) SetPodMetadata(container Container) {
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace
 	c.K8s.PodLabels = k8s.PodLabels
+	c.K8s.Owner = *container.K8sOwnerReference()
 
 	// All containers in the same pod share the same container runtime
 	c.Runtime.RuntimeName = runtime.RuntimeName
@@ -202,6 +211,7 @@ func (c *CommonData) SetContainerMetadata(container Container) {
 	c.K8s.PodName = k8s.PodName
 	c.K8s.Namespace = k8s.Namespace
 	c.K8s.PodLabels = k8s.PodLabels
+	c.K8s.Owner = *container.K8sOwnerReference()
 
 	c.Runtime.RuntimeName = runtime.RuntimeName
 	c.Runtime.ContainerName = runtime.ContainerName
