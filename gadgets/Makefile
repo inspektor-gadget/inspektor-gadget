@@ -18,6 +18,7 @@ GADGETS = \
 	trace_capabilities \
 	trace_dns \
 	trace_exec \
+	trace_gc \
 	trace_lsm \
 	trace_malloc \
 	trace_mount \
