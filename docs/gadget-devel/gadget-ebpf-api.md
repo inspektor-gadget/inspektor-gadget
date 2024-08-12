@@ -488,3 +488,32 @@ if (kernel_stack_id >= 0) {
 	// gadget_get_kernel_stack() failed
 }
 ```
+
+## USDT Arguments
+
+Due to the possibility of the location of USDT arguments varying across different ELF files, 
+we provide a helper function `usdt_get_argument`, to easily retrieve arguments within the 
+eBPF programs attached to USDT tracepoints.
+
+To use this feature, users have to include the `<gadget/usdt_argument.h>` header,
+then pass the index of argument (starting from 0) as the second argument of the
+helper function. It will return NULL pointer on failure, otherwise it will return an
+`u64*` pointer. The buffer will be reused, so users need to store the value before
+next call.
+
+```C
+#include <gadget/usdt_argument.h>
+
+u64 *arg = usdt_get_argument(ctx, argument_index);
+if (arg) {
+	event->field = *arg;
+} else {
+	// failed to get the argument
+}
+```
+
+In terms of implementation details, we generate a unique cookie every time a USDT
+program is attached, associating the encoded arguments information with the cookie and
+storing it in the `__usdt_args_info` map. `usdt_get_argument()` utilizes the cookie as
+the key to retrieve information related to the arguments from the map and reads the
+arguments accordingly.

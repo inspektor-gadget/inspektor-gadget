@@ -63,24 +63,29 @@ const (
 // inodeKeeper holds a file object, with the counter representing its
 // reference count. The link is not nil only when the file is attached.
 type inodeKeeper struct {
-	counter int
-	file    *os.File
-	link    link.Link
+	counter         int
+	file            *os.File
+	link            link.Link
+	cleanupCallback *func()
 }
 
 func (t *inodeKeeper) close() {
 	if t.link != nil {
 		t.link.Close()
 	}
+	if t.cleanupCallback != nil {
+		(*t.cleanupCallback)()
+	}
 	t.file.Close()
 }
 
 type Tracer[Event any] struct {
-	progName       string
-	progType       ProgType
-	attachFilePath string
-	attachSymbol   string
-	prog           *ebpf.Program
+	progName          string
+	progType          ProgType
+	attachFilePath    string
+	attachSymbol      string
+	prog              *ebpf.Program
+	usdtExtensionLink link.Link
 
 	// keeps the inodes for each attached container
 	// when users write library names in ebpf section names, it's possible to
@@ -159,6 +164,16 @@ func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo 
 	t.attachSymbol = parts[1]
 	t.prog = prog
 
+	// for USDT programs using `usdt_get_argument`, load extension to replace the placeholder
+	if t.progType == ProgUSDT && hasUsdtArgsFunction(t.prog) {
+		t.logger.Debugf("loading USDT args extension to %q", t.progName)
+		l, err := injectUsdtArgsExtension(t.prog)
+		if err != nil {
+			return err
+		}
+		t.usdtExtensionLink = l
+	}
+
 	// attach to pending containers, then release the pending list
 	for pid := range t.pendingContainerPids {
 		t.attach(pid)
@@ -182,30 +197,70 @@ func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) 
 	return ldCachePaths, nil
 }
 
+func fillArray[T any](generator func() T, count int) []T {
+	result := make([]T, count)
+	for i := 0; i < count; i++ {
+		result[i] = generator()
+	}
+	return result
+}
+
 // attach uprobe program to the inode of the file passed in parameter
-func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
+func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, *func(), error) {
 	attachPath := path.Join(host.HostProcFs, "self/fd/", fmt.Sprint(file.Fd()))
 	ex, err := link.OpenExecutable(attachPath)
 	if err != nil {
-		return nil, fmt.Errorf("opening %q: %w", attachPath, err)
+		return nil, nil, fmt.Errorf("opening %q: %w", attachPath, err)
 	}
 	switch t.progType {
 	case ProgUprobe:
-		return ex.Uprobe(t.attachSymbol, t.prog, nil)
+		link, err := ex.Uprobe(t.attachSymbol, t.prog, nil)
+		return link, nil, err
 	case ProgUretprobe:
-		return ex.Uretprobe(t.attachSymbol, t.prog, nil)
+		link, err := ex.Uretprobe(t.attachSymbol, t.prog, nil)
+		return link, nil, err
 	case ProgUSDT:
-		attachInfo, err := getUsdtInfo(attachPath, t.attachSymbol)
+		attachInfo, err := t.getUsdtInfo(attachPath, t.attachSymbol)
 		if err != nil {
-			return nil, fmt.Errorf("reading USDT metadata: %w", err)
+			return nil, nil, fmt.Errorf("reading USDT metadata: %w", err)
 		}
-		return ex.Uprobe(t.attachSymbol, t.prog,
-			&link.UprobeOptions{
-				Address:      attachInfo.attachAddress,
-				RefCtrOffset: attachInfo.semaphoreAddress,
+
+		length := len(attachInfo.attachAddresses)
+		cookies := fillArray[uint64](func() uint64 {
+			// Since an ELF file may have multiple USDT trace points,
+			// we generate an unique ID to avoid conflict
+			return usdtCookieUUID.Add(1)
+		}, length)
+
+		l, err := ex.UprobeMulti(
+			fillArray[string](func() string {
+				return t.attachSymbol
+			}, length),
+			t.prog,
+			&link.UprobeMultiOptions{
+				Addresses:     attachInfo.attachAddresses,
+				RefCtrOffsets: attachInfo.semaphoreAddresses,
+				Cookies:       cookies,
 			})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// write the argument info into the map
+		for i := 0; i < length; i++ {
+			if err := usdtArgsInfoMap.Update(cookies[i], attachInfo.arguments[i], ebpf.UpdateNoExist); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		cleanupCallback := func() {
+			for i := 0; i < length; i++ {
+				usdtArgsInfoMap.Delete(cookies[i])
+			}
+		}
+		return l, &cleanupCallback, nil
 	default:
-		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %q", t.progType)
+		return nil, nil, fmt.Errorf("attaching to inode: unsupported prog type: %q", t.progType)
 	}
 }
 
@@ -244,11 +299,11 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 
 		inode, exists := t.inodeRefCount[realInodePtr]
 		if !exists {
-			progLink, err := t.attachUprobe(file)
+			progLink, cleanupCallback, err := t.attachUprobe(file)
 			if err != nil {
 				t.logger.Debugf("failed to attach uprobe %q: %s", t.progName, err.Error())
 			}
-			t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink}
+			t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink, cleanupCallback}
 		} else {
 			inode.counter++
 			file.Close()
@@ -318,7 +373,6 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -332,6 +386,11 @@ func (t *Tracer[Event]) Close() {
 
 	for _, keeper := range t.inodeRefCount {
 		keeper.close()
+	}
+
+	if t.usdtExtensionLink != nil {
+		t.usdtExtensionLink.Close()
+		t.usdtExtensionLink = nil
 	}
 
 	t.containerPid2Inodes = nil
