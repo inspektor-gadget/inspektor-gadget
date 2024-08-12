@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.30.0
+version: v0.31.0
 name: "trace lsm"
 category: monitoring-logging
 displayName: "trace lsm"
-createdAt: "2024-07-01T09:22:03Z"
-digest: "2024-07-01T13:58:59Z"
+createdAt: "2024-08-12T14:04:40Z"
+digest: "2024-08-12T14:04:40Z"
 description: "a strace for LSM tracepoints"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.30.0
+version: v0.31.0
 name: "trace malloc"
 category: monitoring-logging
 displayName: "trace malloc"
-createdAt: "2024-07-01T09:22:04Z"
-digest: "2024-07-01T13:58:59Z"
+createdAt: "2024-08-12T14:04:40Z"
+digest: "2024-08-12T14:04:40Z"
 description: "use uprobe to trace malloc and free in libc.so"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
