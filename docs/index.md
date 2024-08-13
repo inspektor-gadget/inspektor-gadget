@@ -85,4 +85,4 @@ Use the following documents to learn more:
 * [Quick Start](./quick-start.md)
 * [Gadgets](./gadgets/)
 * [Reference](./reference/)
-* [Contributing](./devel/CONTRIBUTING.md)
+* [Contributing](./devel/contributing.md)

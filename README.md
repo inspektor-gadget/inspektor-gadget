@@ -150,7 +150,7 @@ Use the [project documentation](https://www.inspektor-gadget.io/docs/latest/) to
 
 * [Reference](https://www.inspektor-gadget.io/docs/latest/reference)
 * [Gadgets](https://www.inspektor-gadget.io/docs/latest/gadgets)
-* [Contributing](https://www.inspektor-gadget.io/docs/latest/devel/CONTRIBUTING)
+* [Contributing](https://www.inspektor-gadget.io/docs/latest/devel/contributing/)
 
 ## Kernel requirements
 
@@ -171,7 +171,7 @@ Inspektor Gadget directly. End-users do not need this and can use
 
 ## Contributing
 
-Contributions are welcome, see [CONTRIBUTING](docs/devel/CONTRIBUTING.md).
+Contributions are welcome, see [CONTRIBUTING](docs/devel/contributing.md).
 
 ## Community Meeting
 
