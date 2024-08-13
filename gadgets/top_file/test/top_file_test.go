@@ -116,7 +116,7 @@ func TestTopFile(t *testing.T) {
 					// with 3 bytes.
 					Comm:       "sh",
 					FileType:   "R",
-					FileName:   "bar",
+					FileName:   "/bar",
 					Writes:     1,
 					WriteBytes: 3,
 

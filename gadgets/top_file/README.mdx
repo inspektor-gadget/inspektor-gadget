@@ -88,50 +88,64 @@ clone the linux source code:
 </Tabs>
 
 We can see how the `top_file` terminal shows the files that are read and written
-by the application. For instance, `apt-get` and `apt-config` are reading a lot
+by the application. The `File` field shows the absolute path of the file being 
+accessed. For instance, `http`, `apt-get` and `apt-config` are reading a lot
 of files when updating the packages list and installing packages:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-		K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID  READS RBYT… WRIT… WBYT… FILE                  COMM             T
-		aks-agentpo… default                mypod                  mypod                        144429      4 16384     0     0 config                http             R
-		aks-agentpo… default                mypod                  mypod                        144429      1   832     0     0 libp11-kit.so.0.3.1   http             R
-		aks-agentpo… default                mypod                  mypod                        144425      1   832     0     0 liblzma.so.5.4.5      apt-get          R
-		aks-agentpo… default                mypod                  mypod                        144425      1   832     0     0 libcap.so.2.66        apt-get          R
-		aks-agentpo… default                mypod                  mypod                        144425      3 11889     0     0 01autoremove          apt-get          R
-		aks-agentpo… default                mypod                  mypod                        144429      2  8192     0     0 etc-hosts             http             R
-		aks-agentpo… default                mypod                  mypod                        144426      1   832     0     0 libmd.so.0.1.0        dpkg             R
-		aks-agentpo… default                mypod                  mypod                        144427      1   832     0     0 libunistring.so.5.0.0 http             R
-		aks-agentpo… default                mypod                  mypod                        144428      2  8192     0     0 host.conf             http             R
-		aks-agentpo… default                mypod                  mypod                        144428      2  8192     0     0 resolv.conf           http             R
-		aks-agentpo… default                mypod                  mypod                        144427      1   832     0     0 libgcc_s.so.1         http             R
-		aks-agentpo… default                mypod                  mypod                        144428      1  4096     0     0 passwd                http             R
-		aks-agentpo… default                mypod                  mypod                        144425      3 12244     0     0 docker-autoremove-su… apt-get          R
+		K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                       COMM            K8S.NODE      
+        default                     mypod                       mypod                               1786428       64  262144       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
+        default                     mypod                       mypod                               1786428       10  589883       0       0 /var/lib/apt/lists/securi… apt-get         minikube      
+        default                     mypod                       mypod                               1786428        2  110977       0       0 /var/lib/apt/lists/securi… apt-get         minikube      
+        default                     mypod                       mypod                               1786428        6   24576       0       0 /etc/group                 apt-get         minikube      
+        default                     mypod                       mypod                               1786730        3    2400       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube      
+        default                     mypod                       mypod                               1786428     1494 977912…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
+        default                     mypod                       mypod                               1786608        3   21287       0       0 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786730        1     832       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube      
+        default                     mypod                       mypod                               1786730        2    8192       0       0 /etc/dpkg/dpkg.cfg         dpkg            minikube      
+        default                     mypod                       mypod                               1786608        0       0      28  722475 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608        0       0      28  589765 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608       74  602300       0       0 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608     2049 167783…       0       0 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608        0       0       2   17989 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608        0       0      40  973998 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786608        4   32284       0       0 /var/lib/apt/lists/partia… store           minikube      
+        default                     mypod                       mypod                               1786729        3    2400       0       0 /usr/lib/x86_64-linux-gnu… rm              minikube      
+        default                     mypod                       mypod                               1786428       10  649015       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
+        default                     mypod                       mypod                               1786428        4  197340       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
+        default                     mypod                       mypod                               1786428      188 123166…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube 
         ...
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-		RUNTIME.CONTAINERNAME                                 PID      READS     RBYTES    WRITES    WBYTES FILE                                COMM             T
-		test-top-file                                      384616          2      16382         0         0 tupletable                          apt-config       R
-		test-top-file                                      384552          1      65536        51    331072 archive.ubuntu.com_ubuntu_dists_no… http             R
-		test-top-file                                      384612          1        832         0         0 liblzma.so.5.4.5                    store            R
-		test-top-file                                      384550          4      16384         0         0 config                              http             R
-		test-top-file                                      384644          1        832         0         0 libstdc++.so.6.0.33                 apt-config       R
-		test-top-file                                      384648          3      11970         0         0 docker-clean                        apt-config       R
-		test-top-file                                      384560          1        832         0         0 libgcc_s.so.1                       apt-config       R
-		test-top-file                                      384646          1        832         0         0 libzstd.so.1.5.5                    apt-config       R
-		test-top-file                                      384622          3      12106         0         0 70debconf                           apt-config       R
-		test-top-file                                      384654          2       2048         0         0 filesystems                         dpkg             R
-		test-top-file                                      384591          1        832         0         0 libselinux.so.1                     dpkg             R
-		test-top-file                                      384618          1        832         0         0 libcap.so.2.66                      apt-config       R
-		test-top-file                                      384553          1        832         0         0 libz.so.1.3                         gpgv             R
-		test-top-file                                      384620          2      16382         0         0 tupletable                          apt-config       R
-		test-top-file                                      384648          1        832         0         0 liblzma.so.5.4.5                    apt-config       R
-		test-top-file                                      384559          2       8192         0         0 dpkg.cfg                            dpkg             R
-        test-top-file                                      384548          3      12244         0         0 docker-autoremove-suggests          apt-get          R
+		RUNTIME.CONTAINERNAME                                                PID         READS       RBYTES       WRITES       WBYTES FILE                                          COMM             T
+        test-top-file                                                      23607             1          832            0            0 /usr/lib/x86_64-linux-gnu/libxxhash.so.0.8.2  http             R
+        test-top-file                                                      23609             1          832            0            0 /usr/lib/x86_64-linux-gnu/libbz2.so.1.0.4     http             R
+        test-top-file                                                      23609             1          832            0            0 /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5    http             R
+        test-top-file                                                      23608             1          832            0            0 /usr/lib/x86_64-linux-gnu/libffi.so.8.1.4     http             R
+        test-top-file                                                      23605             3        11889            0            0 /etc/apt/apt.conf.d/01autoremove              apt-get          R
+        test-top-file                                                      23605             3        12288            0            0 /etc/passwd                                   apt-get          R
+        test-top-file                                                      23607             3         2400            0            0 /usr/lib/x86_64-linux-gnu/libc.so.6           http             R
+        test-top-file                                                      23609             1          832            0            0 /usr/lib/x86_64-linux-gnu/libgnutls.so.30.37… http             R
+        test-top-file                                                      23608             1          832            0            0 /usr/lib/x86_64-linux-gnu/libcap.so.2.66      http             R
+        test-top-file                                                      23605             1          832            0            0 /usr/lib/x86_64-linux-gnu/libcap.so.2.66      apt-get          R
+        test-top-file                                                      23607             1          832            0            0 /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5    http             R
+        test-top-file                                                      23608             1         4096            0            0 /etc/passwd                                   http             R
+        test-top-file                                                      23606             2         2048            0            0 /proc/filesystems                             dpkg             R
+        ...
+        test-top-file                                                      23680             3        12261            0            0 /etc/apt/apt.conf.d/docker-disable-periodic-… apt-config       R
+        test-top-file                                                      23656             2        16382            0            0 /usr/share/dpkg/tupletable                    apt-config       R
+        test-top-file                                                      23689             1          832            0            0 /usr/lib/x86_64-linux-gnu/libz.so.1.3         apt-config       R
+        test-top-file                                                      23655             2         2048            0            0 /proc/filesystems                             dpkg             R
+        test-top-file                                                      23609             1        65536           14        19964 /var/lib/apt/lists/partial/archive.ubuntu.co… http             R
+        test-top-file                                                      23647             1          832            0            0 /usr/lib/x86_64-linux-gnu/libgcc_s.so.1       gpgv             R
+        test-top-file                                                      23653             1          832            0            0 /usr/lib/x86_64-linux-gnu/libmd.so.0.1.0      dpkg             R
+        test-top-file                                                      23685             1          832            0            0 /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.11… dpkg             R
+        test-top-file                                                      23684             3        12106            0            0 /etc/apt/apt.conf.d/70debconf                 apt-config       R
         ...
         ```
     </TabItem>
@@ -143,16 +157,16 @@ to store the repository being cloned.
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-		K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID  READS RBYT… WRIT… WBYT… FILE                  COMM             T
-		aks-agentpo… default                mypod                  mypod                        178405      0     0  5495 2250… tmp_pack_rodQNc       git              R
+        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                                      COMM            K8S.NODE      
+        default                     mypod                       mypod                               1799742      266   81944       0       0 /linux/.git/objects/pack/tmp_pack_dzzrva  git             minikube      
 	    ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        RUNTIME.CONTAINERNAME                                 PID      READS     RBYTES    WRITES    WBYTES FILE                                COMM             T
-        test-top-file                                      362072          0          0      5832  23887872 tmp_pack_xWFcvD                     git              R
-        ```
+        RUNTIME.CONTAINERNAME                                                PID         READS       RBYTES       WRITES       WBYTES FILE                                          COMM             T
+        test-top-file                                                      27959             0            0          804      3293184 /linux/.git/objects/pack/tmp_pack_UPu2eM      git              R
+         ```
     </TabItem>
 </Tabs>
 

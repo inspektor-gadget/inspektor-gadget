@@ -8,6 +8,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/mntns_filter.h>
+#include <gadget/filesystem.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
 
@@ -69,10 +70,10 @@ GADGET_MAPITER(file, stats);
 
 static void get_file_path(struct file *file, __u8 *buf, size_t size)
 {
-	struct qstr dname;
-
-	dname = BPF_CORE_READ(file, f_path.dentry, d_name);
-	bpf_probe_read_kernel(buf, size, dname.name);
+	struct path f_path = BPF_CORE_READ(file, f_path);
+	// Extract the full path string
+	char *c_path = get_path_str(&f_path);
+	bpf_probe_read_kernel_str(buf, PATH_MAX, c_path);
 }
 
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
