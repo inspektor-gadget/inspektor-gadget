@@ -10,4 +10,4 @@ RUN cd /gadget/examples/kube-container-collection && make kube-container-collect
 
 FROM busybox@sha256:9ae97d36d26566ff84e8893c64a6dc4fe8ca6d1144bf5b87b2b85a32def253c7
 COPY --from=builder /gadget/examples/kube-container-collection/kube-container-collection-static /bin/kube-container-collection
-CMD /bin/kube-container-collection
+CMD ["/bin/kube-container-collection"]
