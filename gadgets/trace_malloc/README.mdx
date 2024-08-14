@@ -1,37 +1,36 @@
 ---
-title: {{ (datasource "gadget").name }}
-sidebar_position: 900
+title: trace malloc
+sidebar_position: 120
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# {{ (datasource "gadget").name }}
+# trace malloc
 
-{{ (datasource "gadget").description }}
+use uprobe to trace malloc and free in libc.so
 
 ## Getting started
 
 Running the gadget:
 
-{{ $image := index (index (index (datasource "artifacthubpkg") "containersImages") 0) "image" -}}
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run {{ $image }} [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_malloc:latest [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run {{ $image }} [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_malloc:latest [flags]
         ```
     </TabItem>
 </Tabs>
 
 ## Flags
 
-TODO
+No flags.
 
 ## Guide
 

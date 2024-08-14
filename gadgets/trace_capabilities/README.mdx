@@ -1,6 +1,6 @@
 ---
 title: trace_capabilities
-sidebar_position: 70
+sidebar_position: 80
 ---
 
 import Tabs from '@theme/Tabs';
@@ -40,11 +40,17 @@ Running the gadget:
 </Tabs>
 ## Flags
 
-### `--audit_only`
+### `--audit-only`
 
 Only show audit checks
 
 Default value: "false"
+
+### `--print-stack`
+
+controls whether the gadget will send kernel stack to userspace
+
+Default value: "true"
 
 ### `--unique`
 
