@@ -47,6 +47,7 @@ all: build
 build: $(GADGETS)
 
 readmes: $(GADGETS_README)
+	counter=10 ; for i in $(shell git grep '^sidebar_position:' -- .|cut -d: -f1|grep /README.mdx) ; do sed -i "s/^sidebar_position:.*/sidebar_position: $$counter/g" $$i ; counter=$$(($$counter + 10)) ; done
 
 # GADGET_BUILD_PARAMS can be used to pass additional parameters e.g
 # GADGET_BUILD_PARAMS="--update-metadata" make build
