@@ -54,7 +54,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_oomkill:latest --namespace oomkill-demo
-        K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        K8S.NODE     TIMESTAMP
+        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        TIMESTAMP
         ```
 
         The gadget is waiting for the OOM killer to get triggered and kill a process in `oomkill-demo` namespace (alternatively, we could use `-A` and get out-of-memory killer events in all namespaces).
@@ -67,8 +67,8 @@ Running the gadget:
 
         Go back to *the first terminal* and see:
         ```bash
-        K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        K8S.NODE     TIMESTAMP
-        oomkill-demo              oomkill-demo…dbf85d-r9tls busybox                   4026533320    728870        0             0             728870        4227071      tail         tail         minikube-do… 2024-08-01T22:36:19.5001276…
+        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        TIMESTAMP
+        minikube-docker    oomkill-demo              oomkill-demo…dbf85d-r9tls busybox                   4026533320    728870        0             0             728870        4227071      tail         tail         2024-08-01T22:36:19.5001276…
         ```
     </TabItem>
 

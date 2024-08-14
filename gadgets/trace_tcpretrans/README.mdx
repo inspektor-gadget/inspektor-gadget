@@ -36,7 +36,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_tcpretrans:latest
-        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    K8S.NODE     TIMESTAMP
+        K8S.NODE          K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    TIMESTAMP
         ```
 
         In terminal 2, start a pod and configure the network emulator to drop 25% of the packets. This will cause TCP retransmissions:
@@ -54,8 +54,8 @@ Running the gadget:
         The results in terminal 1 will show that some TCP transmissions cause by the dropped packets:
 
         ```
-        K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    K8S.NODE     TIMESTAMP
-        default                  shell                    shell                    10.244.0.40:45638                10.98.34.183:80                  curl                 874866        874866 2             0             SYN          RETRANS minikube-do… 2024-08-02T10:51:08.918253…
+        K8S.NODE          K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE    TIMESTAMP
+        minikube-docker   default                  shell                    shell                    10.244.0.40:45638                10.98.34.183:80                  curl                 874866        874866 2             0             SYN          RETRANS 2024-08-02T10:51:08.918253…
         ```
 
         The network emulator uses a random generator to drop 25% of the packets.

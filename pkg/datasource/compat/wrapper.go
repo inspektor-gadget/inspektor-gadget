@@ -136,7 +136,14 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		return nil, err
 	}
 
-	ev.nodeAccessor, err = k8s.AddSubField("node", api.Kind_String, datasource.WithTags("kubernetes"))
+	ev.nodeAccessor, err = k8s.AddSubField("node",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithAnnotations(map[string]string{
+			datasource.TemplateAnnotation: "node",
+		}),
+		datasource.WithOrder(-31),
+	)
 	if err != nil {
 		return nil, err
 	}
