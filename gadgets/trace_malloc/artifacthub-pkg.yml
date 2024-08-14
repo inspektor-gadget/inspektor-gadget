@@ -4,7 +4,7 @@ name: "trace malloc"
 category: monitoring-logging
 displayName: "trace malloc"
 createdAt: "2024-08-12T14:04:40Z"
-digest: "2024-08-12T14:04:40Z"
+digest: "2024-08-14T10:16:55Z"
 description: "use uprobe to trace malloc and free in libc.so"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

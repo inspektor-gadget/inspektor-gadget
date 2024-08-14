@@ -1,0 +1,41 @@
+---
+title: trace ssl
+sidebar_position: 900
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace ssl
+
+Captures data on read/recv or write/send functions of OpenSSL, GnuTLS, NSS and Libcrypto
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_ssl:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_ssl:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--record-data`
+
+controls whether the gadget will send data to userspace
+
+Default value: "true"
+
+## Guide
+
+TODO
