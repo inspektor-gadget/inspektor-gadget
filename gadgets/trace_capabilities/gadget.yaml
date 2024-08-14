@@ -80,7 +80,7 @@ datasources:
           columns.width: 10
 ebpfParams:
   audit_only:
-    key: audit_only
+    key: audit-only
     defaultValue: "false"
     description: Only show audit checks
   print_stack:
