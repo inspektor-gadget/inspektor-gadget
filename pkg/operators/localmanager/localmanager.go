@@ -44,16 +44,17 @@ import (
 )
 
 const (
-	OperatorName         = "LocalManager"
-	Runtimes             = "runtimes"
-	ContainerName        = "containername"
-	Host                 = "host"
-	DockerSocketPath     = "docker-socketpath"
-	ContainerdSocketPath = "containerd-socketpath"
-	CrioSocketPath       = "crio-socketpath"
-	PodmanSocketPath     = "podman-socketpath"
-	ContainerdNamespace  = "containerd-namespace"
-	RuntimeProtocol      = "runtime-protocol"
+	OperatorName           = "LocalManager"
+	Runtimes               = "runtimes"
+	ContainerName          = "containername"
+	Host                   = "host"
+	DockerSocketPath       = "docker-socketpath"
+	ContainerdSocketPath   = "containerd-socketpath"
+	CrioSocketPath         = "crio-socketpath"
+	PodmanSocketPath       = "podman-socketpath"
+	ContainerdNamespace    = "containerd-namespace"
+	RuntimeProtocol        = "runtime-protocol"
+	EnrichWithK8sApiserver = "enrich-with-k8s-apiserver"
 )
 
 type MountNsMapSetter interface {
@@ -122,6 +123,12 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          RuntimeProtocol,
 			DefaultValue: "internal",
 			Description:  "Container runtime protocol. Supported values are: internal, cri",
+		},
+		{
+			Key:          EnrichWithK8sApiserver,
+			DefaultValue: "false",
+			Description:  "Connect to the K8s API server to get further K8s enrichment",
+			TypeHint:     params.TypeBool,
 		},
 	}
 }
@@ -244,7 +251,12 @@ partsLoop:
 	//   namespace ID to bet set.
 	l.fakeContainer = &containercollection.Container{Pid: pidOne, Mntns: mntns}
 
-	igManager, err := igmanager.NewManager(l.rc, nil)
+	additionalOpts := []containercollection.ContainerCollectionOption{}
+	if operatorParams.Get(EnrichWithK8sApiserver).AsBool() {
+		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment("", nil))
+	}
+
+	igManager, err := igmanager.NewManager(l.rc, additionalOpts)
 	if err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
