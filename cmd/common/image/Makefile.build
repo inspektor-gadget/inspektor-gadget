@@ -1,6 +1,7 @@
 # This makefile is used by the build command, don't execute it manually
 
 CLANG ?= clang
+TINYGO ?= tinygo
 LLVM_STRIP ?= llvm-strip
 BASECFLAGS = -target bpf -Wall -g -O2
 CFLAGS ?=
@@ -24,7 +25,7 @@ wasm:
 	# No wasm file found. Nothing to do.
 else ifeq (go,$(patsubst %.go,go,$(WASM)))
 wasm: $(WASM)
-	tinygo build -o $(OUTPUTDIR)/program.wasm -target=wasi --no-debug $^
+	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasi --no-debug $^
 else ifeq (wasm,$(patsubst %.wasm,wasm,$(WASM)))
 wasm:
 	# Wasm file already compiled. Nothing to do.
