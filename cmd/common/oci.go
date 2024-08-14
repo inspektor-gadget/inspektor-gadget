@@ -33,6 +33,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/combiner"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
