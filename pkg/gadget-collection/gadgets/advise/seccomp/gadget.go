@@ -343,11 +343,8 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 
 	namespacedName := fmt.Sprintf("%s/%s", event.Container.K8s.Namespace, event.Container.K8s.PodName)
 
-	// This field was fetched when the container was created
-	ownerReference := getContainerOwnerReference(event.Container)
-
 	r, err := generateSeccompPolicy(t.client, trace, syscallNames, event.Container.K8s.PodName,
-		event.Container.K8s.ContainerName, namespacedName, ownerReference)
+		event.Container.K8s.ContainerName, namespacedName, event.Container.GetRawK8sOwnerReference())
 	if err != nil {
 		log.Errorf("Trace %s: %v", traceName, err)
 		return
@@ -378,7 +375,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 }
 
 func getContainerOwnerReference(c *containercollection.Container) *metav1.OwnerReference {
-	ownerRef, err := c.GetOwnerReference()
+	ownerRef, err := c.GetOwnerReference(nil)
 	if err != nil {
 		log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
 			c.K8s.Namespace, c.K8s.PodName, c.K8s.ContainerName, err)
@@ -539,9 +536,12 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	case gadgetv1alpha1.TraceOutputModeExternalResource:
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
 
-		ownerReference := t.helpers.LookupOwnerReferenceByMntns(mntns)
-
-		r, err := generateSeccompPolicy(t.client, trace, syscallNames, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
+		container, err := traceSingleton.tracer.GetContainerByName(trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("Failed to get container: %s", err)
+			return
+		}
+		r, err := generateSeccompPolicy(t.client, trace, syscallNames, trace.Spec.Filter.Podname, containerName, podName, container.GetRawK8sOwnerReference())
 		if err != nil {
 			trace.Status.OperationError = err.Error()
 			return
