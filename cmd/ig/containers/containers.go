@@ -49,7 +49,7 @@ func NewListContainersCmd() *cobra.Command {
 				return err
 			}
 
-			igmanager, err := igmanager.NewManager(commonFlags.RuntimeConfigs)
+			igmanager, err := igmanager.NewManager(commonFlags.RuntimeConfigs, nil)
 			if err != nil {
 				return commonutils.WrapInErrManagerInit(err)
 			}

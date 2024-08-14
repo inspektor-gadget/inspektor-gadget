@@ -244,7 +244,7 @@ partsLoop:
 	//   namespace ID to bet set.
 	l.fakeContainer = &containercollection.Container{Pid: pidOne, Mntns: mntns}
 
-	igManager, err := igmanager.NewManager(l.rc)
+	igManager, err := igmanager.NewManager(l.rc, nil)
 	if err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
