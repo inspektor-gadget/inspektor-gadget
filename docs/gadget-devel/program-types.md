@@ -80,4 +80,4 @@ The section name must use the `usdt/<file_path>:<providerName>:<probeName>` form
 ### Tracing with Linux Security Modules (LSM)
 
 The section name must use the `lsm/<hook>` format.
-The hook points could be found in [`<include/linux/lsm_hook_defs.h>`](https://elixir.bootlin.com/linux/latest/source/include/linux/lsm_hook_defs.h).
+The hook points could be found in [`<include/linux/lsm_hook_defs.h>`](https://github.com/torvalds/linux/blob/master/include/linux/lsm_hook_defs.h).
