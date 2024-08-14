@@ -4,7 +4,7 @@ name: "trace ssl"
 category: monitoring-logging
 displayName: "trace ssl"
 createdAt: "2024-08-12T14:04:40Z"
-digest: "2024-08-12T14:04:40Z"
+digest: 2024-08-14T13:05:50Z
 description: "use uprobe to capture data on read/recv or write/send functions of OpenSSL, GnuTLS, NSS and Libcrypto"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

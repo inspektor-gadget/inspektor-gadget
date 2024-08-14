@@ -4,7 +4,7 @@ name: "trace lsm"
 category: monitoring-logging
 displayName: "trace lsm"
 createdAt: "2024-08-12T14:04:40Z"
-digest: "2024-08-14T10:13:07Z"
+digest: 2024-08-14T13:05:50Z
 description: "a strace for LSM tracepoints"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
