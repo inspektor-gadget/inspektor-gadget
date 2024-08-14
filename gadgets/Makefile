@@ -39,7 +39,7 @@ GADGETS = \
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-GADGETS_README = $(addsuffix /README.md, $(GADGETS))
+GADGETS_README = $(addsuffix /README.mdx, $(GADGETS))
 
 .PHONY: all
 all: build
@@ -63,14 +63,13 @@ $(GADGETS):
 
 .PHONY: $(GADGETS_README)
 $(GADGETS_README):
-	gomplate -d gadget=$(@:README.md=gadget.yaml) -d artifacthubpkg=$(@:README.md=artifacthub-pkg.yml) --file README.template --out $@.new
-	@# Modify field 'digest' to request reindexing from artifacthub.
-	if ! cmp $@ $@.new > /dev/null ; then \
-		mv $@.new $@ ; \
-		sed -i 's/^digest:.*$$/digest: "$(DATE)"/g' $(@:README.md=artifacthub-pkg.yml) ; \
-	else \
-		rm -f $@.new ; \
+	@# Create README if not exists
+	if [ ! -f "$@" ] ; then \
+		gomplate -d gadget=$(@:README.mdx=gadget.yaml) -d artifacthubpkg=$(@:README.mdx=artifacthub-pkg.yml) --file README.template --out $@ ; \
 	fi
+	@# Replace flags section
+	sed -i '/^## Flags/,/^## /{/^## /!d}' $@
+	sed -i '/## Flags/r '<(gomplate -d gadget=$(@:README.mdx=gadget.yaml) -d artifacthubpkg=$(@:README.mdx=artifacthub-pkg.yml) --file README-flags.template) $@
 
 .PHONY:
 push: build
