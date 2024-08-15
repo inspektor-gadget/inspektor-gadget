@@ -108,9 +108,10 @@ type dnsProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsMapSpecs struct {
-	Events        *ebpf.MapSpec `ebpf:"events"`
-	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
-	QueryMap      *ebpf.MapSpec `ebpf:"query_map"`
+	Events               *ebpf.MapSpec `ebpf:"events"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	GadgetSockets        *ebpf.MapSpec `ebpf:"gadget_sockets"`
+	QueryMap             *ebpf.MapSpec `ebpf:"query_map"`
 }
 
 // dnsObjects contains all objects after they have been loaded into the kernel.
@@ -132,14 +133,16 @@ func (o *dnsObjects) Close() error {
 //
 // It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsMaps struct {
-	Events        *ebpf.Map `ebpf:"events"`
-	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
-	QueryMap      *ebpf.Map `ebpf:"query_map"`
+	Events               *ebpf.Map `ebpf:"events"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	GadgetSockets        *ebpf.Map `ebpf:"gadget_sockets"`
+	QueryMap             *ebpf.Map `ebpf:"query_map"`
 }
 
 func (m *dnsMaps) Close() error {
 	return _DnsClose(
 		m.Events,
+		m.GadgetMntnsFilterMap,
 		m.GadgetSockets,
 		m.QueryMap,
 	)

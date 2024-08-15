@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright (c) 2024 The Inspektor Gadget authors */
-
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
@@ -17,6 +16,7 @@
 
 #define GADGET_TYPE_NETWORKING
 #include <gadget/sockets-map.h>
+#include <gadget/mntns_filter.h>
 
 #include "dns-common.h"
 
@@ -131,6 +131,23 @@ int ig_trace_dns(struct __sk_buff *skb)
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
 	int i;
+
+	// Enrich event with process metadata
+	struct sockets_value *skb_val = gadget_socket_lookup(skb);
+	if (skb_val != NULL) {
+		// Filter out mount namespaces we're not interested in
+		if (gadget_should_discard_mntns_id(skb_val->mntns)) {
+			return 0;
+		}
+		// Fill in the event with enriched data
+		event.mount_ns_id = skb_val->mntns;
+		event.pid = skb_val->pid_tgid >> 32;
+		event.tid = (__u32)skb_val->pid_tgid;
+		__builtin_memcpy(&event.task, skb_val->task,
+				 sizeof(event.task));
+		event.uid = (__u32)skb_val->uid_gid;
+		event.gid = (__u32)(skb_val->uid_gid >> 32);
+	}
 
 	// Do a first pass only to extract the port and drop the packet if it's not DNS
 	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
@@ -247,18 +264,6 @@ int ig_trace_dns(struct __sk_buff *skb)
 			    &event.daddr_v6, sizeof(event.daddr_v6)))
 			return 0;
 		break;
-	}
-
-	// Enrich event with process metadata
-	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	if (skb_val != NULL) {
-		event.mount_ns_id = skb_val->mntns;
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task, skb_val->task,
-				 sizeof(event.task));
-		event.uid = (__u32)skb_val->uid_gid;
-		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
 
 	// Calculate latency:
