@@ -75,7 +75,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/sigstore/sigstore v1.8.7
 	github.com/spf13/pflag v1.0.5
-	github.com/tetratelabs/wazero v1.7.3
+	github.com/tetratelabs/wazero v1.8.0
 )
 
 require (
