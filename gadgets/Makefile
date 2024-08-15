@@ -39,7 +39,7 @@ GADGETS = \
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-GADGETS_README = $(addsuffix /README.mdx, $(GADGETS))
+GADGETS_README = $(filter-out ci/%, $(addsuffix /README.mdx, $(GADGETS)))
 
 .PHONY: all
 all: build
@@ -71,6 +71,10 @@ $(GADGETS_README):
 	@# Replace flags section
 	sed -i '/^## Flags/,/^## /{/^## /!d}' $@
 	sed -i '/## Flags/r '<(gomplate -d gadget=$(@:README.mdx=gadget.yaml) -d artifacthubpkg=$(@:README.mdx=artifacthub-pkg.yml) --file README-flags.template) $@
+	@# Create symlinks for README if not exists
+	if [ ! -f $(ROOT_DIR)../docs/gadgets/$(@) ] ; then \
+		ln -sf ../../gadgets/$@ $(ROOT_DIR)../docs/gadgets/$(shell dirname $@).mdx ; \
+	fi
 
 .PHONY:
 push: build
