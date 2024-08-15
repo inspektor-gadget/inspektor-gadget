@@ -56,9 +56,9 @@ datasources:
           columns.width: 10
 ebpfParams:
   ignore_errors:
-    key: ignore_errors
+    key: ignore-errors
     alias: i
-    defaultValue: ""
+    defaultValue: "true"
     description: Show only events where the bind succeeded
   target_pid:
     key: pid

@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.30.0
+version: v0.31.0
 name: "audit seccomp"
 category: monitoring-logging
 displayName: "audit seccomp"
-createdAt: "2024-07-01T09:22:04Z"
-digest: "2024-07-15T22:05:24Z"
+createdAt: "2024-08-12T14:04:40Z"
+digest: "2024-08-12T14:04:40Z"
 description: "Audit syscalls according to the seccomp profile"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

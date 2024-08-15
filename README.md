@@ -21,6 +21,8 @@
 
 Inspektor Gadget is a set of tools and framework for data collection and system inspection on Kubernetes clusters and Linux hosts using [eBPF](https://ebpf.io/). It manages the packaging, deployment and execution of Gadgets (eBPF programs encapsulated in [OCI images](https://opencontainers.org/)) and provides mechanisms to customize and extend Gadget functionality.
 
+**Note**: Major new functionality was released in v0.31.0. Please read the [blog post for a detailed overview](https://inspektor-gadget.io/blog/2024/08/empowering-observability_the_advent_of_image_based_gadgets).
+
 ## Features
 
 * Build and package eBPF programs into OCI images called Gadgets
@@ -100,7 +102,7 @@ sudo ig daemon --host=tcp://0.0.0.0:1234
 
 Download the `gadgetctl` tools for MacOS
 ([amd64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-amd64-v0.30.0.tar.gz),
-[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz)) or [windows](https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/gadgetctl-windows-amd64-v0.30.0.tar.gz) and run the Gadget specifying the IP address of the Linux machine:
+[arm64](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-darwin-arm64-v0.30.0.tar.gz)) or [windows](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.30.0/gadgetctl-windows-amd64-v0.30.0.tar.gz) and run the Gadget specifying the IP address of the Linux machine:
 
 
 ```bash
@@ -148,7 +150,7 @@ Use the [project documentation](https://www.inspektor-gadget.io/docs/latest/) to
 
 * [Reference](https://www.inspektor-gadget.io/docs/latest/reference)
 * [Gadgets](https://www.inspektor-gadget.io/docs/latest/gadgets)
-* [Contributing](https://www.inspektor-gadget.io/docs/latest/devel/CONTRIBUTING)
+* [Contributing](https://www.inspektor-gadget.io/docs/latest/devel/contributing/)
 
 ## Kernel requirements
 
@@ -169,7 +171,7 @@ Inspektor Gadget directly. End-users do not need this and can use
 
 ## Contributing
 
-Contributions are welcome, see [CONTRIBUTING](docs/devel/CONTRIBUTING.md).
+Contributions are welcome, see [CONTRIBUTING](docs/devel/contributing.md).
 
 ## Community Meeting
 

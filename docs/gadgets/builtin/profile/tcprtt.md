@@ -8,7 +8,7 @@ description: >
 The profile tcprtt gadget generates a histogram distribution of the TCP
 connections' Round-Trip Time (RTT). The RTT values used to create the histogram
 are collected from [the smoothed
-RTT](https://elixir.bootlin.com/linux/v5.11.22/source/include/linux/tcp.h#L258)
+RTT](https://github.com/torvalds/linux/blob/v5.11/include/linux/tcp.h#L258)
 information already provided by the Linux kernel for the TCP sockets.
 
 The histogram considers only the TCP connections that have been already

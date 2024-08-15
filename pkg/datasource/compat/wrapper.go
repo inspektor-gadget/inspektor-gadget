@@ -44,6 +44,8 @@ type EventWrapperBase struct {
 	containerimagenameAccessor   datasource.FieldAccessor
 	containerimagedigestAccessor datasource.FieldAccessor
 	hostNetworkAccessor          datasource.FieldAccessor
+	ownerKindAccessor            datasource.FieldAccessor
+	ownerNameAccessor            datasource.FieldAccessor
 }
 
 type (
@@ -134,7 +136,14 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		return nil, err
 	}
 
-	ev.nodeAccessor, err = k8s.AddSubField("node", api.Kind_String, datasource.WithTags("kubernetes"))
+	ev.nodeAccessor, err = k8s.AddSubField("node",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithAnnotations(map[string]string{
+			datasource.TemplateAnnotation: "node",
+		}),
+		datasource.WithOrder(-31),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +189,29 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		datasource.WithTags("kubernetes"),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-27),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	owner, err := k8s.AddSubField("owner", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
+	if err != nil {
+		return nil, err
+	}
+	ev.ownerKindAccessor, err = owner.AddSubField(
+		"kind",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ownerNameAccessor, err = owner.AddSubField(
+		"name",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
 	)
 	if err != nil {
 		return nil, err
@@ -302,6 +334,12 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 			if container.UsesHostNetwork() {
 				ev.hostNetworkAccessor.PutInt8(ev.Data, 1)
 			}
+		}
+		if ev.ownerKindAccessor.IsRequested() {
+			ev.ownerKindAccessor.PutString(ev.Data, container.K8sOwnerReference().Kind)
+		}
+		if ev.ownerNameAccessor.IsRequested() {
+			ev.ownerNameAccessor.PutString(ev.Data, container.K8sOwnerReference().Name)
 		}
 	}
 	rt := container.RuntimeMetadata()

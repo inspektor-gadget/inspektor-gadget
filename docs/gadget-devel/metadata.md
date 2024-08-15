@@ -27,13 +27,43 @@ could be changed soon.
 
 ### Datasources
 
-The `datasources` section on the file allows to define different annotations for
-the datasources and their fields. These annotations control different aspects of
-a field, how is it formatted, how is it aggregated, etc.
+The `datasources` section in the metadata can be used to apply additional
+information to those. For example, `annotations` can be applied to each
+datasource to control different aspects of the datasource and how it's seen and
+used by operators. Additionally, `fields` can also have their own `annotations`,
+to control for example the formatting on a per-field level.
+
+For example, the following metadata file defines a `foo` datasource with two
+fields, `pid` and `bar`. In this case, both the datasource and the fields have
+annotations:
+
+```yaml
+datasources:
+  foo:
+    annotations:
+      cli.clear-screen-before: "true"
+    fields:
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      bar:
+        annotations:
+          description: Bar field description
+          columns.hidden: true
+```
 
 #### Annotations
 
-This is a non exhaustive list of available annotations:
+##### Datasource
+
+The annotations for the datasource depend on its type and the operators it uses.
+For more information, refer to the [operator documentation](../reference/operators/).
+
+##### Field
+
+The field annotations can be defined for each field of the datasource. The
+following annotations are a non-exhaustive list of the available annotations:
 
 - `description`: Column description
 - `columns.width`: Width to reserve for this column
@@ -79,4 +109,4 @@ This is a non exhaustive list of available annotations:
   - errorString:
     - `columns.width: 12`
 - `columns.replace`: Indicates this field must be replacing by the one on the annotation when printing it.
-- `json.skip`: Skip the field when marshalling to json
+- `json.skip`: Skip the field when marshalling to json.

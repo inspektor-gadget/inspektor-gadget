@@ -43,6 +43,19 @@ func gadgetStop() int {
 func main() {}
 ```
 
+Run the following commands in the `go` directory to initialize the Golang module:
+
+```bash
+$ cd go
+$ go mod init mygadget
+go: creating new go.mod: module mygadget
+go: to add module requirements and sums:
+        go mod tidy
+$ go mod tidy
+go: finding module for package github.com/inspektor-gadget/inspektor-gadget/wasmapi/go
+go: found github.com/inspektor-gadget/inspektor-gadget/wasmapi/go in github.com/inspektor-gadget/inspektor-gadget v0.31.0
+```
+
 We also need a `build.yaml` file that indicates the gadget includes a Golang
 program that needs to be compiled to a wasm module:
 

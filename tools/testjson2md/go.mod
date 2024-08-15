@@ -1,6 +1,6 @@
 module github.com/inspektor-gadget/inspektor-gadget/tools/testjson2md
 
-go 1.22
+go 1.22.5
 
 require github.com/medyagh/gopogh v0.27.0
 

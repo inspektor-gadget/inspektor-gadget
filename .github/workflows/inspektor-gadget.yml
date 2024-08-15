@@ -2,7 +2,7 @@ name: Inspektor Gadget CI
 env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
-  GO_VERSION: 1.22.0
+  GO_VERSION: 1.22.5
   # controller-gen with go >1.21 panics, but we can't update controller-gen itself
   GO_VERSION_DOC_CHECK: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
@@ -247,7 +247,7 @@ jobs:
       with:
         category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
-      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
@@ -339,7 +339,7 @@ jobs:
           ig LICENSE
         rm -rf ${{ matrix.platform }}
     - name: Add ig-linux-${{ matrix.platform }}.tar.gz as artifact.
-      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: ig-linux-${{ matrix.platform }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/ig-linux-${{ matrix.platform }}.tar.gz
@@ -470,7 +470,7 @@ jobs:
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
     - name: Build gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -482,13 +482,13 @@ jobs:
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
     - name: Generate SBOM for gadget ${{ matrix.os }} ${{ matrix.platform }} image
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -505,7 +505,7 @@ jobs:
     - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-gadget-container-images
       if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
@@ -612,7 +612,7 @@ jobs:
         # - hash of all bpf objects
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - name: Build ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -625,13 +625,13 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         path: /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
     - name: Generate ig ${{ matrix.os }} ${{ matrix.platform }} container image SBOM
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -649,7 +649,7 @@ jobs:
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-ig-container-images
       if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
@@ -732,8 +732,6 @@ jobs:
       # in case of public fork repo/packages permissions will always be read
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
     outputs:
       image-digest: ${{ steps.publish-manifest-list.outputs.image-digest }}
     steps:
@@ -911,7 +909,7 @@ jobs:
     - name: Build ${{ matrix.image.name }} image
       id: build-image
       if: steps.check-build-helpers.outputs.build == 'true'
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
@@ -977,7 +975,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Build example container
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6.5.0
+      uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
@@ -1126,7 +1124,7 @@ jobs:
         export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make -C charts package
     - name: Upload Helm charts
-      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: gadget-charts-tgz
         path: charts/bin/*.tgz
@@ -1272,7 +1270,7 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Install Cosign
-        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
       - name: Check if public key is up-to-date.
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
@@ -1369,7 +1367,7 @@ jobs:
           sudo mv ig /usr/bin/ig
       - name: Install Cosign
         if: needs.check-secrets.outputs.cosign == 'true'
-        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
       - name: Verify eBPF builder image
         if: needs.check-secrets.outputs.cosign == 'true'
         run: |
@@ -2101,7 +2099,7 @@ jobs:
         done
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
-      uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+      uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
     - name: Sign checksums file
       if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
