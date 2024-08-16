@@ -65,6 +65,15 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
+func (t *Tracer) GetContainerByName(namespace string, podName string) (*containercollection.Container, error) {
+	for container, _ := range t.containers {
+		if container.K8s.Namespace == namespace && container.K8s.PodName == podName {
+			return container, nil
+		}
+	}
+	return nil, fmt.Errorf("container not found")
+}
+
 func (t *Tracer) install() error {
 	spec, err := loadSeccomp()
 	if err != nil {

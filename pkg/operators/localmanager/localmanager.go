@@ -37,6 +37,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -55,6 +56,7 @@ const (
 	ContainerdNamespace  = "containerd-namespace"
 	RuntimeProtocol      = "runtime-protocol"
 	WithK8sApiserver     = "with-k8s-apiserver"
+	KubeConfig           = "kubeconfig"
 )
 
 type MountNsMapSetter interface {
@@ -129,6 +131,10 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 			Description:  "Connect to the K8s API server to get further K8s enrichment",
 			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:         KubeConfig,
+			Description: fmt.Sprintf("Path to the kubeconfig file. Only relevant when %q is enabled", WithK8sApiserver),
 		},
 	}
 }
@@ -253,7 +259,12 @@ partsLoop:
 
 	additionalOpts := []containercollection.ContainerCollectionOption{}
 	if operatorParams.Get(WithK8sApiserver).AsBool() {
-		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment("", nil))
+		kubeconfigPath := operatorParams.Get(KubeConfig).AsString()
+		kubeConfig, err := k8sutil.NewKubeConfig(kubeconfigPath)
+		if err != nil {
+			return fmt.Errorf("creating kubeconfig: %w", err)
+		}
+		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment("", kubeConfig))
 	}
 
 	igManager, err := igmanager.NewManager(l.rc, additionalOpts)

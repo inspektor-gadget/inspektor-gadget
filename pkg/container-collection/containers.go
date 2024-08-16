@@ -118,14 +118,17 @@ type ContainerSelector struct {
 // to help users to identify the workflow of the profile. We "lazily
 // enrich" this information because this operation is expensive and this
 // information is only needed in some cases.
-func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
+func (c *Container) GetOwnerReference(kubeconfig *rest.Config) (*metav1.OwnerReference, error) {
 	if c.K8s.ownerReference != nil {
 		return c.K8s.ownerReference, nil
 	}
 
-	kubeconfig, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("getting Kubernetes config: %w", err)
+	if kubeconfig == nil {
+		var err error
+		kubeconfig, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("getting Kubernetes config: %w", err)
+		}
 	}
 
 	dynamicClient, err := dynamic.NewForConfig(kubeconfig)
@@ -225,6 +228,10 @@ func (c *Container) RuntimeMetadata() *types.BasicRuntimeMetadata {
 
 func (c *Container) UsesHostNetwork() bool {
 	return c.HostNetwork
+}
+
+func (c *Container) GetRawK8sOwnerReference() *metav1.OwnerReference {
+	return c.K8s.ownerReference
 }
 
 func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {

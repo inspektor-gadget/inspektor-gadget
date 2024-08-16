@@ -574,7 +574,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			}
 
 			if container.K8s.ownerReference == nil {
-				_, err = container.GetOwnerReference()
+				_, err = container.GetOwnerReference(kubeconfig)
 				if err != nil {
 					log.Errorf("kubernetes enricher: failed to get owner reference for container %s: %s", container.Runtime.ContainerID, err)
 					// Don't drop the container. We just have problems getting the owner reference, but still want to trace the container.
