@@ -22,3 +22,4 @@ data:
           verify-image: {{ .Values.config.verifyGadgets }}
           public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}
           allowed-gadgets:{{ toYaml .Values.config.allowedGadgets | nindent 12 }}
+          disallow-pulling: {{ .Values.config.disallowGadgetsPulling }}

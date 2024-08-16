@@ -59,6 +59,7 @@ type AuthOptions struct {
 	// InsecureRegistries is a list of registries that should be accessed over
 	// plain HTTP.
 	InsecureRegistries []string
+	DisallowPulling    bool
 }
 
 type VerifyOptions struct {
@@ -185,6 +186,10 @@ func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthO
 }
 
 func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras.Target, authOpts *AuthOptions) (*ocispec.Descriptor, error) {
+	if authOpts.DisallowPulling {
+		return nil, errors.New("pulling is disallowed")
+	}
+
 	repo, err := newRepository(targetImage, authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("creating remote repository: %w", err)

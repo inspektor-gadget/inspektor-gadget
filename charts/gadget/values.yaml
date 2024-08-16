@@ -41,6 +41,9 @@ config:
   # -- List of allowed gadgets.
   allowedGadgets: []
 
+  # -- Disallow pulling gadgets.
+  disallowGadgetsPulling: false
+
   # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
   mountPullSecret: false
 
