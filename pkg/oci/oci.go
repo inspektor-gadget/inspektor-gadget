@@ -144,14 +144,10 @@ func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image s
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
-	repo, err := newRepository(targetImage, authOpts)
+
+	desc, err := pullImage(ctx, targetImage, imageStore, authOpts)
 	if err != nil {
-		return nil, fmt.Errorf("creating remote repository: %w", err)
-	}
-	desc, err := oras.Copy(ctx, repo, targetImage.String(), imageStore,
-		targetImage.String(), oras.DefaultCopyOptions)
-	if err != nil {
-		return nil, fmt.Errorf("copying to remote repository: %w", err)
+		return nil, fmt.Errorf("pulling image %q: %w", image, err)
 	}
 
 	imageDesc := &GadgetImageDesc{
@@ -180,15 +176,27 @@ func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthO
 		return fmt.Errorf("resolving image %q: %w", image, err)
 	}
 
+	_, err = pullImage(ctx, targetImage, imageStore, authOpts)
+	if err != nil {
+		return fmt.Errorf("pulling image %q: %w", image, err)
+	}
+
+	return nil
+}
+
+func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras.Target, authOpts *AuthOptions) (*ocispec.Descriptor, error) {
 	repo, err := newRepository(targetImage, authOpts)
 	if err != nil {
-		return fmt.Errorf("creating remote repository: %w", err)
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
-	_, err = oras.Copy(ctx, repo, targetImage.String(), imageStore, targetImage.String(), oras.DefaultCopyOptions)
+
+	desc, err := oras.Copy(ctx, repo, targetImage.String(), imageStore,
+		targetImage.String(), oras.DefaultCopyOptions)
 	if err != nil {
-		return fmt.Errorf("downloading to local repository: %w", err)
+		return nil, fmt.Errorf("copying to local repository: %w", err)
 	}
-	return nil
+
+	return &desc, nil
 }
 
 // PushGadgetImage pushes the gadget image and returns its descriptor.
