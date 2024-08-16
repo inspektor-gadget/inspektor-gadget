@@ -285,6 +285,25 @@ Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stac
 
 - `ebpf.formatter.kstack`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
 
+### `gadget_uid` and `gadget_gid`
+
+The `uid` and `gid` saved to these types will be resolved to the corresponding username and groupname on the host system:
+
+```c
+struct event {
+	gadget_uid user_raw;
+};
+```
+
+```json
+  "user": "root",
+  "user_raw": 0,
+```
+
+#### Annotations
+
+- `uidgidresolver.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
+
 ### Enumerations
 
 Inspektor Gadget supports enums already defined on the kernel or enums defined
