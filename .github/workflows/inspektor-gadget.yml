@@ -78,6 +78,30 @@ jobs:
         ln -s $GITHUB_WORKSPACE external-docs/inspektor-gadget.git_mainlatest
         make
 
+  gadget-guides-check:
+    name: Gadget guides check
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    - name: Setup go
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Setup gomplate
+      run: |
+          npm install -g gomplate@4.1.0
+    - name: Check gadget guides
+      run: |
+        make -C gadgets readmes
+        changes="$(git status --porcelain)"
+        if [ -n "$changes" ] ; then
+          >&2 echo "$changes"
+          exit 1
+        fi
+
   actionlint:
     name: Lint GitHub Actions workflows
     # level: 0
