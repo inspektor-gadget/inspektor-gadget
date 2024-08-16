@@ -64,8 +64,8 @@ func TestTraceSNI(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 wget --no-check-certificate -T 1 -t 2 -q -O /dev/null https://inspektor-gadget.io || true; sleep 1; done",		containers.WithContainerImage(containerImage),
-		containers.WithContainerImage(containerImage),
+		"while true; do setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io; sleep 0.1; done",
+		containerOpts...,
 	)
 
 	testContainer.Start(t)
