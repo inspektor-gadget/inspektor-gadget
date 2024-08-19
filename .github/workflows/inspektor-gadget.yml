@@ -1865,7 +1865,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Authenticate with GKE
-        uses: google-github-actions/auth@71fee32a0bb7e97b4d33d548e7d957010649d8fa # v2.1.3
+        uses: google-github-actions/auth@f112390a2df9932162083945e46d439060d66ec2 # v2.1.4
         with:
           project_id: ${{ secrets.GKE_PROJECT }}
           service_account: ${{ secrets.GKE_SERVICE_ACCOUNT }}
