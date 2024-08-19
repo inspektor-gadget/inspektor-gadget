@@ -415,6 +415,33 @@ func selectorAsNodeSelector(s string) (*v1.NodeSelector, error) {
 	return nodeSelector, nil
 }
 
+// This function handles translating an AppArmor profile as given for
+// annotations to the new structure offered by k8s >= 1.30:
+// https://pkg.go.dev/k8s.io/api/core/v1#AppArmorProfileType
+func createAppArmorProfile(profile string) (*v1.AppArmorProfile, error) {
+	ret := &v1.AppArmorProfile{}
+
+	parts := strings.Split(profile, "/")
+	switch parts[0] {
+	case "unconfined":
+		ret.Type = v1.AppArmorProfileTypeUnconfined
+	case "runtime":
+		ret.Type = v1.AppArmorProfileTypeRuntimeDefault
+	case "localhost":
+		ret.Type = v1.AppArmorProfileTypeLocalhost
+
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("AppArmor profile malformed: localhost/profile expected, got %q", profile)
+		}
+
+		ret.LocalhostProfile = &parts[1]
+	default:
+		return nil, fmt.Errorf("AppArmor profile badly named: expected unconfined, runtime or localhost, got %q", parts[0])
+	}
+
+	return ret, nil
+}
+
 // createAffinity returns the affinity to be used for the DaemonSet.
 func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{LabelSelector: nodeSelector})
@@ -580,28 +607,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
-			daemonSet.Spec.Template.Annotations["container.apparmor.security.beta.kubernetes.io/gadget"] = appArmorprofile
+
 			daemonSet.Namespace = gadgetNamespace
 
 			// Inspektor Gadget used to require hostPID=true. This is no longer
 			// required, so keep hostPID=false unless the user explicitly
 			// requests it for compatibility with older clusters.
 			daemonSet.Spec.Template.Spec.HostPID = legacyHostPID
-
-			if !printOnly {
-				// The "kubernetes.io/os" node label was introduced in v1.14.0
-				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
-				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
-				serverInfo, err := discoveryClient.ServerVersion()
-				if err != nil {
-					return fmt.Errorf("getting server version: %w", err)
-				}
-
-				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
-				if serverVersion.LessThan(k8sversion.MustParseSemantic("v1.14.0")) {
-					delete(daemonSet.Spec.Template.Spec.NodeSelector, "kubernetes.io/os")
-				}
-			}
 
 			if seccompProfile != "" {
 				path := "operator/gadget/profile.json"
@@ -610,6 +622,42 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 						Type:             v1.SeccompProfileTypeLocalhost,
 						LocalhostProfile: &path,
 					},
+				}
+			}
+
+			if !printOnly {
+				serverInfo, err := discoveryClient.ServerVersion()
+				if err != nil {
+					return fmt.Errorf("getting server version: %w", err)
+				}
+
+				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
+
+				// The "kubernetes.io/os" node label was introduced in v1.14.0
+				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
+				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
+				if serverVersion.LessThan(k8sversion.MustParseSemantic("v1.14.0")) {
+					delete(daemonSet.Spec.Template.Spec.NodeSelector, "kubernetes.io/os")
+				}
+
+				// Before 1.30, AppArmor profile was set as annotation, but since 1.30
+				// it has specific types:
+				// https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+				if serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.30.0")) {
+					delete(daemonSet.Spec.Template.Annotations, "container.apparmor.security.beta.kubernetes.io/gadget")
+
+					profile, err := createAppArmorProfile(appArmorprofile)
+					if err != nil {
+						return fmt.Errorf("creating AppArmor profile: %w", err)
+					}
+
+					if daemonSet.Spec.Template.Spec.SecurityContext == nil {
+						daemonSet.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{}
+					}
+
+					daemonSet.Spec.Template.Spec.SecurityContext.AppArmorProfile = profile
+				} else {
+					daemonSet.Spec.Template.Annotations["container.apparmor.security.beta.kubernetes.io/gadget"] = appArmorprofile
 				}
 			}
 
