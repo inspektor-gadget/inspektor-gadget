@@ -68,6 +68,12 @@ type DataArray interface {
 
 	// Swap swaps two elements of the array by their index
 	Swap(i, j int)
+
+	// Resize resizes the array to the given size. If the new size is smaller
+	// than the current size, the array will be truncated and the elements
+	// beyond the new size will be released. Currently, it does not support
+	// resizing to a larger size.
+	Resize(int) error
 }
 
 type Packet interface {
