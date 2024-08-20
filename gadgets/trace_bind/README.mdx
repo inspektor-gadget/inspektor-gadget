@@ -66,11 +66,11 @@ Then, let's run the gadget:
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
         $ kubectl gadget run trace_bind:latest --podname mypod
-        K8S.NODE            K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        ADDR                       COMM                    PID           TID          UID          GID BOUND_… ERROR     TIMESTAMP
-        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635160        635160            0            0 0                 2024-08-01T21:06:03.369118…
-        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635213        635213            0            0 0                 2024-08-01T21:06:07.371444…
-        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635233        635233            0            0 0                 2024-08-01T21:06:11.374078…
-        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635301        635301            0            0 0                 2024-08-01T21:06:15.376660…
+        K8S.NODE            K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        ADDR                       COMM                    PID           TID          UID          GID BOUND_… ERROR
+        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635160        635160            0            0 0
+        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635213        635213            0            0 0
+        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635233        635233            0            0 0
+        minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635301        635301            0            0 0
         ```
 
     </TabItem>
@@ -79,9 +79,9 @@ Then, let's run the gadget:
         ```bash
         $ sudo ig run trace_bind:latest --containername test-trace-bind
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
-        RUNTIME.CONTAINERNAME               ADDR                                  COMM                            PID                TID                UID                GID BOUND_DEV_… ERROR         TIMESTAMP
-        test-trace-bind                     :::4242                               nc                           647422             647422                  0                  0 0                         2024-08-01T23:20:01.907854101+02:00
-        test-trace-bind                     :::4242                               nc                           647472             647472                  0                  0 0                         2024-08-01T23:20:05.910747532+02:00
+        RUNTIME.CONTAINERNAME               ADDR                                  COMM                            PID                TID                UID                GID BOUND_DEV_… ERROR
+        test-trace-bind                     :::4242                               nc                           647422             647422                  0                  0 0
+        test-trace-bind                     :::4242                               nc                           647472             647472                  0                  0 0
         ^C
         ```
     </TabItem>

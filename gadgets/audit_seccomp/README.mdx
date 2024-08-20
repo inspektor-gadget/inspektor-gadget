@@ -138,11 +138,11 @@ Then, start the audit_seccomp gadget and observe how it logs the `unshare` sysca
 
 ```bash
 $ kubectl gadget run audit_seccomp:latest
-K8S.NODE          K8S.NAMESPACE   K8S.PODNAME     K8S.CONTAINERN… COMM          PID     TID      UID      GID CODE      SYSCALL   TIMESTAMP
-minikube-docker   default         mypod           container1      mkdir       60482   60482        0        0 …_RET_LOG SYS_MKDIR 2024-08-05T13:0…
-minikube-docker   default         mypod           container1      unshare     60483   60483        0        0 …L_THREAD SYS_UNSH… 2024-08-05T13:0…
-minikube-docker   default         mypod           container1      mkdir       60553   60553        0        0 …_RET_LOG SYS_MKDIR 2024-08-05T13:0…
-minikube-docker   default         mypod           container1      unshare     60554   60554        0        0 …L_THREAD SYS_UNSH… 2024-08-05T13:0
+K8S.NODE          K8S.NAMESPACE   K8S.PODNAME     K8S.CONTAINERN… COMM          PID     TID      UID      GID CODE      SYSCALL
+minikube-docker   default         mypod           container1      mkdir       60482   60482        0        0 …_RET_LOG SYS_MKDIR
+minikube-docker   default         mypod           container1      unshare     60483   60483        0        0 …L_THREAD SYS_UNSH…
+minikube-docker   default         mypod           container1      mkdir       60553   60553        0        0 …_RET_LOG SYS_MKDIR
+minikube-docker   default         mypod           container1      unshare     60554   60554        0        0 …L_THREAD SYS_UNSH…
 ^C
 ```
 
@@ -152,11 +152,11 @@ minikube-docker   default         mypod           container1      unshare     60
 
 ```bash
 $ sudo -E ig run audit_seccomp:latest
-RUNTIME.CONTAINERNAME COMM                  PID         TID         UID         GID CODE          SYSCALL       TIMESTAMP
-test-audit-seccomp    unshare            485855      485855           0           0 …_KILL_THREAD SYS_UNSHARE   2024-08-02T17:06:48.761…
-test-audit-seccomp    unshare            485865      485865           0           0 …_KILL_THREAD SYS_UNSHARE   2024-08-02T17:06:49.833…
-test-audit-seccomp    unshare            485868      485868           0           0 …_KILL_THREAD SYS_UNSHARE   2024-08-02T17:06:50.907…
-test-audit-seccomp    unshare            485888      485888           0           0 …_KILL_THREAD SYS_UNSHARE   2024-08-02T17:06:51.980…
+RUNTIME.CONTAINERNAME COMM                  PID         TID         UID         GID CODE          SYSCALL
+test-audit-seccomp    unshare            485855      485855           0           0 …_KILL_THREAD SYS_UNSHARE
+test-audit-seccomp    unshare            485865      485865           0           0 …_KILL_THREAD SYS_UNSHARE
+test-audit-seccomp    unshare            485868      485868           0           0 …_KILL_THREAD SYS_UNSHARE
+test-audit-seccomp    unshare            485888      485888           0           0 …_KILL_THREAD SYS_UNSHARE
 ^C
 ```
 

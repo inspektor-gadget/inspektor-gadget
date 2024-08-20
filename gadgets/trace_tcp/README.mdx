@@ -56,7 +56,7 @@ Default value: ""
 
         ```bash
         $ kubectl gadget run trace_tcp:latest
-        K8S.NODE          K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                          DST                          COMM                PID         TID         UID        GID TYPE       TIMESTAMP
+        K8S.NODE          K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                          DST                          COMM                PID         TID         UID        GID TYPE
         ```
 
         Indeed, it is waiting for TCP connection to be established in the `default` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
@@ -74,8 +74,8 @@ Default value: ""
         Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
 
         ```bash
-        K8S.NODE          K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                          DST                          COMM                PID         TID         UID        GID TYPE       TIMESTAMP
-        minikube-docker   default               bb                    bb                    10.244.0.31:60552            172.67.196.142:443           wget             750625      750625           0          0 connect    2024-08-01T22:57:26.38…
+        K8S.NODE          K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                          DST                          COMM                PID         TID         UID        GID TYPE
+        minikube-docker   default               bb                    bb                    10.244.0.31:60552            172.67.196.142:443           wget             750625      750625           0          0 connect
         ```
     </TabItem>
 
@@ -84,7 +84,7 @@ Default value: ""
 
         ```bash
         $ sudo ig run trace_tcp:latest --containername test-trae-tcp
-        RUNTIME.CONTAINERNAME        SRC                                   DST                                   COMM                        PID            TID            UID            GID TYPE           TIMESTAMP
+        RUNTIME.CONTAINERNAME        SRC                                   DST                                   COMM                        PID            TID            UID            GID TYPE
         ```
 
         Then, run a container that creates a TCP connection.
@@ -102,8 +102,8 @@ Default value: ""
 
         ```bash
         $ sudo ig trace tcp -c test-trace-tcp
-        RUNTIME.CONTAINERNAME        SRC                                   DST                                   COMM                        PID            TID            UID            GID TYPE           TIMESTAMP
-        test-trace-tcp               172.17.0.2:39664                      93.184.215.14:443                     wget                     757178         757178              0              0 connect        2024-08-02T01:03:15.022231308+…
+        RUNTIME.CONTAINERNAME        SRC                                   DST                                   COMM                        PID            TID            UID            GID TYPE
+        test-trace-tcp               172.17.0.2:39664                      93.184.215.14:443                     wget                     757178         757178              0              0 connect
         ```
     </TabItem>
 </Tabs>

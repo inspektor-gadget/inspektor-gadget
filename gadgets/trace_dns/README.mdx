@@ -43,7 +43,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_dns:latest --namespace demo
-        K8S.NODE             K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES  TIMESTAMP
+        K8S.NODE             K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES
         ```
 
         Run a pod on a different terminal and perform some DNS requests:
@@ -57,13 +57,13 @@ Running the gadget:
 
         The requests will be logged by the DNS gadget:
         ```bash
-        K8S.NODE             K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES  TIMESTAMP
-        minikube-docker      demo                 mypod                mypod                10.244.0.26:42448           10.96.0.10:53               isc-net-0…     669808 Q  A          inspektor-gadget.i…                     2024-08-01T21:40:58.1…
-        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:42448           isc-net-0…     669808 R  A          inspektor-gadget.i… Success  104.21.11… 2024-08-01T21:40:58.1…
-        minikube-docker      demo                 mypod                mypod                10.244.0.26:56070           10.96.0.10:53               isc-net-0…     669891 Q  AAAA       inspektor-gadget.i…                     2024-08-01T21:41:05.0…
-        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:56070           isc-net-0…     669891 R  AAAA       inspektor-gadget.i… Success  2606:4700… 2024-08-01T21:41:05.0…
-        minikube-docker      demo                 mypod                mypod                10.244.0.26:41468           10.96.0.10:53               isc-net-0…     669959 Q  MX         inspektor-gadget.i…                     2024-08-01T21:41:09.8…
-        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:41468           isc-net-0…     669959 R  MX         inspektor-gadget.i… Success  ,,         2024-08-01T21:41:09.9…
+        K8S.NODE             K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                         DST                         COMM              PID QR QTYPE      NAME                RCODE    ADDRESSES
+        minikube-docker      demo                 mypod                mypod                10.244.0.26:42448           10.96.0.10:53               isc-net-0…     669808 Q  A          inspektor-gadget.i…
+        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:42448           isc-net-0…     669808 R  A          inspektor-gadget.i… Success  104.21.11…
+        minikube-docker      demo                 mypod                mypod                10.244.0.26:56070           10.96.0.10:53               isc-net-0…     669891 Q  AAAA       inspektor-gadget.i…
+        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:56070           isc-net-0…     669891 R  AAAA       inspektor-gadget.i… Success  2606:4700…
+        minikube-docker      demo                 mypod                mypod                10.244.0.26:41468           10.96.0.10:53               isc-net-0…     669959 Q  MX         inspektor-gadget.i…
+        minikube-docker      demo                 mypod                mypod                10.96.0.10:53               10.244.0.26:41468           isc-net-0…     669959 R  MX         inspektor-gadget.i… Success  ,,
         ```
     </TabItem>
 
@@ -72,7 +72,7 @@ Running the gadget:
 
         ```bash
         $ sudo ig run trace_dns:latest --containername test-trace-dns
-        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES     TIMESTAMP
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES
         ```
 
         Launch a container that makes DNS requests:
@@ -84,9 +84,9 @@ Running the gadget:
 
         The requests will be logged by the DNS gadget:
         ```bash
-        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES     TIMESTAMP
-        test-trace-dns              172.17.0.2:36282                    192.168.0.1:53                      isc-net-0000           675195 Q  A              inspektor-gadget.io.                              2024-08-01T23:46:19.547412887…
-        test-trace-dns              192.168.0.1:53                      172.17.0.2:36282                    isc-net-0000           675195 R  A              inspektor-gadget.io.       Success  104.21.11.16… 2024-08-01T23:46:19.553035092…
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES
+        test-trace-dns              172.17.0.2:36282                    192.168.0.1:53                      isc-net-0000           675195 Q  A              inspektor-gadget.io.
+        test-trace-dns              192.168.0.1:53                      172.17.0.2:36282                    isc-net-0000           675195 R  A              inspektor-gadget.io.       Success  104.21.11.16…
         ```
     </TabItem>
 </Tabs>

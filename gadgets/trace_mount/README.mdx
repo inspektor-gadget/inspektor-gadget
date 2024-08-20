@@ -64,15 +64,15 @@ Then, let's run the gadget:
 
         ```bash
         $ kubectl gadget run trace_mount:latest --podname mypod
-        K8S.NODE          K8S.NAMESPACE              K8S.PODNAME                K8S.CONTAINERNAME          COMM                      PID           TID  DELTA FLAGS         CALL                        ERROR      TIMESTAMP
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   3318 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT     2024-08-01T10:03:50.82287900…
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1321 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT     2024-08-01T10:03:50.82288440…
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1187 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT     2024-08-01T10:03:50.82288664…
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1655 MS_SILENT     mount("/mnt", "/mnt", "squ… ENOENT     2024-08-01T10:03:50.82289131…
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1257 MS_SILENT     mount("/mnt", "/mnt", "vfa… ENOENT     2024-08-01T10:03:50.82291004…
-        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1211 MS_SILENT     mount("/mnt", "/mnt", "fus… ENOENT     2024-08-01T10:03:50.82291234…
-        minikube-docker   default                    mypod                      mypod                      mount                   36474         36474   3496 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT     2024-08-01T10:03:53.82544961…
-        minikube-docker   default                    mypod                      mypod                      mount                   36474         36474   1638 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT     2024-08-01T10:03:53.82545587…
+        K8S.NODE          K8S.NAMESPACE              K8S.PODNAME                K8S.CONTAINERNAME          COMM                      PID           TID  DELTA FLAGS         CALL                        ERROR
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   3318 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1321 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1187 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1655 MS_SILENT     mount("/mnt", "/mnt", "squ… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1257 MS_SILENT     mount("/mnt", "/mnt", "vfa… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1211 MS_SILENT     mount("/mnt", "/mnt", "fus… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36474         36474   3496 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
+        minikube-docker   default                    mypod                      mypod                      mount                   36474         36474   1638 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
         ^C
         ```
 
@@ -84,13 +84,13 @@ Then, let's run the gadget:
         ```bash
         $ sudo ig run trace_mount:latest --containername test-trace-mount
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
-        RUNTIME.CONTAINERNAME                    COMM                               PID                   TID       DELTA FLAGS                CALL                                      ERROR           TIMESTAMP
-        test-trace-mount                         mount                            51158                 51158        3460 MS_SILENT            mount("/bar", "/foo", "ext3", MS_SILENT,… ENOENT          2024-08-01T12:08:11.812226378+02:00
-        test-trace-mount                         mount                            51158                 51158        1250 MS_SILENT            mount("/bar", "/foo", "ext2", MS_SILENT,… ENOENT          2024-08-01T12:08:11.812231661+02:00
-        test-trace-mount                         mount                            51158                 51158      130208 MS_SILENT            mount("/bar", "/foo", "ext4", MS_SILENT,… ENOENT          2024-08-01T12:08:11.812383628+02:00
-        test-trace-mount                         mount                            51158                 51158        1762 MS_SILENT            mount("/bar", "/foo", "squashf", MS_SILE… ENOENT          2024-08-01T12:08:11.812387695+02:00
-        test-trace-mount                         mount                            51158                 51158        1200 MS_SILENT            mount("/bar", "/foo", "vfat", MS_SILENT,… ENOENT          2024-08-01T12:08:11.812390004+02:00
-        test-trace-mount                         mount                            51158                 51158        1199 MS_SILENT            mount("/bar", "/foo", "fuseblk", MS_SILE… ENOENT          2024-08-01T12:08:11.812392257+02:00
+        RUNTIME.CONTAINERNAME                    COMM                               PID                   TID       DELTA FLAGS                CALL                                      ERROR
+        test-trace-mount                         mount                            51158                 51158        3460 MS_SILENT            mount("/bar", "/foo", "ext3", MS_SILENT,… ENOENT
+        test-trace-mount                         mount                            51158                 51158        1250 MS_SILENT            mount("/bar", "/foo", "ext2", MS_SILENT,… ENOENT
+        test-trace-mount                         mount                            51158                 51158      130208 MS_SILENT            mount("/bar", "/foo", "ext4", MS_SILENT,… ENOENT
+        test-trace-mount                         mount                            51158                 51158        1762 MS_SILENT            mount("/bar", "/foo", "squashf", MS_SILE… ENOENT
+        test-trace-mount                         mount                            51158                 51158        1200 MS_SILENT            mount("/bar", "/foo", "vfat", MS_SILENT,… ENOENT
+        test-trace-mount                         mount                            51158                 51158        1199 MS_SILENT            mount("/bar", "/foo", "fuseblk", MS_SILE… ENOENT
         ^C
         ```
     </TabItem>

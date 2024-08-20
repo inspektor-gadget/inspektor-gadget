@@ -145,6 +145,11 @@ In some cases, these enrichments can be customized further by applying field
 annotations. For further information about field annotations, see the
 [metadata](metadata.md#field) documentation.
 
+Some of the enriched fields (or their source fields) are hidden by default when
+using the `columns` output mode. You can still access them by using either the
+`json` output mode or the `--fields` flag as described in the [Selecting
+specific fields](../reference/run.mdx#selecting-specific-fields) documentation.
+
 ### `gadget_mntns_id` and `gadget_netns_id`
 
 See [Container enrichment](#container-enrichment)
@@ -210,10 +215,14 @@ event->timestamp_raw = bpf_ktime_get_boot_ns();
 ...
 ```
 
+It will produce the following output when using the `json` output mode:
+
 ```json
   "timestamp": "2024-07-25T21:34:07.136974948Z",
   "timestamp_raw": 1721943247136974800,
 ```
+
+Notice both fields will be hidden by default when using the `columns` output mode.
 
 #### Annotations
 
