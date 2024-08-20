@@ -37,7 +37,7 @@ func NewListCmd() *cobra.Command {
 	var noTrunc bool
 	var outputMode string
 
-	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON}
+	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON, utils.OutputModeJSONPretty}
 
 	cmd := &cobra.Command{
 		Use:          "list",
@@ -72,6 +72,12 @@ func NewListCmd() *cobra.Command {
 			switch outputMode {
 			case utils.OutputModeJSON:
 				bytes, err := json.Marshal(images)
+				if err != nil {
+					return fmt.Errorf("marshalling images to JSON: %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+			case utils.OutputModeJSONPretty:
+				bytes, err := json.MarshalIndent(images, "", "  ")
 				if err != nil {
 					return fmt.Errorf("marshalling images to JSON: %w", err)
 				}
