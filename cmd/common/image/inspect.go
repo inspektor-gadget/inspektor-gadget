@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,66 +24,67 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+
+	"golang.org/x/term"
 )
 
-func NewListCmd() *cobra.Command {
-	var noTrunc bool
+func NewInspectCmd() *cobra.Command {
 	var outputMode string
 
 	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON, utils.OutputModeJSONPretty}
 
 	cmd := &cobra.Command{
-		Use:          "list",
-		Short:        "List gadget images on the host",
+		Use:          "inspect",
+		Short:        "Inspect the local gadget image",
 		SilenceUsage: true,
-		Args:         cobra.NoArgs,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			images, err := oci.ListGadgetImages(context.TODO())
+			image, err := oci.GetGadgetImageDesc(context.TODO(), args[0])
 			if err != nil {
-				return fmt.Errorf("list gadgets: %w", err)
+				return fmt.Errorf("inspecting image: %w", err)
 			}
 
-			isTerm := term.IsTerminal(int(os.Stdout.Fd()))
-
-			cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
-			if !noTrunc && isTerm {
-				cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
-					if i.Digest == "" {
-						return ""
-					}
-					// Return the shortened digest and remove the sha256: prefix
-					return strings.TrimPrefix(i.Digest, "sha256:")[:12]
-				})
-				now := time.Now()
-				cols.MustSetExtractor("created", func(i *oci.GadgetImageDesc) any {
-					if t, err := time.Parse(time.RFC3339, i.Created); err == nil {
-						return fmt.Sprintf("%s ago", strings.ToLower(units.HumanDuration(now.Sub(t))))
-					}
-					return ""
-				})
-			}
 			switch outputMode {
 			case utils.OutputModeJSON:
-				bytes, err := json.Marshal(images)
+				bytes, err := json.Marshal(image)
 				if err != nil {
-					return fmt.Errorf("marshalling images to JSON: %w", err)
+					return fmt.Errorf("marshalling image to JSON: %w", err)
 				}
 				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
 			case utils.OutputModeJSONPretty:
-				bytes, err := json.MarshalIndent(images, "", "  ")
+				bytes, err := json.MarshalIndent(image, "", "  ")
 				if err != nil {
-					return fmt.Errorf("marshalling images to JSON: %w", err)
+					return fmt.Errorf("marshalling image to JSON: %w", err)
 				}
 				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
 			case utils.OutputModeColumns:
-				formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(!noTrunc && isTerm))
-				formatter.WriteTable(cmd.OutOrStdout(), images)
+				isTerm := term.IsTerminal(int(os.Stdout.Fd()))
+
+				cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
+				if isTerm {
+					cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
+						if i.Digest == "" {
+							return ""
+						}
+						// Return the shortened digest and remove the sha256: prefix
+						return strings.TrimPrefix(i.Digest, "sha256:")[:12]
+					})
+					now := time.Now()
+					cols.MustSetExtractor("created", func(i *oci.GadgetImageDesc) any {
+						if t, err := time.Parse(time.RFC3339, i.Created); err == nil {
+							return fmt.Sprintf("%s ago", strings.ToLower(units.HumanDuration(now.Sub(t))))
+						}
+						return ""
+					})
+				}
+
+				formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(isTerm))
+				formatter.WriteTable(cmd.OutOrStdout(), []*oci.GadgetImageDesc{image})
 			default:
 				return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(outputModes, ", "))
 			}
@@ -91,7 +92,6 @@ func NewListCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output, this option is only valid when used in a terminal")
 	cmd.Flags().StringVarP(
 		&outputMode,
 		"output",
