@@ -8,7 +8,7 @@ require (
 	github.com/containerd/containerd v1.7.20
 	github.com/containerd/nri v0.6.1
 	github.com/containers/common v0.60.1
-	github.com/containers/image/v5 v5.32.1
+	github.com/containers/image/v5 v5.32.2
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
