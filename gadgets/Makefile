@@ -13,6 +13,7 @@ COSIGN ?= cosign
 
 GADGETS = \
 	audit_seccomp \
+	fsnotify \
 	profile_blockio \
 	trace_bind \
 	trace_capabilities \
