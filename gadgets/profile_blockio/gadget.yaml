@@ -1,8 +1,8 @@
 name: profile blockio
 description: TODO
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_blockio
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_blockio
 dataSources:
   blockio:
     annotations:

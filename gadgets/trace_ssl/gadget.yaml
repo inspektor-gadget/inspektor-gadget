@@ -2,8 +2,8 @@ name: trace ssl
 description: Captures data on read/recv or write/send functions of OpenSSL, GnuTLS,
   NSS and Libcrypto
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_ssl
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_ssl
 datasources:
   ssl:
     fields:

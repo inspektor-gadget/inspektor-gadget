@@ -1,8 +1,8 @@
 name: top tcp
 description: Periodically report tcp send receive activity by connection
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_tcp
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_tcp
 datasources:
   tcp:
     annotations:
