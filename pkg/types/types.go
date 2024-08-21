@@ -17,6 +17,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -189,6 +190,48 @@ type CommonData struct {
 	// K8s contains the Kubernetes metadata of the object that generated the
 	// event
 	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
+}
+
+func (k *K8sMetadata) UnmarshalJSON(data []byte) error {
+	type Alias K8sMetadata
+	aux := &struct {
+		PodLabels interface{} `json:"podLabels,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(k),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.PodLabels == nil {
+		return nil
+	}
+
+	switch v := aux.PodLabels.(type) {
+	case string:
+		podLabels, err := parsePodLabels(v)
+		if err != nil {
+			return err
+		}
+		k.PodLabels = podLabels
+	case map[string]interface{}:
+		podLabels := make(map[string]string)
+		for key, value := range v {
+			strVal, ok := value.(string)
+			if !ok {
+				return fmt.Errorf("invalid value type for key %s in PodLabels", key)
+			}
+			podLabels[key] = strVal
+		}
+		if len(podLabels) != 0 {
+			k.PodLabels = podLabels
+		}
+	default:
+		return fmt.Errorf("unexpected type for PodLabels: %T", v)
+	}
+
+	return nil
 }
 
 func (c *CommonData) SetNode(node string) {
@@ -427,4 +470,21 @@ type WithNetNsID struct {
 
 func (e *WithNetNsID) GetNetNSID() uint64 {
 	return e.NetNsID
+}
+
+// parsePodLabels parses the podLabels string into a map
+func parsePodLabels(s string) (map[string]string, error) {
+	if s == "" {
+		return nil, nil
+	}
+	labels := map[string]string{}
+	pairs := strings.Split(s, ",")
+	for _, pair := range pairs {
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid pod labels format: expected key=value, got %s", pair)
+		}
+		labels[kv[0]] = kv[1]
+	}
+	return labels, nil
 }
