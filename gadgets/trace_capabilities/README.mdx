@@ -79,11 +79,11 @@ Default value: "false"
 
         ```bash
         $ kubectl gadget run trace_capabilities --selector name=set-priority-0
-        K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          SYSCALL         TIMESTAMP
-        minikube-docker          default                  set-priority             set-priority             nice                 169528       169528            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T12:19:02.100348…
-        minikube-docker          default                  set-priority             set-priority             nice                 169594       169594            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T12:19:07.102775…
-        minikube-docker          default                  set-priority             set-priority             nice                 169661       169661            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T12:19:12.105665…
-        minikube-docker          default                  set-priority             set-priority             nice                 169736       169736            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T12:19:17.107993…
+        K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          SYSCALL
+        minikube-docker          default                  set-priority             set-priority             nice                 169528       169528            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY
+        minikube-docker          default                  set-priority             set-priority             nice                 169594       169594            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY
+        minikube-docker          default                  set-priority             set-priority             nice                 169661       169661            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY
+        minikube-docker          default                  set-priority             set-priority             nice                 169736       169736            0            0 false   1        CAP_SYS_NICE SYS_SETPRIORITY
         ^C
         ```
 
@@ -114,10 +114,10 @@ Default value: "false"
 
         ```bash
         $ kubectl gadget run trace_capabilities --selector name=set-priority-1
-        K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          SYSCALL         TIMESTAMP
-        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225549       225549            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T13:25:42.571989…
-        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225615       225615            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T13:25:47.575287…
-        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225688       225688            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY 2024-08-01T13:25:52.578731…
+        K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          SYSCALL
+        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225549       225549            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY
+        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225615       225615            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY
+        minikube-docker          default                  set-priority-1           set-priority-1           nice                 225688       225688            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY
         ^C
         ```
 
@@ -144,17 +144,17 @@ Default value: "false"
         Observe the resulting trace:
 
         ```bash
-        RUNTIME.CONTAINERNAME              COMM                            PID                TID                UID               GID CAPABLE     AUDIT        CAP               SYSCALL                TIMESTAMP
-        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN              2024-08-01T15:57:47.208570604+02:00
-        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN              2024-08-01T15:57:47.208576069+02:00
-        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FOWNER        SYS_CHMOD              2024-08-01T15:57:47.209611847+02:00
-        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FSETID        SYS_CHMOD              2024-08-01T15:57:47.209616523+02:00
-        test-trace-capabilities            chroot                       253214             253214                  0                 0 true        1            CAP_SYS_CHROOT    SYS_CHROOT             2024-08-01T15:57:51.273301121+02:00
-        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT              2024-08-01T15:57:55.193068083+02:00
-        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT              2024-08-01T15:57:55.193076333+02:00
-        test-trace-capabilities            unshare                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_UNSHARE            2024-08-01T15:57:59.132320220+02:00
-        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS              2024-08-01T15:57:59.133934337+02:00
-        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS              2024-08-01T15:57:59.133938341+02:00
+        RUNTIME.CONTAINERNAME              COMM                            PID                TID                UID               GID CAPABLE     AUDIT        CAP               SYSCALL
+        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN
+        test-trace-capabilities            chown                        253194             253194                  0                 0 true        1            CAP_CHOWN         SYS_CHOWN
+        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FOWNER        SYS_CHMOD
+        test-trace-capabilities            chmod                        253195             253195                  0                 0 true        1            CAP_FSETID        SYS_CHMOD
+        test-trace-capabilities            chroot                       253214             253214                  0                 0 true        1            CAP_SYS_CHROOT    SYS_CHROOT
+        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT
+        test-trace-capabilities            mount                        253284             253284                  0                 0 true        1            CAP_SYS_ADMIN     SYS_MOUNT
+        test-trace-capabilities            unshare                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_UNSHARE
+        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS
+        test-trace-capabilities            nsenter                      253358             253358                  0                 0 true        1            CAP_SYS_ADMIN     SYS_SETNS
         ```
 
     </TabItem>

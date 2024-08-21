@@ -54,7 +54,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_oomkill:latest --namespace oomkill-demo
-        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        TIMESTAMP
+        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM
         ```
 
         The gadget is waiting for the OOM killer to get triggered and kill a process in `oomkill-demo` namespace (alternatively, we could use `-A` and get out-of-memory killer events in all namespaces).
@@ -67,8 +67,8 @@ Running the gadget:
 
         Go back to *the first terminal* and see:
         ```bash
-        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM        TIMESTAMP
-        minikube-docker    oomkill-demo              oomkill-demo…dbf85d-r9tls busybox                   4026533320    728870        0             0             728870        4227071      tail         tail         2024-08-01T22:36:19.5001276…
+        K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM
+        minikube-docker    oomkill-demo              oomkill-demo…dbf85d-r9tls busybox                   4026533320    728870        0             0             728870        4227071      tail         tail
         ```
     </TabItem>
 
@@ -77,7 +77,7 @@ Running the gadget:
 
         ```bash
         $ sudo ig run trace_oomkill:latest --containername test-trace-oomkill
-        RUNTIME.CONTAINERNAME               MNTNS_ID            FPID                FUID                FGID                TPID                PAGES              FCOMM              TCOMM              TIMESTAMP
+        RUNTIME.CONTAINERNAME               MNTNS_ID            FPID                FUID                FGID                TPID                PAGES              FCOMM              TCOMM
         ```
 
         Run a container that will be killed by the OOM killer:
@@ -87,8 +87,8 @@ Running the gadget:
         ```
 
         ```bash
-        RUNTIME.CONTAINERNAME               MNTNS_ID            FPID                FUID                FGID                TPID                PAGES              FCOMM              TCOMM              TIMESTAMP
-        test-trace-oomkill                  4026532205          733494              0                   0                   733494              262144             tail               tail               2024-08-02T00:41:03.306765837+02:00
+        RUNTIME.CONTAINERNAME               MNTNS_ID            FPID                FUID                FGID                TPID                PAGES              FCOMM              TCOMM
+        test-trace-oomkill                  4026532205          733494              0                   0                   733494              262144             tail               tail
         ```
     </TabItem>
 </Tabs>
