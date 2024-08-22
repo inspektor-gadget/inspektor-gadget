@@ -1,8 +1,8 @@
 name: trace malloc
 description: use uprobe to trace malloc and free in libc.so
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_malloc
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_malloc
 datasources:
   malloc:
     fields:

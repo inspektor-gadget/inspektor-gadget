@@ -1,8 +1,8 @@
 name: audit seccomp
 description: Audit syscalls according to the seccomp profile
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/audit_seccomp
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/audit_seccomp
 datasources:
   seccomp:
     fields:

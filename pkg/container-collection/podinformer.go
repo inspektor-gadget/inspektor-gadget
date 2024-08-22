@@ -39,8 +39,8 @@ import (
 )
 
 type PodInformer struct {
-	indexer  cache.Indexer
-	queue    workqueue.RateLimitingInterface
+	store    cache.Store
+	queue    workqueue.TypedRateLimitingInterface[string]
 	informer cache.Controller
 
 	stop           chan struct{}
@@ -62,33 +62,38 @@ func NewPodInformer(node string) (*PodInformer, error) {
 	podListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", "", fields.OneTermEqualSelector("spec.nodeName", node))
 
 	// creates the queue
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 
-	indexer, informer := cache.NewIndexerInformer(podListWatcher, &v1.Pod{}, 0, cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(obj)
-			if err == nil {
-				queue.Add(key)
-			}
+	store, informer := cache.NewInformerWithOptions(cache.InformerOptions{
+		ListerWatcher: podListWatcher,
+		ObjectType:    &v1.Pod{},
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				key, err := cache.MetaNamespaceKeyFunc(obj)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
+			UpdateFunc: func(old interface{}, new interface{}) {
+				key, err := cache.MetaNamespaceKeyFunc(new)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				// IndexerInformer uses a delta queue, therefore for deletes we have to use this
+				// key function.
+				key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+				if err == nil {
+					queue.Add(key)
+				}
+			},
 		},
-		UpdateFunc: func(old interface{}, new interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(new)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			// IndexerInformer uses a delta queue, therefore for deletes we have to use this
-			// key function.
-			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
-	}, cache.Indexers{})
+		ResyncPeriod: 0,
+	})
 
 	p := &PodInformer{
-		indexer:        indexer,
+		store:          store,
 		queue:          queue,
 		informer:       informer,
 		stop:           make(chan struct{}),
@@ -131,13 +136,13 @@ func (p *PodInformer) processNextItem() bool {
 
 	defer p.queue.Done(key)
 
-	p.notifyChans(key.(string))
+	p.notifyChans(key)
 	return true
 }
 
 // notifyChans passes the event to the channels configured by the user
 func (p *PodInformer) notifyChans(key string) error {
-	obj, exists, err := p.indexer.GetByKey(key)
+	obj, exists, err := p.store.GetByKey(key)
 	if err != nil {
 		log.Errorf("Fetching object with key %s from store failed with %v", key, err)
 		return err

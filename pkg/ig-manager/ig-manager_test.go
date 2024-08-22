@@ -43,7 +43,7 @@ const (
 func TestBasic(t *testing.T) {
 	utilstest.RequireRoot(t)
 
-	igManager, err := NewManager(nil)
+	igManager, err := NewManager(nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to start ig manager: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestBasic(t *testing.T) {
 func TestContainersMap(t *testing.T) {
 	utilstest.RequireRoot(t)
 
-	igManager, err := NewManager(nil)
+	igManager, err := NewManager(nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to start ig manager: %s", err)
 	}
@@ -67,7 +67,7 @@ func TestContainersMap(t *testing.T) {
 func TestMountNsMap(t *testing.T) {
 	utilstest.RequireRoot(t)
 
-	igManager, err := NewManager(nil)
+	igManager, err := NewManager(nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to start ig manager: %s", err)
 	}
@@ -136,7 +136,7 @@ func TestClose(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	for i := 0; i < 4; i++ {
-		igManager, err := NewManager([]*containerutilsTypes.RuntimeConfig{{Name: "docker"}})
+		igManager, err := NewManager([]*containerutilsTypes.RuntimeConfig{{Name: "docker"}}, nil)
 		if err != nil {
 			t.Fatalf("Failed to start ig manager: %s", err)
 		}
