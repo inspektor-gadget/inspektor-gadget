@@ -336,8 +336,8 @@ github.com/prometheus/common v0.55.0 h1:KEi6DK7lXW/m7Ig5i47x0vRzuBsHuvJdi5ee6Y3G
 github.com/prometheus/common v0.55.0/go.mod h1:2SECS4xJG1kd8XF9IcM1gMX6510RAEL65zxzNImwdc8=
 github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0learggepc=
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
-github.com/quay/claircore v1.5.28 h1:NQ6zJGm/G406D8DF7XlxNS0IdxhrVic+eehly9VjnOU=
-github.com/quay/claircore v1.5.28/go.mod h1:S5sFYMwJiF8bChlCkhu4MpwB6iqozlF+koSMMZS2uMk=
+github.com/quay/claircore v1.5.29 h1:bm1zc+g9FAOCsJGN7xU38RC4suLUOd5ddMBzJV81ccE=
+github.com/quay/claircore v1.5.29/go.mod h1:VogxXE6QKbM7BziZuGvlFFd/8Q3HlI9B/aS6mYeOhx8=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
