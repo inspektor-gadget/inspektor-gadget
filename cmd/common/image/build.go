@@ -16,7 +16,7 @@ package image
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"errors"
 	"fmt"
 	"os"
@@ -42,11 +42,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-//go:embed Makefile.build
-var makefile []byte
-
-//go:embed Makefile.build.btfgen
-var makefileBtfgen []byte
+//go:embed helpers
+var helpersFS embed.FS
 
 // It can be overridden at build time
 var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
@@ -110,6 +107,25 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+
+	return cmd
+}
+
+func buildCmd(outputDir, ebpf, wasm, cflags, btfhubarchive string, btfgen bool) []string {
+	cmd := []string{
+		"make", "-f", filepath.Join(outputDir, "Makefile.build"),
+		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
+		"EBPFSOURCE=" + ebpf,
+		"WASM=" + wasm,
+		"OUTPUTDIR=" + outputDir,
+		"CFLAGS=" + cflags,
+		"all",
+	}
+
+	if btfgen {
+		cmd = append(cmd, "BTFHUB_ARCHIVE="+btfhubarchive)
+		cmd = append(cmd, "btfgen")
+	}
 
 	return cmd
 }
@@ -180,9 +196,32 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		return fmt.Errorf("source file %q not found", conf.EBPFSource)
 	}
 
+	// copy helper files
+	files, err := helpersFS.ReadDir("helpers")
+	if err != nil {
+		return fmt.Errorf("reading helpers: %w", err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		data, err := helpersFS.ReadFile(filepath.Join("helpers", file.Name()))
+		if err != nil {
+			return fmt.Errorf("reading helper file: %w", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(opts.outputDir, file.Name()), data, 0o600); err != nil {
+			return fmt.Errorf("writing helper file: %w", err)
+		}
+	}
+
 	if opts.local {
-		if err := buildLocal(opts, conf); err != nil {
-			return err
+		cmd := buildCmd(opts.outputDir, conf.EBPFSource, conf.Wasm, conf.CFlags, opts.btfhubarchive, opts.btfgen)
+		command := exec.Command(cmd[0], cmd[1:]...)
+		if out, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build script: %w: %s", err, out)
 		}
 	} else {
 		if err := buildInContainer(opts, conf); err != nil {
@@ -245,39 +284,6 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	cmd.Printf("Successfully built %s\n", desc.String())
-
-	return nil
-}
-
-func buildLocal(opts *cmdOpts, conf *buildFile) error {
-	makefilePath := filepath.Join(opts.outputDir, "Makefile")
-	if err := os.WriteFile(makefilePath, makefile, 0o644); err != nil {
-		return fmt.Errorf("writing Makefile: %w", err)
-	}
-
-	buildCmd := exec.Command(
-		"make", "-f", makefilePath,
-		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE="+conf.EBPFSource,
-		"WASM="+conf.Wasm,
-		"OUTPUTDIR="+opts.outputDir,
-		"CFLAGS="+conf.CFlags,
-		"all",
-	)
-
-	if opts.btfgen {
-		makefileBtfgenPath := filepath.Join(opts.outputDir, "Makefile.build.btfgen")
-		if err := os.WriteFile(makefileBtfgenPath, makefileBtfgen, 0o644); err != nil {
-			return fmt.Errorf("writing Makefile: %w", err)
-		}
-
-		buildCmd.Args = append(buildCmd.Args, "BTFHUB_ARCHIVE="+opts.btfhubarchive)
-		buildCmd.Args = append(buildCmd.Args, "btfgen")
-	}
-
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("build script: %w: %s", err, out)
-	}
 
 	return nil
 }
@@ -355,14 +361,8 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		wasmFullPath = filepath.Join(gadgetSourcePath, conf.Wasm)
 	}
 
-	cmd := []string{
-		"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE=" + filepath.Join(gadgetSourcePath, conf.EBPFSource),
-		"WASM=" + wasmFullPath,
-		"OUTPUTDIR=/out",
-		"CFLAGS=" + conf.CFlags,
-		"all",
-	}
+	cmd := buildCmd("/out", filepath.Join(gadgetSourcePath, conf.EBPFSource),
+		wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
 	mounts := []mount.Mount{
 		{
@@ -379,9 +379,6 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	}
 
 	if opts.btfgen {
-		cmd = append(cmd, "BTFHUB_ARCHIVE=/btfhub-archive")
-		cmd = append(cmd, "btfgen")
-
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
 			Target: "/btfhub-archive",
