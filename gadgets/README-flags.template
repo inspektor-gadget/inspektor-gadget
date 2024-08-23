@@ -1,3 +1,9 @@
+{{ $image := index (index (index (datasource "artifacthubpkg") "containersImages") 0) "image" -}}
+:::note
+Depending on the operators used to run the gadget, additional flags may be available.
+Check the [operators](../reference/operators) documentation for more information.
+Additionally, if you are using the CLI, you can execute `run {{ $image }} --help` to get the full list of flags available at runtime.
+:::
 {{ if has (ds "gadget") "ebpfParams" -}}
 {{ range $index, $flag := index (ds "gadget") "ebpfParams" }}
 ### `--{{ index $flag "key" }}`
