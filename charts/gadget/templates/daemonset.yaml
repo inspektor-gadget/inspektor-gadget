@@ -273,16 +273,13 @@ spec:
         {{- if .Values.config.mountPullSecret }}
         - name: pull-secret
           secret:
-            defaultMode: 400
+            defaultMode: 0o400
             items:
               - key: .dockerconfigjson
                 path: config.json
             secretName: gadget-pull-secret
         {{- end }}
-        - configMap:
+        - name: config
+          configMap:
             name: {{ include "gadget.fullname" . }}
-          defaultMode: 400
-          items:
-            - key: config.yaml
-              path: config.yaml
-          name: config
+            defaultMode: 0o400

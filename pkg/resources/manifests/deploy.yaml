@@ -369,10 +369,7 @@ spec:
             path: /sys/kernel/debug
         - name: oci
           emptyDir:
-        - configMap:
+        - name: config
+          configMap:
             name: gadget
-          defaultMode: 400
-          items:
-            - key: config.yaml
-              path: config.yaml
-          name: config
+            defaultMode: 0o400
