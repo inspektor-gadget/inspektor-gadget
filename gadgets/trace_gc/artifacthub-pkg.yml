@@ -1,0 +1,28 @@
+# Artifact Hub package metadata file
+version: 0.31.0
+name: "trace gc"
+category: monitoring-logging
+displayName: "trace gc"
+createdAt: "2024-03-25T14:32:05+01:00"
+description: "use uprobe to trace garbage collection in Java and Python"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_gc:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/"
+install: |
+    # Run
+    ```bash
+    sudo IG_EXPERIMENTAL=true ig run ghcr.io/inspektor-gadget/gadget/trace_gc:latest
+    ```
+provider:
+    name: Inspektor Gadget

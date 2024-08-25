@@ -36,6 +36,7 @@ listed in the following table:
 | `trace dns`              | 5.4                     |                         |
 | `trace exec`             | 5.4                     | `FTRACE_SYSCALLS`       |
 | `trace fsslower`         | 5.4                     | `KPROBES`, `KRETPROBES` |
+| `trace gc`               | 5.15                    | `UPROBES`               |
 | `trace mount`            | U.U                     | `FTRACE_SYSCALLS`       |
 | `trace oomkill`          | 5.4                     | `KPROBES`               |
 | `trace open`             | 5.4                     | `FTRACE_SYSCALLS`       |
