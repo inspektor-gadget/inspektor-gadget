@@ -37,6 +37,7 @@ const (
 	validateMetadataParam   = "validate-metadata"
 	authfileParam           = "authfile"
 	insecureRegistriesParam = "insecure-registries"
+	disallowPulling         = "disallow-pulling"
 	pullParam               = "pull"
 	pullSecret              = "pull-secret"
 	verifyImage             = "verify-image"
@@ -84,6 +85,12 @@ func (o *ociHandler) GlobalParams() api.Params {
 			Title:       "Insecure registries",
 			Description: "List of registries to access over plain HTTP",
 			TypeHint:    api.TypeStringSlice,
+		},
+		{
+			Key:         disallowPulling,
+			Title:       "Disallow pulling",
+			Description: "Disallow pulling gadgets from registries",
+			TypeHint:    api.TypeBool,
 		},
 	}
 }
@@ -196,6 +203,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			AuthFile:           o.ociParams.Get(authfileParam).AsString(),
 			SecretBytes:        secretBytes,
 			InsecureRegistries: o.ociParams.Get(insecureRegistriesParam).AsStringSlice(),
+			DisallowPulling:    o.ociParams.Get(disallowPulling).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
 			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),

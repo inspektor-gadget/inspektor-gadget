@@ -1,0 +1,60 @@
+---
+title: 'Disallow pulling Gadgets'
+sidebar_position: 600
+description: How to disallow pulling gadgets
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+It is possible to disallow pulling gadgets by using the `--disallow-pulling` flag.
+By default, pulling is allowed.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+You can specify this option only at deploy time:
+
+```bash
+$ kubectl gadget deploy --disallow-gadgets-pulling
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run trace_exec
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: pulling image (if missing) "trace_exec": pulling image "trace_exec": pulling is disabled
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+You can use the `--disallow-pulling` flag at run time:
+
+```bash
+$ sudo ig image list
+REPOSITORY                                TAG                                       DIGEST       CREATED
+trace_exec                                latest                                    24c0da566661 15 hours ago
+$ sudo ig run --disallow-pulling trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
+minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
+^C
+$ sudo ig run --disallow-pulling trace_open
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: pulling image (if missing) "trace_open": pulling image "trace_open": pulling is disabled
+```
+</TabItem>
+<TabItem value="ig-daemon" label="ig daemon">
+You can specify these options only at start time:
+
+```bash
+$ sudo ig image list
+REPOSITORY                                TAG                                       DIGEST       CREATED
+trace_exec                                latest                                    24c0da566661 15 hours ago
+$ sudo ig daemon --disallow-pulling
+...
+# Switch to another terminal
+$ gadgetctl run trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
+minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
+$ gadgetctl run trace_open
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: pulling image (if missing) "trace_open": pulling image "trace_open": pulling is disabled
+```
+</TabItem>
+</Tabs>

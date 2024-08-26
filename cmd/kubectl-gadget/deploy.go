@@ -110,6 +110,7 @@ var (
 	gadgetsPublicKeys   string
 	allowedGadgets      []string
 	insecureRegistries  []string
+	disallowGadgetsPull bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -254,6 +255,9 @@ func init() {
 		[]string{},
 		"List of registries to access over plain HTTP",
 	)
+	deployCmd.PersistentFlags().BoolVar(
+		&disallowGadgetsPull,
+		"disallow-gadgets-pulling", false, "Disallow pulling gadgets from registries")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -803,6 +807,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
 			opOciCfg[gadgettracermanagerconfig.AllowedGadgets] = allowedGadgets
 			opOciCfg[gadgettracermanagerconfig.InsecureRegistries] = insecureRegistries
+			opOciCfg[gadgettracermanagerconfig.DisallowPulling] = disallowGadgetsPull
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {
