@@ -82,9 +82,11 @@ struct event_t {
 	gadget_netns_id netns_id;
 
 	char comm[TASK_COMM_LEN];
+	char pcomm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
+	__u32 ppid;
 	__u32 uid;
 	__u32 gid;
 
@@ -113,9 +115,11 @@ struct event_header_t {
 	gadget_netns_id netns_id;
 
 	char comm[TASK_COMM_LEN];
+	char pcomm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
 	__u32 pid;
 	__u32 tid;
+	__u32 ppid;
 	__u32 uid;
 	__u32 gid;
 
@@ -321,8 +325,11 @@ int ig_trace_dns(struct __sk_buff *skb)
 		event.mntns_id = skb_val->mntns;
 		event.pid = skb_val->pid_tgid >> 32;
 		event.tid = (__u32)skb_val->pid_tgid;
+		event.ppid = skb_val->ppid;
 		__builtin_memcpy(&event.comm, skb_val->task,
 				 sizeof(event.comm));
+		__builtin_memcpy(&event.pcomm, skb_val->ptask,
+				 sizeof(event.pcomm));
 		event.uid = (__u32)skb_val->uid_gid;
 		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
