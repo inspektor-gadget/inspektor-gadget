@@ -233,7 +233,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: github/codeql-action/init@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+    - uses: github/codeql-action/init@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -267,7 +267,7 @@ jobs:
           ${{ matrix.client }}${dot_exe} LICENSE
         rm -rf $platform
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
-      uses: github/codeql-action/analyze@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+      uses: github/codeql-action/analyze@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
@@ -386,7 +386,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+    - uses: github/codeql-action/init@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         languages: go
     - name: Build ig-linux-${{ matrix.platform }} for CWE checks
@@ -398,7 +398,7 @@ jobs:
           -ldflags "-extldflags '-static'" \
           github.com/inspektor-gadget/inspektor-gadget/cmd/ig
     - name: CWE checks for ig-linux-${{ matrix.platform }}
-      uses: github/codeql-action/analyze@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+      uses: github/codeql-action/analyze@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         category: ig-linux-${{ matrix.platform }}
 
@@ -417,14 +417,14 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+    - uses: github/codeql-action/init@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         languages: go
     - name: Build gadget-container-deps
       run: |
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
-      uses: github/codeql-action/analyze@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
+      uses: github/codeql-action/analyze@2c779ab0d087cd7fe7b826087247c2c81f27bfa6 # v3.26.5
       with:
         category: gadget-container-deps
 
