@@ -93,7 +93,7 @@ Flags:
       --docker-socketpath string       Docker Engine API Unix socket path (default "/run/docker.sock")
       --podman-socketpath string       Podman Unix socket path (default "/run/podman/podman.sock")
   ...
-  -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o, podman (default "docker,containerd,cri-o,podman")
+  -r, --runtimes string                Comma-separated list of container runtimes. Supported values are: docker, containerd, cri-o, podman (default "docker,containerd,cri-o,podman")
   -w, --watch                          After listing the containers, watch for new containers
   ...
 ```
