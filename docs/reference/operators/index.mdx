@@ -6,7 +6,52 @@ description: Documentation for Operators
 
 import DocCardList from '@theme/DocCardList';
 
-TODO: document different operators:
-- description
-- what they provide? (kind of enrichment, etc)
-- parameters they take
+Operators are a very important part of the Inspetkor Gadget architecture. An
+operator is a component that performs a specific action, for example, loading
+eBPF programs, sorting the output, etc. Operators are modular and they all
+implement the same interface. Currently all operators are shipped within
+Inspektor Gadget, but we plan to support user-provided operators in the future.
+
+Operators are configured in a pipeline according to their priority.
+
+TODO: Create diagram showing the pipeline here!
+
+## Operator types
+
+Inspektor Gadget uses two different kind of operators.
+
+### Layer Operators
+
+Layer operators handle the different
+[layers](../../spec/oci.md#image-layers-and-media-types) that compose a Gadget.
+These operators access the information contained on the layer and perform the
+actions needed for the gadget to work, like loading the eBPF programs, running
+the WASM module, etc.
+
+### Data Operators
+
+Data operators can produce new data or mutate the data produced by other
+operators in different ways:
+- enrich it (add new information)
+- sort it
+- filter out specific events
+- export it
+
+## Parameters
+
+Operator expose parameters to control them. There are two kind of parameters:
+
+### Global
+
+These parameters have a global scope and can only be set when deploying
+Inspektor Gadget. They are intended to control sensitive things like security
+configuration that can only be set by the system administrator.
+
+### Instance
+
+These parameters can be set each time a gadget is run and only have impact on
+the gadget being run.
+
+## List of Operators
+
+<DocCardList />
