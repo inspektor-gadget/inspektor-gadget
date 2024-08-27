@@ -90,7 +90,7 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          Runtimes,
 			Alias:        "r",
 			DefaultValue: strings.Join(containerutils.AvailableRuntimes, ","),
-			Description: fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
+			Description: fmt.Sprintf("Comma-separated list of container runtimes. Supported values are: %s",
 				strings.Join(containerutils.AvailableRuntimes, ", ")),
 			// PossibleValues: containerutils.AvailableRuntimes, // TODO
 		},

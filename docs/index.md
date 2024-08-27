@@ -76,7 +76,7 @@ taken. Some operators are under-the-hood (i.e. fetching and loading Gadgets)
 while others are user-exposed (enrichment, filtering, export, etc.) and can be
 reordered and overridden.
 
-See the [operator documentation](./reference/operators) for more information.
+See the [operator documentation](./spec/operators) for more information.
 
 ### Further learning
 

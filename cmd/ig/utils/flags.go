@@ -42,7 +42,7 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name.
 	Containername string
 
-	// The name of the container runtimes to be used separated by comma.
+	// Comma-separated list of container runtimes.
 	Runtimes string
 
 	// Host, when set to true, specifies to include all events both from
@@ -158,7 +158,7 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		&commonFlags.Runtimes,
 		"runtimes", "r",
 		strings.Join(containerutils.AvailableRuntimes, ","),
-		fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
+		fmt.Sprintf("Comma-separated list of container runtimes. Supported values are: %s",
 			strings.Join(containerutils.AvailableRuntimes, ", ")),
 	)
 
