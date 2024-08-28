@@ -289,17 +289,14 @@ var annotationsTemplates = map[string]map[string]string{
 	},
 	"pid": {
 		ColumnsMinWidthAnnotation:  "7",
-		ColumnsMaxWidthAnnotation:  "10",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"uid": {
 		ColumnsMinWidthAnnotation:  "8",
-		ColumnsMaxWidthAnnotation:  "10",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"gid": {
 		ColumnsMinWidthAnnotation:  "8",
-		ColumnsMaxWidthAnnotation:  "10",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"ns": {
