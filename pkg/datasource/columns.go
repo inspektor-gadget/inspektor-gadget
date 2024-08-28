@@ -213,8 +213,16 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 			continue
 		}
 
-		if attributes.Width == 0 {
-			attributes.Width = columns.GetWidthFromType(f.ReflectType().Kind())
+		if attributes.Width == 0 || attributes.MaxWidth == 0 {
+			w := columns.GetWidthFromType(f.ReflectType().Kind())
+			if w > 0 {
+				if attributes.Width == 0 {
+					attributes.Width = w
+				}
+				if attributes.MaxWidth == 0 {
+					attributes.MaxWidth = w
+				}
+			}
 		}
 
 		df.Type = f.ReflectType()
