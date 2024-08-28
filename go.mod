@@ -24,7 +24,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kr/pretty v0.3.1
-	github.com/moby/moby v27.1.2+incompatible
+	github.com/moby/moby v27.2.0+incompatible
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1
 	github.com/opencontainers/image-spec v1.1.0
