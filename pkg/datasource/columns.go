@@ -65,6 +65,28 @@ func (ds *dataSource) Parser() (parser.Parser, error) {
 	return parser.NewParser(cols), nil
 }
 
+func getWidth(refType reflect.Type, value string) (int, error) {
+	if value == "type" {
+		if refType == nil {
+			return 0, fmt.Errorf("special value %q is only available for fields with a reflect type", value)
+		}
+
+		// Special case, we get the maximum length this field can have by its type
+		w := columns.GetWidthFromType(refType.Kind())
+		if w > 0 {
+			return w, nil
+		}
+		return 0, fmt.Errorf("special value %q is only available for integer and bool types", value)
+	}
+
+	res, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid width %q: %w", value, err)
+	}
+
+	return res, nil
+}
+
 func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 	cols, err := columns.NewColumns[DataTuple]()
 	if err != nil {
@@ -116,19 +138,19 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				}
 			case ColumnsWidthAnnotation:
 				var err error
-				attributes.Width, err = strconv.Atoi(v)
+				attributes.Width, err = getWidth(f.ReflectType(), v)
 				if err != nil {
 					return nil, fmt.Errorf("reading width for column %q: %w", f.Name, err)
 				}
 			case ColumnsMinWidthAnnotation:
 				var err error
-				attributes.MinWidth, err = strconv.Atoi(v)
+				attributes.MinWidth, err = getWidth(f.ReflectType(), v)
 				if err != nil {
 					return nil, fmt.Errorf("reading minWidth for column %q: %w", f.Name, err)
 				}
 			case ColumnsMaxWidthAnnotation:
 				var err error
-				attributes.MaxWidth, err = strconv.Atoi(v)
+				attributes.MaxWidth, err = getWidth(f.ReflectType(), v)
 				if err != nil {
 					return nil, fmt.Errorf("reading maxWidth for column %q: %w", f.Name, err)
 				}
