@@ -269,8 +269,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				p.SetEventCallback(formatter.EventHandlerFunc())
 				handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
 				if !ok {
-					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
-						p.EventHandlerFunc())
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T; skipping data source %q",
+						p.EventHandlerFunc(), ds.Name())
 					continue
 				}
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -281,8 +281,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))
 				handler, ok := p.EventHandlerFuncArray().(func(data []*datasource.DataTuple))
 				if !ok {
-					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T",
-						p.EventHandlerFunc())
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T; skipping data source %q",
+						p.EventHandlerFunc(), ds.Name())
 					continue
 				}
 
