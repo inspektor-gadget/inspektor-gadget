@@ -329,7 +329,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					fmt.Print(string(yml))
 					return nil
 				}, Priority)
-				return nil
+				continue
 			}
 
 			switch ds.Type() {
