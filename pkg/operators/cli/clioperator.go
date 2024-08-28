@@ -228,7 +228,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		case ModeColumns:
 			p, err := ds.Parser()
 			if err != nil {
-				gadgetCtx.Logger().Debugf("failed to get parser: %v", err)
+				gadgetCtx.Logger().Warnf("failed to get parser: %v; skipping data source %q", err, ds.Name())
 				continue
 			}
 
