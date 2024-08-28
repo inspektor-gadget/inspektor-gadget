@@ -19,13 +19,13 @@ output to entries that meet certain criteria.
 The filter syntax supports the following operations:
 
 ```bash
-- `columnName==value`: Matches if the content of `columnName` equals exactly `value`.
-- `columnName!=value`: Matches if the content of `columnName` does not equal exactly `value`.
-- `columnName>=value`: Matches if the content of `columnName` is greater than or equal to `value`.
-- `columnName>value`: Matches if the content of `columnName` is greater than `value`.
-- `columnName<=value`: Matches if the content of `columnName` is less than or equal to `value`.
-- `columnName<value`: Matches if the content of `columnName` is less than `value`.
-- `columnName~value`: Matches if the content of `columnName` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
+- `field==value`: Matches if the content of `field` equals exactly `value`.
+- `field!=value`: Matches if the content of `field` does not equal exactly `value`.
+- `field>=value`: Matches if the content of `field` is greater than or equal to `value`.
+- `field>value`: Matches if the content of `field` is greater than `value`.
+- `field<=value`: Matches if the content of `field` is less than or equal to `value`.
+- `field<value`: Matches if the content of `field` is less than `value`.
+- `field~value`: Matches if the content of `field` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
 ```
 
 Fully qualified name: `operators.filter.filter`
