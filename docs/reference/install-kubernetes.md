@@ -51,8 +51,8 @@ $ kubectl gadget version
 ```
 
 ## Installing in the cluster
-Before deploying make sure that kubernates cluster is deployed . Like minikube is running .\
-Steps to make minikube running - [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fwindows%2Fx86-64%2Fstable%2F.exe+download)
+
+Before you begin, ensure that your Kubernetes cluster is up and running and that you can access it with `kubectl`.
 
 ### Quick installation
 
