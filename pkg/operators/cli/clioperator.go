@@ -239,7 +239,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			if hasFields {
 				err := formatter.SetShowColumns(strings.Split(fields, ","))
 				if err != nil {
-					return fmt.Errorf("setting fields: %w", err)
+					gadgetCtx.Logger().Warnf("failed to set fields: %v; skipping data source %q", err, ds.Name())
+					continue
 				}
 			}
 
@@ -312,7 +313,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				json.WithArray(ds.Type() == datasource.TypeArray),
 			)
 			if err != nil {
-				return fmt.Errorf("initializing JSON formatter: %w", err)
+				gadgetCtx.Logger().Warnf("failed to initialize JSON formatter: %v; skipping data source %q", err, ds.Name())
+				continue
 			}
 
 			if o.mode == ModeYAML {
