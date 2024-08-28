@@ -27,9 +27,7 @@ architectures are supported:
 
 Media type: `application/vnd.gadget.config.v1+yaml`
 
-The content has the type [GadgetMetadata
-struct](https://github.com/inspektor-gadget/inspektor-gadget/blob/7d12644a89217bdbf861da54cd8bd2a370754ece/pkg/gadgets/run/types/metadata.go#L136).
-It is a work in progress.
+This contains the [gadget metadata](../gadget-devel/metadata.md).
 
 ## Image layers and media types
 
@@ -43,12 +41,14 @@ different media type among the following:
 ### The ebpf layer
 
 There must be exactly one layer with the ebpf media type. It must not be empty.
-Its content must be a valid ELF file.
+Its content must be a valid ELF file. See [gadget eBPF
+API](../gadget-devel/gadget-ebpf-api.md).
 
 ### The wasm layer
 
 There must be at most one layer with the wasm media type. If present, it must
-not be empty and it must be a valid wasm file.
+not be empty and it must be a valid wasm file. See [WASM
+API](../gadget-devel/gadget-wasm-api-raw.md).
 
 ### The btfgen layer
 
