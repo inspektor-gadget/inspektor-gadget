@@ -4,6 +4,20 @@ sidebar_position: 10
 description: Quick start for running Inspektor Gadget.
 ---
 
+Inspektor Gadget can be used either on a Linux machine or on Kubernetes. It
+supports both ephemeral commands and permanent installation.
+
+```mermaid
+flowchart TD
+W{{Where to run Inspektor Gadget?}}
+W -->|Kubernetes| K[How long?]
+W -->|Linux system| L[How long?]
+L --> |Just one command| ig1>ig run]
+L --> |Long running| ig2>ig daemon + gadgetctl]
+K --> |Just one command| ku1>kubectl debug node]
+K --> |Long running| ku2>kubectl gadget]
+```
+
 <!-- markdown-link-check-disable-next-line -->
 The following examples use the [trace_open](./gadgets/trace_open) Gadget which triggers when a file is open on the system.
 

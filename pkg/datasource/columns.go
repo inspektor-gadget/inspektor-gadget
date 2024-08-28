@@ -222,6 +222,8 @@ var annotationsTemplates = map[string]map[string]string{
 		ColumnsWidthAnnotation:    "35",
 		ColumnsMaxWidthAnnotation: "35",
 		ColumnsEllipsisAnnotation: "end",
+		ColumnsHiddenAnnotation:   "true",
+		DescriptionAnnotation:     "Human-readable timestamp",
 	},
 	"node": {
 		ColumnsWidthAnnotation:    "30",

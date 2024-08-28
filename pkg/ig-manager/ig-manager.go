@@ -74,7 +74,7 @@ func (l *IGManager) RemoveMountNsMap(id string) error {
 	return l.tracerCollection.RemoveTracer(id)
 }
 
-func NewManager(runtimes []*containerutilsTypes.RuntimeConfig) (*IGManager, error) {
+func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []containercollection.ContainerCollectionOption) (*IGManager, error) {
 	l := &IGManager{}
 
 	var err error
@@ -102,6 +102,7 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig) (*IGManager, erro
 		containercollection.WithTracerCollection(l.tracerCollection),
 		containercollection.WithProcEnrichment(),
 	}
+	opts = append(opts, additionalOpts...)
 
 	if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(runtimes) {
 		warnings := []containercollection.ContainerCollectionOption{containercollection.WithDisableContainerRuntimeWarnings()}

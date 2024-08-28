@@ -73,6 +73,7 @@ following annotations are a non-exhaustive list of the available annotations:
 - `columns.ellipsis`: EllipsisType defines how to abbreviate this column if the value needs more space than is available (start, middle, end)
 - `columns.hidden`: Hide the field from the columns output mode by default. The user can always show it by using `--fields=bar,foo`.
 - `columns.fixed`: Forces the Width even when using Auto-Scaling
+- `columns.hex`: Format the field using hexadecimal
 - `template`: Use the annotation from some predefined templates. Available templates are:
   - timestamp:
     - `columns.width: 35`, `columns.maxwidth: 35`, `columns.ellipsis: end`

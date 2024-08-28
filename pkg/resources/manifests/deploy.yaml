@@ -38,6 +38,7 @@ data:
               -----END PUBLIC KEY-----
           allowed-gadgets:
             []
+          disallow-pulling: false
 ---
 # Source: gadget/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -369,10 +370,7 @@ spec:
             path: /sys/kernel/debug
         - name: oci
           emptyDir:
-        - configMap:
+        - name: config
+          configMap:
             name: gadget
-          defaultMode: 400
-          items:
-            - key: config.yaml
-              path: config.yaml
-          name: config
+            defaultMode: 0o400
