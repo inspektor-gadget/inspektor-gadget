@@ -52,6 +52,8 @@ $ kubectl gadget version
 
 ## Installing in the cluster
 
+Before you begin, ensure that your Kubernetes cluster is up and running and that you can access it with `kubectl`.
+
 ### Quick installation
 
 ```bash
