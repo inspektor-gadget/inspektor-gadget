@@ -52,7 +52,7 @@ not be empty and it must be a valid wasm file.
 
 ### The btfgen layer
 
-[btfgen](https://www.inspektor-gadget.io//blog/2022/03/btfgen-one-step-closer-to-truly-portable-ebpf-programs/)
+[btfgen](https://www.inspektor-gadget.io/blog/2022/03/btfgen-one-step-closer-to-truly-portable-ebpf-programs/)
 is used to enable running eBPF programs on kernels that don't provide BTF information. A gadget
 image can contain at most one btfgen layer. This layer must contain the generated BTF files in a
 tarball following the same folder structure of
