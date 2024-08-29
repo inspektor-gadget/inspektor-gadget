@@ -145,10 +145,13 @@ func (m *otelMetricsOperator) InstanceParams() api.Params {
 
 func (m *otelMetricsOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
 	// extract name mappings; key will be old name (or empty), value the new name
-	mappings := apihelpers.GetStringValuesPerDataSource(instanceParamValues[ParamOtelMetricsName])
+	mappings, err := apihelpers.GetStringValuesPerDataSource(instanceParamValues[ParamOtelMetricsName])
+	if err != nil {
+		return nil, fmt.Errorf("parsing name mappings: %w", err)
+	}
 
 	params := apihelpers.ToParamDescs(m.InstanceParams()).ToParams()
-	err := params.CopyFromMap(instanceParamValues, "")
+	err = params.CopyFromMap(instanceParamValues, "")
 	if err != nil {
 		return nil, err
 	}

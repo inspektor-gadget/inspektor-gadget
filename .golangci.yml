@@ -2,7 +2,7 @@ output:
   sort-results: true
 
 run:
-  go: "1.22"
+  go: "1.22.5"
   timeout: 10m
   build-tags:
   - docs

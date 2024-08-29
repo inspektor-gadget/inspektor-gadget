@@ -1,27 +1,38 @@
-{{ $image := index (index (index (ds "artifacthubpkg") "containersImages") 0) "image" -}}
+---
+title: {{ (datasource "gadget").name }}
+sidebar_position: 900
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # {{ (datasource "gadget").name }}
 
-{{ (ds "gadget").description }}
+{{ (datasource "gadget").description }}
 
 ## Getting started
-Pulling the gadget:
-```
-sudo ig image pull {{ $image }}
-```
+
 Running the gadget:
-```
-sudo IG_EXPERIMENTAL=true ig run {{ $image }} [flags]
-kubectl gadget run {{ $image }} [flags]
-```
+
+{{ $image := index (index (index (datasource "artifacthubpkg") "containersImages") 0) "image" -}}
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run {{ $image }} [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run {{ $image }} [flags]
+        ```
+    </TabItem>
+</Tabs>
 
 ## Flags
-{{ if has (ds "gadget") "ebpfParams" -}}
-{{ range $index, $flag := index (ds "gadget") "ebpfParams" }}
-### `--{{ index $flag "key" }}`
-{{ index $flag "description" }}
 
-Default value: "{{ index $flag "defaultValue" }}"
-{{ end -}}
-{{- else -}}
-No flags.
-{{- end -}}
+TODO
+
+## Guide
+
+TODO

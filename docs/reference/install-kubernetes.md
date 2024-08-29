@@ -244,7 +244,7 @@ $ kubectl gadget deploy --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
 Please check the following documents to learn more about different options:
 - [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
 - [Using Insecure Registries](./insecure-registries.mdx)
-- [Verifying Gadget Images](./verify-assets.md#verify-image-based-gadgets)
+- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
 
 ### Experimental features
 
@@ -358,7 +358,7 @@ operator:
     pull-secret: "my-pull-secret"
 ```
 
-For more information about the configuration file, check the [configuration guide](#configuration-file).
+For more information about the configuration file, check the [configuration guide](./configuration.md).
 
 ## Uninstalling from the cluster
 

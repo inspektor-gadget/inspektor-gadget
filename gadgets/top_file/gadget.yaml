@@ -1,8 +1,8 @@
 name: top file
 description: Periodically report read/write activity by file
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_file
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_file
 datasources:
   file:
     annotations:

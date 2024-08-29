@@ -25,7 +25,7 @@ import (
 )
 
 func (tf *TextColumnsFormatter[T]) setFormatter(column *Column[T]) {
-	ff := columns.GetFieldAsStringExt[T](column.col, 'f', column.col.Precision)
+	ff := columns.GetFieldAsStringExt[T](column.col, 'f', column.col.Precision, column.col.Hex)
 	column.formatter = func(entry *T) string {
 		return tf.buildFixedString(ff(entry), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
 	}

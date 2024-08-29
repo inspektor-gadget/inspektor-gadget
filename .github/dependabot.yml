@@ -27,8 +27,8 @@ updates:
           - "k8s.io/*"
       docker:
         patterns:
-          - "github.com/docker/docker/*"
-          - "github.com/moby/moby/*"
+          - "github.com/docker/*"
+          - "github.com/moby/*"
       otel:
         patterns:
           - "go.opentelemetry.io/*"

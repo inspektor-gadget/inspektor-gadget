@@ -1,8 +1,8 @@
 name: snapshot socket
 description: Show TCP and UDP sockets
 homepageURL: https://inspektor-gadget.io/
-documentationURL: https://inspektor-gadget.io/docs
-sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_socket
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_socket
 datasources:
   sockets:
     fields:

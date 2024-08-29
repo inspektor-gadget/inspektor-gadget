@@ -30,4 +30,5 @@ const (
 	PublicKeys             = "public-keys"
 	AllowedGadgets         = "allowed-gadgets"
 	InsecureRegistries     = "insecure-registries"
+	DisallowPulling        = "disallow-pulling"
 )

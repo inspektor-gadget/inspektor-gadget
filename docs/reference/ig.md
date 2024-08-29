@@ -25,9 +25,6 @@ Some characteristics of `ig`:
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
 
-The architecture of `ig` is described in the main
-[architecture](architecture.md#ig) document.
-
 ## Use cases
 
 - In a Kubernetes environment, when the Kubernetes API server is not working
@@ -47,7 +44,7 @@ The architecture of `ig` is described in the main
 ## Installation
 
 The instruction to install `ig` are available in the main
-[installation](../reference/install-linux.md#installing-ig) guide.
+[installation](../reference/install-linux.md) guide.
 
 ## Usage
 
@@ -189,6 +186,21 @@ $ kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/insp
 
 This requires Kubernetes v1.30.0.
 It is also working on older versions as long as kubectl (client) is v1.30.0 or greater.
+
+#### Usage with flag `--enrich-with-k8s-apiserver`
+
+In order to use `--enrich-with-k8s-apiserver`, the spawned debug pod has to have permissions to list all Pods, Services, DaemonSets and more.
+This can be done with giving it the `cluster-admin` role:
+
+```bash
+$ kubectl create serviceaccount -n kube-system ig
+
+$ kubectl create clusterrolebinding ig \
+  --clusterrole=cluster-admin \
+  --serviceaccount=kube-system:ig
+
+$ kubectl debug -n kube-system --as system:serviceaccount:kube-system:ig --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig trace exec --enrich-with-k8s-apiserver -o columns=k8s.owner.kind,k8s.owner.name,pid,comm,args
+```
 
 ### Using ig as a daemon
 

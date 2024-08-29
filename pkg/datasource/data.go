@@ -86,6 +86,20 @@ func (d *dataArray) Swap(i, j int) {
 	d.DataArray[i], d.DataArray[j] = d.DataArray[j], d.DataArray[i]
 }
 
+func (d *dataArray) Resize(size int) error {
+	if size < 0 {
+		return errors.New("resizing to an invalid size")
+	}
+	if size > len(d.DataArray) {
+		return errors.New("resizing to a larger size is not supported")
+	}
+	for i := size; i < len(d.DataArray); i++ {
+		d.Release(d.Get(i))
+	}
+	d.DataArray = d.DataArray[:size]
+	return nil
+}
+
 func (d *dataArray) New() Data {
 	return d.ds.newDataElement()
 }

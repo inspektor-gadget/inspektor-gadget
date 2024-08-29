@@ -54,6 +54,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"
