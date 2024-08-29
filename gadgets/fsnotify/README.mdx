@@ -114,4 +114,84 @@ ig           containerd-shim  fa_resp    FANOTIFY_EVENT_TYPE_PATH_PERM   allow  
 
 ## Architecture
 
-![Architecture diagram](fsnotify-architecture.svg)
+```mermaid
+sequenceDiagram
+    box Programs
+        participant Tracer
+        participant Tracee
+    end
+    box Maps
+        participant fsnotify_insert_event_ctx
+        participant enriched_fsnotify_events
+        participant fsnotify_remove_first_event_ctx
+        participant events ring buffer
+    end
+
+alt inotify
+    Note over Tracee: kprobe/inotify_handle_inode_event
+    Activate Tracee
+        rect rgba(0, 0, 255, .1)
+        Tracee ->> fsnotify_insert_event_ctx: insert into hash table<br/>Key: pid<br/>Value: {type=inotify, ino=123...}
+        Activate fsnotify_insert_event_ctx
+    end
+else fanotify
+    Note over Tracee: kprobe/fanotify_handle_event
+    rect rgba(0, 0, 255, .1)
+        Tracee ->> fsnotify_insert_event_ctx: insert into hash table<br/>Key: pid<br/>Value: {type=fanotify, ino=123...}
+    end
+end
+
+    Note over Tracee: kprobe/fsnotify_insert_event<br/>Input: struct fsnotify_group *group, struct fsnotify_event *event
+    Activate Tracee
+    rect rgba(0, 0, 255, .1)
+        Tracee ->> fsnotify_insert_event_ctx: lookup from hash table<br/>Key: pid<br/>Value: {type, ino...}
+        Tracee ->> enriched_fsnotify_events: insert into hash table<br/>Key: fsnotify_event<br/>Value: {filename, tracee_comm, ...}
+        Activate enriched_fsnotify_events
+    end
+    Deactivate Tracee
+
+alt inotify
+    Note over Tracee: kretprobe/inotify_handle_inode_event
+    rect rgba(0, 0, 255, .1)
+        Tracee ->> fsnotify_insert_event_ctx: delete entry from hash table<br/>Key: pid
+    end
+else fanotify
+    Note over Tracee: kretprobe/fanotify_handle_event
+    rect rgba(0, 0, 255, .1)
+        Tracee ->> fsnotify_insert_event_ctx: delete entry from hash table<br/>Key: pid
+        Deactivate fsnotify_insert_event_ctx
+    end
+end
+    Deactivate Tracee
+
+    Note over Tracer: kprobe/fsnotify_remove_first_event<br/>Input: struct fsnotify_group *group
+    Activate Tracer
+    rect rgba(0, 0, 255, .1)
+        Tracer ->> fsnotify_remove_first_event_ctx: insert into hash table<br/>Key: pid<br/>Value: fsnotify_group pointer
+        Activate fsnotify_remove_first_event_ctx
+    end
+
+    Note over Tracer: kretprobe/fsnotify_remove_first_event<br/>Returns: struct fsnotify_event *event
+    rect rgba(0, 0, 255, .1)
+        Tracer ->> fsnotify_remove_first_event_ctx: lookup+delete from hash table<br/>Key: pid
+        Deactivate fsnotify_remove_first_event_ctx
+        Tracer ->> enriched_fsnotify_events: lookup from hash table<br/>Key: fsnotify_event<br/>Value: {filename, tracee_comm, ...}
+        Tracer ->> events ring buffer: submit event to ring buffer<br/>type = fanotify | inotify
+        Note over events ring buffer: Inspektor Gadget<br/>receives the event
+    end
+    Deactivate Tracer
+
+    Note over Tracee: kprobe/fsnotify_destroy_event<br/>Input: struct fsnotify_group *group, struct fsnotify_event *event
+    Activate Tracee
+    rect rgba(0, 0, 255, .1)
+        alt inotify or fanotify
+        Note over events ring buffer: Nothing to send
+        else fanotify_perm_response
+        Tracee ->> events ring buffer: submit event to ring buffer<br/>type = fanotify_perm_response
+        Note over events ring buffer: Inspektor Gadget<br/>receives the event
+        end
+        Tracee ->> enriched_fsnotify_events: delete from hash table<br/>Key: fsnotify_event
+        Deactivate enriched_fsnotify_events
+    end
+    Deactivate Tracee
+```
