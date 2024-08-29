@@ -228,7 +228,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		case ModeColumns:
 			p, err := ds.Parser()
 			if err != nil {
-				gadgetCtx.Logger().Debugf("failed to get parser: %v", err)
+				gadgetCtx.Logger().Warnf("failed to get parser: %v; skipping data source %q", err, ds.Name())
 				continue
 			}
 
@@ -239,7 +239,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			if hasFields {
 				err := formatter.SetShowColumns(strings.Split(fields, ","))
 				if err != nil {
-					return fmt.Errorf("setting fields: %w", err)
+					gadgetCtx.Logger().Warnf("failed to set fields: %v; skipping data source %q", err, ds.Name())
+					continue
 				}
 			}
 
@@ -269,8 +270,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				p.SetEventCallback(formatter.EventHandlerFunc())
 				handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
 				if !ok {
-					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T",
-						p.EventHandlerFunc())
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data *datasource.DataTuple), got %T; skipping data source %q",
+						p.EventHandlerFunc(), ds.Name())
 					continue
 				}
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -281,8 +282,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))
 				handler, ok := p.EventHandlerFuncArray().(func(data []*datasource.DataTuple))
 				if !ok {
-					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T",
-						p.EventHandlerFunc())
+					gadgetCtx.Logger().Warnf("invalid data format: expected func(data []*datasource.DataTuple), got %T; skipping data source %q",
+						p.EventHandlerFunc(), ds.Name())
 					continue
 				}
 
@@ -312,7 +313,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				json.WithArray(ds.Type() == datasource.TypeArray),
 			)
 			if err != nil {
-				return fmt.Errorf("initializing JSON formatter: %w", err)
+				gadgetCtx.Logger().Warnf("failed to initialize JSON formatter: %v; skipping data source %q", err, ds.Name())
+				continue
 			}
 
 			if o.mode == ModeYAML {
@@ -327,7 +329,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					fmt.Print(string(yml))
 					return nil
 				}, Priority)
-				return nil
+				continue
 			}
 
 			switch ds.Type() {
