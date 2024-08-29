@@ -86,9 +86,9 @@ func Validate(p api.Params, v api.ParamValues) error {
 
 // GetStringValuesPerDataSource will separate a string and extract per-datasource values. It expects a string like
 // `datasource1:value,datasource2:value` or `value` (datasource is optional - this will lead to an empty key)
-func GetStringValuesPerDataSource(s string) map[string]string {
+func GetStringValuesPerDataSource(s string) (map[string]string, error) {
 	if s == "" {
-		return map[string]string{}
+		return map[string]string{}, nil
 	}
 	res := make(map[string]string)
 	for _, interval := range strings.Split(s, ",") {
@@ -104,13 +104,22 @@ func GetStringValuesPerDataSource(s string) map[string]string {
 		}
 		res[dsName] = val
 	}
-	return res
+	// Check edge cases
+	if _, ok := res[""]; ok {
+		if len(res) > 1 {
+			return nil, fmt.Errorf("mixed values with and without specifying data source")
+		}
+	}
+	return res, nil
 }
 
 // GetIntValuesPerDataSource works like GetStringValuesPerDataSource, but will return int values instead
 func GetIntValuesPerDataSource(s string) (map[string]int, error) {
 	var err error
-	m := GetStringValuesPerDataSource(s)
+	m, err := GetStringValuesPerDataSource(s)
+	if err != nil {
+		return nil, fmt.Errorf("getting string values per data source: %w", err)
+	}
 	res := make(map[string]int, len(m))
 	for k, v := range m {
 		res[k], err = strconv.Atoi(v)
@@ -124,7 +133,10 @@ func GetIntValuesPerDataSource(s string) (map[string]int, error) {
 // GetDurationValuesPerDataSource works like GetStringValuesPerDataSource, but will return time.Duration values instead
 func GetDurationValuesPerDataSource(s string) (map[string]time.Duration, error) {
 	var err error
-	m := GetStringValuesPerDataSource(s)
+	m, err := GetStringValuesPerDataSource(s)
+	if err != nil {
+		return nil, fmt.Errorf("getting string values per data source: %w", err)
+	}
 	res := make(map[string]time.Duration, len(m))
 	for k, v := range m {
 		res[k], err = time.ParseDuration(v)

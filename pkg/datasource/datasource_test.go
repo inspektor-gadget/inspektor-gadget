@@ -670,6 +670,77 @@ func TestDataSourceSubscribeArray(t *testing.T) {
 	require.Equal(t, values, valuesFromPacket)
 }
 
+func TestDataSourceResizeArray(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeArray, "events")
+	require.NoError(t, err)
+
+	pArray, err := ds.NewPacketArray()
+	require.NoError(t, err)
+	defer ds.Release(pArray)
+
+	acc, err := ds.AddField("foo", api.Kind_Int8)
+	require.NoError(t, err)
+
+	// Add some values to the array
+	values := []int8{30, 54, 90}
+	for _, val := range values {
+		data := pArray.New()
+		acc.PutInt8(data, val)
+		pArray.Append(data)
+	}
+
+	// Subscribe to the array to verify we receive the values in the same order
+	valuesBeforeResize := []int8{}
+	err = ds.SubscribeArray(func(fs DataSource, da DataArray) error {
+		for i := 0; i < da.Len(); i++ {
+			ret, err := acc.Int8(da.Get(i))
+			require.NoError(t, err)
+			valuesBeforeResize = append(valuesBeforeResize, ret)
+		}
+		return nil
+	}, 1)
+	require.NoError(t, err)
+
+	// Subscribe to the array to resize it
+	err = ds.SubscribeArray(func(fs DataSource, da DataArray) error {
+		// Resize to invalid size
+		err := da.Resize(-1)
+		require.Error(t, err)
+
+		// Resize to a bigger size (not implemented yet)
+		err = da.Resize(5)
+		require.Error(t, err)
+
+		// Resize to a smaller size
+		err = da.Resize(1)
+		require.NoError(t, err)
+
+		return nil
+	}, 2)
+	require.NoError(t, err)
+
+	// Subscribe, with lower priority, to check that the resize was done
+	valuesAfterResize := []int8{}
+	err = ds.Subscribe(func(fs DataSource, d Data) error {
+		ret, err := acc.Int8(d)
+		require.NoError(t, err)
+		valuesAfterResize = append(valuesAfterResize, ret)
+		return nil
+	}, 3)
+	require.NoError(t, err)
+	require.NoError(t, err)
+
+	// Emit the packet
+	err = ds.EmitAndRelease(pArray)
+	require.NoError(t, err)
+
+	// Check that the resize was done correctly
+	require.Equal(t, values, valuesBeforeResize)
+	require.Equal(t, values[:1], valuesAfterResize)
+}
+
 type dummyField struct {
 	name   string
 	size   uint32
