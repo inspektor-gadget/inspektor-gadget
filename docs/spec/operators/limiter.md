@@ -7,6 +7,10 @@ operator is only enabled for data sources of type array. A great scenario for
 this operator is when you are already sorting data within an array of data and
 you want to filter out the top `max-entries` entries.
 
+## Priority
+
+9600
+
 ## Instance Parameters
 
 ### `--max-entries`

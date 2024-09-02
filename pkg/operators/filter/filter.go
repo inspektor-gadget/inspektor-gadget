@@ -64,14 +64,14 @@ func (f *filterOperator) InstanceParams() api.Params {
 	return api.Params{&api.Param{
 		Key: ParamFilter,
 		Description: `Filter rules
-  A filter can match any column using the following syntax
-    columnName==value     - matches, if the content of columnName equals exactly value
-    columnName!=value     - matches, if the content of columnName does not equal exactly value
-    columnName>=value     - matches, if the content of columnName is greater than or equal to the value
-    columnName>value      - matches, if the content of columnName is greater than the value
-    columnName<=value     - matches, if the content of columnName is less than or equal to the value
-    columnName<value      - matches, if the content of columnName is less than the value
-    columnName~value      - matches, if the content of columnName matches the regular expression 'value'
+  A filter can match any field using the following syntax:
+    field==value     - matches, if the content of field equals exactly value
+    field!=value     - matches, if the content of field does not equal exactly value
+    field>=value     - matches, if the content of field is greater than or equal to the value
+    field>value      - matches, if the content of field is greater than the value
+    field<=value     - matches, if the content of field is less than or equal to the value
+    field<value      - matches, if the content of field is less than the value
+    field~value      - matches, if the content of field matches the regular expression 'value'
                  see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
         `,
 		Alias: "F",
