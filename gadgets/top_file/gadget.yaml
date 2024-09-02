@@ -65,7 +65,7 @@ datasources:
           columns.hidden: true
       file:
         annotations:
-          description: File name
+          description: Absolute File Path
           columns.width: 30
       dev:
         annotations:
