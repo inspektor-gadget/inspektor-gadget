@@ -28,7 +28,7 @@
 // tracer is not in the same pidns as the process being traced. This is the
 // case when Inspektor Gadget is started with hostPID=false.
 //
-// https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/devel/fanotify-ebpf.png
+// See docs/hooks.md
 package containerhook
 
 import (
