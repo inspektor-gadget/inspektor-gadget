@@ -510,6 +510,34 @@ mycontainer                      wget           477678            44591
 </TabItem>
 </Tabs>
 
+It's possible to hide and show some fields by prefixing them with +/-, for instance
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest --fields=-error,-timestamp
+COMM  PID  TID  PCOMM  PPID  ARGS  K8S.NODE  K8S.NAMESPACE  K8S.PODNAME  K8S.CONTAINERNAME  USER  LOGINUSER  GROUP
+
+$ kubectl gadget run trace_exec:latest --fields=+uid,+pid
+COMM  PID  TID  PCOMM  PPID  ARGS  K8S.NODE  K8S.NAMESPACE  K8S.PODNAME  K8S.CONTAINERNAME  ERROR  USER  LOGINUSER  GROUP  UID
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_exec:latest --fields=-error,-timestamp
+RUNTIME.CONTAINERNAME  COMM  PID  TID  PCOMM  PPID  ARGS  USER  LOGINUSER  GROUP
+
+$ sudo ig run trace_exec:latest --fields=+uid,+pid
+RUNTIME.CONTAINERNAME  COMM  TID  PCOMM  PPID  ARGS  TIMESTAMP  USER  LOGINUSER  GROUP  UID  PID
+```
+
+</TabItem>
+</Tabs>
+
 ## Run for a specific amount of time
 
 Many gadgets will run forever, printing the gathered output until we press

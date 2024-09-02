@@ -17,6 +17,7 @@ package clioperator
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -179,6 +180,47 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	return api.Params{fields, mode}
 }
 
+func parseFields(fieldsString string, defaultFields []string) []string {
+	fields := strings.Split(fieldsString, ",")
+
+	addedFields := make([]string, 0, len(fields))
+	deletedFields := make([]string, 0, len(fields))
+	explicitFields := make([]string, 0, len(fields))
+
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		switch field[0] {
+		case '+':
+			addedFields = append(addedFields, field[1:])
+		case '-':
+			deletedFields = append(deletedFields, field[1:])
+		default:
+			if !slices.Contains(explicitFields, field) {
+				explicitFields = append(explicitFields, field)
+			}
+		}
+	}
+
+	result := defaultFields
+	if len(explicitFields) > 0 {
+		result = explicitFields
+	}
+
+	for _, field := range addedFields {
+		if !slices.Contains(result, field) {
+			result = append(result, field)
+		}
+	}
+
+	for _, field := range deletedFields {
+		result = slices.DeleteFunc(result, func(s string) bool { return s == field })
+	}
+	return result
+}
+
 func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	params := apihelpers.ToParamDescs(o.ExtraParams(gadgetCtx)).ToParams()
 	params.CopyFromMap(o.paramValues, "")
@@ -237,7 +279,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			formatter := p.GetTextColumnsFormatter()
 
 			if hasFields {
-				err := formatter.SetShowColumns(strings.Split(fields, ","))
+				parsedFields := parseFields(fields, defCols)
+				err = formatter.SetShowColumns(parsedFields)
 				if err != nil {
 					gadgetCtx.Logger().Warnf("failed to set fields: %v; skipping data source %q", err, ds.Name())
 					continue
