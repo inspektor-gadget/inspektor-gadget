@@ -58,7 +58,7 @@ datasources:
 ##### Datasource
 
 The annotations for the datasource depend on its type and the operators it uses.
-For more information, refer to the [operator documentation](../reference/operators/).
+For more information, refer to the [operator documentation](../spec/operators/).
 
 ##### Field
 
