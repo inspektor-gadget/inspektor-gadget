@@ -55,7 +55,7 @@ readable" version and then the operator adds the human readable counterpart:
 ```
 
 Please check the [gadget developer
-documentation](../../../gadget-devel/gadget-ebpf-api.md#enriched-types) to learn
+documentation](../../gadget-devel/gadget-ebpf-api.md#enriched-types) to learn
 how to use this operator in your gadget.
 
 ## Priority
