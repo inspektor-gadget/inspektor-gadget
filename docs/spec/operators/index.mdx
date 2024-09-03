@@ -7,9 +7,9 @@ description: Documentation for Operators
 import DocCardList from '@theme/DocCardList';
 
 Operators are the cornerstones of the Inspektor Gadget architecture. They are
-modular components implementing the same interfaces
-([1](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@v0.31.0/pkg/operators#DataOperator),
-[2](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@v0.31.0/pkg/operators#ImageOperator)).
+modular components implementing the same interfaces:
+[DataOperator](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/operators#DataOperator) and
+[ImageOperator](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget/pkg/operators#ImageOperator).
 They are responsible for specific tasks, such as loading eBPF programs,
 enriching events, sorting output, etc. All operators can generate, drop or
 manipulate data and few of them handle the
