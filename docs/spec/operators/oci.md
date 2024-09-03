@@ -7,6 +7,10 @@ The OCI operator handles Gadgets images. It pulls images from the OCI registries
 and invokes the different layer operators according to the
 [layers](../oci.md#image-layers-and-media-types) present on the image.
 
+## Priority
+
+-1000
+
 ## Global Parameters
 
 ### `verify-image`
