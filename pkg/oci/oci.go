@@ -430,45 +430,51 @@ func tarFolderToFile(src, filePath string, headerTime time.Time) error {
 	})
 }
 
+func getGadgetImageDescriptor(ctx context.Context, store *oci.Store, fullTag string) (*GadgetImageDesc, error) {
+	parsed, err := reference.Parse(fullTag)
+	if err != nil {
+		return nil, fmt.Errorf("parsing image %q: %w", fullTag, err)
+	}
+
+	var repository string
+	if named, ok := parsed.(reference.Named); ok {
+		repository = named.Name()
+	}
+
+	tag := "latest"
+	if tagged, ok := parsed.(reference.Tagged); ok {
+		tag = tagged.Tag()
+	}
+
+	image := &GadgetImageDesc{
+		Repository: repository,
+		Tag:        tag,
+	}
+
+	desc, err := store.Resolve(ctx, fullTag)
+	if err != nil {
+		return nil, fmt.Errorf("found tag %q but couldn't get a descriptor for it: %w", fullTag, err)
+	}
+	image.Digest = desc.Digest.String()
+
+	manifest, err := getManifestForHost(ctx, store, fullTag)
+	if err != nil {
+		return nil, fmt.Errorf("getting manifest for %q: %w", fullTag, err)
+	}
+
+	image.Created = getTimeFromAnnotations(manifest.Annotations)
+
+	return image, nil
+}
+
 func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc, error) {
 	images := []*GadgetImageDesc{}
 	err := store.Tags(ctx, "", func(tags []string) error {
 		for _, fullTag := range tags {
-			parsed, err := reference.Parse(fullTag)
+			image, err := getGadgetImageDescriptor(ctx, store, fullTag)
 			if err != nil {
-				log.Debugf("parsing image %q: %s", fullTag, err)
-				continue
+				log.Debugf("getting gadget image descriptor for %s: %v", fullTag, err)
 			}
-
-			var repository string
-			if named, ok := parsed.(reference.Named); ok {
-				repository = named.Name()
-			}
-
-			tag := "latest"
-			if tagged, ok := parsed.(reference.Tagged); ok {
-				tag = tagged.Tag()
-			}
-
-			image := &GadgetImageDesc{
-				Repository: repository,
-				Tag:        tag,
-			}
-
-			desc, err := store.Resolve(ctx, fullTag)
-			if err != nil {
-				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
-				continue
-			}
-			image.Digest = desc.Digest.String()
-
-			manifest, err := getManifestForHost(ctx, store, fullTag)
-			if err != nil {
-				log.Debugf("Getting manifest for %q: %v", fullTag, err)
-				continue
-			}
-
-			image.Created = getTimeFromAnnotations(manifest.Annotations)
 
 			images = append(images, image)
 		}
@@ -495,6 +501,26 @@ func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 	}
 
 	return images, nil
+}
+
+func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, error) {
+	ociStore, err := GetLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	targetImage, err := normalizeImageName(image)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+
+	fullName := targetImage.String()
+	desc, err := getGadgetImageDescriptor(ctx, ociStore, fullName)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget image descriptor: %w", err)
+	}
+
+	return desc, nil
 }
 
 // DeleteGadgetImage removes the given image.

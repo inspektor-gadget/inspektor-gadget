@@ -1415,7 +1415,10 @@ jobs:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         run: |
-          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} make -C gadgets/ sign -o push
+          export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+
+          make -C gadgets/ sign -o push
 
   test-gadgets-local:
     name: Test gadgets locally

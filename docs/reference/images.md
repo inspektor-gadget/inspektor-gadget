@@ -88,9 +88,13 @@ Usage:
 
 Available Commands:
   build       Build a gadget image
+  export      Export the SRC_IMAGE images to DST_FILE
+  import      Import images from SRC_FILE
+  inspect     Inspect the local gadget image
   list        List gadget images on the host
   pull        Pull the specified image from a remote registry
   push        Push the specified image to a remote registry
+  remove      Remove local gadget image
   tag         Tag the local SRC_IMAGE image with the DST_IMAGE
 ```
 
@@ -269,4 +273,35 @@ Successfully imported images:
 $ sudo ig image list
 REPOSITORY                     TAG                           DIGEST       CREATED
 trace_open                     latest                        19ea8377298f 30 minutes ago
+```
+
+#### `inspect`
+
+Inspect the given local gadget image.
+
+```bash
+$ sudo ig image inspect -h
+Inspect the local gadget image
+
+Usage:
+  ig image inspect [flags]
+
+Flags:
+  -h, --help            help for inspect
+  -o, --output string   Output mode, possible values are, columns, json, jsonpretty (default "columns")
+```
+
+```bash
+$ sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_exec
+Successfully pulled ghcr.io/inspektor-gadget/gadget/trace_exec:latest@sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d
+$ sudo image inspect ghcr.io/inspektor-gadget/gadget/trace_exec
+REPOSITORY                                TAG                                       DIGEST       CREATED
+ghcr.io/inspektor-gadget/gadget/trace_ex… latest                                    a9e26ab904c3 about an hour ago
+$ sudo image inspect -o jsonpretty ghcr.io/inspektor-gadget/gadget/trace_exec
+{
+  "Repository": "ghcr.io/inspektor-gadget/gadget/trace_exec",
+  "Tag": "latest",
+  "Digest": "sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d",
+  "Created": "2024-09-02T10:49:44Z"
+}
 ```

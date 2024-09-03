@@ -87,7 +87,7 @@ push: build
 sign: push
 	@echo "Signing all gadgets"
 	for GADGET in $(GADGETS); do \
-		digest=$$(sudo -E $(IG) image list --no-trunc | grep "$$GADGET " | awk '{ print $$3 }') ; \
+		digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) -o json | jq -r .Digest) ; \
 		cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$$GADGET@$$digest || exit 1 ; \
 	done
 
