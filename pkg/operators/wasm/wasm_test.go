@@ -326,3 +326,57 @@ func TestBadGuest(t *testing.T) {
 	err = runtime.RunGadget(gadgetCtx, nil, params)
 	require.NoError(t, err, "running gadget")
 }
+
+func TestWasmParams(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	myOperator := simple.New("myHandler",
+		simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
+			params := gadgetCtx.Params()
+			found := false
+			for _, p := range params {
+				if p.Key == "param-key" {
+					require.Equal(t, "param-description", p.Description)
+					require.Equal(t, "param-default-value", p.DefaultValue)
+					require.Equal(t, "param-type-hint", p.TypeHint)
+					require.Equal(t, "param-title", p.Title)
+					require.Equal(t, "param-alias", p.Alias)
+					require.True(t, p.IsMandatory)
+
+					found = true
+					break
+				}
+			}
+
+			require.True(t, found, "param not found")
+			return nil
+		}),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/params.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"params:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	params := map[string]string{
+		"operator.oci.verify-image":   "false",
+		"operator.oci.wasm.param-key": "param-value",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
+}

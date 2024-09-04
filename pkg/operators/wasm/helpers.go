@@ -34,6 +34,11 @@ func bufFromStack(m wapi.Module, val uint64) ([]byte, error) {
 }
 
 func stringFromStack(m wapi.Module, val uint64) (string, error) {
+	// handle empty strings in a special way
+	if val == 0 {
+		return "", nil
+	}
+
 	buf, err := bufFromStack(m, val)
 	if err != nil {
 		return "", err

@@ -4,6 +4,7 @@ TEST_ARTIFACTS = \
 	fields \
 	dataarray \
 	badguest \
+	params \
 	#
 
 all: $(TEST_ARTIFACTS)
