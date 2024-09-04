@@ -17,6 +17,7 @@ package wasm
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
@@ -49,4 +50,17 @@ func exportFunction(
 	env.NewFunctionBuilder().
 		WithGoModuleFunction(wapi.GoModuleFunc(fn), params, results).
 		Export(name)
+}
+
+func (i *wasmOperatorInstance) writeToGuestMemory(ctx context.Context, buf []byte) (uint64, error) {
+	res, err := i.guestMalloc.Call(ctx, uint64(len(buf)))
+	if err != nil {
+		return 0, fmt.Errorf("malloc failed: %w", err)
+	}
+
+	if !i.mod.Memory().Write(uint32(res[0]), buf) {
+		return 0, fmt.Errorf("out of memory write")
+	}
+
+	return uint64(len(buf))<<32 | uint64(res[0]), nil
 }
