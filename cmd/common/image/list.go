@@ -44,30 +44,11 @@ func NewListCmd() *cobra.Command {
 		SilenceUsage: true,
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			images, err := oci.ListGadgetImages(context.TODO())
+			images, err := oci.GetGadgetImages(context.TODO())
 			if err != nil {
 				return fmt.Errorf("list gadgets: %w", err)
 			}
 
-			isTerm := term.IsTerminal(int(os.Stdout.Fd()))
-
-			cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
-			if !noTrunc && isTerm {
-				cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
-					if i.Digest == "" {
-						return ""
-					}
-					// Return the shortened digest and remove the sha256: prefix
-					return strings.TrimPrefix(i.Digest, "sha256:")[:12]
-				})
-				now := time.Now()
-				cols.MustSetExtractor("created", func(i *oci.GadgetImageDesc) any {
-					if t, err := time.Parse(time.RFC3339, i.Created); err == nil {
-						return fmt.Sprintf("%s ago", strings.ToLower(units.HumanDuration(now.Sub(t))))
-					}
-					return ""
-				})
-			}
 			switch outputMode {
 			case utils.OutputModeJSON:
 				bytes, err := json.Marshal(images)
@@ -82,6 +63,26 @@ func NewListCmd() *cobra.Command {
 				}
 				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
 			case utils.OutputModeColumns:
+				isTerm := term.IsTerminal(int(os.Stdout.Fd()))
+
+				cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
+				if !noTrunc && isTerm {
+					cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
+						if i.Digest == "" {
+							return ""
+						}
+						// Return the shortened digest and remove the sha256: prefix
+						return strings.TrimPrefix(i.Digest, "sha256:")[:12]
+					})
+					now := time.Now()
+					cols.MustSetExtractor("created", func(i *oci.GadgetImageDesc) any {
+						if t, err := time.Parse(time.RFC3339, i.Created); err == nil {
+							return fmt.Sprintf("%s ago", strings.ToLower(units.HumanDuration(now.Sub(t))))
+						}
+						return ""
+					})
+				}
+
 				formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(!noTrunc && isTerm))
 				formatter.WriteTable(cmd.OutOrStdout(), images)
 			default:
