@@ -52,6 +52,12 @@ jobs:
       run: |
         make manifests generate generate-documentation
         git diff --exit-code HEAD --
+    - name: check helper-binary
+      run: |
+        wget https://github.com/tinygo-org/tinygo/releases/download/v0.33.0/tinygo_0.33.0_amd64.deb
+        sudo dpkg -i tinygo_0.33.0_amd64.deb
+        make -C cmd/common/image/helpers/help-binary/
+        git diff --exit-code HEAD --
     - name: Check that there are not broken links
       uses: gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368 # v1
       with:

@@ -73,6 +73,7 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	helpBinary       bool
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -107,6 +108,8 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+
+	cmd.Flags().BoolVar(&opts.helpBinary, "help-binary", true, "Include a binary that prints a help message when the image is run with a container runtime by mistake")
 
 	return cmd
 }
@@ -212,7 +215,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 			return fmt.Errorf("reading helper file: %w", err)
 		}
 
-		if err := os.WriteFile(filepath.Join(opts.outputDir, dir.Name()), data, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(opts.outputDir, dir.Name()), data, 0o600); err != nil {
 			return fmt.Errorf("writing helper file: %w", err)
 		}
 	}
@@ -232,6 +235,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	// TODO: make this configurable?
 	archs := []string{oci.ArchAmd64, oci.ArchArm64}
 	objectsPaths := map[string]*oci.ObjectPath{}
+	helpPaths := map[string]string{}
 
 	for _, arch := range archs {
 		obj := &oci.ObjectPath{
@@ -258,6 +262,10 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		}
 
 		objectsPaths[arch] = obj
+
+		if opts.helpBinary {
+			helpPaths[arch] = filepath.Join(opts.outputDir, fmt.Sprintf("help-%s.tar", arch))
+		}
 	}
 
 	buildOpts := &oci.BuildGadgetImageOpts{
@@ -266,6 +274,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
+		HelpPaths:        helpPaths,
 	}
 
 	if sourceDateEpoch, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {

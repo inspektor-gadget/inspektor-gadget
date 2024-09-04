@@ -25,6 +25,7 @@ import (
 	"slices"
 
 	"github.com/distribution/reference"
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v2"
@@ -46,6 +47,8 @@ const (
 	wasmObjectMediaType = "application/vnd.gadget.wasm.program.v1+binary"
 	btfgenMediaType     = "application/vnd.gadget.btfgen.v1+binary"
 	metadataMediaType   = "application/vnd.gadget.config.v1+yaml"
+	binaryMediaType     = "application/vnd.oci.image.layer.v1.tar"
+	configMediaType     = "application/vnd.oci.image.config.v1+json"
 )
 
 type ObjectPath struct {
@@ -71,6 +74,9 @@ type BuildGadgetImageOpts struct {
 	ValidateMetadata bool
 	// Date and time on which the image is built (date-time string as defined by RFC 3339).
 	CreatedDate string
+	// Paths to help binary when the image is run by mistake with "docker run"
+	// or similar command. It must be a tar file containing a binary named help.
+	HelpPaths map[string]string
 }
 
 // BuildGadgetImage creates an OCI image with the objects provided in opts. The image parameter in
@@ -301,12 +307,27 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 	slices.Sort(archs)
 
 	for _, arch := range archs {
+		// Add manifests for ebpf objects
 		paths := o.ObjectPaths[arch]
 		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, arch, paths, o.CreatedDate)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", arch, err)
 		}
 		layers = append(layers, manifestDesc)
+	}
+
+	helpArchs := make([]string, 0, len(o.HelpPaths))
+	for k := range o.HelpPaths {
+		helpArchs = append(helpArchs, k)
+	}
+
+	for _, arch := range helpArchs {
+		// Add manifests for binaries to print help information
+		hostManifestDesc, err := createManifestForHostTarget(ctx, target, arch, o.HelpPaths[arch])
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating host manifest: %w", err)
+		}
+		layers = append(layers, hostManifestDesc)
 	}
 
 	if len(layers) == 0 {
@@ -334,4 +355,81 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 		return ocispec.Descriptor{}, fmt.Errorf("pushing manifest index: %w", err)
 	}
 	return indexDesc, nil
+}
+
+func createManifestForHostTarget(ctx context.Context, target oras.Target, arch, layerPath string) (ocispec.Descriptor, error) {
+	layerDescs := []ocispec.Descriptor{}
+
+	binaryDesc, err := createLayerDesc(ctx, target, layerPath, binaryMediaType)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing binary descriptor: %w", err)
+	}
+	layerDescs = append(layerDescs, binaryDesc)
+
+	configDesc, err := createConfigHostDesc(ctx, target, arch, binaryDesc)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
+	}
+
+	manifest := ocispec.Manifest{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+		},
+		Config: configDesc,
+		Layers: layerDescs,
+	}
+
+	manifestJson, err := json.Marshal(manifest)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("marshalling manifest: %w", err)
+	}
+	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestJson)
+	manifestDesc.Platform = &ocispec.Platform{
+		Architecture: arch,
+		OS:           "linux",
+	}
+	manifestDesc.Annotations = manifest.Annotations
+
+	exists, err := target.Exists(ctx, manifestDesc)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("checking if manifest exists: %w", err)
+	}
+	if exists {
+		return manifestDesc, nil
+	}
+	err = pushDescriptorIfNotExists(ctx, target, manifestDesc, bytes.NewReader(manifestJson))
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing manifest: %w", err)
+	}
+
+	return manifestDesc, nil
+}
+
+func createConfigHostDesc(ctx context.Context, target oras.Target, arch string, layerDesc ocispec.Descriptor) (ocispec.Descriptor, error) {
+	config := ocispec.Image{
+		Config: ocispec.ImageConfig{
+			Cmd: []string{"/help"},
+		},
+		Platform: ocispec.Platform{
+			Architecture: arch,
+			OS:           "linux",
+		},
+		RootFS: ocispec.RootFS{
+			Type:    "layers",
+			DiffIDs: []digest.Digest{layerDesc.Digest},
+		},
+	}
+
+	var err error
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("marshalling metadata: %w", err)
+	}
+	defDesc := content.NewDescriptorFromBytes(configMediaType, configBytes)
+
+	err = pushDescriptorIfNotExists(ctx, target, defDesc, bytes.NewReader(configBytes))
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing config descriptor: %w", err)
+	}
+	return defDesc, nil
 }
