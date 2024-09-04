@@ -269,7 +269,7 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestJson)
 	manifestDesc.Platform = &ocispec.Platform{
 		Architecture: arch,
-		OS:           "linux",
+		OS:           ebpfOS,
 	}
 	manifestDesc.Annotations = manifest.Annotations
 
