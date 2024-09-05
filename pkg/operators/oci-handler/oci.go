@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +41,7 @@ const (
 	disallowPulling         = "disallow-pulling"
 	pullParam               = "pull"
 	pullSecret              = "pull-secret"
+	annotate                = "annotate"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
 	allowedGadgets          = "allowed-gadgets"
@@ -129,6 +131,14 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Title:       "Pull secret",
 			Description: "Secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
+		},
+		{
+			Key:   annotate,
+			Title: "Add annotations",
+			Description: "Add annotations to datasources or fields. Use a comma-separated list in the formats:\n" +
+				"  'datasource:annotation=value' to add an annotation to a datasource.\n" +
+				"  'datasource.field:annotation=value' to add an annotation to the field of a datasource\n",
+			TypeHint: api.TypeStringSlice,
 		},
 	}
 }
@@ -262,6 +272,37 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	err = viper.ReadConfig(bytes.NewReader(metadata))
 	if err != nil {
 		return fmt.Errorf("unmarshalling metadata: %w", err)
+	}
+
+	for _, ann := range o.ociParams.Get(annotate).AsStringSlice() {
+		if len(ann) == 0 {
+			continue
+		}
+		annInfo := strings.SplitN(ann, ":", 2)
+		if len(annInfo) != 2 {
+			return fmt.Errorf("invalid annotation %q", ann)
+		}
+
+		annotation := strings.SplitN(annInfo[1], "=", 2)
+		if len(annotation) != 2 {
+			return fmt.Errorf("invalid annotation %q", ann)
+		}
+
+		subject := strings.SplitN(annInfo[0], ".", 2)
+		switch len(subject) {
+		case 1:
+			// data source
+			current := viper.GetStringMapString("datasources." + annInfo[0] + ".annotations")
+			current[annotation[0]] = annotation[1]
+			viper.Set("datasources."+subject[0]+".annotations", current)
+			log.Debugf("ds annotation %q added", ann)
+		case 2:
+			// field
+			current := viper.GetStringMapString("datasources." + subject[0] + ".fields." + subject[1] + ".annotations")
+			current[annotation[0]] = annotation[1]
+			viper.Set("datasources."+subject[0]+".fields."+subject[1]+".annotations", current)
+			log.Debugf("field annotation %q added", ann)
+		}
 	}
 
 	gadgetCtx.SetVar("config", viper)
