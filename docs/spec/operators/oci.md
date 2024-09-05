@@ -72,6 +72,7 @@ Default: `true`
 
 Specify when the gadget image should be pulled
 Possible Values:
+
 - `always`: Always pull the gadget image.
 - `missing`: Pull the gadget image only if missing.
 - `never`: Never pull the gadget image.
@@ -85,3 +86,12 @@ Default: `missing`
 Secret to use when pulling the gadget image
 
 Fully qualified name: `operator.oci.pull-secret`
+
+### `annotate`
+
+Add annotations to datasources or fields. Use a comma-separated list in the formats:
+
+- `datasource:annotation=value` to add an annotation to a datasource
+- `datasource.field:annotation=value` to add an annotation to the field of a datasource
+
+Fully qualified name: `operator.oci.annotate`
