@@ -1,0 +1,290 @@
+---
+title: profile_tcprtt
+sidebar_position: 40
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# profile_tcprtt
+
+The `profile_tcprtt` gadget generates a histogram distribution of the TCP
+connections' Round-Trip Time (RTT). The RTT values used to create the histogram
+are collected from [the smoothed
+RTT](https://github.com/torvalds/linux/blob/v5.11/include/linux/tcp.h#L258)
+information already provided by the Linux kernel for the TCP sockets.
+
+The histogram considers only the TCP connections that have been already
+established, so it does not take into account the connection phase (3-way TCP
+Handshake). If it is what you are looking for, please check the latency
+information the `trace_tcpconnect` gadget provides. See further information
+in the [trace_tcpconnect documentation](trace_tcpconnect.mdx).
+
+The histogram shows the number of TCP RTT operations (`count` column) that lie in
+the latency range `interval-start` -> `interval-end` (`µs` column), which,
+as the columns name indicates, is given in microseconds.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Run the gadget in a terminal:
+
+        ```bash
+        $ kubectl gadget run profile_tcprtt:latest --node minikube-docker
+        ```
+
+        It will start to display the TCP RTT latency distribution as follows:
+
+        ```bash
+        latency
+                µs               : count    distribution
+                 0 -> 1          : 0        |                                        |
+                 1 -> 2          : 0        |                                        |
+                 2 -> 4          : 0        |                                        |
+                 4 -> 8          : 17       |******************************          |
+                 8 -> 16         : 22       |****************************************|
+                16 -> 32         : 18       |********************************        |
+                32 -> 64         : 17       |******************************          |
+                64 -> 128        : 4        |*******                                 |
+               128 -> 256        : 0        |                                        |
+               256 -> 512        : 0        |                                        |
+               512 -> 1024       : 2        |***                                     |
+              1024 -> 2048       : 0        |                                        |
+              2048 -> 4096       : 1        |*                                       |
+              4096 -> 8192       : 5        |*********                               |
+              8192 -> 16384      : 16       |*****************************           |
+             16384 -> 32768      : 0        |                                        |
+             32768 -> 65536      : 0        |                                        |
+             65536 -> 131072     : 0        |                                        |
+            131072 -> 262144     : 0        |                                        |
+            262144 -> 524288     : 0        |                                        |
+            524288 -> 1048576    : 0        |                                        |
+           1048576 -> 2097152    : 0        |                                        |
+           2097152 -> 4194304    : 0        |                                        |
+           4194304 -> 8388608    : 0        |                                        |
+           8388608 -> 16777216   : 0        |                                        |
+          16777216 -> 33554432   : 0        |                                        |
+          33554432 -> 67108864   : 0        |                                        |
+        ```
+
+        Now, let's create an nginx server we can query:
+
+        ```bash
+        # Start by creating and nginx server
+        $ kubectl create service nodeport nginx --tcp=80:80
+        $ kubectl create deployment nginx --image=nginx
+
+        # And then, create a pod to generate some traffic with the server:
+        $ kubectl run -ti --privileged --image wbitt/network-multitool myclientpod -- bash
+        # curl nginx
+        # curl nginx
+        ```
+
+        Using the profile_tcprtt` gadget, we can generate another histogram to analyse the TCP RTT with this load:
+
+        ```bash
+        # Run the gadget again
+        $ kubectl gadget run profile_tcprtt:latest --node minikube-docker
+        latency
+                µs               : count    distribution
+                 0 -> 1          : 0        |                                        |
+                 1 -> 2          : 0        |                                        |
+                 2 -> 4          : 0        |                                        |
+                 4 -> 8          : 6        |********                                |
+                 8 -> 16         : 5        |******                                  |
+                16 -> 32         : 15       |********************                    |
+                32 -> 64         : 9        |************                            |
+                64 -> 128        : 15       |********************                    |
+               128 -> 256        : 0        |                                        |
+               256 -> 512        : 0        |                                        |
+               512 -> 1024       : 0        |                                        |
+              1024 -> 2048       : 0        |                                        |
+              2048 -> 4096       : 4        |*****                                   |
+              4096 -> 8192       : 30       |****************************************|
+              8192 -> 16384      : 19       |*************************               |
+             16384 -> 32768      : 0        |                                        |
+             32768 -> 65536      : 0        |                                        |
+             65536 -> 131072     : 0        |                                        |
+            131072 -> 262144     : 0        |                                        |
+            262144 -> 524288     : 0        |                                        |
+            524288 -> 1048576    : 0        |                                        |
+           1048576 -> 2097152    : 0        |                                        |
+           2097152 -> 4194304    : 0        |                                        |
+           4194304 -> 8388608    : 0        |                                        |
+           8388608 -> 16777216   : 0        |                                        |
+          16777216 -> 33554432   : 0        |                                        |
+          33554432 -> 67108864   : 0        |                                        |
+        ```
+
+        Now, let's use the [network emulator](https://wiki.linuxfoundation.org/networking/netem) to introduce some random delay to the packets and increase indirectly the RTT:
+
+        ```bash
+        # tc qdisc add dev eth0 root netem delay 50ms 50ms 25%
+        # curl nginx
+        # curl nginx
+        ```
+
+        Now the average RTT value of the new histogram increased:
+
+        ```bash
+        $ kubectl gadget run profile_tcprtt:latest --node minikube-docker
+        latency
+                µs               : count    distribution
+                 0 -> 1          : 0        |                                        |
+                 1 -> 2          : 0        |                                        |
+                 2 -> 4          : 0        |                                        |
+                 4 -> 8          : 23       |********************                    |
+                 8 -> 16         : 40       |***********************************     |
+                16 -> 32         : 18       |****************                        |
+                32 -> 64         : 40       |***********************************     |
+                64 -> 128        : 34       |******************************          |
+               128 -> 256        : 10       |********                                |
+               256 -> 512        : 10       |********                                |
+               512 -> 1024       : 3        |**                                      |
+              1024 -> 2048       : 33       |*****************************           |
+              2048 -> 4096       : 27       |************************                |
+              4096 -> 8192       : 29       |*************************               |
+              8192 -> 16384      : 45       |****************************************|
+             16384 -> 32768      : 0        |                                        |
+             32768 -> 65536      : 0        |                                        |
+             65536 -> 131072     : 0        |                                        |
+            131072 -> 262144     : 0        |                                        |
+            262144 -> 524288     : 0        |                                        |
+            524288 -> 1048576    : 0        |                                        |
+           1048576 -> 2097152    : 0        |                                        |
+           2097152 -> 4194304    : 0        |                                        |
+           4194304 -> 8388608    : 0        |                                        |
+           8388608 -> 16777216   : 0        |                                        |
+          16777216 -> 33554432   : 0        |                                        |
+          33554432 -> 67108864   : 0        |                                        |
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Run the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run profile_tcprtt:latest
+        ```
+
+        Then, start a container and download a web page:
+
+        ```bash
+        $ docker run -ti --rm --cap-add NET_ADMIN --name=netem wbitt/network-multitool -- /bin/bash
+        # wget 1.1.1.1
+        ```
+
+        We can see we have some latency now:
+
+        ```bash
+        latency
+                µs               : count    distribution
+                 0 -> 1          : 0        |                                        |
+                 1 -> 2          : 0        |                                        |
+                 2 -> 4          : 0        |                                        |
+                 4 -> 8          : 39       |***                                     |
+                 8 -> 16         : 121      |**********                              |
+                16 -> 32         : 127      |***********                             |
+                32 -> 64         : 136      |************                            |
+                64 -> 128        : 243      |*********************                   |
+               128 -> 256        : 142      |************                            |
+               256 -> 512        : 64       |*****                                   |
+               512 -> 1024       : 81       |*******                                 |
+              1024 -> 2048       : 104      |*********                               |
+              2048 -> 4096       : 207      |******************                      |
+              4096 -> 8192       : 237      |*********************                   |
+              8192 -> 16384      : 447      |****************************************|
+             16384 -> 32768      : 7        |                                        |
+             32768 -> 65536      : 0        |                                        |
+             65536 -> 131072     : 0        |                                        |
+            131072 -> 262144     : 0        |                                        |
+            262144 -> 524288     : 0        |                                        |
+            524288 -> 1048576    : 0        |                                        |
+           1048576 -> 2097152    : 0        |                                        |
+           2097152 -> 4194304    : 0        |                                        |
+           4194304 -> 8388608    : 0        |                                        |
+           8388608 -> 16777216   : 0        |                                        |
+          16777216 -> 33554432   : 0        |                                        |
+          33554432 -> 67108864   : 0        |                                        |
+        ```
+
+        Now, let's introduce some random delay to the packets to increase indirectly the RTT using the [network emulator](https://wiki.linuxfoundation.org/networking/netem):
+
+        ```bash
+        # tc qdisc add dev eth0 root netem delay 50ms 50ms 25%
+        # wget 1.1.1.1
+        ```
+
+        We can see the latency increased:
+
+        ```bash
+        latency
+                µs               : count    distribution
+                 0 -> 1          : 0        |                                        |
+                 1 -> 2          : 0        |                                        |
+                 2 -> 4          : 0        |                                        |
+                 4 -> 8          : 6        |*                                       |
+                 8 -> 16         : 36       |*******                                 |
+                16 -> 32         : 65       |*************                           |
+                32 -> 64         : 75       |***************                         |
+                64 -> 128        : 162      |********************************        |
+               128 -> 256        : 72       |**************                          |
+               256 -> 512        : 44       |********                                |
+               512 -> 1024       : 47       |*********                               |
+              1024 -> 2048       : 97       |*******************                     |
+              2048 -> 4096       : 143      |****************************            |
+              4096 -> 8192       : 153      |******************************          |
+              8192 -> 16384      : 199      |****************************************|
+             16384 -> 32768      : 9        |*                                       |
+             32768 -> 65536      : 116      |***********************                 |
+             65536 -> 131072     : 0        |                                        |
+            131072 -> 262144     : 0        |                                        |
+            262144 -> 524288     : 0        |                                        |
+            524288 -> 1048576    : 0        |                                        |
+           1048576 -> 2097152    : 0        |                                        |
+           2097152 -> 4194304    : 0        |                                        |
+           4194304 -> 8388608    : 0        |                                        |
+           8388608 -> 16777216   : 0        |                                        |
+          16777216 -> 33554432   : 0        |                                        |
+          33554432 -> 67108864   : 0        |                                        |
+        ```
+    </TabItem>
+</Tabs>
+
+Congratulations! You reached the end of this guide!
+You can clean up the resources created during this guide by running the following commands:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete service nginx
+        $ kubectl delete deployment nginx
+        $ kubectl delete pod myclientpod
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f netem
+        ```
+    </TabItem>
+</Tabs>

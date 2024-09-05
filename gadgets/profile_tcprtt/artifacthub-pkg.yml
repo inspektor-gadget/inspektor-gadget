@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: v0.31.0
+name: "profile tcprtt"
+category: monitoring-logging
+displayName: "profile tcprtt"
+createdAt: "2024-08-12T14:04:40Z"
+digest: "2024-08-12T14:04:40Z"
+description: "Profile TCP connections' Round-Trip Time (RTT)"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/profile_tcprtt/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_tcprtt"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest
+    ```
+provider:
+    name: Inspektor Gadget
