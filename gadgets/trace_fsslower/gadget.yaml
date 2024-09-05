@@ -1,0 +1,276 @@
+name: trace fsslower
+description: Trace open, read, write and fsync operations slower than a threshold
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_fsslower
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_fsslower
+datasources:
+  malloc:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      timestamp:
+        annotations:
+          template: timestamp
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      tid:
+        annotations:
+          description: Thread ID
+          template: pid
+      uid:
+        annotations:
+          description: User ID
+          template: uid
+          columns.hidden: true
+      gid:
+        annotations:
+          description: Group ID
+          template: uid
+          columns.hidden: true
+      delta_us:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.width: 8
+          columns.alignment: right
+      file:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.width:: 48
+      offset:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.width: 8
+          columns.alignment: right
+      size:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.width: 8
+          columns.alignment: right
+      op_raw:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.hidden: true
+      op:
+        annotations:
+          description: 'TODO: Fill field description'
+          columns.maxwidth: 10
+          columns.width: 10
+params:
+  ebpf:
+    min_lat_ms:
+      key: min
+      alias: m
+      title: Minimum Latency
+      defaultValue: "10"
+      description: Minimum latency in ms to trace
+  custom:
+    filesystem:
+      key: filesystem
+      defaultValue: ext4
+      description: Filesystem to trace
+      title: Filesystem
+      alias: f
+      values:
+        ext4:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: ext4_file_read_iter
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: ext4_file_read_iter
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: ext4_file_write_iter
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: ext4_file_write_iter
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: ext4_file_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: ext4_file_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: ext4_sync_file
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: ext4_sync_file
+              ig_fssl_statfs_e:
+                annotations:
+                  attach_to: ext4_statfs
+              ig_fssl_statfs_x:
+                annotations:
+                  attach_to: ext4_statfs
+        btrfs:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: btrfs_file_read_iter
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: btrfs_file_read_iter
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: btrfs_file_write_iter
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: btrfs_file_write_iter
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: btrfs_file_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: btrfs_file_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: btrfs_sync_file
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: btrfs_sync_file
+              ig_fssl_statfs_e:
+                annotations:
+                  attach_to: btrfs_statfs
+              ig_fssl_statfs_x:
+                annotations:
+                  attach_to: btrfs_statfs
+        fuse:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: fuse_file_read_iter
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: fuse_file_read_iter
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: fuse_file_write_iter
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: fuse_file_write_iter
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: fuse_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: fuse_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: fuse_fsync
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: fuse_fsync
+              #TODO: missing statfs?
+        nfs:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: nfs_file_read
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: nfs_file_read
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: nfs_file_write
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: nfs_file_write
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: nfs_file_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: nfs_file_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: nfs_file_fsync
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: nfs_file_fsync
+              ig_fssl_statfs_e:
+                annotations:
+                  attach_to: nfs_statfs
+              ig_fssl_statfs_x:
+                annotations:
+                  attach_to: nfs_statfs
+        ntfs3:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: ntfs_file_read_iter
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: ntfs_file_read_iter
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: ntfs_file_write_iter
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: ntfs_file_write_iter
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: ntfs_file_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: ntfs_file_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: generic_file_fsync
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: generic_file_fsync
+              #TODO: missing statfs?
+        xfs:
+          applyConfig:
+            programs:
+              ig_fssl_read_e:
+                annotations:
+                  attach_to: xfs_file_read_iter
+              ig_fssl_read_x:
+                annotations:
+                  attach_to: xfs_file_read_iter
+              ig_fssl_wr_e:
+                annotations:
+                  attach_to: xfs_file_write_iter
+              ig_fssl_wr_x:
+                annotations:
+                  attach_to: xfs_file_write_iter
+              ig_fssl_open_e:
+                annotations:
+                  attach_to: xfs_file_open
+              ig_fssl_open_x:
+                annotations:
+                  attach_to: xfs_file_open
+              ig_fssl_sync_e:
+                annotations:
+                  attach_to: xfs_file_fsync
+              ig_fssl_sync_x:
+                annotations:
+                  attach_to: xfs_file_fsync
+              ig_fssl_statfs_e:
+                annotations:
+                  attach_to: xfs_fs_statfs
+              ig_fssl_statfs_x:
+                annotations:
+                  attach_to: xfs_fs_statfs
+#  target_pid:
+#    key: target_pid
+#    defaultValue: ""
+#    description: 'TODO: Fill parameter description'
