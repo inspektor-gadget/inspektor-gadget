@@ -194,6 +194,11 @@ func (i *ebpfInstance) loadSpec() error {
 	if err != nil {
 		return fmt.Errorf("loading spec: %w", err)
 	}
+
+	if spec.Types == nil {
+		return fmt.Errorf("missing types in ebpf spec")
+	}
+
 	i.collectionSpec = spec
 	return nil
 }
