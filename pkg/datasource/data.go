@@ -516,10 +516,6 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
 
-	if _, ok := ds.fieldMap[name]; ok {
-		return nil, fmt.Errorf("field %q already exists", name)
-	}
-
 	nf := &field{
 		Name:        name,
 		FullName:    name,
@@ -529,6 +525,19 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	}
 	for _, opt := range opts {
 		opt(nf)
+	}
+
+	if FieldFlagHasParent.In(nf.Flags) {
+		// resolve fullname
+		resolved, err := resolveNames(nf.Parent, ds.fields, 0)
+		if err != nil {
+			return nil, fmt.Errorf("resolving parent field %q: %w", nf.Name, err)
+		}
+		nf.FullName = resolved + "." + name
+	}
+
+	if _, ok := ds.fieldMap[nf.FullName]; ok {
+		return nil, fmt.Errorf("field %q already exists", name)
 	}
 
 	// Reserve new payload for non-empty fields

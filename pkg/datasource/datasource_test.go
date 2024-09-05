@@ -741,6 +741,34 @@ func TestDataSourceResizeArray(t *testing.T) {
 	require.Equal(t, values[:1], valuesAfterResize)
 }
 
+func TestSiblings(t *testing.T) {
+	ds, err := New(TypeArray, "events")
+	require.NoError(t, err)
+	parent, err := ds.AddField("parent", api.Kind_Invalid, WithFlags(FieldFlagContainer|FieldFlagEmpty))
+	require.NoError(t, err)
+	child1, err := parent.AddSubField("child1", api.Kind_Int8)
+	require.NoError(t, err)
+	child2, err := ds.AddField("child2", api.Kind_Int8, WithSameParentAs(child1))
+	require.NoError(t, err)
+	require.NotNil(t, child1.Parent())
+	require.NotNil(t, child2.Parent())
+	require.Equal(t, child1.Parent().(*fieldAccessor).f, child2.Parent().(*fieldAccessor).f)
+	require.Equal(t, "parent.child1", child1.(*fieldAccessor).f.FullName)
+	require.Equal(t, "parent.child2", child2.(*fieldAccessor).f.FullName)
+}
+
+func TestSiblingsRoot(t *testing.T) {
+	ds, err := New(TypeArray, "events")
+	require.NoError(t, err)
+	child1, err := ds.AddField("child1", api.Kind_Int8)
+	require.NoError(t, err)
+	child2, err := ds.AddField("child2", api.Kind_Int8, WithSameParentAs(child1))
+	require.NoError(t, err)
+	require.NotNil(t, ds.GetField("child2"))
+	require.Equal(t, "child1", child1.(*fieldAccessor).f.FullName)
+	require.Equal(t, "child2", child2.(*fieldAccessor).f.FullName)
+}
+
 type dummyField struct {
 	name   string
 	size   uint32
