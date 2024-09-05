@@ -483,7 +483,7 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 			continue
 		}
 
-		fieldConfig := fields.Sub(field.Name)
+		fieldConfig := fields.Sub(field.FullName)
 		if fieldConfig == nil {
 			continue
 		}
