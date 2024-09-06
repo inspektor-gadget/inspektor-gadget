@@ -618,9 +618,6 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 					metricsType = MetricTypeCounter
 				} else if f.HasAnyTagsOf("type:gadget_gauge__u32", "type:gadget_gauge__u64") {
 					metricsType = MetricTypeGauge
-				} else if f.HasAnyTagsOf("role:key") {
-					// This is probably coming from the key of an eBPF map
-					metricsType = MetricTypeKey
 				}
 			}
 
