@@ -1,6 +1,7 @@
 module github.com/inspektor-gadget/inspektor-gadget
 
 go 1.22.7
+toolchain go1.23.1
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
@@ -72,7 +73,7 @@ require (
 	github.com/containerd/errdefs v0.1.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/golang/protobuf v1.5.4
-	github.com/gopacket/gopacket v1.2.0
+	github.com/gopacket/gopacket v1.3.0
 	github.com/sigstore/sigstore v1.8.9
 	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.8.0
