@@ -310,3 +310,17 @@ Parameters:
 
 Return value:
 - The value of the parameter.
+
+### Config
+
+#### `setConfig(key string, u64 val, u32 kind) uint32`
+
+Sets the value of key within the gadget's configuration (gadget.yaml).
+
+Parameters:
+- `key` (string): Key to set.
+- `val` (u64): Value to set.
+- `kind` (u32): Kind of `val`.
+
+Return value:
+- 0 in case of success, 1 otherwise.

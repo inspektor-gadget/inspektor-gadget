@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	orasoci "oras.land/oras-go/v2/content/oci"
@@ -379,4 +380,41 @@ func TestWasmParams(t *testing.T) {
 	}
 	err = runtime.RunGadget(gadgetCtx, nil, params)
 	require.NoError(t, err, "running gadget")
+}
+
+func TestConfig(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/config.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"config:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	params := map[string]string{
+		"operator.oci.verify-image": "false",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
+
+	cfg, ok := gadgetCtx.GetVar("config")
+	require.True(t, ok, "missing configuration")
+	v, ok := cfg.(*viper.Viper)
+	require.True(t, ok, "invalid configuration format")
+
+	require.Equal(t, "myvalue", v.GetString("foo.bar.zas"))
 }
