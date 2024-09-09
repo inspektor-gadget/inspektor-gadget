@@ -38,56 +38,63 @@ const (
 )
 
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
+	attachTo := p.AttachTo
+
+	if attachToCfg := i.config.GetString("programs." + p.Name + ".attach_to"); attachToCfg != "" {
+		i.logger.Debugf("Overriding attachTo with %q for program %q", attachToCfg, p.Name)
+		attachTo = attachToCfg
+	}
+
 	switch p.Type {
 	case ebpf.Kprobe:
 		switch {
 		case strings.HasPrefix(p.SectionName, kprobePrefix):
-			i.logger.Debugf("Attaching kprobe %q to %q", p.Name, p.AttachTo)
-			return link.Kprobe(p.AttachTo, prog, nil)
+			i.logger.Debugf("Attaching kprobe %q to %q", p.Name, attachTo)
+			return link.Kprobe(attachTo, prog, nil)
 		case strings.HasPrefix(p.SectionName, kretprobePrefix):
-			i.logger.Debugf("Attaching kretprobe %q to %q", p.Name, p.AttachTo)
-			return link.Kretprobe(p.AttachTo, prog, nil)
+			i.logger.Debugf("Attaching kretprobe %q to %q", p.Name, attachTo)
+			return link.Kretprobe(attachTo, prog, nil)
 		case strings.HasPrefix(p.SectionName, uprobePrefix) ||
 			strings.HasPrefix(p.SectionName, uretprobePrefix) ||
 			strings.HasPrefix(p.SectionName, usdtPrefix):
 			uprobeTracer := i.uprobeTracers[p.Name]
 			switch strings.Split(p.SectionName, "/")[0] {
 			case "uprobe":
-				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUprobe, p.AttachTo, prog)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUprobe, attachTo, prog)
 			case "uretprobe":
-				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUretprobe, p.AttachTo, prog)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUretprobe, attachTo, prog)
 			case "usdt":
-				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUSDT, p.AttachTo, prog)
+				return nil, uprobeTracer.AttachProg(p.Name, uprobetracer.ProgUSDT, attachTo, prog)
 			}
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q", p.SectionName, p.Name)
 	case ebpf.TracePoint:
-		i.logger.Debugf("Attaching tracepoint %q to %q", p.Name, p.AttachTo)
-		parts := strings.Split(p.AttachTo, "/")
+		i.logger.Debugf("Attaching tracepoint %q to %q", p.Name, attachTo)
+		parts := strings.Split(attachTo, "/")
 		return link.Tracepoint(parts[0], parts[1], prog, nil)
 	case ebpf.SocketFilter:
-		i.logger.Debugf("Attaching socket filter %q to %q", p.Name, p.AttachTo)
+		i.logger.Debugf("Attaching socket filter %q to %q", p.Name, attachTo)
 		networkTracer := i.networkTracers[p.Name]
 		return nil, networkTracer.AttachProg(prog)
 	case ebpf.Tracing:
 		switch {
 		case strings.HasPrefix(p.SectionName, iterPrefix):
-			i.logger.Debugf("Attaching iter %q to %q", p.Name, p.AttachTo)
-			switch p.AttachTo {
+			i.logger.Debugf("Attaching iter %q to %q", p.Name, attachTo)
+			switch attachTo {
 			case "task", "task_file", "tcp", "udp", "ksym":
 				return link.AttachIter(link.IterOptions{
 					Program: prog,
 				})
 			}
-			return nil, fmt.Errorf("unsupported iter type %q", p.AttachTo)
+			return nil, fmt.Errorf("unsupported iter type %q", attachTo)
 		case strings.HasPrefix(p.SectionName, fentryPrefix):
-			i.logger.Debugf("Attaching fentry %q to %q", p.Name, p.AttachTo)
+			i.logger.Debugf("Attaching fentry %q to %q", p.Name, attachTo)
 			return link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFEntry,
 			})
 		case strings.HasPrefix(p.SectionName, fexitPrefix):
-			i.logger.Debugf("Attaching fexit %q to %q", p.Name, p.AttachTo)
+			i.logger.Debugf("Attaching fexit %q to %q", p.Name, attachTo)
 			return link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFExit,
@@ -95,9 +102,9 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q as type ebpf.Tracing", p.SectionName, p.Name)
 	case ebpf.RawTracepoint:
-		i.logger.Debugf("Attaching raw tracepoint %q to %q", p.Name, p.AttachTo)
+		i.logger.Debugf("Attaching raw tracepoint %q to %q", p.Name, attachTo)
 		return link.AttachRawTracepoint(link.RawTracepointOptions{
-			Name:    p.AttachTo,
+			Name:    attachTo,
 			Program: prog,
 		})
 	case ebpf.SchedCLS:
@@ -118,7 +125,7 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		i.logger.Debugf("Attaching sched_cls %q", p.Name)
 		return nil, handler.AttachProg(prog)
 	case ebpf.LSM:
-		i.logger.Debugf("Attaching LSM %q to %q", p.Name, p.AttachTo)
+		i.logger.Debugf("Attaching LSM %q to %q", p.Name, attachTo)
 		return link.AttachLSM(link.LSMOptions{
 			Program: prog,
 		})
