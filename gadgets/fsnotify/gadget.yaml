@@ -61,10 +61,6 @@ datasources:
           columns.hidden: "true"
           description: 'wd from inotify_event: watch descriptor returned by a previous
             call to inotify_add_watch'
-      mntns_id:
-        annotations:
-          description: Tracer mount namespace inode id
-          template: ns
       name:
         annotations:
           description: filename within a watched directory
@@ -80,36 +76,108 @@ datasources:
       timestamp_raw:
         annotations:
           columns.hidden: "true"
-      tracee_comm:
+      tracee:
+        annotations:
+          columns.hidden: "true"
+      tracee.comm:
         annotations:
           description: Tracee process name
           template: comm
-      tracee_mntns_id:
+      tracee.pcomm:
         annotations:
-          description: Tracee mount namespace inode id
-          template: ns
-      tracee_pid:
+          columns.hidden: "true"
+          description: Tracee parent process name
+          template: pcomm
+      tracee.pid:
         annotations:
           description: Tracee process ID
           template: pid
-      tracee_tid:
+      tracee.ppid:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee parent process ID
+          template: pid
+      tracee.tid:
         annotations:
           columns.hidden: "true"
           description: Tracee thread ID
           template: pid
-      tracer_comm:
+      tracee_gid_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee group ID
+          template: uid
+          uidgidresolver.target: tracee_group
+      tracee_group:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee group name
+      tracee_mntns_id:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee mount namespace inode id
+          template: ns
+      tracee_uid_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee user ID
+          template: uid
+          uidgidresolver.target: tracee_user
+      tracee_user:
+        annotations:
+          columns.hidden: "true"
+          description: Tracee user name
+      tracer:
+        annotations:
+          columns.hidden: "true"
+      tracer.comm:
         annotations:
           description: Tracer process name
           template: comm
-      tracer_pid:
+      tracer.pcomm:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer parent process name
+          template: pcomm
+      tracer.pid:
         annotations:
           description: Tracer process ID
           template: pid
-      tracer_tid:
+      tracer.ppid:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer parent process ID
+          template: pid
+      tracer.tid:
         annotations:
           columns.hidden: "true"
           description: Tracer thread ID
           template: pid
+      tracer_gid_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer group ID
+          template: uid
+          uidgidresolver.target: tracer_group
+      tracer_group:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer group name
+      tracer_mntns_id:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer mount namespace inode id
+          template: ns
+      tracer_uid_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer user ID
+          template: uid
+          uidgidresolver.target: tracer_user
+      tracer_user:
+        annotations:
+          columns.hidden: "true"
+          description: Tracer user name
       type:
         annotations:
           description: 'Type of event: inotify or fanotify'

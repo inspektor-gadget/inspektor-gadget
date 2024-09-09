@@ -32,18 +32,31 @@ enum fa_response {
 	// FAN_AUDIT and FAN_INFO not handled
 };
 
+struct process {
+	__u32 ppid;
+	__u32 pid;
+	__u32 tid;
+	char comm[TASK_COMM_LEN];
+	char pcomm[TASK_COMM_LEN];
+};
+
 struct enriched_event {
 	enum type type;
 
-	__u32 tracee_pid;
-	__u32 tracee_tid;
-	__u8 tracee_comm[TASK_COMM_LEN];
-	__u64 tracee_mntns_id;
+	struct process tracee;
+	struct process tracer;
 
-	__u32 tracer_pid;
-	__u32 tracer_tid;
-	__u8 tracer_comm[TASK_COMM_LEN];
-	gadget_mntns_id mntns_id;
+	// mntns_id cannot yet be part of struct process because Inspektor Gadget
+	// only support one mntns_id per event.
+	gadget_mntns_id tracee_mntns_id;
+	__u64 tracer_mntns_id;
+
+	// uids and gids cannot yet be part of struct process because the
+	// UidGidResolver does not yet support those fields in an inner struct
+	gadget_uid tracee_uid_raw;
+	gadget_gid tracee_gid_raw;
+	gadget_uid tracer_uid_raw;
+	gadget_gid tracer_gid_raw;
 
 	__u32 prio;
 
@@ -104,17 +117,23 @@ GADGET_PARAM(fanotify_only);
 
 struct gadget_event {
 	gadget_timestamp timestamp_raw;
+
 	enum type type_raw;
 
-	gadget_mntns_id mntns_id;
-	__u32 tracer_pid;
-	__u32 tracer_tid;
-	char tracer_comm[TASK_COMM_LEN];
+	struct process tracee;
+	struct process tracer;
 
-	__u32 tracee_mntns_id;
-	__u32 tracee_pid;
-	__u32 tracee_tid;
-	char tracee_comm[TASK_COMM_LEN];
+	// mntns_id cannot yet be part of struct process because Inspektor Gadget
+	// only support one mntns_id per event.
+	gadget_mntns_id tracee_mntns_id;
+	__u64 tracer_mntns_id;
+
+	// uids and gids cannot yet be part of struct process because the
+	// UidGidResolver does not yet support those fields in an inner struct
+	gadget_uid tracee_uid_raw;
+	gadget_gid tracee_gid_raw;
+	gadget_uid tracer_uid_raw;
+	gadget_gid tracer_gid_raw;
 
 	__u32 prio;
 
@@ -152,6 +171,21 @@ struct gadget_event {
 GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(fsnotify, events, gadget_event);
+
+static __always_inline void process_init(struct process *p, __u64 pid_tgid,
+					 struct task_struct *task)
+{
+	struct task_struct *parent;
+	p->pid = pid_tgid >> 32;
+	p->tid = (u32)pid_tgid;
+	bpf_get_current_comm(&p->comm, sizeof(p->comm));
+	parent = BPF_CORE_READ(task, real_parent);
+	if (parent != NULL) {
+		p->ppid = (pid_t)BPF_CORE_READ(parent, tgid);
+		bpf_probe_read_kernel(&p->pcomm, sizeof(p->pcomm),
+				      parent->comm);
+	}
+}
 
 // Probes for the tracees
 
@@ -211,7 +245,9 @@ SEC("kprobe/fsnotify_insert_event")
 int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 	       struct fsnotify_event *event)
 {
+	struct task_struct *task;
 	u64 pid_tgid;
+	u64 uid_gid;
 	struct enriched_event *ee;
 	struct fsnotify_insert_event_value *value;
 	struct fanotify_event *fae;
@@ -219,7 +255,9 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 	int name_len;
 	struct path *p = NULL;
 
+	task = (struct task_struct *)bpf_get_current_task();
 	pid_tgid = bpf_get_current_pid_tgid();
+	uid_gid = bpf_get_current_uid_gid();
 
 	if (tracee_pid && tracee_pid != pid_tgid >> 32)
 		return 0;
@@ -246,10 +284,10 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 	if (!ee)
 		return 0;
 
-	ee->tracee_pid = pid_tgid >> 32;
-	ee->tracee_tid = (u32)pid_tgid;
-	bpf_get_current_comm(&ee->tracee_comm, sizeof(ee->tracee_comm));
+	process_init(&ee->tracee, pid_tgid, task);
 	ee->tracee_mntns_id = gadget_get_mntns_id();
+	ee->tracee_uid_raw = (u32)uid_gid;
+	ee->tracee_gid_raw = (u32)(uid_gid >> 32);
 
 	ee->prio = BPF_CORE_READ(group, priority);
 
@@ -304,6 +342,10 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 							  get_path_str(p));
 
 			break;
+
+		default:
+			// Nothing to do
+			break;
 		}
 	}
 
@@ -314,7 +356,9 @@ SEC("kprobe/fsnotify_destroy_event")
 int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	       struct fsnotify_event *event)
 {
+	struct task_struct *task;
 	u64 pid_tgid;
+	u64 uid_gid;
 	struct fsnotify_insert_event_value *value;
 	struct fanotify_event *fae;
 	struct fanotify_perm_event *fpe;
@@ -346,6 +390,9 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	if (!gadget_event)
 		goto out;
 
+	task = (struct task_struct *)bpf_get_current_task();
+	uid_gid = bpf_get_current_uid_gid();
+
 	gadget_event->type_raw = fa_resp;
 	gadget_event->fa_type_raw = fa_type;
 	gadget_event->prio = BPF_CORE_READ(group, priority);
@@ -354,18 +401,14 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 
 	ee = bpf_map_lookup_elem(&enriched_fsnotify_events, &event);
 	if (ee) {
-		gadget_event->mntns_id = ee->mntns_id;
-		gadget_event->tracer_pid = ee->tracer_pid;
-		gadget_event->tracer_tid = ee->tracer_tid;
-		__builtin_memcpy(gadget_event->tracer_comm, ee->tracer_comm,
-				 TASK_COMM_LEN);
+		gadget_event->tracer_mntns_id = ee->tracer_mntns_id;
+		gadget_event->tracer = ee->tracer;
 	}
 
+	process_init(&gadget_event->tracee, pid_tgid, task);
 	gadget_event->tracee_mntns_id = gadget_get_mntns_id();
-	gadget_event->tracee_pid = pid_tgid >> 32;
-	gadget_event->tracee_tid = (u32)pid_tgid;
-	bpf_get_current_comm(&gadget_event->tracee_comm,
-			     sizeof(gadget_event->tracee_comm));
+	gadget_event->tracee_uid_raw = (u32)uid_gid;
+	gadget_event->tracee_gid_raw = (u32)(uid_gid >> 32);
 
 	bpf_probe_read_kernel_str(gadget_event->name, PATH_MAX,
 				  get_path_str(&fpe->path));
@@ -440,23 +483,24 @@ prepare_ee_for_fa_perm(struct enriched_event *ee, struct fsnotify_event *event,
 
 	fpe = container_of(fae, struct fanotify_perm_event, fae);
 
-	ee->tracer_pid = gadget_event->tracer_pid;
-	ee->tracer_tid = gadget_event->tracer_tid;
-	__builtin_memcpy(ee->tracer_comm, gadget_event->tracer_comm,
-			 TASK_COMM_LEN);
-	ee->mntns_id = gadget_event->mntns_id;
+	ee->tracer = gadget_event->tracer;
+	ee->tracer_mntns_id = gadget_event->tracer_mntns_id;
 }
 
 SEC("kretprobe/fsnotify_remove_first_event")
 int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 {
+	struct task_struct *task;
 	u64 pid_tgid;
+	u64 uid_gid;
 	struct fsnotify_group **group;
 	struct enriched_event *ee;
 	struct gadget_event *gadget_event;
 
 	// pid_tgid is the task owning the fsnotify fd
+	task = (struct task_struct *)bpf_get_current_task();
 	pid_tgid = bpf_get_current_pid_tgid();
+	uid_gid = bpf_get_current_uid_gid();
 
 	group = bpf_map_lookup_elem(&fsnotify_remove_first_event_ctx,
 				    &pid_tgid);
@@ -469,20 +513,17 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 
 	/* gadget_event data */
 	gadget_event->timestamp_raw = bpf_ktime_get_boot_ns();
-	gadget_event->mntns_id = gadget_get_mntns_id();
-	gadget_event->tracer_pid = pid_tgid >> 32;
-	gadget_event->tracer_tid = (u32)pid_tgid;
-	bpf_get_current_comm(&gadget_event->tracer_comm,
-			     sizeof(gadget_event->tracer_comm));
+
+	process_init(&gadget_event->tracer, pid_tgid, task);
+	gadget_event->tracer_mntns_id = gadget_get_mntns_id();
+	gadget_event->tracer_uid_raw = (u32)uid_gid;
+	gadget_event->tracer_gid_raw = (u32)(uid_gid >> 32);
 
 	ee = bpf_map_lookup_elem(&enriched_fsnotify_events, &event);
 	if (ee) {
 		gadget_event->type_raw = ee->type;
 
-		gadget_event->tracee_pid = ee->tracee_pid;
-		gadget_event->tracee_tid = ee->tracee_tid;
-		__builtin_memcpy(gadget_event->tracee_comm, ee->tracee_comm,
-				 TASK_COMM_LEN);
+		gadget_event->tracee = ee->tracee;
 		gadget_event->tracee_mntns_id = ee->tracee_mntns_id;
 
 		gadget_event->prio = ee->prio;
