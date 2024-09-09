@@ -287,6 +287,10 @@ func (i *wasmOperatorInstance) callGuestFunction(ctx context.Context, name strin
 	return nil
 }
 
+func (i *wasmOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPreStart")
+}
+
 func (i *wasmOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 	return i.callGuestFunction(gadgetCtx.Context(), "gadgetStart")
 }
@@ -309,6 +313,10 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	i.close(gadgetCtx)
 
 	return err
+}
+
+func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error {
+	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
 }
 
 func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {

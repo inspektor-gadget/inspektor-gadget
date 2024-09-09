@@ -37,14 +37,22 @@ fails. Currently only version 1 is supported and used. This function is mandator
 This function is called when initializing the gadget. In this phase the gadget
 can suscribe to data sources, create new fields, etc. This function is optional.
 
+### `gadgetPreStart`
+
+This function is called before the gadget is started. This fuction is optional.
+
 ### `gadgetStart`
 
 This function is called when the gadget is started. This fuction is optional.
 
-### `gadgegtStop`
+### `gadgetStop`
 
 This function is called when the gadget is stopped. It's used to clean up
 things. This function is optional.
+
+### `gadgetPostStop`
+
+This function is called after the the gadget is stopped. This function is optional.
 
 #### `malloc`
 

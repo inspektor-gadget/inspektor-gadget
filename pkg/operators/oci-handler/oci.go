@@ -349,6 +349,17 @@ func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
 	started := []operators.ImageOperatorInstance{}
 
 	for _, opInst := range o.imageOperatorInstances {
+		preStart, ok := opInst.(operators.PreStart)
+		if !ok {
+			continue
+		}
+		err := preStart.PreStart(gadgetCtx)
+		if err != nil {
+			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+		}
+	}
+
+	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
 		if err != nil {
 			// Stop all started operators
@@ -371,6 +382,18 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 			o.gadgetCtx.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
+
+	for _, opInst := range o.imageOperatorInstances {
+		postStop, ok := opInst.(operators.PostStop)
+		if !ok {
+			continue
+		}
+		err := postStop.PostStop(gadgetCtx)
+		if err != nil {
+			o.gadgetCtx.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
+		}
+	}
+
 	return nil
 }
 
