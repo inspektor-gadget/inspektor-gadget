@@ -32,8 +32,8 @@ struct ip_key_t {
 };
 
 struct traffic_t {
-	size_t sent;
-	size_t received;
+	gadget_counter__u32 sent;
+	gadget_counter__u32 received;
 };
 
 struct {
