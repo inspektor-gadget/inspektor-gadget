@@ -378,11 +378,9 @@ type OciHandlerInstance struct {
 	ociHandler             *ociHandler
 	gadgetCtx              operators.GadgetContext
 	imageOperatorInstances []operators.ImageOperatorInstance
-	dataOperatorInstances  []operators.DataOperatorInstance
 	extraParams            api.Params
 	paramValues            api.ParamValues
 	ociParams              *params.Params
-	paramValueMap          map[string]string
 }
 
 func (o *OciHandlerInstance) Name() string {
