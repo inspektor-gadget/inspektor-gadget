@@ -5,7 +5,7 @@ go 1.22.7
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.16.0
-	github.com/containerd/containerd v1.7.21
+	github.com/containerd/containerd v1.7.22
 	github.com/containerd/nri v0.6.1
 	github.com/containers/common v0.60.2
 	github.com/containers/image/v5 v5.32.2
