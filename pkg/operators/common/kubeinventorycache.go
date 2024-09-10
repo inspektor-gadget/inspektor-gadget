@@ -49,8 +49,10 @@ type inventoryCache struct {
 
 	factory informers.SharedInformerFactory
 
-	pods cachedmap.CachedMap[string, *v1.Pod]
-	svcs cachedmap.CachedMap[string, *v1.Service]
+	pods     cachedmap.CachedMap[string, *v1.Pod]
+	podsByIp cachedmap.CachedMap[string, *v1.Pod]
+	svcs     cachedmap.CachedMap[string, *v1.Service]
+	svcsByIp cachedmap.CachedMap[string, *v1.Service]
 
 	exit chan struct{}
 
@@ -99,9 +101,17 @@ func (cache *inventoryCache) Close() {
 		cache.pods.Close()
 		cache.pods = nil
 	}
+	if cache.podsByIp != nil {
+		cache.podsByIp.Close()
+		cache.podsByIp = nil
+	}
 	if cache.svcs != nil {
 		cache.svcs.Close()
 		cache.svcs = nil
+	}
+	if cache.svcsByIp != nil {
+		cache.svcsByIp.Close()
+		cache.svcsByIp = nil
 	}
 }
 
@@ -112,7 +122,9 @@ func (cache *inventoryCache) Start() {
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
 		cache.pods = cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second)
+		cache.podsByIp = cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second)
 		cache.svcs = cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second)
+		cache.svcsByIp = cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second)
 
 		cache.factory = informers.NewSharedInformerFactory(cache.clientset, informerResync)
 		cache.factory.Core().V1().Pods().Informer().AddEventHandler(cache)
@@ -149,9 +161,7 @@ func (cache *inventoryCache) GetPodByName(namespace string, name string) *v1.Pod
 }
 
 func (cache *inventoryCache) GetPodByIp(ip string) *v1.Pod {
-	pod, found := cache.pods.GetCmp(func(pod *v1.Pod) bool {
-		return pod.Status.PodIP == ip
-	})
+	pod, found := cache.podsByIp.Get(ip)
 	if !found {
 		return nil
 	}
@@ -171,9 +181,7 @@ func (cache *inventoryCache) GetSvcByName(namespace string, name string) *v1.Ser
 }
 
 func (cache *inventoryCache) GetSvcByIp(ip string) *v1.Service {
-	svc, found := cache.svcs.GetCmp(func(svc *v1.Service) bool {
-		return svc.Spec.ClusterIP == ip
-	})
+	svc, found := cache.svcsByIp.Get(ip)
 	if !found {
 		return nil
 	}
@@ -189,6 +197,9 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 			return
 		}
 		cache.pods.Add(key, o)
+		if ip := o.Status.PodIP; ip != "" {
+			cache.podsByIp.Add(ip, o)
+		}
 	case *v1.Service:
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
 		if err != nil {
@@ -196,6 +207,9 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 			return
 		}
 		cache.svcs.Add(key, o)
+		if ip := o.Spec.ClusterIP; ip != "" {
+			cache.svcsByIp.Add(ip, o)
+		}
 	default:
 		log.Warnf("OnAdd: unknown object type: %T", o)
 	}
@@ -210,6 +224,9 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 			return
 		}
 		cache.pods.Add(key, o)
+		if ip := o.Status.PodIP; ip != "" {
+			cache.podsByIp.Add(ip, o)
+		}
 	case *v1.Service:
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
 		if err != nil {
@@ -217,6 +234,9 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 			return
 		}
 		cache.svcs.Add(key, o)
+		if ip := o.Spec.ClusterIP; ip != "" {
+			cache.svcsByIp.Add(ip, o)
+		}
 	default:
 		log.Warnf("OnUpdate: unknown object type: %T", o)
 	}
@@ -231,6 +251,9 @@ func (cache *inventoryCache) OnDelete(obj any) {
 			return
 		}
 		cache.pods.Remove(key)
+		if ip := o.Status.PodIP; ip != "" {
+			cache.podsByIp.Remove(ip)
+		}
 	case *v1.Service:
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
 		if err != nil {
@@ -238,6 +261,9 @@ func (cache *inventoryCache) OnDelete(obj any) {
 			return
 		}
 		cache.svcs.Remove(key)
+		if ip := o.Spec.ClusterIP; ip != "" {
+			cache.svcsByIp.Remove(ip)
+		}
 	case k8sCache.DeletedFinalStateUnknown:
 		cache.OnDelete(o.Obj)
 	default:
