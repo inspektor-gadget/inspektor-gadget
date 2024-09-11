@@ -247,12 +247,12 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			returnError(err.Error())
 			return false
 		}
+		cli, err := wrapper.conns[0].client.RunGadget(context.Background())
+		if err != nil {
+			returnError(err.Error())
+			return false
+		}
 		go func() {
-			cli, err := wrapper.conns[0].client.RunGadget(context.Background())
-			if err != nil {
-				returnError(err.Error())
-				return
-			}
 			err = cli.Send(&api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}})
 			if err != nil {
 				returnError(err.Error())
@@ -324,7 +324,18 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			}
 			return
 		}()
-		return nil
+
+		ctrl := js.Global().Get("Object").New()
+		ctrl.Set("stop", js.FuncOf(func(this js.Value, args []js.Value) any {
+			err = cli.Send(&api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{}})
+			if err != nil {
+				returnError(err.Error())
+				return nil
+			}
+			return nil
+		}))
+
+		return ctrl
 	}))
 	return res
 }
