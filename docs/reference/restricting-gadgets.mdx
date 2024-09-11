@@ -7,8 +7,17 @@ description: How to restrict the gadgets that can be run
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-It is possible to limit the gadgets that can be run by using the
-`--allowed-gadgets` flag. By default, all gadgets are allowed.
+It is possible to limit the gadgets that can be run by using the `--allowed-gadgets` flag.
+With this flag, you can restrict running the gadgets using the following:
+1. [By digest](#by-digest),
+2. [By tag](#by-tag)
+3. Or [by using a prefix](#by-prefix), with a wildcard at the end, like `ghcr.io/inspektor-gadget/gadget/*`.
+
+By default, all gadgets are allowed, although other restrictions (like a signature check) could still keep them from running.
+
+### By digest
+
+You can restrict running gadgets by specifying the digest of the ones you want to run:
 
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
@@ -70,6 +79,157 @@ $ gadgetctl run trace_exec
 RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
 $ gadgetctl run trace_open
 Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f, ghcr.io/your_repo/gadget/your_gadget@sha256:digest_of_your_gadget
+$ gadgetctl run ghcr./io/your-repo/gadget/your_gadget
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+</TabItem>
+</Tabs>
+
+### By tag
+
+We also offer the possibility to restrict running by gadget tags:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+You can specify this option only at deploy time:
+
+```bash
+$ kubectl gadget deploy --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/your-repo/gadget/your_gadget:latest'
+...
+Inspektor Gadget successfully deployed
+
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_exec:latest
+K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNA… COMM            PID      TID PCOMM        PPID ARGS     K8S.NODE E… TIMESTAMP
+gadget           gadget-fdpxp     gadget           gadgettr…    131299   131299 runc       131281 /bin/ga… minikub…    2024-07-25T08:22:…
+gadget           gadget-fdpxp     gadget           gadgettr…    131298   131298 runc       131280 /bin/ga… minikub…    2024-07-25T08:22:…
+^C
+
+# As the name matches, the execution is allowed.
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_exec:v0.32.0
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/inspektor-gadget/gadget/trace_exec:v0.32.0 is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/your-repo/gadget/your_gadget:latest
+
+$ kubectl gadget run trace_open
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/your-repo/gadget/your_gadget:latest
+
+$ kubectl gadget run ghcr./io/your-repo/gadget/your_gadget:latest
+K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… TIMEST… PID     UID     GID     MNTNS_… ERR     FD      FLAGS   MODE    COMM   FNAME  K8S.N…
+gadget         gadget-8rcdz   gadget         500159… 134426  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+gadget         gadget-8rcdz   gadget         500159… 134427  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+^C
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+You can use the `--allowed-gadgets` flag at run time:
+
+```bash
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/inspektor-gadget/gadget/trace_open:latest' ghcr.io/inspektor-gadget/gadget/trace_exec:latest
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
+minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
+^C
+
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/inspektor-gadget/gadget/trace_open:latest' ghcr.io/inspektor-gadget/gadget/trace_open:latest
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+minikube-docker    kubelet         11713     11715         0         0  20 /sys/fs/cgroup/kubepods… --------…        2024-07-25T10:30:44…
+minikube-docker    kubelet         11713     11715         0         0  20 /proc/2136/fd            --------…        2024-07-25T10:30:44…
+^C
+
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/inspektor-gadget/gadget/trace_open:latest' ghcr.io/inspektor-gadget/gadget/trace_exec:v0.32.0
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/inspektor-gadget/gadget/trace_exec:v0.32.0 is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/inspektor-gadget/gadget/trace_open:latest
+
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/inspektor-gadget/gadget/trace_open:latest' trace_signal
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_signal is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/inspektor-gadget/gadget/trace_open:latest
+
+$ sudo ig run --allowed-gadgetss='ghcr.io/inspektor-gadget/gadget/trace_exec,ghcr.io/inspektor-gadget/gadget/trace_open' ghcr.io/your-repo/gadget/your-gadget
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/inspektor-gadget/gadget/trace_open:latest
+```
+</TabItem>
+<TabItem value="ig-daemon" label="ig daemon">
+You can specify these options only at start time:
+
+```bash
+$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/your-repo/gadget/your_gadget:latest'
+...
+# Switch to another terminal
+$ gadgetctl run trace_exec:latest
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+$ gadgetctl run trace_open
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: trace_open is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_exec:latest, ghcr.io/your-repo/gadget/your_gadget:latest
+$ gadgetctl run ghcr./io/your-repo/gadget/your_gadget:latest
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+</TabItem>
+</Tabs>
+
+### By prefix
+
+This can be used to allow all the gadgets from a specific repository.
+Let's see how you can use it:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+You can specify this option only at deploy time:
+
+```bash
+# Let's allow all the tracers from Inspektor Gadget repository and all the gadgets from your repository.
+$ kubectl gadget deploy --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_*,ghcr.io/your-repo/gadget/*'
+...
+Inspektor Gadget successfully deployed
+
+$ kubectl gadget run trace_exec
+K8S.NAMESPACE    K8S.PODNAME      K8S.CONTAINERNA… COMM            PID      TID PCOMM        PPID ARGS     K8S.NODE E… TIMESTAMP
+gadget           gadget-fdpxp     gadget           gadgettr…    131299   131299 runc       131281 /bin/ga… minikub…    2024-07-25T08:22:…
+gadget           gadget-fdpxp     gadget           gadgettr…    131298   131298 runc       131280 /bin/ga… minikub…    2024-07-25T08:22:…
+^C
+
+$ kubectl gadget run top_file
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: top_file is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_*, ghcr.io/your-repo/gadget/*
+
+$ kubectl gadget run ghcr./io/your-repo/gadget/your_gadget
+K8S.NAMESPACE  K8S.PODNAME    K8S.CONTAINER… TIMEST… PID     UID     GID     MNTNS_… ERR     FD      FLAGS   MODE    COMM   FNAME  K8S.N…
+gadget         gadget-8rcdz   gadget         500159… 134426  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+gadget         gadget-8rcdz   gadget         500159… 134427  0       0       402653… 0       5       0       0       runc:… /sys/… minik…
+^C
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+You can use the `--allowed-gadgets` flag at run time:
+
+```bash
+# Let's allow all the tracers and toppers from Inspektor Gadget repository.
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_*,ghcr.io/inspektor-gadget/gadget/top_*' trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+minikube-docker          iptables             137722        137722 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.902064…
+minikube-docker          ip6tables            137723        137723 kubelet             11713 /usr/sbin/i…     2024-07-25T10:30:21.904561…
+^C
+
+$ sudo ig run ---allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec,ghcr.io/inspektor-gadget/gadget/trace_open' trace_open
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+minikube-docker    kubelet         11713     11715         0         0  20 /sys/fs/cgroup/kubepods… --------…        2024-07-25T10:30:44…
+minikube-docker    kubelet         11713     11715         0         0  20 /proc/2136/fd            --------…        2024-07-25T10:30:44…
+^C
+
+$ sudo ig run --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec,ghcr.io/inspektor-gadget/gadget/trace_open' profile_blockio
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: profile_blockio is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_*, ghcr.io/inspektor-gadget/gadget/top_*
+
+$ sudo ig run --allowed-gadgetss='ghcr.io/inspektor-gadget/gadget/trace_exec,ghcr.io/inspektor-gadget/gadget/trace_open' ghcr.io/your-repo/gadget/your-gadget
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: ghcr.io/your-repo/gadget/your-gadget is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_*, ghcr.io/inspektor-gadget/gadget/top_*
+```
+</TabItem>
+<TabItem value="ig-daemon" label="ig daemon">
+You can specify these options only at start time:
+
+```bash
+# Let's allow all the tracers from Inspektor Gadget repository and all the gadgets from your repository.
+$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_*,ghcr.io/your-repo/gadget/*'
+...
+# Switch to another terminal
+$ gadgetctl run trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+$ gadgetctl run top_file
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: top_file is not part of allowed gadgets: ghcr.io/inspektor-gadget/gadget/trace_*, ghcr.io/your_repo/gadget/*
 $ gadgetctl run ghcr./io/your-repo/gadget/your_gadget
 RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
 ```
