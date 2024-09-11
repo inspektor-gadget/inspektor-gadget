@@ -14,6 +14,7 @@ COSIGN ?= cosign
 GADGETS = \
 	audit_seccomp \
 	fsnotify \
+	gotls \
 	profile_blockio \
 	trace_bind \
 	trace_capabilities \
