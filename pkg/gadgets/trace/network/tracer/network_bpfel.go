@@ -43,10 +43,14 @@ type networkSocketsValue struct {
 	PidTgid           uint64
 	UidGid            uint64
 	Task              [16]int8
+	Ptask             [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
+	Cwd               [4096]int8
+	Exepath           [4096]int8
+	Ppid              uint32
 	Ipv6only          int8
-	_                 [7]byte
+	_                 [3]byte
 }
 
 // loadNetwork returns the embedded CollectionSpec for network.

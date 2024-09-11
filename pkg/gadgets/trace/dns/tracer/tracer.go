@@ -22,6 +22,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/gopacket/gopacket"
 	"github.com/gopacket/gopacket/layers"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +36,7 @@ import (
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event_t dnsWithLongPaths ./bpf/dns.c -- -DWITH_LONG_PATHS $CLANG_OS_FLAGS -I./bpf/
 
 // Keep in sync with values in bpf/dns.c
 const (
@@ -42,15 +44,25 @@ const (
 	maxPorts        = 16
 )
 
+type Config struct {
+	DnsTimeout time.Duration
+	Ports      []uint16
+	GetPaths   bool
+}
+
 type Tracer struct {
 	*networktracer.Tracer[types.Event]
+
+	config *Config
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func NewTracer() (*Tracer, error) {
-	t := &Tracer{}
+func NewTracer(config *Config) (*Tracer, error) {
+	t := &Tracer{
+		config: config,
+	}
 
 	if err := t.install(); err != nil {
 		t.Close()
@@ -64,7 +76,9 @@ func NewTracer() (*Tracer, error) {
 // after calling NewTracer()
 func (t *Tracer) RunWorkaround() error {
 	// timeout nor ports configurable in this case
-	if err := t.run(context.TODO(), log.StandardLogger(), time.Minute, []uint16{53, 5353}); err != nil {
+	t.config.DnsTimeout = time.Minute
+	t.config.Ports = []uint16{53, 5353}
+	if err := t.run(context.TODO(), log.StandardLogger()); err != nil {
 		t.Close()
 		return fmt.Errorf("running tracer: %w", err)
 	}
@@ -96,7 +110,9 @@ func pktTypeToString(pktType uint8) string {
 // --- Registry changes
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
-	return &Tracer{}, nil
+	return &Tracer{
+		config: &Config{},
+	}, nil
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
@@ -122,8 +138,16 @@ func (t *Tracer) install() error {
 func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, error) {
 	// The sample received is a concatenation of the dnsEventT structure and the packet bytes.
 	bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
-	packetBytes := rawSample[unsafe.Sizeof(*bpfEvent):]
+	bpfEventWithLongPaths := (*dnsWithLongPathsEventT)(unsafe.Pointer(&rawSample[0]))
 
+	structSize := unsafe.Sizeof(*bpfEvent)
+	if t.config.GetPaths {
+		structSize = unsafe.Sizeof(*bpfEventWithLongPaths)
+	}
+	if len(rawSample) < int(structSize) {
+		return nil, fmt.Errorf("event too short")
+	}
+	packetBytes := rawSample[structSize:]
 	if len(packetBytes) < int(bpfEvent.DnsOff) {
 		return nil, fmt.Errorf("packet too short")
 	}
@@ -145,9 +169,11 @@ func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, e
 		WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
 		Pid:           bpfEvent.Pid,
 		Tid:           bpfEvent.Tid,
+		Ppid:          bpfEvent.Ppid,
 		Uid:           bpfEvent.Uid,
 		Gid:           bpfEvent.Gid,
-		Comm:          gadgets.FromCString(bpfEvent.Task[:]),
+		Comm:          gadgets.FromCString(bpfEvent.Comm[:]),
+		Pcomm:         gadgets.FromCString(bpfEvent.Pcomm[:]),
 		PktType:       pktTypeToString(bpfEvent.PktType),
 
 		SrcIP:    gadgets.IPStringFromBytes(bpfEvent.SaddrV6, ipversion),
@@ -158,6 +184,10 @@ func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, e
 
 		ID:         fmt.Sprintf("%.4x", dnsLayer.ID),
 		NumAnswers: int(dnsLayer.ANCount),
+	}
+	if t.config.GetPaths {
+		event.Cwd = gadgets.FromCString(bpfEventWithLongPaths.Cwd[:])
+		event.Exepath = gadgets.FromCString(bpfEventWithLongPaths.Exepath[:])
 	}
 
 	if dnsLayer.QR {
@@ -188,22 +218,29 @@ func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, e
 	return event, nil
 }
 
-func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.Duration, ports []uint16) error {
-	spec, err := loadDns()
+func (t *Tracer) run(ctx context.Context, logger logger.Logger) error {
+	var spec *ebpf.CollectionSpec
+	var err error
+
+	if t.config.GetPaths {
+		spec, err = loadDnsWithLongPaths()
+	} else {
+		spec, err = loadDns()
+	}
 	if err != nil {
 		return fmt.Errorf("loading asset: %w", err)
 	}
 
-	if len(ports) > maxPorts {
+	if len(t.config.Ports) > maxPorts {
 		return fmt.Errorf("too many ports specified, max is %d", maxPorts)
 	}
 
 	portsArray := [maxPorts]uint16{0}
-	copy(portsArray[:], ports)
+	copy(portsArray[:], t.config.Ports)
 
 	constants := map[string]any{
 		"ports":     portsArray,
-		"ports_len": uint16(len(ports)),
+		"ports_len": uint16(len(t.config.Ports)),
 	}
 	if err := spec.RewriteConstants(constants); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
@@ -221,16 +258,17 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger, dnsTimeout time.
 		t.Close()
 		return fmt.Errorf("got nil retrieving DNS query map")
 	}
-	startGarbageCollector(ctx, logger, dnsTimeout, queryMap)
+	startGarbageCollector(ctx, logger, t.config.DnsTimeout, queryMap)
 
 	return nil
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	dnsTimeout := gadgetCtx.GadgetParams().Get(ParamDNSTimeout).AsDuration()
-	ports := gadgetCtx.GadgetParams().Get(ParamPorts).AsUint16Slice()
+	t.config.DnsTimeout = gadgetCtx.GadgetParams().Get(ParamDNSTimeout).AsDuration()
+	t.config.Ports = gadgetCtx.GadgetParams().Get(ParamPorts).AsUint16Slice()
+	t.config.GetPaths = gadgetCtx.GadgetParams().Get(ParamPaths).AsBool()
 
-	if err := t.run(t.ctx, gadgetCtx.Logger(), dnsTimeout, ports); err != nil {
+	if err := t.run(t.ctx, gadgetCtx.Logger()); err != nil {
 		return err
 	}
 

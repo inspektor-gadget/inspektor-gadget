@@ -6,102 +6,114 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   dns:
     fields:
-      timestamp_raw:
+      anaddr:
         annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
-      src:
-        annotations:
-          description: Source endpoint
-          template: l4endpoint
-      dst:
-        annotations:
-          description: Destination endpoint
-          template: l4endpoint
-      netns_id:
-        annotations:
-          description: Network namespace inode id
-          template: ns
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
+          columns.width: "16"
       comm:
         annotations:
           description: Process name
           template: comm
+      data:
+        annotations:
+          columns.hidden: "true"
+          json.skip: "true"
+      data_len:
+        annotations:
+          columns.hidden: "true"
+          json.skip: "true"
+      dns_off:
+        annotations:
+          columns.hidden: "true"
+          json.skip: "true"
+      dst:
+        annotations:
+          description: Destination endpoint
+          template: l4endpoint
+      gid:
+        annotations:
+          columns.hidden: "true"
+          description: Group ID
+          template: uid
+      id:
+        annotations:
+          columns.hidden: "true"
+      latency_ns:
+        annotations:
+          columns.hidden: "true"
+          columns.width: "8"
+          description: DNS request latency
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      name:
+        annotations:
+          columns.width: "30"
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      num_answers:
+        annotations:
+          columns.hidden: "true"
+          description: Number of answers
+      pcomm:
+        annotations:
+          columns.hidden: "true"
+          template: pcomm
       pid:
         annotations:
           description: Process ID
           template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          columns.hidden: true
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          columns.hidden: true
-          template: uid
-      gid:
-        annotations:
-          description: Group ID
-          columns.hidden: true
-          template: uid
-      name:
-        annotations:
-          columns.width: 30
-      qr_raw:
-        annotations:
-          columns.hidden: true
-      qr:
-        annotations:
-          columns.minwidth: 2
-          columns.width: 2
       pkt_type:
         annotations:
-          columns.width: 8
-          columns.hidden: true
-      rcode_raw:
+          columns.hidden: "true"
+          columns.width: "8"
+      pkt_type_raw:
         annotations:
-          columns.hidden: true
-      rcode:
+          columns.hidden: "true"
+      ppid:
         annotations:
-          columns.minwidth: 8
-          columns.width: 8
-      latency_ns:
+          columns.hidden: "true"
+          description: Parent process ID
+          template: pid
+      qr:
         annotations:
-          description: DNS request latency
-          columns.width: 8
-          columns.hidden: true
-      anaddr:
+          columns.minwidth: "2"
+          columns.width: "2"
+      qr_raw:
         annotations:
-          columns.width: 16
-      id:
-        annotations:
-          columns.hidden: true
-      qtype_raw:
-        annotations:
-          columns.hidden: true
+          columns.hidden: "true"
       qtype:
         annotations:
           description: Query type
-      num_answers:
+      qtype_raw:
         annotations:
-          description: Number of answers
-          columns.hidden: true
-      dns_off:
+          columns.hidden: "true"
+      rcode:
         annotations:
-          columns.hidden: true
-          json.skip: true
-      data:
+          columns.minwidth: "8"
+          columns.width: "8"
+      rcode_raw:
         annotations:
-          columns.hidden: true
-          json.skip: true
-      data_len:
+          columns.hidden: "true"
+      src:
         annotations:
-          columns.hidden: true
-          json.skip: true
+          description: Source endpoint
+          template: l4endpoint
+      tid:
+        annotations:
+          columns.hidden: "true"
+          description: Thread ID
+          template: pid
+      timestamp:
+        annotations:
+          template: timestamp
+      timestamp_raw:
+        annotations:
+          columns.hidden: "true"
+      uid:
+        annotations:
+          columns.hidden: "true"
+          description: User ID
+          template: uid

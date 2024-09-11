@@ -43,6 +43,7 @@
 #define SE_NEXTHDR_DEST 60 /* Destination options header. */
 
 #define SE_TASK_COMM_LEN 16
+#define SE_PATH_MAX 4096
 
 struct sockets_key {
 	__u32 netns;
@@ -58,8 +59,12 @@ struct sockets_value {
 	__u64 pid_tgid;
 	__u64 uid_gid;
 	char task[SE_TASK_COMM_LEN];
+	char ptask[SE_TASK_COMM_LEN];
 	__u64 sock;
 	__u64 deletion_timestamp;
+	char cwd[SE_PATH_MAX];
+	char exepath[SE_PATH_MAX];
+	__u32 ppid;
 	char ipv6only;
 };
 

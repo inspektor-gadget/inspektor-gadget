@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type socketenricherBufT struct{ Buf [32768]uint8 }
+
 type socketenricherSocketsKey struct {
 	Netns  uint32
 	Family uint16
@@ -26,10 +28,14 @@ type socketenricherSocketsValue struct {
 	PidTgid           uint64
 	UidGid            uint64
 	Task              [16]int8
+	Ptask             [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
+	Cwd               [4096]int8
+	Exepath           [4096]int8
+	Ppid              uint32
 	Ipv6only          int8
-	_                 [7]byte
+	_                 [3]byte
 }
 
 // loadSocketenricher returns the embedded CollectionSpec for socketenricher.
@@ -89,8 +95,10 @@ type socketenricherProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketenricherMapSpecs struct {
-	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
-	Start         *ebpf.MapSpec `ebpf:"start"`
+	Bufs              *ebpf.MapSpec `ebpf:"bufs"`
+	GadgetSockets     *ebpf.MapSpec `ebpf:"gadget_sockets"`
+	IgTmpSocketsValue *ebpf.MapSpec `ebpf:"ig_tmp_sockets_value"`
+	Start             *ebpf.MapSpec `ebpf:"start"`
 }
 
 // socketenricherObjects contains all objects after they have been loaded into the kernel.
@@ -112,13 +120,17 @@ func (o *socketenricherObjects) Close() error {
 //
 // It can be passed to loadSocketenricherObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketenricherMaps struct {
-	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
-	Start         *ebpf.Map `ebpf:"start"`
+	Bufs              *ebpf.Map `ebpf:"bufs"`
+	GadgetSockets     *ebpf.Map `ebpf:"gadget_sockets"`
+	IgTmpSocketsValue *ebpf.Map `ebpf:"ig_tmp_sockets_value"`
+	Start             *ebpf.Map `ebpf:"start"`
 }
 
 func (m *socketenricherMaps) Close() error {
 	return _SocketenricherClose(
+		m.Bufs,
 		m.GadgetSockets,
+		m.IgTmpSocketsValue,
 		m.Start,
 	)
 }

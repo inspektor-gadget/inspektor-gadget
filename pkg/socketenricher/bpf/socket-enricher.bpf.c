@@ -9,6 +9,7 @@
 
 #include <bpf/bpf_helpers.h>
 
+#include <gadget/filesystem.h>
 #include <gadget/sockets-map.h>
 #include "socket-enricher-helpers.h"
 
@@ -31,28 +32,61 @@ struct {
 
 const volatile bool disable_bpf_iterators = 0;
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, int);
+	__type(value, struct sockets_value);
+} ig_tmp_sockets_value SEC(".maps");
+
+static const struct sockets_value empty_sockets_value = {};
+
 static __always_inline void insert_current_socket(struct sock *sock)
 {
+	int zero = 0;
 	struct sockets_key socket_key = {
 		0,
 	};
 	prepare_socket_key(&socket_key, sock);
 
-	struct sockets_value socket_value = {
-		0,
-	};
+	if (bpf_map_update_elem(&ig_tmp_sockets_value, &zero,
+				&empty_sockets_value, BPF_ANY))
+		return;
+
+	struct sockets_value *socket_value =
+		bpf_map_lookup_elem(&ig_tmp_sockets_value, &zero);
+	if (!socket_value)
+		return;
+
 	// use 'current' task
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	socket_value.mntns = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	socket_value.pid_tgid = bpf_get_current_pid_tgid();
-	socket_value.uid_gid = bpf_get_current_uid_gid();
-	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
-	socket_value.sock = (__u64)sock;
+	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+	struct fs_struct *fs = BPF_CORE_READ(task, fs);
+	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
+	socket_value->mntns =
+		(u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	socket_value->pid_tgid = bpf_get_current_pid_tgid();
+	socket_value->uid_gid = bpf_get_current_uid_gid();
+	bpf_get_current_comm(&socket_value->task, sizeof(socket_value->task));
+	if (parent != NULL) {
+		bpf_probe_read_kernel(&socket_value->ptask,
+				      sizeof(socket_value->ptask),
+				      parent->comm);
+		socket_value->ppid = (__u32)BPF_CORE_READ(parent, tgid);
+	}
+	char *cwd = get_path_str(&fs->pwd);
+	bpf_probe_read_kernel_str(socket_value->cwd, sizeof(socket_value->cwd),
+				  cwd);
+	char *exepath = get_path_str(&exe_file->f_path);
+	bpf_probe_read_kernel_str(socket_value->exepath,
+				  sizeof(socket_value->exepath), exepath);
+
+	socket_value->sock = (__u64)sock;
 	if (socket_key.family == AF_INET6)
-		socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(
+		socket_value->ipv6only = BPF_CORE_READ_BITFIELD_PROBED(
 			sock, __sk_common.skc_ipv6only);
 
-	bpf_map_update_elem(&gadget_sockets, &socket_key, &socket_value,
+	bpf_map_update_elem(&gadget_sockets, &socket_key, socket_value,
 			    BPF_ANY);
 }
 
