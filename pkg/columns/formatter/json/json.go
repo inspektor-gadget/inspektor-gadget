@@ -25,6 +25,7 @@ import (
 	_ "unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeset"
 )
 
 type column[T any] struct {
@@ -329,7 +330,7 @@ func writeString(e *encodeState, s string) {
 	start := 0
 	for i := 0; i < len(s); {
 		if b := s[i]; b < utf8.RuneSelf {
-			if safeSet[b] {
+			if safeset.SafeSet[b] {
 				i++
 				continue
 			}
@@ -396,8 +397,3 @@ func writeString(e *encodeState, s string) {
 }
 
 var hex = "0123456789abcdef"
-
-// use safeSet from encoding/json directly
-//
-//go:linkname safeSet encoding/json.safeSet
-var safeSet = [utf8.RuneSelf]bool{}
