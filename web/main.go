@@ -255,6 +255,8 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			return false
 		}
 
+		onReady := args[1].Get("onReady")
+		onDone := args[1].Get("onDone")
 		onData := args[1].Get("onData")
 		onGadgetInfo := args[1].Get("onGadgetInfo")
 
@@ -280,14 +282,24 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			datasources := make(map[uint32]datasource.DataSource)
 			jsonFormatters := make(map[uint32]*json.Formatter)
 
+			if !onReady.IsUndefined() {
+				onReady.Invoke()
+			}
+
 			jsjson := js.Global().Get("JSON")
 			for {
 				ev, err := cli.Recv()
 				if err != nil {
 					if errors.Is(err, io.EOF) {
+						if !onDone.IsUndefined() {
+							onDone.Invoke()
+						}
 						return
 					}
 					fmt.Println(err.Error())
+					if !onDone.IsUndefined() {
+						onDone.Invoke()
+					}
 					break
 				}
 				switch ev.Type {
