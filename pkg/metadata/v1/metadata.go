@@ -14,7 +14,9 @@
 
 package metadatav1
 
-import "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+)
 
 const (
 	DefaultColumnWidth = 16
@@ -46,10 +48,6 @@ type DataSource struct {
 	Fields      map[string]Field  `yaml:"fields"`
 }
 
-type EBPFParam struct {
-	params.ParamDesc `yaml:",inline"`
-}
-
 type GadgetMetadata struct {
 	// Gadget name
 	Name string `yaml:"name"`
@@ -65,8 +63,8 @@ type GadgetMetadata struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	// DataSources exposed by the gadget
 	DataSources map[string]*DataSource `yaml:"datasources,omitempty"`
-	// Params exposed by the gadget through eBPF constants
-	EBPFParams map[string]EBPFParam `yaml:"ebpfParams,omitempty"`
+	// Params exposed by this gadget. It includes params for different operators
+	Params map[string]map[string]params.ParamDesc `yaml:"params,omitempty"`
 	// Other params exposed by the gadget
 	GadgetParams map[string]params.ParamDesc `yaml:"gadgetParams,omitempty"`
 }

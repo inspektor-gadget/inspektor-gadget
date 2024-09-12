@@ -34,8 +34,9 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-ebpfParams:
-  show_threads:
-    key: threads
-    defaultValue: "false"
-    description: Show all threads (by default, only processes are shown)
+params:
+  ebpf:
+    show_threads:
+      key: threads
+      defaultValue: "false"
+      description: Show all threads (by default, only processes are shown)
