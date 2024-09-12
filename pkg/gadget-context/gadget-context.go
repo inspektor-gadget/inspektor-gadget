@@ -60,6 +60,9 @@ type GadgetContext struct {
 	resultError              error
 	timeout                  time.Duration
 
+	// useInstance, if set, will try to work with existing gadget instances on the server
+	useInstance bool
+
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
 	dataOperators    []operators.DataOperator
@@ -203,6 +206,10 @@ func (c *GadgetContext) IsRemoteCall() bool {
 	return bVal
 }
 
+func (c *GadgetContext) UseInstance() bool {
+	return c.useInstance
+}
+
 func (c *GadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -321,7 +328,12 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		}
 		c.dataSources[inds.Name] = ds
 	}
-	c.params = info.Params
+
+	// Skip params coming from the server if we're attaching; it's too late to provide params
+	// for the gadget instance so only local operators should be evaluated
+	if !c.useInstance {
+		c.params = info.Params
+	}
 	c.loaded = true
 	c.lock.Unlock()
 

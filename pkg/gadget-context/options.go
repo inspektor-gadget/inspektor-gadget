@@ -29,6 +29,7 @@ type contextKey string
 
 const (
 	remoteKey contextKey = "gadgetRemote"
+	attachKey contextKey = "gadgetAttach"
 )
 
 type Option func(gadgetCtx *GadgetContext)
@@ -60,5 +61,11 @@ func WithOrasReadonlyTarget(ociStore oras.ReadOnlyTarget) Option {
 func WithAsRemoteCall(val bool) Option {
 	return func(gadgetCtx *GadgetContext) {
 		gadgetCtx.ctx = context.WithValue(gadgetCtx.ctx, remoteKey, val)
+	}
+}
+
+func WithUseInstance(val bool) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.useInstance = val
 	}
 }
