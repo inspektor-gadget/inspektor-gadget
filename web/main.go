@@ -106,7 +106,7 @@ func (c *DummyConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-func (c *DummyConn) Run() {
+func (c *DummyConn) Run(successCb func(), errorCb func(string)) {
 	if c.channelID%2 != 0 {
 		return
 	}
@@ -117,15 +117,22 @@ func (c *DummyConn) Run() {
 		}),
 	)
 	if err != nil {
-		fmt.Println(err.Error())
+		if errorCb != nil {
+			errorCb(err.Error())
+		}
 		return
 	}
 	c.client = api.NewGadgetManagerClient(conn)
+	if successCb != nil {
+		successCb()
+	}
 }
 
 type KubeWebSocketWrapper struct {
-	ws    js.Value
-	conns map[uint8]*DummyConn
+	ws      js.Value
+	conns   map[uint8]*DummyConn
+	onError js.Value
+	onReady js.Value
 }
 
 func (w *KubeWebSocketWrapper) Run() {
@@ -150,7 +157,15 @@ func (w *KubeWebSocketWrapper) Run() {
 			w.conns[channelID] = conn
 			conn.in <- buf[3:] // skip first three bytes
 
-			go conn.Run()
+			go conn.Run(func() {
+				if !w.onReady.IsUndefined() {
+					w.onReady.Invoke()
+				}
+			}, func(err string) {
+				if !w.onError.IsUndefined() {
+					w.onError.Invoke(err)
+				}
+			})
 			return nil
 		}
 
@@ -167,9 +182,12 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 	}
 
 	wrapper := &KubeWebSocketWrapper{
-		ws:    args[0],
-		conns: make(map[uint8]*DummyConn),
+		ws:      args[0],
+		conns:   make(map[uint8]*DummyConn),
+		onReady: args[1].Get("onReady"),
+		onError: args[1].Get("onError"),
 	}
+
 	wrapper.Run()
 
 	res := js.Global().Get("Object").New()
