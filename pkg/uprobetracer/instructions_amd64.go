@@ -14,6 +14,12 @@
 
 package uprobetracer
 
+import (
+	"fmt"
+
+	"golang.org/x/arch/x86/x86asm"
+)
+
 func findReturnOffsets(baseOffset uint64, data []byte) ([]uint64, error) {
 	var returnOffsets []uint64
 	index := 0

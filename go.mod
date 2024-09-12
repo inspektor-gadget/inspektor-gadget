@@ -76,6 +76,7 @@ require (
 	github.com/sigstore/sigstore v1.8.9
 	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.8.0
+	golang.org/x/arch v0.10.0
 )
 
 require (
