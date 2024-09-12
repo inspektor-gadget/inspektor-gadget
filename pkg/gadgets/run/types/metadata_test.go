@@ -41,8 +41,10 @@ func TestValidate(t *testing.T) {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"bar": {},
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"bar": {},
+					},
 				},
 			},
 			expectedErrString: "variable \"bar\" not found in eBPF object: type name bar: not found",
@@ -51,8 +53,10 @@ func TestValidate(t *testing.T) {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"bar": {},
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"bar": {},
+					},
 				},
 			},
 			expectedErrString: "param \"bar\" has an empty key",
@@ -61,9 +65,9 @@ func TestValidate(t *testing.T) {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"param": {
-						ParamDesc: params.ParamDesc{
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"param": {
 							Key: "param",
 						},
 					},
@@ -74,8 +78,10 @@ func TestValidate(t *testing.T) {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"param2": {},
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"param2": {},
+					},
 				},
 			},
 			expectedErrString: "\"param2\" is not volatile",
@@ -84,8 +90,10 @@ func TestValidate(t *testing.T) {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
 				Name: "foo",
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"param3": {},
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						"param3": {},
+					},
 				},
 			},
 			expectedErrString: "\"param3\" is not const",
@@ -139,11 +147,11 @@ func TestPopulate(t *testing.T) {
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
 				SourceURL:        "TODO: Fill the gadget source code URL",
 				DataSources:      map[string]*metadatav1.DataSource{},
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					// This also makes sure that param2 won't get picked up
-					// since GADGET_PARAM(param2) is missing
-					"param": {
-						ParamDesc: params.ParamDesc{
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						// This also makes sure that param2 won't get picked up
+						// since GADGET_PARAM(param2) is missing
+						"param": {
 							Key:         "param",
 							Description: "TODO: Fill parameter description",
 						},
@@ -163,10 +171,10 @@ func TestPopulate(t *testing.T) {
 					"io.inspektor-gadget.test": "test",
 				},
 				DataSources: map[string]*metadatav1.DataSource{},
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					"param": {
-						// Set desc and some attributes to be sure they aren't overwritten
-						ParamDesc: params.ParamDesc{
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						// Set desc and some attributes to be sure they aren't overwritte
+						"param": {
 							Key:          "my-param-key",
 							Description:  "This is my awesome parameter",
 							DefaultValue: "42",
@@ -184,12 +192,11 @@ func TestPopulate(t *testing.T) {
 					"io.inspektor-gadget.test": "test",
 				},
 				DataSources: map[string]*metadatav1.DataSource{},
-				EBPFParams: map[string]metadatav1.EBPFParam{
-					// This also makes sure that param2 won't get picked up
-					// since GADGET_PARAM(param2) is missing
-					"param": {
-						// Check if desc and the other attributes aren't overwritten
-						ParamDesc: params.ParamDesc{
+				Params: map[string]map[string]params.ParamDesc{
+					"ebpf": {
+						// This also makes sure that param2 won't get picked up
+						// since GADGET_PARAM(param2) is missing
+						"param": {
 							Key:          "my-param-key",
 							Description:  "This is my awesome parameter",
 							DefaultValue: "42",

@@ -42,596 +42,597 @@ datasources:
       tracepoint:
         annotations:
           description: lsm tracepoint name
-ebpfParams:
-  trace_all:
-    key: trace-all
-    defaultValue: "false"
-    description: trace all LSM tracepoints
-  trace_binder_set_context_mgr:
-    key: trace-binder_set_context_mgr
-    defaultValue: "false"
-    description: Trace the binder_set_context_mgr LSM hook
-  trace_binder_transaction:
-    key: trace-binder_transaction
-    defaultValue: "false"
-    description: Trace the binder_transaction LSM hook
-  trace_binder_transfer_binder:
-    key: trace-binder_transfer_binder
-    defaultValue: "false"
-    description: Trace the binder_transfer_binder LSM hook
-  trace_binder_transfer_file:
-    key: trace-binder_transfer_file
-    defaultValue: "false"
-    description: Trace the binder_transfer_file LSM hook
-  trace_bprm_check_security:
-    key: trace-bprm_check_security
-    defaultValue: "false"
-    description: Trace the bprm_check_security LSM hook
-  trace_bprm_committed_creds:
-    key: trace-bprm_committed_creds
-    defaultValue: "false"
-    description: Trace the bprm_committed_creds LSM hook
-  trace_bprm_committing_creds:
-    key: trace-bprm_committing_creds
-    defaultValue: "false"
-    description: Trace the bprm_committing_creds LSM hook
-  trace_bprm_creds_for_exec:
-    key: trace-bprm_creds_for_exec
-    defaultValue: "false"
-    description: Trace the bprm_creds_for_exec LSM hook
-  trace_bprm_creds_from_file:
-    key: trace-bprm_creds_from_file
-    defaultValue: "false"
-    description: Trace the bprm_creds_from_file LSM hook
-  trace_capable:
-    key: trace-capable
-    defaultValue: "false"
-    description: Trace the capable LSM hook
-  trace_capget:
-    key: trace-capget
-    defaultValue: "false"
-    description: Trace the capget LSM hook
-  trace_capset:
-    key: trace-capset
-    defaultValue: "false"
-    description: Trace the capset LSM hook
-  trace_cred_alloc_blank:
-    key: trace-cred_alloc_blank
-    defaultValue: "false"
-    description: Trace the cred_alloc_blank LSM hook
-  trace_cred_free:
-    key: trace-cred_free
-    defaultValue: "false"
-    description: Trace the cred_free LSM hook
-  trace_cred_getsecid:
-    key: trace-cred_getsecid
-    defaultValue: "false"
-    description: Trace the cred_getsecid LSM hook
-  trace_cred_prepare:
-    key: trace-cred_prepare
-    defaultValue: "false"
-    description: Trace the cred_prepare LSM hook
-  trace_cred_transfer:
-    key: trace-cred_transfer
-    defaultValue: "false"
-    description: Trace the cred_transfer LSM hook
-  trace_d_instantiate:
-    key: trace-d_instantiate
-    defaultValue: "false"
-    description: Trace the d_instantiate LSM hook
-  trace_dentry_create_files_as:
-    key: trace-dentry_create_files_as
-    defaultValue: "false"
-    description: Trace the dentry_create_files_as LSM hook
-  trace_dentry_init_security:
-    key: trace-dentry_init_security
-    defaultValue: "false"
-    description: Trace the dentry_init_security LSM hook
-  trace_file_alloc_security:
-    key: trace-file_alloc_security
-    defaultValue: "false"
-    description: Trace the file_alloc_security LSM hook
-  trace_file_fcntl:
-    key: trace-file_fcntl
-    defaultValue: "false"
-    description: Trace the file_fcntl LSM hook
-  trace_file_free_security:
-    key: trace-file_free_security
-    defaultValue: "false"
-    description: Trace the file_free_security LSM hook
-  trace_file_ioctl:
-    key: trace-file_ioctl
-    defaultValue: "false"
-    description: Trace the file_ioctl LSM hook
-  trace_file_lock:
-    key: trace-file_lock
-    defaultValue: "false"
-    description: Trace the file_lock LSM hook
-  trace_file_mprotect:
-    key: trace-file_mprotect
-    defaultValue: "false"
-    description: Trace the file_mprotect LSM hook
-  trace_file_open:
-    key: trace-file_open
-    defaultValue: "false"
-    description: Trace the file_open LSM hook
-  trace_file_permission:
-    key: trace-file_permission
-    defaultValue: "false"
-    description: Trace the file_permission LSM hook
-  trace_file_receive:
-    key: trace-file_receive
-    defaultValue: "false"
-    description: Trace the file_receive LSM hook
-  trace_file_send_sigiotask:
-    key: trace-file_send_sigiotask
-    defaultValue: "false"
-    description: Trace the file_send_sigiotask LSM hook
-  trace_file_set_fowner:
-    key: trace-file_set_fowner
-    defaultValue: "false"
-    description: Trace the file_set_fowner LSM hook
-  trace_fs_context_dup:
-    key: trace-fs_context_dup
-    defaultValue: "false"
-    description: Trace the fs_context_dup LSM hook
-  trace_fs_context_parse_param:
-    key: trace-fs_context_parse_param
-    defaultValue: "false"
-    description: Trace the fs_context_parse_param LSM hook
-  trace_getprocattr:
-    key: trace-getprocattr
-    defaultValue: "false"
-    description: Trace the getprocattr LSM hook
-  trace_inode_alloc_security:
-    key: trace-inode_alloc_security
-    defaultValue: "false"
-    description: Trace the inode_alloc_security LSM hook
-  trace_inode_copy_up:
-    key: trace-inode_copy_up
-    defaultValue: "false"
-    description: Trace the inode_copy_up LSM hook
-  trace_inode_copy_up_xattr:
-    key: trace-inode_copy_up_xattr
-    defaultValue: "false"
-    description: Trace the inode_copy_up_xattr LSM hook
-  trace_inode_create:
-    key: trace-inode_create
-    defaultValue: "false"
-    description: Trace the inode_create LSM hook
-  trace_inode_follow_link:
-    key: trace-inode_follow_link
-    defaultValue: "false"
-    description: Trace the inode_follow_link LSM hook
-  trace_inode_free_security:
-    key: trace-inode_free_security
-    defaultValue: "false"
-    description: Trace the inode_free_security LSM hook
-  trace_inode_getattr:
-    key: trace-inode_getattr
-    defaultValue: "false"
-    description: Trace the inode_getattr LSM hook
-  trace_inode_getsecctx:
-    key: trace-inode_getsecctx
-    defaultValue: "false"
-    description: Trace the inode_getsecctx LSM hook
-  trace_inode_getsecid:
-    key: trace-inode_getsecid
-    defaultValue: "false"
-    description: Trace the inode_getsecid LSM hook
-  trace_inode_getsecurity:
-    key: trace-inode_getsecurity
-    defaultValue: "false"
-    description: Trace the inode_getsecurity LSM hook
-  trace_inode_getxattr:
-    key: trace-inode_getxattr
-    defaultValue: "false"
-    description: Trace the inode_getxattr LSM hook
-  trace_inode_init_security:
-    key: trace-inode_init_security
-    defaultValue: "false"
-    description: Trace the inode_init_security LSM hook
-  trace_inode_init_security_anon:
-    key: trace-inode_init_security_anon
-    defaultValue: "false"
-    description: Trace the inode_init_security_anon LSM hook
-  trace_inode_invalidate_secctx:
-    key: trace-inode_invalidate_secctx
-    defaultValue: "false"
-    description: Trace the inode_invalidate_secctx LSM hook
-  trace_inode_killpriv:
-    key: trace-inode_killpriv
-    defaultValue: "false"
-    description: Trace the inode_killpriv LSM hook
-  trace_inode_link:
-    key: trace-inode_link
-    defaultValue: "false"
-    description: Trace the inode_link LSM hook
-  trace_inode_listsecurity:
-    key: trace-inode_listsecurity
-    defaultValue: "false"
-    description: Trace the inode_listsecurity LSM hook
-  trace_inode_listxattr:
-    key: trace-inode_listxattr
-    defaultValue: "false"
-    description: Trace the inode_listxattr LSM hook
-  trace_inode_mkdir:
-    key: trace-inode_mkdir
-    defaultValue: "false"
-    description: Trace the inode_mkdir LSM hook
-  trace_inode_mknod:
-    key: trace-inode_mknod
-    defaultValue: "false"
-    description: Trace the inode_mknod LSM hook
-  trace_inode_need_killpriv:
-    key: trace-inode_need_killpriv
-    defaultValue: "false"
-    description: Trace the inode_need_killpriv LSM hook
-  trace_inode_notifysecctx:
-    key: trace-inode_notifysecctx
-    defaultValue: "false"
-    description: Trace the inode_notifysecctx LSM hook
-  trace_inode_permission:
-    key: trace-inode_permission
-    defaultValue: "false"
-    description: Trace the inode_permission LSM hook
-  trace_inode_post_setxattr:
-    key: trace-inode_post_setxattr
-    defaultValue: "false"
-    description: Trace the inode_post_setxattr LSM hook
-  trace_inode_readlink:
-    key: trace-inode_readlink
-    defaultValue: "false"
-    description: Trace the inode_readlink LSM hook
-  trace_inode_removexattr:
-    key: trace-inode_removexattr
-    defaultValue: "false"
-    description: Trace the inode_removexattr LSM hook
-  trace_inode_rename:
-    key: trace-inode_rename
-    defaultValue: "false"
-    description: Trace the inode_rename LSM hook
-  trace_inode_rmdir:
-    key: trace-inode_rmdir
-    defaultValue: "false"
-    description: Trace the inode_rmdir LSM hook
-  trace_inode_setattr:
-    key: trace-inode_setattr
-    defaultValue: "false"
-    description: Trace the inode_setattr LSM hook
-  trace_inode_setsecctx:
-    key: trace-inode_setsecctx
-    defaultValue: "false"
-    description: Trace the inode_setsecctx LSM hook
-  trace_inode_setsecurity:
-    key: trace-inode_setsecurity
-    defaultValue: "false"
-    description: Trace the inode_setsecurity LSM hook
-  trace_inode_setxattr:
-    key: trace-inode_setxattr
-    defaultValue: "false"
-    description: Trace the inode_setxattr LSM hook
-  trace_inode_symlink:
-    key: trace-inode_symlink
-    defaultValue: "false"
-    description: Trace the inode_symlink LSM hook
-  trace_inode_unlink:
-    key: trace-inode_unlink
-    defaultValue: "false"
-    description: Trace the inode_unlink LSM hook
-  trace_ipc_getsecid:
-    key: trace-ipc_getsecid
-    defaultValue: "false"
-    description: Trace the ipc_getsecid LSM hook
-  trace_ipc_permission:
-    key: trace-ipc_permission
-    defaultValue: "false"
-    description: Trace the ipc_permission LSM hook
-  trace_ismaclabel:
-    key: trace-ismaclabel
-    defaultValue: "false"
-    description: Trace the ismaclabel LSM hook
-  trace_kernel_act_as:
-    key: trace-kernel_act_as
-    defaultValue: "false"
-    description: Trace the kernel_act_as LSM hook
-  trace_kernel_create_files_as:
-    key: trace-kernel_create_files_as
-    defaultValue: "false"
-    description: Trace the kernel_create_files_as LSM hook
-  trace_kernel_load_data:
-    key: trace-kernel_load_data
-    defaultValue: "false"
-    description: Trace the kernel_load_data LSM hook
-  trace_kernel_module_request:
-    key: trace-kernel_module_request
-    defaultValue: "false"
-    description: Trace the kernel_module_request LSM hook
-  trace_kernel_post_load_data:
-    key: trace-kernel_post_load_data
-    defaultValue: "false"
-    description: Trace the kernel_post_load_data LSM hook
-  trace_kernel_post_read_file:
-    key: trace-kernel_post_read_file
-    defaultValue: "false"
-    description: Trace the kernel_post_read_file LSM hook
-  trace_kernel_read_file:
-    key: trace-kernel_read_file
-    defaultValue: "false"
-    description: Trace the kernel_read_file LSM hook
-  trace_kernfs_init_security:
-    key: trace-kernfs_init_security
-    defaultValue: "false"
-    description: Trace the kernfs_init_security LSM hook
-  trace_mmap_addr:
-    key: trace-mmap_addr
-    defaultValue: "false"
-    description: Trace the mmap_addr LSM hook
-  trace_mmap_file:
-    key: trace-mmap_file
-    defaultValue: "false"
-    description: Trace the mmap_file LSM hook
-  trace_move_mount:
-    key: trace-move_mount
-    defaultValue: "false"
-    description: Trace the move_mount LSM hook
-  trace_msg_msg_alloc_security:
-    key: trace-msg_msg_alloc_security
-    defaultValue: "false"
-    description: Trace the msg_msg_alloc_security LSM hook
-  trace_msg_msg_free_security:
-    key: trace-msg_msg_free_security
-    defaultValue: "false"
-    description: Trace the msg_msg_free_security LSM hook
-  trace_msg_queue_alloc_security:
-    key: trace-msg_queue_alloc_security
-    defaultValue: "false"
-    description: Trace the msg_queue_alloc_security LSM hook
-  trace_msg_queue_associate:
-    key: trace-msg_queue_associate
-    defaultValue: "false"
-    description: Trace the msg_queue_associate LSM hook
-  trace_msg_queue_free_security:
-    key: trace-msg_queue_free_security
-    defaultValue: "false"
-    description: Trace the msg_queue_free_security LSM hook
-  trace_msg_queue_msgctl:
-    key: trace-msg_queue_msgctl
-    defaultValue: "false"
-    description: Trace the msg_queue_msgctl LSM hook
-  trace_msg_queue_msgrcv:
-    key: trace-msg_queue_msgrcv
-    defaultValue: "false"
-    description: Trace the msg_queue_msgrcv LSM hook
-  trace_msg_queue_msgsnd:
-    key: trace-msg_queue_msgsnd
-    defaultValue: "false"
-    description: Trace the msg_queue_msgsnd LSM hook
-  trace_netlink_send:
-    key: trace-netlink_send
-    defaultValue: "false"
-    description: Trace the netlink_send LSM hook
-  trace_path_notify:
-    key: trace-path_notify
-    defaultValue: "false"
-    description: Trace the path_notify LSM hook
-  trace_ptrace_access_check:
-    key: trace-ptrace_access_check
-    defaultValue: "false"
-    description: Trace the ptrace_access_check LSM hook
-  trace_ptrace_traceme:
-    key: trace-ptrace_traceme
-    defaultValue: "false"
-    description: Trace the ptrace_traceme LSM hook
-  trace_quota_on:
-    key: trace-quota_on
-    defaultValue: "false"
-    description: Trace the quota_on LSM hook
-  trace_quotactl:
-    key: trace-quotactl
-    defaultValue: "false"
-    description: Trace the quotactl LSM hook
-  trace_release_secctx:
-    key: trace-release_secctx
-    defaultValue: "false"
-    description: Trace the release_secctx LSM hook
-  trace_sb_alloc_security:
-    key: trace-sb_alloc_security
-    defaultValue: "false"
-    description: Trace the sb_alloc_security LSM hook
-  trace_sb_clone_mnt_opts:
-    key: trace-sb_clone_mnt_opts
-    defaultValue: "false"
-    description: Trace the sb_clone_mnt_opts LSM hook
-  trace_sb_delete:
-    key: trace-sb_delete
-    defaultValue: "false"
-    description: Trace the sb_delete LSM hook
-  trace_sb_eat_lsm_opts:
-    key: trace-sb_eat_lsm_opts
-    defaultValue: "false"
-    description: Trace the sb_eat_lsm_opts LSM hook
-  trace_sb_free_mnt_opts:
-    key: trace-sb_free_mnt_opts
-    defaultValue: "false"
-    description: Trace the sb_free_mnt_opts LSM hook
-  trace_sb_free_security:
-    key: trace-sb_free_security
-    defaultValue: "false"
-    description: Trace the sb_free_security LSM hook
-  trace_sb_kern_mount:
-    key: trace-sb_kern_mount
-    defaultValue: "false"
-    description: Trace the sb_kern_mount LSM hook
-  trace_sb_mnt_opts_compat:
-    key: trace-sb_mnt_opts_compat
-    defaultValue: "false"
-    description: Trace the sb_mnt_opts_compat LSM hook
-  trace_sb_mount:
-    key: trace-sb_mount
-    defaultValue: "false"
-    description: Trace the sb_mount LSM hook
-  trace_sb_pivotroot:
-    key: trace-sb_pivotroot
-    defaultValue: "false"
-    description: Trace the sb_pivotroot LSM hook
-  trace_sb_remount:
-    key: trace-sb_remount
-    defaultValue: "false"
-    description: Trace the sb_remount LSM hook
-  trace_sb_set_mnt_opts:
-    key: trace-sb_set_mnt_opts
-    defaultValue: "false"
-    description: Trace the sb_set_mnt_opts LSM hook
-  trace_sb_show_options:
-    key: trace-sb_show_options
-    defaultValue: "false"
-    description: Trace the sb_show_options LSM hook
-  trace_sb_statfs:
-    key: trace-sb_statfs
-    defaultValue: "false"
-    description: Trace the sb_statfs LSM hook
-  trace_sb_umount:
-    key: trace-sb_umount
-    defaultValue: "false"
-    description: Trace the sb_umount LSM hook
-  trace_secctx_to_secid:
-    key: trace-secctx_to_secid
-    defaultValue: "false"
-    description: Trace the secctx_to_secid LSM hook
-  trace_secid_to_secctx:
-    key: trace-secid_to_secctx
-    defaultValue: "false"
-    description: Trace the secid_to_secctx LSM hook
-  trace_sem_alloc_security:
-    key: trace-sem_alloc_security
-    defaultValue: "false"
-    description: Trace the sem_alloc_security LSM hook
-  trace_sem_associate:
-    key: trace-sem_associate
-    defaultValue: "false"
-    description: Trace the sem_associate LSM hook
-  trace_sem_free_security:
-    key: trace-sem_free_security
-    defaultValue: "false"
-    description: Trace the sem_free_security LSM hook
-  trace_sem_semctl:
-    key: trace-sem_semctl
-    defaultValue: "false"
-    description: Trace the sem_semctl LSM hook
-  trace_sem_semop:
-    key: trace-sem_semop
-    defaultValue: "false"
-    description: Trace the sem_semop LSM hook
-  trace_setprocattr:
-    key: trace-setprocattr
-    defaultValue: "false"
-    description: Trace the setprocattr LSM hook
-  trace_settime:
-    key: trace-settime
-    defaultValue: "false"
-    description: Trace the settime LSM hook
-  trace_shm_alloc_security:
-    key: trace-shm_alloc_security
-    defaultValue: "false"
-    description: Trace the shm_alloc_security LSM hook
-  trace_shm_associate:
-    key: trace-shm_associate
-    defaultValue: "false"
-    description: Trace the shm_associate LSM hook
-  trace_shm_free_security:
-    key: trace-shm_free_security
-    defaultValue: "false"
-    description: Trace the shm_free_security LSM hook
-  trace_shm_shmat:
-    key: trace-shm_shmat
-    defaultValue: "false"
-    description: Trace the shm_shmat LSM hook
-  trace_shm_shmctl:
-    key: trace-shm_shmctl
-    defaultValue: "false"
-    description: Trace the shm_shmctl LSM hook
-  trace_syslog:
-    key: trace-syslog
-    defaultValue: "false"
-    description: Trace the syslog LSM hook
-  trace_task_alloc:
-    key: trace-task_alloc
-    defaultValue: "false"
-    description: Trace the task_alloc LSM hook
-  trace_task_fix_setgid:
-    key: trace-task_fix_setgid
-    defaultValue: "false"
-    description: Trace the task_fix_setgid LSM hook
-  trace_task_fix_setuid:
-    key: trace-task_fix_setuid
-    defaultValue: "false"
-    description: Trace the task_fix_setuid LSM hook
-  trace_task_free:
-    key: trace-task_free
-    defaultValue: "false"
-    description: Trace the task_free LSM hook
-  trace_task_getioprio:
-    key: trace-task_getioprio
-    defaultValue: "false"
-    description: Trace the task_getioprio LSM hook
-  trace_task_getpgid:
-    key: trace-task_getpgid
-    defaultValue: "false"
-    description: Trace the task_getpgid LSM hook
-  trace_task_getscheduler:
-    key: trace-task_getscheduler
-    defaultValue: "false"
-    description: Trace the task_getscheduler LSM hook
-  trace_task_getsecid_obj:
-    key: trace-task_getsecid_obj
-    defaultValue: "false"
-    description: Trace the task_getsecid_obj LSM hook
-  trace_task_getsid:
-    key: trace-task_getsid
-    defaultValue: "false"
-    description: Trace the task_getsid LSM hook
-  trace_task_kill:
-    key: trace-task_kill
-    defaultValue: "false"
-    description: Trace the task_kill LSM hook
-  trace_task_movememory:
-    key: trace-task_movememory
-    defaultValue: "false"
-    description: Trace the task_movememory LSM hook
-  trace_task_prctl:
-    key: trace-task_prctl
-    defaultValue: "false"
-    description: Trace the task_prctl LSM hook
-  trace_task_prlimit:
-    key: trace-task_prlimit
-    defaultValue: "false"
-    description: Trace the task_prlimit LSM hook
-  trace_task_setioprio:
-    key: trace-task_setioprio
-    defaultValue: "false"
-    description: Trace the task_setioprio LSM hook
-  trace_task_setnice:
-    key: trace-task_setnice
-    defaultValue: "false"
-    description: Trace the task_setnice LSM hook
-  trace_task_setpgid:
-    key: trace-task_setpgid
-    defaultValue: "false"
-    description: Trace the task_setpgid LSM hook
-  trace_task_setrlimit:
-    key: trace-task_setrlimit
-    defaultValue: "false"
-    description: Trace the task_setrlimit LSM hook
-  trace_task_setscheduler:
-    key: trace-task_setscheduler
-    defaultValue: "false"
-    description: Trace the task_setscheduler LSM hook
-  trace_task_to_inode:
-    key: trace-task_to_inode
-    defaultValue: "false"
-    description: Trace the task_to_inode LSM hook
-  trace_vm_enough_memory:
-    key: trace-vm_enough_memory
-    defaultValue: "false"
-    description: Trace the vm_enough_memory LSM hook
+params:
+  ebpf:
+    trace_all:
+      key: trace-all
+      defaultValue: "false"
+      description: trace all LSM tracepoints
+    trace_binder_set_context_mgr:
+      key: trace-binder_set_context_mgr
+      defaultValue: "false"
+      description: Trace the binder_set_context_mgr LSM hook
+    trace_binder_transaction:
+      key: trace-binder_transaction
+      defaultValue: "false"
+      description: Trace the binder_transaction LSM hook
+    trace_binder_transfer_binder:
+      key: trace-binder_transfer_binder
+      defaultValue: "false"
+      description: Trace the binder_transfer_binder LSM hook
+    trace_binder_transfer_file:
+      key: trace-binder_transfer_file
+      defaultValue: "false"
+      description: Trace the binder_transfer_file LSM hook
+    trace_bprm_check_security:
+      key: trace-bprm_check_security
+      defaultValue: "false"
+      description: Trace the bprm_check_security LSM hook
+    trace_bprm_committed_creds:
+      key: trace-bprm_committed_creds
+      defaultValue: "false"
+      description: Trace the bprm_committed_creds LSM hook
+    trace_bprm_committing_creds:
+      key: trace-bprm_committing_creds
+      defaultValue: "false"
+      description: Trace the bprm_committing_creds LSM hook
+    trace_bprm_creds_for_exec:
+      key: trace-bprm_creds_for_exec
+      defaultValue: "false"
+      description: Trace the bprm_creds_for_exec LSM hook
+    trace_bprm_creds_from_file:
+      key: trace-bprm_creds_from_file
+      defaultValue: "false"
+      description: Trace the bprm_creds_from_file LSM hook
+    trace_capable:
+      key: trace-capable
+      defaultValue: "false"
+      description: Trace the capable LSM hook
+    trace_capget:
+      key: trace-capget
+      defaultValue: "false"
+      description: Trace the capget LSM hook
+    trace_capset:
+      key: trace-capset
+      defaultValue: "false"
+      description: Trace the capset LSM hook
+    trace_cred_alloc_blank:
+      key: trace-cred_alloc_blank
+      defaultValue: "false"
+      description: Trace the cred_alloc_blank LSM hook
+    trace_cred_free:
+      key: trace-cred_free
+      defaultValue: "false"
+      description: Trace the cred_free LSM hook
+    trace_cred_getsecid:
+      key: trace-cred_getsecid
+      defaultValue: "false"
+      description: Trace the cred_getsecid LSM hook
+    trace_cred_prepare:
+      key: trace-cred_prepare
+      defaultValue: "false"
+      description: Trace the cred_prepare LSM hook
+    trace_cred_transfer:
+      key: trace-cred_transfer
+      defaultValue: "false"
+      description: Trace the cred_transfer LSM hook
+    trace_d_instantiate:
+      key: trace-d_instantiate
+      defaultValue: "false"
+      description: Trace the d_instantiate LSM hook
+    trace_dentry_create_files_as:
+      key: trace-dentry_create_files_as
+      defaultValue: "false"
+      description: Trace the dentry_create_files_as LSM hook
+    trace_dentry_init_security:
+      key: trace-dentry_init_security
+      defaultValue: "false"
+      description: Trace the dentry_init_security LSM hook
+    trace_file_alloc_security:
+      key: trace-file_alloc_security
+      defaultValue: "false"
+      description: Trace the file_alloc_security LSM hook
+    trace_file_fcntl:
+      key: trace-file_fcntl
+      defaultValue: "false"
+      description: Trace the file_fcntl LSM hook
+    trace_file_free_security:
+      key: trace-file_free_security
+      defaultValue: "false"
+      description: Trace the file_free_security LSM hook
+    trace_file_ioctl:
+      key: trace-file_ioctl
+      defaultValue: "false"
+      description: Trace the file_ioctl LSM hook
+    trace_file_lock:
+      key: trace-file_lock
+      defaultValue: "false"
+      description: Trace the file_lock LSM hook
+    trace_file_mprotect:
+      key: trace-file_mprotect
+      defaultValue: "false"
+      description: Trace the file_mprotect LSM hook
+    trace_file_open:
+      key: trace-file_open
+      defaultValue: "false"
+      description: Trace the file_open LSM hook
+    trace_file_permission:
+      key: trace-file_permission
+      defaultValue: "false"
+      description: Trace the file_permission LSM hook
+    trace_file_receive:
+      key: trace-file_receive
+      defaultValue: "false"
+      description: Trace the file_receive LSM hook
+    trace_file_send_sigiotask:
+      key: trace-file_send_sigiotask
+      defaultValue: "false"
+      description: Trace the file_send_sigiotask LSM hook
+    trace_file_set_fowner:
+      key: trace-file_set_fowner
+      defaultValue: "false"
+      description: Trace the file_set_fowner LSM hook
+    trace_fs_context_dup:
+      key: trace-fs_context_dup
+      defaultValue: "false"
+      description: Trace the fs_context_dup LSM hook
+    trace_fs_context_parse_param:
+      key: trace-fs_context_parse_param
+      defaultValue: "false"
+      description: Trace the fs_context_parse_param LSM hook
+    trace_getprocattr:
+      key: trace-getprocattr
+      defaultValue: "false"
+      description: Trace the getprocattr LSM hook
+    trace_inode_alloc_security:
+      key: trace-inode_alloc_security
+      defaultValue: "false"
+      description: Trace the inode_alloc_security LSM hook
+    trace_inode_copy_up:
+      key: trace-inode_copy_up
+      defaultValue: "false"
+      description: Trace the inode_copy_up LSM hook
+    trace_inode_copy_up_xattr:
+      key: trace-inode_copy_up_xattr
+      defaultValue: "false"
+      description: Trace the inode_copy_up_xattr LSM hook
+    trace_inode_create:
+      key: trace-inode_create
+      defaultValue: "false"
+      description: Trace the inode_create LSM hook
+    trace_inode_follow_link:
+      key: trace-inode_follow_link
+      defaultValue: "false"
+      description: Trace the inode_follow_link LSM hook
+    trace_inode_free_security:
+      key: trace-inode_free_security
+      defaultValue: "false"
+      description: Trace the inode_free_security LSM hook
+    trace_inode_getattr:
+      key: trace-inode_getattr
+      defaultValue: "false"
+      description: Trace the inode_getattr LSM hook
+    trace_inode_getsecctx:
+      key: trace-inode_getsecctx
+      defaultValue: "false"
+      description: Trace the inode_getsecctx LSM hook
+    trace_inode_getsecid:
+      key: trace-inode_getsecid
+      defaultValue: "false"
+      description: Trace the inode_getsecid LSM hook
+    trace_inode_getsecurity:
+      key: trace-inode_getsecurity
+      defaultValue: "false"
+      description: Trace the inode_getsecurity LSM hook
+    trace_inode_getxattr:
+      key: trace-inode_getxattr
+      defaultValue: "false"
+      description: Trace the inode_getxattr LSM hook
+    trace_inode_init_security:
+      key: trace-inode_init_security
+      defaultValue: "false"
+      description: Trace the inode_init_security LSM hook
+    trace_inode_init_security_anon:
+      key: trace-inode_init_security_anon
+      defaultValue: "false"
+      description: Trace the inode_init_security_anon LSM hook
+    trace_inode_invalidate_secctx:
+      key: trace-inode_invalidate_secctx
+      defaultValue: "false"
+      description: Trace the inode_invalidate_secctx LSM hook
+    trace_inode_killpriv:
+      key: trace-inode_killpriv
+      defaultValue: "false"
+      description: Trace the inode_killpriv LSM hook
+    trace_inode_link:
+      key: trace-inode_link
+      defaultValue: "false"
+      description: Trace the inode_link LSM hook
+    trace_inode_listsecurity:
+      key: trace-inode_listsecurity
+      defaultValue: "false"
+      description: Trace the inode_listsecurity LSM hook
+    trace_inode_listxattr:
+      key: trace-inode_listxattr
+      defaultValue: "false"
+      description: Trace the inode_listxattr LSM hook
+    trace_inode_mkdir:
+      key: trace-inode_mkdir
+      defaultValue: "false"
+      description: Trace the inode_mkdir LSM hook
+    trace_inode_mknod:
+      key: trace-inode_mknod
+      defaultValue: "false"
+      description: Trace the inode_mknod LSM hook
+    trace_inode_need_killpriv:
+      key: trace-inode_need_killpriv
+      defaultValue: "false"
+      description: Trace the inode_need_killpriv LSM hook
+    trace_inode_notifysecctx:
+      key: trace-inode_notifysecctx
+      defaultValue: "false"
+      description: Trace the inode_notifysecctx LSM hook
+    trace_inode_permission:
+      key: trace-inode_permission
+      defaultValue: "false"
+      description: Trace the inode_permission LSM hook
+    trace_inode_post_setxattr:
+      key: trace-inode_post_setxattr
+      defaultValue: "false"
+      description: Trace the inode_post_setxattr LSM hook
+    trace_inode_readlink:
+      key: trace-inode_readlink
+      defaultValue: "false"
+      description: Trace the inode_readlink LSM hook
+    trace_inode_removexattr:
+      key: trace-inode_removexattr
+      defaultValue: "false"
+      description: Trace the inode_removexattr LSM hook
+    trace_inode_rename:
+      key: trace-inode_rename
+      defaultValue: "false"
+      description: Trace the inode_rename LSM hook
+    trace_inode_rmdir:
+      key: trace-inode_rmdir
+      defaultValue: "false"
+      description: Trace the inode_rmdir LSM hook
+    trace_inode_setattr:
+      key: trace-inode_setattr
+      defaultValue: "false"
+      description: Trace the inode_setattr LSM hook
+    trace_inode_setsecctx:
+      key: trace-inode_setsecctx
+      defaultValue: "false"
+      description: Trace the inode_setsecctx LSM hook
+    trace_inode_setsecurity:
+      key: trace-inode_setsecurity
+      defaultValue: "false"
+      description: Trace the inode_setsecurity LSM hook
+    trace_inode_setxattr:
+      key: trace-inode_setxattr
+      defaultValue: "false"
+      description: Trace the inode_setxattr LSM hook
+    trace_inode_symlink:
+      key: trace-inode_symlink
+      defaultValue: "false"
+      description: Trace the inode_symlink LSM hook
+    trace_inode_unlink:
+      key: trace-inode_unlink
+      defaultValue: "false"
+      description: Trace the inode_unlink LSM hook
+    trace_ipc_getsecid:
+      key: trace-ipc_getsecid
+      defaultValue: "false"
+      description: Trace the ipc_getsecid LSM hook
+    trace_ipc_permission:
+      key: trace-ipc_permission
+      defaultValue: "false"
+      description: Trace the ipc_permission LSM hook
+    trace_ismaclabel:
+      key: trace-ismaclabel
+      defaultValue: "false"
+      description: Trace the ismaclabel LSM hook
+    trace_kernel_act_as:
+      key: trace-kernel_act_as
+      defaultValue: "false"
+      description: Trace the kernel_act_as LSM hook
+    trace_kernel_create_files_as:
+      key: trace-kernel_create_files_as
+      defaultValue: "false"
+      description: Trace the kernel_create_files_as LSM hook
+    trace_kernel_load_data:
+      key: trace-kernel_load_data
+      defaultValue: "false"
+      description: Trace the kernel_load_data LSM hook
+    trace_kernel_module_request:
+      key: trace-kernel_module_request
+      defaultValue: "false"
+      description: Trace the kernel_module_request LSM hook
+    trace_kernel_post_load_data:
+      key: trace-kernel_post_load_data
+      defaultValue: "false"
+      description: Trace the kernel_post_load_data LSM hook
+    trace_kernel_post_read_file:
+      key: trace-kernel_post_read_file
+      defaultValue: "false"
+      description: Trace the kernel_post_read_file LSM hook
+    trace_kernel_read_file:
+      key: trace-kernel_read_file
+      defaultValue: "false"
+      description: Trace the kernel_read_file LSM hook
+    trace_kernfs_init_security:
+      key: trace-kernfs_init_security
+      defaultValue: "false"
+      description: Trace the kernfs_init_security LSM hook
+    trace_mmap_addr:
+      key: trace-mmap_addr
+      defaultValue: "false"
+      description: Trace the mmap_addr LSM hook
+    trace_mmap_file:
+      key: trace-mmap_file
+      defaultValue: "false"
+      description: Trace the mmap_file LSM hook
+    trace_move_mount:
+      key: trace-move_mount
+      defaultValue: "false"
+      description: Trace the move_mount LSM hook
+    trace_msg_msg_alloc_security:
+      key: trace-msg_msg_alloc_security
+      defaultValue: "false"
+      description: Trace the msg_msg_alloc_security LSM hook
+    trace_msg_msg_free_security:
+      key: trace-msg_msg_free_security
+      defaultValue: "false"
+      description: Trace the msg_msg_free_security LSM hook
+    trace_msg_queue_alloc_security:
+      key: trace-msg_queue_alloc_security
+      defaultValue: "false"
+      description: Trace the msg_queue_alloc_security LSM hook
+    trace_msg_queue_associate:
+      key: trace-msg_queue_associate
+      defaultValue: "false"
+      description: Trace the msg_queue_associate LSM hook
+    trace_msg_queue_free_security:
+      key: trace-msg_queue_free_security
+      defaultValue: "false"
+      description: Trace the msg_queue_free_security LSM hook
+    trace_msg_queue_msgctl:
+      key: trace-msg_queue_msgctl
+      defaultValue: "false"
+      description: Trace the msg_queue_msgctl LSM hook
+    trace_msg_queue_msgrcv:
+      key: trace-msg_queue_msgrcv
+      defaultValue: "false"
+      description: Trace the msg_queue_msgrcv LSM hook
+    trace_msg_queue_msgsnd:
+      key: trace-msg_queue_msgsnd
+      defaultValue: "false"
+      description: Trace the msg_queue_msgsnd LSM hook
+    trace_netlink_send:
+      key: trace-netlink_send
+      defaultValue: "false"
+      description: Trace the netlink_send LSM hook
+    trace_path_notify:
+      key: trace-path_notify
+      defaultValue: "false"
+      description: Trace the path_notify LSM hook
+    trace_ptrace_access_check:
+      key: trace-ptrace_access_check
+      defaultValue: "false"
+      description: Trace the ptrace_access_check LSM hook
+    trace_ptrace_traceme:
+      key: trace-ptrace_traceme
+      defaultValue: "false"
+      description: Trace the ptrace_traceme LSM hook
+    trace_quota_on:
+      key: trace-quota_on
+      defaultValue: "false"
+      description: Trace the quota_on LSM hook
+    trace_quotactl:
+      key: trace-quotactl
+      defaultValue: "false"
+      description: Trace the quotactl LSM hook
+    trace_release_secctx:
+      key: trace-release_secctx
+      defaultValue: "false"
+      description: Trace the release_secctx LSM hook
+    trace_sb_alloc_security:
+      key: trace-sb_alloc_security
+      defaultValue: "false"
+      description: Trace the sb_alloc_security LSM hook
+    trace_sb_clone_mnt_opts:
+      key: trace-sb_clone_mnt_opts
+      defaultValue: "false"
+      description: Trace the sb_clone_mnt_opts LSM hook
+    trace_sb_delete:
+      key: trace-sb_delete
+      defaultValue: "false"
+      description: Trace the sb_delete LSM hook
+    trace_sb_eat_lsm_opts:
+      key: trace-sb_eat_lsm_opts
+      defaultValue: "false"
+      description: Trace the sb_eat_lsm_opts LSM hook
+    trace_sb_free_mnt_opts:
+      key: trace-sb_free_mnt_opts
+      defaultValue: "false"
+      description: Trace the sb_free_mnt_opts LSM hook
+    trace_sb_free_security:
+      key: trace-sb_free_security
+      defaultValue: "false"
+      description: Trace the sb_free_security LSM hook
+    trace_sb_kern_mount:
+      key: trace-sb_kern_mount
+      defaultValue: "false"
+      description: Trace the sb_kern_mount LSM hook
+    trace_sb_mnt_opts_compat:
+      key: trace-sb_mnt_opts_compat
+      defaultValue: "false"
+      description: Trace the sb_mnt_opts_compat LSM hook
+    trace_sb_mount:
+      key: trace-sb_mount
+      defaultValue: "false"
+      description: Trace the sb_mount LSM hook
+    trace_sb_pivotroot:
+      key: trace-sb_pivotroot
+      defaultValue: "false"
+      description: Trace the sb_pivotroot LSM hook
+    trace_sb_remount:
+      key: trace-sb_remount
+      defaultValue: "false"
+      description: Trace the sb_remount LSM hook
+    trace_sb_set_mnt_opts:
+      key: trace-sb_set_mnt_opts
+      defaultValue: "false"
+      description: Trace the sb_set_mnt_opts LSM hook
+    trace_sb_show_options:
+      key: trace-sb_show_options
+      defaultValue: "false"
+      description: Trace the sb_show_options LSM hook
+    trace_sb_statfs:
+      key: trace-sb_statfs
+      defaultValue: "false"
+      description: Trace the sb_statfs LSM hook
+    trace_sb_umount:
+      key: trace-sb_umount
+      defaultValue: "false"
+      description: Trace the sb_umount LSM hook
+    trace_secctx_to_secid:
+      key: trace-secctx_to_secid
+      defaultValue: "false"
+      description: Trace the secctx_to_secid LSM hook
+    trace_secid_to_secctx:
+      key: trace-secid_to_secctx
+      defaultValue: "false"
+      description: Trace the secid_to_secctx LSM hook
+    trace_sem_alloc_security:
+      key: trace-sem_alloc_security
+      defaultValue: "false"
+      description: Trace the sem_alloc_security LSM hook
+    trace_sem_associate:
+      key: trace-sem_associate
+      defaultValue: "false"
+      description: Trace the sem_associate LSM hook
+    trace_sem_free_security:
+      key: trace-sem_free_security
+      defaultValue: "false"
+      description: Trace the sem_free_security LSM hook
+    trace_sem_semctl:
+      key: trace-sem_semctl
+      defaultValue: "false"
+      description: Trace the sem_semctl LSM hook
+    trace_sem_semop:
+      key: trace-sem_semop
+      defaultValue: "false"
+      description: Trace the sem_semop LSM hook
+    trace_setprocattr:
+      key: trace-setprocattr
+      defaultValue: "false"
+      description: Trace the setprocattr LSM hook
+    trace_settime:
+      key: trace-settime
+      defaultValue: "false"
+      description: Trace the settime LSM hook
+    trace_shm_alloc_security:
+      key: trace-shm_alloc_security
+      defaultValue: "false"
+      description: Trace the shm_alloc_security LSM hook
+    trace_shm_associate:
+      key: trace-shm_associate
+      defaultValue: "false"
+      description: Trace the shm_associate LSM hook
+    trace_shm_free_security:
+      key: trace-shm_free_security
+      defaultValue: "false"
+      description: Trace the shm_free_security LSM hook
+    trace_shm_shmat:
+      key: trace-shm_shmat
+      defaultValue: "false"
+      description: Trace the shm_shmat LSM hook
+    trace_shm_shmctl:
+      key: trace-shm_shmctl
+      defaultValue: "false"
+      description: Trace the shm_shmctl LSM hook
+    trace_syslog:
+      key: trace-syslog
+      defaultValue: "false"
+      description: Trace the syslog LSM hook
+    trace_task_alloc:
+      key: trace-task_alloc
+      defaultValue: "false"
+      description: Trace the task_alloc LSM hook
+    trace_task_fix_setgid:
+      key: trace-task_fix_setgid
+      defaultValue: "false"
+      description: Trace the task_fix_setgid LSM hook
+    trace_task_fix_setuid:
+      key: trace-task_fix_setuid
+      defaultValue: "false"
+      description: Trace the task_fix_setuid LSM hook
+    trace_task_free:
+      key: trace-task_free
+      defaultValue: "false"
+      description: Trace the task_free LSM hook
+    trace_task_getioprio:
+      key: trace-task_getioprio
+      defaultValue: "false"
+      description: Trace the task_getioprio LSM hook
+    trace_task_getpgid:
+      key: trace-task_getpgid
+      defaultValue: "false"
+      description: Trace the task_getpgid LSM hook
+    trace_task_getscheduler:
+      key: trace-task_getscheduler
+      defaultValue: "false"
+      description: Trace the task_getscheduler LSM hook
+    trace_task_getsecid_obj:
+      key: trace-task_getsecid_obj
+      defaultValue: "false"
+      description: Trace the task_getsecid_obj LSM hook
+    trace_task_getsid:
+      key: trace-task_getsid
+      defaultValue: "false"
+      description: Trace the task_getsid LSM hook
+    trace_task_kill:
+      key: trace-task_kill
+      defaultValue: "false"
+      description: Trace the task_kill LSM hook
+    trace_task_movememory:
+      key: trace-task_movememory
+      defaultValue: "false"
+      description: Trace the task_movememory LSM hook
+    trace_task_prctl:
+      key: trace-task_prctl
+      defaultValue: "false"
+      description: Trace the task_prctl LSM hook
+    trace_task_prlimit:
+      key: trace-task_prlimit
+      defaultValue: "false"
+      description: Trace the task_prlimit LSM hook
+    trace_task_setioprio:
+      key: trace-task_setioprio
+      defaultValue: "false"
+      description: Trace the task_setioprio LSM hook
+    trace_task_setnice:
+      key: trace-task_setnice
+      defaultValue: "false"
+      description: Trace the task_setnice LSM hook
+    trace_task_setpgid:
+      key: trace-task_setpgid
+      defaultValue: "false"
+      description: Trace the task_setpgid LSM hook
+    trace_task_setrlimit:
+      key: trace-task_setrlimit
+      defaultValue: "false"
+      description: Trace the task_setrlimit LSM hook
+    trace_task_setscheduler:
+      key: trace-task_setscheduler
+      defaultValue: "false"
+      description: Trace the task_setscheduler LSM hook
+    trace_task_to_inode:
+      key: trace-task_to_inode
+      defaultValue: "false"
+      description: Trace the task_to_inode LSM hook
+    trace_vm_enough_memory:
+      key: trace-vm_enough_memory
+      defaultValue: "false"
+      description: Trace the vm_enough_memory LSM hook

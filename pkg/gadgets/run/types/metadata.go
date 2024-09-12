@@ -68,11 +68,18 @@ func Validate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 
 func validateEbpfParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 	var result error
-	for varName := range m.EBPFParams {
+
+	if m.Params == nil {
+		return nil
+	}
+
+	ebpfParams := m.Params["ebpf"]
+
+	for varName := range ebpfParams {
 		if err := checkParamVar(spec, varName); err != nil {
 			result = multierror.Append(result, err)
 		}
-		if len(m.EBPFParams[varName].Key) == 0 {
+		if len(ebpfParams[varName].Key) == 0 {
 			result = multierror.Append(result, fmt.Errorf("param %q has an empty key", varName))
 		}
 	}
@@ -476,21 +483,25 @@ func populateEbpfParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec)
 			continue
 		}
 
-		if m.EBPFParams == nil {
-			m.EBPFParams = make(map[string]metadatav1.EBPFParam)
+		if m.Params == nil {
+			m.Params = make(map[string]map[string]params.ParamDesc)
 		}
 
-		if _, found := m.EBPFParams[name]; found {
+		if m.Params["ebpf"] == nil {
+			m.Params["ebpf"] = make(map[string]params.ParamDesc)
+		}
+
+		ebpfParams := m.Params["ebpf"]
+
+		if _, found := ebpfParams[name]; found {
 			log.Debugf("Param %q already defined, skipping", name)
 			continue
 		}
 
 		log.Debugf("Adding param %q", name)
-		m.EBPFParams[name] = metadatav1.EBPFParam{
-			ParamDesc: params.ParamDesc{
-				Key:         name,
-				Description: "TODO: Fill parameter description",
-			},
+		ebpfParams[name] = params.ParamDesc{
+			Key:         name,
+			Description: "TODO: Fill parameter description",
 		}
 	}
 
