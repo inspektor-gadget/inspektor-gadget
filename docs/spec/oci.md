@@ -23,6 +23,13 @@ architectures are supported:
 - amd64
 - arm64
 
+## ArtifactType
+
+Media type: `application/vnd.gadget.v1+binary`
+
+This indicates the manifest is a Gadget. It follows the guidelines in:
+https://github.com/opencontainers/image-spec/blob/main/manifest.md#guidelines-for-artifact-usage.
+
 ## Gadget metadata
 
 Media type: `application/vnd.gadget.config.v1+yaml`

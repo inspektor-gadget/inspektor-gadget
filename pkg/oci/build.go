@@ -42,6 +42,7 @@ const (
 )
 
 const (
+	artifactType        = "application/vnd.gadget.v1+binary"
 	eBPFObjectMediaType = "application/vnd.gadget.ebpf.program.v1+binary"
 	wasmObjectMediaType = "application/vnd.gadget.wasm.program.v1+binary"
 	btfgenMediaType     = "application/vnd.gadget.btfgen.v1+binary"
@@ -225,10 +226,6 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 	}
 
 	var defDesc ocispec.Descriptor
-	// artifactType must be only set when the config.mediaType is set to
-	// MediaTypeEmptyJSON. In our case, when the metadata file is not provided:
-	// https://github.com/opencontainers/image-spec/blob/f5f87016de46439ccf91b5381cf76faaae2bc28f/manifest.md?plain=1#L170
-	var artifactType string
 
 	if _, err := os.Stat(metadataFilePath); err == nil {
 		// Read the metadata file into a byte array
@@ -243,7 +240,6 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
 		}
-		artifactType = eBPFObjectMediaType
 
 		// Even without metadata, we can still set some annotations
 		defDesc.Annotations = map[string]string{
