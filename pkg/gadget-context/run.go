@@ -226,6 +226,9 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 		}
 	}()
 
+	// keep a copy - currently only used for custom params in SetMetadata()
+	c.paramValues = paramValues
+
 	metricAttribs := attribute.NewSet(
 		attribute.KeyValue{Key: "gadget_image", Value: attribute.StringValue(c.imageName)},
 	)
