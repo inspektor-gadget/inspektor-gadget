@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"text/template"
 
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -167,6 +168,7 @@ func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, 
 		gadgetCtx:   gadgetCtx,
 		ociParams:   ociParams,
 		paramValues: instanceParamValues,
+		extraParams: make([]*api.Param, 0),
 	}
 
 	err = instance.init(gadgetCtx)
@@ -264,6 +266,91 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("unmarshalling metadata: %w", err)
 	}
 
+	// Extract custom params
+	customParams := viper.Sub("params.custom")
+	if customParams != nil {
+		for k := range viper.GetStringMap("params.custom") {
+			log.Debugf("evaluating custom param %q", k)
+			paramSub := customParams.Sub(k)
+			valuesSub := paramSub.Sub("values")
+			if valuesSub == nil {
+				log.Debugf("custom param %q has no values", k)
+				continue
+			}
+			p := &api.Param{
+				Key:          k,
+				Description:  paramSub.GetString("description"),
+				Prefix:       "custom.",
+				DefaultValue: paramSub.GetString("defaultValue"),
+			}
+			for value := range paramSub.GetStringMap("values") {
+				// Skip wildcard param
+				if value == "*" {
+					continue
+				}
+				p.PossibleValues = append(p.PossibleValues, value)
+			}
+			o.extraParams = append(o.extraParams, p)
+
+			// Evaluate, if set
+			if val, ok := o.paramValues["custom."+k]; ok {
+				valName := val
+				if !paramSub.IsSet("values."+valName+".applyConfig") && paramSub.IsSet("values.*.applyConfig") {
+					// Use wildcard fallback
+					valName = "*"
+				}
+
+				log.Debugf("applying custom param %q value %q", k, valName)
+
+				valSub := paramSub.Sub("values." + valName + ".applyConfig")
+				if valSub == nil {
+					continue
+				}
+
+				// Apply templates
+				replacements := make(map[string]string)
+				for _, k1 := range valSub.AllKeys() {
+					v1 := valSub.Get(k1)
+					if s, ok := v1.(string); ok {
+						tpl, err := template.New(k1).Parse(s)
+						if err != nil {
+							return fmt.Errorf("parsing custom param %q value %q: %q cannot be parsed as template: %w", k, val, k1, err)
+						}
+						out := bytes.NewBuffer(nil)
+						err = tpl.Execute(out, map[string]any{
+							"paramValues": o.paramValues,
+							"getConfig": func(key string) string {
+								return viper.GetString(key)
+							},
+						})
+						if err != nil {
+							return fmt.Errorf("evaluating custom param %q value %q template for %q: %w", k, val, k1, err)
+						}
+						if tplOut := out.String(); tplOut != s {
+							replacements[k1] = tplOut
+						}
+					}
+				}
+
+				for k1, v1 := range replacements {
+					log.Debugf("replacing %q with %q", k1, v1)
+					paramSub.Set("values."+valName+".applyConfig."+k1, v1)
+				}
+
+				applyMap := paramSub.GetStringMap("values." + valName + ".applyConfig")
+
+				// Prevent recursive patching of customparams
+				delete(applyMap, "customparams")
+
+				// Merge with config
+				err = viper.MergeConfigMap(applyMap)
+				if err != nil {
+					return fmt.Errorf("merging custom param %q value %q: %w", k, valName, err)
+				}
+			}
+		}
+	}
+
 	gadgetCtx.SetVar("config", viper)
 
 	for _, layer := range manifest.Layers {
@@ -289,7 +376,6 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("image doesn't contain valid gadget layers")
 	}
 
-	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Prepare(o.gadgetCtx)
 		if err != nil {
@@ -297,10 +383,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 
 		// Add gadget params prefixed with operators' name
-		extraParams = append(extraParams, opInst.ExtraParams(gadgetCtx).AddPrefix(opInst.Name())...)
+		o.extraParams = append(o.extraParams, opInst.ExtraParams(gadgetCtx).AddPrefix(opInst.Name())...)
 	}
 
-	o.extraParams = extraParams
 	return nil
 }
 
