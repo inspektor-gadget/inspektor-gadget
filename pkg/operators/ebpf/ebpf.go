@@ -34,6 +34,7 @@ import (
 	"github.com/spf13/viper"
 	"oras.land/oras-go/v2"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -593,8 +594,13 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			if t == nil {
 				continue
 			}
-			i.logger.Debugf("replacing map %q", v.name)
-			mapReplacements[v.name] = t
+			if err := i.collectionSpec.Maps[v.name].Compatible(t); err == nil {
+				mapReplacements[v.name] = t
+			} else {
+				i.logger.Warnf("Replacement map %q incompatible: %s",
+					v.name, err)
+				i.logger.Warnf("Is %s compatible with ig %s?", i.gadgetCtx.ImageName(), version.Version().String())
+			}
 		default:
 			if !reflect.TypeOf(res).AssignableTo(v.refType) {
 				i.logger.Debugf("variable %q can not be set to type %T (expected %s)", v.name, res, v.refType.Name())
