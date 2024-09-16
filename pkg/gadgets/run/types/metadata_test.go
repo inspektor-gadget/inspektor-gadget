@@ -98,17 +98,6 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErrString: "\"param3\" is not const",
 		},
-		"sched_cls": {
-			objectPath: "../../../../testdata/validate_metadata_sched_cls.o",
-			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
-				GadgetParams: map[string]params.ParamDesc{
-					"iface": {
-						Key: "iface",
-					},
-				},
-			},
-		},
 	}
 
 	for name, test := range tests {

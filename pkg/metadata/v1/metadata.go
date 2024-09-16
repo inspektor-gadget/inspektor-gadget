@@ -65,6 +65,4 @@ type GadgetMetadata struct {
 	DataSources map[string]*DataSource `yaml:"datasources,omitempty"`
 	// Params exposed by this gadget. It includes params for different operators
 	Params map[string]map[string]params.ParamDesc `yaml:"params,omitempty"`
-	// Other params exposed by the gadget
-	GadgetParams map[string]params.ParamDesc `yaml:"gadgetParams,omitempty"`
 }

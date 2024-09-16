@@ -43,11 +43,6 @@ const (
 	paramPrefix = "gadget_param_"
 )
 
-const (
-	// Name of the parameter that defins the network interface a TC program is attached to.
-	IfaceParam = "iface"
-)
-
 func Validate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 	var result error
 
@@ -56,10 +51,6 @@ func Validate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 	}
 
 	if err := validateEbpfParams(m, spec); err != nil {
-		result = multierror.Append(result, err)
-	}
-
-	if err := validateGadgetParams(m, spec); err != nil {
 		result = multierror.Append(result, err)
 	}
 
@@ -81,24 +72,6 @@ func validateEbpfParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec)
 		}
 		if len(ebpfParams[varName].Key) == 0 {
 			result = multierror.Append(result, fmt.Errorf("param %q has an empty key", varName))
-		}
-	}
-	return result
-}
-
-func validateGadgetParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
-	var result error
-	for _, p := range spec.Programs {
-		switch p.Type {
-		// Networking programs provide an interface name to attach to
-		case ebpf.SchedCLS:
-			if len(m.GadgetParams) == 0 {
-				result = multierror.Append(result, fmt.Errorf("there aren't gadget parameters"))
-			} else {
-				if _, ok := m.GadgetParams[IfaceParam]; !ok {
-					result = multierror.Append(result, fmt.Errorf("iface param not found"))
-				}
-			}
 		}
 	}
 	return result
@@ -144,10 +117,6 @@ func Populate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 
 	if err := populateEbpfParams(m, spec); err != nil {
 		return fmt.Errorf("handling params: %w", err)
-	}
-
-	if err := populateGadgetParams(m, spec); err != nil {
-		return fmt.Errorf("handling gadget params: %w", err)
 	}
 
 	return nil
@@ -506,25 +475,6 @@ func populateEbpfParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec)
 	}
 
 	return result
-}
-
-func populateGadgetParams(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
-	for _, p := range spec.Programs {
-		switch p.Type {
-		// Networking programs provide an interface name to attach to
-		case ebpf.SchedCLS:
-			if m.GadgetParams == nil {
-				m.GadgetParams = make(map[string]params.ParamDesc)
-			}
-
-			m.GadgetParams[IfaceParam] = params.ParamDesc{
-				Key:         IfaceParam,
-				Description: "Network interface to attach to",
-			}
-		}
-	}
-
-	return nil
 }
 
 func checkParamVar(spec *ebpf.CollectionSpec, name string) error {
