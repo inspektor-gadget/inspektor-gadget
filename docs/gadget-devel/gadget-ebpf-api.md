@@ -12,7 +12,7 @@ life easier when implementing gadgets.
 ## Container enrichment
 
 To make use of container enrichment, gadgets must include
-[gadget/mntns.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/include/gadget/mntns.h):
+[gadget/mntns.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/mntns.h):
 
 ```C
 #include <gadget/mntns.h>
@@ -65,7 +65,7 @@ and the container runtime (docker, cri-o, containerd, etc.).
 ## Container filtering
 
 To make use of container filtering, gadgets must include
-[gadget/mntns_filter.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/include/gadget/mntns_filter.h):
+[gadget/mntns_filter.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/mntns_filter.h):
 
 ```C
 #include <gadget/mntns_filter.h>
@@ -82,7 +82,7 @@ if (gadget_should_discard_mntns_id(mntns_id))
 ## Socket enrichment
 
 To make use of socket enrichment, gadgets must include
-[gadget/sockets-map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/include/gadget/sockets-map.h).
+[gadget/sockets-map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/sockets-map.h).
 
 For eBPF programs of type socket filter:
 

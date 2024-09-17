@@ -52,6 +52,11 @@ jobs:
       run: |
         make manifests generate generate-documentation
         git diff --exit-code HEAD --
+    - name: Replace tag constant
+      run: |
+        # Replace tag and branch constants to be able to check links
+        find docs/ -type f -exec sed -i 's/%IG_BRANCH%/main/g' {} +
+        find docs/ -type f -exec sed -i 's/%IG_TAG%/latest/g' {} +
     - name: Check that there are not broken links
       uses: gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368 # v1
       with:

@@ -26,7 +26,7 @@ Public keys used to verify the gadgets. Check [Verify image-based
 gadgets](../../reference/verify-assets.mdx#verify-image-based-gadgets) to learn more.
 
 Default: [Inspektor Gadget public
-key](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/resources/inspektor-gadget.pub).
+key](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/pkg/resources/inspektor-gadget.pub).
 
 ### `allowed-gadgets`
 

@@ -31,13 +31,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_tcprtt:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -49,7 +49,7 @@ Running the gadget:
         Run the gadget in a terminal:
 
         ```bash
-        $ kubectl gadget run profile_tcprtt:latest --node minikube-docker
+        $ kubectl gadget run profile_tcprtt:%IG_TAG% --node minikube-docker
         ```
 
         It will start to display the TCP RTT latency distribution as follows:

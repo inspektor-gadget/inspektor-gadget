@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_dns:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_dns:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_dns:%IG_TAG% [flags]
         ```
     </TabItem>
 
@@ -84,7 +84,7 @@ Running the gadget:
         Run the gadget in a terminal, in this case we are only focused on DNS requests/response in `demo` namespace for pod `mypod`:
 
         ```bash
-        kubectl gadget run trace_dns:latest -n demo -p mypod
+        kubectl gadget run trace_dns:%IG_TAG% -n demo -p mypod
         ```
 
         Run a pod in a different terminal:
@@ -115,7 +115,7 @@ Running the gadget:
         Let's try to expand the scope and see what happens to the DNS request at CoreDNS pod. Restart the gadget as:
 
         ```bash
-        kubectl gadget run trace_dns:latest -n demo,kube-system -F "k8s.podName~mypod|coredns-.*" -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,src,dst,qr,name,rcode,timestamp
+        kubectl gadget run trace_dns:%IG_TAG% -n demo,kube-system -F "k8s.podName~mypod|coredns-.*" -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,src,dst,qr,name,rcode,timestamp
         ```
 
         This will filter the DNS request/response for pods `mypod` and  CoreDNS pods. See how are able to choose different fields via `--fields`.
@@ -143,7 +143,7 @@ Running the gadget:
         At this point we already have the idea about what is happening to the request at different stages. In order to include context related to the OS, we can restart the gadget and don't filter by pod names:
 
         ```bash
-        kubectl gadget run trace_dns:latest -n demo,kube-system  -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,pky_type,src,dst,qr,name,rcode,latency_ns,timestamp
+        kubectl gadget run trace_dns:%IG_TAG% -n demo,kube-system  -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,pky_type,src,dst,qr,name,rcode,latency_ns,timestamp
         ```
 
         :::note
@@ -178,7 +178,7 @@ Running the gadget:
         Start the gadget in a terminal:
 
         ```bash
-        $ sudo ig run trace_dns:latest --containername test-trace-dns
+        $ sudo ig run trace_dns:%IG_TAG% --containername test-trace-dns
         RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES
         ```
 

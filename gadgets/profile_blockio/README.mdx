@@ -35,13 +35,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_blockio:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_blockio:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -53,7 +53,7 @@ Running the gadget:
         Run the gadget in a terminal:
 
         ```bash
-        $ kubectl gadget run profile_blockio:latest --node minikube-docker
+        $ kubectl gadget run profile_blockio:%IG_TAG% --node minikube-docker
         ```
 
         It will start to display the I/O latency distribution as follows:
@@ -110,7 +110,7 @@ Running the gadget:
 
         ```bash
         # Run the gadget again
-        $ kubectl gadget run profile_blockio:latest --node minikube-docker
+        $ kubectl gadget run profile_blockio:%IG_TAG% --node minikube-docker
         latency
               µs               : count    distribution
                0 -> 1          : 0        |                                        |
@@ -150,7 +150,7 @@ Running the gadget:
         Run the gadget in a terminal:
 
         ```bash
-        $ sudo ig run profile_blockio:latest
+        $ sudo ig run profile_blockio:%IG_TAG%
         ```
 
         It will start to display the I/O latency distribution as follows:
@@ -196,7 +196,7 @@ Running the gadget:
         Run the gadget to observe the I/O latency distribution:
 
         ```bash
-        $ sudo ig run profile_blockio:latest
+        $ sudo ig run profile_blockio:%IG_TAG%
         latency
               µs               : count    distribution
                0 -> 1          : 0        |                                        |

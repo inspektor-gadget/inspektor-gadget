@@ -21,13 +21,13 @@ one of these two conditions:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/audit_seccomp:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/audit_seccomp:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/audit_seccomp:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -137,7 +137,7 @@ Then, start the audit_seccomp gadget and observe how it logs the `unshare` sysca
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 
 ```bash
-$ kubectl gadget run audit_seccomp:latest
+$ kubectl gadget run audit_seccomp:%IG_TAG%
 K8S.NODE          K8S.NAMESPACE   K8S.PODNAME     K8S.CONTAINERN… COMM          PID     TID      UID      GID CODE      SYSCALL
 minikube-docker   default         mypod           container1      mkdir       60482   60482        0        0 …_RET_LOG SYS_MKDIR
 minikube-docker   default         mypod           container1      unshare     60483   60483        0        0 …L_THREAD SYS_UNSH…
@@ -151,7 +151,7 @@ minikube-docker   default         mypod           container1      unshare     60
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo -E ig run audit_seccomp:latest
+$ sudo -E ig run audit_seccomp:%IG_TAG%
 RUNTIME.CONTAINERNAME COMM                  PID         TID         UID         GID CODE          SYSCALL
 test-audit-seccomp    unshare            485855      485855           0           0 …_KILL_THREAD SYS_UNSHARE
 test-audit-seccomp    unshare            485865      485865           0           0 …_KILL_THREAD SYS_UNSHARE

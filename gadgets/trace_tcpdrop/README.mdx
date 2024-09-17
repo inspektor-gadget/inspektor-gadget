@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpdrop:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -35,7 +35,7 @@ Running the gadget:
         In terminal 1, start the trace tcpdrop gadget:
 
         ```bash
-        $ kubectl gadget run trace_tcpdrop:latest
+        $ kubectl gadget run trace_tcpdrop:%IG_TAG%
         K8S.NODE                 K8S.NAMESPACE                                  K8S.PODNAME                                    K8S.CONTAINERNAME                              SRC                                                  DST                                                  MOUNT_NS_ID               COMM                                   PID                      TID STATE                    TCPFLAGS                 REASON
         ```
 
@@ -74,7 +74,7 @@ Running the gadget:
         In terminal 1, start the trace tcpdrop gadget:
 
         ```bash
-        $ sudo ig run trace_tcpdrop:latest --containername test-trace-tcpdrop
+        $ sudo ig run trace_tcpdrop:%IG_TAG% --containername test-trace-tcpdrop
         RUNTIME.CONTAINERNAME      SRC                                DST                                MOUNT_NS_ID    COMM                      PID            TID STATE         TCPFLAGS      REASON
         ```
 

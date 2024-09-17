@@ -286,7 +286,7 @@ You can see the guide [here](https://cloud.google.com/kubernetes-engine/docs/how
 ## Benchmarks
 
 Inspektor Gadget has
-[benchmark tests](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/internal/benchmarks/benchmarks_test.go)
+[benchmark tests](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/internal/benchmarks/benchmarks_test.go)
 that are automatically executed and published by
 [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark). You can see the results on:
 

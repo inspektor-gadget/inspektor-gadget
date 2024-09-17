@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_mount:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_mount:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_mount:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_mount:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -63,7 +63,7 @@ Then, let's run the gadget:
         thus tracing on all nodes for a pod called `mypod`:
 
         ```bash
-        $ kubectl gadget run trace_mount:latest --podname mypod
+        $ kubectl gadget run trace_mount:%IG_TAG% --podname mypod
         K8S.NODE          K8S.NAMESPACE              K8S.PODNAME                K8S.CONTAINERNAME          COMM                      PID           TID  DELTA FLAGS         CALL                        ERROR
         minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   3318 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
         minikube-docker   default                    mypod                      mypod                      mount                   36469         36469   1321 MS_SILENT     mount("/mnt", "/mnt", "ext… ENOENT
@@ -82,7 +82,7 @@ Then, let's run the gadget:
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run trace_mount:latest --containername test-trace-mount
+        $ sudo ig run trace_mount:%IG_TAG% --containername test-trace-mount
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
         RUNTIME.CONTAINERNAME                    COMM                               PID                   TID       DELTA FLAGS                CALL                                      ERROR
         test-trace-mount                         mount                            51158                 51158        3460 MS_SILENT            mount("/bar", "/foo", "ext3", MS_SILENT,… ENOENT
