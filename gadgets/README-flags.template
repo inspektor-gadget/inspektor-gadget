@@ -1,11 +1,11 @@
-{{ if has (ds "gadget") "ebpfParams" -}}
-{{ range $index, $flag := index (ds "gadget") "ebpfParams" }}
-### `--{{ index $flag "key" }}`
+{{ if has (ds "gadget") "params" -}}
+{{ range $i, $operator := index (ds "gadget") "params" }}{{ range $j, $param := $operator }}
+### `--{{ index $param "key" }}`
 
-{{ index $flag "description" }}
+{{ index $param "description" }}
 
-Default value: "{{ index $flag "defaultValue" }}"
-{{ end -}}
+Default value: "{{ index $param "defaultValue" }}"
+{{ end -}}{{ end -}}
 {{- else }}
 No flags.
 {{ end }}

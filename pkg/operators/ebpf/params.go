@@ -102,7 +102,7 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 	}
 
 	// Fill additional information from metadata
-	paramInfo := i.config.Sub("params." + varName)
+	paramInfo := i.config.Sub("params.ebpf." + varName)
 	if paramInfo == nil {
 		// Backward compatibility
 		paramInfo = i.config.Sub("ebpfParams." + varName)

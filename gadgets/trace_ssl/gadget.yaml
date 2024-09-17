@@ -57,8 +57,9 @@ datasources:
       operation:
         annotations:
           description: type of SSL operations
-ebpfParams:
-  record_data:
-    key: record-data
-    defaultValue: "true"
-    description: controls whether the gadget will send data to userspace
+params:
+  ebpf:
+    record_data:
+      key: record-data
+      defaultValue: "true"
+      description: controls whether the gadget will send data to userspace

@@ -23,9 +23,10 @@ GADGET_PARAM(myparam);
 3. Provide additional information for the param on the metadata file:
 
 ```yaml
-ebpfParams:
-  myparam:
-    key: my-param
-    defaultValue: "false"
-    description: Description for the param
+params:
+  ebpf:
+    myparam:
+      key: my-param
+      defaultValue: "false"
+      description: Description for the param
 ```
