@@ -87,7 +87,7 @@ struct {
 GADGET_TRACER_MAP(events, 4096*4096); // 4096 in-flight pages
 GADGET_TRACER(raw, events, event);
 
-SEC("uprobe//home/alban/go/src/github.com/inspektor-gadget/inspektor-gadget/gadgets/gotls/test/demofetch:crypto/tls.(*Conn).Write")
+SEC("uprobe//gofetch:crypto/tls.(*Conn).Write")
 int uprobe_write(struct pt_regs *ctx) {
     __u64 buf_ptr = (__u64)GO_PARAM2(ctx);
     __u32 len = (__u64)GO_PARAM3(ctx);
@@ -120,7 +120,7 @@ int uprobe_write(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("uprobe//home/alban/go/src/github.com/inspektor-gadget/inspektor-gadget/gadgets/gotls/test/demofetch:crypto/tls.(*Conn).Read")
+SEC("uprobe//gofetch:crypto/tls.(*Conn).Read")
 int uprobe_read(struct pt_regs *ctx) {
     __u64 goroutine_addr = (__u64)GOROUTINE_PTR(ctx);
 
@@ -133,7 +133,7 @@ int uprobe_read(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("uretprobe//home/alban/go/src/github.com/inspektor-gadget/inspektor-gadget/gadgets/gotls/test/demofetch:crypto/tls.(*Conn).Read")
+SEC("uretprobe//gofetch:crypto/tls.(*Conn).Read")
 int uretprobe_read(struct pt_regs *ctx) {
     __u32 len = (__u64)GO_PARAM1(ctx);
 
