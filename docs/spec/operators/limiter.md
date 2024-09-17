@@ -20,6 +20,6 @@ data sources, prefix the value with 'datasourcename:' and separate with ','. If
 no array data source is specified, the value will be applied to all array data
 sources. Use -1 to disable the limiter.
 
-Fully qualified name: `operators.limiter.max-entries`
+Fully qualified name: `operator.limiter.max-entries`
 
 Default value: `-1`

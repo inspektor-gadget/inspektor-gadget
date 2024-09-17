@@ -17,4 +17,4 @@ Sort by fields. Join multiple fields with ','. Prefix a field with '-' to sort
 in descending order. If using multiple data sources, prefix fields with
 'datasourcename:' and separate with ';'
 
-Fully qualified name: `operators.sort.sort`
+Fully qualified name: `operator.sort.sort`

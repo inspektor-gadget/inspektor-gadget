@@ -56,7 +56,7 @@ Path of the authentication file. This overrides the `REGISTRY_AUTH_FILE`
 environment variable. If the default file doesn't exist,
 `$HOME/.docker/config.json` is used as a fallback.
 
-Fully qualified name: `operators.oci.authfile`
+Fully qualified name: `operator.oci.authfile`
 
 Default: `/var/lib/ig/config.json`
 
@@ -64,7 +64,7 @@ Default: `/var/lib/ig/config.json`
 
 Validate the gadget metadata before running the gadget
 
-Fully qualified name: `operators.oci.validate-metadata`
+Fully qualified name: `operator.oci.validate-metadata`
 
 Default: `true`
 
@@ -76,7 +76,7 @@ Possible Values:
 - `missing`: Pull the gadget image only if missing.
 - `never`: Never pull the gadget image.
 
-Fully qualified name: `operators.oci.pull`
+Fully qualified name: `operator.oci.pull`
 
 Default: `missing`
 
@@ -84,4 +84,4 @@ Default: `missing`
 
 Secret to use when pulling the gadget image
 
-Fully qualified name: `operators.oci.pull-secret`
+Fully qualified name: `operator.oci.pull-secret`

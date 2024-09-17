@@ -41,28 +41,28 @@ with the following fields:
 
 Show only data from containers with that name
 
-Fully qualified name: `operators.KubeManager.containername`
+Fully qualified name: `operator.KubeManager.containername`
 
 ### `podname`
 
 Show only data from pods with that name
 
-Fully qualified name: `operators.KubeManager.podname`
+Fully qualified name: `operator.KubeManager.podname`
 
 ### `selector`
 
 Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)
 
-Fully qualified name: `operators.KubeManager.selector`
+Fully qualified name: `operator.KubeManager.selector`
 
 ### `namespace`
 
 Show only data from pods in a given namespace
 
-Fully qualified name: `operators.KubeManager.namespace`
+Fully qualified name: `operator.KubeManager.namespace`
 
 ### `all-namespaces`
 
 Show data from pods in all namespaces
 
-Fully qualified name: `operators.KubeManager.all-namespaces`
+Fully qualified name: `operator.KubeManager.all-namespaces`

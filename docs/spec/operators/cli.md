@@ -18,7 +18,7 @@ Set the fields to be printed. Multiple data sources and fields can be specified
 using the format
 `datasource:comma,separated,fields;datasource2:comma,separated,fields`.
 
-Fully qualified name: `operators.cli.fields`
+Fully qualified name: `operator.cli.fields`
 
 ### `mode`
 
@@ -30,6 +30,6 @@ Determines the output format:
 - `none`: No output.
 - `raw`: Outputs raw data.
 
-Fully qualified name: `operators.cli.mode`
+Fully qualified name: `operator.cli.mode`
 
 Default: `columns`
