@@ -6,7 +6,7 @@ require (
 	github.com/cilium/ebpf v0.16.0
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.0
-	github.com/quay/claircore v1.5.30
+	github.com/quay/claircore v1.5.31
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
