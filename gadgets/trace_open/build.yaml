@@ -1,1 +1,2 @@
 wasm: go/program.go
+cflags: -I /usr/bin/gadget/
