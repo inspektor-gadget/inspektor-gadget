@@ -1,0 +1,91 @@
+---
+title: 'Headless Mode'
+sidebar_position: 310
+description: How to run Gadgets without a client
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+:::warning
+
+Currently, the Headless Mode is only available for `ig` when run with the `--daemon` flag. Support for `ig` on
+Kubernetes will follow in a later release.
+
+:::
+
+Instead of running Gadgets interactively, you can also install Gadget Instances on your server, so they keep running
+even if you are no longer connected. This also ensures that Gadgets will be resumed after a node restart or - depending
+on the environment - when nodes are added to your cluster.
+
+## Creating Gadget Instances
+
+To create a new Gadget Instance on your server / cluster, make sure to run `ig` with the `--daemon` (read
+[here](ig#using-ig-as-a-daemon) for more details) flag and then
+just add a `--detach` flag to the `gadgetctl` command, like so:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl run trace_exec:latest --detach
+INFO[0001] installed on node "local" as "61c8fdd9b75e1aec3c242347f18cf854"
+```
+    </TabItem>
+</Tabs>
+
+The command returns the ID of the newly installed Gadget Instance.
+
+## Listing Gadget Instances
+
+To list all existing Gadget Instances on the server, you can run:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl list
+ID           NAME                     TAGS                     GADGET
+4f5ae12c54bd serene_tu                                         trace_open:latest
+61c8fdd9b75e brave_bartik                                      trace_exec:latest
+```
+    </TabItem>
+</Tabs>
+
+## Attaching to a Gadget Instance
+
+If you want to see the output of the Gadget Instance, you can attach to it using the (partial) ID or name:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl attach 61c8fdd9b75e
+RUNTIME.CONTAINERNAME    COMM                 PID        TID PCOMM               PPID ARGS          ERR… USER          LOGINUSER    GROUP
+magical_pike             bash              282432     282432 containerd-s…     282410 /bin/bash          root          uid:4294967… root
+magical_pike             groups            282454     282454 bash              282453 /usr/bin/gro…      root          uid:4294967… root
+magical_pike             dircolors         282456     282456 bash              282455 /usr/bin/dir…      root          uid:4294967… root
+
+$ gadgetctl attach brave_bartik
+RUNTIME.CONTAINERNAME    COMM                 PID        TID PCOMM               PPID ARGS          ERR… USER          LOGINUSER    GROUP
+magical_pike             bash              282432     282432 containerd-s…     282410 /bin/bash          root          uid:4294967… root
+magical_pike             groups            282454     282454 bash              282453 /usr/bin/gro…      root          uid:4294967… root
+magical_pike             dircolors         282456     282456 bash              282455 /usr/bin/dir…      root          uid:4294967… root
+```
+    </TabItem>
+</Tabs>
+
+## Deleting a Gadget Instance
+
+To delete one or more Gadget Instances, just provide the names or (partial) IDs to the `delete` command, like so:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl delete 4f 61
+4f5ae12c54bd7c2058c0484ebd13dbc2
+61c8fdd9b75e1aec3c242347f18cf854
+```
+    </TabItem>
+</Tabs>
