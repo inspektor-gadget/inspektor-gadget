@@ -96,12 +96,12 @@ Default: `false`
 
 Show only data from containers with that name
 
-Fully qualified name: `operators.LocalManager.containername`
+Fully qualified name: `operator.LocalManager.containername`
 
 ### `host`
 
 Show data from both the host and containers
 
-Fully qualified name: `operators.LocalManager.host`
+Fully qualified name: `operator.LocalManager.host`
 
 Default: `false`

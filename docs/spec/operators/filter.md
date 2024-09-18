@@ -32,4 +32,4 @@ The filter syntax supports the following operations:
 - `field~value`: Matches if the content of `field` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
 ```
 
-Fully qualified name: `operators.filter.filter`
+Fully qualified name: `operator.filter.filter`
