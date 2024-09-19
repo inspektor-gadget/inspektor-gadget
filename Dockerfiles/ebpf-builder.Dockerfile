@@ -71,5 +71,3 @@ WORKDIR /work
 
 # Add files used to build containerized gadgets
 ADD include /usr/include
-ADD cmd/common/image/Makefile.build /Makefile
-ADD cmd/common/image/Makefile.build.btfgen /Makefile.build.btfgen
