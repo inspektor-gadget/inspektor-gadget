@@ -150,6 +150,8 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				if v == "true" {
 					attributes.Hex = true
 				}
+			case metadatav1.ColumnsAliasAnnotation:
+				attributes.Alias = v
 			}
 		}
 

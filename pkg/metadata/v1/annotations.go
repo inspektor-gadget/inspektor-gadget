@@ -23,6 +23,7 @@ const (
 	ColumnsHiddenAnnotation    = "columns.hidden"
 	ColumnsFixedAnnotation     = "columns.fixed"
 	ColumnsHexAnnotation       = "columns.hex"
+	ColumnsAliasAnnotation     = "columns.alias"
 
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
