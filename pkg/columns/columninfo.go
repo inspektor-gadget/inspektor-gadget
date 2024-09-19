@@ -49,6 +49,8 @@ type Attributes struct {
 	Name string `yaml:"name"`
 	// Name of the columns without inherited prefixes
 	RawName string `yaml:"raw_name"`
+	// Alias is an alternative shorter name to be used for header of the column; if not set, the Name will be used
+	Alias string `yaml:"alias"`
 	// Width to reserve for this column
 	Width int `yaml:"width"`
 	// MinWidth will be the minimum width this column will be scaled to when using auto-scaling
