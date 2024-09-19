@@ -41,6 +41,7 @@ type EventWrapperBase struct {
 	containernameAccessor        datasource.FieldAccessor
 	runtimenameAccessor          datasource.FieldAccessor
 	containeridAccessor          datasource.FieldAccessor
+	containerpidAccessor         datasource.FieldAccessor
 	containerimagenameAccessor   datasource.FieldAccessor
 	containerimagedigestAccessor datasource.FieldAccessor
 	hostNetworkAccessor          datasource.FieldAccessor
@@ -233,7 +234,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		datasource.WithAnnotations(map[string]string{
 			datasource.TemplateAnnotation: "container",
 		}),
-		datasource.WithOrder(-26),
+		datasource.WithOrder(-27),
 	)
 	if err != nil {
 		return nil, err
@@ -246,7 +247,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 			datasource.ColumnsFixedAnnotation: "true",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
-		datasource.WithOrder(-25),
+		datasource.WithOrder(-26),
 	)
 	if err != nil {
 		return nil, err
@@ -257,6 +258,20 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		datasource.WithAnnotations(map[string]string{
 			datasource.ColumnsWidthAnnotation:    "13",
 			datasource.ColumnsMaxWidthAnnotation: "64",
+		}),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-25),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.containerpidAccessor, err = runtime.AddSubField(
+		"containerPid",
+		api.Kind_Uint32,
+		datasource.WithAnnotations(map[string]string{
+			datasource.ColumnsWidthAnnotation:     "6",
+			datasource.ColumnsAlignmentAnnotation: "right",
+			datasource.ColumnsMaxWidthAnnotation:  "64",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-24),
@@ -363,6 +378,10 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 }
 
 func (ev *EventWrapper) SetContainerMetadata(container types.Container) {
+	if ev.containerpidAccessor.IsRequested() {
+		ev.containerpidAccessor.PutUint32(ev.Data, container.ContainerPid())
+	}
+
 	ev.SetPodMetadata(container)
 }
 
