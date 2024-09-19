@@ -13,6 +13,7 @@ COSIGN ?= cosign
 
 GADGETS = \
 	audit_seccomp \
+	deadlock \
 	fsnotify \
 	profile_blockio \
 	profile_tcprtt \

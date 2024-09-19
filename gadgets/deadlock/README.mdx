@@ -1,0 +1,71 @@
+---
+title: deadlock
+sidebar_position: 20
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# deadlock
+
+Use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so and detect potential deadlocks.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/deadlock:latest [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+No flags.
+
+## Guide
+
+To generate mutex lock/unlock events, you can run a `test` program in another container.
+
+For this example, we use a [test C++ program](https://github.com/iovisor/bcc/blob/master/tools/deadlock_example.txt#L187) (from BCC) with lock inversions that can cause a potential deadlock.
+
+The deadlock gadget can trace all mutex lock/unlock events in the following way:
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:latest
+RUNTIME.CONTAINERNAME      COMM                  PID        TID MUTEX_ADDR        OPERATION
+hungry_turing              test                23148      23148 0x7FED1243EA58    lock
+hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
+hungry_turing              test                23148      23237 0x5612ABB33160    lock
+hungry_turing              test                23148      23237 0x5612ABB331A0    lock
+hungry_turing              test                23148      23237 0x5612ABB331A0    unlock
+hungry_turing              test                23148      23237 0x5612ABB33160    unlock
+hungry_turing              test                23148      23148 0x7FED1243EA58    lock
+hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
+hungry_turing              test                23148      23239 0x5612ABB331A0    lock
+hungry_turing              test                23148      23239 0x5612ABB331E0    lock
+hungry_turing              test                23148      23239 0x5612ABB331E0    unlock
+hungry_turing              test                23148      23239 0x5612ABB331A0    unlock
+hungry_turing              test                23148      23148 0x7FED1243EA58    lock
+hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
+hungry_turing              test                23148      23240 0x5612ABB331E0    lock
+hungry_turing              test                23148      23240 0x7FFDC68BEB80    lock
+hungry_turing              test                23148      23240 0x7FFDC68BEB80    unlock
+hungry_turing              test                23148      23240 0x5612ABB331E0    unlock
+hungry_turing              test                23148      23148 0x7FED1243EA58    lock
+hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
+hungry_turing              test                23148      23241 0x7FFDC68BEB80    lock
+hungry_turing              test                23148      23241 0x5612ABB33160    lock
+hungry_turing              test                23148      23241 0x5612ABB33160    unlock
+hungry_turing              test                23148      23241 0x7FFDC68BEB80    unlock
+hungry_turing              test                23148      23148 0x7FED1243EA08    lock
+hungry_turing              test                23148      23148 0x7FED1243EA08    unlock
+```
