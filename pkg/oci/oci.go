@@ -86,6 +86,8 @@ const (
 	PullImageAlways  = "always"
 	PullImageMissing = "missing"
 	PullImageNever   = "never"
+
+	ebpfOS = "ebpf"
 )
 
 const (
@@ -1000,13 +1002,27 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 	}
 
 	var manifestDesc *ocispec.Descriptor
+
+	// try to look for ebpf variants
 	for _, indexManifest := range index.Manifests {
-		// TODO: Check docker code
-		if indexManifest.Platform.Architecture == runtime.GOARCH {
+		if indexManifest.Platform.OS == ebpfOS && indexManifest.Platform.Architecture == runtime.GOARCH {
 			manifestDesc = &indexManifest
 			break
 		}
 	}
+
+	// before this commit Gadgets images used "linux" as OS, so we have this
+	// fallback mechanism to be able to run those images until all of them are
+	// updated.
+	if manifestDesc == nil {
+		for _, indexManifest := range index.Manifests {
+			if indexManifest.Platform.Architecture == runtime.GOARCH {
+				manifestDesc = &indexManifest
+				break
+			}
+		}
+	}
+
 	if manifestDesc == nil {
 		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
 	}

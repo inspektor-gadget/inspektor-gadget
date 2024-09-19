@@ -16,7 +16,7 @@ package image
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"errors"
 	"fmt"
 	"os"
@@ -42,11 +42,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-//go:embed Makefile.build
-var makefile []byte
-
-//go:embed Makefile.build.btfgen
-var makefileBtfgen []byte
+//go:embed helpers
+var helpersFS embed.FS
 
 // It can be overridden at build time
 var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
@@ -76,6 +73,7 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	helpBinary       bool
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -110,6 +108,27 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+
+	cmd.Flags().BoolVar(&opts.helpBinary, "help-binary", true, "Include a binary that prints a help message when the image is run with a container runtime by mistake")
+
+	return cmd
+}
+
+func buildCmd(outputDir, ebpf, wasm, cflags, btfhubarchive string, btfgen bool) []string {
+	cmd := []string{
+		"make", "-f", filepath.Join(outputDir, "Makefile.build"),
+		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
+		"EBPFSOURCE=" + ebpf,
+		"WASM=" + wasm,
+		"OUTPUTDIR=" + outputDir,
+		"CFLAGS=" + cflags,
+		"all",
+	}
+
+	if btfgen {
+		cmd = append(cmd, "BTFHUB_ARCHIVE="+btfhubarchive)
+		cmd = append(cmd, "btfgen")
+	}
 
 	return cmd
 }
@@ -180,9 +199,32 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		return fmt.Errorf("source file %q not found", conf.EBPFSource)
 	}
 
+	// copy helper files
+	files, err := helpersFS.ReadDir("helpers")
+	if err != nil {
+		return fmt.Errorf("reading helpers: %w", err)
+	}
+
+	for _, dir := range files {
+		if dir.IsDir() {
+			continue
+		}
+
+		data, err := helpersFS.ReadFile(filepath.Join("helpers", dir.Name()))
+		if err != nil {
+			return fmt.Errorf("reading helper file: %w", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(opts.outputDir, dir.Name()), data, 0o600); err != nil {
+			return fmt.Errorf("writing helper file: %w", err)
+		}
+	}
+
 	if opts.local {
-		if err := buildLocal(opts, conf); err != nil {
-			return err
+		cmd := buildCmd(opts.outputDir, conf.EBPFSource, conf.Wasm, conf.CFlags, opts.btfhubarchive, opts.btfgen)
+		command := exec.Command(cmd[0], cmd[1:]...)
+		if out, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build script: %w: %s", err, out)
 		}
 	} else {
 		if err := buildInContainer(opts, conf); err != nil {
@@ -193,6 +235,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	// TODO: make this configurable?
 	archs := []string{oci.ArchAmd64, oci.ArchArm64}
 	objectsPaths := map[string]*oci.ObjectPath{}
+	helpPaths := map[string]string{}
 
 	for _, arch := range archs {
 		obj := &oci.ObjectPath{
@@ -219,6 +262,10 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		}
 
 		objectsPaths[arch] = obj
+
+		if opts.helpBinary {
+			helpPaths[arch] = filepath.Join(opts.outputDir, fmt.Sprintf("help-%s.tar", arch))
+		}
 	}
 
 	buildOpts := &oci.BuildGadgetImageOpts{
@@ -227,6 +274,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
+		HelpPaths:        helpPaths,
 	}
 
 	if sourceDateEpoch, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
@@ -245,39 +293,6 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	cmd.Printf("Successfully built %s\n", desc.String())
-
-	return nil
-}
-
-func buildLocal(opts *cmdOpts, conf *buildFile) error {
-	makefilePath := filepath.Join(opts.outputDir, "Makefile")
-	if err := os.WriteFile(makefilePath, makefile, 0o644); err != nil {
-		return fmt.Errorf("writing Makefile: %w", err)
-	}
-
-	buildCmd := exec.Command(
-		"make", "-f", makefilePath,
-		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE="+conf.EBPFSource,
-		"WASM="+conf.Wasm,
-		"OUTPUTDIR="+opts.outputDir,
-		"CFLAGS="+conf.CFlags,
-		"all",
-	)
-
-	if opts.btfgen {
-		makefileBtfgenPath := filepath.Join(opts.outputDir, "Makefile.build.btfgen")
-		if err := os.WriteFile(makefileBtfgenPath, makefileBtfgen, 0o644); err != nil {
-			return fmt.Errorf("writing Makefile: %w", err)
-		}
-
-		buildCmd.Args = append(buildCmd.Args, "BTFHUB_ARCHIVE="+opts.btfhubarchive)
-		buildCmd.Args = append(buildCmd.Args, "btfgen")
-	}
-
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("build script: %w: %s", err, out)
-	}
 
 	return nil
 }
@@ -355,14 +370,8 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		wasmFullPath = filepath.Join(gadgetSourcePath, conf.Wasm)
 	}
 
-	cmd := []string{
-		"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE=" + filepath.Join(gadgetSourcePath, conf.EBPFSource),
-		"WASM=" + wasmFullPath,
-		"OUTPUTDIR=/out",
-		"CFLAGS=" + conf.CFlags,
-		"all",
-	}
+	cmd := buildCmd("/out", filepath.Join(gadgetSourcePath, conf.EBPFSource),
+		wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
 	mounts := []mount.Mount{
 		{
@@ -379,9 +388,6 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	}
 
 	if opts.btfgen {
-		cmd = append(cmd, "BTFHUB_ARCHIVE=/btfhub-archive")
-		cmd = append(cmd, "btfgen")
-
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
 			Target: "/btfhub-archive",
