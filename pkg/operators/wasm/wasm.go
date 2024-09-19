@@ -25,6 +25,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -65,14 +66,32 @@ func (w *wasmOperator) InstantiateImageOperator(
 	operators.ImageOperatorInstance, error,
 ) {
 	instance := &wasmOperatorInstance{
-		gadgetCtx: gadgetCtx,
-		handleMap: map[uint32]any{},
-		logger:    gadgetCtx.Logger(),
+		gadgetCtx:   gadgetCtx,
+		handleMap:   map[uint32]any{},
+		logger:      gadgetCtx.Logger(),
+		paramValues: paramValues,
 	}
 
 	if err := instance.init(gadgetCtx, target, desc); err != nil {
 		instance.close(gadgetCtx)
 		return nil, fmt.Errorf("initializing wasm: %w", err)
+	}
+
+	var config *viper.Viper
+	if configVar, ok := gadgetCtx.GetVar("config"); ok {
+		config, _ = configVar.(*viper.Viper)
+	}
+
+	if config != nil {
+		extraParams := map[string]*api.Param{}
+		err := config.UnmarshalKey("params.wasm", &extraParams)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshalling extra params: %w", err)
+		}
+
+		for _, v := range extraParams {
+			instance.extraParams = append(instance.extraParams, v)
+		}
 	}
 
 	return instance, nil
@@ -94,6 +113,9 @@ type wasmOperatorInstance struct {
 	handleMap       map[uint32]any
 	lastHandleIndex uint32
 	handleLock      sync.RWMutex
+
+	extraParams api.Params
+	paramValues map[string]string
 }
 
 func (i *wasmOperatorInstance) Name() string {
@@ -109,7 +131,7 @@ func (i *wasmOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) error 
 }
 
 func (i *wasmOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
-	return nil
+	return i.extraParams
 }
 
 func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
@@ -190,6 +212,7 @@ func (i *wasmOperatorInstance) init(
 	i.addLogFuncs(env)
 	i.addDataSourceFuncs(env)
 	i.addFieldFuncs(env)
+	i.addParamsFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)

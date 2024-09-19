@@ -72,21 +72,13 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 	}
 
 	handleBytes := func(buf []byte) uint64 {
-		res, err := i.guestMalloc.Call(ctx, uint64(len(buf)))
+		val, err := i.writeToGuestMemory(ctx, buf)
 		if err != nil {
-			i.logger.Warnf("malloc failed: %v", err)
-			stack[0] = 0
-			return 0
-
-		}
-
-		if !m.Memory().Write(uint32(res[0]), buf) {
-			i.logger.Warnf("out of memory write")
-			stack[0] = 0
+			i.logger.Warnf("fieldGet: writing bytes to guest memory: %v", err)
 			return 0
 		}
 
-		return uint64(len(buf))<<32 | uint64(res[0])
+		return val
 	}
 
 	var val uint64

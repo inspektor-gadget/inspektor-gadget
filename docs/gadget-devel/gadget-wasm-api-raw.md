@@ -280,3 +280,33 @@ Parameters:
 
 Return value:
 - None
+
+### Parameters
+
+Parameters passed to the WASM module are defined in the metadata file as this:
+
+```yaml
+...
+params:
+  wasm:
+    param-key:
+      key: param-key
+      description: param-description
+      defaultValue: param-default-value
+      typeHint: param-type-hint
+      title: param-title
+      alias: param-alias
+      isMandatory: true
+    param-key2:
+     ...
+```
+
+#### `getParamValue(key string) string`
+
+Return the value of a parameter.
+
+Parameters:
+- `key` (string): Key of the parameter.
+
+Return value:
+- The value of the parameter.

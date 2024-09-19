@@ -89,6 +89,9 @@ func fieldGet(acc uint32, data uint32, kind uint32) uint64
 //go:wasmimport env fieldSet
 func fieldSet(acc uint32, data uint32, kind uint32, value uint64) uint32
 
+//go:wasmimport env getParamValue
+func getParamValue(key uint64) uint64
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
@@ -99,19 +102,19 @@ func logAndPanic(msg string) {
 	panic(msg)
 }
 
-func assertZero(v uint32, msg string) {
+func assertZero[T uint64 | uint32](v T, msg string) {
 	if v != 0 {
 		logAndPanic(fmt.Sprintf("%d is not zero: %s", v, msg))
 	}
 }
 
-func assertNonZero(v uint32, msg string) {
+func assertNonZero[T uint64 | uint32](v T, msg string) {
 	if v == 0 {
 		logAndPanic(fmt.Sprintf("v is zero: %s", msg))
 	}
 }
 
-func assertEqual(v1, v2 uint32, msg string) {
+func assertEqual[T uint64 | uint32](v1, v2 T, msg string) {
 	if v1 != v2 {
 		logAndPanic(fmt.Sprintf("%d != %d: %s", v1, v2, msg))
 	}
@@ -239,6 +242,10 @@ func gadgetInit() int {
 	fieldGet(fieldHandle, dataHandle, 1005)
 	fieldGet(fieldHandle, fieldHandle, uint32(api.Kind_Uint32))
 	fieldGet(dataHandle, dataHandle, uint32(api.Kind_Uint32))
+
+	/* Params */
+	assertZero(getParamValue(stringToBufPtr("non-existing-param")), "getParamValue: not-found")
+	assertZero(getParamValue(invalidStrPtr), "getParamValue: invalid key ptr")
 
 	return 0
 }
