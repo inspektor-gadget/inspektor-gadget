@@ -158,6 +158,7 @@ func (c *ContainerdClient) GetContainerDetails(containerID string) (*runtimeclie
 	if task.pid == 0 {
 		return nil, fmt.Errorf("got zero pid")
 	}
+	containerData.Runtime.ContainerPID = task.pid
 
 	spec, err := container.Spec(c.ctx)
 	if err != nil {
@@ -320,14 +321,17 @@ func (c *ContainerdClient) buildContainerData(container containerd.Container, ta
 	// 2. We would need to get the Task for the Container. containerd needs to acquire a mutex
 	//    that is currently hold by the creating process, which we interrupted -> deadlock
 	taskState := runtimeclient.StateRunning
+	containerPid := uint32(0)
 	if task != nil {
 		taskState = task.status
+		containerPid = task.pid
 	}
 
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 				ContainerID:          container.ID(),
+				ContainerPID:         containerPid,
 				ContainerName:        getContainerName(container, labels),
 				RuntimeName:          types.RuntimeNameContainerd,
 				ContainerImageName:   image.Name(),

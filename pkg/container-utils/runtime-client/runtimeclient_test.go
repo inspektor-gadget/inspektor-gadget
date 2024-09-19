@@ -72,6 +72,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 									RuntimeName:        runtime,
 									ContainerName:      cn,
 									ContainerID:        c.ID(),
+									ContainerPID:       uint32(c.Pid()),
 									ContainerImageName: containerImageName,
 								},
 								State: runtimeclient.StateRunning,

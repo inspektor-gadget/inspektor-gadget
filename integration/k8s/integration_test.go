@@ -60,6 +60,7 @@ func normalizeCommonData(e *eventtypes.CommonData, ns string) {
 	cn := "test-pod"
 
 	e.Runtime.ContainerID = ""
+	e.Runtime.ContainerPID = 0
 	e.Runtime.ContainerImageDigest = ""
 	e.Runtime.ContainerStartedAt = 0
 

@@ -53,6 +53,11 @@ var AnnotationsTemplates = map[string]map[string]string{
 	"containerImageName": {
 		ColumnsWidthAnnotation: "30",
 	},
+	"containerPid": {
+		ColumnsWidthAnnotation:     "6",
+		ColumnsHiddenAnnotation:    "true",
+		ColumnsAlignmentAnnotation: string(AlignmentRight),
+	},
 	"containerImageDigest": {
 		ColumnsWidthAnnotation: "30",
 	},

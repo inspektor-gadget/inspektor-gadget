@@ -150,6 +150,7 @@ func (p *PodmanClient) GetContainerDetails(containerID string) (*runtimeclient.C
 			Runtime: runtimeclient.RuntimeContainerData{
 				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 					ContainerID:   container.ID,
+					ContainerPID:  uint32(container.State.Pid),
 					ContainerName: container.Name,
 					RuntimeName:   types.RuntimeNamePodman,
 				},

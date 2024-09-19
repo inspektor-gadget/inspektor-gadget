@@ -227,6 +227,10 @@ func (c *Container) UsesHostNetwork() bool {
 	return c.HostNetwork
 }
 
+func (c *Container) ContainerPid() uint32 {
+	return c.Pid
+}
+
 func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {
 	if c.K8s.ownerReference == nil {
 		return &types.K8sOwnerReference{}

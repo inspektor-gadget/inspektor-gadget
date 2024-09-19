@@ -188,6 +188,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		c.getContainerImageDigest(containerJSON.Image),
 		containerJSON.State.Status,
 		containerJSON.Config.Labels)
+	containerData.Runtime.ContainerPID = uint32(containerJSON.State.Pid)
 
 	containerDetailsData := runtimeclient.ContainerDetailsData{
 		ContainerData: *containerData,

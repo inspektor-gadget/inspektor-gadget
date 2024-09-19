@@ -210,6 +210,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
+	container.Runtime.ContainerPID = container.Pid
 	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
 		return
