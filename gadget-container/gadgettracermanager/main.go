@@ -29,6 +29,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/landlock-lsm/go-landlock/landlock"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -291,7 +292,16 @@ func main() {
 		}
 		err := host.Init(hostConfig)
 		if err != nil {
-			log.Fatalf("host.Init() failed: %v", err)
+			log.Fatalf("host.Init(quux) failed: %v", err)
+		}
+
+		err = landlock.V5.BestEffort().RestrictPaths(
+			// Keep in sync with deploy.yaml.
+			landlock.RODirs("/", "/etc/ig", "/host/bin", "/host/usr", "/host/run", "/host/proc", "/host/var", "/sys/fs/cgroup"),
+			landlock.RWDirs("/host/etc", "/host/opt", "/run", "/sys/kernel/debug", "/sys/fs/bpf"),
+		)
+		if err != nil {
+			log.Fatalf("landlocking: %w", err)
 		}
 
 		hostPidNs, err := host.IsHostPidNs()
