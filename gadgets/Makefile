@@ -15,6 +15,7 @@ GADGETS = \
 	audit_seccomp \
 	fsnotify \
 	profile_blockio \
+	profile_tcprtt \
 	trace_bind \
 	trace_capabilities \
 	trace_dns \

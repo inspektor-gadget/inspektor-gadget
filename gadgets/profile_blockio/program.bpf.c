@@ -29,8 +29,6 @@ const volatile bool targ_ms = false;
 const volatile bool filter_dev = false;
 const volatile __u32 targ_dev = 0;
 
-extern int LINUX_KERNEL_VERSION __kconfig;
-
 struct hist_key {
 	__u32 cmd_flags;
 	__u32 dev;
