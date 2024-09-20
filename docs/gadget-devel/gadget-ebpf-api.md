@@ -530,3 +530,22 @@ if (kernel_stack_id >= 0) {
 	// gadget_get_kernel_stack() failed
 }
 ```
+
+## Common information
+
+Most gadgets provide the same common information like comm, pid, etc. Inspektor
+Gadget provides some types and helpers types to make it easier for gadgets to
+collect this common information.
+
+### Types
+
+- `gadget_user`: Contains the user id and group id.
+- `gadget_parent`: Contains the name and pid of the parent process.
+- `gadget_process`: Contains the name, pid, tid, user and parent of the process.
+
+### Helpers
+
+- `void gadget_fill_current_process(struct gadget_process *p)`: Fill `p` with
+  the current process information
+- `void gadget_socket_fill_process(const struct sockets_value *skb_val, struct gadget_process *p)`:
+  Fill `p` with the information on `skb_val` returned by `gadget_socket_lookup()`.
