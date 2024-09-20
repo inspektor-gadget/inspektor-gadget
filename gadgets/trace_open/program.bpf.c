@@ -10,6 +10,7 @@
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
+#include <gadget/common.h>
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255
@@ -25,6 +26,9 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
+	struct process proc;
+
+	// TODO: These are kept for backward compatibility, drop them when ready.
 	char comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
 	__u32 pid;
@@ -157,11 +161,13 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	}
 
 	/* event data */
-	event->pid = pid_tgid >> 32;
-	event->tid = (__u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	gadget_fill_current_process(&event->proc);
+	event->pid = event->proc.pid;
+	event->tid = event->proc.tid;
+	event->uid = event->proc.user.uid;
+	event->gid = event->proc.user.gid;
+	__builtin_memcpy(event->comm, event->proc.comm, sizeof(event->comm));
+
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
 	event->mode_raw = ap->mode;
