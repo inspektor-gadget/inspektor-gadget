@@ -42,6 +42,7 @@ const (
 	ColumnsHexAnnotation       = "columns.hex"
 	ColumnsAliasAnnotation     = "columns.alias"
 
+	DeprecatedAnnotation  = "deprecated"
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
 )
