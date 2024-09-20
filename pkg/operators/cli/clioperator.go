@@ -28,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -174,7 +175,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		fmt.Fprintf(&sb, "  %q (data source):\n", ds.Name())
 		for _, f := range availableFields {
 			fmt.Fprintf(&sb, "    %s\n", f.FullName)
-			if desc, ok := f.Annotations[datasource.DescriptionAnnotation]; ok {
+			if desc, ok := f.Annotations[metadatav1.DescriptionAnnotation]; ok {
 				fmt.Fprintf(&sb, "      %s\n", desc)
 			}
 		}

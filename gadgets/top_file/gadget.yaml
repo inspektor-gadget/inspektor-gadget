@@ -8,29 +8,6 @@ datasources:
     annotations:
       cli.clear-screen-before: "true"
     fields:
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-          columns.hidden: true
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-          columns.hidden: true
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
-          columns.hidden: true
-      comm:
-        annotations:
-          description: Command name
-          template: comm
       reads:
         annotations:
           description: Reads by file
@@ -79,10 +56,6 @@ datasources:
           columns.hidden: true
           columns.width: 12
           columns.alignment: right
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
 params:
   ebpf:
     all_files:

@@ -29,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -223,7 +224,7 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					datasource.TemplateAnnotation: "errorString",
+					metadatav1.TemplateAnnotation: "errorString",
 				}),
 				datasource.WithSameParentAs(in),
 			}
@@ -302,7 +303,7 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					datasource.TemplateAnnotation: "timestamp",
+					metadatav1.TemplateAnnotation: "timestamp",
 				}),
 				datasource.WithSameParentAs(in),
 			}

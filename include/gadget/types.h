@@ -59,6 +59,17 @@ typedef __u64 gadget_syscall;
 
 typedef __u32 gadget_kernel_stack;
 
+typedef __u32 gadget_pid;
+typedef __u32 gadget_ppid;
+typedef __u32 gadget_tid;
+
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN 16
+#endif
+
+typedef char gadget_comm[TASK_COMM_LEN];
+typedef char gadget_pcomm[TASK_COMM_LEN];
+
 // typedefs used for metrics
 typedef __u32 gadget_counter__u32;
 typedef __u64 gadget_counter__u64;
@@ -66,5 +77,6 @@ typedef __u32 gadget_gauge__u32;
 typedef __u64 gadget_gauge__u64;
 typedef __u32 gadget_histogram_slot__u32;
 typedef __u64 gadget_histogram_slot__u64;
+
 
 #endif /* __TYPES_H */
