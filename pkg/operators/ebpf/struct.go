@@ -149,16 +149,29 @@ func applyAnnotationsTemplateForType(typeName string, dst map[string]string) boo
 		ebpftypes.PcommTypeName,
 		ebpftypes.PpidTypeName:
 		return metadatav1.ApplyAnnotationsTemplate(strings.TrimPrefix(typeName, "gadget_"), dst)
+	case ebpftypes.ProcessTypeName,
+		ebpftypes.CredsTypeName,
+		ebpftypes.ParentTypeName:
+		dst[metadatav1.ColumnsHiddenAnnotation] = "true"
+		return true
 	}
 	return false
 }
 
-func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32, parent int) {
+func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32,
+	parent int, parentTypeName string,
+) {
 	annotations := make(map[string]string)
 	refType, tags := btfhelpers.GetType(member.Type)
 	for i := range tags {
 		applyAnnotationsTemplateForType(tags[i], annotations)
 		tags[i] = "type:" + tags[i]
+	}
+
+	// Use alias for fields inside the Process, Parent and User structs to avoid printing a very long name
+	switch parentTypeName {
+	case ebpftypes.ProcessTypeName, ebpftypes.CredsTypeName, ebpftypes.ParentTypeName:
+		annotations[metadatav1.ColumnsAliasAnnotation] = member.Name
 	}
 
 	tags = append(tags, "name:"+member.Name, api.TagSrcEbpf)
@@ -227,12 +240,12 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 func (i *ebpfInstance) getFieldsFromStruct(btfStruct *btf.Struct, fields *[]*Field, prefix string, offset uint32, parent int) {
 	for _, member := range btfStruct.Members {
-		i.getFieldsFromMember(member, fields, prefix, offset, parent)
+		i.getFieldsFromMember(member, fields, prefix, offset, parent, btfStruct.Name)
 	}
 }
 
-func (i *ebpfInstance) getFieldsFromUnion(btfStruct *btf.Union, fields *[]*Field, prefix string, offset uint32, parent int) {
-	for _, member := range btfStruct.Members {
-		i.getFieldsFromMember(member, fields, prefix, offset, parent)
+func (i *ebpfInstance) getFieldsFromUnion(btfUnion *btf.Union, fields *[]*Field, prefix string, offset uint32, parent int) {
+	for _, member := range btfUnion.Members {
+		i.getFieldsFromMember(member, fields, prefix, offset, parent, btfUnion.Name)
 	}
 }
