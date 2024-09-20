@@ -176,6 +176,25 @@ type K8sMetadata struct {
 	Owner K8sOwnerReference `json:"owner,omitempty" column:"owner,hide"`
 }
 
+type User struct {
+	Uid uint32 `json:"uid,omitempty"`
+	Gid uint32 `json:"gid,omitempty"`
+}
+
+type Parent struct {
+	Comm string `json:"comm,omitempty"`
+	Pid  uint32 `json:"pid,omitempty"`
+}
+
+type Process struct {
+	Comm    string `json:"comm,omitempty"`
+	Pid     uint32 `json:"pid,omitempty"`
+	Tid     uint32 `json:"tid,omitempty"`
+	MntNsID uint64 `json:"mntns_id"`
+	User    User   `json:"user,omitempty"`
+	Parent  Parent `json:"parent,omitempty"`
+}
+
 type CommonData struct {
 	// Runtime contains the container runtime metadata of the container
 	// that generated the event

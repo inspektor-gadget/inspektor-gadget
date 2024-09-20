@@ -106,6 +106,33 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	}
 }
 
+func BuildProc(comm string, uid, tid uint32) eventtypes.Process {
+	return eventtypes.Process{
+		Comm:    comm,
+		Pid:     NormalizedInt,
+		Tid:     NormalizedInt,
+		MntNsID: NormalizedInt,
+		User: eventtypes.User{
+			Uid: uid,
+			Gid: tid,
+		},
+		Parent: eventtypes.Parent{
+			Comm: NormalizedStr,
+			Pid:  NormalizedInt,
+		},
+	}
+}
+
+// NormalizeProc normalizes the pid, tid, parent pid and parent comm fields on
+// p.
+func NormalizeProc(p *eventtypes.Process) {
+	NormalizeInt(&p.Pid)
+	NormalizeInt(&p.Tid)
+	NormalizeInt(&p.MntNsID)
+	NormalizeInt(&p.Parent.Pid)
+	NormalizeString(&p.Parent.Comm)
+}
+
 func IsDockerRuntime() bool {
 	return ContainerRuntime == eventtypes.RuntimeNameDocker.String()
 }

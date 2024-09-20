@@ -33,6 +33,9 @@ const (
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
+	ProcessTypeName     = "gadget_process"
+	UserTypeName        = "gadget_user"
+	ParentTypeName      = "gadget_parent"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"

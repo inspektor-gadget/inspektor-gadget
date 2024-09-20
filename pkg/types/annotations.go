@@ -43,6 +43,12 @@ func AppplyAnnotationsTemplateForType(typeName string, dst map[string]string) bo
 		PcommTypeName,
 		PpidTypeName:
 		return ApplyAnnotationsTemplate(strings.TrimPrefix(typeName, "gadget_"), dst)
+	// Hide complex types by default
+	case ProcessTypeName,
+		UserTypeName,
+		ParentTypeName:
+		dst[metadatav1.ColumnsHiddenAnnotation] = "true"
+		return true
 	}
 
 	return false
@@ -83,37 +89,44 @@ var annotationsTemplates = map[string]map[string]string{
 	"comm": {
 		metadatav1.DescriptionAnnotation:     "Process name",
 		metadatav1.ColumnsMaxWidthAnnotation: "16",
+		metadatav1.ColumnsAliasAnnotation:    "comm",
 	},
 	"pcomm": {
 		metadatav1.DescriptionAnnotation:     "Parent process name",
 		metadatav1.ColumnsMaxWidthAnnotation: "16",
 		metadatav1.ColumnsHiddenAnnotation:   "true",
+		metadatav1.ColumnsAliasAnnotation:    "pcomm",
 	},
 	"pid": {
 		metadatav1.DescriptionAnnotation:      "Process ID",
 		metadatav1.ColumnsMinWidthAnnotation:  "7",
 		metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+		metadatav1.ColumnsAliasAnnotation:     "pid",
 	},
 	"ppid": {
 		metadatav1.DescriptionAnnotation:      "Parent Process ID",
 		metadatav1.ColumnsMinWidthAnnotation:  "7",
 		metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 		metadatav1.ColumnsHiddenAnnotation:    "true",
+		metadatav1.ColumnsAliasAnnotation:     "ppid",
 	},
 	"tid": {
 		metadatav1.DescriptionAnnotation:      "Thread ID",
 		metadatav1.ColumnsMinWidthAnnotation:  "7",
 		metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+		metadatav1.ColumnsAliasAnnotation:     "tid",
 	},
 	"uid": {
 		metadatav1.DescriptionAnnotation:      "User ID",
 		metadatav1.ColumnsMinWidthAnnotation:  "8",
 		metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+		metadatav1.ColumnsAliasAnnotation:     "uid",
 	},
 	"gid": {
 		metadatav1.DescriptionAnnotation:      "Group ID",
 		metadatav1.ColumnsMinWidthAnnotation:  "8",
 		metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+		metadatav1.ColumnsAliasAnnotation:     "gid",
 	},
 	"ns": {
 		metadatav1.ColumnsHiddenAnnotation:    "true",
