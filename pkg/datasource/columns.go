@@ -284,22 +284,49 @@ var annotationsTemplates = map[string]map[string]string{
 		ColumnsMaxWidthAnnotation: "16",
 	},
 	"pcomm": {
-		DescriptionAnnotation:     "The process name of the parent process",
+		DescriptionAnnotation:     "Parent process name",
 		ColumnsMaxWidthAnnotation: "16",
+		ColumnsHiddenAnnotation:   "true",
 	},
 	"pid": {
+		DescriptionAnnotation:      "Process ID",
+		ColumnsMinWidthAnnotation:  "7",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"ppid": {
+		DescriptionAnnotation:      "Parent Process ID",
+		ColumnsMinWidthAnnotation:  "7",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+		ColumnsHiddenAnnotation:    "true",
+	},
+	"tid": {
+		DescriptionAnnotation:      "Thread ID",
 		ColumnsMinWidthAnnotation:  "7",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"uid": {
+		DescriptionAnnotation:      "User ID",
 		ColumnsMinWidthAnnotation:  "8",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"gid": {
+		DescriptionAnnotation:      "Group ID",
 		ColumnsMinWidthAnnotation:  "8",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 	},
 	"ns": {
+		ColumnsHiddenAnnotation:    "true",
+		ColumnsWidthAnnotation:     "12",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"mntns_id": {
+		DescriptionAnnotation:      "Mount namespace ID",
+		ColumnsHiddenAnnotation:    "true",
+		ColumnsWidthAnnotation:     "12",
+		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+	},
+	"netns_id": {
+		DescriptionAnnotation:      "Network namespace ID",
 		ColumnsHiddenAnnotation:    "true",
 		ColumnsWidthAnnotation:     "12",
 		ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),

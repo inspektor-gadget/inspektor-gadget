@@ -23,12 +23,12 @@ GADGET_PARAM(target_family);
 
 struct ip_key_t {
 	gadget_mntns_id mntns_id;
-	__u32 pid;
-	__u32 tid;
+	gadget_pid pid;
+	gadget_tid tid;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm;
 };
 
 struct traffic_t {

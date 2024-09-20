@@ -33,11 +33,11 @@ enum fa_response {
 };
 
 struct process {
-	__u32 ppid;
-	__u32 pid;
-	__u32 tid;
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
+	gadget_ppid ppid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_comm comm;
+	gadget_pcomm pcomm;
 };
 
 struct enriched_event {

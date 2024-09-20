@@ -81,14 +81,14 @@ struct event_t {
 	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
 
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
+	gadget_comm comm;
+	gadget_pcomm pcomm;
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 ppid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_ppid ppid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
@@ -114,14 +114,14 @@ struct event_header_t {
 	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
 
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
+	gadget_comm comm;
+	gadget_pcomm pcomm;
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 ppid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_ppid ppid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
