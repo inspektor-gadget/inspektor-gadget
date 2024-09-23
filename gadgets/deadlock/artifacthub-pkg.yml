@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: v0.32.0
+name: "deadlock"
+category: monitoring-logging
+displayName: "deadlock"
+createdAt: "2024-09-21T19:37:40Z"
+digest: 2024-09-21T19:37:40Z
+description: "use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so and detect potential deadlocks"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/deadlock"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/deadlock:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/deadlock"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:latest
+    ```
+provider:
+    name: Inspektor Gadget
