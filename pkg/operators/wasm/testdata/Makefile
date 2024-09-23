@@ -5,6 +5,7 @@ TEST_ARTIFACTS = \
 	dataarray \
 	badguest \
 	params \
+	config \
 	#
 
 all: $(TEST_ARTIFACTS)

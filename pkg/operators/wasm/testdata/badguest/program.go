@@ -92,6 +92,9 @@ func fieldSet(acc uint32, data uint32, kind uint32, value uint64) uint32
 //go:wasmimport env getParamValue
 func getParamValue(key uint64) uint64
 
+//go:wasmimport env setConfig
+func setConfig(key uint64, val uint64, kind uint32) uint32
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
@@ -246,6 +249,12 @@ func gadgetInit() int {
 	/* Params */
 	assertZero(getParamValue(stringToBufPtr("non-existing-param")), "getParamValue: not-found")
 	assertZero(getParamValue(invalidStrPtr), "getParamValue: invalid key ptr")
+
+	/* Config */
+	assertZero(setConfig(stringToBufPtr("key"), stringToBufPtr("value"), uint32(api.Kind_String)), "setConfig: ok")
+	assertNonZero(setConfig(stringToBufPtr("key"), stringToBufPtr("value"), 1005), "setConfig: bad kind")
+	assertNonZero(setConfig(invalidStrPtr, stringToBufPtr("value"), uint32(api.Kind_String)), "setConfig: bad key ptr")
+	assertNonZero(setConfig(stringToBufPtr("key"), invalidStrPtr, uint32(api.Kind_String)), "setConfig: bad value ptr")
 
 	return 0
 }

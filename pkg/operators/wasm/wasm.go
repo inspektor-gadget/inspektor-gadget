@@ -77,14 +77,13 @@ func (w *wasmOperator) InstantiateImageOperator(
 		return nil, fmt.Errorf("initializing wasm: %w", err)
 	}
 
-	var config *viper.Viper
 	if configVar, ok := gadgetCtx.GetVar("config"); ok {
-		config, _ = configVar.(*viper.Viper)
+		instance.config, _ = configVar.(*viper.Viper)
 	}
 
-	if config != nil {
+	if instance.config != nil {
 		extraParams := map[string]*api.Param{}
-		err := config.UnmarshalKey("params.wasm", &extraParams)
+		err := instance.config.UnmarshalKey("params.wasm", &extraParams)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshalling extra params: %w", err)
 		}
@@ -113,6 +112,8 @@ type wasmOperatorInstance struct {
 	handleMap       map[uint32]any
 	lastHandleIndex uint32
 	handleLock      sync.RWMutex
+
+	config *viper.Viper
 
 	extraParams api.Params
 	paramValues map[string]string
@@ -213,6 +214,7 @@ func (i *wasmOperatorInstance) init(
 	i.addDataSourceFuncs(env)
 	i.addFieldFuncs(env)
 	i.addParamsFuncs(env)
+	i.addConfigFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
