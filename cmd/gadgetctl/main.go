@@ -99,8 +99,10 @@ func main() {
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
+	common.AddInstanceCommands(rootCmd, runtime)
 	rootCmd.AddCommand(common.NewSyncCommand(runtime))
-	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {

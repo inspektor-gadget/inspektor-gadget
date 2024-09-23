@@ -16,6 +16,7 @@ package gadgetservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -63,6 +64,21 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		s.logger.Infof("[%s] GetGadgetInfo(%q)", subject, req.ImageName)
 	}
 
+	if req.Flags&api.GadgetInfoRequestFlagUseInstance != 0 {
+		if s.instanceMgr == nil {
+			return nil, fmt.Errorf("instance manager not initialized")
+		}
+		gi := s.instanceMgr.LookupInstance(req.ImageName)
+		if gi == nil {
+			return nil, fmt.Errorf("instance %s not found", req.ImageName)
+		}
+		gadgetInfo, err := gi.GadgetInfo()
+		if err != nil {
+			return nil, err
+		}
+		return &api.GetGadgetInfoResponse{GadgetInfo: gadgetInfo}, nil
+	}
+
 	// Get all available operators
 	ops := make([]operators.DataOperator, 0)
 	for op := range s.operators {
@@ -87,6 +103,17 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
+	}
+
+	attachRequest := ctrl.GetAttachRequest()
+	if attachRequest != nil {
+		if attachRequest.Version != api.VersionGadgetRunProtocol {
+			return fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetRunProtocol, attachRequest.Version)
+		}
+		if s.instanceMgr == nil {
+			return errors.New("instance manager not initialized")
+		}
+		return s.instanceMgr.AttachToGadgetInstance(attachRequest.Id, runGadget)
 	}
 
 	ociRequest := ctrl.GetRunRequest()

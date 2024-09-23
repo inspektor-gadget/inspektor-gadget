@@ -17,6 +17,8 @@ package common
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -37,9 +39,54 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
-func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumnTags []string) *cobra.Command {
+type CommandMode string
+
+const (
+	CommandModeRun    CommandMode = "run"
+	CommandModeAttach CommandMode = "attach"
+)
+
+var commandModesDescriptions = map[CommandMode]string{
+	CommandModeRun:    "Run a gadget",
+	CommandModeAttach: "Attach to a running gadget",
+}
+
+func findGadgetInstances(runtime *grpcruntime.Runtime, runtimeParams *params.Params, idOrNames []string) (instances []*api.GadgetInstance, ambiguous []string, notfound []string, retErr error) {
+	gadgetInstances, err := runtime.GetGadgetInstances(context.Background(), runtimeParams)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+nextName:
+	for _, idOrName := range idOrNames {
+		matches := 0
+		var instance *api.GadgetInstance
+		for _, tmpGadgetInstance := range gadgetInstances {
+			if idOrName == tmpGadgetInstance.Id {
+				instances = append(instances, tmpGadgetInstance)
+				break nextName
+			}
+			// match partial ID or full name
+			if tmpGadgetInstance.Name == idOrName || strings.HasPrefix(tmpGadgetInstance.Id, idOrName) {
+				instance = tmpGadgetInstance
+				matches++
+			}
+		}
+		if matches > 1 {
+			ambiguous = append(ambiguous, idOrName)
+		} else if matches == 0 {
+			notfound = append(notfound, idOrName)
+		} else {
+			instances = append(instances, instance)
+		}
+	}
+	return
+}
+
+func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumnTags []string, commandMode CommandMode) *cobra.Command {
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 
 	runtimeParams := runtime.ParamDescs().ToParams()
@@ -59,10 +106,190 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	paramLookup := map[string]*params.Param{}
 
 	var timeoutSeconds int
+	var gadgetInstanceID string
+
+	var skipParams []string
+	if commandMode == CommandModeAttach {
+		skipParams = append(skipParams, "!attach")
+	}
+
+	preRun := func(cmd *cobra.Command, args []string) error {
+		err := runtime.Init(runtimeGlobalParams)
+		if err != nil {
+			return fmt.Errorf("initializing runtime: %w", err)
+		}
+		defer runtime.Close()
+
+		// set global operator flags from the config file
+		for o, p := range opGlobalParams {
+			err = SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
+			if err != nil {
+				return fmt.Errorf("setting operator %s flags: %w", o, err)
+			}
+		}
+
+		// set oci flags from the config file
+		err = SetFlagsForParams(cmd, ociParams, config.OperatorKey+"."+ocihandler.OciHandler.Name())
+		if err != nil {
+			return fmt.Errorf("setting oci flags: %w", err)
+		}
+
+		// we need to re-enable flag parsing, as utils.ParseEarlyFlags() would
+		// not do anything otherwise
+		cmd.DisableFlagParsing = false
+
+		// Parse flags that are known at this time, like the ones we get from the gadget descriptor
+		if err := utils.ParseEarlyFlags(cmd, args); err != nil {
+			return err
+		}
+
+		// Before running the gadget, we need to get the gadget info to be able to set
+		// things (like params) up correctly
+		actualArgs := cmd.Flags().Args()
+		if len(actualArgs) == 0 {
+			return cmd.ParseFlags(args)
+		}
+
+		ops := make([]operators.DataOperator, 0)
+		for _, op := range operators.GetDataOperators() {
+			// Initialize operator
+			err := op.Init(opGlobalParams[op.Name()])
+			if err != nil {
+				log.Warnf("error initializing operator %s: %v", op.Name(), err)
+				continue
+			}
+			ops = append(ops, op)
+		}
+		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
+
+		imageName := actualArgs[0]
+		if grpcrt, ok := runtime.(*grpcruntime.Runtime); ok && commandMode == CommandModeAttach {
+			instances, ambiguous, notfound, err := findGadgetInstances(grpcrt, runtimeParams, []string{imageName})
+			if err != nil {
+				return fmt.Errorf("getting gadget instances: %w", err)
+			}
+			if len(notfound) > 0 || len(instances) == 0 {
+				return fmt.Errorf("gadget instance not found")
+			}
+			if len(ambiguous) > 0 {
+				return fmt.Errorf("gadget instance id or name are ambiguous")
+			}
+			imageName = instances[0].Id
+		}
+
+		gadgetCtx := gadgetcontext.New(
+			context.Background(),
+			imageName,
+			gadgetcontext.WithDataOperators(ops...),
+			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
+		)
+
+		// GetOCIGadget needs at least the params from the oci handler, so let's prepare those in here
+		paramValueMap := make(map[string]string)
+		ociParams.CopyToMap(paramValueMap, "operator.oci.")
+
+		// Fetch gadget information; TODO: this can potentially be cached
+		info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+		if err != nil {
+			return fmt.Errorf("fetching gadget information: %w", err)
+		}
+
+		for _, p := range info.Params {
+			// Skip already registered params (but this still lets "operator.oci.<image-operator>." pass)
+			if p.Prefix == "operator.oci." {
+				continue
+			}
+			param := apihelpers.ParamToParamDesc(p).ToParam()
+
+			// Skip duplicate params (can happen if an operator is running on both client + server)
+			if _, ok := paramLookup[p.Prefix+p.Key]; ok {
+				continue
+			}
+
+			paramLookup[p.Prefix+p.Key] = param
+			gadgetParams.Add(param)
+		}
+
+		if info.Id != "" {
+			gadgetInstanceID = info.Id
+		}
+
+		AddOCIFlags(cmd, &gadgetParams, skipParams, runtime)
+
+		return cmd.ParseFlags(args)
+	}
+
+	run := func(cmd *cobra.Command, _ []string) error {
+		// args from RunE still contains all flags, since we manually parsed them,
+		// so we need to manually pull the remaining args here
+		args := cmd.Flags().Args()
+
+		showHelp, _ := cmd.Flags().GetBool("help")
+
+		if len(args) == 0 {
+			if showHelp {
+				additionalMessage := "Specify the gadget image to get more information about it"
+				cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
+			}
+			return cmd.Help()
+		}
+
+		if showHelp {
+			return cmd.Help()
+		}
+
+		// we also manually need to check the verbose flag, as PersistentPreRunE in
+		// verbose.go will not have the correct information due to manually parsing
+		// the flags
+		checkVerboseFlag()
+
+		fe := console.NewFrontend()
+		defer fe.Close()
+
+		ctx := fe.GetContext()
+
+		ops := make([]operators.DataOperator, 0)
+		for _, op := range operators.GetDataOperators() {
+			ops = append(ops, op)
+		}
+		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
+
+		timeoutDuration := time.Duration(timeoutSeconds) * time.Second
+
+		imageName := args[0]
+		if commandMode == CommandModeAttach {
+			// the gadgetID should be present from GetGadgetInfo above
+			imageName = gadgetInstanceID
+		}
+
+		gadgetCtx := gadgetcontext.New(
+			ctx,
+			imageName,
+			gadgetcontext.WithDataOperators(ops...),
+			gadgetcontext.WithTimeout(timeoutDuration),
+			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
+		)
+
+		paramValueMap := make(map[string]string)
+
+		// Write back param values
+		for _, p := range info.Params {
+			paramValueMap[p.Prefix+p.Key] = paramLookup[p.Prefix+p.Key].String()
+		}
+
+		// Also copy special oci params
+		ociParams.CopyToMap(paramValueMap, "operator.oci.")
+
+		err := runtime.RunGadget(gadgetCtx, runtimeParams, paramValueMap)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 
 	cmd := &cobra.Command{
-		Use:          "run",
-		Short:        "Run a gadget",
+		Use:          string(commandMode),
+		Short:        commandModesDescriptions[commandMode],
 		SilenceUsage: true, // do not print usage when there is an error
 		// We have to disable flag parsing in here to be able to handle certain
 		// flags more dynamically and have `--help` also react to those changes.
@@ -73,151 +300,12 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		//   `PersistentPreRun(E)` of a parent cmd, as the flags wouldn't have
 		//   been parsed there (e.g. --verbose)
 		DisableFlagParsing: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			err := runtime.Init(runtimeGlobalParams)
-			if err != nil {
-				return fmt.Errorf("initializing runtime: %w", err)
-			}
-			defer runtime.Close()
+		PreRunE:            preRun,
+		RunE:               run,
+	}
 
-			// set global operator flags from the config file
-			for o, p := range opGlobalParams {
-				err = SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
-				if err != nil {
-					return fmt.Errorf("setting operator %s flags: %w", o, err)
-				}
-			}
-
-			// set oci flags from the config file
-			err = SetFlagsForParams(cmd, ociParams, config.OperatorKey+"."+ocihandler.OciHandler.Name())
-			if err != nil {
-				return fmt.Errorf("setting oci flags: %w", err)
-			}
-
-			// we need to re-enable flag parsing, as utils.ParseEarlyFlags() would
-			// not do anything otherwise
-			cmd.DisableFlagParsing = false
-
-			// Parse flags that are known at this time, like the ones we get from the gadget descriptor
-			if err := utils.ParseEarlyFlags(cmd, args); err != nil {
-				return err
-			}
-
-			// Before running the gadget, we need to get the gadget info to be able to set
-			// things (like params) up correctly
-			actualArgs := cmd.Flags().Args()
-			if len(actualArgs) == 0 {
-				return cmd.ParseFlags(args)
-			}
-
-			ops := make([]operators.DataOperator, 0)
-			for _, op := range operators.GetDataOperators() {
-				// Initialize operator
-				err := op.Init(opGlobalParams[op.Name()])
-				if err != nil {
-					log.Warnf("error initializing operator %s: %v", op.Name(), err)
-					continue
-				}
-				ops = append(ops, op)
-			}
-			ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
-
-			gadgetCtx := gadgetcontext.New(
-				context.Background(),
-				actualArgs[0], // imageName
-				gadgetcontext.WithDataOperators(ops...),
-			)
-
-			// GetOCIGadget needs at least the params from the oci handler, so let's prepare those in here
-			paramValueMap := make(map[string]string)
-			ociParams.CopyToMap(paramValueMap, "operator.oci.")
-
-			// Fetch gadget information; TODO: this can potentially be cached
-			info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
-			if err != nil {
-				return fmt.Errorf("fetching gadget information: %w", err)
-			}
-
-			for _, p := range info.Params {
-				// Skip already registered params (but this still lets "operator.oci.<image-operator>." pass)
-				if p.Prefix == "operator.oci." {
-					continue
-				}
-				param := apihelpers.ParamToParamDesc(p).ToParam()
-
-				// Skip duplicate params (can happen if an operator is running on both client + server)
-				if _, ok := paramLookup[p.Prefix+p.Key]; ok {
-					continue
-				}
-
-				paramLookup[p.Prefix+p.Key] = param
-				gadgetParams.Add(param)
-			}
-
-			AddFlags(cmd, &gadgetParams, nil, runtime)
-
-			return cmd.ParseFlags(args)
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			// args from RunE still contains all flags, since we manually parsed them,
-			// so we need to manually pull the remaining args here
-			args := cmd.Flags().Args()
-
-			showHelp, _ := cmd.Flags().GetBool("help")
-
-			if len(args) == 0 {
-				if showHelp {
-					additionalMessage := "Specify the gadget image to get more information about it"
-					cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
-				}
-				return cmd.Help()
-			}
-
-			if showHelp {
-				return cmd.Help()
-			}
-
-			// we also manually need to check the verbose flag, as PersistentPreRunE in
-			// verbose.go will not have the correct information due to manually parsing
-			// the flags
-			checkVerboseFlag()
-
-			fe := console.NewFrontend()
-			defer fe.Close()
-
-			ctx := fe.GetContext()
-
-			ops := make([]operators.DataOperator, 0)
-			for _, op := range operators.GetDataOperators() {
-				ops = append(ops, op)
-			}
-			ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
-
-			timeoutDuration := time.Duration(timeoutSeconds) * time.Second
-
-			gadgetCtx := gadgetcontext.New(
-				ctx,
-				args[0],
-				gadgetcontext.WithDataOperators(ops...),
-				gadgetcontext.WithTimeout(timeoutDuration),
-			)
-
-			paramValueMap := make(map[string]string)
-
-			// Write back param values
-			for _, p := range info.Params {
-				paramValueMap[p.Prefix+p.Key] = paramLookup[p.Prefix+p.Key].String()
-			}
-
-			// Also copy special oci params
-			ociParams.CopyToMap(paramValueMap, "operator.oci.")
-
-			err := runtime.RunGadget(gadgetCtx, runtimeParams, paramValueMap)
-			if err != nil {
-				return err
-			}
-			return nil
-		},
+	if commandMode == CommandModeAttach {
+		cmd.Aliases = []string{"a"}
 	}
 
 	cmd.PersistentFlags().IntVarP(
@@ -228,13 +316,55 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		"Number of seconds that the gadget will run for, 0 to run indefinitely",
 	)
 
-	AddFlags(cmd, ociParams, nil, runtime)
-	AddFlags(cmd, runtimeGlobalParams, nil, runtime)
-	AddFlags(cmd, runtimeParams, nil, runtime)
+	if commandMode != CommandModeAttach {
+		AddOCIFlags(cmd, ociParams, skipParams, runtime)
+	}
+
+	AddOCIFlags(cmd, runtimeGlobalParams, skipParams, runtime)
+	AddOCIFlags(cmd, runtimeParams, skipParams, runtime)
 
 	for _, operatorParams := range opGlobalParams {
-		AddFlags(cmd, operatorParams, nil, runtime)
+		AddOCIFlags(cmd, operatorParams, skipParams, runtime)
 	}
 
 	return cmd
+}
+
+func AddOCIFlags(cmd *cobra.Command, params *params.Params, skipParams []string, runtime runtime.Runtime) {
+	defer func() {
+		if err := recover(); err != nil {
+			panic(fmt.Sprintf("registering params for command %q: %v", cmd.Use, err))
+		}
+	}()
+nextParam:
+	for _, p := range *params {
+		desc := p.Description
+
+		if p.ValueHint != "" {
+			// Try to get a value from the runtime
+			if value, hasValue := runtime.GetDefaultValue(p.ValueHint); hasValue {
+				p.Set(value)
+			}
+		}
+
+		for _, t := range p.Tags {
+			if slices.Contains(skipParams, t) {
+				continue nextParam
+			}
+		}
+
+		if p.PossibleValues != nil {
+			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"
+		}
+
+		flag := cmd.PersistentFlags().VarPF(&Param{p}, p.Key, p.Alias, desc)
+		if p.IsMandatory {
+			cmd.MarkPersistentFlagRequired(p.Key)
+		}
+
+		// Allow passing a boolean flag as --foo instead of having to use --foo=true
+		if p.IsBoolFlag() {
+			flag.NoOptDefVal = "true"
+		}
+	}
 }

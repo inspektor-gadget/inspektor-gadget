@@ -1430,6 +1430,7 @@ jobs:
     #level 3
     needs:
       - build-ig
+      - build-clients
       - build-helper-images
       - build-and-push-gadgets
       - check-secrets
@@ -1455,6 +1456,15 @@ jobs:
       run: |
         tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
         sudo mv ig /usr/bin/ig
+    - name: Get gadgetctl-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      with:
+        name: gadgetctl-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/
+    - name: Unpack gadgetctl-linux-amd64.tar.gz
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/gadgetctl-linux-amd64.tar.gz
+        sudo mv gadgetctl /usr/bin/gadgetctl
     - name: Setup go
       uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:

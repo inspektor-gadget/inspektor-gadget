@@ -85,3 +85,9 @@ const (
 	FetchCountAnnotation    = "fetch-count"
 	FetchIntervalAnnotation = "fetch-interval"
 )
+
+const (
+	// GadgetInfoRequestFlagUseInstance defines that the service should get gadget information from an existing gadget
+	// instance; in this case the imageName of the GadgetInfoRequest is evaluated as the ID of the gadget instance
+	GadgetInfoRequestFlagUseInstance = 1 << iota
+)

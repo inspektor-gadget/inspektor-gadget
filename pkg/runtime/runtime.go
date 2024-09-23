@@ -46,6 +46,7 @@ type GadgetContext interface {
 	Args() []string
 	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
+	UseInstance() bool
 
 	Cancel()
 	ImageName() string

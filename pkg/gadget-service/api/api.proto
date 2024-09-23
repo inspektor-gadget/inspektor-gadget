@@ -72,6 +72,14 @@ message GadgetRunRequest {
   int64 timeout = 13;
 }
 
+message GadgetAttachRequest {
+  // id of the gadget to attach to
+  string id = 1;
+
+  // used to inform the server about the expected protocol version
+  uint32 version = 2;
+}
+
 message BuiltInGadgetStopRequest {
 }
 
@@ -97,6 +105,7 @@ message GadgetControlRequest {
   oneof Event {
     GadgetRunRequest runRequest = 1;
     GadgetStopRequest stopRequest = 2;
+    GadgetAttachRequest attachRequest = 3;
   }
 }
 
@@ -148,6 +157,7 @@ message GadgetInfo {
   map<string, string> annotations = 5;
   bytes metadata = 6;
   repeated Param params = 7;
+  string id = 8;
 }
 
 message DataSource {
@@ -237,6 +247,8 @@ message GetGadgetInfoRequest {
 
   // can be used to inform about the expected version of GadgetInfo
   uint32 version = 3;
+
+  uint32 flags = 4;
 }
 
 message GetGadgetInfoResponse {
@@ -248,7 +260,55 @@ service BuiltInGadgetManager {
   rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
 }
 
+message CreateGadgetInstanceRequest {
+  GadgetInstance gadgetInstance = 1;
+  int32 eventBufferLength = 2;
+}
+
+message CreateGadgetInstanceResponse {
+  int32 result = 1;
+  GadgetInstance gadgetInstance = 2;
+}
+
+message ListGadgetInstancesRequest {}
+
+message GadgetInstance {
+  // id is the unique ID of the instance; this can be set by the client but overridden from the server, depending on the
+  // environment; must contain only hex characters in lowercase
+  string id = 1;
+  GadgetRunRequest gadgetConfig = 2;
+
+  // tags can hold multiple opaque strings so that users can more easily find their gadget instances
+  repeated string tags = 3;
+
+  // timeCreated holds the time the instance was created as a UNIX timestamp
+  int64 timeCreated = 4;
+
+  // name is a (non-unique) string assigned to a gadget, set by the client
+  string name = 6;
+}
+
+message ListGadgetInstanceResponse {
+  repeated GadgetInstance gadgetInstances = 1;
+}
+
+message GadgetInstanceId {
+  string id = 1;
+}
+
+message StatusResponse {
+  int32 result = 1;
+  string message = 2;
+}
+
 service GadgetManager {
   rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+}
+
+service GadgetInstanceManager {
+  rpc CreateGadgetInstance(CreateGadgetInstanceRequest) returns (CreateGadgetInstanceResponse) {}
+  rpc ListGadgetInstances(ListGadgetInstancesRequest) returns (ListGadgetInstanceResponse) {}
+  rpc GetGadgetInstance(GadgetInstanceId) returns (GadgetInstance) {}
+  rpc RemoveGadgetInstance(GadgetInstanceId) returns (StatusResponse) {}
 }
