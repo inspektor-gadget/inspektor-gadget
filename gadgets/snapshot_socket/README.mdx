@@ -15,13 +15,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/snapshot_socket:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/snapshot_socket:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/snapshot_socket:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/snapshot_socket:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -51,7 +51,7 @@ Then, run the gadget and see how it shows the sockets used by nginx:
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
-$ kubectl gadget run snapshot_socket:latest
+$ kubectl gadget run snapshot_socket:%IG_TAG%
 K8S.NODE            K8S.NAMESPACE         K8S.PODNAME           K8S.CONTAINERNAME     SRC                        DST                        STATE
 minikube-docker     default               test-snapshot-socket  test-snapshot-socket  :::80                      :::0                       10
 minikube-docker     default               test-snapshot-socket  test-snapshot-socket  0.0.0.0:80                 0.0.0.0:0                  10
@@ -62,7 +62,7 @@ minikube-docker     default               test-snapshot-socket  test-snapshot-so
 
 <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run snapshot_socket:latest -c test-snapshot-socket
+$ sudo ig run snapshot_socket:%IG_TAG% -c test-snapshot-socket
 RUNTIME.CONTAINERNAME              SRC                                           DST                                          STATE
 test-snapshot-socket               :::80                                         :::0                                         10
 test-snapshot-socket               0.0.0.0:80                                    0.0.0.0:0                                    10

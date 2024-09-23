@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_oomkill:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_oomkill:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_oomkill:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_oomkill:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -53,7 +53,7 @@ Running the gadget:
         Run the gadget in a terminal:
 
         ```bash
-        $ kubectl gadget run trace_oomkill:latest --namespace oomkill-demo
+        $ kubectl gadget run trace_oomkill:%IG_TAG% --namespace oomkill-demo
         K8S.NODE           K8S.NAMESPACE             K8S.PODNAME               K8S.CONTAINERNAME         MNTNS_ID      FPID          FUID          FGID          TPID          PAGES        FCOMM        TCOMM
         ```
 
@@ -76,7 +76,7 @@ Running the gadget:
         Start the gadget in a terminal:
 
         ```bash
-        $ sudo ig run trace_oomkill:latest --containername test-trace-oomkill
+        $ sudo ig run trace_oomkill:%IG_TAG% --containername test-trace-oomkill
         RUNTIME.CONTAINERNAME               MNTNS_ID            FPID                FUID                FGID                TPID                PAGES              FCOMM              TCOMM
         ```
 

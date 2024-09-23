@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/fsnotify:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/fsnotify:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -75,7 +75,7 @@ touch /tmp/ABCDE
 
 The fsnotify gadget can observe and enrich the inotify events in the following way:
 ```bash
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:latest --inotify-only --fields=tracer_comm,tracee_comm,i_mask,name
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:%IG_TAG% --inotify-only --fields=tracer_comm,tracee_comm,i_mask,name
 TRACER_COMM    TRACEE_COMM   I_MASK      NAME
 inotifywatch   touch         0x8000020   ABCDE
 inotifywatch   touch         0x8000004   ABCDE
@@ -98,7 +98,7 @@ docker run -ti --rm busybox date
 
 The fsnotify gadget can observe and enrich the fanotify events in the following way:
 ```bash
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:latest --fanotify-only --fields=tracer_comm,tracee_comm,type,fa_type,fa_response,name
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/fsnotify:%IG_TAG% --fanotify-only --fields=tracer_comm,tracee_comm,type,fa_type,fa_response,name
 TRACER_COMM  TRACEE_COMM      TYPE       FA_TYPE                         FA_RESPONSE   NAME
 ig           containerd-shim  fanotify   FANOTIFY_EVENT_TYPE_PATH_PERM   na            /usr/bin/runc
 ig           containerd-shim  fa_resp    FANOTIFY_EVENT_TYPE_PATH_PERM   allow         /usr/bin/runc

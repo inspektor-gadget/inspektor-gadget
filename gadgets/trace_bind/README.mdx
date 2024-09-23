@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_bind:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_bind:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_bind:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_bind:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -65,7 +65,7 @@ Then, let's run the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run trace_bind:latest --podname mypod
+        $ kubectl gadget run trace_bind:%IG_TAG% --podname mypod
         K8S.NODE            K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        ADDR                       COMM                    PID           TID          UID          GID BOUND_… ERROR
         minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635160        635160            0            0 0
         minikube-docker     default                  mypod                    mypod                    :::4242                    nc                   635213        635213            0            0 0
@@ -77,7 +77,7 @@ Then, let's run the gadget:
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run trace_bind:latest --containername test-trace-bind
+        $ sudo ig run trace_bind:%IG_TAG% --containername test-trace-bind
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
         RUNTIME.CONTAINERNAME               ADDR                                  COMM                            PID                TID                UID                GID BOUND_DEV_… ERROR
         test-trace-bind                     :::4242                               nc                           647422             647422                  0                  0 0

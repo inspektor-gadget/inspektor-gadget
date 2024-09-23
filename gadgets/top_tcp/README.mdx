@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_tcp:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_tcp:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_tcp:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_tcp:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -49,7 +49,7 @@ Default value: "0"
         First, we need to create one pod for us to play with:
 
         ```bash
-        kubectl run mypod --image busybox:latest sleep inf
+        kubectl run mypod --image busybox:%IG_TAG% sleep inf
         ```
     </TabItem>
 
@@ -57,7 +57,7 @@ Default value: "0"
         First, we need to create a container for us to play with:
 
         ```bash
-        docker run -d --name mycontainer busybox:latest sleep inf
+        docker run -d --name mycontainer busybox:%IG_TAG% sleep inf
         ```
     </TabItem>
 </Tabs>
@@ -67,14 +67,14 @@ You can now use the gadget, but output will be empty:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run top_tcp:latest --pod mypod
+        $ kubectl gadget run top_tcp:%IG_TAG% --pod mypod
         K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID SRC                                 DST                                COMM          SENT          RECEIVED
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run top_tcp:latest --containername mycontainer
+        $ sudo ig run top_tcp:%IG_TAG% --containername mycontainer
         RUNTIME.CONTAINERNAME                 PID SRC                                 DST                                COMM          SENT          RECEIVED
         ```
     </TabItem>

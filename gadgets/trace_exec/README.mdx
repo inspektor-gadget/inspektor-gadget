@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_exec:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_exec:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_exec:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_exec:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -81,7 +81,7 @@ Then, let's run the gadget:
         `minikube-docker` where `myapp1-pod` and `myapp2-pod` are running:
 
         ```bash
-        $ kubectl gadget run trace_exec --selector role=demo --node minikube-docker
+        $ kubectl gadget run trace_exec:%IG_TAG% --selector role=demo --node minikube-docker
         K8S.NODE            K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                        PID            TID PCOMM                    PPID ARGS           ERR… USER           LOGINUSER      GROUP
         minikube-docker     default                     myapp1-pod                  myapp1-pod                  true                    2957112        2957112 sh                    2589510 /bin/true           root           uid:4294967295 root
         minikube-docker     default                     myapp1-pod                  myapp1-pod                  date                    2957113        2957113 sh                    2589510 /bin/date           root           uid:4294967295 root
@@ -114,7 +114,7 @@ Then, let's run the gadget:
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run trace_exec:latest --containername test-trace-exec
+        $ sudo ig run trace_exec:%IG_TAG% --containername test-trace-exec
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
         RUNTIME.CONTAINERNAME           COMM                            PID              TID PCOMM                        PPID ARGS             ERROR USER             LOGINUSER        GROUP
         test-trace-exec                 true                        2920998          2920998 sh                        2920573 /bin/true              root             uid:4294967295   root

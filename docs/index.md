@@ -37,7 +37,7 @@ using the [`ig image build`](./gadget-devel/building.md) command.
 You can find a growing collection of Gadgets on [Artifact
 HUB](https://artifacthub.io/packages/search?kind=22). This includes both in-tree
 Gadgets (hosted in this git repository in the
-[gadgets](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets)
+[gadgets](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets)
 directory and third-party Gadgets).
 
 See the [Gadget documentation](./gadgets/) for more information.

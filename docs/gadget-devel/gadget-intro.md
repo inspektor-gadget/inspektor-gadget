@@ -56,8 +56,8 @@ GADGET_TRACER(name, mapname, structname);
 - structname: Name of the structure defining the gadget's event
 
 Examples of Gadgets that use this kind of data sources are
-[trace_open](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_open),
-[trace_exec](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_exec),
+[trace_open](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets/trace_open),
+[trace_exec](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets/trace_exec),
 etc.
 
 ### Map Iterators
@@ -94,7 +94,7 @@ GADGET_MAPITER(name, mapname)
 - name: Name of the data source
 - mapname: Name of the hash map used to store the data
 
-[top_file](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_file)
+[top_file](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets/top_file)
 is an example of a gadget using this data source.
 
 ### Snapshotters

@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_file:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_file:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_file:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_file:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -53,14 +53,14 @@ captures all the events from the beginning:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run top_file:latest --pod mypod
+        $ kubectl gadget run top_file:%IG_TAG% --pod mypod
         K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID  READS RBYT… WRIT… WBYT… FILE                  COMM             T
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run top_file:latest --containername test-top-file
+        $ sudo ig run top_file:%IG_TAG% --containername test-top-file
         RUNTIME.CONTAINERNAME                                 PID      READS     RBYTES    WRITES    WBYTES FILE                                COMM             T
         ```
     </TabItem>
@@ -88,34 +88,34 @@ clone the linux source code:
 </Tabs>
 
 We can see how the `top_file` terminal shows the files that are read and written
-by the application. The `File` field shows the absolute path of the file being 
+by the application. The `File` field shows the absolute path of the file being
 accessed. For instance, `http`, `apt-get` and `apt-config` are reading a lot
 of files when updating the packages list and installing packages:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-		K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                       COMM            K8S.NODE      
-        default                     mypod                       mypod                               1786428       64  262144       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
-        default                     mypod                       mypod                               1786428       10  589883       0       0 /var/lib/apt/lists/securi… apt-get         minikube      
-        default                     mypod                       mypod                               1786428        2  110977       0       0 /var/lib/apt/lists/securi… apt-get         minikube      
-        default                     mypod                       mypod                               1786428        6   24576       0       0 /etc/group                 apt-get         minikube      
-        default                     mypod                       mypod                               1786730        3    2400       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube      
-        default                     mypod                       mypod                               1786428     1494 977912…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
-        default                     mypod                       mypod                               1786608        3   21287       0       0 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786730        1     832       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube      
-        default                     mypod                       mypod                               1786730        2    8192       0       0 /etc/dpkg/dpkg.cfg         dpkg            minikube      
-        default                     mypod                       mypod                               1786608        0       0      28  722475 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608        0       0      28  589765 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608       74  602300       0       0 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608     2049 167783…       0       0 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608        0       0       2   17989 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608        0       0      40  973998 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786608        4   32284       0       0 /var/lib/apt/lists/partia… store           minikube      
-        default                     mypod                       mypod                               1786729        3    2400       0       0 /usr/lib/x86_64-linux-gnu… rm              minikube      
-        default                     mypod                       mypod                               1786428       10  649015       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
-        default                     mypod                       mypod                               1786428        4  197340       0       0 /var/lib/apt/lists/archiv… apt-get         minikube      
-        default                     mypod                       mypod                               1786428      188 123166…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube 
+		K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                       COMM            K8S.NODE
+        default                     mypod                       mypod                               1786428       64  262144       0       0 /var/lib/apt/lists/archiv… apt-get         minikube
+        default                     mypod                       mypod                               1786428       10  589883       0       0 /var/lib/apt/lists/securi… apt-get         minikube
+        default                     mypod                       mypod                               1786428        2  110977       0       0 /var/lib/apt/lists/securi… apt-get         minikube
+        default                     mypod                       mypod                               1786428        6   24576       0       0 /etc/group                 apt-get         minikube
+        default                     mypod                       mypod                               1786730        3    2400       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube
+        default                     mypod                       mypod                               1786428     1494 977912…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube
+        default                     mypod                       mypod                               1786608        3   21287       0       0 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786730        1     832       0       0 /usr/lib/x86_64-linux-gnu… dpkg            minikube
+        default                     mypod                       mypod                               1786730        2    8192       0       0 /etc/dpkg/dpkg.cfg         dpkg            minikube
+        default                     mypod                       mypod                               1786608        0       0      28  722475 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608        0       0      28  589765 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608       74  602300       0       0 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608     2049 167783…       0       0 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608        0       0       2   17989 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608        0       0      40  973998 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786608        4   32284       0       0 /var/lib/apt/lists/partia… store           minikube
+        default                     mypod                       mypod                               1786729        3    2400       0       0 /usr/lib/x86_64-linux-gnu… rm              minikube
+        default                     mypod                       mypod                               1786428       10  649015       0       0 /var/lib/apt/lists/archiv… apt-get         minikube
+        default                     mypod                       mypod                               1786428        4  197340       0       0 /var/lib/apt/lists/archiv… apt-get         minikube
+        default                     mypod                       mypod                               1786428      188 123166…       0       0 /var/lib/apt/lists/archiv… apt-get         minikube
         ...
         ```
     </TabItem>
@@ -157,8 +157,8 @@ to store the repository being cloned.
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                                      COMM            K8S.NODE      
-        default                     mypod                       mypod                               1799742      266   81944       0       0 /linux/.git/objects/pack/tmp_pack_dzzrva  git             minikube      
+        K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME                       PID    READS  RBYTES  WRITES  WBYTES FILE                                      COMM            K8S.NODE
+        default                     mypod                       mypod                               1799742      266   81944       0       0 /linux/.git/objects/pack/tmp_pack_dzzrva  git             minikube
 	    ```
     </TabItem>
 
@@ -179,13 +179,13 @@ with the following values, the gadget will run for 10 seconds in total, printing
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        kubectl gadget run top_file:latest --map-fetch-count 5 --map-fetch-interval 2s
+        kubectl gadget run top_file:%IG_TAG% --map-fetch-count 5 --map-fetch-interval 2s
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        sudo ig run top_file:latest --map-fetch-count 5 --map-fetch-interval 2s
+        sudo ig run top_file:%IG_TAG% --map-fetch-count 5 --map-fetch-interval 2s
         ```
     </TabItem>
 </Tabs>

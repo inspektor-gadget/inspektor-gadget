@@ -330,10 +330,10 @@ List of flags:
 
 ### Using ig in a Kubernetes pod
 
-In order to run `ig` in a Kubernetes pod use [pod-ig.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/examples/pod-ig.yaml).
+In order to run `ig` in a Kubernetes pod use [pod-ig.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/docs/examples/pod-ig.yaml).
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/main/docs/examples/pod-ig.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/%IG_BRANCH%/docs/examples/pod-ig.yaml
 $ kubectl logs ig
 RUNTIME.CONTAINERNAME          RUNTIME.CONTAIN… PID              PPID             COMM             RET ARGS
 kube-proxy                     k8s.gcr.io/kube… 3985376          3024961          ip6tables        0   /usr/sbin/ip6tables -w 5 -W 100000 -S K…
@@ -361,10 +361,10 @@ you use the appropriate `--platforms` flag of `docker buildx build` (see
 [Docker documentation about multi-platform images](https://docs.docker.com/build/building/multi-platform/#example)).
 
 You can then run your image locally or in a Kubernetes pod.
-Here is an example using a Kubernetes DaemonSet: [ds-ig.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/examples/ds-ig.yaml):
+Here is an example using a Kubernetes DaemonSet: [ds-ig.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/docs/examples/ds-ig.yaml):
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/main/docs/examples/ds-ig.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/%IG_BRANCH%/docs/examples/ds-ig.yaml
 $ kubectl exec -ti $(kubectl get pod -o name -l name=example-ig | head -1) -- sh
 / # ig trace exec
 ```

@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/deadlock:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/deadlock:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -40,7 +40,7 @@ For this example, we use a [test C++ program](https://github.com/iovisor/bcc/blo
 
 The deadlock gadget can trace all mutex lock/unlock events in the following way:
 ```bash
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:latest
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:%IG_TAG%
 RUNTIME.CONTAINERNAME      COMM                  PID        TID MUTEX_ADDR        OPERATION
 hungry_turing              test                23148      23148 0x7FED1243EA58    lock
 hungry_turing              test                23148      23148 0x7FED1243EA58    unlock

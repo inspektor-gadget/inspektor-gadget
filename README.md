@@ -60,7 +60,7 @@ Check [Installing on Kubernetes](https://www.inspektor-gadget.io/docs/latest/ref
 We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
 
 ```bash
-kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig run trace_open:latest
+kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig:latest -- ig run trace_open:latest
 ```
 
 For more information on how to use `ig` without installation on Kubernetes, please refer to the [ig documentation](https://www.inspektor-gadget.io/docs/latest/reference/ig#using-ig-with-kubectl-debug-node).
@@ -85,7 +85,7 @@ Check [Installing on Linux](https://www.inspektor-gadget.io/docs/latest/referenc
 #### Run in a Container
 
 ```bash
-docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig run trace_open:latest
+docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig:latest run trace_open:latest
 ```
 
 For more information on how to use `ig` without installation on Linux, please check [Using ig in a container](https://www.inspektor-gadget.io/docs/latest/reference/ig#using-ig-in-a-container).

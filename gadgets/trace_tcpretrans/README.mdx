@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_tcpretrans:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -35,7 +35,7 @@ Running the gadget:
         In terminal 1, start the trace_tcpretrans gadget:
 
         ```bash
-        $ kubectl gadget run trace_tcpretrans:latest
+        $ kubectl gadget run trace_tcpretrans:%IG_TAG%
         K8S.NODE          K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        SRC                              DST                              COMM                    PID           TID STATE         REASON        TCPFLAGS     TYPE
         ```
 
@@ -66,7 +66,7 @@ Running the gadget:
         In terminal 1, start the trace_tcpretrans gadget:
 
         ```bash
-        $ sudo ig run trace_tcpretrans:latest --containername test-trace-tcpretrans
+        $ sudo ig run trace_tcpretrans:%IG_TAG% --containername test-trace-tcpretrans
         RUNTIME.CONTAINERNAME            SRC                                         DST                                         COMM                            PID               TID STATE            REASON           TCPFLAGS         TYPE
         ```
 

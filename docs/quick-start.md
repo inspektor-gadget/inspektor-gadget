@@ -34,7 +34,7 @@ commands.
 ```bash
 kubectl krew install gadget
 kubectl gadget deploy
-kubectl gadget run trace_open:latest
+kubectl gadget run trace_open:%IG_TAG%
 ```
 
 Check [Installing on Kubernetes](./reference/install-kubernetes.md) to learn more about different options.
@@ -44,7 +44,7 @@ Check [Installing on Kubernetes](./reference/install-kubernetes.md) to learn mor
 We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
 
 ```bash
-kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig run trace_open:latest
+kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig:%IG_TAG% -- ig run trace_open:%IG_TAG%
 ```
 
 For more information on how to use `ig` without installation on Kubernetes, please refer to the [ig documentation](./reference/ig.md#using-ig-with-kubectl-debug-node).
@@ -61,7 +61,7 @@ IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gad
 
 curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
 
-sudo ig run trace_open:latest
+sudo ig run trace_open:%IG_TAG%
 ```
 
 Check [Installing on Linux](./reference/install-linux.md) to learn more.
@@ -69,7 +69,7 @@ Check [Installing on Linux](./reference/install-linux.md) to learn more.
 #### Run in a Container
 
 ```bash
-docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig run trace_open:latest
+docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig:%IG_TAG% run trace_open:%IG_TAG%
 ```
 
 For more information on how to use `ig` without installation on Linux, please check [Using ig in a container](./reference/ig.md#using-ig-in-a-container).
@@ -90,7 +90,7 @@ Download the `gadgetctl` tools for MacOS
 
 
 ```bash
-gadgetctl run trace_open:latest --remote-address=tcp://$IP:1234
+gadgetctl run trace_open:%IG_TAG% --remote-address=tcp://$IP:1234
 ```
 
 ***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](./reference/run.mdx) command***.

@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_sni:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_sni:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_sni:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_sni:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -35,7 +35,7 @@ Running the gadget:
         Run the gadget in a terminal:
 
         ```bash
-        $ kubectl gadget run trace_sni:latest
+        $ kubectl gadget run trace_sni:%IG_TAG%
         K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME
         ```
 
@@ -68,7 +68,7 @@ Running the gadget:
         Start the gadget in a terminal:
 
         ```bash
-        $ sudo ig run trace_sni:latest --containername test-trace-sni
+        $ sudo ig run trace_sni:%IG_TAG% --containername test-trace-sni
         RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    UID                   GID NAME
         ```
 

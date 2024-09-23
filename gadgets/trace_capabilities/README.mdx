@@ -28,13 +28,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_capabilities:latest [flags]
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% [flags]
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_capabilities:latest [flags]
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% [flags]
         ```
     </TabItem>
 </Tabs>
@@ -113,7 +113,7 @@ Default value: "false"
         We can see the same checks but this time with the `CAPABLE` column set to `true`:
 
         ```bash
-        $ kubectl gadget run trace_capabilities --selector name=set-priority-1
+        $ kubectl gadget run trace_capabilities:%IG_TAG% --selector name=set-priority-1
         K8S.NODE                 K8S.NAMESPACE            K8S.PODNAME              K8S.CONTAINERNAME        COMM                    PID          TID          UID          GID CAPABLE AUDIT    CAP          SYSCALL
         minikube-docker          default                  set-priority-1           set-priority-1           nice                 225549       225549            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY
         minikube-docker          default                  set-priority-1           set-priority-1           nice                 225615       225615            0            0 true    1        CAP_SYS_NICE SYS_SETPRIORITY
@@ -125,7 +125,7 @@ Default value: "false"
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run trace_capabilities:latest --containername test-trace-capabilities
+        $ sudo ig run trace_capabilities:%IG_TAG% --containername test-trace-capabilities
         WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
         ...
         ```

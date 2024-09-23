@@ -17,13 +17,13 @@ Running the gadget:
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
-$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:latest [flags]
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:%IG_TAG% [flags]
 ```
   </TabItem>
 
   <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:latest [flags]
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:%IG_TAG% [flags]
 ```
   </TabItem>
 </Tabs>
@@ -77,7 +77,7 @@ We can simply filter for the pod "mypod" and omit specifying the node,
 thus tracing on all nodes for a pod called "mypod":
 
 ```bash
-$ kubectl gadget run trace_open:latest --podname mypod
+$ kubectl gadget run trace_open:%IG_TAG% --podname mypod
 K8S.NODE           K8S.NAMESPACE K8S.PODNAME   K8S.CONTAINE… COMM        PID     TID      UID      GID  FD FNAME                    MODE    ERROR
 minikube-docker    default       mypod         mypod         true     511559  511559        0        0   0 /etc/ld.so.cache         ------… ENOEN
 minikube-docker    default       mypod         mypod         true     511559  511559        0        0   0 /lib/x86_64-linux-gnu/g… ------… ENOEN
@@ -106,7 +106,7 @@ We can stop the gadget by hitting Ctrl-C.
 
   <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run trace_open:latest --containername test-trace-open
+$ sudo ig run trace_open:%IG_TAG% --containername test-trace-open
 WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
 WARN[0000] Ignoring runtime "podman" with non-existent socketPath "/run/podman/podman.sock"
 RUNTIME.CONTAINERNA… COMM                PID         TID         UID        GID  FD FNAME                    MODE       ERROR   TIMESTAMP
