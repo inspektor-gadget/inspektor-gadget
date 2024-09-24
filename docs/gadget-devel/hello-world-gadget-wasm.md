@@ -18,7 +18,7 @@ we create a new file named `program.go`. As a first step, let's define the
 package main
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
+	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
 //export gadgetInit
@@ -120,7 +120,11 @@ func gadgetInit() int {
 
 	// Subscribe to all events from "open" so we manipulate the data in the callback
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
-		fileName := filenameF.String(data)
+		fileName, err := filenameF.String(data)
+		if err != nil {
+		    api.Warnf("failed to get field fileName: %s", err)
+		    return 1
+		}
 		replaced := pattern.ReplaceAllString(fileName, "${1}***/${3}")
 		filenameF.SetString(data, replaced)
 	}, 0)
@@ -205,11 +209,20 @@ func gadgetInit() int {
 
 	// Subscribe to all events from "open" so we manipulate the data in the callback
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
-		fileName := filenameF.String(data)
+		fileName, err:= filenameF.String(data)
+		if err != nil {
+		    api.Warnf("failed to get field fileName: %s", err)
+		    return
+		}
 		replaced := pattern.ReplaceAllString(fileName, "${1}***/${3}")
 		filenameF.SetString(data, replaced)
 
-		human := fmt.Sprintf("file %q was opened by %d", fileName, pidF.Uint32(data))
+		pid, err:= pidF.Uint32(data)
+		if err != nil {
+		    api.Warnf("failed to get pid: %s", err)
+		    return
+		}
+		human := fmt.Sprintf("file %q was opened by %d", fileName, pid)
 		humanF.SetString(data, human)
 	}, 0)
 
