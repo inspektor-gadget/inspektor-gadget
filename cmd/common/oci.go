@@ -16,7 +16,10 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -28,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	gadgetmanifest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-manifest"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -108,10 +112,14 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	var timeoutSeconds int
 	var gadgetInstanceID string
 
+	var inFile string
+
 	var skipParams []string
 	if commandMode == CommandModeAttach {
 		skipParams = append(skipParams, "!attach")
 	}
+
+	initializedOperators := false
 
 	preRun := func(cmd *cobra.Command, args []string) error {
 		err := runtime.Init(runtimeGlobalParams)
@@ -150,6 +158,10 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			return cmd.ParseFlags(args)
 		}
 
+		if inFile != "" {
+			return fmt.Errorf("please only specify an image OR manifest")
+		}
+
 		ops := make([]operators.DataOperator, 0)
 		for _, op := range operators.GetDataOperators() {
 			// Initialize operator
@@ -161,6 +173,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			ops = append(ops, op)
 		}
 		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
+		initializedOperators = true
 
 		imageName := actualArgs[0]
 		if grpcrt, ok := runtime.(*grpcruntime.Runtime); ok && commandMode == CommandModeAttach {
@@ -226,7 +239,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 		showHelp, _ := cmd.Flags().GetBool("help")
 
-		if len(args) == 0 {
+		if len(args) == 0 && inFile == "" {
 			if showHelp {
 				additionalMessage := "Specify the gadget image to get more information about it"
 				cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
@@ -250,31 +263,89 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 		ops := make([]operators.DataOperator, 0)
 		for _, op := range operators.GetDataOperators() {
+			if !initializedOperators {
+				// initialize operators if not yet done in PreRun (e.g. when -f was specified)
+				err := op.Init(opGlobalParams[op.Name()])
+				if err != nil {
+					log.Warnf("error initializing operator %s: %v", op.Name(), err)
+					continue
+				}
+			}
 			ops = append(ops, op)
 		}
 		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
 
 		timeoutDuration := time.Duration(timeoutSeconds) * time.Second
 
-		imageName := args[0]
+		var image string
+		if len(args) > 0 {
+			image = args[0]
+		}
+
+		paramValueMap := make(map[string]string)
+
+		if inFile != "" {
+			f, err := os.Open(inFile)
+			if err != nil {
+				return fmt.Errorf("opening gadget runtime manifest file %s: %w", inFile, err)
+			}
+			specs, err := gadgetmanifest.InstanceSpecsFromReader(f)
+			f.Close()
+			if err != nil {
+				return fmt.Errorf("reading gadget runtime manifest file %s: %w", inFile, err)
+			}
+
+			detachedParam := runtimeParams.Get("detach")
+			isDetach := detachedParam != nil && detachedParam.AsBool()
+
+			if isDetach {
+				// Copy special oci params
+				ociParams.CopyToMap(paramValueMap, "operator.oci.")
+				return runInstanceSpecsDetached(ctx, runtime, specs, runtimeParams, paramValueMap,
+					gadgetcontext.WithDataOperators(ops...),
+					gadgetcontext.WithTimeout(timeoutDuration),
+					gadgetcontext.WithUseInstance(false),
+				)
+			}
+
+			if len(specs) > 1 {
+				// output different error messages, depending on whether `--detach` is available
+				if detachedParam == nil {
+					return fmt.Errorf("multiple gadget instance specs found in manifest %s", inFile)
+				} else {
+					return fmt.Errorf("multiple gadget instance specs found in manifest %s: this is only supported in combination with --detach", inFile)
+				}
+			}
+
+			spec := specs[0]
+			image = spec.Image
+			runtimeParams.Set("id", spec.ID)
+			runtimeParams.Set("name", spec.Name)
+			runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
+
+			tempParams := spec.ParamValues
+			maps.Copy(tempParams, paramValueMap)
+			paramValueMap = tempParams
+		}
+
 		if commandMode == CommandModeAttach {
 			// the gadgetID should be present from GetGadgetInfo above
-			imageName = gadgetInstanceID
+			image = gadgetInstanceID
 		}
 
 		gadgetCtx := gadgetcontext.New(
 			ctx,
-			imageName,
+			image,
 			gadgetcontext.WithDataOperators(ops...),
 			gadgetcontext.WithTimeout(timeoutDuration),
 			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
 		)
 
-		paramValueMap := make(map[string]string)
-
 		// Write back param values
-		for _, p := range info.Params {
-			paramValueMap[p.Prefix+p.Key] = paramLookup[p.Prefix+p.Key].String()
+		if info != nil {
+			for _, p := range info.Params {
+				paramValueMap[p.Prefix+p.Key] = paramLookup[p.Prefix+p.Key].String()
+			}
 		}
 
 		// Also copy special oci params
@@ -318,6 +389,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 	if commandMode != CommandModeAttach {
 		AddOCIFlags(cmd, ociParams, skipParams, runtime)
+		cmd.PersistentFlags().StringVarP(&inFile, "file", "f", "", "path to gadget runtime manifest to apply")
 	}
 
 	AddOCIFlags(cmd, runtimeGlobalParams, skipParams, runtime)
@@ -328,6 +400,35 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	}
 
 	return cmd
+}
+
+func runInstanceSpecsDetached(
+	ctx context.Context,
+	runtime runtime.Runtime,
+	specs []*gadgetmanifest.InstanceSpec,
+	runtimeParams *params.Params,
+	paramValueMap map[string]string,
+	runOptions ...gadgetcontext.Option,
+) error {
+	var merr error
+	for _, spec := range specs {
+		image := spec.Image
+
+		// Set some well-known params
+		runtimeParams.Set("id", spec.ID)
+		runtimeParams.Set("name", spec.Name)
+		runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
+
+		maps.Copy(spec.ParamValues, paramValueMap)
+
+		gadgetCtx := gadgetcontext.New(ctx, image, runOptions...)
+
+		err := runtime.RunGadget(gadgetCtx, runtimeParams, spec.ParamValues)
+		if err != nil {
+			merr = errors.Join(merr, fmt.Errorf("running gadget from manifest file: %w", err))
+		}
+	}
+	return merr
 }
 
 func AddOCIFlags(cmd *cobra.Command, params *params.Params, skipParams []string, runtime runtime.Runtime) {
