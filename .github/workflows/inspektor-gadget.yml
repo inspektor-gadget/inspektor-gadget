@@ -1407,13 +1407,13 @@ jobs:
           export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
           export BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
 
-          make build-gadgets -o install/ig
+          make build-gadgets -o install/ig -j$(nproc)
 
           # Check that metadata files are updated
           git diff --exit-code HEAD --
 
           # Avoid building the gadgets again
-          make -C gadgets/ push -o build
+          make -C gadgets/ push-existing -j$(nproc)
       - name: Sign the gadgets
         if: needs.check-secrets.outputs.cosign == 'true'
         env:
@@ -1423,7 +1423,7 @@ jobs:
           export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
           export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
 
-          make -C gadgets/ sign -o push
+          make -C gadgets/ sign-existing -j$(nproc)
 
   test-gadgets-local:
     name: Test gadgets locally

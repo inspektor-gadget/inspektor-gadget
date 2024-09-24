@@ -79,25 +79,39 @@ $(GADGETS_README):
 		ln -sf ../../gadgets/$@ $(ROOT_DIR)../docs/gadgets/$(shell dirname $@).mdx ; \
 	fi
 
-.PHONY:
-push: build
-	@echo "Pushing all gadgets"
-	for GADGET in $(GADGETS); do \
-		sudo -E $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) || exit 1 ; \
-	done
-
-sign: push
-	@echo "Signing all gadgets"
-	for GADGET in $(GADGETS); do \
-		digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG) -o json | jq -r .Digest) ; \
-		cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$$GADGET@$$digest || exit 1 ; \
-	done
+%-push: %-build
+	@echo "Pushing $*"
+	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY:
-clean:
-	for GADGET in $(GADGETS); do \
-		sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
-	done
+push: $(addsuffix -push,$(GADGETS))
+
+%-push-existing: %
+	@echo "Pushing existing $*"
+	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+
+.PHONY:
+push-existing: $(addsuffix -push-existing,$(GADGETS))
+
+%-sign: %-push
+	@echo "Signing $*"
+	digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
+	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+
+sign: $(addsuffix -sign,$(GADGETS))
+
+%-sign-existing:
+	@echo "Signing existing $*"
+	digest=$$(sudo -E $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
+	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+
+sign-existing: $(addsuffix -sign-existing,$(GADGETS))
+
+%-clean:
+	sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+
+.PHONY:
+clean: $(addsuffix -clean,$(GADGETS))
 
 .PHONY:
 test: build
