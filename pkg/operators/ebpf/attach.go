@@ -37,12 +37,21 @@ const (
 	usdtPrefix      = "usdt/"
 )
 
+const (
+	disabledProgram = "gadget_program_disabled"
+)
+
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
 	attachTo := p.AttachTo
 
 	if attachToCfg := i.config.GetString("programs." + p.Name + ".attach_to"); attachToCfg != "" {
 		i.logger.Debugf("Overriding attachTo with %q for program %q", attachToCfg, p.Name)
 		attachTo = attachToCfg
+	}
+
+	if attachTo == disabledProgram {
+		i.logger.Debugf("Skipping program %q as it is disabled", p.Name)
+		return nil, nil
 	}
 
 	switch p.Type {
