@@ -18,24 +18,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
-
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
-
-	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 )
 
 type ExpectedTraceOpenEvent struct {
@@ -58,8 +57,10 @@ func TestTraceOpenGadget(t *testing.T) {
 	utilstest.RequireRoot(t)
 	testCases := map[string]testDef{
 		"captures_all_events": {
-			runnerConfig:  &utilstest.RunnerConfig{},
-			generateEvent: generateEvent,
+			runnerConfig: &utilstest.RunnerConfig{},
+			generateEvent: func() (int, error) {
+				return generateEvent(t)
+			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
@@ -75,94 +76,196 @@ func TestTraceOpenGadget(t *testing.T) {
 				return nil
 			},
 		},
+		"test_symbolic_links": {
+			runnerConfig: &utilstest.RunnerConfig{},
+			generateEvent: func() (int, error) {
+				// Create a symbolic link to /dev/null
+				err := os.Symlink("/dev/null", "/tmp/test_symbolic_links")
+				if err != nil {
+					return 0, fmt.Errorf("creating symbolic link: %w", err)
+				}
+				defer os.Remove("/tmp/test_symbolic_links")
+
+				// Open the symbolic link
+				fd, err := unix.Open("/tmp/test_symbolic_links", unix.O_RDONLY, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
+				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					return &ExpectedTraceOpenEvent{
+						Comm:  "unit.test",
+						Pid:   info.Pid,
+						Tid:   info.Tid,
+						Uid:   uint32(info.Uid),
+						Gid:   uint32(info.Gid),
+						Fd:    uint32(fd),
+						FName: "/tmp/test_symbolic_links",
+					}
+				})(t, info, fd, events)
+				return nil
+			},
+		},
+		"test_relative_path": {
+			runnerConfig: &utilstest.RunnerConfig{},
+			generateEvent: func() (int, error) {
+				relPath := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
+				fd, err := unix.Open(relPath, unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
+				require.NoError(t, err, "opening file")
+
+				defer os.Remove(relPath)
+
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
+				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					return &ExpectedTraceOpenEvent{
+						Comm:  "unit.test",
+						Pid:   info.Pid,
+						Tid:   info.Tid,
+						Uid:   uint32(info.Uid),
+						Gid:   uint32(info.Gid),
+						Fd:    uint32(fd),
+						FName: "../../../../../../../tmp/test_relative_path",
+					}
+				})(t, info, fd, events)
+				return nil
+			},
+		},
+		"test_prefix_on_directory": {
+			runnerConfig: &utilstest.RunnerConfig{},
+			generateEvent: func() (int, error) {
+				err := os.Mkdir("/tmp/foo", 0o750)
+				if err != nil {
+					return 0, fmt.Errorf("creating directory: %w", err)
+				}
+				defer os.RemoveAll("/tmp/foo")
+
+				fd, err := unix.Open("/tmp/foo/bar.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(fd)
+
+				badfd, err := unix.Open("/tmp/quux.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(badfd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
+				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					return &ExpectedTraceOpenEvent{
+						Comm:  "unit.test",
+						Pid:   info.Pid,
+						Tid:   info.Tid,
+						Uid:   uint32(info.Uid),
+						Gid:   uint32(info.Gid),
+						Fd:    uint32(fd),
+						FName: "/tmp/foo/bar.test",
+					}
+				})(t, info, fd, events)
+				return nil
+			}},
 	}
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			var wg sync.WaitGroup
-			events := make(chan ExpectedTraceOpenEvent, 100)
-			subscribed := make(chan bool, 1)
-			wg.Add(1)
-			go func() {
-				timeout := 5 * time.Second
-				const opPriority = 50000
+			t.Parallel()
 
-				myOperator := simple.New("gadget", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			capturedEvents := []ExpectedTraceOpenEvent{}
+			var fd int
+			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			timeout := 5 * time.Second
+			const opPriority = 50000
+
+			gadgetOperator := simple.New("gadget",
+				// On init, subscribe to the data sources
+				simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
 					for _, d := range gadgetCtx.GetDataSources() {
 						jsonFormatter, _ := igjson.New(d)
 						d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
-
-							jsonOutput := jsonFormatter.Marshal(data)
-
 							event := &ExpectedTraceOpenEvent{}
-							if err := json.Unmarshal(jsonOutput, event); err != nil {
-								return fmt.Errorf("unmarshaling event: %w", err)
-							}
-							events <- *event
+							jsonOutput := jsonFormatter.Marshal(data)
+							err := json.Unmarshal(jsonOutput, event)
+							require.NoError(t, err, "unmarshalling event")
+
+							// for current reference of the event
+							fmt.Println("Captured data: ", string(jsonOutput))
+
+							capturedEvents = append(capturedEvents, *event)
+
 							return nil
 						}, opPriority)
 
 					}
-					subscribed <- true
+					return nil
+				}),
+				// On start, generate an event that can be captured
+				simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
+					utilstest.RunWithRunner(t, runner, func() error {
+						fd, _ = testCase.generateEvent()
+						return nil
+					})
 					return nil
 				}))
 
-				gadgetCtx := gadgetcontext.New(
-					context.Background(),
-					"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
-					gadgetcontext.WithDataOperators(
-						ocihandler.OciHandler,
-						myOperator,
-					),
-					gadgetcontext.WithTimeout(timeout),
-				)
-				runtime := local.New()
-				if err := runtime.Init(nil); err != nil {
-					fmt.Errorf("runtime init: %w", err)
-				}
-				params := map[string]string{
-					// Filter only events from the root user
-					"operator.oci.ebpf.uid": "0",
-				}
-
-				if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
-					fmt.Errorf("running gadget: %w", err)
-				}
-				wg.Done()
-
-			}()
-
-			<-subscribed
-			time.Sleep(1 * time.Second)
-			close(subscribed)
-			var fd int
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
-			utilstest.RunWithRunner(t, runner, func() error {
-				fd, _ = testCase.generateEvent()
-				return nil
-			})
-
-			wg.Wait()
-			close(events)
-			var capturedEvents []ExpectedTraceOpenEvent
-			for event := range events {
-				capturedEvents = append(capturedEvents, event)
+			gadgetCtx := gadgetcontext.New(
+				context.Background(),
+				// Use the trace_open gadget, this part will be made more modular in the future
+				"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+				gadgetcontext.WithDataOperators(
+					ocihandler.OciHandler,
+					gadgetOperator,
+				),
+				gadgetcontext.WithTimeout(timeout),
+			)
+			runtime := local.New()
+			err := runtime.Init(nil)
+			require.NoError(t, err, "initializing runtime")
+			params := map[string]string{
+				// Filter only events from the root user
+				"operator.oci.ebpf.uid": "0",
 			}
+
+			err = runtime.RunGadget(gadgetCtx, nil, params)
+			require.NoError(t, err, "running gadget")
+
+			// Wait for the gadget to finish and then validate the events
 			testCase.validateEvent(t, runner.Info, fd, capturedEvents)
 		})
 	}
 }
+func generateRelativePathForAbsolutePath(t *testing.T, fileName string) string {
+	// If the filename is relative, return it as is
+	if !filepath.IsAbs(fileName) {
+		return fileName
+	}
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "getting current working directory")
+
+	relPath, err := filepath.Rel(cwd, fileName)
+	require.NoError(t, err, "getting relative path")
+
+	return relPath
+}
 
 // generateEvent simulates an event by opening and closing a file
-func generateEvent() (int, error) {
+func generateEvent(t *testing.T) (int, error) {
 	fd, err := unix.Open("/dev/null", 0, 0)
-	if err != nil {
-		return 0, fmt.Errorf("opening file: %w", err)
-	}
+	require.NoError(t, err, "opening file")
 
 	// Close the file descriptor to simulate the event
-	if err := unix.Close(fd); err != nil {
-		return 0, fmt.Errorf("closing file: %w", err)
-	}
+	err = unix.Close(fd)
+	require.NoError(t, err, "closing file")
 
 	return fd, nil
 }
