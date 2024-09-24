@@ -199,7 +199,10 @@ func (i *ebpfInstance) runMapIterators() error {
 					break
 				}
 			}
-			iter.ds.EmitAndRelease(p)
+			err = iter.ds.EmitAndRelease(p)
+			if err != nil {
+				i.logger.Errorf("emitting and releasing packet: %v", err)
+			}
 		}
 		go func() {
 			if iter.interval == 0 {
