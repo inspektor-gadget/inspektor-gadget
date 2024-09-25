@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,12 +62,17 @@ func TestDaemonHeadless(t *testing.T) {
 		}
 	}
 
+	igDaemonFlags := []string{"daemon"}
+	flags := os.Getenv("IG_FLAGS")
+	if flags != "" {
+		igDaemonFlags = append(igDaemonFlags, strings.Split(flags, " ")...)
+	}
 	igtesting.RunTestSteps([]igtesting.TestStep{
 		&command.Command{
 			Name:           "Start Daemon",
 			ValidateOutput: nil,
 			StartAndStop:   true,
-			Cmd:            exec.Command(igCmd, "daemon"),
+			Cmd:            exec.Command(igCmd, igDaemonFlags...),
 		},
 		utils.Sleep(time.Second * 5),
 		&command.Command{
