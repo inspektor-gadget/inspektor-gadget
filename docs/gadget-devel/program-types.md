@@ -8,6 +8,8 @@ Inspektor Gadget automatically loads and attaches the eBPF programs contained in
 document describes the different types that are supported and specific details about them.
 The section name specifies the type of the program and the target they should be attached to.
 
+## Program Types
+
 ### Kprobes / Kretprobes
 
 The section name must use the `kprobe/<function_name>` or `kretprobe/<function_name>` formats.
@@ -81,3 +83,16 @@ The section name must use the `usdt/<file_path>:<providerName>:<probeName>` form
 
 The section name must use the `lsm/<hook>` format.
 The hook points could be found in [`<include/linux/lsm_hook_defs.h>`](https://github.com/torvalds/linux/blob/master/include/linux/lsm_hook_defs.h).
+
+## Disabling Programs
+
+You can disable a program by using `gadget_program_disabled` as the program
+target. For example:
+
+```c
+SEC("kprobe/gadget_program_disabled")
+int BPF_KPROBE(foo, args...)
+{
+	return 0;
+}
+```

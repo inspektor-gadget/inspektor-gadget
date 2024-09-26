@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: v0.31.0
+name: "trace fsslower"
+category: monitoring-logging
+displayName: "trace fsslower"
+createdAt: "2024-08-12T14:04:40Z"
+digest: "2024-08-12T14:04:40Z"
+description: "Trace open, read, write and fsync operations slower than a threshold"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_fsslower"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_fsslower:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_fsslower"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_fsslower:latest
+    ```
+provider:
+    name: Inspektor Gadget

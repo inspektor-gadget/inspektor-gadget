@@ -653,9 +653,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
 		}
 
-		if l != nil {
-			i.links = append(i.links, l)
+		if l == nil {
+			continue
 		}
+
+		i.links = append(i.links, l)
 
 		// We need to store iterators' links because we need them to run the programs
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
