@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
@@ -29,32 +30,38 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type topTcpEntry struct {
+type topBlockioEntry struct {
 	eventtypes.CommonData
 
 	MntNsID uint64 `json:"mntns_id"`
 
+	Comm string `json:"comm"`
 	Pid  uint32 `json:"pid"`
 	Tid  uint32 `json:"tid"`
-	Comm string `json:"comm"`
 
-	Src utils.L4Endpoint `json:"src"`
-	Dst utils.L4Endpoint `json:"dst"`
-
-	// Sent and Received might be 0, so we can't use NormalizedInt and NormalizeInt()
-	// TODO: Support checking for the presence of a field, even if it's 0
-	// Sent     uint64 `json:"sent"`
-	// Received uint64 `json:"received"`
+	Bytes uint64 `json:"bytes"`
+	Io    uint32 `json:"io"`
+	Major int    `json:"major"`
+	Minor int    `json:"minor"`
+	Rw    string `json:"rw"`
+	Us    uint64 `json:"us"`
 }
 
-func TestTopTcp(t *testing.T) {
+func TestTopBlockio(t *testing.T) {
+	version, err := kernel.GetKernelVersion()
+	require.Nil(t, err, "Failed to get kernel version: %s", err)
+	v6_5 := kernel.VersionInfo{Kernel: 6, Major: 5, Minor: 0}
+	if kernel.CompareKernelVersion(*version, v6_5) < 0 {
+		t.Skip("Skip running top_blockio on kernel versions lower than 6.5")
+	}
+
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-top-tcp"
-	containerImage := "docker.io/library/nginx:latest"
+	containerName := "test-top-blockio"
+	containerImage := "docker.io/library/busybox:latest"
 
 	var ns string
 	containerOpts := []containers.ContainerOption{
@@ -62,14 +69,13 @@ func TestTopTcp(t *testing.T) {
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-top-tcp")
+		ns = utils.GenerateTestNamespaceName(t, "test-top-blockio")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
-	// TODO: can't use setuidgid because it's not available on the nginx image
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"nginx && while true; do curl 127.0.0.1; sleep 0.1; done",
+		"while true; do dd if=/dev/zero of=/tmp/test count=4096; sleep 0.2; done",
 		containerOpts...,
 	)
 
@@ -103,36 +109,40 @@ func TestTopTcp(t *testing.T) {
 		igrunner.WithStartAndStop(),
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
-				expectedEntry := &topTcpEntry{
+				expectedEntry := &topBlockioEntry{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 
-					Src: utils.L4Endpoint{
-						Addr:    "127.0.0.1",
-						Version: 4,
-						Port:    utils.NormalizedInt,
-						Proto:   6,
-					},
-					Dst: utils.L4Endpoint{
-						Addr:    "127.0.0.1",
-						Version: 4,
-						Port:    utils.NormalizedInt,
-						Proto:   6,
-					},
-					Comm: "curl",
+					Comm: "dd",
+					// bytes manipulated by dd are given by count * bs
+					// where bs is 512 by default and we set 4096 for count
+					Bytes: 512 * 4096,
+					Rw:    "write",
 
 					// Check the existence of the following fields
 					MntNsID: utils.NormalizedInt,
 					Pid:     utils.NormalizedInt,
 					Tid:     utils.NormalizedInt,
+					Us:      utils.NormalizedInt,
+					Io:      utils.NormalizedInt,
+
+					// Manually normalize fields that might contain 0, so we
+					// can't use NormalizedInt and NormalizeInt()
+					// TODO: Support checking for the presence of a field, even if it's 0
+					Major: 0,
+					Minor: 0,
 				}
 
-				normalize := func(e *topTcpEntry) {
+				normalize := func(e *topBlockioEntry) {
 					utils.NormalizeCommonData(&e.CommonData)
 					utils.NormalizeInt(&e.MntNsID)
 					utils.NormalizeInt(&e.Pid)
 					utils.NormalizeInt(&e.Tid)
-					utils.NormalizeInt(&e.Src.Port)
-					utils.NormalizeInt(&e.Dst.Port)
+					utils.NormalizeInt(&e.Us)
+					utils.NormalizeInt(&e.Io)
+
+					// Manually normalize fields that might contain 0
+					e.Major = 0
+					e.Minor = 0
 				}
 
 				match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
@@ -140,7 +150,7 @@ func TestTopTcp(t *testing.T) {
 		),
 	)
 
-	topTcpCmd := igrunner.New("top_tcp", runnerOpts...)
+	topBlockioCmd := igrunner.New("top_blockio", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{topTcpCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{topBlockioCmd}, t, testingOpts...)
 }

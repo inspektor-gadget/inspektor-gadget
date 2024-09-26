@@ -32,6 +32,7 @@ const (
 	iterPrefix      = "iter/"
 	fentryPrefix    = "fentry/"
 	fexitPrefix     = "fexit/"
+	tpBtfPrefix     = "tp_btf/"
 	uprobePrefix    = "uprobe/"
 	uretprobePrefix = "uretprobe/"
 	usdtPrefix      = "usdt/"
@@ -91,6 +92,12 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			return link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFExit,
+			})
+		case strings.HasPrefix(p.SectionName, tpBtfPrefix):
+			i.logger.Debugf("Attaching tp_btf %q to %q", p.Name, p.AttachTo)
+			return link.AttachTracing(link.TracingOptions{
+				Program:    prog,
+				AttachType: ebpf.AttachTraceRawTp,
 			})
 		}
 		return nil, fmt.Errorf("unsupported section name %q for program %q as type ebpf.Tracing", p.SectionName, p.Name)
