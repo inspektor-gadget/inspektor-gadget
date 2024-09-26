@@ -59,6 +59,28 @@ func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
 	return apiclientset, nil
 }
 
+// NewClientsetWithProtobuf creates a client to talk to the Kubernetes API
+// server using protobuf encoding.
+func NewClientsetWithProtobuf(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	config, err := NewKubeConfig(kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use protobuf instead of json as it's more efficient. This support was
+	// introduced in Kubernetes 1.3, released in July 2016, we can assume it's
+	// available.
+	config.ContentType = "application/vnd.kubernetes.protobuf"
+	config.AcceptContentTypes = "application/vnd.kubernetes.protobuf"
+
+	apiclientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiclientset, nil
+}
+
 func NewClientsetFromConfigFlags(flags *genericclioptions.ConfigFlags) (*kubernetes.Clientset, error) {
 	config, err := flags.ToRESTConfig()
 	if err != nil {

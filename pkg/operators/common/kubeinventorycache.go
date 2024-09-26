@@ -21,6 +21,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	k8sCache "k8s.io/client-go/tools/cache"
@@ -29,30 +30,106 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
+type SlimObjectMeta struct {
+	Name            string                  `json:"name"`
+	Namespace       string                  `json:"namespace"`
+	ResourceVersion string                  `json:"resourceVersion"`
+	Labels          map[string]string       `json:"labels"`
+	OwnerReferences []metav1.OwnerReference `json:"ownerReferences"`
+}
+
+// SlimPod is a reduced version of v1.Pod, it only contains the fields that are
+// needed to enrich events.
+type SlimPod struct {
+	metav1.TypeMeta `json:",inline"`
+	SlimObjectMeta  `json:",inline"`
+	Spec            SlimPodSpec   `json:"spec"`
+	Status          SlimPodStatus `json:"status"`
+}
+
+type SlimPodSpec struct {
+	HostNetwork bool `json:"hostNetwork"`
+}
+
+type SlimPodStatus struct {
+	HostIP string `json:"hostIP"`
+	PodIP  string `json:"podIP"`
+}
+
+func NewSlimPod(p *v1.Pod) *SlimPod {
+	return &SlimPod{
+		TypeMeta: p.TypeMeta,
+		SlimObjectMeta: SlimObjectMeta{
+			Name:            p.Name,
+			Namespace:       p.Namespace,
+			ResourceVersion: p.ResourceVersion,
+			Labels:          p.Labels,
+			OwnerReferences: p.OwnerReferences,
+		},
+		Spec: SlimPodSpec{
+			HostNetwork: p.Spec.HostNetwork,
+		},
+		Status: SlimPodStatus{
+			HostIP: p.Status.HostIP,
+			PodIP:  p.Status.PodIP,
+		},
+	}
+}
+
+// SlimService is a reduced version of v1.Service, it only contains the fields
+// that are needed to enrich events.
+type SlimService struct {
+	metav1.TypeMeta `json:",inline"`
+	SlimObjectMeta  `json:",inline"`
+	Spec            SlimServiceSpec `json:"spec"`
+}
+
+type SlimServiceSpec struct {
+	ClusterIP string `json:"clusterIP"`
+}
+
+func NewSlimService(s *v1.Service) *SlimService {
+	return &SlimService{
+		TypeMeta: s.TypeMeta,
+		SlimObjectMeta: SlimObjectMeta{
+			Name:            s.Name,
+			Namespace:       s.Namespace,
+			ResourceVersion: s.ResourceVersion,
+			Labels:          s.Labels,
+			OwnerReferences: s.OwnerReferences,
+		},
+		Spec: SlimServiceSpec{
+			ClusterIP: s.Spec.ClusterIP,
+		},
+	}
+}
+
 // K8sInventoryCache is a cache of Kubernetes resources such as pods and services
 // that can be used by operators to enrich events.
 type K8sInventoryCache interface {
 	Start()
 	Stop()
 
-	GetPods() []*v1.Pod
-	GetPodByName(namespace string, name string) *v1.Pod
-	GetPodByIp(ip string) *v1.Pod
+	GetPods() []*SlimPod
+	GetPodByName(namespace string, name string) *SlimPod
+	GetPodByIp(ip string) *SlimPod
 
-	GetSvcs() []*v1.Service
-	GetSvcByName(namespace string, name string) *v1.Service
-	GetSvcByIp(ip string) *v1.Service
+	GetSvcs() []*SlimService
+	GetSvcByName(namespace string, name string) *SlimService
+	GetSvcByIp(ip string) *SlimService
 }
 
 type inventoryCache struct {
 	clientset *kubernetes.Clientset
 
-	factory informers.SharedInformerFactory
+	factory     informers.SharedInformerFactory
+	podsHandler k8sCache.ResourceEventHandlerRegistration
+	svcsHandler k8sCache.ResourceEventHandlerRegistration
 
-	pods     cachedmap.CachedMap[string, *v1.Pod]
-	podsByIp cachedmap.CachedMap[string, *v1.Pod]
-	svcs     cachedmap.CachedMap[string, *v1.Service]
-	svcsByIp cachedmap.CachedMap[string, *v1.Service]
+	pods     cachedmap.CachedMap[string, *SlimPod]
+	podsByIp cachedmap.CachedMap[string, *SlimPod]
+	svcs     cachedmap.CachedMap[string, *SlimService]
+	svcsByIp cachedmap.CachedMap[string, *SlimService]
 
 	exit chan struct{}
 
@@ -77,8 +154,46 @@ func GetK8sInventoryCache() (K8sInventoryCache, error) {
 	return k8sInventorySingleton, k8sInventoryErr
 }
 
+func transformObject(obj any) (any, error) {
+	switch t := obj.(type) {
+	case *v1.Pod:
+		p := &v1.Pod{
+			TypeMeta: t.TypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            t.Name,
+				Namespace:       t.Namespace,
+				ResourceVersion: t.ResourceVersion,
+				Labels:          t.Labels,
+				OwnerReferences: t.OwnerReferences,
+			},
+			Status: v1.PodStatus{
+				HostIP: t.Status.HostIP,
+				PodIP:  t.Status.PodIP,
+			},
+		}
+		return p, nil
+	case *v1.Service:
+		s := &v1.Service{
+			TypeMeta: t.TypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            t.Name,
+				Namespace:       t.Namespace,
+				ResourceVersion: t.ResourceVersion,
+				Labels:          t.Labels,
+				OwnerReferences: t.OwnerReferences,
+			},
+			Spec: v1.ServiceSpec{
+				ClusterIP: t.Spec.ClusterIP,
+			},
+		}
+		return s, nil
+	default:
+		return obj, nil
+	}
+}
+
 func newCache() (*inventoryCache, error) {
-	clientset, err := k8sutil.NewClientset("")
+	clientset, err := k8sutil.NewClientsetWithProtobuf("")
 	if err != nil {
 		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
 	}
@@ -121,15 +236,16 @@ func (cache *inventoryCache) Start() {
 
 	// No uses before us, we are the first one
 	if cache.useCount == 0 {
-		cache.pods = cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second)
-		cache.podsByIp = cachedmap.NewCachedMap[string, *v1.Pod](2 * time.Second)
-		cache.svcs = cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second)
-		cache.svcsByIp = cachedmap.NewCachedMap[string, *v1.Service](2 * time.Second)
+		cache.factory = informers.NewSharedInformerFactoryWithOptions(
+			cache.clientset, informerResync, informers.WithTransform(transformObject),
+		)
+		cache.pods = cachedmap.NewCachedMap[string, *SlimPod](2 * time.Second)
+		cache.podsByIp = cachedmap.NewCachedMap[string, *SlimPod](2 * time.Second)
+		cache.svcs = cachedmap.NewCachedMap[string, *SlimService](2 * time.Second)
+		cache.svcsByIp = cachedmap.NewCachedMap[string, *SlimService](2 * time.Second)
 
-		cache.factory = informers.NewSharedInformerFactory(cache.clientset, informerResync)
 		cache.factory.Core().V1().Pods().Informer().AddEventHandler(cache)
 		cache.factory.Core().V1().Services().Informer().AddEventHandler(cache)
-
 		cache.exit = make(chan struct{})
 		cache.factory.Start(cache.exit)
 		cache.factory.WaitForCacheSync(cache.exit)
@@ -148,11 +264,11 @@ func (cache *inventoryCache) Stop() {
 	cache.useCount--
 }
 
-func (cache *inventoryCache) GetPods() []*v1.Pod {
+func (cache *inventoryCache) GetPods() []*SlimPod {
 	return cache.pods.Values()
 }
 
-func (cache *inventoryCache) GetPodByName(namespace string, name string) *v1.Pod {
+func (cache *inventoryCache) GetPodByName(namespace string, name string) *SlimPod {
 	pod, found := cache.pods.Get(namespace + "/" + name)
 	if !found {
 		return nil
@@ -160,7 +276,7 @@ func (cache *inventoryCache) GetPodByName(namespace string, name string) *v1.Pod
 	return pod
 }
 
-func (cache *inventoryCache) GetPodByIp(ip string) *v1.Pod {
+func (cache *inventoryCache) GetPodByIp(ip string) *SlimPod {
 	pod, found := cache.podsByIp.Get(ip)
 	if !found {
 		return nil
@@ -168,11 +284,11 @@ func (cache *inventoryCache) GetPodByIp(ip string) *v1.Pod {
 	return pod
 }
 
-func (cache *inventoryCache) GetSvcs() []*v1.Service {
+func (cache *inventoryCache) GetSvcs() []*SlimService {
 	return cache.svcs.Values()
 }
 
-func (cache *inventoryCache) GetSvcByName(namespace string, name string) *v1.Service {
+func (cache *inventoryCache) GetSvcByName(namespace string, name string) *SlimService {
 	svc, found := cache.svcs.Get(namespace + "/" + name)
 	if !found {
 		return nil
@@ -180,7 +296,7 @@ func (cache *inventoryCache) GetSvcByName(namespace string, name string) *v1.Ser
 	return svc
 }
 
-func (cache *inventoryCache) GetSvcByIp(ip string) *v1.Service {
+func (cache *inventoryCache) GetSvcByIp(ip string) *SlimService {
 	svc, found := cache.svcsByIp.Get(ip)
 	if !found {
 		return nil
@@ -196,9 +312,10 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 			log.Warnf("OnAdd: error getting key for pod: %v", err)
 			return
 		}
-		cache.pods.Add(key, o)
-		if ip := o.Status.PodIP; ip != "" {
-			cache.podsByIp.Add(ip, o)
+		slimPod := NewSlimPod(o)
+		cache.pods.Add(key, slimPod)
+		if ip := slimPod.Status.PodIP; ip != "" {
+			cache.podsByIp.Add(ip, slimPod)
 		}
 	case *v1.Service:
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
@@ -206,9 +323,10 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 			log.Warnf("OnAdd: error getting key for service: %v", err)
 			return
 		}
-		cache.svcs.Add(key, o)
-		if ip := o.Spec.ClusterIP; ip != "" {
-			cache.svcsByIp.Add(ip, o)
+		slimService := NewSlimService(o)
+		cache.svcs.Add(key, slimService)
+		if ip := slimService.Spec.ClusterIP; ip != "" {
+			cache.svcsByIp.Add(ip, slimService)
 		}
 	default:
 		log.Warnf("OnAdd: unknown object type: %T", o)
@@ -223,9 +341,10 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 			log.Warnf("OnUpdate: error getting key for pod: %v", err)
 			return
 		}
-		cache.pods.Add(key, o)
-		if ip := o.Status.PodIP; ip != "" {
-			cache.podsByIp.Add(ip, o)
+		slimPod := NewSlimPod(o)
+		cache.pods.Add(key, slimPod)
+		if ip := slimPod.Status.PodIP; ip != "" {
+			cache.podsByIp.Add(ip, slimPod)
 		}
 	case *v1.Service:
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
@@ -233,9 +352,10 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 			log.Warnf("OnUpdate: error getting key for service: %v", err)
 			return
 		}
-		cache.svcs.Add(key, o)
-		if ip := o.Spec.ClusterIP; ip != "" {
-			cache.svcsByIp.Add(ip, o)
+		slimService := NewSlimService(o)
+		cache.svcs.Add(key, slimService)
+		if ip := slimService.Spec.ClusterIP; ip != "" {
+			cache.svcsByIp.Add(ip, slimService)
 		}
 	default:
 		log.Warnf("OnUpdate: unknown object type: %T", o)
