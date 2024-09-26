@@ -20,13 +20,13 @@ Running the gadget:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_blockio:latest
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_blockio:%IG_TAG%
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_blockio:latest
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_blockio:%IG_TAG%
         ```
     </TabItem>
 </Tabs>
@@ -56,7 +56,7 @@ Then, run the gadget and see how it shows the sync process:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run top_blockio:latest
+        $ kubectl gadget run top_blockio:%IG_TAG%
         K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME          PID MAJOR      MINOR      COMM       BYTES      US        IO        RW 
         minikube            default             test-top-blockio    test-top-blockio          8086 8          0          sync       81920      45        1         wr…
         minikube            default             test-top-blockio    test-top-blockio          8055 8          0          sync       606208     547       3         wr…
@@ -68,7 +68,7 @@ Then, run the gadget and see how it shows the sync process:
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run top_blockio:latest -c test-top-blockio
+        $ sudo ig run top_blockio:%IG_TAG% -c test-top-blockio
         RUNTIME.CONTAINERNAME                                PID MAJOR       MINOR       COMM             BYTES                US                   IO         RW     
         test-top-blockio                                   11723 8           0           sync             212992               747                  3          write  
         test-top-blockio                                   11727 8           0           sync             65536                75                   1          write  
