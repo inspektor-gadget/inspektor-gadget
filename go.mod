@@ -7,7 +7,7 @@ require (
 	github.com/cilium/ebpf v0.16.0
 	github.com/containerd/containerd v1.7.22
 	github.com/containerd/nri v0.6.1
-	github.com/containers/common v0.60.2
+	github.com/containers/common v0.60.3
 	github.com/containers/image/v5 v5.32.2
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.2
@@ -71,7 +71,6 @@ require (
 require (
 	github.com/containerd/errdefs v0.1.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/golang/protobuf v1.5.4
 	github.com/gopacket/gopacket v1.2.0
 	github.com/sigstore/sigstore v1.8.9
 	github.com/spf13/pflag v1.0.5
@@ -122,6 +121,7 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-containerregistry v0.20.2 // indirect
