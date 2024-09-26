@@ -212,7 +212,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			signalField, err := ds.AddField(outName, api.Kind_String)
+			signalField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(in))
 			if err != nil {
 				return nil, err
 			}
@@ -247,6 +247,7 @@ var replacers = []replacer{
 				datasource.WithAnnotations(map[string]string{
 					datasource.TemplateAnnotation: "errorString",
 				}),
+				datasource.WithSameParentAs(in),
 			}
 			errnoField, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
@@ -282,8 +283,7 @@ var replacers = []replacer{
 			if err != nil {
 				return nil, err
 			}
-
-			syscallField, err := ds.AddField(outName, api.Kind_String)
+			syscallField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(in))
 			if err != nil {
 				return nil, err
 			}
@@ -326,6 +326,7 @@ var replacers = []replacer{
 				datasource.WithAnnotations(map[string]string{
 					datasource.TemplateAnnotation: "timestamp",
 				}),
+				datasource.WithSameParentAs(in),
 			}
 			out, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
