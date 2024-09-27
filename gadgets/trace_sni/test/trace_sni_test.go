@@ -49,10 +49,6 @@ func TestTraceSNI(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
-	if utils.CurrentTestComponent == utils.IgLocalTestComponent && utils.Runtime == "containerd" {
-		t.Skip("Skipping test as containerd test utils can't use the network")
-	}
-
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-sni"
@@ -106,6 +102,7 @@ func TestTraceSNI(t *testing.T) {
 				Pid:       utils.NormalizedInt,
 				Tid:       utils.NormalizedInt,
 			}
+			expectedEntry.CommonData.K8s.HostNetwork = true
 
 			normalize := func(e *traceSNIEvent) {
 				utils.NormalizeCommonData(&e.CommonData)

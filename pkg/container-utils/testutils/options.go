@@ -46,6 +46,7 @@ type containerOptions struct {
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
 	forceDelete bool
+	networkNamespace string
 }
 
 func defaultContainerOptions() *containerOptions {
@@ -56,6 +57,7 @@ func defaultContainerOptions() *containerOptions {
 		logs:     true,
 		wait:     true,
 		removal:  true,
+		networkNamespace: "",
 	}
 }
 

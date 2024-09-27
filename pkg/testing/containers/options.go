@@ -19,9 +19,9 @@ import (
 )
 
 type cOptions struct {
-	options      []testutils.Option
-	cleanup      bool
-	startAndStop bool
+    options         []testutils.Option
+    cleanup         bool
+    startAndStop    bool
 }
 
 // ContainerOption is a function that modifies a ContainerSpec and exposes only
@@ -37,9 +37,9 @@ func (o *cOptions) IsStartAndStop() bool {
 }
 
 func WithContainerImage(image string) ContainerOption {
-	return func(opts *cOptions) {
-		opts.options = append(opts.options, testutils.WithImage(image))
-	}
+    return func(opts *cOptions) {
+        opts.options = append(opts.options, testutils.WithImage(image))
+    }
 }
 
 func WithContainerSeccompProfile(profile string) ContainerOption {
