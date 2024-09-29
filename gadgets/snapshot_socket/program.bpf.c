@@ -47,10 +47,30 @@
 #define tw_v6_rcv_saddr __tw_common.skc_v6_rcv_saddr
 #define tw_family __tw_common.skc_family
 
+typedef enum socket_state: u8  {
+	// TCP states
+	STATE_UNKNOWN = 0,
+	STATE_ESTABLISHED = 1,
+	STATE_SYN_SENT = 2,
+	STATE_SYN_RECV = 3,
+	STATE_FIN_WAIT1 = 4,
+	STATE_FIN_WAIT2 = 5,
+	STATE_TIME_WAIT = 6,
+	STATE_CLOSE = 7,
+	STATE_CLOSE_WAIT = 8,
+	STATE_LAST_ACK = 9,
+	STATE_LISTEN = 10,
+	STATE_CLOSING = 11,
+	STATE_NEW_SYN_RECV = 12,
+	// UDP states
+	STATE_ACTIVE = 13,
+	STATE_INACTIVE = 14
+};
+
 struct socket_entry {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-	__u32 state;
+	enum socket_state state_raw;
 	__u32 ino;
 	gadget_netns_id netns_id;
 };
@@ -88,7 +108,7 @@ static __always_inline void
 socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 		     __be32 src_v4, struct in6_addr *src_v6, __u16 srcp,
 		     __be32 dest_v4, struct in6_addr *dest_v6, __u16 destp,
-		     __u8 state, __u64 ino, __u32 netns)
+		     socket_state state_raw, __u64 ino, __u32 netns)
 {
 	struct socket_entry entry = {};
 
@@ -112,10 +132,23 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 	entry.src.proto = entry.dst.proto = proto;
 	entry.src.port = bpf_htons(srcp);
 	entry.dst.port = bpf_htons(destp);
-	entry.state = state;
+	entry.state_raw = state_raw;
+	if (proto == IPPROTO_UDP) {
+		switch (state_raw) {
+			case (STATE_ESTABLISHED):
+				entry.state_raw = STATE_ACTIVE;
+				break;
+			case STATE_CLOSE:
+				entry.state_raw = STATE_INACTIVE;
+				break;
+			default:
+				entry.state_raw = STATE_UNKNOWN;
+				break;
+		}
+	}
+
 	entry.ino = ino;
 	entry.netns_id = netns;
-
 	bpf_seq_write(seq, &entry, sizeof(entry));
 }
 
