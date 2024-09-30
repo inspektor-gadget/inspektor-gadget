@@ -65,7 +65,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Tid:       sleepPid,
 						Uid:       0,
 						Gid:       0,
-						ParentPid: info.Pid,
+						ParentPid: info.Tid,
 					}
 				})(t, info, fd, events)
 				return nil
@@ -89,7 +89,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			gadgetOperator := simple.New("gadget",
 				simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
 					for _, d := range gadgetCtx.GetDataSources() {
-						jsonFormatter, _ := igjson.New(d)
+						jsonFormatter, err := igjson.New(d)
+						require.NoError(t, err, "creating json formatter")
 						d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
 							event := &ExpectedSnapshotProcessEvent{}
 							jsonOutput := jsonFormatter.Marshal(data)
@@ -121,11 +122,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			runtime := local.New()
 			err := runtime.Init(nil)
 			require.NoError(t, err, "initializing runtime")
-			params := map[string]string{
-				"operator.oci.ebpf.uid": "0",
-			}
 
-			err = runtime.RunGadget(gadgetCtx, nil, params)
+			err = runtime.RunGadget(gadgetCtx, nil, nil)
 			require.NoError(t, err, "running gadget")
 
 			// Wait for the gadget to finish and then validate the events

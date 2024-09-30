@@ -49,7 +49,7 @@ type ExpectedTraceOpenEvent struct {
 
 type testDef struct {
 	runnerConfig  *utilstest.RunnerConfig
-	generateEvent func() (int, error)
+	generateEvent func(t *testing.T) int
 	validateEvent func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error
 }
 
@@ -57,14 +57,12 @@ func TestTraceOpenGadget(t *testing.T) {
 	utilstest.RequireRoot(t)
 	testCases := map[string]testDef{
 		"captures_all_events": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			generateEvent: func() (int, error) {
-				return generateEvent(t)
-			},
+			runnerConfig:  &utilstest.RunnerConfig{},
+			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  "unit.test",
+						Comm:  info.Comm,
 						Pid:   info.Pid,
 						Tid:   info.Tid,
 						Uid:   uint32(info.Uid),
@@ -78,27 +76,29 @@ func TestTraceOpenGadget(t *testing.T) {
 		},
 		"test_symbolic_links": {
 			runnerConfig: &utilstest.RunnerConfig{},
-			generateEvent: func() (int, error) {
+			generateEvent: func(t *testing.T) int {
 				// Create a symbolic link to /dev/null
 				err := os.Symlink("/dev/null", "/tmp/test_symbolic_links")
 				if err != nil {
-					return 0, fmt.Errorf("creating symbolic link: %w", err)
+					require.NoError(t, err, "creating a symbolic link")
+					return 0
 				}
 				defer os.Remove("/tmp/test_symbolic_links")
 
 				// Open the symbolic link
 				fd, err := unix.Open("/tmp/test_symbolic_links", unix.O_RDONLY, 0)
 				if err != nil {
-					return 0, fmt.Errorf("opening file: %w", err)
+					require.NoError(t, err, "opening the symbolic link")
+					return 0
 				}
 				defer unix.Close(fd)
 
-				return fd, nil
+				return fd
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  "unit.test",
+						Comm:  info.Comm,
 						Pid:   info.Pid,
 						Tid:   info.Tid,
 						Uid:   uint32(info.Uid),
@@ -112,7 +112,7 @@ func TestTraceOpenGadget(t *testing.T) {
 		},
 		"test_relative_path": {
 			runnerConfig: &utilstest.RunnerConfig{},
-			generateEvent: func() (int, error) {
+			generateEvent: func(t *testing.T) int {
 				relPath := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
 				fd, err := unix.Open(relPath, unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
 				require.NoError(t, err, "opening file")
@@ -121,12 +121,12 @@ func TestTraceOpenGadget(t *testing.T) {
 
 				unix.Close(fd)
 
-				return fd, nil
+				return fd
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  "unit.test",
+						Comm:  info.Comm,
 						Pid:   info.Pid,
 						Tid:   info.Tid,
 						Uid:   uint32(info.Uid),
@@ -140,31 +140,34 @@ func TestTraceOpenGadget(t *testing.T) {
 		},
 		"test_prefix_on_directory": {
 			runnerConfig: &utilstest.RunnerConfig{},
-			generateEvent: func() (int, error) {
+			generateEvent: func(t *testing.T) int {
 				err := os.Mkdir("/tmp/foo", 0o750)
 				if err != nil {
-					return 0, fmt.Errorf("creating directory: %w", err)
+					require.NoError(t, err, "mkdir for /tmp/foo")
+					return 0
 				}
 				defer os.RemoveAll("/tmp/foo")
 
 				fd, err := unix.Open("/tmp/foo/bar.test", unix.O_RDONLY|unix.O_CREAT, 0)
 				if err != nil {
-					return 0, fmt.Errorf("opening file: %w", err)
+					require.NoError(t, err, "opening /tmp/foo")
+					return 0
 				}
 				defer unix.Close(fd)
 
 				badfd, err := unix.Open("/tmp/quux.test", unix.O_RDONLY|unix.O_CREAT, 0)
 				if err != nil {
-					return 0, fmt.Errorf("opening file: %w", err)
+					require.NoError(t, err, "opening /tmp/quux.test")
+					return 0
 				}
 				defer unix.Close(badfd)
 
-				return fd, nil
+				return fd
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  "unit.test",
+						Comm:  info.Comm,
 						Pid:   info.Pid,
 						Tid:   info.Tid,
 						Uid:   uint32(info.Uid),
@@ -211,7 +214,7 @@ func TestTraceOpenGadget(t *testing.T) {
 				// On start, generate an event that can be captured
 				simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
 					utilstest.RunWithRunner(t, runner, func() error {
-						fd, _ = testCase.generateEvent()
+						fd = testCase.generateEvent(t)
 						return nil
 					})
 					return nil
@@ -259,7 +262,7 @@ func generateRelativePathForAbsolutePath(t *testing.T, fileName string) string {
 }
 
 // generateEvent simulates an event by opening and closing a file
-func generateEvent(t *testing.T) (int, error) {
+func generateEvent(t *testing.T) int {
 	fd, err := unix.Open("/dev/null", 0, 0)
 	require.NoError(t, err, "opening file")
 
@@ -267,5 +270,5 @@ func generateEvent(t *testing.T) (int, error) {
 	err = unix.Close(fd)
 	require.NoError(t, err, "closing file")
 
-	return fd, nil
+	return fd
 }
