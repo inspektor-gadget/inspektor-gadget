@@ -70,6 +70,7 @@ require (
 
 require (
 	github.com/containerd/errdefs v0.1.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gopacket/gopacket v1.2.0
 	github.com/sigstore/sigstore v1.8.9
