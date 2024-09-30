@@ -61,9 +61,6 @@ func (i *ebpfInstance) populateMap(t btf.Type, varName string) error {
 
 	i.vars[varName] = newVar
 
-	// Set variable to nil pointer to map, so it's present
-	var nilVal *ebpf.Map
-	i.gadgetCtx.SetVar(varName, nilVal)
 	return nil
 }
 
