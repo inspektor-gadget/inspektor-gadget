@@ -66,26 +66,26 @@ const (
 	errnoTargetAnnotation     = "formatters.errno.target"
 )
 
-type formattersOperator struct{}
+type FormattersOperator struct{}
 
-func (f *formattersOperator) Name() string {
+func (f *FormattersOperator) Name() string {
 	return "formatters"
 }
 
-func (f *formattersOperator) Init(params *params.Params) error {
+func (f *FormattersOperator) Init(params *params.Params) error {
 	return nil
 }
 
-func (f *formattersOperator) GlobalParams() api.Params {
+func (f *FormattersOperator) GlobalParams() api.Params {
 	return nil
 }
 
-func (f *formattersOperator) InstanceParams() api.Params {
+func (f *FormattersOperator) InstanceParams() api.Params {
 	return nil
 }
 
-func (f *formattersOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	inst := &formattersOperatorInstance{
+func (f *FormattersOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
+	inst := &FormattersOperatorInstance{
 		converters: make(map[datasource.DataSource][]converter),
 	}
 	logger := gadgetCtx.Logger()
@@ -419,19 +419,19 @@ var replacers = []replacer{
 	},
 }
 
-func (f *formattersOperator) Priority() int {
+func (f *FormattersOperator) Priority() int {
 	return 0
 }
 
-type formattersOperatorInstance struct {
+type FormattersOperatorInstance struct {
 	converters map[datasource.DataSource][]converter
 }
 
-func (f *formattersOperatorInstance) Name() string {
+func (f *FormattersOperatorInstance) Name() string {
 	return "formatters"
 }
 
-func (f *formattersOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+func (f *FormattersOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	for ds, converters := range f.converters {
 		for _, c := range converters {
 			conv := c
@@ -443,14 +443,14 @@ func (f *formattersOperatorInstance) PreStart(gadgetCtx operators.GadgetContext)
 	return nil
 }
 
-func (f *formattersOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
+func (f *FormattersOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-func (f *formattersOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+func (f *FormattersOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
 func init() {
-	operators.RegisterDataOperator(&formattersOperator{})
+	operators.RegisterDataOperator(&FormattersOperator{})
 }
