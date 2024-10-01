@@ -30,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
@@ -48,18 +49,23 @@ type ExpectedTraceOpenEvent struct {
 }
 
 type testDef struct {
-	runnerConfig  *utilstest.RunnerConfig
-	generateEvent func(t *testing.T) int
-	validateEvent func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error
+	runnerConfig    *utilstest.RunnerConfig
+	generateEvent   func(t *testing.T) int
+	validateEvent   func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error
+	filterByMountNs bool
 }
 
 func TestTraceOpenGadget(t *testing.T) {
 	utilstest.RequireRoot(t)
 	testCases := map[string]testDef{
 		"captures_all_events": {
-			runnerConfig:  &utilstest.RunnerConfig{},
-			generateEvent: generateEvent,
+			runnerConfig:    &utilstest.RunnerConfig{},
+			generateEvent:   generateEvent,
+			filterByMountNs: true,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) error {
+
+				fmt.Printf("Captured events: %d\n", len(events))
+
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
 						Comm:  info.Comm,
@@ -189,7 +195,7 @@ func TestTraceOpenGadget(t *testing.T) {
 			timeout := 5 * time.Second
 			const opPriority = 50000
 
-			gadgetOperator := simple.New("gadget",
+			opts := []simple.Option{
 				// On init, subscribe to the data sources
 				simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
 					for _, d := range gadgetCtx.GetDataSources() {
@@ -218,7 +224,24 @@ func TestTraceOpenGadget(t *testing.T) {
 						return nil
 					})
 					return nil
-				}))
+				}),
+			}
+
+			if testCase.filterByMountNs {
+				// Filter events by mount namespace
+				filterMap := utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID)
+				opts = append(opts,
+					// On PreStart set the mount ns
+					simple.OnPreStart(func(gadgetCtx operators.GadgetContext) error {
+						gadgetCtx.SetVar(gadgets.MntNsFilterMapName, filterMap)
+						gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
+
+						return nil
+					}),
+				)
+			}
+
+			gadgetOperator := simple.New("gadget", opts...)
 
 			gadgetCtx := gadgetcontext.New(
 				context.Background(),

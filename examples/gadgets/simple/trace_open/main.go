@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 
 	// The oci-handler is responsible for handling OCI images
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 
 	// The ebpf operator handles all eBPF objects: loading eBPF programs,
@@ -44,6 +45,8 @@ import (
 
 	// The runtime is the piece that will run our gadget.
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 )
 
 func do() error {
@@ -75,15 +78,19 @@ func do() error {
 		return nil
 	}))
 
+	// Use formatter to convert addr_raw to normal address.
+	formatterOp := &formatters.FormattersOperator{}
+
 	// Then, we create a gadget context instance. This is the glue that connects
 	// all operators together.
 	// Check the documentation for the gadget context here.
 	// TODO: link to documentation
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_tcp:latest",
 		gadgetcontext.WithDataOperators(
 			ocihandler.OciHandler, // pass singleton instance of the oci-handler
+			formatterOp,
 			myOperator,
 		),
 	)
