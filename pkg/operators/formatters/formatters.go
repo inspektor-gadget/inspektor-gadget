@@ -16,7 +16,6 @@ package formatters
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"syscall"
 	"time"
@@ -30,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/protocols"
@@ -181,20 +181,9 @@ func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) 
 	in.SetHidden(false, false)
 
 	return func(entry datasource.Data) (string, error) {
-		ip := ips[0].Get(entry)
-		v, err := versions[0].Uint8(entry)
+		addrStr, err := common.GetIPForVersion(entry, versions[0], ips[0])
 		if err != nil {
-			return "", err
-		}
-
-		var addrStr string
-		switch v {
-		case 4:
-			addrStr = net.IP(ip[:4]).String()
-		case 6:
-			addrStr = net.IP(ip).String()
-		default:
-			return "", fmt.Errorf("invalid IP version %d for l4endpoint", v)
+			return "", fmt.Errorf("getting IP address: %w", err)
 		}
 
 		addrF.PutString(entry, addrStr)
