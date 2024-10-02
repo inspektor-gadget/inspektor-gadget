@@ -31,7 +31,9 @@ import (
 )
 
 const (
-	OperatorName = "UidGidResolver"
+	OperatorName          = "UidGidResolver"
+	DefaultUserFieldName  = "user"
+	DefaultGroupFieldName = "group"
 )
 
 type UidResolverInterface interface {
@@ -124,13 +126,14 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			for _, uid := range uids {
 				outName, err := annotations.GetTargetNameFromAnnotation(logger, "uidgidresolver.uid", uid, "uidgidresolver.target")
 				if err != nil {
-					logger.Warnf("failed to get target name for uid: %s", err)
-					continue
+					logger.Debugf("no target name found for uid, falling back to %s", DefaultUserFieldName)
+					outName = DefaultUserFieldName
 				}
 				uidStrField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(uid))
 				if err != nil {
 					return nil, err
 				}
+				uidStrField.SetHidden(true, false)
 
 				uid.SetHidden(true, false)
 				fieldsUid[ds] = append(fieldsUid[ds], fieldAccPair{srcFieldAcc: uid, dstFieldAcc: uidStrField})
@@ -143,13 +146,14 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			for _, gid := range gids {
 				outName, err := annotations.GetTargetNameFromAnnotation(logger, "uidgidresolver.gid", gid, "uidgidresolver.target")
 				if err != nil {
-					logger.Warnf("failed to get target name for gid: %s", err)
-					continue
+					logger.Debugf("no target name found for gid, falling back to %s", DefaultGroupFieldName)
+					outName = DefaultGroupFieldName
 				}
 				gidStrField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(gid))
 				if err != nil {
 					return nil, err
 				}
+				gidStrField.SetHidden(true, false)
 
 				gid.SetHidden(true, false)
 				fieldsGid[ds] = append(fieldsGid[ds], fieldAccPair{srcFieldAcc: gid, dstFieldAcc: gidStrField})
