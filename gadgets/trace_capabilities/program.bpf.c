@@ -166,7 +166,7 @@ struct {
 	       1048576); // There can be many threads sleeping in some futex/poll syscalls
 } current_syscall SEC(".maps");
 
-GADGET_TRACER_MAP(events, 1024 * 256);
+GADGET_TRACER_MAP(events, 1024 * 1024 * 1024 * 256);
 GADGET_TRACER(capabilities, events, cap_event);
 
 const volatile bool print_stack = true;
