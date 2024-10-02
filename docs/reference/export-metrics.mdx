@@ -1,0 +1,165 @@
+---
+title: Exporting Metrics (Prometheus)
+sidebar_position: 1200
+description: Using OpenTelemetry to export gadget metrics to Prometheus
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Inspektor Gadget supports exporting metrics to Prometheus using the [metrics
+exporter](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/).
+In order to do so, you need to [enable the metrics
+listener](#enabling-the-metrics-listener) and [configure each gadget to actively
+expose its metrics](#enabling-export-for-gadgets).
+
+## Enabling the metrics listener
+
+In order to enable the metrics listener, you need to set the
+`otel-metrics-listen` parameter to `true`:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        sudo ig daemon --otel-metrics-listen=true
+        ```
+    </TabItem>
+</Tabs>
+
+## Enabling export for gadgets
+
+Some gadgets have the ability to export metrics. The *Exporting metrics* section
+of the gadget's documentation will tell you whether or not the gadget exports
+metrics and, in case, what metrics it exports. The
+[profile_blockio](../gadgets/profile_blockio#exporting-metrics) gadget is an
+example of a gadget that exports metrics.
+
+:::note
+
+If you're developing your own gadget, you can add metrics to it by following the
+instructions in the [Adding Metrics to your Gadget](./gadget-devel/metrics)
+guide.
+
+:::
+
+Now, in order to enable the export of metrics for a gadget, you need to do the
+following:
+
+- Annotate the data source with `metrics.collect=true`: This tells the gadget to
+  collect and export metrics for this data source.
+- Specify a unique metrics name for the data source using the
+  `--otel-metrics-name datasource:metricsname` flag: This is required even if
+  `datasource` and `metricsname` are the same. This makes sure that you don't
+  export metrics by accident and thereby skew existing data as the `metricsname`
+  will be the used as the
+  [otel-scope](https://opentelemetry.io/docs/concepts/instrumentation-scope/).
+- [Optional] If you are only interested in exporting metrics and not displaying
+  them in the CLI, you can use the `--detach` flag to run the gadget in
+  [headless mode](./headless.mdx).
+
+Following is an example of how to enable metrics export for the
+`profile_blockio` gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% \
+                    --annotate=blockio:metrics.collect=true \
+                    --otel-metrics-name=blockio:blockio-metrics \
+                    --detach
+        ```
+    </TabItem>
+</Tabs>
+
+## Viewing metrics
+
+Once you have enabled the metrics listener and configured the gadgets to export
+metrics, you can query the metrics using Prometheus. By default, the metrics
+will be available at `http://0.0.0.0:2224/metrics`. You can change this address
+by setting the `otel-metrics-listen-address` parameter.
+
+Metrics will be available under the `metricsname` you specified when enabling
+the metrics export for the gadget. For example, under `blockio-metrics` for the
+`profile_blockio` gadget we ran above:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ curl http://localhost:2224/metrics -s | grep blockio-metrics
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8"} 10
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16"} 193
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32"} 374
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="64"} 943
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="128"} 1825
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="256"} 2829
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="512"} 3905
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1024"} 4280
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2048"} 4351
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4096"} 4351
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8192"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16384"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32768"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="65536"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="131072"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="262144"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="524288"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.048576e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2.097152e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4.194304e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8.388608e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.6777216e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="3.3554432e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="6.7108864e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="+Inf"} 4354
+        latency_sum{otel_scope_name="blockio-metrics",otel_scope_version=""} 1.520032e+06
+        latency_count{otel_scope_name="blockio-metrics",otel_scope_version=""} 4354
+        otel_scope_info{otel_scope_name="blockio-metrics",otel_scope_version=""} 1
+        ```
+    </TabItem>
+</Tabs>
+
+## Stopping metrics collection
+
+You can stop the metrics collection at any time by deleting the gadget instance:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ gadgetctl list
+        ID           NAME                                                      TAGS                                                      GADGET
+        3e68634c4c28 amazing_payne                                                                                                       ghcr.io/inspektor-gadget/gadget/profile_blockio:latest
+        ```
+
+        ```bash
+        $ gadgetctl delete 3e68634c4c28
+        3e68634c4c28a981a60fe96a29d24a99
+        ```
+    </TabItem>
+</Tabs>
