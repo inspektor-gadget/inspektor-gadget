@@ -53,6 +53,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
