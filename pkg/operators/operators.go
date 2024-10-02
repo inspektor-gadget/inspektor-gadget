@@ -125,14 +125,14 @@ type DataOperator interface {
 	// InstantiateDataOperator should create a new (lightweight) instance for the operator that can read/write
 	// from and to DataSources, register Params and read/write Variables; instanceParamValues can contain values for
 	// both params defined by InstanceParams() as well as params defined by DataOperatorInstance.ExtraParams())
-	InstantiateDataOperator(gadgetCtx GadgetContext, instanceParamValues api.ParamValues) (DataOperatorInstance, error)
+	InstantiateDataOperator(gadgetCtx GadgetContext, instanceParamValues api.ParamValues) (DataOperatorInstance, error) //create isntance of operator real work
 
 	Priority() int
 }
 
 type DataOperatorInstance interface {
 	Name() string
-	Start(gadgetCtx GadgetContext) error
+	Start(gadgetCtx GadgetContext) error  //it is called when we run tracer
 	Stop(gadgetCtx GadgetContext) error
 }
 
