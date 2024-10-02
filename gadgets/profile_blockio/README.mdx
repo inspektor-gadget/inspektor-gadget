@@ -48,10 +48,10 @@ Running the gadget:
 
 ## Guide
 
+Run the gadget in a terminal:
+
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Run the gadget in a terminal:
-
         ```bash
         $ kubectl gadget run profile_blockio:%IG_TAG% --node minikube-docker
         ```
@@ -147,8 +147,6 @@ Running the gadget:
     </TabItem>
 
     <TabItem value="ig" label="ig">
-        Run the gadget in a terminal:
-
         ```bash
         $ sudo ig run profile_blockio:%IG_TAG%
         ```
@@ -230,7 +228,6 @@ Running the gadget:
     </TabItem>
 </Tabs>
 
-Congratulations! You reached the end of this guide!
 You can clean up the resources created during this guide by running the following commands:
 
 <Tabs groupId="env">
@@ -243,6 +240,105 @@ You can clean up the resources created during this guide by running the followin
     <TabItem value="ig" label="ig">
         ```bash
         $ docker rm -f stresstest
+        ```
+    </TabItem>
+</Tabs>
+
+## Exporting metrics
+
+The `profile_blockio` gadget can expose the histograms it generates to a
+Prometheus endpoint. To do so, you need to activate both the metrics listener as
+well as the gadget collector. To enable the metrics listener, check the
+[Exporting Metrics](../reference/export-metrics.mdx) documentation. To enable
+the collector for the `profile_blockio` gadget with the metrics name
+`blockio-metrics`, run the following command:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% \
+                    --annotate=blockio:metrics.collect=true \
+                    --otel-metrics-name=blockio:blockio-metrics \
+                    --detach
+        ```
+    </TabItem>
+</Tabs>
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Unless you configured the metrics listener to do differently, the
+        metrics will be available at `http://localhost:2224/metrics` on the
+        server side. And for the `profile_blockio` gadget we ran above, the
+        metrics will be available under the `blockio-metrics` scope:
+
+        ```bash
+        $ curl http://localhost:2224/metrics -s | grep blockio-metrics
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8"} 10
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16"} 193
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32"} 374
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="64"} 943
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="128"} 1825
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="256"} 2829
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="512"} 3905
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1024"} 4280
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2048"} 4351
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4096"} 4351
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8192"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16384"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32768"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="65536"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="131072"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="262144"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="524288"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.048576e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2.097152e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4.194304e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8.388608e+06"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.6777216e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="3.3554432e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="6.7108864e+07"} 4354
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="+Inf"} 4354
+        latency_sum{otel_scope_name="blockio-metrics",otel_scope_version=""} 1.520032e+06
+        latency_count{otel_scope_name="blockio-metrics",otel_scope_version=""} 4354
+        otel_scope_info{otel_scope_name="blockio-metrics",otel_scope_version=""} 1
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, stop metrics collection:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ gadgetctl list
+        ID           NAME                                                      TAGS                                                      GADGET
+        3e68634c4c28 amazing_payne                                                                                                       ghcr.io/inspektor-gadget/gadget/profile_blockio:latest
+        ```
+
+        ```bash
+        $ gadgetctl/... delete 3e68634c4c28
+        3e68634c4c28a981a60fe96a29d24a99
         ```
     </TabItem>
 </Tabs>
