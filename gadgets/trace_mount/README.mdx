@@ -83,7 +83,6 @@ Then, let's run the gadget:
     <TabItem value="ig" label="ig">
         ```bash
         $ sudo ig run trace_mount:%IG_TAG% --containername test-trace-mount
-        WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
         RUNTIME.CONTAINERNAME                    COMM                               PID                   TID       DELTA FLAGS                CALL                                      ERROR
         test-trace-mount                         mount                            51158                 51158        3460 MS_SILENT            mount("/bar", "/foo", "ext3", MS_SILENT,… ENOENT
         test-trace-mount                         mount                            51158                 51158        1250 MS_SILENT            mount("/bar", "/foo", "ext2", MS_SILENT,… ENOENT

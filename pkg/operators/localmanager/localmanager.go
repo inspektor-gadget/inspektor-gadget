@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/cilium/ebpf"
@@ -182,45 +183,49 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 
 func (l *LocalManager) Init(operatorParams *params.Params) error {
 	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
-	parts := operatorParams.Get(Runtimes).AsStringSlice()
 
-partsLoop:
-	for _, p := range parts {
-		runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
-		socketPath := ""
+	runtimesParam := operatorParams.Get(Runtimes)
+	runtimesIsSet := runtimesParam.IsSet()
+	runtimes := runtimesParam.AsStringSlice()
+	slices.Sort(runtimes)
+	runtimes = slices.Compact(runtimes)
+
+	for _, runtime := range runtimes {
+		runtimeName := types.String2RuntimeName(strings.TrimSpace(runtime))
 		namespace := ""
+
+		var socketPathParam *params.Param
 
 		switch runtimeName {
 		case types.RuntimeNameDocker:
-			socketPath = operatorParams.Get(DockerSocketPath).AsString()
+			socketPathParam = operatorParams.Get(DockerSocketPath)
 		case types.RuntimeNameContainerd:
-			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
+			socketPathParam = operatorParams.Get(ContainerdSocketPath)
 			namespace = operatorParams.Get(ContainerdNamespace).AsString()
 		case types.RuntimeNameCrio:
-			socketPath = operatorParams.Get(CrioSocketPath).AsString()
+			socketPathParam = operatorParams.Get(CrioSocketPath)
 		case types.RuntimeNamePodman:
-			socketPath = operatorParams.Get(PodmanSocketPath).AsString()
+			socketPathParam = operatorParams.Get(PodmanSocketPath)
 		default:
 			return commonutils.WrapInErrInvalidArg("--runtime / -r",
-				fmt.Errorf("runtime %q is not supported", p))
+				fmt.Errorf("runtime %q is not supported", runtime))
 		}
 
-		for _, r := range rc {
-			if r.Name == runtimeName {
-				log.Infof("Ignoring duplicated runtime %q from %v",
-					runtimeName, parts)
-				continue partsLoop
-			}
-		}
+		socketPath := socketPathParam.AsString()
+		socketPathIsSet := socketPathParam.IsSet()
 
 		cleanSocketPath, err := securejoin.SecureJoin(host.HostRoot, socketPath)
 		if err != nil {
 			log.Debugf("securejoin failed: %s", err)
+			continue
 		}
 
 		if _, err := os.Stat(cleanSocketPath); err != nil {
-			log.Warnf("Ignoring runtime %q with non-existent socketPath %q", runtimeName, socketPath)
-			continue partsLoop
+			if socketPathIsSet || runtimesIsSet {
+				return fmt.Errorf("runtime %q with non-existent socketPath %q", runtimeName, socketPath)
+			}
+			log.Debugf("Ignoring runtime %q with non-existent socketPath %q", runtimeName, socketPath)
+			continue
 		}
 
 		r := &containerutilsTypes.RuntimeConfig{

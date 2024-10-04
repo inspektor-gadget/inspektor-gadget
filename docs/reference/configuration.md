@@ -18,7 +18,6 @@ DEBU[0000] using target "gadget-b7jrc" ("minikube-docker")
 # Disable image verification (not recommended)
 $ export INSPEKTOR_GADGET_OPERATOR_OCI_VERIFY_IMAGE=false
 $ sudo ig run trace_open
-WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
 WARN[0000] image signature verification is disabled due to using corresponding option
 WARN[0000] image signature verification is disabled due to using corresponding option
 ...
