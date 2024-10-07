@@ -37,6 +37,10 @@ Running the gadget:
         In this guide, we will use the `trace_dns` gadget to trace DNS requests and responses in Kubernetes (single node minikube cluster). The gadget can be used to trace DNS requests at different stages e.g. from application pods to `kube-dns` service, from `kube-dns` service to CoreDNS pod, from CoreDNS pod to upstream DNS server, etc.
         The gadget can also be used to trace DNS requests based on different filters e.g. namespace, pod name, container name, domain name, etc.
 
+        :::info
+        Check out video, [Demystifying DNS: A Guide to Understanding and Debugging Request Flows in Kubernetes Clusters](https://www.youtube.com/watch?v=KQpZg_NqbZw&t=523s) to learn troubleshooting DNS issues with Inspektor Gadgets.
+        :::
+
         ### Flow of DNS request in Kubernetes:
 
         Before we jump to scenarios, it is important to understand DNS in Kubernetes is based on multiple components:
