@@ -50,7 +50,13 @@ const (
 	// AnnotationClearScreenBefore can be used to clear the screen before printing a new event; usually used for
 	// array events
 	AnnotationClearScreenBefore = "cli.clear-screen-before"
+
+	// AnnotationSupportedOutputModes can be used to specify the supported
+	// output modes for a DataSource in a comma-separated list.
+	AnnotationSupportedOutputModes = "cli.supported-output-modes"
 )
+
+var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
 
 type cliOperator struct{}
 
@@ -73,7 +79,8 @@ func (o *cliOperator) InstanceParams() api.Params {
 func (o *cliOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
 	op := &cliOperatorInstance{
 		mode:        ModeColumns,
-		paramValues: paramValues,
+		paramValues:          paramValues,
+		supportedOutputModes: make(map[string][]string),
 	}
 
 	return op, nil
@@ -86,6 +93,8 @@ func (o *cliOperator) Priority() int {
 type cliOperatorInstance struct {
 	mode        string
 	paramValues api.ParamValues
+	// key: datasource name, value: supported output modes
+	supportedOutputModes map[string][]string
 }
 
 func (o *cliOperatorInstance) Name() string {
@@ -117,7 +126,13 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	fieldsDefaultValues := make([]string, 0, len(dataSources))
 	fieldsDescriptions := make([]string, 0, len(dataSources)+1)
 	fieldsDescriptions = append(fieldsDescriptions, "Available data sources / fields")
+	outputDescriptions := make([]string, 0, len(dataSources))
+	outputDescriptions = append(outputDescriptions,
+		`Specifies output mode for all ("mode1") or per data source ("datasource:mode1,datasource2:mode2")
+  Supported data sources / output modes:`)
+	outputDefaultValues := make([]string, 0, len(dataSources))
 	for _, ds := range dataSources {
+		// Fields
 		fields := ds.Fields()
 		availableFields := make([]*api.Field, 0, len(fields))
 		defaultFields := make([]*api.Field, 0)
@@ -160,6 +175,21 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 			}
 		}
 		fieldsDescriptions = append(fieldsDescriptions, sb.String())
+
+		// Supported output modes
+		supportedOutputs := DefaultSupportedOutputModes
+		if supportedOutputsAnnotated, ok := ds.Annotations()[AnnotationSupportedOutputModes]; ok {
+			supportedOutputs = strings.Split(supportedOutputsAnnotated, ",")
+		}
+		sort.Strings(supportedOutputs)
+		o.supportedOutputModes[ds.Name()] = supportedOutputs
+
+		sb.Reset()
+		fmt.Fprintf(&sb, "    %q (data source):\n", ds.Name())
+		for _, mode := range supportedOutputs {
+			fmt.Fprintf(&sb, "      %s\n", mode)
+		}
+		outputDescriptions = append(outputDescriptions, sb.String())
 	}
 
 	// --fields datasource:comma,separated,fields;datasource2:comma,separated,fields
@@ -170,11 +200,10 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 	}
 
 	mode := &api.Param{
-		Key:            ParamMode,
-		DefaultValue:   ModeColumns,
-		Description:    "output mode",
-		Alias:          "o",
-		PossibleValues: []string{ModeJSON, ModeJSONPretty, ModeColumns, ModeYAML, ModeNone, ModeRaw},
+		Key:          ParamMode,
+		DefaultValue: ModeColumns,
+		Description:  strings.Join(outputDescriptions, "\n"),
+		Alias:        "o",
 	}
 
 	return api.Params{fields, mode}
@@ -250,6 +279,12 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		mode := o.mode
 		if annotatedMode := ds.Annotations()["cli.output"]; annotatedMode != "" {
 			mode = annotatedMode
+		}
+
+		if !slices.Contains(o.supportedOutputModes[ds.Name()], mode) {
+			gadgetCtx.Logger().Warnf("output mode %q for data source %q is not supported; skipping data source",
+				mode, ds.Name())
+			continue
 		}
 
 		switch mode {
