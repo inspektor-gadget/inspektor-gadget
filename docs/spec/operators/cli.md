@@ -10,7 +10,9 @@ different output formats, depending on the gadget and the use case.
 
 10000
 
-## Instance Parameters
+## Parameters
+
+### Instance Parameters
 
 ### `fields`
 
@@ -46,8 +48,32 @@ supported:
   to another tool or because it's already formatted in the way you want.
 
 By default, the CLI operator allows displaying the output of each data source in
-all the supported output modes.
+all the supported output modes. However, you can customize the supported output
+modes of your data sources by setting the
+[supported-output-modes](#supported-output-modes) annotation.
 
 Fully qualified name: `operator.cli.output`
 
 Default: `columns`
+
+## Annotations
+
+The following annotations can be used to control the behaviour of the CLI
+operator for the data source they are applied to.
+
+### `clear-screen-before`
+
+Clear the screen before printing the output of the data source. This is useful
+when for array data sources that periodically emit an array of objects and you
+want to clear the screen before printing the batch of objects.
+
+This annotation is only applicable to the `columns` and `raw` output modes.
+
+Fully qualified name: `operator.cli.clear-screen-before`
+
+### `supported-output-modes`
+
+Coma-separated list of output modes supported for the data source. This is useful
+when you want to restrict the output modes for a data source.
+
+Fully qualified name: `operator.cli.supported-output-modes`
