@@ -187,11 +187,32 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening %q: %w", attachPath, err)
 	}
+
 	switch t.progType {
 	case ProgUprobe:
 		return ex.Uprobe(t.attachSymbol, t.prog, nil)
 	case ProgUretprobe:
-		return ex.Uretprobe(t.attachSymbol, t.prog, nil)
+		// special case for Go binaries
+		t.logger.Debugf("installing uprobe as uretprobe for returns for %q", t.attachSymbol)
+		funcs, err := getFunctions(attachPath, map[string]struct{}{t.attachSymbol: {}})
+		if err != nil {
+			return nil, fmt.Errorf("getting functions: %w", err)
+		}
+
+		var last link.Link
+		for n, f := range funcs {
+			t.logger.Debugf("func %q", n)
+			for _, ret := range f.Returns {
+				t.logger.Debugf("ret %d", ret)
+				last, err = ex.Uprobe("", t.prog, &link.UprobeOptions{Address: ret})
+				if err != nil {
+					return nil, fmt.Errorf("installing uprobe: %w", err)
+				}
+				t.logger.Debugf("installed uprobe as uretprobe for return at %d", ret)
+			}
+		}
+		return last, nil
+		// return ex.Uretprobe(t.attachSymbol, t.prog, nil)
 	case ProgUSDT:
 		attachInfo, err := getUsdtInfo(attachPath, t.attachSymbol)
 		if err != nil {

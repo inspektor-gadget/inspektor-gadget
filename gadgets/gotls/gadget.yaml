@@ -1,0 +1,17 @@
+name: gotls
+description: Show unencrypted traffic via the crypto/tls standard Golang library
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/gotls
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gotls
+datasources:
+  raw:
+    fields:
+      buf:
+        annotations:
+          description: Unencrypted buffer
+      len:
+        annotations:
+          description: Length
+      op_raw:
+        annotations:
+          description: 'Operation: read or write'
