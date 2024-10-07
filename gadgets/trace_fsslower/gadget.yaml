@@ -85,4 +85,3 @@ params:
       defaultValue: ext4
       description: 'Filesystem to trace. Possible values are: btrfs, ext4, fuse, nfs, nfts3 or xfs.'
       title: Filesystem
-      alias: f

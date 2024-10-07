@@ -1,0 +1,123 @@
+---
+title: 'Gadget Instance Manifests'
+sidebar_position: 305
+description: Running gadgets in a predefined way using manifests
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Instead of providing all the parameters from command line, you can also use the `-f` flag in combination with the `run`
+command to specify a manifest file to run gadgets from. A manifest file is a file in
+[YAML format](https://en.wikipedia.org/wiki/YAML), that can hold information about one or more gadget instances. Such a
+file could look like this:
+
+```yaml
+apiVersion: 1
+kind: instance-spec
+image: trace_exec
+name: my-gadget-1
+paramValues:
+  operator.LocalManager.host: true
+tags:
+  - mytag1
+  - mytag2
+---
+apiVersion: 1
+kind: instance-spec
+image: trace_open
+name: my-gadget-2
+```
+
+This example contains two gadget instance specifications that are divided by three dashes (`---`).
+
+The `apiVersion` and `kind` fields define the specification used. They are mandatory and currently we only support
+this version and kind as part of the manifest.
+
+Specifying an `image` is also mandatory, while the rest of the fields are optional.
+
+When specifying `paramValues`, please use the fully qualified parameter names provided with their respective
+documentations in the [operators section](../spec/operators) ([example](../spec/operators/filter#filter)).
+
+:::warning
+
+If a manifest contains multiple instance specs, it can only be run by additionally using `--detach`. This is however
+only available when using `gadgetctl`. The run command will then try to create instances for all given specs and return
+their IDs.
+
+:::
+
+## Running a single gadget interactively
+
+When running interactively, you are limited to one gadget instance spec per manifest. This applies to `ig` as well as
+`gadgetctl` without the `--detach` flag.
+
+<Tabs groupId="env">
+    <TabItem value="single" label="Running a single gadget">
+
+```bash
+$ sudo ig run -f gadget.yaml
+WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
+WARN[0000] Ignoring runtime "podman" with non-existent socketPath "/run/podman/podman.sock"
+RUNTIME.CONTAINERNAME                       COMM                    PID        TID PCOMM                  PPID ARGS                       ERROR USER                   LOGINUSER              GROUP
+                                            cat                   22630      22630 bash                  16905                                  username               username               username
+^C
+```
+    </TabItem>
+    <TabItem value="gadget-yaml" label="gadget.yaml">
+
+```yaml
+apiVersion: 1
+kind: instance-spec
+image: trace_exec
+name: my-gadget-1
+paramValues:
+  operator.LocalManager.host: true
+tags:
+  - mytag1
+  - mytag2
+```
+    </TabItem>
+</Tabs>
+
+## Running multiple gadgets in Headless Mode
+
+When running in Headless Mode (with the `--detach` flag), you can specify several gadget instance specs. This only
+applies to `gadgetctl`.
+
+More information about the Headless Mode is available [here](headless.mdx).
+
+<Tabs groupId="env">
+    <TabItem value="multi" label="Running multiple gadgets">
+
+```bash
+$ gadgetctl run -f gadgets.yaml --detach
+INFO[0000] installed on node "local" as "1bfb2963fef8b6d046357c9c4081d62a"
+INFO[0000] installed on node "local" as "d32d70d4baca063e3a183f40ecdf2d0a"
+
+$ gadgetctl list
+ID           NAME                          TAGS                          GADGET
+1bfb2963fef8 my-gadget-1                   mytag1,mytag2                 trace_exec
+d32d70d4baca my-gadget-2                                                 trace_open
+```
+    </TabItem>
+    <TabItem value="gadgets-yaml" label="gadgets.yaml">
+
+```yaml
+apiVersion: 1
+kind: instance-spec
+image: trace_exec
+name: my-gadget-1
+paramValues:
+  operator.LocalManager.host: true
+tags:
+  - mytag1
+  - mytag2
+---
+apiVersion: 1
+kind: instance-spec
+image: trace_open
+name: my-gadget-2
+```
+    </TabItem>
+</Tabs>

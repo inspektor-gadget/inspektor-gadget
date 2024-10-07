@@ -95,7 +95,7 @@ func TestTraceFSSlower(t *testing.T) {
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
 
-	runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-f=%s", fsType), "--min=0"))
+	runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("--filesystem=%s", fsType), "--min=0"))
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
