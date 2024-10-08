@@ -107,8 +107,6 @@ We can stop the gadget by hitting Ctrl-C.
   <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run trace_open:%IG_TAG% --containername test-trace-open
-WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock"
-WARN[0000] Ignoring runtime "podman" with non-existent socketPath "/run/podman/podman.sock"
 RUNTIME.CONTAINERNA… COMM                PID         TID         UID        GID  FD FNAME                    MODE       ERROR   TIMESTAMP
 test-trace-open      true             515458      515458           0          0   0 /etc/ld.so.cache         ---------- ENOENT  2024-07-29T16:53:44.0…
 test-trace-open      true             515458      515458           0          0   0 /lib/x86_64-linux-gnu/g… ---------- ENOENT  2024-07-29T16:53:44.0…
