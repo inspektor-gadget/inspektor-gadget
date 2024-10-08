@@ -6,12 +6,8 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 dataSources:
   blockio:
     annotations:
-      cli.output: "none"
       metrics.print: "true"
     fields:
       latency:
         annotations:
           metrics.unit: µs
-  renderedmetrics:
-    annotations:
-      cli.clear-screen-before: "true"

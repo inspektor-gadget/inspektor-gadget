@@ -62,8 +62,8 @@ const (
 	AnnotationMetricsUnit        = "metrics.unit"
 	AnnotationMetricsBoundaries  = "metrics.boundaries"
 
-	PrintDataSourceName = "renderedmetrics"
-	PrintFieldName      = "text"
+	PrintDataSourceSuffix = "rendered"
+	PrintFieldName        = "text"
 
 	MinPrintInterval = time.Millisecond * 25
 )
@@ -513,37 +513,54 @@ func (m *otelMetricsOperatorInstance) shutdown() {
 }
 
 func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
-	needsOutputDS := false
 	for _, ds := range gadgetCtx.GetDataSources() {
 		annotations := ds.Annotations()
-		if annotations[AnnotationMetricsCollect] != "true" && annotations[AnnotationMetricsPrint] != "true" {
-			continue
-		}
-
-		// we only use the global instance if there's an explicit name mapping available; otherwise we'll fallback
-		// to using a dedicated local registry/collector instance
-		useGlobal := false
-
-		output := false
+		metricsCollect := annotations[AnnotationMetricsCollect] == "true"
 		// We only allow printing if the gadget is _not_ running remotely
-		if !gadgetCtx.IsRemoteCall() {
-			output = annotations[AnnotationMetricsPrint] == "true"
-			if output {
-				gadgetCtx.Logger().Debugf("enabling print for %s", ds.Name())
-				needsOutputDS = true
-			}
-		}
+		metricsPrint := annotations[AnnotationMetricsPrint] == "true" && !gadgetCtx.IsRemoteCall()
 
-		if !output && annotations[AnnotationMetricsCollect] != "true" {
-			// Not collecting AND not printing, so we don't need to collect
+		// Neither collecting nor printing, do nothing for this data source
+		if !metricsCollect && !metricsPrint {
 			continue
 		}
 
-		metricsName := ds.Name()
+		if metricsPrint {
+			gadgetCtx.Logger().Debugf("enabling print for %s", ds.Name())
 
-		// if there's an explicit mapping set for the datasource, we will export it using the global exporter
-		// (if that is available)
-		mappedName, ok := m.nameMappings[metricsName]
+			// Disable original data source to avoid other operators subscribing to it
+			ds.SetRequested(false)
+
+			// Create a new data source for the output with a single field
+			odsName := fmt.Sprintf("%s-%s", ds.Name(), PrintDataSourceSuffix)
+			ods, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, odsName)
+			if err != nil {
+				return fmt.Errorf("registering %q: %w", odsName, err)
+			}
+
+			// Set default annotations
+			ods.AddAnnotation("cli.supported-output-modes", "raw")
+			ods.AddAnnotation("cli.default-output-mode", "raw")
+			ods.AddAnnotation("cli.clear-screen-before", "true")
+
+			// Use annotations from the original data source
+			for k, v := range ds.Annotations() {
+				ods.AddAnnotation(k, v)
+			}
+
+			f, err := ods.AddField(PrintFieldName, api.Kind_String, datasource.WithAnnotations(map[string]string{"content-type": "text/plain"}))
+			if err != nil {
+				return fmt.Errorf("adding field %q: %w", PrintFieldName, err)
+			}
+
+			// TODO: Store these fields per datasource to support multiple datasources
+			m.outputDS = ods
+			m.outputField = f
+		}
+
+		// we only use the global instance (if available) if there's an explicit name mapping available;
+		// otherwise we'll fallback to using a dedicated local registry/collector instance
+		useGlobal := false
+		mappedName, ok := m.nameMappings[ds.Name()]
 		if ok && m.op.exporter != nil {
 			useGlobal = true
 		} else if ok {
@@ -558,27 +575,10 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 		gadgetCtx.Logger().Debugf("collecting metrics for data source %q as %q", ds.Name(), mappedName)
 
 		m.collectors[ds] = &metricsCollector{
-			output:            output,
+			output:            metricsPrint,
 			mappedName:        mappedName,
 			useGlobalProvider: useGlobal,
 		}
-	}
-
-	if needsOutputDS {
-		gadgetCtx.Logger().Debugf("creating output data source for metrics")
-		ods, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, PrintDataSourceName)
-		if err != nil {
-			return fmt.Errorf("registering %q: %w", PrintDataSourceName, err)
-		}
-		if ods.Annotations()["cli.output"] == "" {
-			ods.AddAnnotation("cli.output", "raw")
-		}
-		f, err := ods.AddField("text", api.Kind_String, datasource.WithAnnotations(map[string]string{"content-type": "text/plain"}))
-		if err != nil {
-			return fmt.Errorf("adding field %q: %w", PrintFieldName, err)
-		}
-		m.outputDS = ods
-		m.outputField = f
 	}
 	return nil
 }
