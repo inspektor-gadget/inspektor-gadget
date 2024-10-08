@@ -62,8 +62,8 @@ const (
 	AnnotationMetricsUnit        = "metrics.unit"
 	AnnotationMetricsBoundaries  = "metrics.boundaries"
 
-	PrintDataSourceName = "renderedmetrics"
-	PrintFieldName      = "text"
+	PrintDataSourceSuffix = "rendered"
+	PrintFieldName        = "text"
 
 	MinPrintInterval = time.Millisecond * 25
 )
@@ -513,7 +513,6 @@ func (m *otelMetricsOperatorInstance) shutdown() {
 }
 
 func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
-	needsOutputDS := false
 	for _, ds := range gadgetCtx.GetDataSources() {
 		annotations := ds.Annotations()
 		if annotations[AnnotationMetricsCollect] != "true" && annotations[AnnotationMetricsPrint] != "true" {
@@ -530,7 +529,36 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 			output = annotations[AnnotationMetricsPrint] == "true"
 			if output {
 				gadgetCtx.Logger().Debugf("enabling print for %s", ds.Name())
-				needsOutputDS = true
+
+				// Disable original data source to avoid other operators subscribing to it
+				ds.SetRequested(false)
+
+				// Create a new data source for the output with a single field
+				odsName := fmt.Sprintf("%s-%s", ds.Name(), PrintDataSourceSuffix)
+				ods, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, odsName)
+				if err != nil {
+					return fmt.Errorf("registering %q: %w", odsName, err)
+				}
+
+				// Use annotations from the original data source
+				for k, v := range ds.Annotations() {
+					ods.AddAnnotation(k, v)
+				}
+				if ods.Annotations()["cli.output"] == "" {
+					ods.AddAnnotation("cli.output", "raw")
+				}
+				if ods.Annotations()["cli.clear-screen-before"] == "" {
+					ods.AddAnnotation("cli.clear-screen-before", "true")
+				}
+
+				f, err := ods.AddField(PrintFieldName, api.Kind_String, datasource.WithAnnotations(map[string]string{"content-type": "text/plain"}))
+				if err != nil {
+					return fmt.Errorf("adding field %q: %w", PrintFieldName, err)
+				}
+
+				// TODO: Store these fields per datasource to support multiple datasources
+				m.outputDS = ods
+				m.outputField = f
 			}
 		}
 
@@ -562,23 +590,6 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 			mappedName:        mappedName,
 			useGlobalProvider: useGlobal,
 		}
-	}
-
-	if needsOutputDS {
-		gadgetCtx.Logger().Debugf("creating output data source for metrics")
-		ods, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, PrintDataSourceName)
-		if err != nil {
-			return fmt.Errorf("registering %q: %w", PrintDataSourceName, err)
-		}
-		if ods.Annotations()["cli.output"] == "" {
-			ods.AddAnnotation("cli.output", "raw")
-		}
-		f, err := ods.AddField("text", api.Kind_String, datasource.WithAnnotations(map[string]string{"content-type": "text/plain"}))
-		if err != nil {
-			return fmt.Errorf("adding field %q: %w", PrintFieldName, err)
-		}
-		m.outputDS = ods
-		m.outputField = f
 	}
 	return nil
 }
