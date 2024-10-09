@@ -154,7 +154,11 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "  %q (data source):\n", ds.Name())
 		for _, f := range availableFields {
-			fmt.Fprintf(&sb, "    %s\n", f.FullName)
+			if _, ok := f.Annotations[datasource.DeprecatedAnnotation]; ok {
+				fmt.Fprintf(&sb, "    %s (deprecated)\n", f.FullName)
+			} else {
+				fmt.Fprintf(&sb, "    %s\n", f.FullName)
+			}
 			if desc, ok := f.Annotations[datasource.DescriptionAnnotation]; ok {
 				fmt.Fprintf(&sb, "      %s\n", desc)
 			}

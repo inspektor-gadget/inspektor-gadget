@@ -154,7 +154,7 @@ func populateTracers(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) er
 
 		ds := m.DataSources[tracerInfo.name]
 
-		if err := populateDatasourceFields(ds, tracerMapStruct); err != nil {
+		if err := populateDatasourceFields(ds, tracerMapStruct, ""); err != nil {
 			return fmt.Errorf("populating struct: %w", err)
 		}
 	}
@@ -214,11 +214,11 @@ func populateMapIters(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) e
 
 		ds := m.DataSources[mapIterInfo.name]
 
-		if err := populateDatasourceFields(ds, keyStruct); err != nil {
+		if err := populateDatasourceFields(ds, keyStruct, ""); err != nil {
 			return fmt.Errorf("populating struct: %w", err)
 		}
 
-		if err := populateDatasourceFields(ds, valStruct); err != nil {
+		if err := populateDatasourceFields(ds, valStruct, ""); err != nil {
 			return fmt.Errorf("populating struct: %w", err)
 		}
 	}
@@ -272,7 +272,7 @@ func populateSnapshotters(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpe
 
 		ds := m.DataSources[sname]
 
-		if err := populateDatasourceFields(ds, btfStruct); err != nil {
+		if err := populateDatasourceFields(ds, btfStruct, ""); err != nil {
 			return fmt.Errorf("populating struct: %w", err)
 		}
 
@@ -301,31 +301,44 @@ func validateSnapshotterPrograms(spec *ebpf.CollectionSpec, programs []string) e
 	return nil
 }
 
-func populateDatasourceFields(ds *metadatav1.DataSource, btfStruct *btf.Struct) error {
+func populateDatasourceFields(ds *metadatav1.DataSource, btfStruct *btf.Struct, prefix string) error {
 	if ds.Fields == nil {
 		ds.Fields = make(map[string]metadatav1.Field)
 	}
 
 	existingFields := make(map[string]struct{})
 	for name := range ds.Fields {
-		existingFields[name] = struct{}{}
+		existingFields[prefix+name] = struct{}{}
 	}
 
 	for _, member := range btfStruct.Members {
+		name := prefix + member.Name
+		annotations := map[string]string{
+			"description": "TODO: Fill field description",
+		}
+
 		// check if field already exists
-		if _, ok := existingFields[member.Name]; ok {
-			log.Debugf("Field %q already exists, skipping", member.Name)
+		if _, ok := existingFields[name]; ok {
+			log.Debugf("Field %q already exists, skipping", name)
 			continue
 		}
 
-		log.Debugf("Adding field %q", member.Name)
-		field := metadatav1.Field{
-			Annotations: map[string]string{
-				"description": "TODO: Fill field description",
-			},
+		// add subfields too
+		if t, ok := member.Type.(*btf.Struct); ok {
+			if err := populateDatasourceFields(ds, t, prefix+member.Name+"."); err != nil {
+				return fmt.Errorf("populating struct: %w", err)
+			}
+
+			// hide structs by default
+			annotations["columns.hidden"] = "true"
 		}
 
-		ds.Fields[member.Name] = field
+		log.Debugf("Adding field %q", name)
+		field := metadatav1.Field{
+			Annotations: annotations,
+		}
+
+		ds.Fields[name] = field
 	}
 
 	return nil

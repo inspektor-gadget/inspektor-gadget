@@ -16,26 +16,37 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-      comm:
+      proc:
+        annotations:
+          columns.hidden: true
+      proc.user:
+        annotations:
+          columns.hidden: true
+      proc.comm:
         annotations:
           description: Process name
           template: comm
-      pid:
+          columns.alias: comm
+      proc.pid:
         annotations:
           description: Process ID
           template: pid
-      tid:
+          columns.alias: pid
+      proc.tid:
         annotations:
           description: Thread ID
           template: pid
-      uid:
+          columns.alias: tid
+      proc.user.uid:
         annotations:
           description: User ID
           template: uid
-      gid:
+          columns.alias: uid
+      proc.user.gid:
         annotations:
           description: Group ID
           template: uid
+          columns.alias: gid
       flags_raw:
         annotations:
           columns.hidden: true
@@ -62,6 +73,27 @@ datasources:
         annotations:
           columns.width: 32
           columns.minwidth: 24
+      # Hide backward compatibility fields.
+      comm:
+        annotations:
+          columns.hidden: true
+          deprecated: true
+      uid:
+        annotations:
+          columns.hidden: true
+          deprecated: true
+      gid:
+        annotations:
+          columns.hidden: true
+          deprecated: true
+      pid:
+        annotations:
+          columns.hidden: true
+          deprecated: true
+      tid:
+        annotations:
+          columns.hidden: true
+          deprecated: true
 params:
   ebpf:
     targ_failed:

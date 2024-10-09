@@ -40,7 +40,9 @@ const (
 	ColumnsHiddenAnnotation    = "columns.hidden"
 	ColumnsFixedAnnotation     = "columns.fixed"
 	ColumnsHexAnnotation       = "columns.hex"
+	ColumnsAliasAnnotation     = "columns.alias"
 
+	DeprecatedAnnotation  = "deprecated"
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
 )
@@ -162,6 +164,8 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				if v == "true" {
 					attributes.Hex = true
 				}
+			case ColumnsAliasAnnotation:
+				attributes.Alias = v
 			}
 		}
 

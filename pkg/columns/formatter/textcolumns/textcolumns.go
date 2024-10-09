@@ -99,11 +99,22 @@ func (tf *TextColumnsFormatter[T]) SetShowColumns(columns []string) error {
 		return nil
 	}
 
+	aliasLookup := make(map[string]string)
+	for _, c := range tf.columns {
+		if c.col.Alias != "" {
+			aliasLookup[strings.ToLower(c.col.Alias)] = strings.ToLower(c.col.Name)
+		}
+	}
+
 	newColumns := make([]*Column[T], 0)
 	for _, c := range columns {
 		column, ok := tf.columns[strings.ToLower(c)]
 		if !ok {
-			return fmt.Errorf("column %q is invalid", strings.ToLower(c))
+			// Check if there is an alias
+			column, ok = tf.columns[aliasLookup[strings.ToLower(c)]]
+			if !ok {
+				return fmt.Errorf("column %q is invalid", strings.ToLower(c))
+			}
 		}
 
 		newColumns = append(newColumns, column)
