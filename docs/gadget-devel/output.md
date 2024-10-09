@@ -8,8 +8,11 @@ source in all the output modes supported by the [CLI
 operator](../spec/operators/cli.md#output). However, some of them may not be
 suitable for your gadget depending on the [data source
 types](./gadget-intro.md#data-sources-types) it uses. So, you can customize the
-supported output modes and default output mode for each data source by ...
-TODO: Allow customizing the output modes and default output mode for each data.
+supported output modes and default output mode for each data source by setting
+the
+[operator.cli.supported-output-modes](../spec/operators/cli.md#supported-output-modes)
+and [operator.cli.default-output-mode](../spec/operators/cli.md#output)
+annotations.
 
 Unless you have specific requirements do otherwise, we recommend using the
 default supported output modes and the default output mode for all data sources
