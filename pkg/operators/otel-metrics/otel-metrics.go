@@ -544,8 +544,9 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 				for k, v := range ds.Annotations() {
 					ods.AddAnnotation(k, v)
 				}
-				if ods.Annotations()["cli.output"] == "" {
-					ods.AddAnnotation("cli.output", "raw")
+
+				if ods.Annotations()["cli.supported-output-modes"] == "" {
+					ods.AddAnnotation("cli.supported-output-modes", "raw")
 				}
 				if ods.Annotations()["cli.clear-screen-before"] == "" {
 					ods.AddAnnotation("cli.clear-screen-before", "true")
