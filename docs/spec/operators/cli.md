@@ -52,6 +52,9 @@ all the supported output modes. However, you can customize the supported output
 modes of your data sources by setting the
 [supported-output-modes](#supported-output-modes) annotation.
 
+Also, you can change the default output mode for each data source by setting the
+[default-output-mode](#default-output-mode) annotation.
+
 Fully qualified name: `operator.cli.output`
 
 Default: `columns`
@@ -77,3 +80,10 @@ Coma-separated list of output modes supported for the data source. This is usefu
 when you want to restrict the output modes for a data source.
 
 Fully qualified name: `operator.cli.supported-output-modes`
+
+### `default-output-mode`
+
+Set the default output mode for the data source. This is useful when you want to
+set a different default output mode for a data source.
+
+Fully qualified name: `operator.cli.default-output-mode`
