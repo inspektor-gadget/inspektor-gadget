@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: v0.31.0
+version: 0.33.0
 name: "profile blockio"
 category: monitoring-logging
 displayName: "profile blockio"
-createdAt: "2024-08-12T14:04:40Z"
-digest: "2024-08-12T14:04:40Z"
+createdAt: "2024-10-08T09:57:54Z"
+digest: "2024-10-08T09:57:54Z"
 description: "Profile block I/O operations"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
