@@ -47,6 +47,8 @@ const (
 	ModeNone       = "none"
 	ModeRaw        = "raw"
 
+	DefaultOutputMode = ModeColumns
+
 	// AnnotationClearScreenBefore can be used to clear the screen before printing a new event; usually used for
 	// array events
 	AnnotationClearScreenBefore = "cli.clear-screen-before"
@@ -54,6 +56,9 @@ const (
 	// AnnotationSupportedOutputModes can be used to specify the supported
 	// output modes for a DataSource in a comma-separated list.
 	AnnotationSupportedOutputModes = "cli.supported-output-modes"
+
+	// AnnotationDefaultOutputMode can be used to specify the default output mode for a DataSource.
+	AnnotationDefaultOutputMode = "cli.default-output-mode"
 )
 
 var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
@@ -78,9 +83,9 @@ func (o *cliOperator) InstanceParams() api.Params {
 
 func (o *cliOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
 	op := &cliOperatorInstance{
-		mode:        ModeColumns,
 		paramValues:          paramValues,
 		supportedOutputModes: make(map[string][]string),
+		defaultOutputMode:    make(map[string]string),
 	}
 
 	return op, nil
@@ -91,10 +96,11 @@ func (o *cliOperator) Priority() int {
 }
 
 type cliOperatorInstance struct {
-	mode        string
 	paramValues api.ParamValues
 	// key: datasource name, value: supported output modes
 	supportedOutputModes map[string][]string
+	// key: datasource name, value: default output mode
+	defaultOutputMode map[string]string
 }
 
 func (o *cliOperatorInstance) Name() string {
@@ -190,6 +196,25 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 			fmt.Fprintf(&sb, "      %s\n", mode)
 		}
 		outputDescriptions = append(outputDescriptions, sb.String())
+
+		// Default output mode
+		defaultOutput := DefaultOutputMode
+		if defaultOutputAnnotated, ok := ds.Annotations()[AnnotationDefaultOutputMode]; ok {
+			if !slices.Contains(supportedOutputs, defaultOutputAnnotated) {
+				// This shouldn't happen, it should be caught by the validation at compile time
+				gadgetCtx.Logger().Warnf("default output mode %q for data source %q is not supported",
+					defaultOutputAnnotated, ds.Name())
+				continue
+			}
+			defaultOutput = defaultOutputAnnotated
+		} else if !slices.Contains(supportedOutputs, DefaultOutputMode) {
+			defaultOutput = supportedOutputs[0]
+		}
+		o.defaultOutputMode[ds.Name()] = defaultOutput
+		if nameDS {
+			defaultOutput = ds.Name() + ":" + defaultOutput
+		}
+		outputDefaultValues = append(outputDefaultValues, defaultOutput)
 	}
 
 	// --fields datasource:comma,separated,fields;datasource2:comma,separated,fields
@@ -201,7 +226,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 
 	mode := &api.Param{
 		Key:          ParamMode,
-		DefaultValue: ModeColumns,
+		DefaultValue: strings.Join(outputDefaultValues, ","),
 		Description:  strings.Join(outputDescriptions, "\n"),
 		Alias:        "o",
 	}
@@ -267,7 +292,11 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		fieldLookup[dsName] = dsFields
 	}
 
-	o.mode = params.Get(ParamMode).AsString()
+	modes, err := apihelpers.GetStringValuesPerDataSource(params.Get(ParamMode).AsString())
+	if err != nil {
+		return fmt.Errorf("parsing default output modes: %w", err)
+	}
+
 	for _, ds := range gadgetCtx.GetDataSources() {
 		gadgetCtx.Logger().Debugf("subscribing to %s", ds.Name())
 
@@ -276,9 +305,15 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			fields, hasFields = fieldLookup[""] // fall back to default
 		}
 
-		mode := o.mode
-		if annotatedMode := ds.Annotations()["cli.output"]; annotatedMode != "" {
-			mode = annotatedMode
+		mode, ok := modes[ds.Name()]
+		if !ok {
+			mode, ok = modes[""]
+			if !ok {
+				// Users may specify the mode for one data source and not for
+				// another. In this case, we fall back to the default output
+				// mode for the ones that are not specified.
+				mode = o.defaultOutputMode[ds.Name()]
+			}
 		}
 
 		if !slices.Contains(o.supportedOutputModes[ds.Name()], mode) {
@@ -387,7 +422,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			jsonFormatter, err := json.New(ds,
 				// TODO: compatiblity for now: add all; remove me later on and use the commented version above
 				json.WithShowAll(true),
-				json.WithPretty(o.mode == ModeJSONPretty, "  "),
+				json.WithPretty(mode == ModeJSONPretty, "  "),
 				json.WithArray(ds.Type() == datasource.TypeArray),
 			)
 			if err != nil {
@@ -395,7 +430,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				continue
 			}
 
-			if o.mode == ModeYAML {
+			if mode == ModeYAML {
 				// For the time being, this uses a slow approach to marshal to YAML, by first
 				// converting to JSON and then to YAML. This should get a dedicated formatter sooner or later.
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
