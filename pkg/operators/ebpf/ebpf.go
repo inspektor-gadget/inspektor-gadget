@@ -631,6 +631,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		opts.Programs.KernelTypes = btfSpec
 	}
 	collection, err := ebpf.NewCollectionWithOptions(i.collectionSpec, opts)
+	btf.FlushKernelSpec()
 	if err != nil {
 		var verifierErr *ebpf.VerifierError
 		if errors.As(err, &verifierErr) {
