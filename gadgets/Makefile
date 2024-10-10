@@ -42,6 +42,7 @@ GADGETS = \
 	top_tcp \
 	snapshot_process \
 	snapshot_socket \
+	ci/inner_fields \
 	ci/sched_cls_drop \
 	#
 
@@ -104,7 +105,7 @@ clean:
 		sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
-.PHONY: 
+.PHONY:
 test-unit: build
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	GADGET_TAG=$(GADGET_TAG) \
@@ -112,14 +113,14 @@ test-unit: build
 	go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...
 
 
-.PHONY: 
+.PHONY:
 %/test-unit: %
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...
 
-.PHONY: 
+.PHONY:
 %/test-integration: %
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
@@ -128,7 +129,7 @@ test-unit: build
 	IG_FLAGS=$(IG_FLAGS) \
 	go test -v -exec 'sudo -E' ./$*/$(INTEGRATION_TEST_DIR)/...
 
-.PHONY: 
+.PHONY:
 test-integration: build
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
