@@ -46,6 +46,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
@@ -259,8 +260,10 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	}
 
 	if err := spec.LoadAndAssign(&n.objs, &opts); err != nil {
+		btf.FlushKernelSpec()
 		return fmt.Errorf("loading maps and programs: %w", err)
 	}
+	btf.FlushKernelSpec()
 
 	// Attach ebpf programs
 	l, err := link.Kprobe("fsnotify_remove_first_event", n.objs.IgFaPickE, nil)

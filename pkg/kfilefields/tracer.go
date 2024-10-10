@@ -21,6 +21,7 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
@@ -126,8 +127,10 @@ func (t *Tracer) install() error {
 		},
 	}
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		btf.FlushKernelSpec()
 		return fmt.Errorf("loading maps and programs: %w", err)
 	}
+	btf.FlushKernelSpec()
 
 	// Attach ebpf programs
 	l, err := link.Kprobe("__scm_send", t.objs.IgScmSndE, nil)
