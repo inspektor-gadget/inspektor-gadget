@@ -11,6 +11,9 @@ IG_RUNTIME ?= docker
 IG_FLAGS ?=
 COSIGN ?= cosign
 
+UNIT_TEST_DIR = test/unit
+INTEGRATION_TEST_DIR = test/integration
+
 GADGETS = \
 	audit_seccomp \
 	deadlock \
@@ -101,19 +104,43 @@ clean:
 		sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
-.PHONY:
-test: build
+.PHONY: 
+test-unit: build
+	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
+	GADGET_TAG=$(GADGET_TAG) \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...
+
+
+.PHONY: 
+%/test-unit: %
+	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
+	GADGET_TAG=$(GADGET_TAG) \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...
+
+.PHONY: 
+%/test-integration: %
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
-	go test -exec 'sudo -E' -v ./...
+	go test -v -exec 'sudo -E' ./$*/$(INTEGRATION_TEST_DIR)/...
+
+.PHONY: 
+test-integration: build
+	IG_PATH=$(IG_PATH) \
+	CGO_ENABLED=0 \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	GADGET_TAG=$(GADGET_TAG) \
+	IG_FLAGS=$(IG_FLAGS) \
+	go test -v -exec 'sudo -E' ./.../$(INTEGRATION_TEST_DIR)/...
 
 .PHONY:
 test-local: IG_PATH=$(IG)
-test-local: test
+test-local: test-integration
 
 .PHONY:
 test-k8s: IG_PATH=$(KUBECTL_GADGET)
-test-k8s: test
+test-k8s: test-integration
