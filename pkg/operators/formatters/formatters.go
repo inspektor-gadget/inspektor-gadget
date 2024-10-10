@@ -455,3 +455,5 @@ func (f *formattersOperatorInstance) Stop(gadgetCtx operators.GadgetContext) err
 func init() {
 	operators.RegisterDataOperator(&formattersOperator{})
 }
+
+var FormattersOperator = &formattersOperator{}

@@ -36,6 +36,18 @@ func OnStop(cb func(gadgetCtx operators.GadgetContext) error) Option {
 	}
 }
 
+func OnPreStart(cb func(gadgetCtx operators.GadgetContext) error) Option {
+	return func(op *simpleOperator) {
+		op.onPreStart = cb
+	}
+}
+
+func OnPostStop(cb func(gadgetCtx operators.GadgetContext) error) Option {
+	return func(op *simpleOperator) {
+		op.onPostStop = cb
+	}
+}
+
 func WithPriority(priority int) Option {
 	return func(op *simpleOperator) {
 		op.priority = priority
