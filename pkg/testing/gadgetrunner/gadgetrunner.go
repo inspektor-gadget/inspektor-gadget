@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -33,15 +34,20 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
-	formatters "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+
+	// TODO: create a common package with all operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
 )
 
 type GadgetRunnerOpts[T any] struct {
@@ -63,11 +69,10 @@ type GadgetRunner[T any] struct {
 	runtimeParams  *params.Params
 	testCtx        *testing.T
 
-	gadgetCtx      *gadgetcontext.GadgetContext
-	gadgetOperator operators.DataOperator
-	DataFunc       datasource.DataFunc
-	DataOperator   []operators.DataOperator
-	JsonFormatter  *igjson.Formatter
+	gadgetCtx     *gadgetcontext.GadgetContext
+	DataFunc      datasource.DataFunc
+	DataOperator  []operators.DataOperator
+	JsonFormatter *igjson.Formatter
 
 	CapturedEvents  []T
 	onGadgetRun     func(gadgetCtx operators.GadgetContext) error
@@ -132,6 +137,7 @@ func (g *GadgetRunner[T]) RunGadget() {
 		}
 	}
 	gadgetOperatorOpts := []simple.Option{
+		simple.WithPriority(math.MaxInt), // This operator is a sink
 		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
 			for _, d := range gadgetCtx.GetDataSources() {
 				jsonFormatter, err := igjson.New(d,
@@ -160,12 +166,11 @@ func (g *GadgetRunner[T]) RunGadget() {
 		gadgetOperatorOpts = append(gadgetOperatorOpts, simple.OnStart(g.onGadgetRun))
 	}
 
-	g.gadgetOperator = simple.New("gadget", gadgetOperatorOpts...)
-	g.DataOperator = []operators.DataOperator{
-		ocihandler.OciHandler,
-		formatters.FormattersOperator,
+	g.DataOperator = []operators.DataOperator{ocihandler.OciHandler}
+	for _, dataOperator := range operators.GetDataOperators() {
+		g.DataOperator = append(g.DataOperator, dataOperator)
 	}
-	g.DataOperator = append(g.DataOperator, g.gadgetOperator)
+	g.DataOperator = append(g.DataOperator, simple.New("gadget", gadgetOperatorOpts...))
 
 	dataOperatorOps := []gadgetcontext.Option{
 		gadgetcontext.WithDataOperators(g.DataOperator...),
@@ -198,24 +203,4 @@ func GetGadgetImageName(gadget string) string {
 		gadget = fmt.Sprintf("%s:%s", gadget, tag)
 	}
 	return gadget
-}
-
-func (g *GadgetRunner[T]) WithLocalManager() *localmanager.LocalManager {
-	localManagerOp := &localmanager.LocalManager{}
-	localManagerParams := localManagerOp.GlobalParamDescs().ToParams()
-	localManagerParams.Get(localmanager.Runtimes).Set("docker")
-
-	err := localManagerOp.Init(localManagerParams)
-	require.NoError(g.testCtx, err, "Initiatlizing Local Manager")
-	defer localManagerOp.Close()
-	return localManagerOp
-}
-
-func (g *GadgetRunner[T]) WithSocketEnricher() *socketenricher.SocketEnricher {
-	socketEnricherOp := &socketenricher.SocketEnricher{}
-
-	err := socketEnricherOp.Init(nil)
-	require.NoError(g.testCtx, err, "Initiatlizing SocketEnricher")
-	defer socketEnricherOp.Close()
-	return socketEnricherOp
 }
