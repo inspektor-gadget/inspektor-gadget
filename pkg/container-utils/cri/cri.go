@@ -363,6 +363,16 @@ func parseExtraInfo(extraInfo map[string]string,
 	return nil
 }
 
+// ParseExtraInfoTest exports parseExtraInfo for the tests only (cri_test.go)
+// This allows the tests to be in a separate package (package cri_test) so we
+// can remove memory expensive dependencies from ig
+// (github.com/google/go-cmp/cmp)
+func ParseExtraInfoTest(extraInfo map[string]string,
+	containerDetailsData *runtimeclient.ContainerDetailsData,
+) error {
+	return parseExtraInfo(extraInfo, containerDetailsData)
+}
+
 // Convert the state from container status to state of runtime client.
 func containerStatusStateToRuntimeClientState(containerStatusState runtime.ContainerState) (runtimeClientState string) {
 	switch containerStatusState {
