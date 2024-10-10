@@ -190,7 +190,7 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	// Keep enums to convert them to strings
 	if en, ok := member.Type.(*btf.Enum); ok {
-		i.enums = append(i.enums, &enum{Enum: en, memberName: member.Name})
+		i.enums = append(i.enums, &enum{Enum: en, memberName: prefix + member.Name})
 	}
 
 	kind := getFieldKind(refType, tags)
