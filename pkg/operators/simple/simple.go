@@ -21,11 +21,13 @@ import (
 )
 
 type simpleOperator struct {
-	name     string
-	onInit   func(gadgetCtx operators.GadgetContext) error
-	onStart  func(gadgetCtx operators.GadgetContext) error
-	onStop   func(gadgetCtx operators.GadgetContext) error
-	priority int
+	name       string
+	onInit     func(gadgetCtx operators.GadgetContext) error
+	onStart    func(gadgetCtx operators.GadgetContext) error
+	onStop     func(gadgetCtx operators.GadgetContext) error
+	onPreStart func(gadgetCtx operators.GadgetContext) error
+	onPostStop func(gadgetCtx operators.GadgetContext) error
+	priority   int
 }
 
 func New(name string, options ...Option) operators.DataOperator {
@@ -78,6 +80,20 @@ func (s *simpleOperator) Start(gadgetCtx operators.GadgetContext) error {
 func (s *simpleOperator) Stop(gadgetCtx operators.GadgetContext) error {
 	if s.onStop != nil {
 		return s.onStop(gadgetCtx)
+	}
+	return nil
+}
+
+func (s *simpleOperator) PreStart(gadgetCtx operators.GadgetContext) error {
+	if s.onPreStart != nil {
+		return s.onPreStart(gadgetCtx)
+	}
+	return nil
+}
+
+func (s *simpleOperator) PostStop(gadgetCtx operators.GadgetContext) error {
+	if s.onPostStop != nil {
+		return s.onPostStop(gadgetCtx)
 	}
 	return nil
 }
