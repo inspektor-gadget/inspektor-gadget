@@ -91,13 +91,13 @@ func TestTraceTcpconnect(t *testing.T) {
 					Addr:    "127.0.0.1",
 					Version: 4,
 					Port:    utils.NormalizedInt,
-					Proto:   6,
+					Proto:   "TCP",
 				},
 				DstEndpoint: utils.L4Endpoint{
 					Addr:    "127.0.0.1",
 					Version: 4,
 					Port:    80,
-					Proto:   6,
+					Proto:   "TCP",
 				},
 				Comm: "curl",
 

@@ -96,7 +96,7 @@ func TestTraceBind(t *testing.T) {
 					Addr:    "127.0.0.1",
 					Version: 4,
 					Port:    9090,
-					Proto:   6,
+					Proto:   "TCP",
 				},
 				Comm: "nc",
 				Opts: "REUSEADDRESS",

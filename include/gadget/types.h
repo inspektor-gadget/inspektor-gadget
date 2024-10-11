@@ -21,7 +21,7 @@ struct gadget_l3endpoint_t {
 struct gadget_l4endpoint_t {
 	union gadget_ip_addr_t addr_raw;
 	__u16 port; // L4 port in host byte order
-	__u16 proto; // IP protocol number
+	__u16 proto_raw; // IP protocol number
 	__u8 version; // 4 or 6
 };
 

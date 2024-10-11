@@ -211,7 +211,7 @@ static __always_inline void trace_v4(struct pt_regs *ctx, __u64 pid_tgid,
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	event->src.version = event->dst.version = 4;
-	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 	BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
 			   __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk, __sk_common.skc_daddr);
@@ -243,7 +243,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, __u64 pid_tgid,
 	event->gid = (u32)(uid_gid >> 32);
 	event->mntns_id = mntns_id;
 	event->src.version = event->dst.version = 6;
-	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 	BPF_CORE_READ_INTO(&event->src.addr_raw.v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
@@ -336,7 +336,7 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	// host expects data in host byte order
 	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family == AF_INET) {
 		event->src.version = event->dst.version = 4;
