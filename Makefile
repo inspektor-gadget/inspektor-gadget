@@ -244,7 +244,8 @@ cross-kubectl-gadget-container:
 # tests
 .PHONY: test
 test:
-	go test -test.v ./...
+	# skip gadgets tests
+	go test -exec sudo -v $$(go list ./... | grep -v 'github.com/inspektor-gadget/inspektor-gadget/gadgets')
 
 .PHONY: controller-tests
 controller-tests: kube-apiserver etcd kubectl
@@ -253,10 +254,6 @@ controller-tests: kube-apiserver etcd kubectl
 	TEST_ASSET_ETCD=$(ETCD_BIN) \
 	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
 	go test -test.v ./pkg/controllers/... -controller-test
-
-.PHONY: gadgets-unit-tests
-gadgets-unit-tests:
-	go test -test.v -exec sudo ./...
 
 # Individual tests can be selected with a command such as:
 # go test -exec sudo -ldflags="-s=false" -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/snapshot-socket' -run=Benchmark ./internal/benchmarks/... -count 10
@@ -415,7 +412,6 @@ help:
 	@echo  '  test				- Run unit tests'
 	@echo  '  controller-tests		- Run controllers unit tests'
 	@echo  '  ig-tests			- Run ig manager unit tests'
-	@echo  '  gadgets-unit-tests		- Run gadget unit tests'
 	@echo  '  integration-tests		- Run integration tests (deploy IG before running the tests)'
 	@echo  '  test-gadgets			- Run gadgets test'
 	@echo  ''
