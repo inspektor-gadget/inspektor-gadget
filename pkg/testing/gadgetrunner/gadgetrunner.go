@@ -116,6 +116,7 @@ func (g *GadgetRunner[T]) RunGadget() {
 	if g.DataFunc == nil {
 		// Use default data function if none is provided
 		g.DataFunc = func(source datasource.DataSource, data datasource.Data) error {
+			mu.Lock()
 			event := new(T)
 			jsonOutput := g.JsonFormatter.Marshal(data)
 			err := json.Unmarshal(jsonOutput, event)
@@ -125,7 +126,6 @@ func (g *GadgetRunner[T]) RunGadget() {
 				g.normalizeEvent(event)
 			}
 
-			mu.Lock()
 			g.CapturedEvents = append(g.CapturedEvents, *event)
 			mu.Unlock()
 			return nil
