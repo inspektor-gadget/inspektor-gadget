@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"reflect"
 	"slices"
@@ -45,6 +46,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -581,7 +583,25 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			continue
 		}
 		constReplacements[name] = paramMap[name].AsAny()
-		i.logger.Debugf("setting param value %q = %v", name, paramMap[name].AsAny())
+
+		switch p.TypeHint {
+		case api.TypeIP:
+			i.logger.Debugf("handling IP param: %q", name)
+			ipAddr := ebpftypes.L3Endpoint{}
+			ipParam := constReplacements[name].(net.IP)
+			if ip := ipParam.To4(); ip != nil {
+				ipAddr.Version = 4
+				copy(ipAddr.V6[:4], ip)
+			} else if ip := ipParam.To16(); ip != nil {
+				copy(ipAddr.V6[:], ip)
+				ipAddr.Version = 6
+			} else {
+				return fmt.Errorf("invalid IP address: %v", ipParam)
+			}
+			constReplacements[name] = ipAddr
+		}
+
+		i.logger.Debugf("setting param value %q = %v", name, constReplacements[name])
 	}
 
 	for _, v := range i.vars {

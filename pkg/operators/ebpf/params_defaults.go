@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/ebpf/btf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 )
 
 var errMapNoBTFValue = errors.New("map spec does not contain a BTF Value")
@@ -111,6 +112,11 @@ func (i *ebpfInstance) fillParamDefaults() error {
 					} else {
 						defaultValue = "true"
 					}
+				}
+			case *btf.Struct:
+				switch t.Name {
+				case ebpftypes.L3EndpointTypeName:
+					defaultValue = "0.0.0.0"
 				}
 			}
 
