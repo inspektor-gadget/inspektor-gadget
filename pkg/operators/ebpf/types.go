@@ -33,4 +33,7 @@ const (
 
 	// Prefix used to mark variables used by operators
 	varPrefix = "gadget_var_"
+
+	// Constant gadget_l3endpoint_t defining the name of a struct type for filtering IP addresses
+	gadget_l3endpoint_t = "gadget_l3endpoint_t"
 )
