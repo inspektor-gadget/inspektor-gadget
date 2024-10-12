@@ -114,6 +114,16 @@ func (i *ebpfInstance) fillParamDefaults() error {
 				}
 			}
 
+			ipaddrV6PrefixFunc := hasPrefix(ipaddrV6Prefix)
+			if _, ok := ipaddrV6PrefixFunc(vname); ok {
+				defaultValue = "::"
+			}
+
+			ipadddrV4PrefixFunc := hasPrefix(ipaddrV4Prefix)
+			if _, ok := ipadddrV4PrefixFunc(vname); ok {
+				defaultValue = "0.0.0.0"
+			}
+
 			i.gadgetCtx.Logger().Debugf("default value for param %q set to %q (%.2X), type was %T", vname, defaultValue, bytes, vtype)
 
 			param.DefaultValue = defaultValue
