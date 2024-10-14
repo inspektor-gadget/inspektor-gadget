@@ -35,15 +35,15 @@ fails. Currently only version 1 is supported and used. This function is mandator
 ### `gadgetInit`
 
 This function is called when initializing the gadget. In this phase the gadget
-can suscribe to data sources, create new fields, etc. This function is optional.
+can subscribe to data sources, create new fields, etc. This function is optional.
 
 ### `gadgetPreStart`
 
-This function is called before the gadget is started. This fuction is optional.
+This function is called before the gadget is started. This function is optional.
 
 ### `gadgetStart`
 
-This function is called when the gadget is started. This fuction is optional.
+This function is called when the gadget is started. This function is optional.
 
 ### `gadgetStop`
 
