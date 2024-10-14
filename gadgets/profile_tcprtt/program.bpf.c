@@ -21,6 +21,8 @@
 #define AF_INET 2 /* IP version 4			*/
 #define AF_INET6 10 /* IP version 6			*/
 
+const volatile bool targ_laddr_hist = false;
+const volatile bool targ_raddr_hist = false;
 const volatile __u16 targ_sport = 0;
 const volatile __u16 targ_dport = 0;
 const volatile __u32 targ_saddr = 0;
@@ -29,6 +31,8 @@ const volatile __u8 targ_saddr_v6[IPV6_LEN] = {};
 const volatile __u8 targ_daddr_v6[IPV6_LEN] = {};
 const volatile bool targ_ms = false;
 
+GADGET_PARAM(targ_laddr_hist);
+GADGET_PARAM(targ_raddr_hist);
 GADGET_PARAM(targ_sport);
 GADGET_PARAM(targ_dport);
 
@@ -50,16 +54,7 @@ GADGET_PARAM(targ_ms);
 #define MAX_ENTRIES 10240
 
 struct hist_key {
-	u8 unused;
-	/*
-	 * TODO We do not support having array of bytes in the key structure.
-	 * So, for now, we will not enable grouping histogram by local or remote
-	 * address.
-	 * Later on, we can add back these two fields which are present in the
-	 * built-in version:
-	 * __u16 family;
-	 * __u8 addr[IPV6_LEN];
-	 */
+	struct gadget_l3endpoint_t addr;
 };
 
 // hist_value is used as value for profiler hash map.
@@ -112,6 +107,15 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	u64 slot;
 	u32 srtt;
 	u16 family;
+	/*
+	 * By default, we set this to 4.
+	 * Indeed, if no address grouping is used, we would get an error if this value
+	 * is not to 4 or 6.
+	 * In case of grouping, this would be set to the correct value below.
+	 * When not grouping, we do not really care about the value here, so let's set
+	 * it to 4 so userspace does not explode.
+	 */
+	key.addr.version = 4;
 
 	if (targ_sport && targ_sport != BPF_CORE_READ(inet, inet_sport))
 		return 0;
@@ -161,6 +165,43 @@ static int handle_tcp_rcv_established(struct sock *sk)
 		break;
 	default:
 		return 0;
+	}
+
+	if (targ_laddr_hist) {
+		if (family == AF_INET6)
+			bpf_probe_read_kernel(
+				&key.addr.addr_raw, sizeof(key.addr.addr_raw),
+				BPF_CORE_READ(inet, pinet6,
+					      saddr.in6_u.u6_addr8));
+		else
+			/*
+			 * It is fine to use "->" operator with bpf_probe_read_kernel() as we are
+			 * using vmlinux.h which defines struct with preserve_access_index
+			 * attribute, see:
+			 * https://nakryiko.com/posts/bpf-core-reference-guide/#defining-own-co-re-relocatable-type-definitions
+			 */
+			bpf_probe_read_kernel(&key.addr.addr_raw,
+					      sizeof(inet->inet_saddr),
+					      &inet->inet_saddr);
+	} else if (targ_raddr_hist) {
+		if (family == AF_INET6)
+			bpf_probe_read_kernel(
+				&key.addr.addr_raw, sizeof(key.addr.addr_raw),
+				BPF_CORE_READ(sk, __sk_common.skc_v6_daddr.in6_u
+							  .u6_addr8));
+		else
+			bpf_probe_read_kernel(&key.addr.addr_raw,
+					      sizeof(sk->__sk_common.skc_daddr),
+					      &sk->__sk_common.skc_daddr);
+	} else {
+		family = 0;
+	}
+
+	switch (family) {
+	case AF_INET:
+		key.addr.version = 4;
+	case AF_INET6:
+		key.addr.version = 6;
 	}
 
 	histp = bpf_map_lookup_or_try_init(&hists, &key, &zero);
