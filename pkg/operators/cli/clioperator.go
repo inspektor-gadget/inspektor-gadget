@@ -44,7 +44,6 @@ const (
 	ModeJSONPretty = "jsonpretty"
 	ModeColumns    = "columns"
 	ModeYAML       = "yaml"
-	ModeRaw        = "raw"
 
 	DefaultOutputMode = ModeColumns
 
@@ -322,7 +321,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		}
 
 		switch mode {
-		case ModeRaw:
+		default:
 			before := func() {}
 			if ds.Annotations()[AnnotationClearScreenBefore] == "true" && term.IsTerminal(int(os.Stdout.Fd())) {
 				before = clearScreen

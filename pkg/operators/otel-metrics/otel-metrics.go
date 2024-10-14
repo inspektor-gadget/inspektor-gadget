@@ -65,8 +65,16 @@ const (
 	PrintDataSourceSuffix = "rendered"
 	PrintFieldName        = "text"
 
+	HistogramOutputMode = "histogram"
+
 	MinPrintInterval = time.Millisecond * 25
 )
+
+var renderedDsCliAnnotations = map[string]string{
+	"cli.supported-output-modes": HistogramOutputMode,
+	"cli.default-output-mode":    HistogramOutputMode,
+	"cli.clear-screen-before":    "true",
+}
 
 type otelMetricsOperator struct {
 	// exporter is the global exporter instance
@@ -538,9 +546,9 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 			}
 
 			// Set default annotations
-			ods.AddAnnotation("cli.supported-output-modes", "raw")
-			ods.AddAnnotation("cli.default-output-mode", "raw")
-			ods.AddAnnotation("cli.clear-screen-before", "true")
+			for k, v := range renderedDsCliAnnotations {
+				ods.AddAnnotation(k, v)
+			}
 
 			// Use annotations from the original data source
 			for k, v := range ds.Annotations() {
