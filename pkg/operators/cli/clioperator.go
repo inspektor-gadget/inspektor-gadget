@@ -44,7 +44,6 @@ const (
 	ModeJSONPretty = "jsonpretty"
 	ModeColumns    = "columns"
 	ModeYAML       = "yaml"
-	ModeNone       = "none"
 	ModeRaw        = "raw"
 
 	DefaultOutputMode = ModeColumns
@@ -61,7 +60,7 @@ const (
 	AnnotationDefaultOutputMode = "cli.default-output-mode"
 )
 
-var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
+var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeYAML}
 
 type cliOperator struct{}
 
