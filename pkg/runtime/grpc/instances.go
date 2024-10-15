@@ -147,17 +147,42 @@ func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeP
 		EventBufferLength: runtimeParams.Get(ParamEventBufferLength).AsInt32(), // default for now
 	}
 
+	// if targets have explicitly been listed, add them to the `Nodes` list
+	if paramNode := runtimeParams.Get(ParamNode); paramNode != nil {
+		instanceRequest.GadgetInstance.Nodes = paramNode.AsStringSlice()
+	}
+
+	var listMutex sync.Mutex
+	var nodeList []string
+	ids := make(map[string][]string)
+	var lastID string
+
 	err = r.runInstanceManagerClientForTargets(gadgetCtx.Context(), runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
 		gadgetCtx.Logger().Debugf("creating gadget on node %q", target.node)
 		res, err := client.CreateGadgetInstance(gadgetCtx.Context(), instanceRequest)
 		if err != nil {
 			return fmt.Errorf("creating gadget on node %q: %w", target.node, err)
 		}
-		gadgetCtx.Logger().Infof("installed on node %q as %q", target.node, res.GadgetInstance.Id)
+		listMutex.Lock()
+		nodeList = append(nodeList, target.node)
+		ids[res.GadgetInstance.Id] = append(ids[res.GadgetInstance.Id], target.node)
+		lastID = res.GadgetInstance.Id
+		listMutex.Unlock()
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("creating gadget instance: %w", err)
 	}
+
+	if len(ids) > 1 {
+		// this can only happen if the server refused to use the given id (which should not happen with the current
+		// implementations) and we're deploying on multiple targets where each target would choose its own id
+		for k, v := range ids {
+			gadgetCtx.Logger().Infof("installed as %q (nodes %+v)", k, v)
+		}
+		return nil
+	}
+
+	gadgetCtx.Logger().Infof("installed as %q", lastID)
 	return nil
 }
