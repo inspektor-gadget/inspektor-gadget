@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cri
+package cri_test
 
 import (
 	"reflect"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
@@ -181,7 +182,7 @@ func TestParseExtraInfo(t *testing.T) {
 	for _, entry := range table {
 		// Parse the extra info.
 		containerDetailsData := &runtimeclient.ContainerDetailsData{}
-		err := parseExtraInfo(entry.info, containerDetailsData)
+		err := cri.ParseExtraInfoTest(entry.info, containerDetailsData)
 		// Expected error.
 		if err != nil {
 			if entry.expected != nil {
