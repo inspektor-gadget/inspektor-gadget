@@ -55,6 +55,10 @@ type (
 	EnricherFunc func(any) error
 )
 
+// Prefix used to avoid clash with maps and other eBPF objects when added to
+// gadget context.
+const MAP_PREFIX string = "map/"
+
 type Operator interface {
 	// Name must return a unique name for the operator
 	Name() string
