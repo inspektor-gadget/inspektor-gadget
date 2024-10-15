@@ -30,6 +30,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
@@ -417,4 +418,34 @@ func TestConfig(t *testing.T) {
 	require.True(t, ok, "invalid configuration format")
 
 	require.Equal(t, "myvalue", v.GetString("foo.bar.zas"))
+}
+
+func TestMap(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/map.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"map:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	params := map[string]string{
+		"operator.oci.verify-image": "false",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
 }

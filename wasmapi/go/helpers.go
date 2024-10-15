@@ -20,6 +20,10 @@ package api
 import "C"
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"unsafe"
@@ -47,6 +51,54 @@ func stringToBufPtr(s string) bufPtr {
 	}
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return bufPtr(uint64(len(s))<<32 | uint64(uintptr(unsafePtr)))
+}
+
+// anytoBufPtr returns a bufPtr that encodes the pointer and length of the
+// input.
+// The input is first encoded to binary buffer, which is then used as the
+// returned bufPtr.
+// WARNING the binary encoding will only works on with fixed size data, *i.e.*
+// with int32 but not with int, as this data would be exchanged from 32 bits
+// WASM VM to host which can be 64 bits.
+func anytoBufPtr(a any) (bufPtr, error) {
+	buf := make([]byte, reflect.TypeOf(a).Size())
+	buffer := new(bytes.Buffer)
+
+	// TODO Use binary.Encode() once compiler no more yells about it:
+	// undefined: binary.Encode
+	err := binary.Write(buffer, binary.NativeEndian, a)
+	if err != nil {
+		return bufPtr(0), fmt.Errorf("converting %T to []byte: %w", a, err)
+	}
+
+	// TODO Remove this when using binary.Encode().
+	copy(buf, buffer.Bytes())
+
+	return bytesToBufPtr(buf), nil
+}
+
+// TODO Investigate more this solution as it avoids doing plenty of copy.
+// So far, it does not work because we get wrong data while reading buf in dlv.
+func anytoBufPtr2[T any](a *T) bufPtr {
+	size := reflect.TypeOf(*a).Size()
+	if size == 0 {
+		return 0
+	}
+
+	unsafePtr := unsafe.Pointer(a)
+	Infof("unsafePtr: %v", unsafePtr)
+	Infof("value: %v", *a)
+	return bufPtr(uint64(size)<<32 | uint64(uintptr(unsafePtr)))
+}
+
+func readBufPtr(ptr bufPtr) []byte {
+	length := ptr >> 32
+	buf := make([]byte, length)
+
+	// My kingdom for a memcpy()...
+	copy(buf, unsafe.Slice((*byte)(unsafe.Pointer(uintptr(uint32(ptr)))), length))
+
+	return buf
 }
 
 // bytesToBufPtr returns a bufPtr that encodes the pointer and length of the

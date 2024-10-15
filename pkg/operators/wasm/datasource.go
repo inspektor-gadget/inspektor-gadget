@@ -180,7 +180,7 @@ func (i *wasmOperatorInstance) getDataSource(ctx context.Context, m wapi.Module,
 	stack[0] = wapi.EncodeU32(i.addHandle(ds))
 }
 
-// dataSourceGetField returns a handle to a data source.
+// dataSourceGetField returns a handle to a field.
 // Params:
 // - stack[0]: DataSource handle
 // - stack[1]: Field name
