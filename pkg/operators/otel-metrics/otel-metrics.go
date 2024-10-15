@@ -27,12 +27,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otelprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"golang.org/x/exp/constraints"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
@@ -48,6 +50,7 @@ const (
 	ParamOtelMetricsListen        = "otel-metrics-listen"
 	ParamOtelMetricsListenAddress = "otel-metrics-listen-address"
 	ParamOtelMetricsName          = "otel-metrics-name"
+	ParamOtelMetricsExporter      = "otel-metrics-exporter"
 	ParamOtelMetricsPrintInterval = "otel-metrics-print-interval"
 
 	MetricTypeKey       = "key"
@@ -68,10 +71,35 @@ const (
 	MinPrintInterval = time.Millisecond * 25
 )
 
+type metricsConfig struct {
+	Exporter    string        `json:"exporter" yaml:"exporter"`
+	Endpoint    string        `json:"endpoint" yaml:"endpoint"`
+	Insecure    bool          `json:"insecure" yaml:"insecure"`
+	Temporality string        `json:"temporality" yaml:"temporality"`
+	Interval    time.Duration `json:"interval" yaml:"interval"`
+}
+
+func deltaSelector(kind sdkmetric.InstrumentKind) metricdata.Temporality {
+	switch kind {
+	case sdkmetric.InstrumentKindCounter,
+		sdkmetric.InstrumentKindGauge,
+		sdkmetric.InstrumentKindHistogram,
+		sdkmetric.InstrumentKindObservableGauge,
+		sdkmetric.InstrumentKindObservableCounter:
+		return metricdata.DeltaTemporality
+	case sdkmetric.InstrumentKindUpDownCounter,
+		sdkmetric.InstrumentKindObservableUpDownCounter:
+		return metricdata.CumulativeTemporality
+	}
+	panic("unknown instrument kind")
+}
+
 type otelMetricsOperator struct {
 	// exporter is the global exporter instance
 	exporter      *otelprometheus.Exporter
 	meterProvider metric.MeterProvider
+
+	providers map[string]metric.MeterProvider
 
 	// if skipListen is set to true, it will not expose the metrics using http
 	// this is used mainly for unit tests (you can still use the meterProvider & exporter)
@@ -83,6 +111,63 @@ func (m *otelMetricsOperator) Name() string {
 }
 
 func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
+	// Initialize provider map
+	m.providers = map[string]metric.MeterProvider{}
+
+	// Initialize named metric providers
+	mc := make(map[string]*metricsConfig, 0)
+	if config.Config != nil {
+		log.Infof("loading metric exporters")
+		err := config.Config.UnmarshalKey("operator.otel-metrics.exporters", &mc)
+		if err != nil {
+			log.Warnf("failed to load operator.otel-metrics.exporters: %v", err)
+		}
+		for k, v := range mc {
+			switch v.Exporter {
+			default:
+				log.Errorf("invalid metric exporter %q", v.Exporter)
+			case "otlp-grpc":
+				if v.Endpoint == "" {
+					return fmt.Errorf("endpoint required for otlp-grpc exporter")
+				}
+				var options []otlpmetricgrpc.Option
+				options = append(options, otlpmetricgrpc.WithEndpoint(v.Endpoint))
+				if v.Insecure {
+					options = append(options, otlpmetricgrpc.WithInsecure())
+				}
+				switch v.Temporality {
+				case "", "cumulative":
+				case "delta":
+					options = append(options, otlpmetricgrpc.WithTemporalitySelector(deltaSelector))
+				}
+				otlpcollector, err := otlpmetricgrpc.New(
+					context.Background(),
+					options...,
+				)
+				if err != nil {
+					return fmt.Errorf("initializting otlp metrics collector")
+				}
+				var periodicReaderOptions []sdkmetric.PeriodicReaderOption
+				if v.Interval > 0 {
+					log.Infof("setting interval to %v", v.Interval)
+					periodicReaderOptions = append(periodicReaderOptions, sdkmetric.WithInterval(v.Interval))
+				}
+				m.providers[k] = sdkmetric.NewMeterProvider(
+					sdkmetric.WithReader(
+						sdkmetric.NewPeriodicReader(otlpcollector, periodicReaderOptions...),
+					),
+				)
+				log.Infof("initialized metric provider %q", k)
+				// case "prometheus":
+				// 	exporter, err := otelprometheus.New()
+				// 	if err != nil {
+				// 		return fmt.Errorf("initializing otel metrics exporter: %w", err)
+				// 	}
+				// 	m.providers[k] = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+			}
+		}
+	}
+
 	if !globalParams.Get(ParamOtelMetricsListen).AsBool() {
 		return nil
 	}
@@ -140,6 +225,12 @@ func (m *otelMetricsOperator) InstanceParams() api.Params {
 			Description:  "interval to use when printing metrics; minimum is 25ms",
 			DefaultValue: "1000ms",
 		},
+		{
+			Key:          ParamOtelMetricsExporter,
+			TypeHint:     api.TypeString,
+			Description:  "name of the configured metric provider to use; leave empty to use the default exporter",
+			DefaultValue: "",
+		},
 	}
 }
 
@@ -167,6 +258,18 @@ func (m *otelMetricsOperator) InstantiateDataOperator(gadgetCtx operators.Gadget
 		printInterval: printInterval,
 	}
 
+	// named metric providers are only evaluated on the server side for now
+	if gadgetCtx.IsRemoteCall() {
+		provider := params.Get(ParamOtelMetricsExporter).AsString()
+		if provider != "" {
+			p, ok := m.providers[provider]
+			if !ok {
+				return nil, fmt.Errorf("no metrics provider found with name %q", provider)
+			}
+			instance.provider = p
+		}
+	}
+
 	err = instance.init(gadgetCtx)
 	if err != nil {
 		return nil, err
@@ -185,6 +288,7 @@ type otelMetricsOperatorInstance struct {
 	outputDS      datasource.DataSource
 	outputField   datasource.FieldAccessor
 	printInterval time.Duration
+	provider      metric.MeterProvider
 }
 
 func (m *otelMetricsOperatorInstance) Name() string {
@@ -544,7 +648,7 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 		// if there's an explicit mapping set for the datasource, we will export it using the global exporter
 		// (if that is available)
 		mappedName, ok := m.nameMappings[metricsName]
-		if ok && m.op.exporter != nil {
+		if ok && (m.op.exporter != nil || m.provider != nil) {
 			useGlobal = true
 		} else if ok {
 			gadgetCtx.Logger().Warnf("global exporter not configured, using local metric instance")
@@ -586,9 +690,15 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	for ds, collector := range m.collectors {
 		if collector.useGlobalProvider {
-			gadgetCtx.Logger().Debugf("using global metric provider for collector %q", collector.mappedName)
-			// using the global meter provider to export to Prometheus
-			collector.meter = m.op.meterProvider.Meter(collector.mappedName)
+			if m.provider != nil {
+				gadgetCtx.Logger().Debugf("using metric provider for collector %q", collector.mappedName)
+				// using the global meter provider to export to Prometheus
+				collector.meter = m.provider.Meter(collector.mappedName)
+			} else {
+				gadgetCtx.Logger().Debugf("using global metric provider for collector %q", collector.mappedName)
+				// using the global meter provider to export to Prometheus
+				collector.meter = m.op.meterProvider.Meter(collector.mappedName)
+			}
 		} else {
 			// Initialize a local instance
 			gadgetCtx.Logger().Debugf("using local metric provider for collector %q", collector.mappedName)

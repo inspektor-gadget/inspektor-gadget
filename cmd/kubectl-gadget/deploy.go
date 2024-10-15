@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2024 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,6 +111,7 @@ var (
 	allowedGadgets      []string
 	insecureRegistries  []string
 	disallowGadgetsPull bool
+	applyConfig         string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -142,6 +143,12 @@ func init() {
 	for i, level := range log.AllLevels {
 		strLevels[i] = level.String()
 	}
+	deployCmd.PersistentFlags().StringVarP(
+		&applyConfig,
+		"apply-config", "",
+		"",
+		"apply YAML configuration file",
+	)
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
 		"image", "",
@@ -788,6 +795,17 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			err = yaml.Unmarshal([]byte(cfgData), &cfg)
 			if err != nil {
 				return fmt.Errorf("unmarshaling config.yaml: %w", err)
+			}
+
+			if applyConfig != "" {
+				b, err := os.ReadFile(applyConfig)
+				if err != nil {
+					return fmt.Errorf("reading config file %q: %w", applyConfig, err)
+				}
+				err = yaml.Unmarshal(b, &cfg)
+				if err != nil {
+					return fmt.Errorf("unmarshaling config file %q: %w", applyConfig, err)
+				}
 			}
 
 			cfg[gadgettracermanagerconfig.HookModeKey] = hookMode
