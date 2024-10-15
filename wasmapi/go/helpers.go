@@ -49,6 +49,11 @@ func stringToBufPtr(s string) bufPtr {
 	return bufPtr(uint64(len(s))<<32 | uint64(uintptr(unsafePtr)))
 }
 
+func anytoBufPtr(a any) bufPtr {
+	unsafePtr := unsafe.Pointer(&a)
+	return bufPtr(uint64(unsafe.Sizeof(a))<<32 | uint64(uintptr(unsafePtr)))
+}
+
 // bytesToBufPtr returns a bufPtr that encodes the pointer and length of the
 // input buffer. Callers must use runtime.KeepAlive on the input buffer to
 // ensure it is not garbage collected.
