@@ -1023,12 +1023,9 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - name: Basic unit tests
+    - name: Unit tests
       run: |
-        make test
-    - name: Gadgets unit tests
-      run: |
-        make gadgets-unit-tests
+        sudo make test
     - name: Controller unit tests
       run: |
         make controller-tests
@@ -1400,10 +1397,10 @@ jobs:
           export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
 
           make -C gadgets/ sign -o push
-  
+
   gadgets-unittest:
     name: Gadgets unit tests
-    needs: 
+    needs:
       - build-and-push-gadgets
       - build-helper-images
       - check-secrets
