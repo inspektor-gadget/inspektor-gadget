@@ -36,7 +36,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -152,44 +151,41 @@ func checkForDuplicates(subject string) func(value string) error {
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
 	p := params.ParamDescs{}
-
-	// Currently detaching is only available for local environment (e.g. gadgetctl)
-	if environment.Environment == environment.Local {
-		p.Add(params.ParamDescs{
-			{
-				Key:          ParamDetach,
-				Description:  "Create a headless gadget instance that will keep running in the background",
-				TypeHint:     params.TypeBool,
-				DefaultValue: "false",
-				Tags:         []string{"!attach"},
-			},
-			{
-				Key:         ParamTags,
-				Description: "Comma-separated list of tags to apply to the gadget instance",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:         ParamName,
-				Description: "Distinctive name to assign to the gadget instance",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:         ParamID,
-				Description: "ID to assign to the gadget instance; if unset, it will be generated",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:          ParamEventBufferLength,
-				Description:  "Number of events to buffer on the server so they can be replayed when attaching; used with --detach; 0 = use server settings",
-				TypeHint:     params.TypeInt,
-				DefaultValue: "0",
-				Tags:         []string{"!attach"},
-			},
-		}...)
-	}
+	// Add params for headless mode
+	p.Add(params.ParamDescs{
+		{
+			Key:          ParamDetach,
+			Description:  "Create a headless gadget instance that will keep running in the background",
+			TypeHint:     params.TypeBool,
+			DefaultValue: "false",
+			Tags:         []string{"!attach"},
+		},
+		{
+			Key:         ParamTags,
+			Description: "Comma-separated list of tags to apply to the gadget instance",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:         ParamName,
+			Description: "Distinctive name to assign to the gadget instance",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:         ParamID,
+			Description: "ID to assign to the gadget instance; if unset, it will be generated",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:          ParamEventBufferLength,
+			Description:  "Number of events to buffer on the server so they can be replayed when attaching; used with --detach; 0 = use server settings",
+			TypeHint:     params.TypeInt,
+			DefaultValue: "0",
+			Tags:         []string{"!attach"},
+		},
+	}...)
 	switch r.connectionMode {
 	case ConnectionModeDirect:
 		return p
@@ -312,7 +308,9 @@ nodesLoop:
 	return res, nil
 }
 
-func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]target, error) {
+// getTargets returns targets depending on the params given and the environment. The returned
+// bool is true, if the user explicitly selected the nodes using params.
+func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]target, bool, error) {
 	switch r.connectionMode {
 	case ConnectionModeKubernetesProxy:
 		// Get nodes to run on
@@ -320,19 +318,19 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 		gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 		pods, err := getGadgetPods(ctx, r.restConfig, nodes, gadgetNamespace)
 		if err != nil {
-			return nil, fmt.Errorf("get gadget pods: %w", err)
+			return nil, false, fmt.Errorf("get gadget pods: %w", err)
 		}
 		if len(pods) == 0 {
-			return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes)
+			return nil, false, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes)
 		}
-		return pods, nil
+		return pods, len(nodes) != 0, nil
 	case ConnectionModeDirect:
 		inTargets := r.globalParams.Get(ParamRemoteAddress).AsStringSlice()
 		targets := make([]target, 0)
 		for _, t := range inTargets {
 			purl, err := url.Parse(t)
 			if err != nil {
-				return nil, fmt.Errorf("invalid remote address %q: %w", t, err)
+				return nil, false, fmt.Errorf("invalid remote address %q: %w", t, err)
 			}
 			tg := target{
 				addressOrPod: purl.Host,
@@ -345,9 +343,9 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 			}
 			targets = append(targets, tg)
 		}
-		return targets, nil
+		return targets, true, nil
 	}
-	return nil, fmt.Errorf("unsupported connection mode")
+	return nil, false, fmt.Errorf("unsupported connection mode")
 }
 
 func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
@@ -364,7 +362,7 @@ func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.Com
 		gadgetCtx.Logger().Debugf("- %s: %q", k, v)
 	}
 
-	targets, err := r.getTargets(gadgetCtx.Context(), gadgetCtx.RuntimeParams())
+	targets, _, err := r.getTargets(gadgetCtx.Context(), gadgetCtx.RuntimeParams())
 	if err != nil {
 		return nil, fmt.Errorf("getting target nodes: %w", err)
 	}
@@ -372,7 +370,7 @@ func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.Com
 }
 
 func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *params.Params) (*grpc.ClientConn, error) {
-	targets, err := r.getTargets(ctx, runtimeParams)
+	targets, _, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
 		return nil, err
 	}
