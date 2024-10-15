@@ -39,6 +39,9 @@ import (
 
 	// Import this early to set the environment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
+	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
+	k8sconfigmapstore "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store/k8s-configmap-store"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
@@ -362,6 +365,19 @@ func main() {
 		}
 		service := gadgetservice.NewService(log.StandardLogger())
 		service.SetEventBufferLength(bufferLength)
+
+		mgr, err := instancemanager.New(local.New())
+		if err != nil {
+			log.Fatalf("initializing manager: %v", err)
+		}
+
+		store, err := k8sconfigmapstore.New(mgr)
+		if err != nil {
+			log.Fatalf("initializing store: %v", err)
+		}
+
+		service.SetStore(store)
+		service.SetInstanceManager(mgr)
 
 		socketType, socketPath, err := api.ParseSocketAddress(gadgetServiceHost)
 		if err != nil {
