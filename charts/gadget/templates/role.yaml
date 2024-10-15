@@ -12,3 +12,6 @@ rules:
     resources: [ "secrets" ]
     # get secrets is needed for retrieving pull secret.
     verbs: [ "get" ]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list", "create", "delete", "patch", "update"]
