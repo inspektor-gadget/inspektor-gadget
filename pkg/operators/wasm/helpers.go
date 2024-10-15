@@ -41,6 +41,22 @@ func bufFromStack(m wapi.Module, pointer uint64) ([]byte, error) {
 	return buf, nil
 }
 
+func bufToStack(m wapi.Module, buf []byte, pointer uint64) error {
+	address := getAddress(pointer)
+	size := getLength(pointer)
+	length := uint32(len(buf))
+
+	if length > size {
+		return fmt.Errorf("buffer size %d is bigger than %d", length, size)
+	}
+
+	if !m.Memory().Write(address, buf) {
+		return fmt.Errorf("writing at address %x", address)
+	}
+
+	return nil
+}
+
 func stringFromStack(m wapi.Module, val uint64) (string, error) {
 	// handle empty strings in a special way
 	if val == 0 {
