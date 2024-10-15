@@ -90,6 +90,18 @@ func BuildCommonData(containerName string, options ...CommonDataOption) eventtyp
 	return e
 }
 
+func BuildEndpointK8sData(kind, name, namespace, labels string) K8s {
+	if CurrentTestComponent != KubectlGadgetTestComponent {
+		return K8s{}
+	}
+	return K8s{
+		Kind:      kind,
+		Name:      name,
+		Namespace: namespace,
+		Labels:    labels,
+	}
+}
+
 func NormalizeCommonData(e *eventtypes.CommonData) {
 	// The container image digest is not currently enriched for Docker containers:
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/2365

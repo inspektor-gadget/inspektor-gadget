@@ -80,7 +80,7 @@ func TestTraceDNS(t *testing.T) {
 
 	// TODO: The current logic creates the namespace when running the pod, hence
 	// we need a namespace for each pod
-	var nsClient string
+	var nsClient, nsServer string
 	serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(serverImage)}
 	clientContainerOpts := []containers.ContainerOption{containers.WithContainerImage(clientImage)}
 
@@ -88,7 +88,7 @@ func TestTraceDNS(t *testing.T) {
 		nsClient = utils.GenerateTestNamespaceName(t, "test-trace-dns-client")
 		clientContainerOpts = append(clientContainerOpts, containers.WithContainerNamespace(nsClient))
 
-		nsServer := utils.GenerateTestNamespaceName(t, "test-trace-dns-server")
+		nsServer = utils.GenerateTestNamespaceName(t, "test-trace-dns-server")
 		serverContainerOpts = append(serverContainerOpts, containers.WithContainerNamespace(nsServer))
 	}
 
@@ -131,6 +131,8 @@ func TestTraceDNS(t *testing.T) {
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
+			k8sDataClient := utils.BuildEndpointK8sData("pod", clientContainerName, nsClient, fmt.Sprintf("run=%s", clientContainerName))
+			k8sDataServer := utils.BuildEndpointK8sData("pod", serverContainerName, nsServer, fmt.Sprintf("run=%s", serverContainerName))
 			expectedEntries := []*traceDNSEvent{
 				// A query from client
 				{
@@ -140,12 +142,14 @@ func TestTraceDNS(t *testing.T) {
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "UDP",
+						K8s:     k8sDataClient,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
 						Proto:   "UDP",
+						K8s:     k8sDataServer,
 					},
 					Pcomm:    "sh",
 					Comm:     "nslookup",
@@ -177,12 +181,14 @@ func TestTraceDNS(t *testing.T) {
 						Version: 4,
 						Port:    53,
 						Proto:   "UDP",
+						K8s:     k8sDataServer,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "UDP",
+						K8s:     k8sDataClient,
 					},
 					Pcomm:     "sh",
 					Comm:      "nslookup",
@@ -215,12 +221,14 @@ func TestTraceDNS(t *testing.T) {
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "UDP",
+						K8s:     k8sDataClient,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
 						Proto:   "UDP",
+						K8s:     k8sDataServer,
 					},
 					Pcomm:    "sh",
 					Comm:     "nslookup",
@@ -252,12 +260,14 @@ func TestTraceDNS(t *testing.T) {
 						Version: 4,
 						Port:    53,
 						Proto:   "UDP",
+						K8s:     k8sDataServer,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "UDP",
+						K8s:     k8sDataClient,
 					},
 					Pcomm:     "sh",
 					Comm:      "nslookup",
