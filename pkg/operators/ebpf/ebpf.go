@@ -642,6 +642,10 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	i.collection = collection
 
+	for name, m := range i.collection.Maps {
+		gadgetCtx.SetVar(operators.MapPrefix+name, m)
+	}
+
 	for _, tracer := range i.tracers {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
 		go func(tracer *Tracer) {
