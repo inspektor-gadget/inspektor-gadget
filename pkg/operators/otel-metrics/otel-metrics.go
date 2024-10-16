@@ -17,6 +17,7 @@ package otelmetrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -82,6 +83,7 @@ var renderedDsCliAnnotations = map[string]string{
 
 type otelMetricsOperator struct {
 	// exporter is the global exporter instance
+	server        *http.Server
 	exporter      *otelprometheus.Exporter
 	meterProvider metric.MeterProvider
 
@@ -112,14 +114,35 @@ func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
 		go func() {
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", promhttp.Handler())
-			err := http.ListenAndServe(globalParams.Get(ParamOtelMetricsListenAddress).AsString(), mux)
-			if err != nil {
+
+			m.server = &http.Server{
+				Addr:    globalParams.Get(ParamOtelMetricsListenAddress).AsString(),
+				Handler: mux,
+			}
+
+			// ErrServerClosed on graceful close
+			err := m.server.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				log.Errorf("serving otel metrics on: %s", err)
+				m.server = nil
 				return
 			}
 		}()
 	}
 	return nil
+}
+
+func (m *otelMetricsOperator) Close() {
+	if m.server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := m.server.Shutdown(ctx); err != nil {
+			log.Errorf("shutting down otel metrics server: %s", err)
+		}
+	}
+	if m.exporter != nil {
+		m.exporter.Shutdown(context.Background())
+	}
 }
 
 func (m *otelMetricsOperator) GlobalParams() api.Params {
