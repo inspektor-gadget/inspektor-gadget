@@ -1,0 +1,116 @@
+name: rand_bit_flip
+description: Randomly flips a random bit in the packet
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/rand_bit_flip
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/rand_bit_flip
+datasources:
+  events_map:
+    annotations:
+      events_map.collect: "true"
+    fields: {}
+  events_map_iter:
+    fields:
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      dst:
+        annotations:
+          description: Destination endpoint
+          template: l4endpoint
+      egress:
+        annotations:
+          description: A boolean parameter to indicate whether the program is attached
+            at the egress hookpoint or not
+      flip_cnt:
+        annotations:
+          description: The number of packets flipped per target address, port pair
+      gid:
+        annotations:
+          columns.hidden: "true"
+          description: Group ID
+          template: uid
+      ingress:
+        annotations:
+          description: A boolean parameter to indicate whether the program is attached
+            at the ingress hookpoint or not
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          template: ns
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      pcomm:
+        annotations:
+          columns.hidden: "true"
+          template: pcomm
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      ppid:
+        annotations:
+          columns.hidden: "true"
+          description: Parent process ID
+          template: pid
+      src:
+        annotations:
+          description: Source endpoint
+          template: l4endpoint
+      tid:
+        annotations:
+          columns.hidden: "true"
+          description: Thread ID
+          template: pid
+      timestamp_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Timestamp at which the event was generated
+          template: timestamp
+      uid:
+        annotations:
+          columns.hidden: "true"
+          description: User ID
+          template: uid
+params:
+  ebpf:
+    egress:
+      key: egress
+      defaultValue: "true"
+      description: This is a boolean parameter to indicate whether the program is
+        to be attached at the egress hookpoint or not
+    filter_tcp:
+      key: filter_tcp
+      defaultValue: "true"
+      description: This is a boolean parameter to decide whether TCP packets should
+        be filtered or not
+    filter_udp:
+      key: filter_udp
+      defaultValue: "true"
+      description: This is a boolean parameter to decide whether UDP packets should
+        be filtered or not
+    flip_percentage:
+      key: flip_percentage
+      defaultValue: "100"
+      description: This is the percentage of packets to be flipped (Eg:- 100)
+    ingress:
+      key: ingress
+      defaultValue: "false"
+      description: This is a boolean parameter to indicate whether the program is
+        to be attached at the ingress hookpoint or not
+    ipaddr_v4_filter:
+      key: ipaddr_v4_filter
+      defaultValue: "0"
+      description: This is a string parameter of IPv4 that gets converted to a uint32
+        in the kernel space
+    ipaddr_v6_filter:
+      key: ipaddr_v6_filter
+      defaultValue: '::'
+      description: This is a string parameter of IPv6 that gets converted to a struct
+        uint128 of 2 u64 members in the kernel space
+    port:
+      key: port
+      defaultValue: "0"
+      description: port number (Eg:- 443)

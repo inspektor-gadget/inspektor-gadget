@@ -1,0 +1,184 @@
+---
+title: chaos_bit_flip
+sidebar_position: 20
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# chaos_bit_flip
+
+This gadget is used to simulate the random bit flips on packets in the network based on independent (Bernoulli) probability model
+for random packets. The program runs at the tc hook point and can be configured to run at ingress/egress and for TCP/UDP packets
+and the flip probability percentage can also be configured. We can also flip packets of a specific IP/port number.
+
+Currently, the gadget only flips one random bit. To be extended to flip more than one bit.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/chaos_packet_drop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/chaos_packet_drop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--ipaddr_v4_filter`
+
+This is a input filter parameter based on which the gadget randomly drops packets to/from this IPv4 address. 
+It is input as a string in the CLI, it gets converted to a u32 int in kernel space. By default, its value is 0, which means all
+the packets to all the IPv4 address will be dropped based on the loss_percentage. Gadget will throw error if we an input invalid IP address.
+
+Default value: `0.0.0.0`
+
+(e.g., ipaddr_v4_filter = "127.0.0.1")
+
+### `--ipaddr_v6_filter`
+
+This is a input filter parameter based on which the gadget randomly drops packets to/from this IPv6 address. 
+It is input as a string in the CLI, it gets converted to a u32 int in kernel space. By default, its value is ::, which means all
+the packets to all the IPv6 address will be dropped based on the loss_percentage. Gadget will throw error if we input an invalid IP address.
+
+Default value: `::`
+
+(e.g., ipaddr_v6_filter = "2081:d8::1")
+
+### `--egress`
+
+Indicate whether the program is to be attached at the egress hookpoint
+
+Default value: `true`
+
+### `--filter-tcp`
+
+Decide whether TCP packets should be filtered
+
+Default value: `true`
+
+### `--filter-udp`
+
+Decide whether UDP packets should be filtered
+
+Default value: `true`
+
+### `--ingress`
+
+Indicate whether the program is to be attached at the ingress hookpoint
+
+Default value: `false`
+
+### `--flip_percentage`
+
+The percentage of packets to be dropped (e.g., 100)
+
+Default value: `100`
+
+### `--port`
+
+Port number (e.g., 443)
+
+Default value: `0`
+
+## Guide
+
+This gadget as mentioned before is used to drop TCP/UDP traffic. Let's create a test
+container for the same to do the testing.
+
+Let us create a busybox container and try blocking the egress packets
+```bash
+$ docker run -it --name test busybox
+```
+This will take you inside the busybox container.
+
+Meanwhile we can open another terminal and run the `chaos_bit_flip` gadget 
+```bash
+$ sudo ig run bit_flip:latest --containername=test --verify-image=false
+```
+
+Now once the gadget starts printing out put we can go back to the terminal where we are 
+inside the busybox container the we can try the following command.
+```bash 
+/ # cd home
+/home # wget http://80.249.99.148/1GB.zip
+```
+Here we are trying to download a 1GB file (from ipv4.download.thinkbroadband.com whose IP can be found by nslookup)
+
+We see the following in the test container
+
+```
+Connecting to 80.249.99.148 (80.249.99.148:80)
+wget: error getting response: Connection reset by peer
+```
+
+On the gadget output we see 
+
+```
+WARN[0000] Ignoring runtime "cri-o" with non-existent socketPath "/run/crio/crio.sock" 
+WARN[0001] image signature verification is disabled due to using corresponding option 
+WARN[0001] image signature verification is disabled due to using corresponding option 
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true                   4294949375
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true                            0
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true  �����	������     4294949375
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true                   4294949375
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true  wget                 422957
+test                                   80.249.99.148:44652                                172.17.0.2:44652                                  1          false true  C�����^�B���              0
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+```
+Here we can see that the some bit in packet was flipped at the egress way and did not reach the intended destination
+causing the connection to reset
+
+Let's try the same with `flip_percentage` as 0% and check the results
+
+On the gadget terminal run
+```bash
+$ sudo ig run bit_flip:v2 --containername=test --verify-image=false --flip_percentage=0
+```
+and in the test container run the `# wget http://80.249.99.148/1GB.zip` command
+
+here we see that the download happens cause no flips.
+```
+saving to '1GB.zip'
+1GB.zip                6% |********                                                 | 62.6M  0:14:20 ETA^```
+On the gadget terminal, the output is as follows
+
+```
+WARN[0000] image signature verification is disabled due to using corresponding option 
+WARN[0000] image signature verification is disabled due to using corresponding option 
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+RUNTIME.CONTAINERNAME                  DST                                                SRC                                               FLIP_CNT   INGR… EGRE… COMM                    PID
+```
