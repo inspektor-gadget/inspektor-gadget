@@ -1,24 +1,27 @@
 package eventgen
 
 import (
-    "bytes"
-    "context"
-    "fmt"
-    "time"
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/kubernetes/scheme"
-    "k8s.io/client-go/rest"
-    "k8s.io/client-go/tools/remotecommand"
+	"bytes"
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 type DNSGenerator struct {
     clientset *kubernetes.Clientset
     config    *rest.Config
+    logger    logger.Logger
 }
 
-func NewDNSGenerator(config *rest.Config) (Generator, error) {
+func NewDNSGenerator(config *rest.Config, log logger.Logger) (Generator, error) {
     clientset, err := kubernetes.NewForConfig(config)
     if err != nil {
         return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
@@ -26,22 +29,24 @@ func NewDNSGenerator(config *rest.Config) (Generator, error) {
     return &DNSGenerator{
         clientset: clientset,
         config:    config,
+        logger:    log, 
     }, nil
 }
 
-func (d *DNSGenerator) Generate(domain string) (string, error) {
+func (d *DNSGenerator) Generate(domain string) (string, string, string, error) {
     namespace := "default"
     podName := fmt.Sprintf("dns-test-pod-%d", time.Now().Unix())
 
-    if err := d.createAndWaitForPod(namespace, podName); err != nil {
-        return "", err
+    container, err := d.createAndWaitForPod(namespace, podName)
+    if err != nil {
+        return "", "", "", err
     }
 
     if err := d.executeDNSLookup(namespace, podName, domain); err != nil {
-        return "", err
+        return "", "", "", err
     }
 
-    return podName, nil
+    return namespace, podName, container, nil
 }
 
 func (d *DNSGenerator) Cleanup(podName string) error {
@@ -50,11 +55,10 @@ func (d *DNSGenerator) Cleanup(podName string) error {
     if err != nil {
         return fmt.Errorf("failed to delete pod %s: %v", podName, err)
     }
-    fmt.Printf("Successfully deleted pod %s in namespace %s\n", podName, namespace)
     return nil
 }
 
-func (d *DNSGenerator) createAndWaitForPod(namespace, name string) error {
+func (d *DNSGenerator) createAndWaitForPod(namespace, name string) (string, error) {
     pod := &corev1.Pod{
         ObjectMeta: metav1.ObjectMeta{Name: name},
         Spec: corev1.PodSpec{
@@ -68,20 +72,20 @@ func (d *DNSGenerator) createAndWaitForPod(namespace, name string) error {
 
     _, err := d.clientset.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
     if err != nil {
-        return fmt.Errorf("failed to create pod: %v", err)
+        return "", fmt.Errorf("failed to create pod: %v", err)
     }
 
     for i := 0; i < 60; i++ {
         pod, err := d.clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
         if err != nil {
-            return err
+            return "", err
         }
         if pod.Status.Phase == corev1.PodRunning {
-            return nil
+            return pod.Spec.Containers[0].Name, nil
         }
         time.Sleep(time.Second)
     }
-    return fmt.Errorf("pod did not become ready within 60 seconds")
+    return "", fmt.Errorf("pod did not become ready within 60 seconds")
 }
 
 func (d *DNSGenerator) executeDNSLookup(namespace, podName, domain string) error {
@@ -91,7 +95,7 @@ func (d *DNSGenerator) executeDNSLookup(namespace, podName, domain string) error
         Namespace(namespace).
         SubResource("exec").
         VersionedParams(&corev1.PodExecOptions{
-            Command: []string{"sh", "-c", fmt.Sprintf("echo 'Performing DNS lookup for %s'; nslookup %s; echo 'DNS lookup completed'", domain, domain)},
+            Command: []string{"sh", "-c", fmt.Sprintf("nslookup %s", domain)},
             Stdout:  true,
             Stderr:  true,
         }, scheme.ParameterCodec)
@@ -102,7 +106,7 @@ func (d *DNSGenerator) executeDNSLookup(namespace, podName, domain string) error
     }
 
     var stdout, stderr bytes.Buffer
-    err = exec.Stream(remotecommand.StreamOptions{
+    err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
         Stdout: &stdout,
         Stderr: &stderr,
     })
@@ -110,7 +114,7 @@ func (d *DNSGenerator) executeDNSLookup(namespace, podName, domain string) error
         return fmt.Errorf("failed to execute command: %v", err)
     }
 
-    fmt.Printf("DNS lookup output:\n%s\n", stdout.String())
+    d.logger.Debugf("DNS lookup output:\n%s\n", stdout.String())
     if stderr.Len() > 0 {
         fmt.Printf("DNS lookup error:\n%s\n", stderr.String())
     }

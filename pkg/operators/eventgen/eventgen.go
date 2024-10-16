@@ -8,6 +8,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 type Generator interface {
-	Generate(target string) (string, error)
+	Generate(target string) (string, string, string, error)
 	Cleanup(podName string) error
 }
 
@@ -76,6 +77,8 @@ type eventGenOperatorInstance struct {
 	target    string
 	generator Generator
 	podName   string
+	namespace string
+	container string
 }
 
 func (e eventGenOperatorInstance) Name() string {
@@ -96,20 +99,23 @@ func (e *eventGenOperatorInstance) Start(gadgetCtx operators.GadgetContext) erro
 		return fmt.Errorf("eventgen-target not specified")
 	}
 
-	gadgetCtx.Logger().Infof("Starting EventGen with type: %s, target: %s", e.eventType, e.target)
+	gadgetCtx.Logger().Debugf("Starting EventGen with type: %s, target: %s", e.eventType, e.target)
 
 	var err error
-	e.generator, err = NewGenerator(e.eventType)
+	e.generator, err = NewGenerator(e.eventType, gadgetCtx.Logger())
 	if err != nil {
 		return fmt.Errorf("failed to create generator: %v", err)
 	}
 
-	e.podName, err = e.generator.Generate(e.target)
+	e.namespace, e.podName, e.container, err = e.generator.Generate(e.target)
 	if err != nil {
 		return fmt.Errorf("failed to generate event: %v", err)
 	}
 
-	gadgetCtx.Logger().Infof("Generated %s event using pod %s", e.eventType, e.podName)
+	gadgetCtx.Logger().Debugf("Generated %s event successfully using: \n" +
+	    "Namespace: %s \n" +
+		"pod: %s \n"+
+		"container: %s", e.eventType, e.namespace, e.podName, e.container)
 	return nil
 }
 
@@ -119,12 +125,12 @@ func (e *eventGenOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error
 		if err != nil {
 			return fmt.Errorf("failed to cleanup event pod: %v", err)
 		}
-		gadgetCtx.Logger().Infof("Cleaned up event pod %s", e.podName)
+		gadgetCtx.Logger().Debugf("Successfully terminated pod %s", e.podName)
 	}
 	return nil
 }
 
-func NewGenerator(eventType string) (Generator, error) {
+func NewGenerator(eventType string, log logger.Logger) (Generator, error) {
 	config, err := getKubeConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Kubernetes config: %v", err)
@@ -132,9 +138,9 @@ func NewGenerator(eventType string) (Generator, error) {
 
 	switch eventType {
 	case "dns":
-		return NewDNSGenerator(config)
+		return NewDNSGenerator(config, log)
 	case "http":
-		return NewHTTPGenerator(config)
+		return NewHTTPGenerator(config, log)
 	default:
 		return nil, fmt.Errorf("unknown generator type: %s", eventType)
 	}
