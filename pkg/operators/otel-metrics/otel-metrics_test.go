@@ -16,6 +16,8 @@ package otelmetrics
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -30,6 +32,71 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 )
+
+func TestMetricsInit(t *testing.T) {
+	type test struct {
+		name                      string
+		metricsListenValue        string
+		metricsListenAddressValue string
+		expectedError             bool
+	}
+
+	tests := []test{
+		{
+			name:          "default params values",
+			expectedError: false,
+		},
+		{
+			name:               "enable listener with default address",
+			metricsListenValue: "true",
+			expectedError:      false,
+		},
+		{
+			name:                      "enable listener at custom address",
+			metricsListenValue:        "true",
+			metricsListenAddressValue: "127.0.0.1:8080",
+			expectedError:             false,
+		},
+		{
+			name:                      "enable listener at invalid address",
+			metricsListenValue:        "true",
+			metricsListenAddressValue: "invalid",
+			// TODO: Report error on Init
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &otelMetricsOperator{}
+			globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+
+			if tt.metricsListenValue != "" {
+				globalParams.Set(ParamOtelMetricsListen, tt.metricsListenValue)
+			}
+			if tt.metricsListenAddressValue != "" {
+				globalParams.Set(ParamOtelMetricsListenAddress, tt.metricsListenAddressValue)
+			}
+
+			err := o.Init(globalParams)
+			require.NoError(t, err)
+			defer o.Close()
+
+			if tt.metricsListenValue == "true" {
+				// Wait for HTTP listener to start
+				time.Sleep(500 * time.Millisecond)
+
+				// Check if the listener is running at the expected address
+				_, err := http.Get(fmt.Sprintf("http://%s/metrics", globalParams.Get(ParamOtelMetricsListenAddress)))
+				if tt.expectedError {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			}
+		})
+	}
+}
 
 func TestMetricsCounterAndGauge(t *testing.T) {
 	o := &otelMetricsOperator{skipListen: true}
