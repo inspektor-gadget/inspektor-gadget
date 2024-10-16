@@ -78,7 +78,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	bpf_get_current_comm(&ip_key.comm, sizeof(ip_key.comm));
 	ip_key.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	ip_key.dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-	ip_key.src.proto = ip_key.dst.proto = IPPROTO_TCP;
+	ip_key.src.proto_raw = ip_key.dst.proto_raw = IPPROTO_TCP;
 	if (family == AF_INET) {
 		ip_key.src.version = ip_key.dst.version = 4;
 	} else {

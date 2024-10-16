@@ -90,7 +90,7 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	if (!event)
 		return 0;
 
-	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 
 	sockp = (struct inet_sock *)sk;
 

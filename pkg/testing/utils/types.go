@@ -20,7 +20,7 @@ type L4Endpoint struct {
 	Addr    string `json:"addr"`
 	Version uint8  `json:"version"`
 	Port    uint16 `json:"port"`
-	Proto   uint16 `json:"proto"`
+	Proto   string `json:"proto"`
 }
 
 type L3Endpoint struct {

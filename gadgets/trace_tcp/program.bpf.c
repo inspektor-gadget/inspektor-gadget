@@ -158,7 +158,7 @@ static __always_inline void fill_event(struct tuple_key_t *tuple,
 	event->tid = (__u32)pid_tgid;
 	event->uid = (__u32)uid_gid;
 	event->gid = (__u32)(uid_gid >> 32);
-	event->src.proto = event->dst.proto = IPPROTO_TCP;
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 	event->netns_id = tuple->netns;
 	event->mntns_id = mntns_id;
 	if (family == AF_INET) {

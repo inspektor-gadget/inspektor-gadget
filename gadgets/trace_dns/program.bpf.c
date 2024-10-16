@@ -287,7 +287,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	event.data_len = skb->len;
 	event.dns_off = dns_off;
 	event.pkt_type_raw = skb->pkt_type;
-	event.src.proto = event.dst.proto = proto;
+	event.src.proto_raw = event.dst.proto_raw = proto;
 	event.src.port = sport;
 	event.dst.port = dport;
 

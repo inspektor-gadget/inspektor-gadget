@@ -208,7 +208,8 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 
 	event->addr.port = sport;
 	event->addr.version = ver;
-	event->addr.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
+	event->addr.proto_raw =
+		BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 
 	if (ver == 4) {
 		bpf_probe_read_kernel(&event->addr.addr_raw.v4,

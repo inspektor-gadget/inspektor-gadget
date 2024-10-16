@@ -109,7 +109,7 @@ socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
 		return;
 	}
 
-	entry.src.proto = entry.dst.proto = proto;
+	entry.src.proto_raw = entry.dst.proto_raw = proto;
 	entry.src.port = bpf_htons(srcp);
 	entry.dst.port = bpf_htons(destp);
 	entry.state = state;
