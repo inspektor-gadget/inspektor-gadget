@@ -103,7 +103,3 @@ is an example of a gadget using this data source.
 ### Snapshotters
 
 TODO
-
-### Profilers
-
-TODO
