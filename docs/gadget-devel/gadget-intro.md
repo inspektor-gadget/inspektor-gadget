@@ -66,15 +66,15 @@ Map Iterators are used to report statistics like number of files being opened,
 bytes going through a network connection, etc. The information is saved by the
 Gadget on hash maps where it's then read by Inspektor Gadget.
 
-Gadgets need to define the types for the key and value and a hash map used to store the information:
+Gadgets need to define the fields for the key and value and a hash map used to store the information:
 
 ```c
 struct key {
-	// types in key
+	// fields in key
 };
 
 struct value {
-	// type sin value
+	// fields in value
 };
 
 struct {
@@ -93,6 +93,9 @@ GADGET_MAPITER(name, mapname)
 
 - name: Name of the data source
 - mapname: Name of the hash map used to store the data
+
+Currently, Map Iterator data sources only support iterating over maps of type
+`BPF_MAP_TYPE_HASH` with keys and values of type `struct`.
 
 [top_file](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets/top_file)
 is an example of a gadget using this data source.
