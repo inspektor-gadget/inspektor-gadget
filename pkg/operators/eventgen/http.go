@@ -6,6 +6,7 @@ import (
     "strings"
     "time"
 
+    "github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/kubernetes"
@@ -17,9 +18,10 @@ import (
 type HTTPGenerator struct {
     clientset *kubernetes.Clientset
     config    *rest.Config
+    logger    logger.Logger
 }
 
-func NewHTTPGenerator(config *rest.Config) (Generator, error) {
+func NewHTTPGenerator(config *rest.Config, log logger.Logger) (Generator, error) {
     clientset, err := kubernetes.NewForConfig(config)
     if err != nil {
         return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
@@ -27,22 +29,24 @@ func NewHTTPGenerator(config *rest.Config) (Generator, error) {
     return &HTTPGenerator{
         clientset: clientset,
         config:    config,
+        logger:    log,
     }, nil
 }
 
-func (h *HTTPGenerator) Generate(url string) (string, error) {
+func (h *HTTPGenerator) Generate(url string) (string, string, string, error) {
     namespace := "default"
     podName := fmt.Sprintf("http-test-pod-%d", time.Now().Unix())
 
-    if err := h.createAndWaitForPod(namespace, podName); err != nil {
-        return "", fmt.Errorf("failed to create and wait for pod: %v", err)
+    container, err := h.createAndWaitForPod(namespace, podName)
+    if err != nil {
+        return "", "", "", fmt.Errorf("failed to create and wait for pod: %v", err)
     }
 
     if err := h.executeHTTPRequest(namespace, podName, url); err != nil {
-        return "", fmt.Errorf("failed to execute HTTP request: %v", err)
+        return "", "", "", fmt.Errorf("failed to execute HTTP request: %v", err)
     }
 
-    return podName, nil
+    return namespace, podName, container, nil
 }
 
 func (h *HTTPGenerator) Cleanup(podName string) error {
@@ -54,34 +58,36 @@ func (h *HTTPGenerator) Cleanup(podName string) error {
     return nil
 }
 
-func (h *HTTPGenerator) createAndWaitForPod(namespace, name string) error {
+func (h *HTTPGenerator) createAndWaitForPod(namespace, name string) (string, error) {
     pod := &corev1.Pod{
         ObjectMeta: metav1.ObjectMeta{Name: name},
         Spec: corev1.PodSpec{
             Containers: []corev1.Container{{
                 Name:    "http-test",
                 Image:   "alpine/curl",
-                Command: []string{"sleep", "3600"},
-            }},
+                //Image:   "curlimages/curl",
+                Command: []string{"sh", "-c", "while true; do sleep 3600; done"},
+            },
         },
-    }
+    },
+}
 
     _, err := h.clientset.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
     if err != nil {
-        return fmt.Errorf("failed to create pod: %v", err)
+        return "", fmt.Errorf("failed to create pod: %v", err)
     }
 
     for i := 0; i < 60; i++ {
         pod, err := h.clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
         if err != nil {
-            return err
+            return "", err
         }
         if pod.Status.Phase == corev1.PodRunning {
-            return nil
+            return pod.Spec.Containers[0].Name, nil
         }
         time.Sleep(time.Second)
     }
-    return fmt.Errorf("pod did not become ready within 60 seconds")
+    return "", fmt.Errorf("pod did not become ready within 60 seconds")
 }
 
 func (h *HTTPGenerator) executeHTTPRequest(namespace, podName, url string) error {
@@ -117,7 +123,7 @@ func (h *HTTPGenerator) executeCommand(namespace, podName string, command []stri
     }
 
     var stdout, stderr strings.Builder
-    err = exec.Stream(remotecommand.StreamOptions{
+    err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
         Stdout: &stdout,
         Stderr: &stderr,
     })
