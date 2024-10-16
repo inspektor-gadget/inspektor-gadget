@@ -27,6 +27,8 @@ import (
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
+
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 )
 
 // RunnerConfig defines how the runner should behave.
@@ -55,6 +57,10 @@ type RunnerInfo struct {
 	MountNsID   uint64
 	NetworkNsID uint64
 	UserNsID    uint64
+
+	// Alternative representation of all fields above to avoid tests making the
+	// same conversion multiple times
+	Proc ebpftypes.Process
 }
 
 // Runner is a helper type to execute tests in different conditions. It
@@ -163,6 +169,15 @@ func (r *Runner) runLoop() {
 		return
 	}
 
+	ppid := os.Getppid()
+	pcommBytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", ppid))
+	if err != nil {
+		r.replies <- fmt.Errorf("getting parent comm: %w", err)
+		return
+	}
+	pcomm := string(pcommBytes)
+	pcomm = pcomm[:len(pcomm)-1]
+
 	r.Info = &RunnerInfo{
 		Pid:         os.Getpid(),
 		Tid:         unix.Gettid(),
@@ -172,6 +187,21 @@ func (r *Runner) runLoop() {
 		MountNsID:   mountnsid,
 		NetworkNsID: netnsid,
 		UserNsID:    userNsID,
+	}
+
+	r.Info.Proc = ebpftypes.Process{
+		Comm:    r.Info.Comm,
+		Pid:     uint32(r.Info.Pid),
+		Tid:     uint32(r.Info.Tid),
+		MntNsID: r.Info.MountNsID,
+		Creds: ebpftypes.Creds{
+			Uid: uint32(r.Info.Uid),
+			Gid: uint32(r.Info.Gid),
+		},
+		Parent: ebpftypes.Parent{
+			Comm: pcomm,
+			Pid:  uint32(ppid),
+		},
 	}
 
 	// Indicate it's ready to process tasks
