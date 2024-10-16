@@ -26,8 +26,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -35,21 +35,37 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-var (
-	spec *btf.Spec
-	once sync.Once
-)
-
-func initialize() error {
+// GetBTFSpec returns the BTF spec with kernel information for the current kernel version. If the
+// kernel exposes BTF information, it returns it. If the BTF for this kernel is not found, it returns nil.
+func GetBTFSpec(programs ...*ebpf.ProgramSpec) *btf.Spec {
 	// If the kernel exposes BTF; nothing to do
-	_, err := btf.LoadKernelSpec()
+	var filter *btf.TypeFilter
+	if len(programs) > 0 {
+		filter = &btf.TypeFilter{
+			Names: map[string]bool{},
+		}
+		for _, p := range programs {
+			iter := p.Instructions.Iterate()
+			for iter.Next() {
+				if relo := btf.CORERelocationMetadata(iter.Ins); relo != nil {
+					fmt.Printf("relo %s\n", relo.String())
+					filter.Names[relo.TypeName()] = true
+				}
+			}
+		}
+	}
+	s, err := btf.LoadKernelSpecWithFilter(filter)
 	if err == nil {
-		return nil
+		return s
+	}
+	if err != nil {
+		log.Warnf("DEBUG: Failed to initialize BTF: %v", err)
 	}
 
 	info, err := GetOSInfo()
 	if err != nil {
-		return err
+		log.Warnf("Failed to initialize BTF: %v", err)
+		return nil
 	}
 
 	// architecture naming is a mess:
@@ -66,28 +82,17 @@ func initialize() error {
 
 	file, err := btfs.ReadFile(btfFile)
 	if err != nil {
-		return fmt.Errorf("reading %s BTF file %w", btfFile, err)
+		log.Warnf("Failed to initialize BTF: reading %s BTF file %w", btfFile, err)
+		return nil
 	}
 
-	s, err := btf.LoadSpecFromReader(bytes.NewReader(file))
+	s, err = btf.LoadSpecFromReader(bytes.NewReader(file), filter)
 	if err != nil {
-		return fmt.Errorf("loading BTF spec: %w", err)
+		log.Warnf("Failed to initialize BTF: loading BTF spec: %w", err)
+		return nil
 	}
 
-	spec = s
-	return nil
-}
-
-// GetBTFSpec returns the BTF spec with kernel information for the current kernel version. If the
-// kernel exposes BTF information or if the BTF for this kernel is not found, it returns nil.
-func GetBTFSpec() *btf.Spec {
-	once.Do(func() {
-		err := initialize()
-		if err != nil {
-			log.Warnf("Failed to initialize BTF: %v", err)
-		}
-	})
-	return spec
+	return s
 }
 
 type OsInfo struct {

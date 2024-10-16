@@ -99,7 +99,7 @@ func (i *btfgenOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) erro
 		return fmt.Errorf("getting BTF file: %w", err)
 	}
 
-	btfSpec, err := btf.LoadSpecFromReader(bytes.NewReader(btfBytes))
+	btfSpec, err := btf.LoadSpecFromReader(bytes.NewReader(btfBytes), nil)
 	if err != nil {
 		return fmt.Errorf("loading BTF spec: %w", err)
 	}

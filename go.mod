@@ -229,3 +229,4 @@ require (
 // gopacket/gopacket with:
 // - https://github.com/gopacket/gopacket/pull/101
 replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8
+replace github.com/cilium/ebpf => /home/alban/go/src/github.com/cilium/ebpf
