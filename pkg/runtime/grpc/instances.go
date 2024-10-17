@@ -70,7 +70,7 @@ func (r *Runtime) GetGadgetInstances(ctx context.Context, runtimeParams *params.
 func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtimeParams *params.Params, fn func(target target, client api.GadgetInstanceManagerClient) error) error {
 	// depending on the environment, we need to either connect to a single random target (k8s, where k8s/etcd handles
 	// synchronizing gadget configuration), or all possible targets (ig-daemon).
-	targets, err := r.getTargets(ctx, runtimeParams)
+	targets, _, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
 		return fmt.Errorf("getting targets: %w", err)
 	}
@@ -147,13 +147,24 @@ func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeP
 		EventBufferLength: runtimeParams.Get(ParamEventBufferLength).AsInt32(), // default for now
 	}
 
+	targets, explicit, err := r.getTargets(gadgetCtx.Context(), runtimeParams)
+	if err != nil {
+		return fmt.Errorf("getting targets: %w", err)
+	}
+
+	if explicit {
+		for _, t := range targets {
+			instanceRequest.GadgetInstance.Nodes = append(instanceRequest.GadgetInstance.Nodes, t.node)
+		}
+	}
+
 	err = r.runInstanceManagerClientForTargets(gadgetCtx.Context(), runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
 		gadgetCtx.Logger().Debugf("creating gadget on node %q", target.node)
 		res, err := client.CreateGadgetInstance(gadgetCtx.Context(), instanceRequest)
 		if err != nil {
 			return fmt.Errorf("creating gadget on node %q: %w", target.node, err)
 		}
-		gadgetCtx.Logger().Infof("installed on node %q as %q", target.node, res.GadgetInstance.Id)
+		gadgetCtx.Logger().Infof("installed as %q (via node %q)", res.GadgetInstance.Id, target.node)
 		return nil
 	})
 	if err != nil {

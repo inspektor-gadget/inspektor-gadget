@@ -7,13 +7,6 @@ description: How to run Gadgets without a client
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-:::warning
-
-Currently, the Headless Mode is only available for `ig` when run with the `--daemon` flag. Support for `ig` on
-Kubernetes will follow in a later release.
-
-:::
-
 Instead of running Gadgets interactively, you can also install Gadget Instances on your server, so they keep running
 even if you are no longer connected. This also ensures that Gadgets will be resumed after a node restart or - depending
 on the environment - when nodes are added to your cluster.
@@ -50,6 +43,15 @@ ID           NAME                     TAGS                     GADGET
 61c8fdd9b75e brave_bartik                                      trace_exec:latest
 ```
     </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget list
+ID           NAME                     TAGS                     GADGET
+4f5ae12c54bd serene_tu                                         trace_open:latest
+61c8fdd9b75e brave_bartik                                      trace_exec:latest
+```
+    </TabItem>
 </Tabs>
 
 ## Attaching to a Gadget Instance
@@ -73,6 +75,28 @@ magical_pike             groups            282454     282454 bash              2
 magical_pike             dircolors         282456     282456 bash              282455 /usr/bin/dir…      root          uid:4294967… root
 ```
     </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget attach 61c8fdd9b75e
+K8S.NODE                           K8S.NAMESPACE                      K8S.PODNAME                       K8S.CONTAINERNAME                 COMM                    PID        TID        UID        GID  FD FNAME                               MODE              ERROR
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        kube-proxy             4653       4692          0          0  10 /dev/null                           ----------
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        kube-proxy             4653       4824          0          0   9 /dev/null                           ----------
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        iptables             102586     102586          0          0   0 /etc/ld.so.cache                    ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        ip6tables            102587     102587          0          0   0 /etc/ld.so.cache                    ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        iptables             102586     102586          0          0   0 /lib/aarch64-linux-gnu/tls/aarch64… ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        ip6tables            102587     102587          0          0   0 /lib/aarch64-linux-gnu/tls/aarch64… ----------        ENOENT
+
+$ kubectl gadget attach brave_bartik
+K8S.NODE                           K8S.NAMESPACE                      K8S.PODNAME                       K8S.CONTAINERNAME                 COMM                    PID        TID        UID        GID  FD FNAME                               MODE              ERROR
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        kube-proxy             4653       4692          0          0  10 /dev/null                           ----------
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        kube-proxy             4653       4824          0          0   9 /dev/null                           ----------
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        iptables             102586     102586          0          0   0 /etc/ld.so.cache                    ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        ip6tables            102587     102587          0          0   0 /etc/ld.so.cache                    ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        iptables             102586     102586          0          0   0 /lib/aarch64-linux-gnu/tls/aarch64… ----------        ENOENT
+minikube-docker                    kube-system                        kube-proxy-hr474                  kube-proxy                        ip6tables            102587     102587          0          0   0 /lib/aarch64-linux-gnu/tls/aarch64… ----------        ENOENT
+```
+    </TabItem>
 </Tabs>
 
 ## Deleting a Gadget Instance
@@ -84,6 +108,14 @@ To delete one or more Gadget Instances, just provide the names or (partial) IDs 
 
 ```bash
 $ gadgetctl delete 4f 61
+4f5ae12c54bd7c2058c0484ebd13dbc2
+61c8fdd9b75e1aec3c242347f18cf854
+```
+    </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget delete 4f 61
 4f5ae12c54bd7c2058c0484ebd13dbc2
 61c8fdd9b75e1aec3c242347f18cf854
 ```
