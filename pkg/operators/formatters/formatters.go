@@ -403,7 +403,7 @@ var replacers = []replacer{
 					return nil, fmt.Errorf("proto size expected to be 2 bytes")
 				}
 				protoFieldName = strings.TrimSuffix(protos[0].Name(), "_raw")
-				protoField, err = in.AddSubField(protoFieldName, api.Kind_String)
+				protoField, err = in.AddSubField(protoFieldName, api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
 				if err != nil {
 					return nil, err
 				}
