@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,14 +33,8 @@ import (
 type auditSeccompEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Syscall string `json:"syscall"`
 	Code    string `json:"code"`
@@ -119,40 +114,28 @@ func TestAuditSeccomp(t *testing.T) {
 			expectedEntries := []*auditSeccompEvent{
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Comm:       "unshare",
-					Uid:        1000,
-					Gid:        1111,
+					Proc:       utils.BuildProc("unshare", 1000, 1111),
 					Syscall:    "SYS_UNSHARE",
 					Code:       "SECCOMP_RET_KILL_THREAD",
 
 					// Check the existence of the following fields
 					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					MntNsID:   utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Comm:       "mkdir",
-					Uid:        1000,
-					Gid:        1111,
+					Proc:       utils.BuildProc("mkdir", 1000, 1111),
 					Syscall:    "SYS_MKDIR",
 					Code:       "SECCOMP_RET_LOG",
 
 					// Check the existence of the following fields
 					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
-					MntNsID:   utils.NormalizedInt,
 				},
 			}
 
 			normalize := func(e *auditSeccompEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MntNsID)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
