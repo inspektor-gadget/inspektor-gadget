@@ -31,9 +31,9 @@ struct start_req_t {
 // for saving process info by request
 struct who_t {
 	gadget_mntns_id mntns_id;
-	__u32 pid;
-	__u32 tid;
-	char comm[TASK_COMM_LEN];
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_comm comm;
 };
 
 struct {
@@ -53,12 +53,12 @@ struct {
 // the key for the output summary
 struct info_t {
 	gadget_mntns_id mntns_id;
-	__u32 pid;
-	__u32 tid;
+	gadget_pid pid;
+	gadget_tid tid;
 	enum rw_type rw_raw;
 	int major;
 	int minor;
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm;
 };
 
 // the value of the output summary

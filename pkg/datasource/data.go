@@ -445,12 +445,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}}, nil
 }
 
-func applyFieldTemplate(f *field, annotations map[string]string) {
-	templateAnn := annotations[TemplateAnnotation]
-	if templateAnn == "" {
-		return
-	}
-
+func applyFieldTemplate(f *field, templateAnn string) {
 	template := annotationsTemplates[templateAnn]
 	if template == nil {
 		log.Warnf("template %q not found for field %q", templateAnn, f.Name)
@@ -472,11 +467,26 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 
 	// first pass applying configuration from metadata
 	for _, field := range newFields {
+		// apply template based on type of the field
+		for _, tag := range field.Tags {
+			suffix, ok := strings.CutPrefix(tag, "type:gadget_")
+			if !ok {
+				continue
+			}
+
+			switch suffix {
+			case "comm", "uid", "gid", "pid", "tid", "timestamp", "mntns_id", "netns_id", "pcomm", "ppid":
+				applyFieldTemplate(field, suffix)
+			}
+		}
+
 		// apply template first in case the field being added contains an
 		// annotation with it, for instance, when the field is created by an
 		// operator. The annotations added by the template can be changed by the
 		// field config below.
-		applyFieldTemplate(field, field.Annotations)
+		if templateAnn, ok := field.Annotations[TemplateAnnotation]; ok {
+			applyFieldTemplate(field, templateAnn)
+		}
 
 		// apply configuration from metadata
 		if fields == nil {
@@ -497,7 +507,9 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 
 		// apply template annotations first to allow user overwrite some
 		// annotations from the template
-		applyFieldTemplate(field, fieldAnnotations)
+		if templateAnn, ok := fieldAnnotations[TemplateAnnotation]; ok {
+			applyFieldTemplate(field, templateAnn)
+		}
 
 		for k, v := range fieldAnnotations {
 			field.Annotations[k] = v

@@ -66,12 +66,12 @@ struct event {
 	// socket context for now. Once sub-structures in the `event` are supported, convert the
 	// next fields to a struct.
 	gadget_mntns_id mount_ns_id;
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm;
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	enum tcp_state state_raw;
 	enum tcp_flags_set tcpflags_raw;

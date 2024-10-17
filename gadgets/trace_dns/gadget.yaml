@@ -9,10 +9,6 @@ datasources:
       anaddr:
         annotations:
           columns.width: "16"
-      comm:
-        annotations:
-          description: Process name
-          template: comm
       data:
         annotations:
           columns.hidden: "true"
@@ -29,11 +25,6 @@ datasources:
         annotations:
           description: Destination endpoint
           template: l4endpoint
-      gid:
-        annotations:
-          columns.hidden: "true"
-          description: Group ID
-          template: uid
       id:
         annotations:
           columns.hidden: "true"
@@ -42,29 +33,13 @@ datasources:
           columns.hidden: "true"
           columns.width: "8"
           description: DNS request latency
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
       name:
         annotations:
           columns.width: "30"
-      netns_id:
-        annotations:
-          description: Network namespace inode id
-          template: ns
       num_answers:
         annotations:
           columns.hidden: "true"
           description: Number of answers
-      pcomm:
-        annotations:
-          columns.hidden: "true"
-          template: pcomm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
       pkt_type:
         annotations:
           columns.hidden: "true"
@@ -72,11 +47,6 @@ datasources:
       pkt_type_raw:
         annotations:
           columns.hidden: "true"
-      ppid:
-        annotations:
-          columns.hidden: "true"
-          description: Parent process ID
-          template: pid
       qr:
         annotations:
           columns.minwidth: "2"
@@ -101,19 +71,3 @@ datasources:
         annotations:
           description: Source endpoint
           template: l4endpoint
-      tid:
-        annotations:
-          columns.hidden: "true"
-          description: Thread ID
-          template: pid
-      timestamp:
-        annotations:
-          template: timestamp
-      timestamp_raw:
-        annotations:
-          columns.hidden: "true"
-      uid:
-        annotations:
-          columns.hidden: "true"
-          description: User ID
-          template: uid

@@ -33,12 +33,12 @@ struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm;
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	enum event_type type_raw;
 };
@@ -69,7 +69,7 @@ struct tuple_key_t {
 
 struct pid_comm_t {
 	u64 pid_tgid;
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm;
 	u64 mntns_id;
 	u64 uid_gid;
 };
