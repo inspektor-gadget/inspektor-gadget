@@ -60,6 +60,7 @@ func GetBTFSpec(programs ...*ebpf.ProgramSpec) *btf.Spec {
 	}
 	if err != nil {
 		log.Warnf("DEBUG: Failed to initialize BTF: %v", err)
+		panic("TODO: remove this panic to support kernels without BTF thanks to btfgen")
 	}
 
 	info, err := GetOSInfo()
