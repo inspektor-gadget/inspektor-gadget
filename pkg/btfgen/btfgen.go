@@ -48,7 +48,7 @@ func GetBTFSpec(programs ...*ebpf.ProgramSpec) *btf.Spec {
 			iter := p.Instructions.Iterate()
 			for iter.Next() {
 				if relo := btf.CORERelocationMetadata(iter.Ins); relo != nil {
-					fmt.Printf("relo %s\n", relo.String())
+					//fmt.Printf("relo %s\n", relo.String())
 					filter.Names[relo.TypeName()] = true
 				}
 			}
