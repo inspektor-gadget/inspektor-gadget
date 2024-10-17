@@ -201,7 +201,9 @@ func (i *ebpfInstance) runMapIterators() error {
 			}
 			iter.ds.EmitAndRelease(p)
 		}
+		i.wg.Add(1)
 		go func() {
+			defer i.wg.Done()
 			if iter.interval == 0 {
 				// Only a single time; is this really useful?
 				fetch()
