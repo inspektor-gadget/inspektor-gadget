@@ -20,16 +20,17 @@
 package containercollection
 
 import (
-	"errors"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	v1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -38,10 +39,48 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+type podEvent struct {
+	pod     *v1.Pod
+	deleted bool
+}
+
+type podInformerHandler struct {
+	queue workqueue.TypedRateLimitingInterface[podEvent]
+}
+
+func (p *podInformerHandler) OnAdd(obj any, _ bool) {
+	switch o := obj.(type) {
+	case *v1.Pod:
+		p.queue.Add(podEvent{
+			pod:     o,
+			deleted: false,
+		})
+	}
+}
+
+func (p *podInformerHandler) OnUpdate(_, newObj any) {
+	switch o := newObj.(type) {
+	case *v1.Pod:
+		p.queue.Add(podEvent{
+			pod:     o,
+			deleted: false,
+		})
+	}
+}
+
+func (p *podInformerHandler) OnDelete(obj any) {
+	switch o := obj.(type) {
+	case *v1.Pod:
+		p.queue.Add(podEvent{
+			pod:     o,
+			deleted: true,
+		})
+	}
+}
+
 type PodInformer struct {
-	store    cache.Store
-	queue    workqueue.TypedRateLimitingInterface[string]
-	informer cache.Controller
+	factory  informers.SharedInformerFactory
+	informer podInformerHandler
 
 	stop           chan struct{}
 	updatedPodChan chan *v1.Pod
@@ -59,47 +98,20 @@ func NewPodInformer(node string) (*PodInformer, error) {
 		return nil, err
 	}
 
-	podListWatcher := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), "pods", "", fields.OneTermEqualSelector("spec.nodeName", node))
-
-	// creates the queue
-	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
-
-	store, informer := cache.NewInformerWithOptions(cache.InformerOptions{
-		ListerWatcher: podListWatcher,
-		ObjectType:    &v1.Pod{},
-		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				key, err := cache.MetaNamespaceKeyFunc(obj)
-				if err == nil {
-					queue.Add(key)
-				}
-			},
-			UpdateFunc: func(old interface{}, new interface{}) {
-				key, err := cache.MetaNamespaceKeyFunc(new)
-				if err == nil {
-					queue.Add(key)
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				// IndexerInformer uses a delta queue, therefore for deletes we have to use this
-				// key function.
-				key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-				if err == nil {
-					queue.Add(key)
-				}
-			},
-		},
-		ResyncPeriod: 0,
-	})
-
 	p := &PodInformer{
-		store:          store,
-		queue:          queue,
-		informer:       informer,
+		informer: podInformerHandler{
+			queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[podEvent]()),
+		},
 		stop:           make(chan struct{}),
 		updatedPodChan: make(chan *v1.Pod),
 		deletedPodChan: make(chan string),
 	}
+
+	modifyListOptions := func(options *metaV1.ListOptions) {
+		options.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", node).String()
+	}
+	p.factory = informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithTweakListOptions(modifyListOptions))
+	p.factory.Core().V1().Pods().Informer().AddEventHandler(&p.informer)
 
 	// Now let's start the controller
 	go p.Run(1, p.stop)
@@ -129,32 +141,32 @@ func (p *PodInformer) DeletedChan() <-chan string {
 
 func (p *PodInformer) processNextItem() bool {
 	// Wait until there is a new item in the working queue
-	key, quit := p.queue.Get()
+	e, quit := p.informer.queue.Get()
 	if quit {
 		return false
 	}
 
-	defer p.queue.Done(key)
+	defer p.informer.queue.Done(e)
 
-	p.notifyChans(key)
+	p.notifyChans(e)
 	return true
 }
 
 // notifyChans passes the event to the channels configured by the user
-func (p *PodInformer) notifyChans(key string) error {
-	obj, exists, err := p.store.GetByKey(key)
-	if err != nil {
-		log.Errorf("Fetching object with key %s from store failed with %v", key, err)
-		return err
-	}
-	defer p.queue.Forget(key)
+func (p *PodInformer) notifyChans(e podEvent) error {
+	defer p.informer.queue.Forget(e)
 
-	if !exists {
-		p.deletedPodChan <- key
+	if e.deleted {
+		// IndexerInformer uses a delta queue, therefore for deletes we have to use this
+		// key function.
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(e.pod)
+		if err == nil {
+			p.deletedPodChan <- key
+		}
 		return nil
 	}
 
-	p.updatedPodChan <- obj.(*v1.Pod)
+	p.updatedPodChan <- e.pod
 	return nil
 }
 
@@ -162,16 +174,11 @@ func (p *PodInformer) Run(threadiness int, stopCh chan struct{}) {
 	defer runtime.HandleCrash()
 
 	// Let the workers stop when we are done
-	defer p.queue.ShutDown()
+	defer p.informer.queue.ShutDown()
 	log.Info("Starting Pod controller")
 
-	go p.informer.Run(stopCh)
-
-	// Wait for all involved caches to be synced, before processing items from the queue is started
-	if !cache.WaitForCacheSync(stopCh, p.informer.HasSynced) {
-		runtime.HandleError(errors.New("timed out waiting for caches to sync"))
-		return
-	}
+	p.factory.Start(stopCh)
+	p.factory.WaitForCacheSync(stopCh)
 
 	for i := 0; i < threadiness; i++ {
 		p.wg.Add(1)
