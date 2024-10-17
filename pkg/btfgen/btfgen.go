@@ -41,8 +41,9 @@ var (
 )
 
 func initialize() error {
-	// If the kernel exposes BTF; nothing to do
-	_, err := btf.LoadKernelSpec()
+	// If the kernel exposes BTF; use that
+	var err error
+	spec, err = btf.LoadKernelSpec()
 	if err == nil {
 		return nil
 	}
@@ -78,8 +79,9 @@ func initialize() error {
 	return nil
 }
 
-// GetBTFSpec returns the BTF spec with kernel information for the current kernel version. If the
-// kernel exposes BTF information or if the BTF for this kernel is not found, it returns nil.
+// GetBTFSpec returns the BTF spec with kernel information for the current
+// kernel version. If the kernel exposes BTF information, it returns it. If the
+// BTF for this kernel is not found, it returns nil.
 func GetBTFSpec() *btf.Spec {
 	once.Do(func() {
 		err := initialize()
