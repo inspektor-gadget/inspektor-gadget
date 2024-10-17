@@ -1,6 +1,6 @@
 module main
 
-go 1.22.7
+go 1.22.8
 
 // Version doesn't matter because of the replace directive below.
 require github.com/inspektor-gadget/inspektor-gadget v0.0.0

@@ -1,6 +1,6 @@
 module main
 
-go 1.22.7
+go 1.22.8
 
 toolchain go1.22.6
 
