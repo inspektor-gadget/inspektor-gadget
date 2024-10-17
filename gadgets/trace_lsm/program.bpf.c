@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 
@@ -168,14 +169,7 @@ enum lsm_tracepoint { FOR_EACH_LSM_HOOK(ENUM_ITEM) };
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	enum lsm_tracepoint tracepoint_raw;
 };
@@ -193,36 +187,24 @@ GADGET_PARAM(trace_all);
 
 FOR_EACH_LSM_HOOK(DECLARE_LSM_PARAMETER)
 
-#define TRACE_LSM(name)                                                \
-	SEC("lsm/" #name)                                              \
-	int trace_lsm_##name()                                         \
-	{                                                              \
-		struct event event;                                    \
-		u64 mntns_id;                                          \
-		u64 pid_tgid;                                          \
-		u64 uid_gid;                                           \
-                                                                       \
-		if (!trace_##name && !trace_all)                       \
-			return 0;                                      \
-                                                                       \
-		mntns_id = gadget_get_mntns_id();                      \
-		if (gadget_should_discard_mntns_id(mntns_id))          \
-			return 0;                                      \
-                                                                       \
-		pid_tgid = bpf_get_current_pid_tgid();                 \
-		uid_gid = bpf_get_current_uid_gid();                   \
-                                                                       \
-		event.mntns_id = mntns_id;                             \
-		event.timestamp_raw = bpf_ktime_get_boot_ns();         \
-		event.pid = pid_tgid >> 32;                            \
-		event.tid = pid_tgid;                                  \
-		event.uid = uid_gid;                                   \
-		event.gid = uid_gid >> 32;                             \
-		event.tracepoint_raw = name;                           \
-		bpf_get_current_comm(event.comm, sizeof(event.comm));  \
-                                                                       \
-		bpf_ringbuf_output(&events, &event, sizeof(event), 0); \
-		return 0;                                              \
+#define TRACE_LSM(name)                                                    \
+	SEC("lsm/" #name)                                                  \
+	int trace_lsm_##name()                                             \
+	{                                                                  \
+		struct event event;                                        \
+                                                                           \
+		if (!trace_##name && !trace_all)                           \
+			return 0;                                          \
+                                                                           \
+		if (gadget_should_discard_mntns_id(gadget_get_mntns_id())) \
+			return 0;                                          \
+                                                                           \
+		gadget_process_populate(&event.proc);                      \
+		event.timestamp_raw = bpf_ktime_get_boot_ns();             \
+		event.tracepoint_raw = name;                               \
+                                                                           \
+		bpf_ringbuf_output(&events, &event, sizeof(event), 0);     \
+		return 0;                                                  \
 	}
 
 FOR_EACH_LSM_HOOK(TRACE_LSM)

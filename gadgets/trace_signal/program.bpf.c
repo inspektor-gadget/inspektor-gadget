@@ -5,6 +5,7 @@
 #include <bpf/bpf_core_read.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -16,14 +17,7 @@ struct value {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	__u32 tpid;
 
@@ -85,7 +79,6 @@ static int probe_entry(pid_t tpid, int sig)
 static int probe_exit(void *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 tid = (__u32)pid_tgid;
 	struct event *eventp;
 	struct value *vp;
@@ -104,12 +97,10 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		goto cleanup;
 
+	gadget_process_populate(&eventp->proc);
 	eventp->error_raw = -ret;
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
-	eventp->uid = (u32)uid_gid;
-	eventp->gid = (u32)(uid_gid >> 32);
 	eventp->sig_raw = vp->sig;
-	eventp->mntns_id = vp->mntns_id;
 	gadget_submit_buf(ctx, &events, eventp, sizeof(*eventp));
 
 cleanup:
@@ -170,16 +161,12 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	int ret = ctx->errno;
 	int sig = ctx->sig;
 	__u64 pid_tgid;
-	gadget_pid pid;
-	u64 mntns_id;
-	__u64 uid_gid = bpf_get_current_uid_gid();
+	__u32 pid;
 
 	if (kill_only)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	if (failed_only && ret == 0)
@@ -197,15 +184,10 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	if (!event)
 		return 0;
 
-	event->pid = pid;
-	event->tid = (__u32)pid_tgid;
+	gadget_process_populate(&event->proc);
 	event->tpid = tpid;
-	event->mntns_id = mntns_id;
 	event->sig_raw = sig;
 	event->error_raw = -ret;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 	return 0;

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,16 +33,10 @@ import (
 type traceTCPretransEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-	NetNs     uint64 `json:"netns_id"`
+	Timestamp string            `json:"timestamp"`
+	NetNs     uint64            `json:"netns_id"`
+	Proc      ebpftypes.Process `json:"proc"`
 
-	Pid uint32 `json:"pid"`
-	Tid uint32 `json:"tid"`
-	Uid uint32 `json:"uid"`
-	Gid uint32 `json:"gid"`
-
-	Comm string           `json:"comm"`
 	Type string           `json:"type"`
 	Src  utils.L4Endpoint `json:"src"`
 	Dst  utils.L4Endpoint `json:"dst"`
@@ -97,6 +92,7 @@ func TestTraceTCPretrans(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntries := &traceTCPretransEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				Proc:       utils.BuildProc("wget", 0, 0),
 				Src: utils.L4Endpoint{
 					Addr:    utils.NormalizedStr,
 					Version: 4,
@@ -109,25 +105,16 @@ func TestTraceTCPretrans(t *testing.T) {
 					Port:    443,
 					Proto:   "TCP",
 				},
-				Uid: 0,
-				Gid: 0,
-
-				Comm: "wget",
 				Type: "RETRANS",
 
 				Timestamp: utils.NormalizedStr,
-				MntNsID:   utils.NormalizedInt,
 				NetNs:     utils.NormalizedInt,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
 			}
 			normalize := func(e *traceTCPretransEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeInt(&e.NetNs)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.Src.Addr)
 				utils.NormalizeInt(&e.Src.Port)
 			}

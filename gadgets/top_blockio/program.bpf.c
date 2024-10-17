@@ -6,6 +6,7 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
+#include <gadget/common.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
@@ -26,14 +27,6 @@ struct start_req_t {
 	__u64 data_len;
 };
 
-// for saving process info by request
-struct who_t {
-	gadget_mntns_id mntns_id;
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_comm comm[TASK_COMM_LEN];
-};
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
@@ -45,18 +38,15 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
 	__type(key, struct request *);
-	__type(value, struct who_t);
+	__type(value, struct gadget_process);
 } whobyreq SEC(".maps");
 
 // the key for the output summary
 struct info_t {
-	gadget_mntns_id mntns_id;
-	gadget_pid pid;
-	gadget_tid tid;
+	struct gadget_process proc;
 	enum rw_type rw_raw;
 	int major;
 	int minor;
-	gadget_comm comm[TASK_COMM_LEN];
 };
 
 // the value of the output summary
@@ -77,23 +67,14 @@ GADGET_MAPITER(blockio, counts);
 
 static __always_inline int trace_start(struct request *req)
 {
-	__u64 mntns_id;
-	__u64 pid_tgid;
-
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
-	struct who_t who = {};
+	struct gadget_process who;
 
 	// cache PID and comm by-req
-	bpf_get_current_comm(&who.comm, sizeof(who.comm));
-	pid_tgid = bpf_get_current_pid_tgid();
-	who.pid = pid_tgid >> 32;
-	who.tid = (__u32)pid_tgid;
+	gadget_process_populate(&who);
 
-	who.mntns_id = mntns_id;
 	bpf_map_update_elem(&whobyreq, &req, &who, 0);
 
 	return 0;
@@ -104,13 +85,6 @@ int BPF_KPROBE(ig_topio_req, struct request *req)
 {
 	/* time block I/O */
 	struct start_req_t start_req;
-	u64 mntns_id;
-
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
-		return 0;
-
 	start_req.ts = bpf_ktime_get_ns();
 	start_req.data_len = BPF_CORE_READ(req, __data_len);
 
@@ -126,7 +100,7 @@ static __always_inline int trace_done(struct request *req)
 	struct start_req_t *startp;
 	unsigned int req_op_flags;
 	struct gendisk *disk;
-	struct who_t *whop;
+	struct gadget_process *whop;
 	u64 delta_us;
 
 	/* fetch timestamp and calculate delta */
@@ -149,12 +123,8 @@ static __always_inline int trace_done(struct request *req)
 		goto end;
 
 	whop = bpf_map_lookup_elem(&whobyreq, &req);
-	if (whop) {
-		info.pid = whop->pid;
-		info.tid = whop->tid;
-		info.mntns_id = whop->mntns_id;
-		__builtin_memcpy(&info.comm, whop->comm, sizeof(info.comm));
-	}
+	if (whop)
+		__builtin_memcpy(&info.proc, whop, sizeof(info.proc));
 
 	valp = bpf_map_lookup_or_try_init(&counts, &info, &zero);
 

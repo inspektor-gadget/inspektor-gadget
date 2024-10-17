@@ -6,6 +6,7 @@
 
 #define GADGET_NO_BUF_RESERVE
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -25,17 +26,8 @@
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
-
-	gadget_pcomm pcomm[TASK_COMM_LEN];
-	gadget_ppid ppid;
 	gadget_uid loginuid;
 	__u32 sessionid;
 	gadget_errno error_raw;
@@ -94,30 +86,24 @@ SEC("tracepoint/syscalls/sys_enter_execve")
 int ig_execve_e(struct syscall_trace_enter *ctx)
 {
 	u64 id;
-	pid_t pid, tgid;
+	pid_t pid;
 	struct event *event;
 	struct task_struct *task;
 	unsigned int ret;
 	const char **args = (const char **)(ctx->args[1]);
 	const char *argp;
 	int i;
-	u64 mntns_id;
 	u64 uid_gid = bpf_get_current_uid_gid();
 	u32 uid = (u32)uid_gid;
-	u32 gid = (u32)(uid_gid >> 32);
 
 	if (valid_uid(targ_uid) && targ_uid != uid)
 		return 0;
 
-	task = (struct task_struct *)bpf_get_current_task();
-	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	id = bpf_get_current_pid_tgid();
 	pid = (pid_t)id;
-	tgid = id >> 32;
 	if (bpf_map_update_elem(&execs, &pid, &empty_event, BPF_NOEXIST))
 		return 0;
 
@@ -126,16 +112,11 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 		return 0;
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->pid = tgid;
-	event->tid = pid;
-	event->uid = uid;
-	event->gid = gid;
+	task = (struct task_struct *)bpf_get_current_task();
 	event->loginuid = BPF_CORE_READ(task, loginuid.val);
 	event->sessionid = BPF_CORE_READ(task, sessionid);
-	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
 	event->args_count = 0;
 	event->args_size = 0;
-	event->mntns_id = mntns_id;
 
 	if (paths) {
 		struct fs_struct *fs = BPF_CORE_READ(task, fs);
@@ -224,12 +205,8 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	if (pinode)
 		event->pupper_layer = has_upper_layer(pinode);
 
+	gadget_process_populate(&event->proc);
 	event->error_raw = 0;
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-	if (parent != NULL) {
-		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
-				      parent->comm);
-	}
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
@@ -247,8 +224,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 {
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
 	// If the execve was successful, sched/sched_process_exec handled the event
 	// already and deleted the entry. So if we find the entry, it means the
@@ -260,13 +235,8 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	if (ignore_failed)
 		goto cleanup;
 
+	gadget_process_populate(&event->proc);
 	event->error_raw = -ctx->ret;
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
-	if (parent != NULL) {
-		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
-				      parent->comm);
-	}
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))

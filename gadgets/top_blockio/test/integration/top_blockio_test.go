@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -33,11 +34,7 @@ import (
 type topBlockioEntry struct {
 	eventtypes.CommonData
 
-	MntNsID uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
+	Proc ebpftypes.Process `json:"proc"`
 
 	Bytes uint64 `json:"bytes"`
 	Io    uint32 `json:"io"`
@@ -111,19 +108,16 @@ func TestTopBlockio(t *testing.T) {
 			func(t *testing.T, output string) {
 				expectedEntry := &topBlockioEntry{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("dd", 0, 0),
 
-					Comm: "dd",
 					// bytes manipulated by dd are given by count * bs
 					// where bs is 512 by default and we set 4096 for count
 					Bytes: 512 * 4096,
 					Rw:    "write",
 
 					// Check the existence of the following fields
-					MntNsID: utils.NormalizedInt,
-					Pid:     utils.NormalizedInt,
-					Tid:     utils.NormalizedInt,
-					Us:      utils.NormalizedInt,
-					Io:      utils.NormalizedInt,
+					Us: utils.NormalizedInt,
+					Io: utils.NormalizedInt,
 
 					// Manually normalize fields that might contain 0, so we
 					// can't use NormalizedInt and NormalizeInt()
@@ -134,9 +128,7 @@ func TestTopBlockio(t *testing.T) {
 
 				normalize := func(e *topBlockioEntry) {
 					utils.NormalizeCommonData(&e.CommonData)
-					utils.NormalizeInt(&e.MntNsID)
-					utils.NormalizeInt(&e.Pid)
-					utils.NormalizeInt(&e.Tid)
+					utils.NormalizeProc(&e.Proc)
 					utils.NormalizeInt(&e.Us)
 					utils.NormalizeInt(&e.Io)
 

@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -33,14 +34,8 @@ import (
 type traceCapabilitiesEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	CurrentUserNs uint64 `json:"current_user_ns"`
 	TargetUserNs  uint64 `json:"target_user_ns"`
@@ -101,19 +96,14 @@ func TestTraceCapabilities(t *testing.T) {
 			expectedEntries := []*traceCapabilitiesEvent{
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nice", 0, 0),
 					Cap:        "CAP_SYS_NICE",
 					Syscall:    "SYS_SETPRIORITY",
 					Audit:      1,
 					Capable:    false,
-					Comm:       "nice",
 
 					// Check the existence of the following fields
-					MntNsID:       utils.NormalizedInt,
 					Timestamp:     utils.NormalizedStr,
-					Pid:           utils.NormalizedInt,
-					Tid:           utils.NormalizedInt,
-					Uid:           0,
-					Gid:           0,
 					Kstack:        utils.NormalizedStr,
 					Insetid:       0,
 					CapEffective:  utils.NormalizedStr,
@@ -124,16 +114,12 @@ func TestTraceCapabilities(t *testing.T) {
 
 			normalize := func(e *traceCapabilitiesEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.Kstack)
 				utils.NormalizeString(&e.CapEffective)
 
 				// Manually normalize fields that might contain 0
-				e.Uid = 0
-				e.Gid = 0
 				e.CurrentUserNs = 0
 				e.TargetUserNs = 0
 				e.Insetid = 0

@@ -8,6 +8,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 
@@ -24,14 +25,7 @@ enum fs_file_op {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	__u64 delta_us; // TODO: use result of https://github.com/inspektor-gadget/inspektor-gadget/issues/3393
 	__s64 offset;
@@ -84,7 +78,6 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 	__u32 tid = (__u32)pid_tgid;
 	struct data data;
 	struct data_key key = { .tid = tid, .op = op };
-	u64 mntns_id;
 
 	if (!dentry)
 		return 0;
@@ -92,9 +85,7 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 	if (target_pid && target_pid != pid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	data.ts = bpf_ktime_get_ns();
@@ -108,7 +99,6 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	__u64 end_ns, delta_ns;
@@ -117,7 +107,6 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	struct event *event;
 	struct data_key key = { .tid = tid, .op = op };
 	struct dentry *dentry;
-	u64 mntns_id;
 
 	if (target_pid && target_pid != pid)
 		return 0;
@@ -137,20 +126,15 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	if (!event)
 		return 0;
 
+	gadget_process_populate(&event->proc);
 	event->delta_us = delta_ns / 1000;
 	event->offset = datap->start;
 	event->size = op != F_FSYNC ? size : datap->end - datap->start;
-	event->pid = pid;
-	event->tid = (__u32)pid_tgid;
-	event->uid = (__u32)uid_gid;
-	event->gid = (__u32)(uid_gid >> 32);
 	event->op_raw = op;
-	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	dentry = datap->dentry;
 	file_name = BPF_CORE_READ(dentry, d_name.name);
 	bpf_probe_read_kernel_str(&event->file, sizeof(event->file), file_name);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

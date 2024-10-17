@@ -7,6 +7,7 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
+#include <gadget/common.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/filesystem.h>
 #include <gadget/types.h>
@@ -30,20 +31,16 @@ enum type {
 struct file_id {
 	__u64 inode;
 	__u32 dev;
-	gadget_pid pid;
-	gadget_tid tid;
+	__u64 __pid_tgid;
 };
 
 struct file_stat {
-	gadget_mntns_id mntns_id;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 	__u64 reads;
 	__u64 rbytes;
 	__u64 writes;
 	__u64 wbytes;
 	char file[PATH_MAX];
-	gadget_comm comm[TASK_COMM_LEN];
 	enum type t_raw;
 };
 
@@ -78,21 +75,16 @@ static void get_file_path(struct file *file, __u8 *buf, size_t size)
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		       enum op op)
 {
-	__u64 uid_gid;
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
-	__u32 tid = (__u32)pid_tgid;
 	int mode;
 	struct file_id key = {};
 	struct file_stat *valuep;
-	u64 mntns_id;
 
 	if (target_pid && target_pid != pid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	mode = BPF_CORE_READ(file, f_inode, i_mode);
@@ -101,16 +93,15 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 
 	key.dev = BPF_CORE_READ(file, f_inode, i_rdev);
 	key.inode = BPF_CORE_READ(file, f_inode, i_ino);
-	key.pid = pid;
-	key.tid = tid;
+	key.__pid_tgid = pid_tgid;
 	valuep = bpf_map_lookup_elem(&stats, &key);
 	if (!valuep) {
 		bpf_map_update_elem(&stats, &key, &zero_value, BPF_ANY);
 		valuep = bpf_map_lookup_elem(&stats, &key);
 		if (!valuep)
 			return 0;
-		valuep->mntns_id = mntns_id;
-		bpf_get_current_comm(&valuep->comm, sizeof(valuep->comm));
+
+		gadget_process_populate(&valuep->proc);
 		get_file_path(file, valuep->file, sizeof(valuep->file));
 		if (S_ISREG(mode)) {
 			valuep->t_raw = R;
@@ -119,9 +110,6 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		} else {
 			valuep->t_raw = O;
 		}
-		uid_gid = bpf_get_current_uid_gid();
-		valuep->uid = uid_gid;
-		valuep->gid = uid_gid >> 32;
 	}
 	if (op == READ) {
 		valuep->reads++;

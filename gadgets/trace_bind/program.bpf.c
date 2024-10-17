@@ -9,6 +9,7 @@
 #include <bpf/bpf_endian.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -34,15 +35,8 @@ union bind_options {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
 	struct gadget_l4endpoint_t addr;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	gadget_errno error_raw;
 	enum bind_options_set opts_raw;
@@ -142,6 +136,9 @@ static int probe_entry(struct pt_regs *ctx, struct socket *socket)
 	if (target_pid && target_pid != pid)
 		return 0;
 
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+		return 0;
+
 	bpf_map_update_elem(&sockets, &tid, &socket, BPF_ANY);
 	return 0;
 };
@@ -149,10 +146,7 @@ static int probe_entry(struct pt_regs *ctx, struct socket *socket)
 static int probe_exit(struct pt_regs *ctx, short ver)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
-	__u64 uid_gid = bpf_get_current_uid_gid();
-	u64 mntns_id;
 	struct socket **socketp, *socket;
 	struct inet_sock *inet_sock;
 	struct sock *sock;
@@ -164,10 +158,6 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	socketp = bpf_map_lookup_elem(&sockets, &tid);
 	if (!socketp)
 		return 0;
-
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
-		goto cleanup;
 
 	ret = PT_REGS_RC(ctx);
 	if (ignore_errors && ret != 0)
@@ -195,17 +185,11 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	if (!event)
 		goto cleanup;
 
+	gadget_process_populate(&event->proc);
 	event->opts_raw = opts.data;
-	event->pid = pid;
-	event->tid = tid;
 	event->bound_dev_if = BPF_CORE_READ(sock, __sk_common.skc_bound_dev_if);
 	event->error_raw = -ret;
-	event->mntns_id = mntns_id;
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
 	event->addr.port = sport;
 	event->addr.version = ver;
 	event->addr.proto_raw =

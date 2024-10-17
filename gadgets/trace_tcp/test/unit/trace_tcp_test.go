@@ -23,21 +23,16 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 type ExpectedTraceTcpEvent struct {
-	Comm string `json:"comm"`
-	Pid  int    `json:"pid"`
-	Tid  int    `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
-	Type string `json:"type"`
+	Proc ebpftypes.Process `json:"proc"`
 
-	MntNsId int `json:"mntns_id"`
-
+	Type    string           `json:"type"`
 	NetNsId int              `json:"netns_id"`
 	Src     utils.L4Endpoint `json:"src"`
 	Dst     utils.L4Endpoint `json:"dst"`
@@ -62,13 +57,8 @@ func TestTraceTcpGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
-						Comm:    info.Comm,
-						Pid:     info.Pid,
-						Tid:     info.Tid,
-						Uid:     0,
-						Gid:     0,
+						Proc:    info.Proc,
 						Type:    "close",
-						MntNsId: int(info.MountNsID),
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
 							Addr:    "127.0.0.1",

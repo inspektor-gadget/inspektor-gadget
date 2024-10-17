@@ -4,15 +4,16 @@
 // Based on tcptracer(8) from BCC by Kinvolk GmbH and
 // tcpconnect(8) by Anton Protopopov
 #include <vmlinux.h>
-
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
+
+#include <gadget/buffer.h>
+#include <gadget/common.h>
+#include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
-#include <gadget/macros.h>
-#include <gadget/buffer.h>
 
 /* The maximum number of items in maps */
 #define MAX_ENTRIES 8192
@@ -25,18 +26,11 @@ enum event_type : u8 {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 	gadget_netns_id netns_id;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
 
 	enum event_type type_raw;
 };
@@ -65,18 +59,11 @@ struct tuple_key_t {
 	u32 netns;
 };
 
-struct pid_comm_t {
-	u64 pid_tgid;
-	gadget_comm comm[TASK_COMM_LEN];
-	u64 mntns_id;
-	u64 uid_gid;
-};
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
 	__type(key, struct tuple_key_t);
-	__type(value, struct pid_comm_t);
+	__type(value, struct gadget_process);
 } tuplepid SEC(".maps");
 
 struct {
@@ -145,20 +132,14 @@ static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 	return true;
 }
 
-static __always_inline void fill_event(struct tuple_key_t *tuple,
-				       struct event *event, __u64 pid_tgid,
-				       __u64 uid_gid, __u16 family, __u8 type,
-				       __u64 mntns_id)
+static __always_inline void fill_event(struct event *event,
+				       struct tuple_key_t *tuple, __u16 family,
+				       __u8 type)
 {
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->type_raw = type;
-	event->pid = pid_tgid >> 32;
-	event->tid = (__u32)pid_tgid;
-	event->uid = (__u32)uid_gid;
-	event->gid = (__u32)(uid_gid >> 32);
 	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
 	event->netns_id = tuple->netns;
-	event->mntns_id = mntns_id;
 	if (family == AF_INET) {
 		event->src.addr_raw.v4 = tuple->src.addr_raw.v4;
 		event->dst.addr_raw.v4 = tuple->dst.addr_raw.v4;
@@ -219,11 +200,9 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 					    __u16 family)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct tuple_key_t tuple = {};
-	struct pid_comm_t pid_comm = {};
+	struct gadget_process proc = {};
 	struct sock **skpp;
 	struct sock *sk;
 
@@ -239,12 +218,8 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	if (!fill_tuple(&tuple, sk, family))
 		goto end;
 
-	pid_comm.pid_tgid = pid_tgid;
-	pid_comm.uid_gid = uid_gid;
-	pid_comm.mntns_id = gadget_get_mntns_id();
-	bpf_get_current_comm(&pid_comm.comm, sizeof(pid_comm.comm));
-
-	bpf_map_update_elem(&tuplepid, &tuple, &pid_comm, 0);
+	gadget_process_populate(&proc);
+	bpf_map_update_elem(&tuplepid, &tuple, &proc, 0);
 
 end:
 	bpf_map_delete_elem(&sockets, &tid);
@@ -309,8 +284,8 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	if (!event)
 		return 0;
 
-	fill_event(&tuple, event, pid_tgid, uid_gid, family, close, mntns_id);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	fill_event(event, &tuple, family, close);
+	gadget_process_populate(&event->proc);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -335,7 +310,7 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	if (state == TCP_CLOSE)
 		goto end;
 
-	struct pid_comm_t *p;
+	struct gadget_process *p;
 	p = bpf_map_lookup_elem(&tuplepid, &tuple);
 	if (!p)
 		return 0; /* missed entry */
@@ -344,9 +319,8 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	if (!event)
 		goto end;
 
-	fill_event(&tuple, event, p->pid_tgid, p->uid_gid, family, connect,
-		   p->mntns_id);
-	__builtin_memcpy(&event->comm, p->comm, sizeof(event->comm));
+	fill_event(event, &tuple, family, connect);
+	__builtin_memcpy(&event->proc, p, sizeof(event->proc));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -363,7 +337,7 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	__u32 pid = pid_tgid >> 32;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 uid = uid_gid;
-	__u16 sport, family;
+	__u16 family;
 	struct event *event;
 	struct tuple_key_t t = {};
 	u64 mntns_id;
@@ -377,7 +351,6 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 		return 0;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
-	sport = BPF_CORE_READ(sk, __sk_common.skc_num);
 
 	fill_tuple(&t, sk, family);
 	/* do not send event if IP address is 0.0.0.0 or port is 0 */
@@ -392,8 +365,8 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	if (!event)
 		return 0;
 
-	fill_event(&t, event, pid_tgid, uid_gid, family, accept, mntns_id);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	fill_event(event, &t, family, accept);
+	gadget_process_populate(&event->proc);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

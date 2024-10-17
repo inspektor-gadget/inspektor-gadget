@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 
@@ -28,14 +29,7 @@ enum memop {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	enum memop operation_raw;
 	__u64 addr;
@@ -90,16 +84,13 @@ static __always_inline int gen_alloc_enter(size_t size)
 static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 					  enum memop operation, u64 addr)
 {
-	u64 mntns_id;
 	struct event *event;
 	u64 pid_tgid;
 	u32 tid;
 	u64 *size_ptr;
 	u64 size;
-	u64 uid_gid;
 
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -114,14 +105,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	if (!event)
 		return 0;
 
-	uid_gid = bpf_get_current_uid_gid();
-
-	event->mntns_id = mntns_id;
-	event->pid = pid_tgid >> 32;
-	event->tid = tid;
-	event->uid = uid_gid;
-	event->gid = uid_gid >> 32;
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
+	gadget_process_populate(&event->proc);
 	event->operation_raw = operation;
 	event->addr = addr;
 	event->size = size;
@@ -135,26 +119,16 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 static __always_inline int gen_free_enter(struct pt_regs *ctx,
 					  enum memop operation, u64 addr)
 {
-	u64 mntns_id;
 	struct event *event;
-	u64 pid_tgid;
-	u32 tid;
 
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		return 0;
 
-	pid_tgid = bpf_get_current_pid_tgid();
-	tid = (u32)pid_tgid;
-
-	event->mntns_id = mntns_id;
-	event->pid = pid_tgid >> 32;
-	event->tid = tid;
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
+	gadget_process_populate(&event->proc);
 	event->operation_raw = operation;
 	event->addr = addr;
 	event->size = 0;

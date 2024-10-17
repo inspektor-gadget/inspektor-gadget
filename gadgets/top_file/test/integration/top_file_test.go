@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,13 +33,7 @@ import (
 type topFileEntry struct {
 	eventtypes.CommonData
 
-	MntNsID uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Proc ebpftypes.Process `json:"proc"`
 
 	Reads      uint64 `json:"reads"`
 	Writes     uint64 `json:"writes"`
@@ -108,12 +103,12 @@ func TestTopFile(t *testing.T) {
 			func(t *testing.T, output string) {
 				expectedEntry := &topFileEntry{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("sh", 0, 0),
 
 					// Workload writes "foo" with "echo" (so "sh") command into
 					// a regular file ('R') named "bar" once per second. The
 					// gadget runs every second, so we expect 1 write operation
 					// with 3 bytes.
-					Comm:       "sh",
 					FileType:   "R",
 					FileName:   "/bar",
 					Writes:     1,
@@ -124,29 +119,20 @@ func TestTopFile(t *testing.T) {
 					ReadBytes: 0,
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					FileInode: utils.NormalizedInt,
 
 					// Manually normalize fields that might contain 0, so we
 					// can't use NormalizedInt and NormalizeInt()
 					// TODO: Support checking for the presence of a field, even if it's 0
-					Uid:     0,
-					Gid:     0,
 					FileDev: 0,
 				}
 
 				normalize := func(e *topFileEntry) {
 					utils.NormalizeCommonData(&e.CommonData)
-					utils.NormalizeInt(&e.MntNsID)
-					utils.NormalizeInt(&e.Pid)
-					utils.NormalizeInt(&e.Tid)
+					utils.NormalizeProc(&e.Proc)
 					utils.NormalizeInt(&e.FileInode)
 
 					// Manually normalize fields that might contain 0
-					e.Uid = 0
-					e.Gid = 0
 					e.FileDev = 0
 				}
 

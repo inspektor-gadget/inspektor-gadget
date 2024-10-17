@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,14 +33,8 @@ import (
 type traceTcpconnectEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Latency     uint64           `json:"latency,omitempty"`
 	SrcEndpoint utils.L4Endpoint `json:"src"`
@@ -87,6 +82,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntries := &traceTcpconnectEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				Proc:       utils.BuildProc("curl", 0, 0),
 				SrcEndpoint: utils.L4Endpoint{
 					Addr:    "127.0.0.1",
 					Version: 4,
@@ -99,26 +95,14 @@ func TestTraceTcpconnect(t *testing.T) {
 					Port:    80,
 					Proto:   "TCP",
 				},
-				Comm: "curl",
-
-				Uid:       0,
-				Gid:       0,
-				MntNsID:   utils.NormalizedInt,
 				Timestamp: utils.NormalizedStr,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceTcpconnectEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeInt(&e.SrcEndpoint.Port)
-				// Manually normalizing the Uid and Gid as they may contain 0
-				e.Uid = 0
-				e.Gid = 0
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries)

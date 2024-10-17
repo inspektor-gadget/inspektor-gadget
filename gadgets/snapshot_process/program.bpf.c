@@ -19,20 +19,7 @@ const volatile bool show_threads = false;
 
 GADGET_PARAM(show_threads);
 
-struct process_entry {
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
-
-	gadget_ppid ppid;
-};
-
-GADGET_SNAPSHOTTER(processes, process_entry, ig_snap_proc);
+GADGET_SNAPSHOTTER(processes, gadget_process, ig_snap_proc);
 
 SEC("iter/task")
 int ig_snap_proc(struct bpf_iter__task *ctx)
@@ -40,9 +27,8 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	struct seq_file *seq = ctx->meta->seq;
 	struct task_struct *task = ctx->task;
 	struct task_struct *parent;
-	pid_t ppid;
 
-	struct process_entry process = {};
+	struct gadget_process process = {};
 
 	if (task == NULL)
 		return 0;
@@ -55,18 +41,19 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
-	parent = task->real_parent;
-	ppid = parent ? parent->pid : -1;
-	__u32 uid = task->cred->uid.val;
-	__u32 gid = task->cred->gid.val;
-
 	process.mntns_id = mntns_id;
+	__builtin_memcpy(process.comm, task->comm, TASK_COMM_LEN);
 	process.pid = task->tgid;
 	process.tid = task->pid;
-	process.ppid = ppid;
-	process.uid = uid;
-	process.gid = gid;
-	__builtin_memcpy(process.comm, task->comm, TASK_COMM_LEN);
+	process.creds.uid = task->cred->uid.val;
+	process.creds.gid = task->cred->gid.val;
+
+	parent = task->real_parent;
+	if (parent) {
+		process.parent.pid = parent->pid;
+		__builtin_memcpy(process.parent.comm, parent->comm,
+				 TASK_COMM_LEN);
+	}
 
 	bpf_seq_write(seq, &process, sizeof(process));
 

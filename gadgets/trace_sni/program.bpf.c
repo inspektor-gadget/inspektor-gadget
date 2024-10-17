@@ -55,15 +55,8 @@
 
 struct event_t {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	char name[TLS_MAX_SERVER_NAME_LEN];
 };
@@ -228,16 +221,8 @@ int ig_trace_sni(struct __sk_buff *skb)
 	event.timestamp_raw = bpf_ktime_get_boot_ns();
 
 	// Enrich event with process metadata
-	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	if (skb_val != NULL) {
-		event.mntns_id = skb_val->mntns;
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.comm, skb_val->task,
-				 sizeof(event.comm));
-		event.uid = (__u32)skb_val->uid_gid;
-		event.gid = (__u32)(skb_val->uid_gid >> 32);
-	}
+	gadget_process_populate_from_socket(gadget_socket_lookup(skb),
+					    &event.proc);
 
 	gadget_output_buf(skb, &events, &event, sizeof(event));
 

@@ -60,8 +60,8 @@ Then, run the gadget and see how it shows the sleep process:
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
 $ kubectl gadget run snapshot_process:%IG_TAG%
-K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   COMM              PID        TID        UID        GID       PPID
-minikube-docker     default             test-snap…t-process test-snapshot-proce sh             530932     530932          0          0     530911
+K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   COMM              PID        TID          PPID
+minikube-docker     default             test-snap…t-process test-snapshot-proce sh             530932     530932        530911
 ^C
 ```
 
@@ -70,8 +70,8 @@ minikube-docker     default             test-snap…t-process test-snapshot-proc
 <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run snapshot_process:%IG_TAG% -c test-snapshot-process
-RUNTIME.CONTAINERNAME           COMM                            PID               TID              UID              GID             PPID
-test-snapshot-process           sh                           524665            524665                0                0           524645
+RUNTIME.CONTAINERNAME           COMM                            PID               TID             PPID
+test-snapshot-process           sh                           524665            524665           524645
 ^C
 ```
 </TabItem>

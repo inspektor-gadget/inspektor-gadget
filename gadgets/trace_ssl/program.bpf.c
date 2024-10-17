@@ -11,6 +11,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 
@@ -47,14 +48,7 @@ enum operation {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	enum operation operation_raw;
 	u64 latency_ns;
@@ -74,7 +68,6 @@ GADGET_PARAM(record_data);
 
 /* used for context between uprobes and uretprobes of ssl operations */
 struct ssl_data {
-	u64 mntns_id;
 	u64 start_time;
 	void *buffer;
 };
@@ -88,7 +81,6 @@ struct {
 
 /* used for context between uprobes and uretprobes of libcrypto operations */
 struct crypto_data {
-	u64 mntns_id;
 	u64 start_time;
 };
 
@@ -118,18 +110,15 @@ int trace_sched_process_exit(void *ctx)
 static __always_inline int probe_ssl_rw_enter(struct pt_regs *ctx, void *buf)
 {
 	struct ssl_data ssl_data;
-	u64 mntns_id;
 	u32 tid;
 	u64 ts;
 
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
 	ts = bpf_ktime_get_boot_ns();
 
-	ssl_data.mntns_id = mntns_id;
 	ssl_data.start_time = ts;
 	ssl_data.buffer = buf;
 	bpf_map_update_elem(&ssl_context, &tid, &ssl_data, BPF_ANY);
@@ -144,14 +133,10 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	u32 buf_copy_size;
 	struct event *event;
 	u64 pid_tgid;
-	u64 uid_gid;
-	u32 pid;
 	u32 tid;
 	u64 ts;
 
 	pid_tgid = bpf_get_current_pid_tgid();
-	uid_gid = bpf_get_current_uid_gid();
-	pid = pid_tgid >> 32;
 	tid = (u32)pid_tgid;
 	ts = bpf_ktime_get_boot_ns();
 
@@ -172,18 +157,12 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	if (!event)
 		goto clean;
 
-	event->mntns_id = ssl_data->mntns_id;
+	gadget_process_populate(&event->proc);
 	event->operation_raw = op;
 	event->timestamp_raw = ts;
 	event->latency_ns = ts - ssl_data->start_time;
-	event->pid = pid;
-	event->tid = tid;
-	event->uid = uid_gid;
-	event->gid = uid_gid >> 32;
 	event->len = len;
 	event->error_raw = -PT_REGS_RC(ctx);
-
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	if (!record_data || bpf_probe_read_user(&event->buf, buf_copy_size,
 						(char *)ssl_data->buffer))
@@ -221,18 +200,15 @@ SEC("uprobe/libssl:SSL_do_handshake")
 int trace_uprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 {
 	struct ssl_data ssl_data;
-	u64 mntns_id;
 	u32 tid;
 	u64 ts;
 
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
 	ts = bpf_ktime_get_boot_ns();
 
-	ssl_data.mntns_id = mntns_id;
 	ssl_data.start_time = ts;
 	ssl_data.buffer = NULL;
 	bpf_map_update_elem(&ssl_context, &tid, &ssl_data, BPF_ANY);
@@ -245,14 +221,12 @@ int trace_uretprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 	struct event *event;
 	struct ssl_data *ssl_data;
 	u64 pid_tgid;
-	u64 uid_gid;
 	u32 tid;
 	u64 ts;
 	int ret;
 
 	ts = bpf_ktime_get_boot_ns();
 	pid_tgid = bpf_get_current_pid_tgid();
-	uid_gid = bpf_get_current_uid_gid();
 	tid = (u32)pid_tgid;
 
 	ssl_data = bpf_map_lookup_elem(&ssl_context, &tid);
@@ -267,17 +241,12 @@ int trace_uretprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 	if (!event)
 		goto clean;
 
-	event->mntns_id = ssl_data->mntns_id;
+	gadget_process_populate(&event->proc);
 	event->operation_raw = libssl_SSL_do_handshake;
 	event->timestamp_raw = ts;
 	event->latency_ns = ts - ssl_data->start_time;
-	event->pid = pid_tgid >> 32;
-	event->tid = tid;
-	event->uid = uid_gid;
-	event->gid = uid_gid >> 32;
 	event->len = 0;
 	event->error_raw = -PT_REGS_RC(ctx);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, BASE_EVENT_SIZE);
 
@@ -310,18 +279,15 @@ PROBE_SSL_RW_EXIT(libnss, PR_Recv)
 static __always_inline int probe_crypto_enter(struct pt_regs *ctx)
 {
 	struct crypto_data crypto_data;
-	u64 mntns_id;
 	u32 tid;
 	u64 ts;
 
-	mntns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
 	ts = bpf_ktime_get_boot_ns();
 
-	crypto_data.mntns_id = mntns_id;
 	crypto_data.start_time = ts;
 	bpf_map_update_elem(&crypto_context, &tid, &crypto_data, BPF_ANY);
 	return 0;
@@ -332,16 +298,12 @@ static __always_inline int probe_crypto_exit(struct pt_regs *ctx,
 {
 	struct event *event;
 	struct crypto_data *crypto_data;
-	u64 *mntns_ptr;
 	u64 pid_tgid;
-	u64 uid_gid;
 	u32 tid;
 	u64 ts;
-	u64 *tsp;
 
 	ts = bpf_ktime_get_boot_ns();
 	pid_tgid = bpf_get_current_pid_tgid();
-	uid_gid = bpf_get_current_uid_gid();
 	tid = (u32)pid_tgid;
 
 	crypto_data = bpf_map_lookup_elem(&crypto_context, &tid);
@@ -352,17 +314,12 @@ static __always_inline int probe_crypto_exit(struct pt_regs *ctx,
 	if (!event)
 		goto clean;
 
-	event->mntns_id = crypto_data->mntns_id;
+	gadget_process_populate(&event->proc);
 	event->operation_raw = op;
 	event->timestamp_raw = ts;
 	event->latency_ns = ts - crypto_data->start_time;
-	event->pid = pid_tgid >> 32;
-	event->tid = tid;
-	event->uid = uid_gid;
-	event->gid = uid_gid >> 32;
 	event->len = 0;
 	event->error_raw = -PT_REGS_RC(ctx);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, BASE_EVENT_SIZE);
 

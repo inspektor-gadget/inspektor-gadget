@@ -4,6 +4,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -65,14 +66,7 @@ struct arg {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	__u64 delta;
 	enum flags_set flags_raw;
@@ -111,11 +105,8 @@ static __always_inline int probe_entry(const char *src, const char *dest,
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	struct arg arg = {};
-	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	if (target_pid && target_pid != pid)
@@ -136,9 +127,7 @@ static __always_inline int probe_entry(const char *src, const char *dest,
 static int probe_exit(void *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
-	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct arg *argp;
 	struct event *eventp;
 
@@ -150,17 +139,12 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		goto cleanup;
 
-	eventp->mntns_id = gadget_get_mntns_id();
+	gadget_process_populate(&eventp->proc);
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags_raw = argp->flags;
-	eventp->pid = pid;
-	eventp->tid = tid;
-	eventp->uid = (u32)uid_gid;
-	eventp->gid = (u32)(uid_gid >> 32);
 	eventp->error_raw = -ret;
 	eventp->op_raw = argp->op;
-	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));
 	if (argp->src)
 		bpf_probe_read_user_str(eventp->src, sizeof(eventp->src),
 					argp->src);
