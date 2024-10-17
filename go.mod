@@ -218,6 +218,9 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
+// cilium/ebpf with https://github.com/cilium/ebpf/pull/1588
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.16.1-0.20241017091859-59f2044b26b5
+
 replace k8s.io/component-base => k8s.io/component-base v0.0.0-20240417101527-62c04b35eff6
 
 replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20240123101058-64fedf45bfd3
