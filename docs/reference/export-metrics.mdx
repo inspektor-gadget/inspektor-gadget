@@ -1,0 +1,31 @@
+---
+title: Exporting Metrics (Prometheus)
+sidebar_position: 1200
+description: Using OpenTelemetry to export gadget metrics to Prometheus
+---
+
+If a gadget is able to collect metrics ([read here](../gadget-devel/metrics) to learn more about enabling metrics for
+your own gadgets]), you can easily expose those to a Prometheus endpoint. A gadget that can export metrics should have
+at least one of its data sources annotated with the `metrics.collect=true` annotation.
+
+It is important to understand that you need to activate both the metrics listener globally as well as configure each
+gadget to actively expose its metrics.
+
+## Enabling the metrics listener
+
+### ig
+
+Run `ig` with the `--otel-metrics-listen` flag and optionally set the address to listen to using
+`--otel-metrics-listen-address` (the default value is `0.0.0.0:2224`). This works when running interactively or when
+using the [daemon](ig#using-ig-as-a-daemon) mode.
+
+## Enabling export for gadgets
+
+When running the individual gadgets, you have to actively set and name the data sources that you want to expose by using
+the `--otel-metrics-name datasource:targetname` flag. `targetname` will be the used as the
+[otel-scope](https://opentelemetry.io/docs/concepts/instrumentation-scope/) and `datasource` must be an actual data
+source of the gadget. You can see a list of all data sources by using `ig run \[gadget name\] --help` or looking at the
+gadget's manifest.
+
+Setting the name is required even if `datasource` and `targetname` are the same. This makes sure that you don't export
+metrics by accident and thereby skewing existing data.
