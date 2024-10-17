@@ -107,12 +107,34 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	err := ebpfMap.Lookup(keyPtr, valuePtr)
+	key, err := bufFromStack(m, keyPtr)
+	if err != nil {
+		i.logger.Warnf("mapLookup: getting a buf for key pointer")
+		stack[0] = 0
+		return
+	}
+
+	value, err := bufFromStack(m, valuePtr)
+	if err != nil {
+		i.logger.Warnf("mapLookup: getting a buf for value pointer")
+		stack[0] = 0
+		return
+	}
+
+	err = ebpfMap.Lookup(key, value)
 	if err != nil {
 		i.logger.Warnf("mapLookup: getting value: %v", err)
 		stack[0] = 0
 		return
 	}
+
+	err = bufToStack(m, value, valuePtr)
+	if err != nil {
+		i.logger.Warnf("mapLookup: writing back value to stack: %v", err)
+		stack[0] = 0
+		return
+	}
+
 	stack[0] = 1
 }
 
@@ -128,7 +150,7 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 	mapHandle := wapi.DecodeU32(stack[0])
 	keyPtr := stack[1]
 	valuePtr := stack[2]
-// 	flag := stack[2]
+// 	flag := stack[3]
 
 	ebpfMap, ok := getHandle[*ebpf.Map](i, mapHandle)
 	if !ok {
@@ -137,8 +159,21 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-// 	err := ebpfMap.Update(keyPtr, valuePtr, ebpf.MapUpdateFlags(flag))
-	err := ebpfMap.Put(keyPtr, valuePtr)
+	key, err := bufFromStack(m, keyPtr)
+	if err != nil {
+		i.logger.Warnf("mapLookup: getting a buf for key pointer")
+		stack[0] = 0
+		return
+	}
+
+	value, err := bufFromStack(m, valuePtr)
+	if err != nil {
+		i.logger.Warnf("mapLookup: getting a buf for value pointer")
+		stack[0] = 0
+		return
+	}
+
+	err = ebpfMap.Put(key, value)
 	if err != nil {
 		i.logger.Warnf("mapUpdate: updating value: %v", err)
 		stack[0] = 0
@@ -164,7 +199,14 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	err := ebpfMap.Delete(keyPtr)
+	key, err := bufFromStack(m, keyPtr)
+	if err != nil {
+		i.logger.Warnf("mapDelete: getting a buf for key pointer")
+		stack[0] = 0
+		return
+	}
+
+	err = ebpfMap.Delete(key)
 	if err != nil {
 		i.logger.Warnf("mapDelete: deleting value: %v", err)
 		stack[0] = 0

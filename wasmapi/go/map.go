@@ -16,9 +16,9 @@ package api
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
-
-	"github.com/cilium/ebpf"
+	"unsafe"
 )
 
 //go:wasmimport env getMap
@@ -45,41 +45,51 @@ func GetMap(name string) (Map, error) {
 }
 
 func (m Map) Lookup(key any, value any) error {
-	keyPtr := anytoBufPtr(key)
-// 	defer keyPtr.free()
+	keyPtr, err := anytoBufPtr(key)
+	if err != nil {
+		return err
+	}
 
-	valuePtr := anytoBufPtr(value)
-// 	defer valuePtr.free()
+	valuePtr, err := anytoBufPtr(value)
+	if err != nil {
+		return err
+	}
 
 	ret := mapLookup(uint32(m), uint64(keyPtr), uint64(valuePtr))
+	runtime.KeepAlive(key)
+	runtime.KeepAlive(value)
 	if ret == 0 {
 		return fmt.Errorf("lookuping map")
 	}
+
+	buf := readBufPtr(valuePtr)
+	Infof("buf: %v", buf)
+
+	v := reflect.ValueOf(value)
+
+	copy(unsafe.Slice((*byte)(v.UnsafePointer()), v.Type().Elem().Size()), buf)
+
 	return nil
 }
 
 func (m Map) Put(key any, value any) error {
-	keyPtr := anytoBufPtr(key)
-// 	defer keyPtr.free()
-
-	valuePtr := anytoBufPtr(value)
-// 	defer valuePtr.free()
-
-	ret := mapUpdate(uint32(m), uint64(keyPtr), uint64(valuePtr), uint64(ebpf.UpdateAny))
-	if ret == 0 {
-		return fmt.Errorf("putting value in map")
-	}
-	return nil
+	return m.Update(key, value, 0)
 }
 
-func (m Map) Update(key any, value any, flags ebpf.MapUpdateFlags) error {
-	keyPtr := anytoBufPtr(key)
-// 	defer keyPtr.free()
+func (m Map) Update(key any, value any, flags uint64) error {
+	keyPtr, err := anytoBufPtr(key)
+	if err != nil {
+		return err
+	}
 
-	valuePtr := anytoBufPtr(value)
-// 	defer valuePtr.free()
+	valuePtr, err := anytoBufPtr(value)
+	if err != nil {
+		return err
+	}
 
 	ret := mapUpdate(uint32(m), uint64(keyPtr), uint64(valuePtr), uint64(flags))
+	runtime.KeepAlive(key)
+	runtime.KeepAlive(value)
 	if ret == 0 {
 		return fmt.Errorf("updating value in map")
 	}
@@ -87,10 +97,13 @@ func (m Map) Update(key any, value any, flags ebpf.MapUpdateFlags) error {
 }
 
 func (m Map) Delete(key any) error {
-	keyPtr := anytoBufPtr(key)
-// 	defer keyPtr.free()
+	keyPtr, err := anytoBufPtr(key)
+	if err != nil {
+		return err
+	}
 
 	ret := mapDelete(uint32(m), uint64(keyPtr))
+	runtime.KeepAlive(key)
 	if ret == 0 {
 		return fmt.Errorf("updating value in map")
 	}
