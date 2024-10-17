@@ -33,14 +33,8 @@ import (
 type traceMountEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string             `json:"timestamp"`
+	Proc      eventtypes.Process `json:"proc"`
 
 	Delta uint64 `json:"delta"`
 	Flags string `json:"flags"`
@@ -101,7 +95,7 @@ func TestTraceMount(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceMountEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "mount",
+				Proc:       utils.BuildProc("mount", 0, 0),
 				Op:         "MOUNT",
 				Src:        "/mnt",
 				Dest:       "/mnt",
@@ -112,9 +106,6 @@ func TestTraceMount(t *testing.T) {
 				Flags:     utils.NormalizedStr,
 				Timestamp: utils.NormalizedStr,
 				Delta:     utils.NormalizedInt,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
-				MntNsID:   utils.NormalizedInt,
 				Fs:        utils.NormalizedStr,
 				Call:      utils.NormalizedStr,
 			}
@@ -122,11 +113,9 @@ func TestTraceMount(t *testing.T) {
 			normalize := func(e *traceMountEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeInt(&e.Delta)
 				utils.NormalizeString(&e.Flags)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Fs)
 				utils.NormalizeString(&e.Call)
 			}

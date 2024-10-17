@@ -10,6 +10,7 @@
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 #include <gadget/filesystem.h>
+#include <gadget/common.h>
 
 // Defined in include/uapi/linux/magic.h
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
@@ -26,16 +27,8 @@
 struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 
-	gadget_comm comm;
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
-
-	gadget_pcomm pcomm;
-	gadget_ppid ppid;
 	gadget_uid loginuid;
 	__u32 sessionid;
 	gadget_errno error_raw;
@@ -125,14 +118,10 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	if (!event)
 		return 0;
 
+	gadget_fill_current_process(&event->proc);
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->pid = tgid;
-	event->tid = pid;
-	event->uid = uid;
-	event->gid = gid;
 	event->loginuid = BPF_CORE_READ(task, loginuid.val);
 	event->sessionid = BPF_CORE_READ(task, sessionid);
-	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
 	event->args_count = 0;
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
@@ -225,11 +214,6 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 		event->pupper_layer = has_upper_layer(pinode);
 
 	event->error_raw = 0;
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-	if (parent != NULL) {
-		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
-				      parent->comm);
-	}
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
@@ -247,8 +231,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 {
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
 	// If the execve was successful, sched/sched_process_exec handled the event
 	// already and deleted the entry. So if we find the entry, it means the
@@ -261,12 +243,6 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 		goto cleanup;
 
 	event->error_raw = -ctx->ret;
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
-	if (parent != NULL) {
-		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
-				      parent->comm);
-	}
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))

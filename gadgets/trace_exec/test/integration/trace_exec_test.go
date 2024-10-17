@@ -34,17 +34,10 @@ import (
 type traceExecEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
+	Timestamp string             `json:"timestamp"`
+	MntNsID   uint64             `json:"mntns_id"`
+	Proc      eventtypes.Process `json:"proc"`
 
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
-
-	Pcomm       string `json:"pcomm"`
-	Ppid        uint32 `json:"ppid"`
 	Loginuid    uint32 `json:"loginuid"`
 	Sessionid   uint32 `json:"sessionid"`
 	Error       string `json:"error"`
@@ -111,7 +104,19 @@ func TestTraceExec(t *testing.T) {
 					// outer sh
 					{
 						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-						Comm:       "sh",
+						Proc: eventtypes.Process{
+							Comm: "sh",
+							Pid:  utils.NormalizedInt,
+							Tid:  utils.NormalizedInt,
+							User: eventtypes.User{
+								Uid: 0,
+								Gid: 0,
+							},
+							Parent: eventtypes.Parent{
+								Comm: utils.NormalizedStr,
+								Pid:  utils.NormalizedInt,
+							},
+						},
 						Cwd:        "/",
 						Args:       strings.Join(shArgs, " "),
 						UpperLayer: false,
@@ -119,51 +124,59 @@ func TestTraceExec(t *testing.T) {
 						// Check the existence of the following fields
 						MntNsID:   utils.NormalizedInt,
 						Timestamp: utils.NormalizedStr,
-						Pid:       utils.NormalizedInt,
-						Tid:       utils.NormalizedInt,
-						Ppid:      utils.NormalizedInt,
 						Loginuid:  utils.NormalizedInt,
 						Sessionid: utils.NormalizedInt,
-						Pcomm:     utils.NormalizedStr,
 					},
 					// inner sh
 					{
 						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-						Comm:       "sh",
+						Proc: eventtypes.Process{
+							Comm: "sh",
+							Pid:  utils.NormalizedInt,
+							Tid:  utils.NormalizedInt,
+							User: eventtypes.User{
+								Uid: 1000,
+								Gid: 1111,
+							},
+							Parent: eventtypes.Parent{
+								Comm: utils.NormalizedStr,
+								Pid:  utils.NormalizedInt,
+							},
+						},
 						Cwd:        "/",
 						Args:       strings.Join(innerShArgs, " "),
-						Uid:        1000,
-						Gid:        1111,
 						UpperLayer: true,
 
 						// Check the existence of the following fields
 						MntNsID:   utils.NormalizedInt,
 						Timestamp: utils.NormalizedStr,
-						Pid:       utils.NormalizedInt,
-						Tid:       utils.NormalizedInt,
-						Ppid:      utils.NormalizedInt,
 						Loginuid:  utils.NormalizedInt,
 						Sessionid: utils.NormalizedInt,
-						Pcomm:     utils.NormalizedStr,
 					},
 					// sleep
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-						Comm:        "sleep",
+						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc: eventtypes.Process{
+							Comm: "sleep",
+							Pid:  utils.NormalizedInt,
+							Tid:  utils.NormalizedInt,
+							User: eventtypes.User{
+								Uid: 1000,
+								Gid: 1111,
+							},
+							Parent: eventtypes.Parent{
+								Comm: "sh",
+								Pid:  utils.NormalizedInt,
+							},
+						},
 						Cwd:         "/tmp",
-						Pcomm:       "sh",
 						Args:        strings.Join(sleepArgs, " "),
-						Uid:         1000,
-						Gid:         1111,
 						UpperLayer:  false,
 						PupperLayer: true,
 
 						// Check the existence of the following fields
 						MntNsID:   utils.NormalizedInt,
 						Timestamp: utils.NormalizedStr,
-						Pid:       utils.NormalizedInt,
-						Tid:       utils.NormalizedInt,
-						Ppid:      utils.NormalizedInt,
 						Loginuid:  utils.NormalizedInt,
 						Sessionid: utils.NormalizedInt,
 					},
@@ -173,16 +186,16 @@ func TestTraceExec(t *testing.T) {
 					utils.NormalizeString(&e.Runtime.ContainerID)
 					utils.NormalizeInt(&e.MntNsID)
 					utils.NormalizeString(&e.Timestamp)
-					utils.NormalizeInt(&e.Pid)
-					utils.NormalizeInt(&e.Tid)
-					utils.NormalizeInt(&e.Ppid)
+					utils.NormalizeInt(&e.Proc.Pid)
+					utils.NormalizeInt(&e.Proc.Tid)
+					utils.NormalizeInt(&e.Proc.Parent.Pid)
 					utils.NormalizeInt(&e.Loginuid)
 					utils.NormalizeInt(&e.Sessionid)
 
 					// We can't know the parent process of the first process inside
 					// the container as it depends on the container runtime
-					if e.Comm == "sh" || e.Pcomm == "containerd-shim" {
-						utils.NormalizeString(&e.Pcomm)
+					if e.Proc.Comm == "sh" || e.Proc.Parent.Comm == "containerd-shim" {
+						utils.NormalizeString(&e.Proc.Parent.Comm)
 					}
 				}
 				match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
