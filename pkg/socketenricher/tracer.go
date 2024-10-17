@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	log "github.com/sirupsen/logrus"
 
@@ -107,8 +108,10 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&se.objs, &opts); err != nil {
+		btf.FlushKernelSpec()
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
+	btf.FlushKernelSpec()
 
 	var l link.Link
 

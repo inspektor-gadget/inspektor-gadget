@@ -15,6 +15,12 @@
 package main
 
 import (
+	"net/http"
+	_ "net/http/pprof"
+	"runtime"
+	"runtime/debug"
+	"time"
+
 	"fmt"
 	"os"
 
@@ -54,6 +60,18 @@ import (
 )
 
 func main() {
+	go func() {
+		for {
+			runtime.GC()
+			debug.FreeOSMemory()
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	if experimental.Enabled() {
 		log.Info("Experimental features enabled")
 	}
