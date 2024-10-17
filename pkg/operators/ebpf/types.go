@@ -33,4 +33,13 @@ const (
 
 	// Prefix used to mark variables used by operators
 	varPrefix = "gadget_var_"
+
+	// Prefix used to denote ipaddr parameters
+	ipaddrPrefix = "ipaddr_"
+
+	// Prefix used to denote IPv4 address
+	ipaddrV4Prefix = "ipaddr_v4"
+
+	// Prefix used to denote IPv4 address
+	ipaddrV6Prefix = "ipaddr_v6"
 )

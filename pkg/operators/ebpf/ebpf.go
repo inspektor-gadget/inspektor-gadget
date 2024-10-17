@@ -581,7 +581,20 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			continue
 		}
 		constReplacements[name] = paramMap[name].AsAny()
-		i.logger.Debugf("setting param value %q = %v", name, paramMap[name].AsAny())
+
+		ipv4addrPrefixFunc := hasPrefix(ipaddrV4Prefix)
+		ipv6addrPrefixFunc := hasPrefix(ipaddrV6Prefix)
+		if _, ok := ipv4addrPrefixFunc(name); ok {
+			if constReplacements[name], err = gadgets.IPStringToUint32(paramMap[name].AsString()); err != nil {
+				return fmt.Errorf("error converting IP string to 32 uint value: %v. %w", paramMap[name], err)
+			}
+		}
+		if _, ok := ipv6addrPrefixFunc(name); ok {
+			if constReplacements[name], err = gadgets.IPStringToUint128(paramMap[name].AsString()); err != nil {
+				return fmt.Errorf("error converting IP string to u128 value: %v. %w", paramMap[name], err)
+			}
+		}
+		i.logger.Debugf("setting param value %q = %v", name, constReplacements[name])
 	}
 
 	for _, v := range i.vars {

@@ -116,6 +116,39 @@ func IPStringToUint32(ipAddr string) (uint32, error) {
 	return *(*uint32)(unsafe.Pointer(&ip[0])), nil
 }
 
+type uint128 struct {
+	a uint64
+	b uint64
+}
+
+// IPStringToUint128 converts an IP address (IPv6 only) string to a u128 type
+// in big-endian.
+func IPStringToUint128(ipAddr string) (uint128, error) {
+	// Notice ipAddr is already expressed in big-endian and net.ParseIP stores
+	// it in a byte array in big-endian too.
+	ip := net.ParseIP(ipAddr).To16()
+	if ip == nil {
+		return uint128{}, fmt.Errorf("invalid IP address: %s", ipAddr)
+	}
+	// Ensure it is a valid IPv6 address
+	if ip.To4() != nil {
+		return uint128{}, fmt.Errorf("address is IPv4, expected IPv6: %s", ipAddr)
+	}
+
+	// Convert the byte array to a 2 uint64 memebres keeping the big-endian order. We don't
+	// use binary.[BigEndian|LittleEndian].Uint64() to make this code portable.
+	// First 8 bytes -> u64 a
+	// Last 8 bytes -> u64 b
+
+	// Convert the first 8 bytes to uint64
+	a := *(*uint64)(unsafe.Pointer(&ip[0]))
+	// Convert the last 8 bytes to uint64
+	b := *(*uint64)(unsafe.Pointer(&ip[8]))
+
+	// Return the populated u128 struct
+	return uint128{a: a, b: b}, nil
+}
+
 func IPVerFromAF(af uint16) int {
 	switch af {
 	case unix.AF_INET:
