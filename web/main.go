@@ -33,6 +33,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+const (
+	RunModeDefault = iota
+	RunModeAttach
+)
+
 func main() {
 	global := js.Global()
 	global.Set("wrapWebSocket", js.FuncOf(wrapWebSocket))
@@ -40,11 +45,12 @@ func main() {
 }
 
 type DummyConn struct {
-	w         *KubeWebSocketWrapper
-	channelID uint8
-	in        chan []byte
-	client    api.GadgetManagerClient
-	remainder []byte
+	w                     *KubeWebSocketWrapper
+	channelID             uint8
+	in                    chan []byte
+	client                api.GadgetManagerClient
+	instanceManagerClient api.GadgetInstanceManagerClient
+	remainder             []byte
 }
 
 func (c *DummyConn) Read(b []byte) (n int, err error) {
@@ -123,6 +129,7 @@ func (c *DummyConn) Run(successCb func(), errorCb func(string)) {
 		return
 	}
 	c.client = api.NewGadgetManagerClient(conn)
+	c.instanceManagerClient = api.NewGadgetInstanceManagerClient(conn)
 	if successCb != nil {
 		successCb()
 	}
@@ -192,6 +199,37 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 
 	res := js.Global().Get("Object").New()
 
+	jsjson := js.Global().Get("JSON")
+
+	// first param should be the callback function to which the result is sent, second is an optional error handler
+	res.Set("listGadgetInstances", js.FuncOf(func(this js.Value, args []js.Value) any {
+		returnError := func(str string) {
+			if len(args) > 1 {
+				args[1].Invoke(str)
+				return
+			}
+			fmt.Println(str)
+		}
+
+		_, ok := wrapper.conns[0]
+		if !ok {
+			returnError("connection not open")
+			return false
+		}
+
+		go func() {
+			instances, err := wrapper.conns[0].instanceManagerClient.ListGadgetInstances(context.Background(), &api.ListGadgetInstancesRequest{})
+			if err != nil {
+				returnError("listing gadget instances: " + err.Error())
+				return
+			}
+			inst, _ := protojson.Marshal(instances)
+			out := js.Global().Get("JSON").Call("parse", string(inst))
+			args[0].Invoke(out.Get("gadgetInstances"))
+		}()
+		return nil
+	}))
+
 	// first param to getGadgetInfo is the GetGadgetInfoRequest, second the callback to which the result is sent
 	// and third is an optional callback that is called with an error
 	res.Set("getGadgetInfo", js.FuncOf(func(this js.Value, args []js.Value) any {
@@ -234,8 +272,7 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 		return true
 	}))
 
-	// first param to runGadget is the GadgetRunRequest, second an object with callback definitions
-	res.Set("runGadget", js.FuncOf(func(this js.Value, args []js.Value) any {
+	res.Set("createGadgetInstance", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if len(args) < 2 {
 			fmt.Println("expected at least two arguments")
 			return false
@@ -255,117 +292,214 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			return false
 		}
 
-		onReady := args[1].Get("onReady")
-		onDone := args[1].Get("onDone")
-		onData := args[1].Get("onData")
-		onGadgetInfo := args[1].Get("onGadgetInfo")
-
 		req := js.Global().Get("JSON").Call("stringify", args[0]).String()
-		runRequest := &api.GadgetRunRequest{}
-		err := protojson.Unmarshal([]byte(req), runRequest)
+		gadgetInstance := &api.GadgetInstance{}
+		err := protojson.Unmarshal([]byte(req), gadgetInstance)
 		if err != nil {
 			returnError(err.Error())
 			return false
 		}
-		cli, err := wrapper.conns[0].client.RunGadget(context.Background())
-		if err != nil {
-			returnError(err.Error())
-			return false
-		}
+
 		go func() {
-			err = cli.Send(&api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}})
+			res, err := wrapper.conns[0].instanceManagerClient.CreateGadgetInstance(context.Background(), &api.CreateGadgetInstanceRequest{
+				GadgetInstance: gadgetInstance,
+			})
 			if err != nil {
 				returnError(err.Error())
+			}
+			j, _ := protojson.Marshal(res)
+			args[1].Invoke(jsjson.Call("parse", string(j)))
+		}()
+		return true
+	}))
+
+	res.Set("deleteGadgetInstance", js.FuncOf(func(this js.Value, args []js.Value) any {
+		if len(args) < 2 {
+			fmt.Println("expected at least two arguments")
+			return false
+		}
+
+		returnError := func(str string) {
+			if len(args) > 2 {
+				args[2].Invoke(str)
 				return
 			}
+			fmt.Println(str)
+		}
 
-			datasources := make(map[uint32]datasource.DataSource)
-			jsonFormatters := make(map[uint32]*json.Formatter)
+		_, ok := wrapper.conns[0]
+		if !ok {
+			returnError("connection not open")
+			return false
+		}
 
-			if !onReady.IsUndefined() {
-				onReady.Invoke()
+		id := args[0].String()
+
+		go func() {
+			res, err := wrapper.conns[0].instanceManagerClient.RemoveGadgetInstance(context.Background(), &api.GadgetInstanceId{
+				Id: id,
+			})
+			if err != nil {
+				returnError(err.Error())
+			}
+			j, _ := protojson.Marshal(res)
+			args[1].Invoke(jsjson.Call("parse", string(j)))
+		}()
+		return true
+	}))
+
+	run := func(mode int) func(this js.Value, args []js.Value) any {
+		return func(this js.Value, args []js.Value) any {
+			if len(args) < 2 {
+				fmt.Println("expected at least two arguments")
+				return false
 			}
 
-			jsjson := js.Global().Get("JSON")
-			for {
-				ev, err := cli.Recv()
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						if !onDone.IsUndefined() {
-							onDone.Invoke()
-						}
-						return
-					}
-					fmt.Println(err.Error())
-					if !onDone.IsUndefined() {
-						onDone.Invoke()
-					}
-					break
+			returnError := func(str string) {
+				if len(args) > 2 {
+					args[2].Invoke(str)
+					return
 				}
-				switch ev.Type {
-				case api.EventTypeGadgetPayload:
-					if onData.IsUndefined() {
-						continue
-					}
-					ds := datasources[ev.DataSourceID]
-					switch ds.Type() {
-					case datasource.TypeSingle:
-						p, err := ds.NewPacketSingleFromRaw(ev.Payload)
-						if err != nil {
-							returnError(err.Error())
-							return
-						}
-						onData.Invoke(ev.DataSourceID, jsjson.Call("parse", string(jsonFormatters[ev.DataSourceID].Marshal(p))))
-						ds.Release(p)
-					case datasource.TypeArray:
-						p, err := ds.NewPacketArrayFromRaw(ev.Payload)
-						if err != nil {
-							returnError(err.Error())
-							return
-						}
-						onData.Invoke(ev.DataSourceID, jsjson.Call("parse", string(jsonFormatters[ev.DataSourceID].MarshalArray(p))))
-						ds.Release(p)
-					}
-				case api.EventTypeGadgetInfo:
-					gi := &api.GadgetInfo{}
-					err = proto.Unmarshal(ev.Payload, gi)
+				fmt.Println(str)
+			}
+
+			_, ok := wrapper.conns[0]
+			if !ok {
+				returnError("connection not open")
+				return false
+			}
+
+			onReady := args[1].Get("onReady")
+			onDone := args[1].Get("onDone")
+			onData := args[1].Get("onData")
+			onGadgetInfo := args[1].Get("onGadgetInfo")
+
+			cli, err := wrapper.conns[0].client.RunGadget(context.Background())
+			if err != nil {
+				returnError(err.Error())
+				return false
+			}
+			go func() {
+				var ctrl *api.GadgetControlRequest
+				req := js.Global().Get("JSON").Call("stringify", args[0]).String()
+				switch mode {
+				case RunModeDefault:
+					runRequest := &api.GadgetRunRequest{}
+					err := protojson.Unmarshal([]byte(req), runRequest)
 					if err != nil {
 						returnError(err.Error())
 						return
 					}
-					for _, ds := range gi.DataSources {
-						nds, err := datasource.NewFromAPI(ds)
-						if err != nil {
-							returnError(err.Error())
-							return
-						}
-						datasources[ds.Id] = nds
-						jsonFormatters[ds.Id], err = json.New(nds, json.WithPretty(true, "  "))
-						if err != nil {
-							returnError(err.Error())
-							return
-						}
+					ctrl = &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+				case RunModeAttach:
+					attachRequest := &api.GadgetAttachRequest{}
+					err := protojson.Unmarshal([]byte(req), attachRequest)
+					if err != nil {
+						returnError(err.Error())
+						return
 					}
-					if !onGadgetInfo.IsUndefined() {
-						d, _ := protojson.Marshal(gi)
-						onGadgetInfo.Invoke(jsjson.Call("parse", (string(d))))
+					ctrl = &api.GadgetControlRequest{Event: &api.GadgetControlRequest_AttachRequest{AttachRequest: attachRequest}}
+				default:
+					return
+				}
+
+				err = cli.Send(ctrl)
+				if err != nil {
+					returnError(err.Error())
+					return
+				}
+
+				datasources := make(map[uint32]datasource.DataSource)
+				jsonFormatters := make(map[uint32]*json.Formatter)
+
+				if !onReady.IsUndefined() {
+					onReady.Invoke()
+				}
+
+				for {
+					ev, err := cli.Recv()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							if !onDone.IsUndefined() {
+								onDone.Invoke()
+							}
+							return
+						}
+						fmt.Println(err.Error())
+						if !onDone.IsUndefined() {
+							onDone.Invoke()
+						}
+						break
+					}
+					switch ev.Type {
+					case api.EventTypeGadgetPayload:
+						if onData.IsUndefined() {
+							continue
+						}
+						ds := datasources[ev.DataSourceID]
+						switch ds.Type() {
+						case datasource.TypeSingle:
+							p, err := ds.NewPacketSingleFromRaw(ev.Payload)
+							if err != nil {
+								returnError(err.Error())
+								return
+							}
+							onData.Invoke(ev.DataSourceID, jsjson.Call("parse", string(jsonFormatters[ev.DataSourceID].Marshal(p))))
+							ds.Release(p)
+						case datasource.TypeArray:
+							p, err := ds.NewPacketArrayFromRaw(ev.Payload)
+							if err != nil {
+								returnError(err.Error())
+								return
+							}
+							onData.Invoke(ev.DataSourceID, jsjson.Call("parse", string(jsonFormatters[ev.DataSourceID].MarshalArray(p))))
+							ds.Release(p)
+						}
+					case api.EventTypeGadgetInfo:
+						gi := &api.GadgetInfo{}
+						err = proto.Unmarshal(ev.Payload, gi)
+						if err != nil {
+							returnError(err.Error())
+							return
+						}
+						for _, ds := range gi.DataSources {
+							nds, err := datasource.NewFromAPI(ds)
+							if err != nil {
+								returnError(err.Error())
+								return
+							}
+							datasources[ds.Id] = nds
+							jsonFormatters[ds.Id], err = json.New(nds, json.WithPretty(true, "  "))
+							if err != nil {
+								returnError(err.Error())
+								return
+							}
+						}
+						if !onGadgetInfo.IsUndefined() {
+							d, _ := protojson.Marshal(gi)
+							onGadgetInfo.Invoke(jsjson.Call("parse", (string(d))))
+						}
 					}
 				}
-			}
-			return
-		}()
+				return
+			}()
 
-		ctrl := js.Global().Get("Object").New()
-		ctrl.Set("stop", js.FuncOf(func(this js.Value, args []js.Value) any {
-			err = cli.Send(&api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{}})
-			if err != nil {
-				returnError(err.Error())
+			ctrl := js.Global().Get("Object").New()
+			ctrl.Set("stop", js.FuncOf(func(this js.Value, args []js.Value) any {
+				err = cli.Send(&api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{}})
+				if err != nil {
+					returnError(err.Error())
+					return nil
+				}
 				return nil
-			}
-			return nil
-		}))
+			}))
 
-		return ctrl
-	}))
+			return ctrl
+		}
+	}
+
+	// first param to runGadget is the GadgetRunRequest, second an object with callback definitions
+	res.Set("runGadget", js.FuncOf(run(RunModeDefault)))
+	res.Set("attachGadgetInstance", js.FuncOf(run(RunModeAttach)))
 	return res
 }
