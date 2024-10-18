@@ -1,132 +1,86 @@
 package eventgen
 
 import (
-    "context"
-    "fmt"
-    "strings"
-    "time"
+	"context"
+	"fmt"
+	"strconv"
+	"time"
 
-    "github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/kubernetes/scheme"
-    "k8s.io/client-go/rest"
-    "k8s.io/client-go/tools/remotecommand"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type HTTPGenerator struct {
-    clientset *kubernetes.Clientset
-    config    *rest.Config
-    logger    logger.Logger
+	clientset *kubernetes.Clientset
+	config    *rest.Config
+	logger    logger.Logger
+	namespace string
+	podName   string
 }
 
 func NewHTTPGenerator(config *rest.Config, log logger.Logger) (Generator, error) {
-    clientset, err := kubernetes.NewForConfig(config)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
-    }
-    return &HTTPGenerator{
-        clientset: clientset,
-        config:    config,
-        logger:    log,
-    }, nil
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+	}
+	return &HTTPGenerator{
+		clientset: clientset,
+		config:    config,
+		logger:    log,
+		namespace: "default",
+		podName:   fmt.Sprintf("http-eventgen-pod-%d", time.Now().Unix()),
+	}, nil
 }
 
-func (h *HTTPGenerator) Generate(url string) (string, string, string, error) {
-    namespace := "default"
-    podName := fmt.Sprintf("http-test-pod-%d", time.Now().Unix())
+func (h *HTTPGenerator) Generate(url, countStr, intervalStr string) (string, string, string, error) {
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		count = -1 // Default to infinite if not specified or invalid
+	}
 
-    container, err := h.createAndWaitForPod(namespace, podName)
-    if err != nil {
-        return "", "", "", fmt.Errorf("failed to create and wait for pod: %v", err)
-    }
+	interval, err := strconv.ParseFloat(intervalStr, 64)
+	if err != nil || interval <= 0 {
+		interval = 1 // Default to 1 second if not specified or invalid
+	}
 
-    if err := h.executeHTTPRequest(namespace, podName, url); err != nil {
-        return "", "", "", fmt.Errorf("failed to execute HTTP request: %v", err)
-    }
+	command := fmt.Sprintf("i=1; while [ $i -le %d ] || [ %d -eq -1 ]; do curl -s -o /dev/null -w '%%{http_code}\\n' -L %s; i=$((i+1)); sleep %f; done", count, count, url, interval)
 
-    return namespace, podName, container, nil
+	container := corev1.Container{
+		Name:    "http-eventgen-container",
+		Image:   "alpine/curl",
+		Command: []string{"sh", "-c", command},
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: h.podName},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers:    []corev1.Container{container},
+		},
+	}
+
+	_, err = h.clientset.CoreV1().Pods(h.namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create pod: %v", err)
+	}
+
+	h.logger.Debugf("Created HTTP event generation pod: %s", h.podName)
+	return h.namespace, h.podName, container.Name, nil
 }
 
-func (h *HTTPGenerator) Cleanup(podName string) error {
-    namespace := "default"
-    err := h.clientset.CoreV1().Pods(namespace).Delete(context.Background(), podName, metav1.DeleteOptions{})
-    if err != nil {
-        return fmt.Errorf("failed to delete pod %s: %v", podName, err)
-    }
-    return nil
-}
-
-func (h *HTTPGenerator) createAndWaitForPod(namespace, name string) (string, error) {
-    pod := &corev1.Pod{
-        ObjectMeta: metav1.ObjectMeta{Name: name},
-        Spec: corev1.PodSpec{
-            Containers: []corev1.Container{{
-                Name:    "http-test",
-                Image:   "alpine/curl",
-                //Image:   "curlimages/curl",
-                Command: []string{"sh", "-c", "while true; do sleep 3600; done"},
-            },
-        },
-    },
-}
-
-    _, err := h.clientset.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
-    if err != nil {
-        return "", fmt.Errorf("failed to create pod: %v", err)
-    }
-
-    for i := 0; i < 60; i++ {
-        pod, err := h.clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
-        if err != nil {
-            return "", err
-        }
-        if pod.Status.Phase == corev1.PodRunning {
-            return pod.Spec.Containers[0].Name, nil
-        }
-        time.Sleep(time.Second)
-    }
-    return "", fmt.Errorf("pod did not become ready within 60 seconds")
-}
-
-func (h *HTTPGenerator) executeHTTPRequest(namespace, podName, url string) error {
-    cmd := []string{"curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "-L", url}
-    stdout, stderr, err := h.executeCommand(namespace, podName, cmd)
-    if err != nil {
-        return fmt.Errorf("failed to execute command: %v\nStderr: %s", err, stderr)
-    }
-
-    statusCode := strings.TrimSpace(stdout)
-    if statusCode == "200" {
-        return nil
-    }
-
-    return fmt.Errorf("HTTP request failed with status code: %s", statusCode)
-}
-
-func (h *HTTPGenerator) executeCommand(namespace, podName string, command []string) (string, string, error) {
-    req := h.clientset.CoreV1().RESTClient().Post().
-        Resource("pods").
-        Name(podName).
-        Namespace(namespace).
-        SubResource("exec").
-        VersionedParams(&corev1.PodExecOptions{
-            Command: command,
-            Stdout:  true,
-            Stderr:  true,
-        }, scheme.ParameterCodec)
-
-    exec, err := remotecommand.NewSPDYExecutor(h.config, "POST", req.URL())
-    if err != nil {
-        return "", "", fmt.Errorf("failed to create executor: %v", err)
-    }
-
-    var stdout, stderr strings.Builder
-    err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
-        Stdout: &stdout,
-        Stderr: &stderr,
-    })
-
-    return stdout.String(), stderr.String(), err
+func (h *HTTPGenerator) Cleanup() (string, error) {
+	if h.podName == "" {
+		return "", fmt.Errorf("pod %s is not found in %s namespace", h.podName, h.namespace)
+	}
+	err := h.clientset.CoreV1().Pods(h.namespace).Delete(context.Background(), h.podName, metav1.DeleteOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to delete pod %s: %v", h.podName, err)
+	}
+	h.logger.Debugf("Deleted HTTP event generation pod: %s", h.podName)
+	h.podName = "" // Reset the podName after cleanup
+	return "", nil
 }

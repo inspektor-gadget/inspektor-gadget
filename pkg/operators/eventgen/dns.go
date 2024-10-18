@@ -1,123 +1,86 @@
 package eventgen
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type DNSGenerator struct {
-    clientset *kubernetes.Clientset
-    config    *rest.Config
-    logger    logger.Logger
+	clientset *kubernetes.Clientset
+	config    *rest.Config
+	logger    logger.Logger
+	namespace string
+	podName   string
 }
 
 func NewDNSGenerator(config *rest.Config, log logger.Logger) (Generator, error) {
-    clientset, err := kubernetes.NewForConfig(config)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
-    }
-    return &DNSGenerator{
-        clientset: clientset,
-        config:    config,
-        logger:    log, 
-    }, nil
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+	}
+	return &DNSGenerator{
+		clientset: clientset,
+		config:    config,
+		logger:    log,
+		namespace: "default",
+		podName:   fmt.Sprintf("dns-eventgen-pod-%d", time.Now().Unix()),
+	}, nil
 }
 
-func (d *DNSGenerator) Generate(domain string) (string, string, string, error) {
-    namespace := "default"
-    podName := fmt.Sprintf("dns-test-pod-%d", time.Now().Unix())
+func (d *DNSGenerator) Generate(domain, countStr, intervalStr string) (string, string, string, error) {
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		count = -1 // Default to infinite if not specified or invalid
+	}
 
-    container, err := d.createAndWaitForPod(namespace, podName)
-    if err != nil {
-        return "", "", "", err
-    }
+	interval, err := strconv.ParseFloat(intervalStr, 64)
+	if err != nil || interval <= 0 {
+		interval = 1 // Default to 1 second if not specified or invalid
+	}
+	// *TODO: discussion on cleanup after executing event if count is set?
+	command := fmt.Sprintf("i=1; while [ $i -le %d ] || [ %d -eq -1 ]; do nslookup %s; i=$((i+1)); sleep %f; done", count, count, domain, interval)
 
-    if err := d.executeDNSLookup(namespace, podName, domain); err != nil {
-        return "", "", "", err
-    }
+	container := corev1.Container{
+		Name:    "dns-eventgen-container",
+		Image:   "busybox",
+		Command: []string{"sh", "-c", command},
+	}
 
-    return namespace, podName, container, nil
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: d.podName},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers:    []corev1.Container{container},
+		},
+	}
+
+	_, err = d.clientset.CoreV1().Pods(d.namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create pod: %v", err)
+	}
+
+	d.logger.Debugf("Created DNS event generation pod: %s", d.podName)
+	return d.namespace, d.podName, container.Name, nil
 }
 
-func (d *DNSGenerator) Cleanup(podName string) error {
-    namespace := "default"
-    err := d.clientset.CoreV1().Pods(namespace).Delete(context.Background(), podName, metav1.DeleteOptions{})
-    if err != nil {
-        return fmt.Errorf("failed to delete pod %s: %v", podName, err)
-    }
-    return nil
-}
-
-func (d *DNSGenerator) createAndWaitForPod(namespace, name string) (string, error) {
-    pod := &corev1.Pod{
-        ObjectMeta: metav1.ObjectMeta{Name: name},
-        Spec: corev1.PodSpec{
-            Containers: []corev1.Container{{
-                Name:    "dns-test",
-                Image:   "busybox",
-                Command: []string{"sh", "-c", "while true; do sleep 3600; done"},
-            }},
-        },
-    }
-
-    _, err := d.clientset.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{})
-    if err != nil {
-        return "", fmt.Errorf("failed to create pod: %v", err)
-    }
-
-    for i := 0; i < 60; i++ {
-        pod, err := d.clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
-        if err != nil {
-            return "", err
-        }
-        if pod.Status.Phase == corev1.PodRunning {
-            return pod.Spec.Containers[0].Name, nil
-        }
-        time.Sleep(time.Second)
-    }
-    return "", fmt.Errorf("pod did not become ready within 60 seconds")
-}
-
-func (d *DNSGenerator) executeDNSLookup(namespace, podName, domain string) error {
-    req := d.clientset.CoreV1().RESTClient().Post().
-        Resource("pods").
-        Name(podName).
-        Namespace(namespace).
-        SubResource("exec").
-        VersionedParams(&corev1.PodExecOptions{
-            Command: []string{"sh", "-c", fmt.Sprintf("nslookup %s", domain)},
-            Stdout:  true,
-            Stderr:  true,
-        }, scheme.ParameterCodec)
-
-    exec, err := remotecommand.NewSPDYExecutor(d.config, "POST", req.URL())
-    if err != nil {
-        return fmt.Errorf("failed to create executor: %v", err)
-    }
-
-    var stdout, stderr bytes.Buffer
-    err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
-        Stdout: &stdout,
-        Stderr: &stderr,
-    })
-    if err != nil {
-        return fmt.Errorf("failed to execute command: %v", err)
-    }
-
-    d.logger.Debugf("DNS lookup output:\n%s\n", stdout.String())
-    if stderr.Len() > 0 {
-        fmt.Printf("DNS lookup error:\n%s\n", stderr.String())
-    }
-
-    return nil
+func (d *DNSGenerator) Cleanup() (string, error) {
+	if d.podName == "" {
+		return "", fmt.Errorf("pod %s is not found in %s namespace", d.podName, d.namespace)
+	}
+	err := d.clientset.CoreV1().Pods(d.namespace).Delete(context.Background(), d.podName, metav1.DeleteOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to delete pod %s: %v", d.podName, err)
+	}
+	d.logger.Debugf("Deleted DNS event generation pod: %s", d.podName)
+	d.podName = "" // Reset the podName after cleanup
+	return "", nil
 }
