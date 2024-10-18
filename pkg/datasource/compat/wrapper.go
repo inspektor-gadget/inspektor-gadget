@@ -24,10 +24,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-// Keep this aligned with include/gadget/types.h
 const (
-	MntNsIdType = "type:gadget_mntns_id"
-	NetNsIdType = "type:gadget_netns_id"
+	MntNsIdType = "type:" + types.MntNsTypeName
+	NetNsIdType = "type:" + types.NetNsTypeName
 )
 
 type EventWrapperBase struct {

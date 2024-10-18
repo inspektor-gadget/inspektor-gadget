@@ -26,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
 
@@ -114,8 +115,8 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 	for _, ds := range gadgetCtx.GetDataSources() {
 		logger.Debugf("UidGidResolver inspecting datasource %q", ds.Name())
 
-		uids := ds.GetFieldsWithTag("type:gadget_uid")
-		gids := ds.GetFieldsWithTag("type:gadget_gid")
+		uids := ds.GetFieldsWithTag("type:" + types.UidTypeName)
+		gids := ds.GetFieldsWithTag("type:" + types.GidTypeName)
 
 		if len(uids) > 0 {
 			logger.Debugf("> found %d uid fields", len(uids))
