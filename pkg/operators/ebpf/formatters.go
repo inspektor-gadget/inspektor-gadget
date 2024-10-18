@@ -25,6 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
 
@@ -32,10 +33,6 @@ const (
 	kernelStackTargetNameAnnotation = "ebpf.formatter.kstack"
 	enumTargetNameAnnotation        = "ebpf.formatter.enum"
 	enumBitfieldSeparatorAnnotation = "ebpf.formatter.bitfield.separator"
-)
-
-const (
-	StackIdKernelType = "type:gadget_kernel_stack"
 )
 
 func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 {
@@ -155,7 +152,7 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
 	var kernelSymbolResolver *kallsyms.KAllSyms = nil
 	for _, ds := range gadgetCtx.GetDataSources() {
-		for _, in := range ds.GetFieldsWithTag(StackIdKernelType) {
+		for _, in := range ds.GetFieldsWithTag("type:" + ebpftypes.KernelStackTypeName) {
 			if in == nil {
 				continue
 			}
