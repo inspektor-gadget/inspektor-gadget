@@ -94,6 +94,13 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 
 	th := getTypeHint(btfConst.Type)
 
+	// For IP addresses, we assign it type string and then convert the string into uint32 or uint128
+	ipaddrPrefixFunc := hasPrefix(ipaddrPrefix)
+	if _, ok := ipaddrPrefixFunc(varName); ok {
+		th = params.TypeString
+		i.logger.Debugf("adding ipaddr param %q (%v)", btfVar.Name, th)
+	}
+
 	i.logger.Debugf("adding param %q (%v)", btfVar.Name, th)
 
 	newParam := &api.Param{
