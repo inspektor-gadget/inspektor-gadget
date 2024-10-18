@@ -30,34 +30,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/protocols"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
-)
-
-// Keep this aligned with include/gadget/types.h
-const (
-	// L3EndpointTypeName contains the name of the type that gadgets should use to store an L3 endpoint.
-	L3EndpointTypeName = "gadget_l3endpoint_t"
-
-	// L4EndpointTypeName contains the name of the type that gadgets should use to store an L4 endpoint.
-	L4EndpointTypeName = "gadget_l4endpoint_t"
-
-	// IPAddrTypeName contains the name of the type that gadgets should use to store an IP address.
-	IPAddrTypeName = "gadget_ip_addr_t"
-
-	// TimestampTypeName contains the name of the type to store a timestamp
-	TimestampTypeName = "gadget_timestamp"
-
-	// Name of the type to store a signal
-	SignalTypeName = "gadget_signal"
-
-	// ErrnoTypeName contains the name of the type to store an errno
-	ErrnoTypeName = "gadget_errno"
-
-	// Name of the type to store a syscall
-	SyscallTypeName = "gadget_syscall"
 )
 
 const (
@@ -152,12 +129,12 @@ type replacer struct {
 func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) (string, error), error) {
 	// We do some length checks in here - since we expect the in field to be part of an eBPF struct that
 	// is always sized statically, we can avoid checking the individual entries later on.
-	ips := in.GetSubFieldsWithTag("type:" + IPAddrTypeName)
+	ips := in.GetSubFieldsWithTag("type:" + ebpftypes.IPAddrTypeName)
 	if len(ips) != 1 {
-		return nil, fmt.Errorf("expected %d %q field, got %d", 1, IPAddrTypeName, len(ips))
+		return nil, fmt.Errorf("expected %d %q field, got %d", 1, ebpftypes.IPAddrTypeName, len(ips))
 	}
 	if ips[0].Size() != 16 {
-		return nil, fmt.Errorf("expected %q to have 16 bytes, got %d", IPAddrTypeName, ips[0].Size())
+		return nil, fmt.Errorf("expected %q to have 16 bytes, got %d", ebpftypes.IPAddrTypeName, ips[0].Size())
 	}
 	ips[0].RemoveReference(true)
 
@@ -195,7 +172,7 @@ func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) 
 var replacers = []replacer{
 	{
 		name:      "signal",
-		selectors: []string{"type:" + SignalTypeName},
+		selectors: []string{"type:" + ebpftypes.SignalTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.signal", in, signalTargetAnnotation)
 			if err != nil {
@@ -226,7 +203,7 @@ var replacers = []replacer{
 	},
 	{
 		name:      "errno",
-		selectors: []string{"type:" + ErrnoTypeName},
+		selectors: []string{"type:" + ebpftypes.ErrnoTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.errno", in, errnoTargetAnnotation)
 			if err != nil {
@@ -263,7 +240,7 @@ var replacers = []replacer{
 	},
 	{
 		name:      "syscall",
-		selectors: []string{"type:" + SyscallTypeName},
+		selectors: []string{"type:" + ebpftypes.SyscallTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			if in.Type() != api.Kind_Uint64 {
 				return nil, fmt.Errorf("checking field %q: expected uint64", in.Name())
@@ -299,7 +276,7 @@ var replacers = []replacer{
 	},
 	{
 		name:      "timestamp",
-		selectors: []string{"type:" + TimestampTypeName},
+		selectors: []string{"type:" + ebpftypes.TimestampTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			timestampFormat := "2006-01-02T15:04:05.000000000Z07:00"
 			if format := in.Annotations()["formatters.timestamp.format"]; format != "" {
@@ -352,7 +329,7 @@ var replacers = []replacer{
 	},
 	{
 		name:      "l3endpoint",
-		selectors: []string{"type:" + L3EndpointTypeName},
+		selectors: []string{"type:" + ebpftypes.L3EndpointTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			replace, err := handleL3Endpoint(in)
 			if err != nil {
@@ -368,7 +345,7 @@ var replacers = []replacer{
 	},
 	{
 		name:      "l4endpoint",
-		selectors: []string{"type:" + L4EndpointTypeName},
+		selectors: []string{"type:" + ebpftypes.L4EndpointTypeName},
 		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
 			l3Replace, err := handleL3Endpoint(in)
 			if err != nil {

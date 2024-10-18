@@ -3,7 +3,7 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
-// Keep these types aligned with definitions in pkg/gadgets/run/tracer/tracer.go.
+// Keep these types aligned with definitions in pkg/operators/ebpf/types/types.go.
 
 // union defining either an IPv4 or IPv6 address
 union gadget_ip_addr_t {

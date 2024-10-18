@@ -25,6 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
@@ -114,8 +115,8 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 	for _, ds := range gadgetCtx.GetDataSources() {
 		logger.Debugf("UidGidResolver inspecting datasource %q", ds.Name())
 
-		uids := ds.GetFieldsWithTag("type:gadget_uid")
-		gids := ds.GetFieldsWithTag("type:gadget_gid")
+		uids := ds.GetFieldsWithTag("type:" + ebpftypes.UidTypeName)
+		gids := ds.GetFieldsWithTag("type:" + ebpftypes.GidTypeName)
 
 		if len(uids) > 0 {
 			logger.Debugf("> found %d uid fields", len(uids))

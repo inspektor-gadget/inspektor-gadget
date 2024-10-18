@@ -21,13 +21,13 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-// Keep this aligned with include/gadget/types.h
 const (
-	MntNsIdType = "type:gadget_mntns_id"
-	NetNsIdType = "type:gadget_netns_id"
+	MntNsIdType = "type:" + ebpftypes.MntNsTypeName
+	NetNsIdType = "type:" + ebpftypes.NetNsTypeName
 )
 
 type EventWrapperBase struct {
