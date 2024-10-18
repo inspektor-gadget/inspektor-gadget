@@ -2,24 +2,55 @@
 title: KubeIPResolver
 ---
 
-The KubeIPResolver operator enriches IP addresses with pod and service
-information. For instance, in this example the `10.96.0.10` IP is enriched with
-namespace, podname, kind, and pod labels.
+The KubeIPResolver operator enriches layer 4 endpoints ([gadget_l4endpoint_t](../../gadget-devel/gadget-ebpf-api.md#struct-gadget_l4endpoint_t))
+with pod and service information by adding following fields to the events:
+
+- `k8s`:
+  - `kind`: The Kubernetes object kind, which can be either `pod` or `svc`.
+  - `labels`: The labels of the Kubernetes object.
+  - `name`: The name of the Kubernetes object.
+  - `namespace`: The namespace of the Kubernetes object.
+
+For instance, the example below shows a request from `mypod` pod to `kube-dns` service:
 
 ```json
+{
+  ...
   "dst": {
     "addr": "10.96.0.10",
-    "version": 4,
-    "namespace": "kube-system",
-    "podname": "kube-dns",
-    "kind": "svc",
-    "podlabels": {
-      "k8s-app": "kube-dns",
-      "kubernetes.io/cluster-service": "true",
-      "kubernetes.io/name": "CoreDNS"
-    }
-  }
+    "k8s": {
+      "kind": "svc",
+      "labels": "k8s-app=kube-dns,kubernetes.io/cluster-service=true,kubernetes.io/name=CoreDNS",
+      "name": "kube-dns",
+      "namespace": "kube-system"
+    },
+    "port": 53,
+    "proto": "UDP",
+    "proto_raw": 17,
+    "version": 4
+  },
+  ...
+  "src": {
+    "addr": "10.244.0.12",
+    "k8s": {
+      "kind": "pod",
+      "labels": "run=mypod",
+      "name": "mypod",
+      "namespace": "demo"
+    },
+    "port": 57066,
+    "proto": "UDP",
+    "proto_raw": 17,
+    "version": 4
+  },
+  ...
+}
 ```
+
+
+## Priority
+
+10
 
 ## Parameters
 

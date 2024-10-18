@@ -16,11 +16,19 @@ package utils
 
 // Define some types that are only used for testing purposes
 
+type K8s struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Labels    string `json:"labels"`
+}
+
 type L4Endpoint struct {
 	Addr    string `json:"addr"`
 	Version uint8  `json:"version"`
 	Port    uint16 `json:"port"`
 	Proto   string `json:"proto"`
+	K8s     K8s    `json:"k8s"`
 }
 
 type L3Endpoint struct {
