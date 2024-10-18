@@ -272,6 +272,10 @@ var annotationsTemplates = map[string]map[string]string{
 	"containerImageName": {
 		ColumnsWidthAnnotation: "30",
 	},
+	"containerPid": {
+		ColumnsWidthAnnotation: "6",
+		ColumnsHiddenAnnotation: "true",
+	},
 	"containerImageDigest": {
 		ColumnsWidthAnnotation: "30",
 	},
