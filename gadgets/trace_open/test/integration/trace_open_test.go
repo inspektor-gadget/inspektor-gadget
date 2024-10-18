@@ -32,14 +32,8 @@ import (
 type traceOpenEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string             `json:"timestamp"`
+	Proc      eventtypes.Process `json:"proc"`
 
 	Fd    uint32 `json:"fd"`
 	Error string `json:"error"`
@@ -93,28 +87,21 @@ func TestTraceOpen(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOpenEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "cat",
+				Proc:       utils.BuildProc("cat", 1000, 1111),
 				FName:      "/dev/null",
 				Fd:         3,
 				Error:      "",
-				Uid:        1000,
-				Gid:        1111,
 				Flags:      "O_RDONLY",
 				Mode:       "----------",
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
-				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceOpenEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MntNsID)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

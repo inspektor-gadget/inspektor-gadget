@@ -6,34 +6,6 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   processes:
     fields:
-      comm:
-        annotations:
-          description: Process name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-      ppid:
-        annotations:
-          description: Parent process ID
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
 params:
   ebpf:
     show_threads:

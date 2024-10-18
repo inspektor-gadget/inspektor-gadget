@@ -26,17 +26,10 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type ExpectedSnapshotProcessEvent struct {
-	Comm      string `json:"comm"`
-	Pid       int    `json:"pid"`
-	Tid       int    `json:"tid"`
-	Uid       uint32 `json:"uid"`
-	Gid       uint32 `json:"gid"`
-	ParentPid int    `json:"ppid"`
-	MountNsID uint64 `json:"mntns_id"`
-}
+type ExpectedSnapshotProcessEvent eventtypes.Process
 
 type testDef struct {
 	runnerConfig   *utilstest.RunnerConfig
@@ -55,13 +48,14 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
 					return &ExpectedSnapshotProcessEvent{
-						Comm:      "sleep",
-						Pid:       sleepPid,
-						Tid:       sleepPid,
-						Uid:       0,
-						Gid:       0,
-						ParentPid: info.Tid,
-						MountNsID: info.MountNsID,
+						Comm: "sleep",
+						Pid:  uint32(sleepPid),
+						Tid:  uint32(sleepPid),
+						Parent: eventtypes.Parent{
+							Pid:  uint32(info.Tid),
+							Comm: info.Comm,
+						},
+						MntNsID: info.MountNsID,
 					}
 				})(t, info, sleepPid, events)
 			},
@@ -85,13 +79,14 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
 					return &ExpectedSnapshotProcessEvent{
-						Comm:      "sleep",
-						Pid:       sleepPid,
-						Tid:       sleepPid,
-						Uid:       0,
-						Gid:       0,
-						ParentPid: info.Tid,
-						MountNsID: info.MountNsID,
+						Comm: "sleep",
+						Pid:  uint32(sleepPid),
+						Tid:  uint32(sleepPid),
+						Parent: eventtypes.Parent{
+							Pid:  uint32(info.Tid),
+							Comm: info.Comm,
+						},
+						MntNsID: info.MountNsID,
 					}
 				})(t, info, sleepPid, events)
 			},

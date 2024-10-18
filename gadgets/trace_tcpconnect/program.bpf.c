@@ -10,6 +10,7 @@
 #include <bpf/bpf_endian.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -35,17 +36,10 @@ struct ipv6_flow_key {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	char comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
 
 	__u64 latency;
 	gadget_errno error_raw;
@@ -74,11 +68,8 @@ struct {
 } sockets_per_process SEC(".maps");
 
 struct piddata {
-	char comm[TASK_COMM_LEN];
+	struct gadget_process proc;
 	u64 ts;
-	u32 pid;
-	u32 tid;
-	u64 mntns_id;
 };
 
 // sockets_latency keeps track of sockets to calculate the latency between:
@@ -134,10 +125,9 @@ static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-	__u64 mntns_id;
 	__u32 uid = (u32)uid_gid;
-	;
-	struct piddata piddata = {};
+
+	struct piddata piddata;
 
 	if (filter_pid && pid != filter_pid)
 		return 0;
@@ -145,17 +135,12 @@ static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 	if (filter_uid != (uid_t)-1 && uid != filter_uid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	if (calculate_latency) {
-		bpf_get_current_comm(&piddata.comm, sizeof(piddata.comm));
+		gadget_fill_current_process(&piddata.proc);
 		piddata.ts = bpf_ktime_get_ns();
-		piddata.tid = tid;
-		piddata.pid = pid;
-		piddata.mntns_id = mntns_id;
 		bpf_map_update_elem(&sockets_latency, &sk, &piddata, 0);
 	} else {
 		bpf_map_update_elem(&sockets_per_process, &tid, &sk, 0);
@@ -194,78 +179,15 @@ static __always_inline void count_v6(struct sock *sk, __u16 dport)
 		__atomic_add_fetch(val, 1, __ATOMIC_RELAXED);
 }
 
-static __always_inline void trace_v4(struct pt_regs *ctx, __u64 pid_tgid,
-				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id, int ret)
-{
-	struct event *event;
-
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return;
-
-	__u64 uid_gid = bpf_get_current_uid_gid();
-
-	event->pid = pid_tgid >> 32;
-	event->tid = (u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	event->src.version = event->dst.version = 4;
-	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
-			   __sk_common.skc_rcv_saddr);
-	BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk, __sk_common.skc_daddr);
-	event->dst.port = dport;
-	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	event->mntns_id = mntns_id;
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->error_raw = -ret;
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
-}
-
-static __always_inline void trace_v6(struct pt_regs *ctx, __u64 pid_tgid,
-				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id, int ret)
-{
-	struct event *event;
-
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return;
-
-	__u64 uid_gid = bpf_get_current_uid_gid();
-
-	event->pid = pid_tgid >> 32;
-	event->tid = (u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	event->mntns_id = mntns_id;
-	event->src.version = event->dst.version = 6;
-	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
-	BPF_CORE_READ_INTO(&event->src.addr_raw.v6, sk,
-			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-	BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
-			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-	event->dst.port = dport;
-	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->error_raw = -ret;
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
-}
-
 static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 tid = pid_tgid;
 	struct sock **skpp;
 	struct sock *sk;
-	u64 mntns_id;
 	__u16 dport;
 	unsigned short family;
+	struct event *event;
 
 	skpp = bpf_map_lookup_elem(&sockets_per_process, &tid);
 	if (!skpp)
@@ -283,14 +205,37 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 			count_v4(sk, dport);
 		else
 			count_v6(sk, dport);
-	} else {
-		mntns_id = gadget_get_mntns_id();
 
-		if (family == AF_INET)
-			trace_v4(ctx, pid_tgid, sk, dport, mntns_id, ret);
-		else
-			trace_v6(ctx, pid_tgid, sk, dport, mntns_id, ret);
+		goto end;
 	}
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		goto end;
+
+	gadget_fill_current_process(&event->proc);
+	event->src.proto_raw = event->dst.proto_raw = IPPROTO_TCP;
+	event->dst.port = dport;
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->error_raw = -ret;
+	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
+
+	if (family == AF_INET) {
+		event->src.version = event->dst.version = 4;
+		BPF_CORE_READ_INTO(&event->src.addr_raw.v4, sk,
+				   __sk_common.skc_rcv_saddr);
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v4, sk,
+				   __sk_common.skc_daddr);
+	} else {
+		event->src.version = event->dst.version = 6;
+		BPF_CORE_READ_INTO(
+			&event->src.addr_raw.v6, sk,
+			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
+				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
+	}
+
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 end:
 	bpf_map_delete_elem(&sockets_per_process, &tid);
@@ -329,10 +274,8 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	event->latency = ts - piddatap->ts;
 	if (targ_min_latency_ns && event->latency < targ_min_latency_ns)
 		goto cleanup;
-	__builtin_memcpy(&event->comm, piddatap->comm, sizeof(event->comm));
-	event->pid = piddatap->pid;
-	event->tid = piddatap->tid;
-	event->mntns_id = piddatap->mntns_id;
+
+	__builtin_memcpy(&event->proc, &piddatap->proc, sizeof(event->proc));
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	// host expects data in host byte order
 	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));

@@ -26,22 +26,18 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type ExpectedTopFileEvent struct {
-	Comm    string `json:"comm"`
-	Dev     uint32 `json:"dev"`
-	File    string `json:"file"`
-	Gid     uint32 `json:"gid"`
-	MntnsID uint64 `json:"mntns_id"`
-	Pid     int    `json:"pid"`
-	Tid     int    `json:"tid"`
-	Uid     uint32 `json:"uid"`
-	RBytes  uint64 `json:"rbytes"`
-	Reads   uint64 `json:"reads"`
-	WBytes  uint64 `json:"wbytes"`
-	Writes  uint64 `json:"writes"`
-	T       string `json:"t"`
+	Proc   eventtypes.Process `json:"proc"`
+	Dev    uint32             `json:"dev"`
+	File   string             `json:"file"`
+	RBytes uint64             `json:"rbytes"`
+	Reads  uint64             `json:"reads"`
+	WBytes uint64             `json:"wbytes"`
+	Writes uint64             `json:"writes"`
+	T      string             `json:"t"`
 }
 
 type testDef struct {
@@ -65,20 +61,13 @@ func TestTopFileGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, filepath string, events []ExpectedTopFileEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTopFileEvent {
 					return &ExpectedTopFileEvent{
-						Comm: info.Comm,
+						Proc: info.Proc,
 						T:    "R",
 						File: filepath,
 
-						Pid: info.Pid,
-						Tid: info.Tid,
-
 						// Only check the existence.
 						Writes: utils.NormalizedInt,
-
-						MntnsID: info.MountNsID,
-						Uid:     0,
-						Gid:     0,
-						Dev:     0,
+						Dev:    0,
 
 						// Nothing is being read from the file.
 						Reads:  0,

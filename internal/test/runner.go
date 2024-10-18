@@ -27,6 +27,8 @@ import (
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
+
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // RunnerConfig defines how the runner should behave.
@@ -52,9 +54,15 @@ type RunnerInfo struct {
 	Comm        string
 	Uid         int
 	Gid         int
+	Ppid        int
+	Pcomm       string
 	MountNsID   uint64
 	NetworkNsID uint64
 	UserNsID    uint64
+
+	// Alternative representation of all fields above to avoid tests making the
+	// same conversion multiple times
+	Proc eventtypes.Process
 }
 
 // Runner is a helper type to execute tests in different conditions. It
@@ -163,15 +171,41 @@ func (r *Runner) runLoop() {
 		return
 	}
 
+	ppid := os.Getppid()
+	pcommBytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", ppid))
+	if err != nil {
+		r.replies <- fmt.Errorf("getting parent comm: %w", err)
+		return
+	}
+	pcomm := string(pcommBytes)
+	pcomm = pcomm[:len(pcomm)-1]
+
 	r.Info = &RunnerInfo{
 		Pid:         os.Getpid(),
 		Tid:         unix.Gettid(),
 		Comm:        filepath.Base(comm),
 		Uid:         r.config.Uid,
 		Gid:         r.config.Gid,
+		Ppid:        ppid,
+		Pcomm:       pcomm,
 		MountNsID:   mountnsid,
 		NetworkNsID: netnsid,
 		UserNsID:    userNsID,
+	}
+
+	r.Info.Proc = eventtypes.Process{
+		Comm:    r.Info.Comm,
+		Pid:     uint32(r.Info.Pid),
+		Tid:     uint32(r.Info.Tid),
+		MntNsID: r.Info.MountNsID,
+		User: eventtypes.User{
+			Uid: uint32(r.Info.Uid),
+			Gid: uint32(r.Info.Gid),
+		},
+		Parent: eventtypes.Parent{
+			Comm: r.Info.Pcomm,
+			Pid:  uint32(r.Info.Ppid),
+		},
 	}
 
 	// Indicate it's ready to process tasks

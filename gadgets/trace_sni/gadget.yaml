@@ -6,40 +6,6 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   sni:
     fields:
-      timestamp_raw:
-        annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
-      netns_id:
-        annotations:
-          description: Network namespace inode id
-          template: ns
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Process name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
       name:
         annotations:
           columns.width: 30

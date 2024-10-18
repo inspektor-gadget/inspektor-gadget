@@ -39,6 +39,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -620,11 +621,11 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			// Try to auto-apply metricsType from tags
 			if metricsType == "" {
 				// tbd: should we rather handle this mapping in the eBPF operator to keep the types there?
-				if f.HasAnyTagsOf("type:gadget_histogram_slot__u32", "type:gadget_histogram_slot__u64") {
+				if f.HasAnyTagsOf("type:"+types.HistogramSlotU32TypeName, "type:"+types.HistogramSlotU64TypeName) {
 					metricsType = MetricTypeHistogram
-				} else if f.HasAnyTagsOf("type:gadget_counter__u32", "type:gadget_counter__u64") {
+				} else if f.HasAnyTagsOf("type:"+types.CounterU32TypeName, "type:"+types.CounterU64TypeName) {
 					metricsType = MetricTypeCounter
-				} else if f.HasAnyTagsOf("type:gadget_gauge__u32", "type:gadget_gauge__u64") {
+				} else if f.HasAnyTagsOf("type:"+types.GaugeU32TypeName, "type:"+types.GaugeU64TypeName) {
 					metricsType = MetricTypeGauge
 				}
 			}

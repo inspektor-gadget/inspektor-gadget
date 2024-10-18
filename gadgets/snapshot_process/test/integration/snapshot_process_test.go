@@ -33,15 +33,7 @@ import (
 type snapshotProcessEntry struct {
 	eventtypes.CommonData
 
-	MntNsID uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
-
-	Ppid uint32 `json:"ppid"`
+	Proc eventtypes.Process `json:"proc"`
 }
 
 func TestSnapshotProcess(t *testing.T) {
@@ -90,23 +82,12 @@ func TestSnapshotProcess(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &snapshotProcessEntry{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "nc",
-				Uid:        1000,
-				Gid:        1111,
-
-				// Check the existence of the following fields
-				MntNsID: utils.NormalizedInt,
-				Pid:     utils.NormalizedInt,
-				Tid:     utils.NormalizedInt,
-				Ppid:    utils.NormalizedInt,
+				Proc:       utils.BuildProc("nc", 1000, 1111),
 			}
 
 			normalize := func(e *snapshotProcessEntry) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MntNsID)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.Ppid)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)

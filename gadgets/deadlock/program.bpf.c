@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 
@@ -14,13 +15,9 @@ enum operation { lock, unlock };
 struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
-
-	char comm[TASK_COMM_LEN];
-	__u32 pid;
-	__u32 tid;
+	struct gadget_process proc;
 
 	__u64 mutex_addr;
-
 	enum operation operation_raw;
 };
 
@@ -32,8 +29,6 @@ gen_mutex_event(struct pt_regs *ctx, enum operation operation, u64 mutex_addr)
 {
 	u64 mntns_id;
 	struct event *event;
-	u64 pid_tgid;
-	u32 tid;
 
 	mntns_id = gadget_get_mntns_id();
 	if (gadget_should_discard_mntns_id(mntns_id))
@@ -43,14 +38,9 @@ gen_mutex_event(struct pt_regs *ctx, enum operation operation, u64 mutex_addr)
 	if (!event)
 		return 0;
 
-	pid_tgid = bpf_get_current_pid_tgid();
-	tid = (u32)pid_tgid;
-
+	gadget_fill_current_process(&event->proc);
 	event->mntns_id = mntns_id;
-	event->pid = pid_tgid >> 32;
-	event->tid = tid;
 	event->mutex_addr = mutex_addr;
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
 	event->operation_raw = operation;
 	event->timestamp_raw = bpf_ktime_get_ns();
 

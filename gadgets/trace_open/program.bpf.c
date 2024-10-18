@@ -7,6 +7,7 @@
 #include <bpf/bpf_core_read.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -23,14 +24,7 @@ struct args_t {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	char comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	struct gadget_process proc;
 
 	gadget_errno error_raw;
 	__u32 fd;
@@ -157,17 +151,13 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	}
 
 	/* event data */
-	event->pid = pid_tgid >> 32;
-	event->tid = (__u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	gadget_fill_current_process(&event->proc);
+
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
 	event->mode_raw = ap->mode;
 	event->error_raw = errval;
 	event->fd = fd;
-	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	/* emit event */

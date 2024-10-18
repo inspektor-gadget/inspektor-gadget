@@ -70,25 +70,12 @@ enum pkt_type_t : __u8 {
 // Or can we remove this altogether?
 #define MAX_PACKET (1024 * 9) // 9KB
 
-#define TASK_COMM_LEN 16
-
 struct event_t {
 	gadget_timestamp timestamp_raw;
-
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
-
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 ppid;
-	__u32 uid;
-	__u32 gid;
+	struct gadget_process proc;
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
@@ -107,21 +94,10 @@ struct event_t {
 // TODO: We'll need to find a clearer way to implement this
 struct event_header_t {
 	gadget_timestamp timestamp_raw;
-
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
-
-	char comm[TASK_COMM_LEN];
-	char pcomm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 ppid;
-	__u32 uid;
-	__u32 gid;
+	struct gadget_process proc;
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
@@ -321,18 +297,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	if (skb_val != NULL) {
-		event.mntns_id = skb_val->mntns;
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		event.ppid = skb_val->ppid;
-		__builtin_memcpy(&event.comm, skb_val->task,
-				 sizeof(event.comm));
-		__builtin_memcpy(&event.pcomm, skb_val->ptask,
-				 sizeof(event.pcomm));
-		event.uid = (__u32)skb_val->uid_gid;
-		event.gid = (__u32)(skb_val->uid_gid >> 32);
-	}
+	gadget_socket_fill_process(skb_val, &event.proc);
 
 	// Calculate latency:
 	//

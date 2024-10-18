@@ -8,23 +8,6 @@ datasources:
     annotations:
       cli.clear-screen-before: "true"
     fields:
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Process name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-          columns.hidden: true
       received:
         annotations:
           description: Received bytes

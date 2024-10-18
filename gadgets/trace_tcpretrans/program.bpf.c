@@ -16,6 +16,7 @@
 #include <bpf/bpf_endian.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -23,8 +24,6 @@
 
 #define GADGET_TYPE_TRACING
 #include <gadget/sockets-map.h>
-
-#define TASK_COMM_LEN 16
 
 enum type {
 	RETRANS,
@@ -45,17 +44,10 @@ enum tcp_flags_set : __u8 {
 struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_netns_id netns_id;
-	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	char comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
 
 	__u8 state;
 	enum tcp_flags_set tcpflags_raw;
@@ -68,7 +60,6 @@ struct event {
 #define AF_INET6 10
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-
 GADGET_TRACER(tcpretrans, events, event);
 
 static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
@@ -168,17 +159,11 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 		gadget_socket_lookup(sk, event->netns_id);
 
 	if (skb_val != NULL) {
-		event->mntns_id = skb_val->mntns;
 		// Use the mount namespace of the socket to filter by container
-		if (gadget_should_discard_mntns_id(event->mntns_id))
+		if (gadget_should_discard_mntns_id(skb_val->mntns))
 			goto cleanup;
 
-		event->pid = skb_val->pid_tgid >> 32;
-		event->tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event->comm, skb_val->task,
-				 sizeof(event->comm));
-		event->uid = (__u32)skb_val->uid_gid;
-		event->gid = (__u32)(skb_val->uid_gid >> 32);
+		gadget_socket_fill_process(skb_val, &event->proc);
 	}
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));

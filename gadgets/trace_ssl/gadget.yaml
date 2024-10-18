@@ -7,39 +7,9 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   ssl:
     fields:
-      timestamp_raw:
-        annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
       latency_ns:
         annotations:
           columns.width: 10
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Process name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
       len:
         annotations:
           columns.hidden: true
