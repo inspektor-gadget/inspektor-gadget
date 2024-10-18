@@ -4,7 +4,7 @@ go 1.22.8
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.16.0
-	github.com/containerd/containerd v1.7.22
+	github.com/containerd/containerd v1.7.23
 	github.com/containerd/nri v0.6.1
 	github.com/containers/common v0.60.4
 	github.com/containers/image/v5 v5.32.2
@@ -68,7 +68,7 @@ require (
 )
 
 require (
-	github.com/containerd/errdefs v0.1.0
+	github.com/containerd/errdefs v0.3.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gopacket/gopacket v1.2.0
 	github.com/sigstore/sigstore v1.8.10
