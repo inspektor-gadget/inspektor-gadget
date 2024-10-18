@@ -26,6 +26,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
@@ -239,8 +240,10 @@ func LoadeBPFSpec(
 	}
 
 	if err := spec.LoadAndAssign(objs, &opts); err != nil {
+		btf.FlushKernelSpec()
 		return fmt.Errorf("loading maps and programs: %w", err)
 	}
+	btf.FlushKernelSpec()
 
 	return nil
 }
