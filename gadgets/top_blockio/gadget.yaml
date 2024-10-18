@@ -20,23 +20,6 @@ datasources:
       minor:
         annotations:
           description: Minor device number
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Command name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-          columns.hidden: true
       rw_raw:
         annotations:
           columns.hidden: true

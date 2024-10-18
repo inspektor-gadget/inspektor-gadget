@@ -6,52 +6,12 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   exec:
     fields:
-      timestamp_raw:
-        annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Process name
-          template: comm
       cwd:
         annotations:
           description: The current working directory of the process (require --paths flag)
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
-      pcomm:
-        annotations:
-          template: pcomm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-          columns.hidden: true
-          uidgidresolver.target: user
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
-          columns.hidden: true
-          uidgidresolver.target: group
-      ppid:
-        annotations:
-          template: pid
       loginuid:
         annotations:
           template: uid
