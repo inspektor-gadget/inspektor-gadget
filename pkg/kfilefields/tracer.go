@@ -116,6 +116,7 @@ func (t *Tracer) install() error {
 	consts := map[string]interface{}{
 		"socket_ino": uint64(fdIno),
 	}
+	//nolint:staticcheck
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("RewriteConstants: %w", err)
 	}

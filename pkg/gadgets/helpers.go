@@ -227,6 +227,7 @@ func LoadeBPFSpec(
 
 	consts[FilterByMntNsName] = filterByMntNs
 
+	//nolint:staticcheck
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
 	}

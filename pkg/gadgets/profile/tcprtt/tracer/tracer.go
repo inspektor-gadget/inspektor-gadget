@@ -249,6 +249,7 @@ func (t *Tracer) install() error {
 		"targ_daddr_v6":   t.config.filterRemoteAddressV6,
 	}
 
+	//nolint:staticcheck
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
 	}
