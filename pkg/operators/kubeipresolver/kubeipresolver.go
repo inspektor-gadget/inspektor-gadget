@@ -159,6 +159,9 @@ type endpointAccessors struct {
 	subK8sName      datasource.FieldAccessor
 	subK8sNamespace datasource.FieldAccessor
 	subK8sLabels    datasource.FieldAccessor
+
+	column datasource.FieldAccessor
+	port   datasource.FieldAccessor
 }
 
 func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -228,12 +231,25 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "labels", err)
 			}
+
+			// control how the field is displayed
+			var endpointColAcc datasource.FieldAccessor
+			if ec := ep.GetSubFieldsWithTag("endpoint"); len(ec) == 1 {
+				endpointColAcc = ec[0]
+			}
+			var portAcc datasource.FieldAccessor
+			if p := ep.GetSubFieldsWithTag("name:port"); len(p) == 1 && p[0].Size() == 2 {
+				portAcc = p[0]
+			}
+
 			ea := endpointAccessors{
 				root:            ep,
 				subK8sKind:      k8sKindAcc,
 				subK8sName:      k8sNameAcc,
 				subK8sNamespace: k8sNamespaceAcc,
 				subK8sLabels:    k8sLabelsAcc,
+				column:          endpointColAcc,
+				port:            portAcc,
 			}
 			epAccessors[ds] = append(epAccessors[ds], ea)
 		}
@@ -291,6 +307,11 @@ func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 						labels = append(labels, fmt.Sprintf("%s=%s", key, val))
 					}
 					a.subK8sLabels.Set(data, []byte(strings.Join(labels, ",")))
+					if a.column != nil && a.port != nil {
+						p, _ := a.port.Uint16(data)
+						v := fmt.Sprintf("p/%s/%s:%d", pod.Namespace, pod.Name, p)
+						a.column.Set(data, []byte(v))
+					}
 					continue
 				}
 
@@ -305,10 +326,16 @@ func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 						labels = append(labels, fmt.Sprintf("%s=%s", key, val))
 					}
 					a.subK8sLabels.Set(data, []byte(strings.Join(labels, ",")))
+
+					if a.column != nil && a.port != nil {
+						p, _ := a.port.Uint16(data)
+						v := fmt.Sprintf("s/%s/%s:%d", svc.Namespace, svc.Name, p)
+						a.column.Set(data, []byte(v))
+					}
 				}
 			}
 			return errs
-		}, 0)
+		}, Priority)
 	}
 	return nil
 }
