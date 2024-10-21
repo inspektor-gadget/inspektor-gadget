@@ -37,6 +37,7 @@ type InstanceSpec struct {
 	ID          string            `json:"id" yaml:"id"`
 	Name        string            `json:"name" yaml:"name"`
 	Tags        []string          `json:"tags" yaml:"tags"`
+	Nodes       []string          `json:"nodes" yaml:"nodes"`
 	ParamValues map[string]string `json:"paramValues" yaml:"paramValues"`
 }
 

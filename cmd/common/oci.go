@@ -322,6 +322,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			runtimeParams.Set("id", spec.ID)
 			runtimeParams.Set("name", spec.Name)
 			runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
+			runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
 
 			tempParams := spec.ParamValues
 			maps.Copy(tempParams, paramValueMap)
@@ -418,6 +419,7 @@ func runInstanceSpecsDetached(
 		runtimeParams.Set("id", spec.ID)
 		runtimeParams.Set("name", spec.Name)
 		runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
+		runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
 
 		maps.Copy(spec.ParamValues, paramValueMap)
 
