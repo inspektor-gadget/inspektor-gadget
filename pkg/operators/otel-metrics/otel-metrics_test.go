@@ -17,6 +17,7 @@ package otelmetrics
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -259,5 +260,608 @@ func TestMetricsHistogram(t *testing.T) {
 			}
 		}
 		assert.True(t, found)
+	}
+}
+
+// TestMetricsParamsAndAnnotations tests the following features:
+//   - Print: This feature is requested by setting the AnnotationMetricsPrint
+//     annotation to true. When requested, the tests verify the operator
+//     creates and disable data sources as expected, and emits (or not) some data.
+//   - Export: This feature is requested by setting the AnnotationMetricsPrint
+//     annotation to true and the ParamOtelMetricsListen global parameter to
+//     true. When requested, the tests verify the operator exports some data.
+//
+// The tests consider the following parameters/annotations/conditions:
+//   - AnnotationMetricsPrint ds annotation (Print/NoPrint)
+//   - AnnotationMetricsCollect ds annotation (Collect/NoCollect)
+//   - ParamOtelMetricsListen global param (Export/NoExport)
+//   - Where the operator is running gadgetcontext.WithAsRemoteCall(ClientSide/ServerSide)
+//
+// And, a few special cases:
+//   - AnnotationMetricsType=MetricsTypeGauge field annotation (WithoutMetricsTypeHistogram)
+//   - ParamOtelMetricsName instance param (WithoutMetricsName)
+//
+// Note these tests don't focus on the correctness of the data emitted or
+// exported, but on the operator's behaviour. For the correctness of the data
+// emitted or exported, see the other tests TestMetricsCounterAndGauge and
+// TestMetricsHistogram.
+func TestMetricsParamsAndAnnotations(t *testing.T) {
+	const (
+		producerPriority = Priority - 1
+		consumerPriority = Priority + 1
+
+		// With these values, we should catch at least one data packet
+		testContextTimeout = 2 * time.Second
+		testPrintInterval  = 1 * time.Second
+
+		testDsName    = "test-metrics"
+		testScopeName = "metrics-test-scope"
+
+		testFieldName        = "myTestField"
+		testFieldKind        = api.Kind_Uint32
+		testFieldType        = MetricTypeHistogram
+		testFieldDescription = "My test field description"
+		testFieldUnit        = "ms"
+		testFieldLongUnit    = "milliseconds"
+	)
+
+	var (
+		fqParamMetricsName   = fmt.Sprintf("operator.%s.%s", name, ParamOtelMetricsName)
+		fqParamPrintInterval = fmt.Sprintf("operator.%s.%s", name, ParamOtelMetricsPrintInterval)
+
+		testMetricsName = fmt.Sprintf("%s:%s", testDsName, testScopeName)
+
+		testExportedHelpEntry  = fmt.Sprintf("HELP %s_%s %s", testFieldName, testFieldLongUnit, testFieldDescription)
+		testExportedTypeEntry  = fmt.Sprintf("TYPE %s_%s %s", testFieldName, testFieldLongUnit, testFieldType)
+		testExportedScopeEntry = fmt.Sprintf("otel_scope_name=\"%s\"", testScopeName)
+
+		testFieldAnnotations = map[string]string{
+			AnnotationMetricsType:        testFieldType,
+			AnnotationMetricsDescription: testFieldDescription,
+			AnnotationMetricsUnit:        testFieldUnit,
+			AnnotationMetricsBoundaries:  "0,1,2,3",
+		}
+	)
+
+	type test struct {
+		// Client or server side
+		serverSide bool
+
+		// Operator's global and instance parameters
+		globalParamValues   map[string]string
+		instanceParamValues api.ParamValues
+
+		// Data and field annotations for the producer to create the data source
+		dsAnnotations    map[string]string
+		fieldAnnotations map[string]string
+
+		// Expected behaviour to be verified by consumer or after the gadget run
+		isRenderOutputExpected     bool
+		areExportedMetricsExpected bool
+	}
+
+	tests := map[string]test{
+		// Only exporting metrics on client side: ok
+		"ClientSide-NoPrint-Collect-Export": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: true,
+		},
+		// Trying to export metrics on client side without collect: ko - collect is required to export
+		"ClientSide-NoPrint-NoCollect-Export": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Only printing metrics on client side: ok
+		"ClientSide-Print-NoCollect-NoExport": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     true,
+			areExportedMetricsExpected: false,
+		},
+		// Exporting and printing metrics on client side: ok
+		"ClientSide-Print-Collect-Export": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     true,
+			areExportedMetricsExpected: true,
+		},
+		// Setting print + collect on client side: ko - Collect is ignored if export is disabled
+		// TBD: Shouldn't we inform users about this?
+		"ClientSide-Print-Collect-NoExport": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     true,
+			areExportedMetricsExpected: false,
+		},
+		// Do noting on client side: ok
+		"ClientSide-NoPrint-NoCollect-NoExport": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Collect does nothing without global export on client side: ko
+		// TBD: Shouldn't we inform users about this?
+		"ClientSide-NoPrint-Collect-NoExport": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Trying to export and print metrics on client side without collect: ok but should be ko
+		// TBD: When print is set, collect is not required to export metrics on
+		// client side. I suggest making collect mandatory for exporting
+		"ClientSide-Print-NoCollect-Export": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     true,
+			areExportedMetricsExpected: true,
+		},
+		// Trying to export metrics on server side without collect: ko - Print
+		// is ignored on server side so, collect is required to export metrics
+		"ServerSide-Print-NoCollect-Export": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Trying to export metrics on server side without collect: ko - Note
+		// print is ignored on server side
+		"ServerSide-NoPrint-NoCollect-Export": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Exporting metrics on server side: ok - Note print is ignored on
+		// server side
+		"ServerSide-Print-Collect-Export": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: true,
+		},
+		// Exporting metrics on server side: ok
+		"ServerSide-NoPrint-Collect-Export": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: true,
+		},
+		// Printing metrics on server side: ko - Print is ignored on server side
+		"ServerSide-Print-NoCollect-NoExport": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Setting print + collect on server side: ko - Both print adn collect are ignored
+		// TBD: Shouldn't we inform users about this?
+		"ServerSide-Print-Collect-NoExport": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "true",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Do noting on server side: ok
+		"ServerSide-NoPrint-NoCollect-NoExport": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "false",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Collect does nothing without export on server side: ko
+		// TBD: Shouldn't we inform users about this?
+		"ServerSide-NoPrint-Collect-NoExport": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "false",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamMetricsName:   testMetricsName,
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+
+		// Special cases: playing with metrics type and metrics-name
+
+		// Exporting metrics on server side: Metrics name is required to export
+		// TBD: Shouldn't we inform users about this?
+		"ServerSide-NoPrint-Collect-Export-WithoutMetricsName": {
+			serverSide: true,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Exporting metrics on client side: Metrics name is required to export
+		// TBD: Shouldn't we inform users about this?
+		"ClientSide-NoPrint-Collect-Export-WithoutMetricsName": {
+			serverSide: false,
+			globalParamValues: map[string]string{
+				ParamOtelMetricsListen: "true",
+			},
+			instanceParamValues: api.ParamValues{
+				fqParamPrintInterval: testPrintInterval.String(),
+			},
+			dsAnnotations: map[string]string{
+				AnnotationMetricsCollect: "true",
+				AnnotationMetricsPrint:   "false",
+			},
+			fieldAnnotations:           testFieldAnnotations,
+			isRenderOutputExpected:     false,
+			areExportedMetricsExpected: false,
+		},
+		// Printing metrics on client side: if field type is different from
+		// histogram, new datasource is created but no data is emitted. Export
+		// is expected to work.
+		// TBD: What to do when the field type is not supported?
+		// "ClientSide-Print-Collect-Export-WithoutMetricsTypeHistogram": {
+		// 	serverSide: false,
+		// 	globalParamValues: map[string]string{
+		// 		ParamOtelMetricsListen: "true",
+		// 	},
+		// 	instanceParamValues: api.ParamValues{
+		// 		fqParamMetricsName:   testMetricsName,
+		// 		fqParamPrintInterval: testPrintInterval.String(),
+		// 	},
+		// 	dsAnnotations: map[string]string{
+		// 		AnnotationMetricsCollect: "true",
+		// 		AnnotationMetricsPrint:   "true",
+		// 	},
+		// 	fieldAnnotations: map[string]string{
+		// 		AnnotationMetricsType:        MetricTypeGauge,
+		// 		AnnotationMetricsDescription: testFieldDescription,
+		// 		AnnotationMetricsUnit:        testFieldUnit,
+		// 	},
+		// 	isRenderOutputExpected:     false,
+		// 	areExportedMetricsExpected: true,
+		// },
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			otelMetricsOp := &otelMetricsOperator{}
+			globalParams := apihelpers.ToParamDescs(otelMetricsOp.GlobalParams()).ToParams()
+			for k, v := range tt.globalParamValues {
+				globalParams.Set(k, v)
+			}
+			err := otelMetricsOp.Init(globalParams)
+			require.NoError(t, err)
+			defer otelMetricsOp.Close()
+
+			var ds datasource.DataSource
+			var field datasource.FieldAccessor
+			initProducer := func(gadgetCtx operators.GadgetContext) error {
+				var err error
+
+				ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, testDsName)
+				require.NoError(t, err)
+				for k, v := range tt.dsAnnotations {
+					ds.AddAnnotation(k, v)
+				}
+
+				field, err = ds.AddField(testFieldName, testFieldKind)
+				require.NoError(t, err)
+				for k, v := range tt.fieldAnnotations {
+					field.AddAnnotation(k, v)
+				}
+				return nil
+			}
+			startProducer := func(operators.GadgetContext) error {
+				for i := range 4 {
+					data, err := ds.NewPacketSingle()
+					require.NoError(t, err)
+					err = field.PutUint32(data, uint32(i))
+					require.NoError(t, err)
+					err = ds.EmitAndRelease(data)
+					require.NoError(t, err)
+				}
+				return nil
+			}
+
+			counterRenderedDsOutputs := 0
+			counterOriginalDsOutputs := 0
+			preStartConsumer := func(gadgetCtx operators.GadgetContext) error {
+				originalDS, originalDsOk := gadgetCtx.GetDataSources()[testDsName]
+				renderedDS, renderedDsOk := gadgetCtx.GetDataSources()[fmt.Sprintf("%s-%s", testDsName, PrintDataSourceSuffix)]
+
+				if tt.isRenderOutputExpected {
+					require.True(t, renderedDsOk)
+					require.False(t, originalDsOk)
+
+					// Verify ds has the expected CLI annotations
+					renderedDsAnnotations := renderedDS.Annotations()
+					for k, v := range renderedDsCliAnnotations {
+						assert.Equal(t, v, renderedDsAnnotations[k])
+					}
+
+					// Verify ds has also the original annotations
+					for k, v := range tt.dsAnnotations {
+						assert.Equal(t, v, renderedDsAnnotations[k])
+					}
+
+					// Verify ds has the expected fields:
+					// This information is hardcoded in the operator and should never change
+					renderedFields := renderedDS.Fields()
+					require.Len(t, renderedFields, 1)
+					require.Equal(t, PrintFieldName, renderedFields[0].Name)
+					require.Equal(t, api.Kind_String, renderedFields[0].Kind)
+
+					// Verify ds emits the expected number of data packets
+					renderedDS.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+						counterRenderedDsOutputs++
+						return nil
+					}, consumerPriority)
+				} else {
+					require.False(t, renderedDsOk)
+					require.True(t, originalDsOk)
+
+					// Verify there were no changes to the ds's annotations
+					require.True(t, originalDsOk)
+					originalDSAnnotations := originalDS.Annotations()
+					for k, v := range tt.dsAnnotations {
+						assert.Equal(t, v, originalDSAnnotations[k])
+					}
+
+					// Verify there were no changes to the ds's fields
+					originalFields := originalDS.Fields()
+					require.Len(t, originalFields, 1)
+					require.Equal(t, testFieldName, originalFields[0].Name)
+					require.Equal(t, testFieldKind, originalFields[0].Kind)
+
+					// Verify ds emits the expected number of data packets
+					originalDS.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+						counterOriginalDsOutputs++
+						return nil
+					}, consumerPriority)
+				}
+
+				return nil
+			}
+			postStopConsumer := func(operators.GadgetContext) error {
+				// Verify datasources emitted, at least, some data
+				if tt.isRenderOutputExpected {
+					require.Greater(t, counterRenderedDsOutputs, 0)
+				} else {
+					require.Greater(t, counterOriginalDsOutputs, 0)
+				}
+				return nil
+			}
+
+			producerOp := simple.New("producer",
+				// Operator running before the otel metrics operator and
+				// registering a datasource, e.g., the eBPF Operator
+				simple.WithPriority(producerPriority),
+				simple.OnInit(initProducer),
+				simple.OnStart(startProducer),
+			)
+
+			consumerOp := simple.New("consumer",
+				// Operator running after the otel metrics operator and
+				// consuming the generated data, e.g., the CLI Operator
+				simple.WithPriority(consumerPriority),
+				simple.OnPreStart(preStartConsumer),
+				simple.OnPostStop(postStopConsumer),
+			)
+
+			// l := logger.DefaultLogger()
+			// l.SetLevel(logger.DebugLevel)
+
+			gadgetCtx := gadgetcontext.New(
+				context.Background(),
+				"",
+				gadgetcontext.WithDataOperators(otelMetricsOp, producerOp, consumerOp),
+				gadgetcontext.WithAsRemoteCall(tt.serverSide),
+				gadgetcontext.WithTimeout(testContextTimeout),
+				// gadgetcontext.WithLogger(l),
+			)
+			defer gadgetCtx.Cancel()
+
+			err = gadgetCtx.Run(tt.instanceParamValues)
+			require.NoError(t, err, "error running the gadget context %v", err)
+
+			// Exporter is at the global operator level, so we can verify the
+			// exported metrics even after the gadget stops
+			if tt.areExportedMetricsExpected {
+				resp, err := http.Get(fmt.Sprintf("http://%s/metrics", globalParams.Get(ParamOtelMetricsListenAddress)))
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+
+				bodyBytes, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				require.Contains(t, string(bodyBytes), testExportedHelpEntry)
+				require.Contains(t, string(bodyBytes), testExportedTypeEntry)
+				require.Contains(t, string(bodyBytes), testExportedScopeEntry)
+			}
+		})
 	}
 }
