@@ -242,6 +242,7 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger) error {
 		"ports":     portsArray,
 		"ports_len": uint16(len(t.config.Ports)),
 	}
+	//nolint:staticcheck
 	if err := spec.RewriteConstants(constants); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
 	}

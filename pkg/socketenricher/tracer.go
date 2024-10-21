@@ -97,6 +97,7 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if disableBPFIterators {
+		//nolint:staticcheck
 		spec.RewriteConstants(map[string]interface{}{
 			"disable_bpf_iterators": true,
 		})

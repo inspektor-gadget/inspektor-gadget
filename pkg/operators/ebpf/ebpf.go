@@ -612,6 +612,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	//nolint:staticcheck
 	if err := i.collectionSpec.RewriteConstants(constReplacements); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)
 	}

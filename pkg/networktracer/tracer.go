@@ -113,6 +113,7 @@ func (t *Tracer[Event]) newAttachment(
 	consts := map[string]interface{}{
 		"current_netns": u32netns,
 	}
+	//nolint:staticcheck
 	if err := dispatcherSpec.RewriteConstants(consts); err != nil {
 		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
 	}

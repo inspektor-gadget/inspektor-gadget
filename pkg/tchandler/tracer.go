@@ -157,6 +157,7 @@ func (t *Handler) newAttachment(pid uint32, iface *net.Interface, netns uint64, 
 	consts := map[string]interface{}{
 		"current_netns": uint32(netns),
 	}
+	//nolint:staticcheck
 	if err := dispatcherSpec.RewriteConstants(consts); err != nil {
 		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
 	}

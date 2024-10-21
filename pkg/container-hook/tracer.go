@@ -248,6 +248,7 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	consts := map[string]interface{}{
 		"tracer_group": fanotifyPrivateData,
 	}
+	//nolint:staticcheck
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("RewriteConstants: %w", err)
 	}
