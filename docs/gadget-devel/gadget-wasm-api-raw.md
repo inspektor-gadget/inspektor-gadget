@@ -120,7 +120,8 @@ by the host when an event is emitted:
 `dataSourceCallback(u64 cbID, u32 ds, u32 data)`
 - `cbID`: Callback ID
 - `ds`: Datasource handle
-- `data`: Data handle
+- `data`: Depending on the subscription type, it can be a Data, DataArray or
+  Packet handle.
 
 Parameters:
 - `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
@@ -163,44 +164,52 @@ Parameters:
 - `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
 
 Return value:
-- (u32): Packet handle on success, 0 on error
+- (u32): On error, it returns 0. Otherwise, the returned value can be used as a
+  Data or Packet handle.
 
 #### `dataSourceNewPacketArray(u32 ds) u32`
 
 Allocate a packet array instance. The returned packet has to be released with
-`dataSourceEmitAndRelease` or `dataSourceRelease`.
+`dataSourceEmitAndRelease` or `dataSourceRelease`. Depending on the context, get
+or allocate elements in the array with `dataArrayGet` or `dataArrayNew` +
+`dataArrayAppend`. Then use the returned Data handle to get or set the field
+values.
 
 Parameters:
 - `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
 
 Return value:
-- (u32): Packet handle on success, 0 on error
+- (u32): On error, it returns 0. Otherwise, the returned value can be used as a
+  DataArray or Packet handle.
 
-#### `dataSourceEmitAndRelease(u32 ds, u32 data) u32`
+#### `dataSourceEmitAndRelease(u32 ds, u32 packet) u32`
 
 Emit and release a packet instance.
 
 Parameters:
 - `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
-- `data` (u32): Packet handle (as returned by `dataSourceNewPacketSingle`)
+- `packet` (u32): Packet handle (as returned by `dataSourceNewPacketSingle` or `dataSourceNewPacketArray`)
 
 Return value:
 - 0 in case of success, 1 otherwise.
 
-#### `dataSourceRelease(u32 ds, u32 data)`
+#### `dataSourceRelease(u32 ds, u32 packet)`
 
 Release a packet instance without sending it.
 
 Parameters:
 - `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
-- `data` (u32): Packet handle (as returned by `dataSourceNewPacketSingle`)
+- `packet` (u32): Packet handle (as returned by `dataSourceNewPacketSingle` or
+  `dataSourceNewPacketArray`)
 
 Return value:
 - None
 
 #### `dataArrayNew(d uint32) uint32`
 
-Allocate and returne a new element on the array.
+Allocate and return a new element on the array. If the whole DataArray is not
+released with `dataSourceEmitAndRelease` or `dataSourceRelease`, the returned
+element has to be released with `dataArrayRelease`.
 
 Parameters:
 - `d` (u32): DataArray handle
