@@ -29,6 +29,13 @@ const (
 )
 
 var AnnotationsTemplates = map[string]map[string]string{
+	"timestamp": {
+		ColumnsWidthAnnotation:    "35",
+		ColumnsMaxWidthAnnotation: "35",
+		ColumnsEllipsisAnnotation: "end",
+		ColumnsHiddenAnnotation:   "true",
+		DescriptionAnnotation:     "Microseconds since Unix epoch",
+	},
 	"node": {
 		ColumnsWidthAnnotation:    "30",
 		ColumnsEllipsisAnnotation: string(EllipsisMiddle),
@@ -68,7 +75,7 @@ var AnnotationsTemplates = map[string]map[string]string{
 		ColumnsAlignmentAnnotation: string(AlignmentRight),
 	},
 	"ppid": {
-		DescriptionAnnotation:      "Parent Process ID",
+		DescriptionAnnotation:      "Parent process ID",
 		ColumnsMinWidthAnnotation:  "7",
 		ColumnsAlignmentAnnotation: string(AlignmentRight),
 		ColumnsHiddenAnnotation:    "true",
