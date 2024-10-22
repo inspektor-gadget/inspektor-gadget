@@ -313,6 +313,20 @@ struct event {
 
 - `uidgidresolver.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
 
+### Automatic Annotations
+
+In addition to the enrichment described above, using `gadget_` types will
+automatically add annotations to those fields using the templates described in
+[metadata](metadata.md#field)
+
+This is also available for the following types:
+
+- `gadget_pid`: Process PID
+- `gadget_tid`: Process Thread ID
+- `gadget_ppid`: Parent process PID
+- `gadget_comm`: Process name
+- `gadget_pcomm`: Parent process name
+
 ### Enumerations
 
 Inspektor Gadget supports enums already defined on the kernel or enums defined
