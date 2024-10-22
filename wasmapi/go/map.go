@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
-	"unsafe"
 )
 
 //go:wasmimport env getMap
@@ -60,12 +59,12 @@ func (m Map) Lookup(key any, value any) error {
 		return fmt.Errorf("value expected type *%T, got %T", value, value)
 	}
 
-	keyPtr, err := anytoBufPtr(key)
+	keyPtr, err := anytoBufPtr2(key)
 	if err != nil {
 		return err
 	}
 
-	valuePtr, err := anytoBufPtr(value)
+	valuePtr, err := anytoBufPtr2(value)
 	if err != nil {
 		return err
 	}
@@ -77,10 +76,6 @@ func (m Map) Lookup(key any, value any) error {
 		return fmt.Errorf("looking up map")
 	}
 
-	buf := readBufPtr(valuePtr)
-	v := reflect.ValueOf(value)
-	copy(unsafe.Slice((*byte)(v.UnsafePointer()), v.Type().Elem().Size()), buf)
-
 	return nil
 }
 
@@ -89,12 +84,12 @@ func (m Map) Put(key any, value any) error {
 }
 
 func (m Map) Update(key any, value any, flags MapUpdateFlags) error {
-	keyPtr, err := anytoBufPtr(key)
+	keyPtr, err := anytoBufPtr2(key)
 	if err != nil {
 		return err
 	}
 
-	valuePtr, err := anytoBufPtr(value)
+	valuePtr, err := anytoBufPtr2(value)
 	if err != nil {
 		return err
 	}
@@ -109,7 +104,7 @@ func (m Map) Update(key any, value any, flags MapUpdateFlags) error {
 }
 
 func (m Map) Delete(key any) error {
-	keyPtr, err := anytoBufPtr(key)
+	keyPtr, err := anytoBufPtr2(key)
 	if err != nil {
 		return err
 	}

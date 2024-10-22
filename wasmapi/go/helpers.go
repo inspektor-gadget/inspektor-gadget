@@ -77,28 +77,37 @@ func anytoBufPtr(a any) (bufPtr, error) {
 	return bytesToBufPtr(buf), nil
 }
 
-// TODO Investigate more this solution as it avoids doing plenty of copy.
-// So far, it does not work because we get wrong data while reading buf in dlv.
-func anytoBufPtr2[T any](a *T) bufPtr {
-	size := reflect.TypeOf(*a).Size()
-	if size == 0 {
-		return 0
-	}
-
-	unsafePtr := unsafe.Pointer(a)
-	Infof("unsafePtr: %v", unsafePtr)
-	Infof("value: %v", *a)
-	return bufPtr(uint64(size)<<32 | uint64(uintptr(unsafePtr)))
+// Taken from:
+// https://github.com/golang/go/blob/38f85967873b1cd48c20681c5dff0e9f3de18516/src/runtime/runtime2.go#L178-L181
+// We do not care about itab, so we just use a pointer to the data at correct
+// offset in this struct.
+type iface struct {
+	itab *any
+	data unsafe.Pointer
 }
 
-func readBufPtr(ptr bufPtr) []byte {
-	length := ptr >> 32
-	buf := make([]byte, length)
+func anytoBufPtr2(a any) (bufPtr, error) {
+	typ := reflect.TypeOf(a)
+	size := typ.Size()
+	if size == 0 {
+		return 0, nil
+	}
 
-	// My kingdom for a memcpy()...
-	copy(buf, unsafe.Slice((*byte)(unsafe.Pointer(uintptr(uint32(ptr)))), length))
+	var unsafePtr unsafe.Pointer
+	switch typ.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
+		// Let's say we call map.Update(struct{ 42, 43, 'c'}, 42)
+		// The key argument would be passed by address, but the second by value.
+		// So, in this case iface.data would be the address for the key but the
+		// actual value for the value, i.e. 42.
+		// Then, we need to take a pointer over the data instead of the data
+		// directly.
+		unsafePtr = unsafe.Pointer(&((*iface)(unsafe.Pointer(&a))).data)
+	default:
+		unsafePtr = ((*iface)(unsafe.Pointer(&a))).data
+	}
 
-	return buf
+	return bufPtr(uint64(size)<<32 | uint64(uintptr(unsafePtr))), nil
 }
 
 // bytesToBufPtr returns a bufPtr that encodes the pointer and length of the
