@@ -53,19 +53,17 @@
 // The offset of the session ID length field from the start of the TLS payload.
 #define TLS_SESSION_ID_LENGTH_OFF 43
 
-#define TASK_COMM_LEN 16
-
 struct event_t {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 	gadget_netns_id netns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	char name[TLS_MAX_SERVER_NAME_LEN];
 };

@@ -70,43 +70,31 @@ datasources:
           description: 'fsnotify group priorities. Events are send in order from highest
             priority to lowest priority. 0: default, normal notifiers, no permissions.
             1: fanotify content based access control. 2: fanotify pre-content access.'
-      timestamp:
-        annotations:
-          template: timestamp
-      timestamp_raw:
-        annotations:
-          columns.hidden: "true"
       tracee:
         annotations:
           columns.hidden: "true"
       tracee.comm:
         annotations:
           description: Tracee process name
-          template: comm
       tracee.pcomm:
         annotations:
           columns.hidden: "true"
           description: Tracee parent process name
-          template: pcomm
       tracee.pid:
         annotations:
           description: Tracee process ID
-          template: pid
       tracee.ppid:
         annotations:
           columns.hidden: "true"
           description: Tracee parent process ID
-          template: pid
       tracee.tid:
         annotations:
           columns.hidden: "true"
           description: Tracee thread ID
-          template: pid
       tracee_gid_raw:
         annotations:
           columns.hidden: "true"
           description: Tracee group ID
-          template: uid
           uidgidresolver.target: tracee_group
       tracee_group:
         annotations:
@@ -116,12 +104,10 @@ datasources:
         annotations:
           columns.hidden: "true"
           description: Tracee mount namespace inode id
-          template: ns
       tracee_uid_raw:
         annotations:
           columns.hidden: "true"
           description: Tracee user ID
-          template: uid
           uidgidresolver.target: tracee_user
       tracee_user:
         annotations:
@@ -133,31 +119,25 @@ datasources:
       tracer.comm:
         annotations:
           description: Tracer process name
-          template: comm
       tracer.pcomm:
         annotations:
           columns.hidden: "true"
           description: Tracer parent process name
-          template: pcomm
       tracer.pid:
         annotations:
           description: Tracer process ID
-          template: pid
       tracer.ppid:
         annotations:
           columns.hidden: "true"
           description: Tracer parent process ID
-          template: pid
       tracer.tid:
         annotations:
           columns.hidden: "true"
           description: Tracer thread ID
-          template: pid
       tracer_gid_raw:
         annotations:
           columns.hidden: "true"
           description: Tracer group ID
-          template: uid
           uidgidresolver.target: tracer_group
       tracer_group:
         annotations:
@@ -167,12 +147,10 @@ datasources:
         annotations:
           columns.hidden: "true"
           description: Tracer mount namespace inode id
-          template: ns
       tracer_uid_raw:
         annotations:
           columns.hidden: "true"
           description: Tracer user ID
-          template: uid
           uidgidresolver.target: tracer_user
       tracer_user:
         annotations:

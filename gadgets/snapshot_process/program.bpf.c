@@ -22,14 +22,14 @@ GADGET_PARAM(show_threads);
 struct process_entry {
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
-	__u32 ppid;
+	gadget_ppid ppid;
 };
 
 GADGET_SNAPSHOTTER(processes, process_entry, ig_snap_proc);

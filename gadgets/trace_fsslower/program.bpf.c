@@ -12,7 +12,6 @@
 #include <gadget/mntns_filter.h>
 
 #define FILE_NAME_LEN 32
-#define TASK_COMM_LEN 16
 
 enum fs_file_op {
 	F_READ,
@@ -27,12 +26,12 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	__u64 delta_us; // TODO: use result of https://github.com/inspektor-gadget/inspektor-gadget/issues/3393
 	__s64 offset;
@@ -53,7 +52,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(malloc, events, event);
 
 struct data_key {
-	__u32 tid;
+	gadget_tid tid;
 	/*
 	 * We need to take into account the operation to avoid losing some of
 	 * them.

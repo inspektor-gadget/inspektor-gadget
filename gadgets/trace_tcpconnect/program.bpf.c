@@ -40,12 +40,12 @@ struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	__u64 latency;
 	gadget_errno error_raw;
@@ -74,7 +74,7 @@ struct {
 } sockets_per_process SEC(".maps");
 
 struct piddata {
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	u64 ts;
 	u32 pid;
 	u32 tid;

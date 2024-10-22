@@ -27,15 +27,15 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
+	gadget_pid pid;
+	gadget_tid tid;
 	gadget_uid uid;
 	gadget_gid gid;
 
-	char pcomm[TASK_COMM_LEN];
-	__u32 ppid;
+	gadget_pcomm pcomm[TASK_COMM_LEN];
+	gadget_ppid ppid;
 	gadget_uid loginuid;
 	__u32 sessionid;
 	gadget_errno error_raw;
