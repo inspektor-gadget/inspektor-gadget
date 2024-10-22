@@ -56,6 +56,9 @@ func (o *ociHandler) Name() string {
 }
 
 func (o *ociHandler) Init(params *params.Params) error {
+	if params == nil {
+		return fmt.Errorf("global parameters cannot be nil")
+	}
 	o.globalParams = params
 	return nil
 }
@@ -94,19 +97,25 @@ func (o *ociHandler) GlobalParams() api.Params {
 			Description: "Disallow pulling gadgets from registries",
 			TypeHint:    api.TypeBool,
 		},
+		{
+			Key:          authfileParam,
+			Title:        "Auth file",
+			Description:  "Path of the authentication file.",
+			DefaultValue: oci.DefaultAuthFile,
+			TypeHint:     api.TypeString,
+		},
+		{
+			Key:         pullSecret,
+			Title:       "Pull secret",
+			Description: "Secret for pulling the gadget image.",
+			TypeHint:    api.TypeString,
+		},
 	}
 }
 
 func (o *ociHandler) InstanceParams() api.Params {
 	return api.Params{
 		// Hardcoded for now
-		{
-			Key:          authfileParam,
-			Title:        "Auth file",
-			Description:  "Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
-			DefaultValue: oci.DefaultAuthFile,
-			TypeHint:     api.TypeString,
-		},
 		{
 			Key:          validateMetadataParam,
 			Title:        "Validate metadata",
@@ -125,12 +134,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 				oci.PullImageNever,
 			},
 			TypeHint: api.TypeString,
-		},
-		{
-			Key:         pullSecret,
-			Title:       "Pull secret",
-			Description: "Secret to use when pulling the gadget image",
-			TypeHint:    api.TypeString,
 		},
 		{
 			Key:   annotate,
