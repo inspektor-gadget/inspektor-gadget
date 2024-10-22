@@ -220,8 +220,12 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	if opts.local {
 		cmd := buildCmd(opts.outputDir, conf.EBPFSource, conf.Wasm, conf.CFlags, opts.btfhubarchive, opts.btfgen)
 		command := exec.Command(cmd[0], cmd[1:]...)
-		if out, err := command.CombinedOutput(); err != nil {
+		out, err := command.CombinedOutput()
+		if err != nil {
 			return fmt.Errorf("build script: %w: %s", err, out)
+		}
+		if common.Verbose {
+			fmt.Printf("Build logs start:\n%s\nBuild logs end\n", string(out))
 		}
 	} else {
 		if err := buildInContainer(opts, conf); err != nil {
@@ -430,9 +434,9 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 			return fmt.Errorf("getting builder container logs: %w", err)
 		}
 
-		fmt.Printf("Builder container logs start:\n")
+		fmt.Println("Build logs start:")
 		stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-		fmt.Printf("Builder container logs end\n")
+		fmt.Println("Build logs end")
 	}
 
 	if status.StatusCode != 0 {
