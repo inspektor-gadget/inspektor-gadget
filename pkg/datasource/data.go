@@ -32,7 +32,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type dataElement api.DataElement
@@ -448,7 +447,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 }
 
 func applyFieldTemplate(f *field, templateAnn string) {
-	ok := types.ApplyAnnotationsTemplate(templateAnn, f.Annotations)
+	ok := ApplyAnnotationTemplates(templateAnn, f.Annotations)
 	if !ok {
 		log.Warnf("template %q not found for field %q", templateAnn, f.Name)
 		return
@@ -473,7 +472,7 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 				continue
 			}
 
-			types.AppplyAnnotationsTemplateForType(suffix, field.Annotations)
+			ApplyAnnotationTemplates(suffix, field.Annotations)
 		}
 
 		// apply template first in case the field being added contains an

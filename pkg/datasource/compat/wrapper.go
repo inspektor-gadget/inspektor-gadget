@@ -16,6 +16,7 @@ package compat
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -368,4 +369,33 @@ func (ev *EventWrapper) SetContainerMetadata(container types.Container) {
 
 func (ev *EventWrapper) SetNode(node string) {
 	ev.nodeAccessor.Set(ev.Data, []byte(node))
+}
+
+func ApplyAnnotationsTemplate(templateAnn string, dst map[string]string) bool {
+	template, ok := metadatav1.AnnotationsTemplates[templateAnn]
+	for k, v := range template {
+		dst[k] = v
+	}
+	return ok
+}
+
+func ApplyAnnotationsTemplateForType(typeName string, dst map[string]string) bool {
+	switch typeName {
+	case types.CommTypeName,
+		types.UidTypeName,
+		types.GidTypeName,
+		types.PidTypeName,
+		types.TidTypeName,
+		types.TimestampTypeName,
+		types.MntNsTypeName,
+		types.NetNsTypeName,
+		types.PcommTypeName,
+		types.PpidTypeName:
+		return ApplyAnnotationsTemplate(strings.TrimPrefix(typeName, "gadget_"), dst)
+	}
+	return false
+}
+
+func init() {
+	datasource.RegisterAnnotationTemplateCallback(ApplyAnnotationsTemplateForType)
 }
