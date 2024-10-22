@@ -29,12 +29,12 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	gadget_syscall syscall_raw;
 	enum code code_raw;

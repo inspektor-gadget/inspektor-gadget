@@ -20,8 +20,6 @@
 #define CAP_OPT_NOAUDIT (1UL << 1)
 #define CAP_OPT_INSETID (1UL << 2)
 
-#define TASK_COMM_LEN 16
-
 #define FOR_EACH_CAPABILITY(F)  \
 	F(CAP_CHOWN)            \
 	F(CAP_DAC_OVERRIDE)     \
@@ -79,12 +77,12 @@ struct cap_event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	__u64 current_userns;
 	__u64 target_userns;

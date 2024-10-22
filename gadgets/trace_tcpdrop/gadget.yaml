@@ -6,51 +6,12 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   tcpdrop:
     fields:
-      timestamp_raw:
-        annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
       src:
         annotations:
           template: l4endpoint
       dst:
         annotations:
           template: l4endpoint
-      netns_id:
-        annotations:
-          description: Network namespace inode id
-          template: ns
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
-      comm:
-        annotations:
-          description: Process name
-          template: comm
-      pid:
-        annotations:
-          description: Process ID
-          template: pid
-      tid:
-        annotations:
-          description: Thread ID
-          template: pid
-      uid:
-        annotations:
-          description: User ID
-          template: uid
-          columns.hidden: true
-      gid:
-        annotations:
-          description: Group ID
-          template: uid
-          columns.hidden: true
-      task:
-        annotations:
-          template: comm
       tcpflags_raw:
         annotations:
           columns.hidden: true

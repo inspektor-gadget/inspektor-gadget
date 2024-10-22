@@ -15,9 +15,9 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
-	__u32 pid;
-	__u32 tid;
+	gadget_comm comm[TASK_COMM_LEN];
+	gadget_pid pid;
+	gadget_tid tid;
 
 	__u64 mutex_addr;
 

@@ -18,12 +18,12 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	__u32 tpid;
 
@@ -170,7 +170,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	int ret = ctx->errno;
 	int sig = ctx->sig;
 	__u64 pid_tgid;
-	__u32 pid;
+	gadget_pid pid;
 	u64 mntns_id;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
