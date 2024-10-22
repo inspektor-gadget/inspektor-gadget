@@ -20,10 +20,15 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
+
+func init() {
+	datasource.RegisterAnnotationTemplateCallback(metadatav1.ApplyAnnotationsTemplate)
+}
 
 const (
 	MntNsIdType = "type:" + ebpftypes.MntNsTypeName
@@ -140,7 +145,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			datasource.TemplateAnnotation: "node",
+			metadatav1.TemplateAnnotation: "node",
 		}),
 		datasource.WithOrder(-31),
 	)
@@ -152,7 +157,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			datasource.TemplateAnnotation: "namespace",
+			metadatav1.TemplateAnnotation: "namespace",
 		}),
 		datasource.WithOrder(-30),
 	)
@@ -164,7 +169,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			datasource.TemplateAnnotation: "pod",
+			metadatav1.TemplateAnnotation: "pod",
 		}),
 		datasource.WithOrder(-29),
 	)
@@ -176,7 +181,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		api.Kind_String,
 		datasource.WithTags("kubernetes"),
 		datasource.WithAnnotations(map[string]string{
-			datasource.TemplateAnnotation: "container",
+			metadatav1.TemplateAnnotation: "container",
 		}),
 		datasource.WithOrder(-28),
 	)
@@ -231,7 +236,7 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"containerName",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			datasource.TemplateAnnotation: "container",
+			metadatav1.TemplateAnnotation: "container",
 		}),
 		datasource.WithOrder(-26),
 	)
@@ -242,8 +247,8 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"runtimeName",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			datasource.ColumnsWidthAnnotation: "19",
-			datasource.ColumnsFixedAnnotation: "true",
+			metadatav1.ColumnsWidthAnnotation: "19",
+			metadatav1.ColumnsFixedAnnotation: "true",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-25),
@@ -255,8 +260,8 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		"containerId",
 		api.Kind_String,
 		datasource.WithAnnotations(map[string]string{
-			datasource.ColumnsWidthAnnotation:    "13",
-			datasource.ColumnsMaxWidthAnnotation: "64",
+			metadatav1.ColumnsWidthAnnotation:    "13",
+			metadatav1.ColumnsMaxWidthAnnotation: "64",
 		}),
 		datasource.WithFlags(datasource.FieldFlagHidden),
 		datasource.WithOrder(-24),
