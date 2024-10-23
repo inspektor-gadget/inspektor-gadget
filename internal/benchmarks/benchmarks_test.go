@@ -213,12 +213,12 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 				container := &containercollection.Container{
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							ContainerID: fmt.Sprintf("container%d", i),
+							ContainerID:  fmt.Sprintf("container%d", i),
+							ContainerPID: uint32(runner.Info.Tid),
 						},
 					},
 					Mntns: runner.Info.MountNsID,
 					Netns: runner.Info.NetworkNsID,
-					Pid:   uint32(runner.Info.Tid),
 				}
 				containers = append(containers, container)
 			}

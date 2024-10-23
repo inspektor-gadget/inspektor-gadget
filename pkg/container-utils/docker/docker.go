@@ -188,7 +188,6 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		c.getContainerImageDigest(containerJSON.Image),
 		containerJSON.State.Status,
 		containerJSON.Config.Labels)
-	containerData.Runtime.ContainerPID = uint32(containerJSON.State.Pid)
 
 	containerDetailsData := runtimeclient.ContainerDetailsData{
 		ContainerData: *containerData,
@@ -319,14 +318,12 @@ func getContainerImageNamefromImage(image string) string {
 func buildContainerData(containerID string, containerName string, containerImage string, containerImageDigest string, state string, labels map[string]string) *runtimeclient.ContainerData {
 	containerData := runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
-			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:          containerID,
-				ContainerName:        strings.TrimPrefix(containerName, "/"),
-				RuntimeName:          types.RuntimeNameDocker,
-				ContainerImageName:   getContainerImageNamefromImage(containerImage),
-				ContainerImageDigest: containerImageDigest,
-			},
-			State: containerStatusStateToRuntimeClientState(state),
+			ContainerID:          containerID,
+			ContainerName:        strings.TrimPrefix(containerName, "/"),
+			RuntimeName:          types.RuntimeNameDocker,
+			ContainerImageName:   getContainerImageNamefromImage(containerImage),
+			ContainerImageDigest: containerImageDigest,
+			State:                containerStatusStateToRuntimeClientState(state),
 		},
 	}
 

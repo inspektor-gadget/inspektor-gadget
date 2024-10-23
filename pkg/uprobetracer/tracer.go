@@ -265,18 +265,19 @@ func (t *Tracer[Event]) AttachContainer(container *containercollection.Container
 		return errors.New("uprobetracer has been closed")
 	}
 
+	pid := container.ContainerPid()
 	if t.prog == nil {
-		_, exist := t.pendingContainerPids[container.Pid]
+		_, exist := t.pendingContainerPids[pid]
 		if exist {
-			return fmt.Errorf("container PID already exists: %d", container.Pid)
+			return fmt.Errorf("container PID already exists: %d", pid)
 		}
-		t.pendingContainerPids[container.Pid] = true
+		t.pendingContainerPids[pid] = true
 	} else {
-		_, exist := t.containerPid2Inodes[container.Pid]
+		_, exist := t.containerPid2Inodes[pid]
 		if exist {
-			return fmt.Errorf("container PID already exists: %d", container.Pid)
+			return fmt.Errorf("container PID already exists: %d", pid)
 		}
-		t.attach(container.Pid)
+		t.attach(pid)
 	}
 	return nil
 }
@@ -289,20 +290,21 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 		return nil
 	}
 
+	pid := container.ContainerPid()
 	if t.prog == nil {
 		// remove from pending list
-		_, exist := t.pendingContainerPids[container.Pid]
+		_, exist := t.pendingContainerPids[pid]
 		if !exist {
 			return errors.New("container has not been attached")
 		}
-		delete(t.pendingContainerPids, container.Pid)
+		delete(t.pendingContainerPids, pid)
 	} else {
 		// detach from container if attached
-		attachedRealInodes, exist := t.containerPid2Inodes[container.Pid]
+		attachedRealInodes, exist := t.containerPid2Inodes[pid]
 		if !exist {
 			return errors.New("container has not been attached")
 		}
-		delete(t.containerPid2Inodes, container.Pid)
+		delete(t.containerPid2Inodes, pid)
 
 		for _, realInodePtr := range attachedRealInodes {
 			keeper, exist := t.inodeRefCount[realInodePtr]

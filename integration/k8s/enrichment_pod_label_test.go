@@ -90,7 +90,6 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
 				c.Mntns = 0
@@ -164,7 +163,6 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
 				e.Container.Mntns = 0

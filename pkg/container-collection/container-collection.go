@@ -210,7 +210,6 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
-	container.Runtime.ContainerPID = container.Pid
 	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
 		return
@@ -314,7 +313,7 @@ func (cc *ContainerCollection) LookupPIDByContainer(namespace, pod, container st
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if namespace == c.K8s.Namespace && pod == c.K8s.PodName && container == c.K8s.ContainerName {
-			pid = c.Pid
+			pid = c.Runtime.ContainerPID
 			// container found, stop iterating
 			return false
 		}
@@ -331,7 +330,7 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if namespace == c.K8s.Namespace && pod == c.K8s.PodName {
-			ret[c.K8s.ContainerName] = c.Pid
+			ret[c.K8s.ContainerName] = c.Runtime.ContainerPID
 		}
 		return true
 	})

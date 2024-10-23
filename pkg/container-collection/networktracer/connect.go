@@ -62,7 +62,7 @@ func ConnectToContainerCollection[Event any](
 	base := config.Base
 
 	attachContainerFunc := func(container *containercollection.Container) {
-		err := tracer.Attach(container.Pid)
+		err := tracer.Attach(container.ContainerPid())
 		if err != nil {
 			msg := fmt.Sprintf("start tracing container %q: %s", container.K8s.ContainerName, err)
 			tracer.EventCallback(base(eventtypes.Err(msg)))
@@ -72,7 +72,7 @@ func ConnectToContainerCollection[Event any](
 	}
 
 	detachContainerFunc := func(container *containercollection.Container) {
-		err := tracer.Detach(container.Pid)
+		err := tracer.Detach(container.ContainerPid())
 		if err != nil {
 			msg := fmt.Sprintf("stop tracing container %q: %s", container.K8s.ContainerName, err)
 			tracer.EventCallback(base(eventtypes.Err(msg)))

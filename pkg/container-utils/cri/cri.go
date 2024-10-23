@@ -428,14 +428,12 @@ func buildContainerData(runtimeName types.RuntimeName, container CRIContainer, p
 
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
-			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:          container.GetId(),
-				ContainerName:        strings.TrimPrefix(containerMetadata.GetName(), "/"),
-				RuntimeName:          runtimeName,
-				ContainerImageName:   image.GetImage(),
-				ContainerImageDigest: digestFromRef(imageRef),
-			},
-			State: containerStatusStateToRuntimeClientState(container.GetState()),
+			ContainerID:          container.GetId(),
+			ContainerName:        strings.TrimPrefix(containerMetadata.GetName(), "/"),
+			RuntimeName:          runtimeName,
+			ContainerImageName:   image.GetImage(),
+			ContainerImageDigest: digestFromRef(imageRef),
+			State:                containerStatusStateToRuntimeClientState(container.GetState()),
 		},
 	}
 
