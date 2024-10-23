@@ -24,7 +24,9 @@ https://man7.org/linux/man-pages/man7/mount_namespaces.7.html) in this way:
 
 :::warning
 
-You can only have one field of this type in a `struct`.
+You can only have one field of this type in a `struct`. If there are more fields
+of this type use the `operators.ebpf.donotenrich` annotation to disable
+enrichment in some of them.
 
 :::
 
