@@ -188,6 +188,24 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 				return fmt.Errorf("gadget instance id or name are ambiguous")
 			}
 			imageName = instances[0].Id
+
+			if len(instances[0].Nodes) > 0 {
+				// GetGadgetInfo can only be run on nodes that know about a gadget instance, so we need
+				// to make sure that the given nodes are valid
+				nodes := runtimeParams.Get(grpcruntime.ParamNode).AsStringSlice()
+				if len(nodes) == 0 {
+					nodes := strings.Join(instances[0].Nodes, ",")
+					log.Debugf("setting %q to %q", grpcruntime.ParamNode, nodes)
+					runtimeParams.Set(grpcruntime.ParamNode, nodes)
+				} else {
+					// make sure all given nodes are in the set of instances[0].Nodes
+					for _, node := range nodes {
+						if !slices.Contains(instances[0].Nodes, node) {
+							return fmt.Errorf("node %q is not valid; valid nodes: %s", node, strings.Join(instances[0].Nodes, ","))
+						}
+					}
+				}
+			}
 		}
 
 		gadgetCtx := gadgetcontext.New(
