@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,14 +33,8 @@ import (
 type traceSignalEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Signal    string `json:"sig"`
 	SignalRaw int    `json:"sig_raw"`
@@ -92,26 +87,19 @@ func TestTraceSignal(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSignalEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Uid:        0,
-				Gid:        0,
+				Proc:       utils.BuildProc("sh", 0, 0),
 				Signal:     "SIGTERM",
 				SignalRaw:  15,
 				Error:      "",
-				Comm:       "sh",
 
 				// Check only the existence of these fields
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
 				Timestamp: utils.NormalizedStr,
-				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceSignalEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MntNsID)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,14 +33,8 @@ import (
 type traceBindEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Addr       utils.L4Endpoint `json:"addr"`
 	Error      string           `json:"error"`
@@ -92,30 +87,23 @@ func TestTraceBind(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceBindEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				Proc:       utils.BuildProc("nc", 1000, 1111),
 				Addr: utils.L4Endpoint{
 					Addr:    "127.0.0.1",
 					Version: 4,
 					Port:    9090,
 					Proto:   "TCP",
 				},
-				Comm: "nc",
 				Opts: "REUSEADDRESS",
-				Uid:  1000,
-				Gid:  1111,
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
-				MntNsID:   utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceBindEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MntNsID)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

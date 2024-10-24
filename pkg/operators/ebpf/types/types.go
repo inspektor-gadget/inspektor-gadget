@@ -33,6 +33,9 @@ const (
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
+	ProcessTypeName     = "gadget_process"
+	UserTypeName        = "gadget_user"
+	ParentTypeName      = "gadget_parent"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"
@@ -42,3 +45,22 @@ const (
 	HistogramSlotU32TypeName = "gadget_histogram_slot__u32"
 	HistogramSlotU64TypeName = "gadget_histogram_slot__u64"
 )
+
+type User struct {
+	Uid uint32 `json:"uid,omitempty"`
+	Gid uint32 `json:"gid,omitempty"`
+}
+
+type Parent struct {
+	Comm string `json:"comm,omitempty"`
+	Pid  uint32 `json:"pid,omitempty"`
+}
+
+type Process struct {
+	Comm    string `json:"comm,omitempty"`
+	Pid     uint32 `json:"pid,omitempty"`
+	Tid     uint32 `json:"tid,omitempty"`
+	MntNsID uint64 `json:"mntns_id"`
+	User    User   `json:"user,omitempty"`
+	Parent  Parent `json:"parent,omitempty"`
+}

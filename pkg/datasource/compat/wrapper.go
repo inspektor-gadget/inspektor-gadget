@@ -16,6 +16,7 @@ package compat
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -33,6 +34,10 @@ func init() {
 const (
 	MntNsIdType = "type:" + ebpftypes.MntNsTypeName
 	NetNsIdType = "type:" + ebpftypes.NetNsTypeName
+)
+
+const (
+	DoNotEnrichAnnotation = "operators.ebpf.donotenrich"
 )
 
 type EventWrapperBase struct {
@@ -67,6 +72,14 @@ func GetEventWrappers(gadgetCtx operators.GadgetContext) (map[datasource.DataSou
 		if len(mntnsFields) == 0 && len(netnsFields) == 0 {
 			continue
 		}
+
+		// Don't consider fields explicitely disabled by the gadget
+		filterFunc := func(f datasource.FieldAccessor) bool {
+			return f.Annotations()[DoNotEnrichAnnotation] == "true"
+		}
+
+		mntnsFields = slices.DeleteFunc(mntnsFields, filterFunc)
+		netnsFields = slices.DeleteFunc(netnsFields, filterFunc)
 
 		gadgetCtx.Logger().Debugf("found DataSource with mntns/netns fields: %q", ds.Name())
 

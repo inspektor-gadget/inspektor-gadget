@@ -70,91 +70,82 @@ datasources:
           description: 'fsnotify group priorities. Events are send in order from highest
             priority to lowest priority. 0: default, normal notifiers, no permissions.
             1: fanotify content based access control. 2: fanotify pre-content access.'
-      tracee:
-        annotations:
-          columns.hidden: "true"
       tracee.comm:
         annotations:
           description: Tracee process name
-      tracee.pcomm:
+          columns.alias: tracee.comm
+      tracee.parent.comm:
         annotations:
-          columns.hidden: "true"
           description: Tracee parent process name
+          columns.alias: tracee.pcomm
       tracee.pid:
         annotations:
           description: Tracee process ID
-      tracee.ppid:
+          columns.alias: tracee.pid
+      tracee.parent.pid:
         annotations:
-          columns.hidden: "true"
           description: Tracee parent process ID
+          columns.alias: tracee.ppid
       tracee.tid:
         annotations:
-          columns.hidden: "true"
           description: Tracee thread ID
-      tracee_gid_raw:
-        annotations:
+          columns.alias: tracee.tid
           columns.hidden: "true"
+      tracee.user.gid:
+        annotations:
           description: Tracee group ID
-          uidgidresolver.target: tracee_group
-      tracee_group:
+          columns.alias: tracee.gid
+      tracee.group:
         annotations:
-          columns.hidden: "true"
           description: Tracee group name
-      tracee_mntns_id:
+      tracee.mntns_id:
         annotations:
-          columns.hidden: "true"
           description: Tracee mount namespace inode id
-      tracee_uid_raw:
+      tracee.user.uid:
         annotations:
-          columns.hidden: "true"
           description: Tracee user ID
-          uidgidresolver.target: tracee_user
-      tracee_user:
+          columns.alias: tracee.uid
+      tracee.user.user:
         annotations:
-          columns.hidden: "true"
           description: Tracee user name
-      tracer:
-        annotations:
-          columns.hidden: "true"
       tracer.comm:
         annotations:
           description: Tracer process name
-      tracer.pcomm:
+          columns.alias: tracer.comm
+      tracer.parent.comm:
         annotations:
-          columns.hidden: "true"
           description: Tracer parent process name
+          columns.alias: tracer.pcomm
+      tracer.mntns_id:
+        annotations:
+          operators.ebpf.donotenrich: true
+          description: Tracer mount namespace inode id
       tracer.pid:
         annotations:
           description: Tracer process ID
-      tracer.ppid:
+          columns.alias: tracer.pid
+      tracer.parent.pid:
         annotations:
-          columns.hidden: "true"
           description: Tracer parent process ID
+          columns.alias: tracer.ppid
       tracer.tid:
         annotations:
-          columns.hidden: "true"
           description: Tracer thread ID
-      tracer_gid_raw:
-        annotations:
+          columns.alias: tracer.tid
           columns.hidden: "true"
+      tracer.user.gid:
+        annotations:
           description: Tracer group ID
-          uidgidresolver.target: tracer_group
-      tracer_group:
+          columns.alias: tracer.gid
+      tracee.user.group:
         annotations:
-          columns.hidden: "true"
           description: Tracer group name
-      tracer_mntns_id:
+      tracer.user.uid:
         annotations:
-          columns.hidden: "true"
-          description: Tracer mount namespace inode id
-      tracer_uid_raw:
-        annotations:
-          columns.hidden: "true"
           description: Tracer user ID
-          uidgidresolver.target: tracer_user
-      tracer_user:
+          columns.alias: tracer.uid
+      tracer.user.user:
         annotations:
-          columns.hidden: "true"
           description: Tracer user name
       type:
         annotations:

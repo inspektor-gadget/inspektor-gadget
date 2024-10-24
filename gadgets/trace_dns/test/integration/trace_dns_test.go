@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -33,17 +34,9 @@ import (
 type traceDNSEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-	NetNsID   uint64 `json:"netns_id"`
-
-	Pcomm string `json:"pcomm"`
-	Comm  string `json:"comm"`
-	Ppid  uint32 `json:"ppid"`
-	Pid   uint32 `json:"pid"`
-	Tid   uint32 `json:"tid"`
-	Uid   uint32 `json:"uid"`
-	Gid   uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	NetNsID   uint64            `json:"netns_id"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Src utils.L4Endpoint `json:"src"`
 	Dst utils.L4Endpoint `json:"dst"`
@@ -137,6 +130,7 @@ func TestTraceDNS(t *testing.T) {
 				// A query from client
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nslookup", 1000, 1111),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
@@ -151,12 +145,8 @@ func TestTraceDNS(t *testing.T) {
 						Proto:   "UDP",
 						K8s:     k8sDataServer,
 					},
-					Pcomm:    "sh",
-					Comm:     "nslookup",
 					QrRaw:    false,
 					Qr:       "Q",
-					Uid:      1000,
-					Gid:      1111,
 					Name:     "fake.test.com.",
 					Qtype:    "A",
 					QtypeRaw: 1,
@@ -164,18 +154,15 @@ func TestTraceDNS(t *testing.T) {
 					PktType:  "OUTGOING",
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Ppid:      utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					ID:        utils.NormalizedStr,
 					Latency:   0,
 				},
 				// A response from server
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nslookup", 1000, 1111),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
@@ -190,12 +177,8 @@ func TestTraceDNS(t *testing.T) {
 						Proto:   "UDP",
 						K8s:     k8sDataClient,
 					},
-					Pcomm:     "sh",
-					Comm:      "nslookup",
 					QrRaw:     true,
 					Qr:        "R",
-					Uid:       1000,
-					Gid:       1111,
 					Name:      "fake.test.com.",
 					QtypeRaw:  1,
 					Qtype:     "A",
@@ -204,18 +187,15 @@ func TestTraceDNS(t *testing.T) {
 					Addresses: "127.0.0.1",
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Ppid:      utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					ID:        utils.NormalizedStr,
 					Latency:   utils.NormalizedInt,
 				},
 				// AAAA query from client
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nslookup", 1000, 1111),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
@@ -230,12 +210,8 @@ func TestTraceDNS(t *testing.T) {
 						Proto:   "UDP",
 						K8s:     k8sDataServer,
 					},
-					Pcomm:    "sh",
-					Comm:     "nslookup",
 					QrRaw:    false,
 					Qr:       "Q",
-					Uid:      1000,
-					Gid:      1111,
 					Name:     "fake.test.com.",
 					QtypeRaw: 28,
 					Qtype:    "AAAA",
@@ -243,18 +219,15 @@ func TestTraceDNS(t *testing.T) {
 					PktType:  "OUTGOING",
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Ppid:      utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					ID:        utils.NormalizedStr,
 					Latency:   0,
 				},
 				// AAAA response from server
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nslookup", 1000, 1111),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
@@ -269,12 +242,8 @@ func TestTraceDNS(t *testing.T) {
 						Proto:   "UDP",
 						K8s:     k8sDataClient,
 					},
-					Pcomm:     "sh",
-					Comm:      "nslookup",
 					QrRaw:     true,
 					Qr:        "R",
-					Uid:       1000,
-					Gid:       1111,
 					Name:      "fake.test.com.",
 					QtypeRaw:  28,
 					Qtype:     "AAAA",
@@ -283,12 +252,8 @@ func TestTraceDNS(t *testing.T) {
 					Addresses: "::1",
 
 					// Check the existence of the following fields
-					MntNsID:   utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Ppid:      utils.NormalizedInt,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					ID:        utils.NormalizedStr,
 					Latency:   utils.NormalizedInt,
 				},
@@ -297,11 +262,8 @@ func TestTraceDNS(t *testing.T) {
 			normalize := func(e *traceDNSEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Ppid)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.NetNsID)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.ID)
 				utils.NormalizeInt(&e.Latency)
 

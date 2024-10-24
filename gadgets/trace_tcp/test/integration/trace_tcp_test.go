@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,15 +33,9 @@ import (
 type traceTCPEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-	NetNsID   uint64 `json:"netns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
+	NetNsID   uint64            `json:"netns_id"`
 
 	Src  utils.L4Endpoint `json:"src"`
 	Dst  utils.L4Endpoint `json:"dst"`
@@ -97,6 +92,7 @@ func TestTraceTCP(t *testing.T) {
 			expectedEntries := []*traceTCPEvent{
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("curl", 0, 0),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
 						Version: 4,
@@ -109,20 +105,15 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Comm: "curl",
-					Uid:  0,
-					Gid:  0,
 					Type: "connect",
 
 					// Check only the existence of these fields
-					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("nginx", 101, 101),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
 						Version: 4,
@@ -135,20 +126,15 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Comm: "nginx",
-					Uid:  101,
-					Gid:  101,
 					Type: "accept",
 
 					// Check only the existence of these fields
-					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("curl", 0, 0),
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
 						Version: 4,
@@ -161,26 +147,18 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Comm: "curl",
-					Uid:  0,
-					Gid:  0,
 					Type: "close",
 
 					// Check only the existence of these fields
-					MntNsID:   utils.NormalizedInt,
 					Timestamp: utils.NormalizedStr,
-					Pid:       utils.NormalizedInt,
-					Tid:       utils.NormalizedInt,
 					NetNsID:   utils.NormalizedInt,
 				},
 			}
 
 			normalize := func(e *traceTCPEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeInt(&e.NetNsID)
 				// Checking the ports is a little bit complicated as successive
 				// calls to curl with --local-port fail because of
