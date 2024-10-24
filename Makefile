@@ -17,6 +17,8 @@ GOPROXY ?= $(shell go env GOPROXY)
 
 DLV ?= dlv
 
+BUILD_COMMAND ?= docker buildx build
+
 KUBERNETES_ARCHITECTURE ?= $(GOHOSTARCH)
 
 ENABLE_BTFGEN ?= false
@@ -135,7 +137,7 @@ ig-%: phony_explicit
 		$(MAKE) -f Makefile.btfgen \
 			ARCH=$(subst linux-,,$*) BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
-	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
+	$(BUILD_COMMAND) --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
 		--build-arg VERSION=$(VERSION) --build-arg EBPF_BUILDER=$(EBPF_BUILDER) \
 		--build-arg GOPROXY=$(GOPROXY) .
 	docker create --name ig-$*-container $@
@@ -210,7 +212,7 @@ gadget-container:
 		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
-	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
+	$(BUILD_COMMAND) --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
 		--build-arg GOPROXY=$(GOPROXY) --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
@@ -223,7 +225,7 @@ cross-gadget-container:
 		$(MAKE) -f Makefile.btfgen \
 			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
-	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
+	$(BUILD_COMMAND) --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
 		--push --build-arg GOPROXY=$(GOPROXY) --build-arg VERSION=$(VERSION) \
 		-f Dockerfiles/gadget.Dockerfile .
 
@@ -233,12 +235,12 @@ push-gadget-container:
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container
 kubectl-gadget-container:
-	docker buildx build --load -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
+	$(BUILD_COMMAND) --load -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) --build-arg GOPROXY=$(GOPROXY) .
 
 .PHONY: cross-kubectl-gadget-container
 cross-kubectl-gadget-container:
-	docker buildx build --platform=$(PLATFORMS) -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
+	$(BUILD_COMMAND) --platform=$(PLATFORMS) -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) --build-arg GOPROXY=$(GOPROXY) .
 
 # tests
