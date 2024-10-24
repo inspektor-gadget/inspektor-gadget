@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -95,7 +96,8 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	return nil
 }
 
-func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext) error {
+func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	switch t.mapType {
 	case ebpf.RingBuf:
 		return t.receiveEventsFromRingReader(gadgetCtx)
@@ -193,6 +195,15 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 	}
 }
 
+func (t *Tracer) close() {
+	if t.ringbufReader != nil {
+		t.ringbufReader.Close()
+	}
+	if t.perfReader != nil {
+		t.perfReader.Close()
+	}
+}
+
 func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Tracer) error {
 	if tracer.mapName == "" {
 		return fmt.Errorf("tracer map name empty")
@@ -227,15 +238,8 @@ func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Trac
 		}
 	}
 
-	go tracer.receiveEvents(gadgetCtx)
+	i.wg.Add(1)
+	go tracer.receiveEvents(gadgetCtx, &i.wg)
 
-	<-gadgetCtx.Context().Done()
-
-	if tracer.ringbufReader != nil {
-		tracer.ringbufReader.Close()
-	}
-	if tracer.perfReader != nil {
-		tracer.perfReader.Close()
-	}
 	return nil
 }
