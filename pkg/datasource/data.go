@@ -31,6 +31,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
 type dataElement api.DataElement
@@ -445,22 +446,14 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	}}, nil
 }
 
-func applyFieldTemplate(f *field, annotations map[string]string) {
-	templateAnn := annotations[TemplateAnnotation]
-	if templateAnn == "" {
-		return
-	}
-
-	template := annotationsTemplates[templateAnn]
-	if template == nil {
+func applyFieldTemplate(f *field, templateAnn string) {
+	ok := ApplyAnnotationTemplates(templateAnn, f.Annotations)
+	if !ok {
 		log.Warnf("template %q not found for field %q", templateAnn, f.Name)
 		return
 	}
 
 	log.Debugf("applying template %q to field %q", templateAnn, f.Name)
-	for k, v := range template {
-		f.Annotations[k] = v
-	}
 }
 
 func (ds *dataSource) applyFieldConfig(newFields ...*field) {
@@ -476,7 +469,9 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 		// annotation with it, for instance, when the field is created by an
 		// operator. The annotations added by the template can be changed by the
 		// field config below.
-		applyFieldTemplate(field, field.Annotations)
+		if templateAnn, ok := field.Annotations[metadatav1.TemplateAnnotation]; ok {
+			applyFieldTemplate(field, templateAnn)
+		}
 
 		// apply configuration from metadata
 		if fields == nil {
@@ -497,7 +492,9 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 
 		// apply template annotations first to allow user overwrite some
 		// annotations from the template
-		applyFieldTemplate(field, fieldAnnotations)
+		if templateAnn, ok := fieldAnnotations[metadatav1.TemplateAnnotation]; ok {
+			applyFieldTemplate(field, templateAnn)
+		}
 
 		for k, v := range fieldAnnotations {
 			field.Annotations[k] = v
@@ -506,7 +503,7 @@ func (ds *dataSource) applyFieldConfig(newFields ...*field) {
 
 	// second pass setting flags based on annotations
 	for _, field := range newFields {
-		if field.Annotations[ColumnsHiddenAnnotation] == "true" {
+		if field.Annotations[metadatav1.ColumnsHiddenAnnotation] == "true" {
 			FieldFlagHidden.AddTo(&field.Flags)
 		}
 	}

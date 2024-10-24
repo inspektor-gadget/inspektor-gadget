@@ -19,16 +19,14 @@ GADGET_PARAM(target_pid);
 const volatile int target_family = -1;
 GADGET_PARAM(target_family);
 
-#define TASK_COMM_LEN 16
-
 struct ip_key_t {
 	gadget_mntns_id mntns_id;
-	__u32 pid;
-	__u32 tid;
+	gadget_pid pid;
+	gadget_tid tid;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 };
 
 struct traffic_t {

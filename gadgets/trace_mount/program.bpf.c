@@ -9,7 +9,6 @@
 #include <gadget/types.h>
 
 #define MAX_ENTRIES 10240
-#define TASK_COMM_LEN 16
 #define FS_NAME_LEN 8
 #define DATA_LEN 512
 #define PATH_MAX 4096
@@ -68,12 +67,12 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	gadget_mntns_id mntns_id;
 
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	// user-space terminology for pid and tid
-	__u32 pid;
-	__u32 tid;
-	__u32 uid;
-	__u32 gid;
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_uid uid;
+	gadget_gid gid;
 
 	__u64 delta;
 	enum flags_set flags_raw;

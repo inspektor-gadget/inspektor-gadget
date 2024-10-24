@@ -15,7 +15,6 @@
 #include "stat.h"
 
 #define PATH_MAX 4096
-#define TASK_COMM_LEN 16
 
 enum op {
 	READ,
@@ -31,20 +30,20 @@ enum type {
 struct file_id {
 	__u64 inode;
 	__u32 dev;
-	__u32 pid;
-	__u32 tid;
+	gadget_pid pid;
+	gadget_tid tid;
 };
 
 struct file_stat {
 	gadget_mntns_id mntns_id;
-	__u32 uid;
-	__u32 gid;
+	gadget_uid uid;
+	gadget_gid gid;
 	__u64 reads;
 	__u64 rbytes;
 	__u64 writes;
 	__u64 wbytes;
 	char file[PATH_MAX];
-	char comm[TASK_COMM_LEN];
+	gadget_comm comm[TASK_COMM_LEN];
 	enum type t_raw;
 };
 

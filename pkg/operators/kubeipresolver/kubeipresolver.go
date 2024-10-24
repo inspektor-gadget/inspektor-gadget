@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -197,7 +198,7 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			}
 			k8sKindAcc, err := k8sSubAcc.AddSubField("kind", api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
-					datasource.ColumnsMaxWidthAnnotation: "12",
+					metadatav1.ColumnsMaxWidthAnnotation: "12",
 				}),
 				datasource.WithFlags(datasource.FieldFlagHidden),
 			)
@@ -207,7 +208,7 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			k8sNameAcc, err := k8sSubAcc.AddSubField("name",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
-					datasource.TemplateAnnotation: "pod",
+					metadatav1.TemplateAnnotation: "pod",
 				}),
 				datasource.WithFlags(datasource.FieldFlagHidden),
 			)
@@ -217,7 +218,7 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			k8sNamespaceAcc, err := k8sSubAcc.AddSubField("namespace",
 				api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
-					datasource.TemplateAnnotation: "namespace",
+					metadatav1.TemplateAnnotation: "namespace",
 				}),
 				datasource.WithFlags(datasource.FieldFlagHidden),
 			)

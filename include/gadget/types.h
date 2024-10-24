@@ -3,7 +3,7 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
-// Keep these types aligned with definitions in pkg/gadgets/run/tracer/tracer.go.
+// Keep these types aligned with definitions in pkg/operators/ebpf/types/types.go.
 
 // union defining either an IPv4 or IPv6 address
 union gadget_ip_addr_t {
@@ -59,6 +59,16 @@ typedef __u64 gadget_syscall;
 
 typedef __u32 gadget_kernel_stack;
 
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN 16
+#endif
+
+typedef __u32 gadget_pid;
+typedef __u32 gadget_ppid;
+typedef __u32 gadget_tid;
+typedef char gadget_comm;
+typedef char gadget_pcomm;
+
 // typedefs used for metrics
 typedef __u32 gadget_counter__u32;
 typedef __u64 gadget_counter__u64;
@@ -66,5 +76,6 @@ typedef __u32 gadget_gauge__u32;
 typedef __u64 gadget_gauge__u64;
 typedef __u32 gadget_histogram_slot__u32;
 typedef __u64 gadget_histogram_slot__u64;
+
 
 #endif /* __TYPES_H */

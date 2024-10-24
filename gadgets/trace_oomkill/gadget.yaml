@@ -6,12 +6,6 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   events:
     fields:
-      timestamp_raw:
-        annotations:
-          columns.hidden: true
-      timestamp:
-        annotations:
-          template: timestamp
       fpid:
         annotations:
           template: pid
@@ -28,10 +22,6 @@ datasources:
         annotations:
           columns.width: 8
           columns.alignment: right
-      mntns_id:
-        annotations:
-          description: Mount namespace inode id
-          template: ns
       fcomm:
         annotations:
           template: comm

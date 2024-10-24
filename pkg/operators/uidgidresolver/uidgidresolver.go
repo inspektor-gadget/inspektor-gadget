@@ -25,12 +25,15 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
 
 const (
-	OperatorName = "UidGidResolver"
+	OperatorName          = "UidGidResolver"
+	DefaultUserFieldName  = "user"
+	DefaultGroupFieldName = "group"
 )
 
 type UidResolverInterface interface {
@@ -114,8 +117,8 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 	for _, ds := range gadgetCtx.GetDataSources() {
 		logger.Debugf("UidGidResolver inspecting datasource %q", ds.Name())
 
-		uids := ds.GetFieldsWithTag("type:gadget_uid")
-		gids := ds.GetFieldsWithTag("type:gadget_gid")
+		uids := ds.GetFieldsWithTag("type:" + ebpftypes.UidTypeName)
+		gids := ds.GetFieldsWithTag("type:" + ebpftypes.GidTypeName)
 
 		if len(uids) > 0 {
 			logger.Debugf("> found %d uid fields", len(uids))
@@ -123,13 +126,14 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			for _, uid := range uids {
 				outName, err := annotations.GetTargetNameFromAnnotation(logger, "uidgidresolver.uid", uid, "uidgidresolver.target")
 				if err != nil {
-					logger.Warnf("failed to get target name for uid: %s", err)
-					continue
+					logger.Debugf("no target name found for uid, falling back to %s", DefaultUserFieldName)
+					outName = DefaultUserFieldName
 				}
 				uidStrField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(uid))
 				if err != nil {
 					return nil, err
 				}
+				uidStrField.SetHidden(true, false)
 
 				uid.SetHidden(true, false)
 				fieldsUid[ds] = append(fieldsUid[ds], fieldAccPair{srcFieldAcc: uid, dstFieldAcc: uidStrField})
@@ -142,13 +146,14 @@ func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			for _, gid := range gids {
 				outName, err := annotations.GetTargetNameFromAnnotation(logger, "uidgidresolver.gid", gid, "uidgidresolver.target")
 				if err != nil {
-					logger.Warnf("failed to get target name for gid: %s", err)
-					continue
+					logger.Debugf("no target name found for gid, falling back to %s", DefaultGroupFieldName)
+					outName = DefaultGroupFieldName
 				}
 				gidStrField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(gid))
 				if err != nil {
 					return nil, err
 				}
+				gidStrField.SetHidden(true, false)
 
 				gid.SetHidden(true, false)
 				fieldsGid[ds] = append(fieldsGid[ds], fieldAccPair{srcFieldAcc: gid, dstFieldAcc: gidStrField})

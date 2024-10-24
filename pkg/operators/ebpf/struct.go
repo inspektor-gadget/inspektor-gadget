@@ -18,11 +18,14 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/cilium/ebpf/btf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 )
 
 type Field struct {
@@ -133,9 +136,28 @@ func getFieldKind(typ reflect.Type, tags []string) api.Kind {
 	return api.Kind_Invalid
 }
 
+func applyAnnotationsTemplateForType(typeName string, dst map[string]string) bool {
+	switch typeName {
+	case ebpftypes.CommTypeName,
+		ebpftypes.UidTypeName,
+		ebpftypes.GidTypeName,
+		ebpftypes.PidTypeName,
+		ebpftypes.TidTypeName,
+		ebpftypes.TimestampTypeName,
+		ebpftypes.MntNsTypeName,
+		ebpftypes.NetNsTypeName,
+		ebpftypes.PcommTypeName,
+		ebpftypes.PpidTypeName:
+		return metadatav1.ApplyAnnotationsTemplate(strings.TrimPrefix(typeName, "gadget_"), dst)
+	}
+	return false
+}
+
 func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32, parent int) {
+	annotations := make(map[string]string)
 	refType, tags := btfhelpers.GetType(member.Type)
 	for i := range tags {
+		applyAnnotationsTemplateForType(tags[i], annotations)
 		tags[i] = "type:" + tags[i]
 	}
 
@@ -143,12 +165,13 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 
 	newField := func(size uint32, kind api.Kind) *Field {
 		return &Field{
-			Size:   size,
-			Tags:   tags,
-			Offset: offset + member.Offset.Bytes(),
-			parent: parent,
-			name:   member.Name,
-			kind:   kind,
+			Size:        size,
+			Tags:        tags,
+			Offset:      offset + member.Offset.Bytes(),
+			parent:      parent,
+			name:        member.Name,
+			kind:        kind,
+			Annotations: annotations,
 		}
 	}
 
