@@ -112,6 +112,11 @@ func (i *ebpfInstance) fillParamDefaults() error {
 						defaultValue = "true"
 					}
 				}
+			case *btf.Struct:
+				switch t.Name {
+				case gadget_l3endpoint_t:
+					defaultValue = "0.0.0.0"
+				}
 			}
 
 			i.gadgetCtx.Logger().Debugf("default value for param %q set to %q (%.2X), type was %T", vname, defaultValue, bytes, vtype)

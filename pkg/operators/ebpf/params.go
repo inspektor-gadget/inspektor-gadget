@@ -70,6 +70,11 @@ func getTypeHint(typ btf.Type) params.TypeHint {
 		return getTypeHint(typ)
 	case *btf.Volatile:
 		return getTypeHint(typedMember.Type)
+	case *btf.Struct:
+		switch typedMember.Name {
+		case gadget_l3endpoint_t:
+			return params.TypeIP
+		}
 	}
 
 	return params.TypeUnknown
