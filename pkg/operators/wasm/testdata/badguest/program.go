@@ -19,7 +19,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"encoding/binary"
 	"runtime/debug"
 	"unsafe"
 
@@ -95,9 +97,37 @@ func getParamValue(key uint64) uint64
 //go:wasmimport env setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
 
+//go:wasmimport env getMap
+func getMap(name uint64) uint32
+
+//go:wasmimport env mapLookup
+func mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32
+
+//go:wasmimport env mapUpdate
+func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
+
+//go:wasmimport env mapDelete
+func mapDelete(m uint32, keyptr uint64) uint32
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
+}
+
+func bytesToBufPtr(b []byte) uint64 {
+	unsafePtr := unsafe.Pointer(unsafe.SliceData(b))
+	return uint64(uint64(len(b))<<32 | uint64(uintptr(unsafePtr)))
+}
+
+func anyToBufPtr(a any) uint64 {
+	buffer := new(bytes.Buffer)
+
+	err := binary.Write(buffer, binary.NativeEndian, a)
+	if err != nil {
+		return uint64(0)
+	}
+
+	return bytesToBufPtr(buffer.Bytes())
 }
 
 func logAndPanic(msg string) {
@@ -117,7 +147,7 @@ func assertNonZero[T uint64 | uint32](v T, msg string) {
 	}
 }
 
-func assertEqual[T uint64 | uint32](v1, v2 T, msg string) {
+func assertEqual[T uint64 | uint32 | int32](v1, v2 T, msg string) {
 	if v1 != v2 {
 		logAndPanic(fmt.Sprintf("%d != %d: %s", v1, v2, msg))
 	}
@@ -255,6 +285,35 @@ func gadgetInit() int {
 	assertNonZero(setConfig(stringToBufPtr("key"), stringToBufPtr("value"), 1005), "setConfig: bad kind")
 	assertNonZero(setConfig(invalidStrPtr, stringToBufPtr("value"), uint32(api.Kind_String)), "setConfig: bad key ptr")
 	assertNonZero(setConfig(stringToBufPtr("key"), invalidStrPtr, uint32(api.Kind_String)), "setConfig: bad value ptr")
+
+	/* Map */
+	assertZero(getMap(stringToBufPtr("test_map")), "getMap: test_map should not exist")
+
+	return 0
+}
+
+//export gadgetStart
+func gadgetStart() int {
+	type map_test_struct struct {
+		a int32
+		b int32
+		c int8
+		_ [3]int8
+	}
+
+	key := map_test_struct{a: 42, b: 42, c: 43}
+	keyPtr := anyToBufPtr(key)
+	val := int32(42)
+	valPtr := anyToBufPtr(val)
+
+	handle := getMap(stringToBufPtr("test_map"))
+	assertNonZero(handle, "getMap: test_map should exist")
+
+	assertZero(mapUpdate(handle, keyPtr, valPtr, 0), "mapUpdate: setting value in map")
+
+	assertZero(mapLookup(handle, keyPtr, valPtr), "mapLookup: getting value in map")
+
+	assertZero(mapDelete(handle, keyPtr), "mapDelete: deleting value in map")
 
 	return 0
 }

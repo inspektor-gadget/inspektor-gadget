@@ -23,14 +23,38 @@ import (
 	wapi "github.com/tetratelabs/wazero/api"
 )
 
-func bufFromStack(m wapi.Module, val uint64) ([]byte, error) {
-	slen := uint32(val >> 32)
-	soffs := uint32(val & 0xFFFFFFFF)
-	buf, ok := m.Memory().Read(soffs, slen)
+func getLength(pointer uint64) uint32 {
+	return uint32(pointer >> 32)
+}
+
+func getAddress(pointer uint64) uint32 {
+	return uint32(pointer & 0xFFFFFFFF)
+}
+
+func bufFromStack(m wapi.Module, pointer uint64) ([]byte, error) {
+	size := getLength(pointer)
+	address := getAddress(pointer)
+	buf, ok := m.Memory().Read(address, size)
 	if !ok {
 		return nil, errors.New("invalid pointer")
 	}
 	return buf, nil
+}
+
+func bufToStack(m wapi.Module, buf []byte, pointer uint64) error {
+	address := getAddress(pointer)
+	size := getLength(pointer)
+	length := uint32(len(buf))
+
+	if length > size {
+		return fmt.Errorf("buffer size %d is bigger than %d", length, size)
+	}
+
+	if !m.Memory().Write(address, buf) {
+		return fmt.Errorf("writing at address %x", address)
+	}
+
+	return nil
 }
 
 func stringFromStack(m wapi.Module, val uint64) (string, error) {
