@@ -94,12 +94,6 @@ func (o *ociHandler) GlobalParams() api.Params {
 			Description: "Disallow pulling gadgets from registries",
 			TypeHint:    api.TypeBool,
 		},
-	}
-}
-
-func (o *ociHandler) InstanceParams() api.Params {
-	return api.Params{
-		// Hardcoded for now
 		{
 			Key:          authfileParam,
 			Title:        "Auth file",
@@ -107,6 +101,18 @@ func (o *ociHandler) InstanceParams() api.Params {
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     api.TypeString,
 		},
+		{
+			Key:         pullSecret,
+			Title:       "Pull secret",
+			Description: "Secret to use when pulling the gadget image",
+			TypeHint:    api.TypeString,
+		},
+	}
+}
+
+func (o *ociHandler) InstanceParams() api.Params {
+	return api.Params{
+		// Hardcoded for now
 		{
 			Key:          validateMetadataParam,
 			Title:        "Validate metadata",
@@ -125,12 +131,6 @@ func (o *ociHandler) InstanceParams() api.Params {
 				oci.PullImageNever,
 			},
 			TypeHint: api.TypeString,
-		},
-		{
-			Key:         pullSecret,
-			Title:       "Pull secret",
-			Description: "Secret to use when pulling the gadget image",
-			TypeHint:    api.TypeString,
 		},
 		{
 			Key:   annotate,

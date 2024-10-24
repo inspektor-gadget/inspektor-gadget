@@ -13,6 +13,20 @@ and invokes the different layer operators according to the
 
 ## Global Parameters
 
+### `authfile`
+
+Path of the authentication file. This overrides the `REGISTRY_AUTH_FILE`
+environment variable. If the default file doesn't exist,
+`$HOME/.docker/config.json` is used as a fallback.
+
+Default: `/var/lib/ig/config.json`
+
+### `pull-secret`
+
+Secret to use when pulling the gadget image
+
+Fully qualified name: `operator.oci.pull-secret`
+
 ### `verify-image`
 
 Verify image using the provided public key. Check [Verify image-based
@@ -48,18 +62,6 @@ Default: `false`
 
 ## Instance Parameters
 
-### `authfile`
-
-TODO: is this really a instance param?
-
-Path of the authentication file. This overrides the `REGISTRY_AUTH_FILE`
-environment variable. If the default file doesn't exist,
-`$HOME/.docker/config.json` is used as a fallback.
-
-Fully qualified name: `operator.oci.authfile`
-
-Default: `/var/lib/ig/config.json`
-
 ### `validate-metadata`
 
 Validate the gadget metadata before running the gadget
@@ -80,12 +82,6 @@ Possible Values:
 Fully qualified name: `operator.oci.pull`
 
 Default: `missing`
-
-### `pull-secret`
-
-Secret to use when pulling the gadget image
-
-Fully qualified name: `operator.oci.pull-secret`
 
 ### `annotate`
 
