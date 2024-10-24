@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.16.0
 	github.com/containerd/containerd v1.7.23
-	github.com/containerd/nri v0.6.1
+	github.com/containerd/nri v0.7.0
 	github.com/containers/common v0.60.4
 	github.com/containers/image/v5 v5.32.2
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -96,7 +96,7 @@ require (
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
-	github.com/containerd/ttrpc v1.2.5 // indirect
+	github.com/containerd/ttrpc v1.2.6-0.20240827082320-b5cd6e4b3287 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.2.0 // indirect
