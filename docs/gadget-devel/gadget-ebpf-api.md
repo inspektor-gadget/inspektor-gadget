@@ -45,22 +45,11 @@ mntns_id = gadget_get_mntns_id();
 eBPF programs of type socket filter cannot use `gadget_get_mntns_id()`, but instead
 use [socket enrichment](#socket-enrichment) to find the mount namespace.
 
-The following fields can be added from the mount or net namespace inode ID. The
-exact fields that are added depend on the environment (Kubernetes vs local host)
-and the container runtime (docker, cri-o, containerd, etc.).
-
-| Field                        | Description                                      |
-|------------------------------|--------------------------------------------------|
-| k8s.node                     | Name of the k8s node                             |
-| k8s.namespace                | Name of the k8s namespace                        |
-| k8s.podName                  | Name of the k8s pod                              |
-| k8s.containerName            | Name of the k8s container name                   |
-| k8s.hostnetwork              | true, if the container is using the host network |
-| runtime.containerName        | Name of the container on the container runtime   |
-| runtime.runtimeName          | Name of the used container runtime               |
-| runtime.containerId          | ID of the container                              |
-| runtime.containerImageName   | Name of the container image, e.g. `nginx:latest` |
-| runtime.containerImageDigest | Digest (hash value) of the container image       |
+Several fields will be added from the mount or net namespace inode ID. The exact
+fields that are added depend on the environment (Kubernetes vs local host) and
+the container runtime (docker, cri-o, containerd, etc.). See the
+[enrichment](reference/enrichment.mdx) documentation to know more about the
+fields added.
 
 ## Container filtering
 
