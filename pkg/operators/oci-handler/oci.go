@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
@@ -61,7 +62,7 @@ func (o *ociHandler) Init(params *params.Params) error {
 }
 
 func (o *ociHandler) GlobalParams() api.Params {
-	return api.Params{
+	p := api.Params{
 		{
 			Key:          verifyImage,
 			Title:        "Verify image",
@@ -101,13 +102,18 @@ func (o *ociHandler) GlobalParams() api.Params {
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     api.TypeString,
 		},
-		{
+	}
+
+	if environment.Environment == environment.Kubernetes {
+		p = append(p, &api.Param{
 			Key:         pullSecret,
 			Title:       "Pull secret",
 			Description: "Secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
-		},
+		})
 	}
+
+	return p
 }
 
 func (o *ociHandler) InstanceParams() api.Params {
@@ -196,15 +202,19 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("imageName empty")
 	}
 
+	var secretBytes []byte
+
 	// TODO: move to a place without dependency on k8s
-	pullSecretString := o.ociParams.Get(pullSecret).AsString()
-	var secretBytes []byte = nil
-	if pullSecretString != "" {
-		var err error
-		// TODO: Namespace is still hardcoded
-		secretBytes, err = getPullSecret(pullSecretString, "gadget")
-		if err != nil {
-			return err
+	if pullSecretParam := o.ociParams.Get(pullSecret); pullSecretParam != nil {
+		pullSecretString := o.ociParams.Get(pullSecret).AsString()
+
+		if pullSecretString != "" {
+			var err error
+			// TODO: Namespace is still hardcoded
+			secretBytes, err = getPullSecret(pullSecretString, "gadget")
+			if err != nil {
+				return err
+			}
 		}
 	}
 
