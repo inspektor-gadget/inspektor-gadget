@@ -3,6 +3,7 @@
 !go.sum
 !cmd
 !gadget-container
+!internal
 !pkg
 !tools
 !Makefile*
