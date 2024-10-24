@@ -38,9 +38,6 @@ type Container struct {
 	// K8s contains the Kubernetes metadata of the container.
 	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
 
-	// Pid is the process id of the container
-	Pid uint32 `json:"pid,omitempty" column:"pid,template:pid,hide"`
-
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
 	OciConfig *ocispec.Spec `json:"ociConfig,omitempty"`
@@ -225,6 +222,10 @@ func (c *Container) RuntimeMetadata() *types.BasicRuntimeMetadata {
 
 func (c *Container) UsesHostNetwork() bool {
 	return c.HostNetwork
+}
+
+func (c *Container) ContainerPid() uint32 {
+	return c.Runtime.ContainerPID
 }
 
 func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {

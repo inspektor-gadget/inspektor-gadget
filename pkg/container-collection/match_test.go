@@ -195,11 +195,11 @@ func TestContainerResolver(t *testing.T) {
 		cc.AddContainer(&Container{
 			Runtime: RuntimeMetadata{
 				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID: fmt.Sprintf("abcde%d", i),
+					ContainerID:  fmt.Sprintf("abcde%d", i),
+					ContainerPID: uint32(100 + i),
 				},
 			},
 			Mntns:      55555 + uint64(i),
-			Pid:        uint32(100 + i),
 			CgroupPath: "/none",
 			CgroupID:   1,
 			K8s: K8sMetadata{

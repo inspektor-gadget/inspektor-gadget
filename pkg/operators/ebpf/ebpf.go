@@ -740,7 +740,7 @@ func (i *ebpfInstance) AttachContainer(container *containercollection.Container)
 	i.mu.Unlock()
 
 	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.Attach(container.Pid); err != nil {
+		if err := networkTracer.Attach(container.ContainerPid()); err != nil {
 			return err
 		}
 	}
@@ -768,7 +768,7 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 	i.mu.Unlock()
 
 	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.Detach(container.Pid); err != nil {
+		if err := networkTracer.Detach(container.ContainerPid()); err != nil {
 			return err
 		}
 	}

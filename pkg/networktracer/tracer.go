@@ -305,11 +305,11 @@ func (t *Tracer[Event]) EventCallback(event any) {
 }
 
 func (t *Tracer[Event]) AttachContainer(container *containercollection.Container) error {
-	return t.Attach(container.Pid)
+	return t.Attach(container.ContainerPid())
 }
 
 func (t *Tracer[Event]) DetachContainer(container *containercollection.Container) error {
-	return t.Detach(container.Pid)
+	return t.Detach(container.ContainerPid())
 }
 
 func (t *Tracer[Event]) GetMap(name string) *ebpf.Map {

@@ -254,7 +254,14 @@ func (l *LocalManager) Init(operatorParams *params.Params) error {
 	//   own.
 	// * Others, like traceloop or advise seccomp-profile, need the mount
 	//   namespace ID to bet set.
-	l.fakeContainer = &containercollection.Container{Pid: pidOne, Mntns: mntns}
+	l.fakeContainer = &containercollection.Container{
+		Runtime: containercollection.RuntimeMetadata{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerPID: pidOne,
+			},
+		},
+		Mntns: mntns,
+	}
 
 	additionalOpts := []containercollection.ContainerCollectionOption{}
 	if operatorParams.Get(EnrichWithK8sApiserver).AsBool() {
@@ -382,7 +389,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			l.attachedContainers[container] = struct{}{}
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
 		detachContainerFunc := func(container *containercollection.Container) {
@@ -393,7 +400,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 				return
 			}
 			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
 		if l.manager.igManager != nil {

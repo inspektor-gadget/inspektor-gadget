@@ -151,6 +151,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Uid = 0
 				e.Gid = 0
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerPID = 0
 				e.Runtime.ContainerImageDigest = ""
 				e.Runtime.ContainerStartedAt = 0
 

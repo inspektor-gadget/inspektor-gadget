@@ -227,7 +227,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 			}
 
 			var c Container
-			c.Pid = uint32(pid)
+			c.Runtime.ContainerPID = uint32(pid)
 			enrichContainerWithContainerData(&containerDetails.ContainerData, &c)
 			cc.initialContainers = append(cc.initialContainers, &c)
 		}
@@ -350,7 +350,7 @@ func WithHost() ContainerCollectionOption {
 		newContainer := Container{}
 		newContainer.K8s.ContainerName = "host"
 		newContainer.CgroupID = 1
-		newContainer.Pid = 1
+		newContainer.Runtime.ContainerPID = 1
 		newContainer.HostNetwork = true
 		cc.initialContainers = append(cc.initialContainers, &newContainer)
 		return nil
@@ -602,10 +602,10 @@ func WithRuncFanotify() ContainerCollectionOption {
 					Runtime: RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							ContainerID:   notif.ContainerID,
+							ContainerPID:  notif.ContainerPID,
 							ContainerName: notif.ContainerName,
 						},
 					},
-					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 				}
 				cc.AddContainer(container)
@@ -623,7 +623,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.Pid))
+			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.ContainerPid()))
 			if err != nil {
 				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
 				return false
@@ -649,10 +649,10 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 					Runtime: RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							ContainerID:   notif.ContainerID,
+							ContainerPID:  notif.ContainerPID,
 							ContainerName: notif.ContainerName,
 						},
 					},
-					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 				}
 				cc.AddContainer(container)
@@ -670,7 +670,7 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := containerNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.Pid))
+			err := containerNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.ContainerPid()))
 			if err != nil {
 				log.Errorf("container fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
 				return false
@@ -685,7 +685,7 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 func WithCgroupEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			pid := int(container.Pid)
+			pid := int(container.ContainerPid())
 			if pid == 0 {
 				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
@@ -720,7 +720,7 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 		}
 
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			pid := int(container.Pid)
+			pid := int(container.ContainerPid())
 			if pid == 0 {
 				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
@@ -870,7 +870,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		}()
 
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			mntNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "mnt")
+			mntNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.ContainerPid()), "ns", "mnt")
 			mntNsFd, err := unix.Open(mntNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
@@ -882,7 +882,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			}
 			container.mntNsFd = mntNsFd
 
-			netNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "net")
+			netNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.ContainerPid()), "ns", "net")
 			netNsFd, err := unix.Open(netNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open netns reference for container %s: %s",
@@ -920,7 +920,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 func WithProcEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			pid := int(container.Pid)
+			pid := int(container.ContainerPid())
 			if pid == 0 {
 				log.Errorf("proc enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return false

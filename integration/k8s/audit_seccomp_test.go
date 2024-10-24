@@ -201,6 +201,7 @@ EOF
 					e.Runtime.RuntimeName = ""
 					e.Runtime.ContainerName = ""
 					e.Runtime.ContainerID = ""
+					e.Runtime.ContainerPID = 0
 					e.Runtime.ContainerImageDigest = ""
 					e.Runtime.ContainerStartedAt = 0
 				}

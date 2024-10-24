@@ -186,7 +186,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	if _, ok := t.visitedNamespaces[container.Netns]; ok {
 		return nil
 	}
-	t.visitedNamespaces[container.Netns] = container.Pid
+	t.visitedNamespaces[container.Netns] = container.ContainerPid()
 	return nil
 }
 

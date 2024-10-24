@@ -268,7 +268,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			m.attachedContainers[container.Runtime.ContainerID] = container
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
 		detachContainerFunc := func(container *containercollection.Container) {
@@ -281,7 +281,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 				return
 			}
 			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
 		m.subscribed = true

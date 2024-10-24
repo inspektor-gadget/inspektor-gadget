@@ -112,7 +112,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		if _, ok := visitedPods[key]; !ok {
 			// Make the whole gadget fail if there is a container without PID
 			// because it would be an inconsistency that has to be notified
-			if container.Pid == 0 {
+			if container.ContainerPid() == 0 {
 				trace.Status.OperationError = fmt.Sprintf("aborting! The following container does not have PID %+v", container)
 				return
 			}
@@ -122,9 +122,9 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 			visitedPods[key] = struct{}{}
 
 			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
-				trace.Spec.Gadget, container.Pid, container.K8s.PodName, container.K8s.Namespace)
+				trace.Spec.Gadget, container.ContainerPid(), container.K8s.PodName, container.K8s.Namespace)
 
-			podSockets, err := socketTracer.RunCollector(container.Pid, container.K8s.PodName,
+			podSockets, err := socketTracer.RunCollector(container.ContainerPid(), container.K8s.PodName,
 				container.K8s.Namespace, trace.Spec.Node)
 			if err != nil {
 				trace.Status.OperationError = err.Error()

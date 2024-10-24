@@ -142,11 +142,11 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 			container := &containercollection.Container{
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						ContainerID: uuid.New().String(),
+						ContainerID:  uuid.New().String(),
+						ContainerPID: uint32(r.Info.Tid),
 					},
 				},
 				Mntns: r.Info.MountNsID,
-				Pid:   uint32(r.Info.Tid),
 				K8s: containercollection.K8sMetadata{
 					BasicK8sMetadata: types.BasicK8sMetadata{
 						ContainerName: name,
@@ -231,11 +231,11 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 			container := &containercollection.Container{
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						ContainerID: uuid.New().String(),
+						ContainerID:  uuid.New().String(),
+						ContainerPID: uint32(r.Info.Tid),
 					},
 				},
 				Mntns: r.Info.MountNsID,
-				Pid:   uint32(r.Info.Tid),
 				K8s: containercollection.K8sMetadata{
 					BasicK8sMetadata: types.BasicK8sMetadata{
 						ContainerName: name,
