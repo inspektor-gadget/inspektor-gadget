@@ -70,7 +70,7 @@ func (r *Runtime) GetGadgetInstances(ctx context.Context, runtimeParams *params.
 func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtimeParams *params.Params, fn func(target target, client api.GadgetInstanceManagerClient) error) error {
 	// depending on the environment, we need to either connect to a single random target (k8s, where k8s/etcd handles
 	// synchronizing gadget configuration), or all possible targets (ig-daemon).
-	targets, err := r.getTargets(ctx, runtimeParams)
+	targets, _, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
 		return fmt.Errorf("getting targets: %w", err)
 	}
@@ -147,17 +147,49 @@ func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeP
 		EventBufferLength: runtimeParams.Get(ParamEventBufferLength).AsInt32(), // default for now
 	}
 
+	targets, explicitTargets, err := r.getTargets(gadgetCtx.Context(), runtimeParams)
+	if err != nil {
+		return fmt.Errorf("getting targets: %w", err)
+	}
+
+	// if targets have explicitly been listed, add them to the `Nodes` list
+	if explicitTargets {
+		for _, t := range targets {
+			instanceRequest.GadgetInstance.Nodes = append(instanceRequest.GadgetInstance.Nodes, t.node)
+		}
+	}
+
+	var listMutex sync.Mutex
+	var nodeList []string
+	ids := make(map[string][]string)
+	var lastID string
+
 	err = r.runInstanceManagerClientForTargets(gadgetCtx.Context(), runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
 		gadgetCtx.Logger().Debugf("creating gadget on node %q", target.node)
 		res, err := client.CreateGadgetInstance(gadgetCtx.Context(), instanceRequest)
 		if err != nil {
 			return fmt.Errorf("creating gadget on node %q: %w", target.node, err)
 		}
-		gadgetCtx.Logger().Infof("installed on node %q as %q", target.node, res.GadgetInstance.Id)
+		listMutex.Lock()
+		nodeList = append(nodeList, target.node)
+		ids[res.GadgetInstance.Id] = append(ids[res.GadgetInstance.Id], target.node)
+		lastID = res.GadgetInstance.Id
+		listMutex.Unlock()
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("creating gadget instance: %w", err)
 	}
+
+	if len(ids) > 1 {
+		// this can only happen if the server refused to use the given id (which should not happen with the current
+		// implementations) and we're deploying on multiple targets where each target would choose its own id
+		for k, v := range ids {
+			gadgetCtx.Logger().Infof("installed as %q (nodes %+v)", k, v)
+		}
+		return nil
+	}
+
+	gadgetCtx.Logger().Infof("installed as %q", lastID)
 	return nil
 }

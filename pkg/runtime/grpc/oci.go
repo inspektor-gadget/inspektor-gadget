@@ -81,7 +81,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *para
 		return r.createGadgetInstance(gadgetCtx, runtimeParams, paramValues)
 	}
 
-	targets, err := r.getTargets(gadgetCtx.Context(), runtimeParams)
+	targets, _, err := r.getTargets(gadgetCtx.Context(), runtimeParams)
 	if err != nil {
 		return fmt.Errorf("getting target nodes: %w", err)
 	}
