@@ -17,6 +17,7 @@
 #include <gadget/buffer.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
+#include <gadget/mntns_filter.h>
 #include <gadget/core_fixes.bpf.h>
 #include <gadget/kernel_stack_map.h>
 
@@ -173,6 +174,10 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 	struct sockets_value *skb_val =
 		gadget_socket_lookup(sk, event->netns_id);
 	if (skb_val != NULL) {
+		// Use the mount namespace of the socket to filter by container
+		if (gadget_should_discard_mntns_id(skb_val->mntns))
+			goto cleanup;
+
 		event->mount_ns_id = skb_val->mntns;
 		event->pid = skb_val->pid_tgid >> 32;
 		event->tid = (__u32)skb_val->pid_tgid;
