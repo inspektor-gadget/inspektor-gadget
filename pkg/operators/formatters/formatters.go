@@ -382,6 +382,7 @@ var replacers = []replacer{
 				datasource.WithAnnotations(map[string]string{
 					json.SkipFieldAnnotation: "true",
 				}),
+				datasource.WithTags("endpoint"),
 				datasource.WithFlags(datasource.FieldFlagHidden),
 			)
 			if err != nil {
