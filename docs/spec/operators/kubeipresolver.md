@@ -11,7 +11,10 @@ with pod and service information by adding following fields to the events:
   - `name`: The name of the Kubernetes object.
   - `namespace`: The namespace of the Kubernetes object.
 
-For instance, the example below shows a request from `mypod` pod to `kube-dns` service:
+Also, endpoints are formatted to use the Kubernetes metadata when available with `<kind>/<namespace>/<name>:<port>`
+format e.g `p/default/nginx:80` or `s/default/nginx:80` where `p` stands for pod and `s` stands for service.
+
+The example below shows a request from `mypod` pod to `kube-dns` service in json format:
 
 ```json
 {
