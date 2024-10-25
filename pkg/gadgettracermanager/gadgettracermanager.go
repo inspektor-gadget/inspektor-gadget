@@ -165,10 +165,10 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	container := containercollection.Container{
 		Runtime: containercollection.RuntimeMetadata{
 			BasicRuntimeMetadata: eventtypes.BasicRuntimeMetadata{
-				ContainerID: containerDefinition.Id,
+				ContainerID:  containerDefinition.Id,
+				ContainerPID: containerDefinition.Pid,
 			},
 		},
-		Pid: containerDefinition.Pid,
 		K8s: containercollection.K8sMetadata{
 			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
 				Namespace:     containerDefinition.Namespace,

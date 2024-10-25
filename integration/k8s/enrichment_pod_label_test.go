@@ -90,7 +90,6 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
 				c.Mntns = 0
@@ -102,6 +101,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 
 				c.SandboxId = ""
 				c.Runtime.ContainerID = ""
+				c.Runtime.ContainerPID = 0
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerStartedAt = 0
 
@@ -163,7 +163,6 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
 				e.Container.Mntns = 0
@@ -177,6 +176,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 				e.Container.SandboxId = ""
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
+				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
 

@@ -43,7 +43,6 @@ func TestFilterByContainerName(t *testing.T) {
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
 				c.Mntns = 0
@@ -56,6 +55,7 @@ func TestFilterByContainerName(t *testing.T) {
 				c.K8s.PodLabels = nil
 				c.K8s.PodUID = ""
 				c.Runtime.ContainerID = ""
+				c.Runtime.ContainerPID = 0
 				c.Runtime.ContainerStartedAt = 0
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				c.Runtime.ContainerImageName = ""
@@ -110,7 +110,6 @@ func TestWatchContainers(t *testing.T) {
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
 				e.Container.Mntns = 0
@@ -124,6 +123,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
+				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerStartedAt = 0
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				e.Container.Runtime.ContainerImageName = ""

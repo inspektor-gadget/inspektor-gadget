@@ -110,6 +110,8 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	// ignore this field for now.
 	e.Runtime.ContainerImageDigest = ""
 
+	e.Runtime.ContainerPID = 0
+
 	if CurrentTestComponent == KubectlGadgetTestComponent {
 		e.K8s.Node = ""
 		// TODO: Verify container runtime and container name

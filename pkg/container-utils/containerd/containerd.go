@@ -326,14 +326,12 @@ func (c *ContainerdClient) buildContainerData(container containerd.Container, ta
 
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
-			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:          container.ID(),
-				ContainerName:        getContainerName(container, labels),
-				RuntimeName:          types.RuntimeNameContainerd,
-				ContainerImageName:   image.Name(),
-				ContainerImageDigest: image.Metadata().Target.Digest.String(),
-			},
-			State: taskState,
+			ContainerID:          container.ID(),
+			ContainerName:        getContainerName(container, labels),
+			RuntimeName:          types.RuntimeNameContainerd,
+			ContainerImageName:   image.Name(),
+			ContainerImageDigest: image.Metadata().Target.Digest.String(),
+			State:                taskState,
 		},
 	}
 	runtimeclient.EnrichWithK8sMetadata(containerData, labels)

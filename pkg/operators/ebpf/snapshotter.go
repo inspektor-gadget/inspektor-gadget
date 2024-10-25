@@ -167,7 +167,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 					}
 					visitedNetNs[container.Netns] = struct{}{}
 
-					err := nsenter.NetnsEnter(int(container.Pid), func() error {
+					err := nsenter.NetnsEnter(int(container.ContainerPid()), func() error {
 						reader, err := l.link.Open()
 						if err != nil {
 							return err

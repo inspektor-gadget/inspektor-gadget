@@ -33,6 +33,7 @@ func init() {
 	columns.MustRegisterTemplate("namespace", "width:30")
 	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
 	columns.MustRegisterTemplate("container", "width:30")
+	columns.MustRegisterTemplate("containerPid", "width:6,hide")
 	columns.MustRegisterTemplate("containerImageName", "width:30")
 	columns.MustRegisterTemplate("containerImageDigest", "width:30")
 	columns.MustRegisterTemplate("containerStartedAt", "width:35,hide")
@@ -111,6 +112,7 @@ type Container interface {
 	RuntimeMetadata() *BasicRuntimeMetadata
 	UsesHostNetwork() bool
 	K8sOwnerReference() *K8sOwnerReference
+	ContainerPid() uint32
 }
 
 type BasicRuntimeMetadata struct {
@@ -126,6 +128,9 @@ type BasicRuntimeMetadata struct {
 	// ContainerName is the container name. In the case the container runtime
 	// response with multiple containers, ContainerName contains only the first element.
 	ContainerName string `json:"containerName,omitempty" column:"containerName,template:container"`
+
+	// ContainerPID is the process ID of the first process in the container.
+	ContainerPID uint32 `json:"containerPid,omitempty" column:"containerPid,template:containerPid"`
 
 	// ContainerImageName is the name of the container image where the event comes from
 	// i.e. docker.io/library/busybox:latest
@@ -205,7 +210,6 @@ func (c *CommonData) SetPodMetadata(container Container) {
 
 func (c *CommonData) SetContainerMetadata(container Container) {
 	k8s := container.K8sMetadata()
-	runtime := container.RuntimeMetadata()
 
 	c.K8s.ContainerName = k8s.ContainerName
 	c.K8s.PodName = k8s.PodName
@@ -213,12 +217,8 @@ func (c *CommonData) SetContainerMetadata(container Container) {
 	c.K8s.PodLabels = k8s.PodLabels
 	c.K8s.Owner = *container.K8sOwnerReference()
 
-	c.Runtime.RuntimeName = runtime.RuntimeName
-	c.Runtime.ContainerName = runtime.ContainerName
-	c.Runtime.ContainerID = runtime.ContainerID
-	c.Runtime.ContainerImageName = runtime.ContainerImageName
-	c.Runtime.ContainerImageDigest = runtime.ContainerImageDigest
-	c.Runtime.ContainerStartedAt = runtime.ContainerStartedAt
+	runtime := container.RuntimeMetadata()
+	c.Runtime = *runtime
 }
 
 func (c *CommonData) GetNode() string {

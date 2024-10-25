@@ -148,11 +148,11 @@ func TestWithTracerCollection(t *testing.T) {
 					RuntimeName:   types.RuntimeNameDocker,
 					ContainerName: fmt.Sprintf("name%d", i),
 					ContainerID:   fmt.Sprintf("id%d", i),
+					ContainerPID:  uint32(runner.Info.Pid),
 				},
 			},
 			Mntns: runner.Info.MountNsID,
 			Netns: runner.Info.NetworkNsID,
-			Pid:   uint32(runner.Info.Pid),
 			K8s: K8sMetadata{
 				BasicK8sMetadata: types.BasicK8sMetadata{
 					ContainerName: fmt.Sprintf("name%d", i),

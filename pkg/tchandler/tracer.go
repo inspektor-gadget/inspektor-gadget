@@ -191,7 +191,7 @@ func (t *Handler) AttachContainer(container *containercollection.Container) erro
 		return nil
 	}
 
-	pid := container.Pid
+	pid := container.ContainerPid()
 
 	netns, err := containerutils.GetNetNs(int(pid))
 	if err != nil {
@@ -244,7 +244,7 @@ func (t *Handler) DetachContainer(container *containercollection.Container) erro
 		return nil
 	}
 
-	pid := container.Pid
+	pid := container.ContainerPid()
 
 	t.mu.Lock()
 	defer t.mu.Unlock()

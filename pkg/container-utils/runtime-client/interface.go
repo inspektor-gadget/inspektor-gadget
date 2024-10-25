@@ -41,7 +41,14 @@ type K8sContainerData struct {
 }
 
 type RuntimeContainerData struct {
-	types.BasicRuntimeMetadata
+	// Almost like types.BasicRuntimeMetadata but don't use it because we
+	// don't need ContainerPID
+	RuntimeName          types.RuntimeName
+	ContainerID          string
+	ContainerName        string
+	ContainerImageName   string
+	ContainerImageDigest string
+	ContainerStartedAt   types.Time
 
 	// Current state of the container.
 	State string
