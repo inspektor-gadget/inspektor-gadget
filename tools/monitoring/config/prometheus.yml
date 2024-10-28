@@ -3,4 +3,4 @@ scrape_configs:
     scrape_interval: 1s
     static_configs:
       - targets:
-          - host.docker.internal:2223
+          - host.docker.internal:2224
