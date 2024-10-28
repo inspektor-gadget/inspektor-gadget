@@ -67,7 +67,7 @@ You can now use the gadget, but output will be empty:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run top_tcp:%IG_TAG% --pod mypod
+        $ kubectl gadget run top_tcp:%IG_TAG% --podname mypod
         K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID SRC                                 DST                                COMM          SENT          RECEIVED
         ```
     </TabItem>
@@ -115,8 +115,8 @@ On *the first terminal*, you should see:
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
         K8S.NODE     K8S.NAMESPACE          K8S.PODNAME            K8S.CONTAINERNAME               PID SRC                                 DST                                COMM          SENT          RECEIVED
-        aks-agentpo… default                mypod                  mypod                       3602459 10.224.0.136:57076                  188.114.97.7:443                   wget           320             42652
-        aks-agentpo… default                mypod                  mypod                       3602452 10.224.0.136:49538                  188.114.96.7:80                    wget             0               582
+        aks-agentpo… default                mypod                  mypod                       3602459 p/default/mypod:57076               188.114.97.7:443                   wget           320             42652
+        aks-agentpo… default                mypod                  mypod                       3602452 p/default/mypod:49538               188.114.96.7:80                    wget             0               582
         ```
     </TabItem>
 
