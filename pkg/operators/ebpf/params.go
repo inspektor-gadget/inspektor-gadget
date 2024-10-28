@@ -21,6 +21,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -70,6 +71,11 @@ func getTypeHint(typ btf.Type) params.TypeHint {
 		return getTypeHint(typ)
 	case *btf.Volatile:
 		return getTypeHint(typedMember.Type)
+	case *btf.Struct:
+		switch typedMember.Name {
+		case ebpftypes.L3EndpointTypeName:
+			return params.TypeIP
+		}
 	}
 
 	return params.TypeUnknown
