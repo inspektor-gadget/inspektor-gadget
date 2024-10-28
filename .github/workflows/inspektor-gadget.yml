@@ -1055,7 +1055,7 @@ jobs:
     #    path: ./cache
     #    key: ${{ runner.os }}-benchmark
     - name: Store benchmark result
-      uses: benchmark-action/github-action-benchmark@4de1bed97a47495fc4c5404952da0499e31f5c29 # v1.20.3
+      uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
       # Disable push from forks or PR from forks.
       # $BENCHMARKS_TOKEN will not be available in those cases.
       if: |
