@@ -170,6 +170,9 @@ func transformObject(obj any) (any, error) {
 				HostIP: t.Status.HostIP,
 				PodIP:  t.Status.PodIP,
 			},
+			Spec: v1.PodSpec{
+				HostNetwork: t.Spec.HostNetwork,
+			},
 		}
 		return p, nil
 	case *v1.Service:
