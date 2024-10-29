@@ -66,6 +66,10 @@ const (
 	AnnotationImplicitCounterName        = "metrics.implicit-counter.name"
 	AnnotationImplicitCounterDescription = "metrics.implicit-counter.description"
 
+	AnnotationAttributesPrefix      = "metrics.attribute."
+	AnnotationAttributesValueSuffix = ".value"
+	AnnotationAttributesTypeSuffix  = ".type"
+
 	PrintDataSourceSuffix = "rendered"
 	PrintFieldName        = "text"
 
@@ -630,6 +634,51 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 				ctr.Add(ctx, 1, metric.WithAttributeSet(set))
 			})
 			hasValueFields = true
+		}
+
+		// Add additional (static) attributes
+		for k, v := range ds.Annotations() {
+			if attributePrefixed, ok := strings.CutPrefix(k, AnnotationAttributesPrefix); ok {
+				attributeName, ok := strings.CutSuffix(attributePrefixed, AnnotationAttributesValueSuffix)
+				if !ok {
+					continue
+				}
+				// check (optional) type
+				attributeType, _ := ds.Annotations()[fmt.Sprintf("%s%s%s", AnnotationAttributesPrefix, attributeName, AnnotationAttributesTypeSuffix)]
+				switch attributeType {
+				default:
+					return fmt.Errorf("invalid attribute type for attribute %q: %s", attributeName, attributeType)
+				case "", "string":
+					collector.keys = append(collector.keys, func(data datasource.Data) attribute.KeyValue {
+						return attribute.KeyValue{
+							Key:   attribute.Key(attributeName),
+							Value: attribute.StringValue(v),
+						}
+					})
+				case "int64":
+					i64, err := strconv.ParseInt(v, 10, 64)
+					if err != nil {
+						return fmt.Errorf("invalid value for attribute %q of type %s: %w", attributeName, attributeType, err)
+					}
+					collector.keys = append(collector.keys, func(data datasource.Data) attribute.KeyValue {
+						return attribute.KeyValue{
+							Key:   attribute.Key(attributeName),
+							Value: attribute.Int64Value(i64),
+						}
+					})
+				case "float64":
+					f64, err := strconv.ParseFloat(v, 64)
+					if err != nil {
+						return fmt.Errorf("invalid value for attribute %q of type %s: %w", attributeName, attributeType, err)
+					}
+					collector.keys = append(collector.keys, func(data datasource.Data) attribute.KeyValue {
+						return attribute.KeyValue{
+							Key:   attribute.Key(attributeName),
+							Value: attribute.Float64Value(f64),
+						}
+					})
+				}
+			}
 		}
 
 		fields := ds.Accessors(false)

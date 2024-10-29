@@ -91,6 +91,20 @@ datasources:
 This is especially useful if you just want to quickly convert an existing event-based gadget to a metrics collector, as
 you can easily set annotations when running a gadget using the `--annotate` flag.
 
+#### Adding attributes
+
+Static attributes of types "string", "int64" and "float64" can be added using the following syntax:
+
+```yaml
+datasources:
+  events:
+    annotations:
+      metrics.attributes.my-attribute-name.value: my-attribute-value
+      metrics.attributes.my-attribute-name.type: string
+```
+
+Those annotations can also easily be added at runtime by using the `--annotate` flag.
+
 ### Using well-known types in the eBPF code
 
 You can also edit your eBPF source code and use well-known types (TODO links to well known types) instead of annotating
