@@ -5,4 +5,4 @@ providers:
     folder: 'Services'
     type: file
     options:
-      path: /etc/grafana/provisioning/dashboards/definations
+      path: /etc/grafana/provisioning/dashboards/definitions
