@@ -158,11 +158,14 @@ func main() {
 	hiddenColumnTags := []string{"runtime"}
 	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
 
+	common.AddInstanceCommands(rootCmd, grpcRuntime)
+
 	// Advise and traceloop category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd(gadgetNamespace))
 	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
 	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeRun))
+	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))
 
 	if err := rootCmd.Execute(); err != nil {

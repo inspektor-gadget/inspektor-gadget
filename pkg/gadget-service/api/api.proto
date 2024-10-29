@@ -286,6 +286,9 @@ message GadgetInstance {
 
   // name is a (non-unique) string assigned to a gadget, set by the client
   string name = 6;
+
+  // nodes is a list of nodes the gadget should run on; if empty, all nodes will run the gadget
+  repeated string nodes = 5;
 }
 
 message ListGadgetInstanceResponse {
