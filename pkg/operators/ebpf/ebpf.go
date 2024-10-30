@@ -28,6 +28,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -37,6 +38,9 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -546,6 +550,11 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
+	// Enable stats collection
+	if err := bpfstats.EnableBPFStats(); err != nil {
+		return err
+	}
+
 	i.logger.Debugf("starting ebpfInstance")
 
 	gadgets.FixBpfKtimeGetBootNs(i.collectionSpec.Programs)
@@ -726,7 +735,61 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+type progStats struct {
+	ProgName      string        `json:"prog_name" column:"prog_name"`
+	TotalRuntime  time.Duration `json:"total_runtime" column:"total_runtime"`
+	TotalRunCount uint64        `json:"total_run_count" column:"total_run_count"`
+	AvgRuntime    time.Duration `json:"avg_runtime" column:"avg_runtime"`
+}
+
+func (i *ebpfInstance) printStats() error {
+	cols := columns.MustCreateColumns[progStats]()
+	formatter := textcolumns.NewFormatter(cols.GetColumnMap())
+	fmt.Fprintln(os.Stderr, formatter.FormatHeader())
+
+	stats := make(map[string]progStats)
+	totalStats := progStats{
+		ProgName: "total",
+	}
+
+	for name, p := range i.collection.Programs {
+		info, _ := p.Info()
+		runtime, _ := info.Runtime()
+		runcount, _ := info.RunCount()
+		var avg time.Duration
+		if runcount != 0 {
+			avg = runtime / time.Duration(runcount)
+		}
+
+		s := progStats{
+			ProgName:      name,
+			TotalRuntime:  runtime,
+			TotalRunCount: runcount,
+			AvgRuntime:    avg,
+		}
+		stats[name] = s
+
+		totalStats.TotalRuntime += runtime
+		totalStats.TotalRunCount += runcount
+
+		fmt.Fprintln(os.Stderr, formatter.FormatEntry(&s))
+	}
+
+	if totalStats.TotalRunCount != 0 {
+		totalStats.AvgRuntime = totalStats.TotalRuntime / time.Duration(totalStats.TotalRunCount)
+	}
+
+	stats["total"] = totalStats
+	fmt.Fprintln(os.Stderr, formatter.FormatEntry(&totalStats))
+
+	return nil
+}
+
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	if err := i.printStats(); err != nil {
+		i.logger.Errorf("printing stats: %w", err)
+	}
+	bpfstats.DisableBPFStats()
 	i.Close()
 	return nil
 }
