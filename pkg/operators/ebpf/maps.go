@@ -248,6 +248,10 @@ func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
 		return fmt.Errorf("map %q not found in eBPF object", mapName)
 	}
 
+	if iterMap.Type != ebpf.Hash {
+		return fmt.Errorf("map %q is not a hash map", mapName)
+	}
+
 	keyStruct, ok := iterMap.Key.(*btf.Struct)
 	if !ok {
 		return fmt.Errorf("map %q key is not a struct", mapName)
