@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -99,6 +100,20 @@ func (m *otelMetricsOperator) Name() string {
 func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
 	if !globalParams.Get(ParamOtelMetricsListen).AsBool() {
 		return nil
+	}
+
+	// Validate listen address: Can't use ResolveTCPAddr because it parses
+	// <any-string>:1234 as 0.0.0.0:1234 instead of an error.
+	addr := globalParams.Get(ParamOtelMetricsListenAddress).AsString()
+	s := strings.Split(addr, ":")
+	if len(s) != 2 {
+		return fmt.Errorf("invalid listen address: %s", addr)
+	}
+	if net.ParseIP(s[0]) == nil {
+		return fmt.Errorf("invalid IP for listen address: %s", addr)
+	}
+	if port, err := strconv.Atoi(s[1]); err != nil || port < 1024 || port > 65535 {
+		return fmt.Errorf("invalid port for listen address: %s", addr)
 	}
 
 	// create a global prometheus collector/exporter; this will be exposed using an HTTP endpoint, if activated
