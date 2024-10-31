@@ -388,6 +388,10 @@ test-gadgets: install/ig
 testdata:
 	$(MAKE) -C testdata/
 
+.PHONY: go-mod-tidy
+go-mod-tidy:
+	find ./ -type f -name go.mod -execdir go mod tidy \;
+
 .PHONY: help
 help:
 	@echo  'Building targets:'
@@ -397,6 +401,7 @@ help:
 	@echo  '* build		  		- Build all targets marked with [o]'
 	@echo  'o manifests			- Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects'
 	@echo  'o generate			- Generate client API code and DeepCopy related code'
+	@echo  '  go-mod-tidy			- Run go mod tidy for all go modules in the repo'
 	@echo  'o kubectl-gadget		- Build the kubectl plugin'
 	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'
 	@echo  '  kubectl-gadget-container	- Build container for kubectl-gadget'
