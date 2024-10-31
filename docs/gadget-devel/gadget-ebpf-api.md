@@ -9,6 +9,17 @@ accessible from eBPF code. These features simplify the creation of new gadgets
 by providing convenient functions for common operations, making the developer's
 life easier when implementing gadgets.
 
+Gadgets define structures that contain the information provided to the users.
+The fields of those structures are exposed in different ways according to the
+format chosen by the user (json, columns, etc.). Inspektor Gadget provides some
+special types that can be used to provide enrichment and other features as
+described below.
+
+## Ignoring fields
+
+Fields starting with `__` are considered private and are ignored by Inspektor
+Gadget.
+
 ## Container enrichment
 
 To make use of container enrichment, gadgets must include

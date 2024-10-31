@@ -161,6 +161,10 @@ func applyAnnotationsTemplateForType(typeName string, dst map[string]string) boo
 func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, prefix string, offset uint32,
 	parent int, parentTypeName string,
 ) {
+	if strings.HasPrefix(member.Name, "__") {
+		return
+	}
+
 	annotations := make(map[string]string)
 	refType, tags := btfhelpers.GetType(member.Type)
 	for i := range tags {
