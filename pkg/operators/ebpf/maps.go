@@ -213,7 +213,7 @@ func (i *ebpfInstance) runMapIterators() error {
 			ticker := time.NewTicker(iter.interval)
 			for {
 				select {
-				case <-i.gadgetCtx.Context().Done():
+				case <-i.done:
 					return
 				case <-ticker.C:
 					fetch()
