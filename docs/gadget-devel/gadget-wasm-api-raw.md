@@ -205,6 +205,26 @@ Parameters:
 Return value:
 - None
 
+#### `dataSourceUnreference(u32 ds)`
+
+Unreference a data source from further operators.
+
+Parameters:
+- `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
+
+Return value:
+- None
+
+#### `dataSourceIsReferenced(u32 ds)`
+
+Check if the data source is referenced.
+
+Parameters:
+- `ds` (u32): Datasource handle (as returned by `getDataSource` or `newDataSource`)
+
+Return value:
+- (u32): Boolean value on success (0 or 1), 2 on error
+
 #### `dataArrayNew(d uint32) uint32`
 
 Allocate and return a new element on the array. If the whole DataArray is not

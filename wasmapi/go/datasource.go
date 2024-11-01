@@ -47,6 +47,12 @@ func dataSourceEmitAndRelease(ds uint32, packet uint32) uint32
 //go:wasmimport env dataSourceRelease
 func dataSourceRelease(ds uint32, packet uint32) uint32
 
+//go:wasmimport env dataSourceUnreference
+func dataSourceUnreference(ds uint32) uint32
+
+//go:wasmimport env dataSourceIsReferenced
+func dataSourceIsReferenced(ds uint32) uint32
+
 //go:wasmimport env dataArrayNew
 func dataArrayNew(d uint32) uint32
 
@@ -203,6 +209,18 @@ func (ds DataSource) Release(packet Packet) error {
 		return fmt.Errorf("releasing data")
 	}
 	return nil
+}
+
+func (ds DataSource) Unreference() error {
+	ret := dataSourceUnreference(uint32(ds))
+	if ret != 0 {
+		return fmt.Errorf("unreferencing data source")
+	}
+	return nil
+}
+
+func (ds DataSource) IsReferenced() bool {
+	return dataSourceIsReferenced(uint32(ds)) == 1
 }
 
 func (ds DataSource) GetField(name string) (Field, error) {

@@ -92,6 +92,20 @@ func (i *wasmOperatorInstance) addDataSourceFuncs(env wazero.HostModuleBuilder) 
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
 
+	exportFunction(env, "dataSourceUnreference", i.dataSourceUnreference,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // DataSource
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
+	)
+
+	exportFunction(env, "dataSourceIsReferenced", i.dataSourceIsReferenced,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // DataSource
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Value
+	)
+
 	exportFunction(env, "dataArrayNew", i.dataArrayNew,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // DataArray
@@ -410,6 +424,44 @@ func (i *wasmOperatorInstance) dataSourceRelease(ctx context.Context, m wapi.Mod
 	}
 	ds.Release(packet)
 	stack[0] = 0
+}
+
+// dataSourceUnreference disables the forwarding of the datasource to further operators.
+// Params:
+// - stack[0]: DataSource handle
+// Return value:
+// - 0 on success, 1 on error
+func (i *wasmOperatorInstance) dataSourceUnreference(ctx context.Context, m wapi.Module, stack []uint64) {
+	dsHandle := wapi.DecodeU32(stack[0])
+
+	ds, ok := getHandle[datasource.DataSource](i, dsHandle)
+	if !ok {
+		stack[0] = 1
+		return
+	}
+	ds.Unreference()
+	stack[0] = 0
+}
+
+// dataSourceIsReferenced returns a boolean indicating if the datasource is referenced.
+// Params:
+// - stack[0]: DataSource handle
+// Return value:
+// - Boolean value on success (0 or 1), 2 on error
+func (i *wasmOperatorInstance) dataSourceIsReferenced(ctx context.Context, m wapi.Module, stack []uint64) {
+	dsHandle := wapi.DecodeU32(stack[0])
+
+	ds, ok := getHandle[datasource.DataSource](i, dsHandle)
+	if !ok {
+		stack[0] = 2
+		return
+	}
+	v := ds.IsReferenced()
+	if v {
+		stack[0] = 1
+	} else {
+		stack[0] = 0
+	}
 }
 
 // dataArrayNew allocates and returns a new element on the array
