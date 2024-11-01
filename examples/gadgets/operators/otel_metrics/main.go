@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -38,6 +39,11 @@ func do() error {
 
 	// We will simulate generating metrics for three nodes; these strings will serve as the only key for the metrics
 	nodes := []string{"node1", "node2", "node3"}
+
+	// used to stop the producer
+	done := make(chan struct{})
+	// used to wait for the producer to finish
+	wg := &sync.WaitGroup{}
 
 	metricsGenerator := simple.New("myHandler",
 		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
@@ -100,6 +106,7 @@ func do() error {
 			}
 
 			producer = func() {
+				defer wg.Done()
 				ticker := time.NewTicker(time.Second)
 				for {
 					select {
@@ -124,7 +131,7 @@ func do() error {
 
 							ds.EmitAndRelease(metrics)
 						}
-					case <-gadgetCtx.Context().Done():
+					case <-done:
 						return
 					}
 				}
@@ -133,7 +140,12 @@ func do() error {
 			return nil
 		}),
 		simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
+			wg.Add(1)
 			go producer()
+			return nil
+		}),
+		simple.OnStop(func(gadgetCtx operators.GadgetContext) error {
+			close(done)
 			return nil
 		}),
 	)
@@ -168,6 +180,9 @@ func do() error {
 	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
+
+	// Wait for the producer to finish
+	wg.Wait()
 
 	return nil
 }

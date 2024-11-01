@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -177,6 +178,7 @@ func (m *otelMetricsOperator) InstantiateDataOperator(gadgetCtx operators.Gadget
 		collectors:    make(map[datasource.DataSource]*metricsCollector),
 		nameMappings:  mappings,
 		printInterval: printInterval,
+		done:          make(chan struct{}),
 	}
 
 	err = instance.init(gadgetCtx)
@@ -197,6 +199,8 @@ type otelMetricsOperatorInstance struct {
 	outputDS      datasource.DataSource
 	outputField   datasource.FieldAccessor
 	printInterval time.Duration
+	done          chan struct{}
+	wg            sync.WaitGroup
 }
 
 func (m *otelMetricsOperatorInstance) Name() string {
@@ -511,6 +515,7 @@ func (mc *metricsCollector) Collect(ctx context.Context, data datasource.Data) {
 }
 
 func (m *otelMetricsOperatorInstance) shutdown() {
+	close(m.done)
 	ctx := context.Background()
 	for _, collector := range m.collectors {
 		if collector.meterProvider != nil {
@@ -689,18 +694,20 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 	// If we registered an output datasource, use it
 	if m.outputDS != nil && m.printInterval > 0 {
 		// Start printer
+		m.wg.Add(1)
 		go m.PrintMetrics(gadgetCtx)
 	}
 	return nil
 }
 
 func (m *otelMetricsOperatorInstance) PrintMetrics(gadgetCtx operators.GadgetContext) {
+	defer m.wg.Done()
 	// Periodically print using the fetch interval
 	ticker := time.NewTicker(m.printInterval)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-gadgetCtx.Context().Done():
+		case <-m.done:
 			return
 		case <-ticker.C:
 			// collect metrics
@@ -778,6 +785,7 @@ func (m *otelMetricsOperatorInstance) Start(gadgetCtx operators.GadgetContext) e
 
 func (m *otelMetricsOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	m.shutdown()
+	m.wg.Wait()
 	gadgetCtx.Logger().Debug("shutting down metrics")
 	return nil
 }

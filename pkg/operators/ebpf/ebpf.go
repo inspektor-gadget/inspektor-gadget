@@ -108,6 +108,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 	newInstance := &ebpfInstance{
 		gadgetCtx: gadgetCtx, // context usually should not be stored, but should we really carry it through all funcs?
+		done:      make(chan struct{}),
 
 		logger:  gadgetCtx.Logger(),
 		program: program,
@@ -190,6 +191,7 @@ type ebpfInstance struct {
 	stackIdMap *ebpf.Map
 
 	gadgetCtx operators.GadgetContext
+	done      chan struct{}
 
 	// used to be sure all tracers are done before returning from Stop()
 	wg sync.WaitGroup
@@ -533,7 +535,7 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("opening trace_pipe: %w", err)
 	}
 	go func() {
-		<-gadgetCtx.Context().Done()
+		<-i.done
 		tracePipe.Close()
 	}()
 	go func() {
@@ -735,6 +737,8 @@ func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Close() {
+	close(i.done)
+
 	for _, t := range i.tracers {
 		t.close()
 	}
