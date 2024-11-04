@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -58,8 +59,7 @@ type ExpectedInnerEvent struct {
 }
 
 func TestInnerFields(t *testing.T) {
-	utilstest.RequireRoot(t)
-
+	gadgettesting.InitUnitTest(t)
 	t.Parallel()
 
 	runnerConfig := &utilstest.RunnerConfig{}

@@ -5,11 +5,15 @@ ROOT_DIR:=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 GADGET_TAG ?= $(shell ../tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
+# currently use mauriciovasquezbernal/ci-kernels as default
+KERNEL_REPOSITORY ?= ghcr.io/mauriciovasquezbernal/ci-kernels
 IG ?= ig
 KUBECTL_GADGET ?= kubectl-gadget
 IG_RUNTIME ?= docker
 IG_FLAGS ?=
 COSIGN ?= cosign
+VIMTO ?= vimto
+VIMTO_VM_MEMORY ?= 4096M
 
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
@@ -103,19 +107,42 @@ clean:
 	done
 
 .PHONY:
+pull:
+	GADGET_TAG=$(GADGET_TAG) \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) && \
+	for GADGET in $(GADGETS); do \
+		sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+	done
+
+.PHONY:
+%/pull:
+	GADGET_TAG=$(GADGET_TAG) \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+
+.PHONY:
 test-unit: build
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...
-
+	VIMTO=$(VIMTO) \
+	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
+	$(if $(KERNEL_VERSION), \
+		sudo -E $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
+		go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...)
 
 .PHONY:
 %/test-unit: %
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...
+	VIMTO=$(VIMTO) \
+	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
+	$(if $(KERNEL_VERSION), \
+		sudo -E $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
+		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
 
 .PHONY:
 %/test-integration: %

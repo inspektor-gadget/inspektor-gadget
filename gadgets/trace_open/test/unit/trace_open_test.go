@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
@@ -48,7 +49,7 @@ type testDef struct {
 }
 
 func TestTraceOpenGadget(t *testing.T) {
-	utilstest.RequireRoot(t)
+	gadgettesting.InitUnitTest(t)
 	testCases := map[string]testDef{
 		"captures_all_events_with_no_filters_configured": {
 			runnerConfig:  &utilstest.RunnerConfig{},
