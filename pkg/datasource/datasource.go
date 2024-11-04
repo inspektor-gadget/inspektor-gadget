@@ -179,7 +179,7 @@ type DataSource interface {
 	ByteOrder() binary.ByteOrder
 
 	AddAnnotation(key, value string)
-	AddTag(tag string)
+	AddTags(tags ...string)
 
 	Annotations() map[string]string
 	Tags() []string

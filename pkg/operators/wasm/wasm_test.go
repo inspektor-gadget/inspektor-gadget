@@ -46,23 +46,24 @@ func TestWasmFields(t *testing.T) {
 		typ  api.Kind
 		acc  datasource.FieldAccessor
 		val  any
+		tag  string
 	}
 
 	// fields added by the wasm module
 	fields := []*field{
-		{"field_bool", api.Kind_Bool, nil, bool(true)},
-		{"field_int8", api.Kind_Int8, nil, int8(-123)},
-		{"field_int16", api.Kind_Int16, nil, int16(-25647)},
-		{"field_int32", api.Kind_Int32, nil, int32(-535245564)},
-		{"field_int64", api.Kind_Int64, nil, int64(-1234567890)},
-		{"field_uint8", api.Kind_Uint8, nil, uint8(56)},
-		{"field_uint16", api.Kind_Uint16, nil, uint16(12345)},
-		{"field_uint32", api.Kind_Uint32, nil, uint32(1234567890)},
-		{"field_uint64", api.Kind_Uint64, nil, uint64(1234567890123456)},
-		{"field_float32", api.Kind_Float32, nil, float32(3.14159)},
-		{"field_float64", api.Kind_Float64, nil, float64(3.14159265359)},
-		{"field_string", api.Kind_String, nil, string("Hello, World!")},
-		{"field_bytes", api.Kind_Bytes, nil, []byte{0x01, 0x02, 0x03, 0x04, 0x05}},
+		{"field_bool", api.Kind_Bool, nil, bool(true), "tag_bool"},
+		{"field_int8", api.Kind_Int8, nil, int8(-123), "tag_int8"},
+		{"field_int16", api.Kind_Int16, nil, int16(-25647), "tag_int16"},
+		{"field_int32", api.Kind_Int32, nil, int32(-535245564), "tag_int32"},
+		{"field_int64", api.Kind_Int64, nil, int64(-1234567890), "tag_int64"},
+		{"field_uint8", api.Kind_Uint8, nil, uint8(56), "tag_uint8"},
+		{"field_uint16", api.Kind_Uint16, nil, uint16(12345), "tag_uint16"},
+		{"field_uint32", api.Kind_Uint32, nil, uint32(1234567890), "tag_uint32"},
+		{"field_uint64", api.Kind_Uint64, nil, uint64(1234567890123456), "tag_uint64"},
+		{"field_float32", api.Kind_Float32, nil, float32(3.14159), "tag_float32"},
+		{"field_float64", api.Kind_Float64, nil, float64(3.14159265359), "tag_float64"},
+		{"field_string", api.Kind_String, nil, string("Hello, World!"), "tag_string"},
+		{"field_bytes", api.Kind_Bytes, nil, []byte{0x01, 0x02, 0x03, 0x04, 0x05}, "tag_bytes"},
 	}
 
 	counter := 0
@@ -97,50 +98,62 @@ func TestWasmFields(t *testing.T) {
 						val, err := f.acc.Int8(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Int16:
 						val, err := f.acc.Int16(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Int32:
 						val, err := f.acc.Int32(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Int64:
 						val, err := f.acc.Int64(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Uint8:
 						val, err := f.acc.Uint8(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Uint16:
 						val, err := f.acc.Uint16(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Uint32:
 						val, err := f.acc.Uint32(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Uint64:
 						val, err := f.acc.Uint64(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Float32:
 						val, err := f.acc.Float32(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Float64:
 						val, err := f.acc.Float64(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_String:
 						val, err := f.acc.String(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					case api.Kind_Bytes:
 						val, err := f.acc.Bytes(data)
 						assert.NoError(t, err)
 						assert.Equal(t, f.val, val)
+						assert.True(t, f.acc.HasAllTagsOf(f.tag))
 					}
 				}
 				return nil
@@ -181,6 +194,7 @@ func TestWasmFields(t *testing.T) {
 	require.NoError(t, err, "registering datasource")
 
 	hostF, err := ds.AddField("host_field", api.Kind_String)
+	hostF.AddTags("host_tag")
 	require.NoError(t, err, "adding field")
 
 	fields = append(fields, &field{
@@ -188,6 +202,7 @@ func TestWasmFields(t *testing.T) {
 		typ:  api.Kind_String,
 		acc:  hostF,
 		val:  "LOCALHOST",
+		tag:  "host_tag",
 	},
 	)
 

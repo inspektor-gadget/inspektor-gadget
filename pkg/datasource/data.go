@@ -786,10 +786,10 @@ func (ds *dataSource) AddAnnotation(key, value string) {
 	ds.annotations[key] = value
 }
 
-func (ds *dataSource) AddTag(tag string) {
+func (ds *dataSource) AddTags(tags ...string) {
 	ds.lock.Lock()
 	defer ds.lock.Unlock()
-	ds.tags = append(ds.tags, tag)
+	ds.tags = append(ds.tags, tags...)
 }
 
 func (ds *dataSource) Annotations() map[string]string {

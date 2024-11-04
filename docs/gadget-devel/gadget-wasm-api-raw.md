@@ -298,6 +298,17 @@ Parameters:
 Return value:
 - None
 
+#### `fieldAddTag(u32 field, u64 tag)`
+
+Add a tag to the field.
+
+Parameters:
+- `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
+- `tag`(string): Tag
+
+Return value:
+- None
+
 ### Parameters
 
 Parameters passed to the WASM module are defined in the metadata file as this:
