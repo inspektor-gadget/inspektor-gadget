@@ -69,7 +69,7 @@ require (
 )
 
 require (
-	github.com/containerd/errdefs v0.3.0
+	github.com/containerd/errdefs v1.0.0
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gopacket/gopacket v1.2.0
 	github.com/sigstore/sigstore v1.8.10
