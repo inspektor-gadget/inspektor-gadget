@@ -2085,7 +2085,7 @@ jobs:
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
     - name: Create Draft Release
       id: create_release
-      uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+      uses: softprops/action-gh-release@e7a8f85e1c67a31e6ed99a94b41bd0b71bbee6b8 # v2.0.9
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref_name }}
