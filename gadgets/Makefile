@@ -21,6 +21,7 @@ INTEGRATION_TEST_DIR = test/integration
 GADGETS = \
 	audit_seccomp \
 	deadlock \
+	fdpass \
 	fsnotify \
 	profile_blockio \
 	profile_tcprtt \
