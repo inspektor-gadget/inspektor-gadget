@@ -321,10 +321,13 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			continue
 		}
 
+		clearScreenBefore := ds.Annotations()[AnnotationClearScreenBefore] == "true"
+		isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
+
 		switch mode {
 		default:
 			before := func() {}
-			if ds.Annotations()[AnnotationClearScreenBefore] == "true" && term.IsTerminal(int(os.Stdout.Fd())) {
+			if clearScreenBefore && isTerminal {
 				before = clearScreen
 			}
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -365,20 +368,14 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			}
 
 			headerFuncs := []func(){}
-			if ds.Annotations()[AnnotationClearScreenBefore] == "true" {
-				isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
-				if isTerminal {
-					headerFuncs = append(headerFuncs, clearScreen)
-				}
+			if clearScreenBefore && isTerminal {
+				headerFuncs = append(headerFuncs, clearScreen)
 			}
 			headerFuncs = append(headerFuncs, printHeader)
 
-			for _, headerFunc := range headerFuncs {
-				headerFunc()
-			}
-
 			switch ds.Type() {
 			case datasource.TypeSingle:
+				printHeader()
 				p.SetEventCallback(formatter.EventHandlerFunc())
 				handler, ok := p.EventHandlerFunc().(func(data *datasource.DataTuple))
 				if !ok {
@@ -391,6 +388,12 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					return nil
 				}, Priority)
 			case datasource.TypeArray:
+				// print the header before only for gadgets that will clean the
+				// screen later on, otherwise it could be printed multiple
+				// times.
+				if clearScreenBefore {
+					printHeader()
+				}
 				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))
 				handler, ok := p.EventHandlerFuncArray().(func(data []*datasource.DataTuple))
 				if !ok {

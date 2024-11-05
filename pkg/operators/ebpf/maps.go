@@ -201,7 +201,9 @@ func (i *ebpfInstance) runMapIterators() error {
 			}
 			iter.ds.EmitAndRelease(p)
 		}
+		i.wg.Add(1)
 		go func() {
+			defer i.wg.Done()
 			if iter.interval == 0 {
 				// Only a single time; is this really useful?
 				fetch()
@@ -211,7 +213,7 @@ func (i *ebpfInstance) runMapIterators() error {
 			ticker := time.NewTicker(iter.interval)
 			for {
 				select {
-				case <-i.gadgetCtx.Context().Done():
+				case <-i.done:
 					return
 				case <-ticker.C:
 					fetch()
@@ -246,6 +248,10 @@ func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
 	iterMap, ok := i.collectionSpec.Maps[mapName]
 	if !ok {
 		return fmt.Errorf("map %q not found in eBPF object", mapName)
+	}
+
+	if iterMap.Type != ebpf.Hash {
+		return fmt.Errorf("map %q is not a hash map", mapName)
 	}
 
 	keyStruct, ok := iterMap.Key.(*btf.Struct)

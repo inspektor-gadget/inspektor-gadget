@@ -298,6 +298,95 @@ func TestWasmDataArray(t *testing.T) {
 	require.Equal(t, counter, 1)
 }
 
+func TestWasmDataEmit(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	counter := 0
+
+	const opPriority = 50000
+	myOperator := simple.New("myHandler",
+		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			// Verify the new data source
+			datasources := gadgetCtx.GetDataSources()
+			ds, ok := datasources["new_ds"]
+			require.True(t, ok, "datasource not found")
+
+			acc := ds.GetField("bar")
+			ds.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
+				counter++
+
+				// Even value 2 multiplied by 5 = 10
+				val, err := acc.Uint32(data)
+				require.NoError(t, err)
+				require.Equal(t, uint32(10), val)
+
+				return nil
+			}, opPriority)
+			return nil
+		}),
+		simple.OnStart(func(gadgetCtx operators.GadgetContext) error {
+			// Emit some packets to the old data source
+			datasources := gadgetCtx.GetDataSources()
+			ds, ok := datasources["old_ds"]
+			require.True(t, ok, "datasource not found")
+
+			packet, err := ds.NewPacketArray()
+			require.NoError(t, err, "creating packet")
+
+			acc := ds.GetField("foo")
+
+			// Emitting numbers 1 and 2
+			for i := 1; i < 3; i++ {
+				data := packet.New()
+				err = acc.PutUint32(data, uint32(i))
+				require.NoError(t, err, "putting data")
+
+				packet.Append(data)
+			}
+
+			err = ds.EmitAndRelease(packet)
+			require.NoError(t, err, "emitting data")
+
+			return nil
+		}),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/dataemit.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"dataemit:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	// Register data source that will be used by the wasm program to add fields
+	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "old_ds")
+	require.NoError(t, err, "registering datasource")
+
+	_, err = ds.AddField("foo", api.Kind_Uint32)
+	require.NoError(t, err)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	params := map[string]string{
+		"operator.oci.verify-image": "false",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
+
+	require.Equal(t, counter, 1) // as only 1 of the two packets emitted by the `old_ds` will be passed on to the `new_ds`
+}
+
 func TestBadGuest(t *testing.T) {
 	utilstest.RequireRoot(t)
 

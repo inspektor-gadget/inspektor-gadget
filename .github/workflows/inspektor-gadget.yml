@@ -43,7 +43,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION_DOC_CHECK }}
         cache: true
@@ -106,7 +106,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
       id: go
@@ -183,7 +183,7 @@ jobs:
     steps:
       - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Check if added dependencies do not contain CVE.
-        uses: actions/dependency-review-action@5a2ce3f5b92ee19cbb1541a4984c76d921601d7c # v4.3.4
+        uses: actions/dependency-review-action@4081bf99e2866ebe428fc0477b69eb4fcda7220a # v4.4.0
 
   build-clients:
     name: clients
@@ -203,7 +203,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -214,7 +214,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: github/codeql-action/init@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+    - uses: github/codeql-action/init@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -248,7 +248,7 @@ jobs:
           ${{ matrix.client }}${dot_exe} LICENSE
         rm -rf $platform
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
-      uses: github/codeql-action/analyze@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+      uses: github/codeql-action/analyze@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
@@ -274,7 +274,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -306,7 +306,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -318,7 +318,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -362,12 +362,12 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+    - uses: github/codeql-action/init@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         languages: go
     - name: Build ig-linux-${{ matrix.platform }} for CWE checks
@@ -379,7 +379,7 @@ jobs:
           -ldflags "-extldflags '-static'" \
           github.com/inspektor-gadget/inspektor-gadget/cmd/ig
     - name: CWE checks for ig-linux-${{ matrix.platform }}
-      uses: github/codeql-action/analyze@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+      uses: github/codeql-action/analyze@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         category: ig-linux-${{ matrix.platform }}
 
@@ -393,19 +393,19 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+    - uses: github/codeql-action/init@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         languages: go
     - name: Build gadget-container-deps
       run: |
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
-      uses: github/codeql-action/analyze@f779452ac5af1c261dce0346a8f964149f49322b # v3.26.13
+      uses: github/codeql-action/analyze@662472033e021d55d94146f66f6058822b0b39fd # v3.27.0
       with:
         category: gadget-container-deps
 
@@ -438,7 +438,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
     - name: Cache Docker layers
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gadget.Dockerfile') }}
@@ -463,7 +463,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -521,7 +521,7 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@ca28077386065e263c03428f4ae0c09024817c93 # v1.2.0
+      uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # v1.2.1
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: gadget-container-images-attach-sbom
@@ -583,7 +583,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
     - name: Cache Docker layers
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/ig.Dockerfile') }}
@@ -608,7 +608,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4.1.1
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
       with:
         path: pkg/btfgen/btfs
         # key is composed by
@@ -666,7 +666,7 @@ jobs:
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@ca28077386065e263c03428f4ae0c09024817c93 # v1.2.0
+      uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # v1.2.1
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: ig-container-images-attach-sbom
@@ -994,7 +994,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1018,7 +1018,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1037,7 +1037,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1055,7 +1055,7 @@ jobs:
     #    path: ./cache
     #    key: ${{ runner.os }}-benchmark
     - name: Store benchmark result
-      uses: benchmark-action/github-action-benchmark@4de1bed97a47495fc4c5404952da0499e31f5c29 # v1.20.3
+      uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
       # Disable push from forks or PR from forks.
       # $BENCHMARKS_TOKEN will not be available in those cases.
       if: |
@@ -1138,7 +1138,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1180,7 +1180,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1297,7 +1297,7 @@ jobs:
     steps:
       - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Setup go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1416,7 +1416,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Setup go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1481,7 +1481,7 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/gadgetctl-linux-amd64.tar.gz
         sudo mv gadgetctl /usr/bin/gadgetctl
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1529,7 +1529,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1598,7 +1598,7 @@ jobs:
     steps:
       - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Setup go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1656,7 +1656,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1745,7 +1745,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1802,7 +1802,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1887,7 +1887,7 @@ jobs:
     steps:
       - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Setup go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1898,13 +1898,13 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Authenticate with GKE
-        uses: google-github-actions/auth@8254fb75a33b976a221574d287e93919e6a36f70 # v2.1.6
+        uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f # v2.1.7
         with:
           project_id: ${{ secrets.GKE_PROJECT }}
           service_account: ${{ secrets.GKE_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ secrets.GKE_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@f0990588f1e5b5af6827153b93673613abdc6ec7 # v2.1.1
+        uses: google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a # v2.1.2
       - name: Craft cluster name
         shell: bash
         run: |
@@ -1973,7 +1973,7 @@ jobs:
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -2085,7 +2085,7 @@ jobs:
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
     - name: Create Draft Release
       id: create_release
-      uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+      uses: softprops/action-gh-release@e7a8f85e1c67a31e6ed99a94b41bd0b71bbee6b8 # v2.0.9
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref_name }}
@@ -2093,7 +2093,7 @@ jobs:
     - name: Get all artifacts.
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true

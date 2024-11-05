@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"reflect"
 	"slices"
@@ -45,6 +46,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -106,6 +108,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 	newInstance := &ebpfInstance{
 		gadgetCtx: gadgetCtx, // context usually should not be stored, but should we really carry it through all funcs?
+		done:      make(chan struct{}),
 
 		logger:  gadgetCtx.Logger(),
 		program: program,
@@ -188,6 +191,10 @@ type ebpfInstance struct {
 	stackIdMap *ebpf.Map
 
 	gadgetCtx operators.GadgetContext
+	done      chan struct{}
+
+	// used to be sure all tracers are done before returning from Stop()
+	wg sync.WaitGroup
 }
 
 func (i *ebpfInstance) loadSpec() error {
@@ -528,7 +535,7 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("opening trace_pipe: %w", err)
 	}
 	go func() {
-		<-gadgetCtx.Context().Done()
+		<-i.done
 		tracePipe.Close()
 	}()
 	go func() {
@@ -581,7 +588,25 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			continue
 		}
 		constReplacements[name] = paramMap[name].AsAny()
-		i.logger.Debugf("setting param value %q = %v", name, paramMap[name].AsAny())
+
+		switch p.TypeHint {
+		case api.TypeIP:
+			i.logger.Debugf("handling IP param: %q", name)
+			ipAddr := ebpftypes.L3Endpoint{}
+			ipParam := constReplacements[name].(net.IP)
+			if ip := ipParam.To4(); ip != nil {
+				ipAddr.Version = 4
+				copy(ipAddr.V6[:4], ip)
+			} else if ip := ipParam.To16(); ip != nil {
+				copy(ipAddr.V6[:], ip)
+				ipAddr.Version = 6
+			} else {
+				return fmt.Errorf("invalid IP address: %v", ipParam)
+			}
+			constReplacements[name] = ipAddr
+		}
+
+		i.logger.Debugf("setting param value %q = %v", name, constReplacements[name])
 	}
 
 	for _, v := range i.vars {
@@ -644,12 +669,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	for _, tracer := range i.tracers {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
-		go func(tracer *Tracer) {
-			err := i.runTracer(gadgetCtx, tracer)
-			if err != nil {
-				i.logger.Errorf("starting tracer: %w", err)
-			}
-		}(tracer)
+		err := i.runTracer(gadgetCtx, tracer)
+		if err != nil {
+			i.Close()
+			return fmt.Errorf("running tracer %q: %w", tracer.mapName, err)
+		}
 	}
 
 	// Attach programs
@@ -708,10 +732,17 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	i.Close()
+	i.wg.Wait()
 	return nil
 }
 
 func (i *ebpfInstance) Close() {
+	close(i.done)
+
+	for _, t := range i.tracers {
+		t.close()
+	}
+
 	if i.collection != nil {
 		i.collection.Close()
 		i.collection = nil

@@ -74,6 +74,23 @@ values.
 
 > Note: adding multiple metric.key annotations will increase cardinality a lot and take up more space and storage.
 
+#### Adding an implicit counter
+
+If you just want to count the number of events happening for a given set of keys, you can add another annotation to your
+datasource that will increase a counter whenever a new event has been emitted.
+
+```yaml
+datasources:
+  events:
+    annotations:
+      metrics.implicit-counter.name: eventctr
+      matrics.implicit-counter.description: number of events
+...
+```
+
+This is especially useful if you just want to quickly convert an existing event-based gadget to a metrics collector, as
+you can easily set annotations when running a gadget using the `--annotate` flag.
+
 ### Using well-known types in the eBPF code
 
 You can also edit your eBPF source code and use well-known types (TODO links to well known types) instead of annotating

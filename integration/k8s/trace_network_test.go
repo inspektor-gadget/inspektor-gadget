@@ -29,6 +29,9 @@ func TestTraceNetwork(t *testing.T) {
 	if containerRuntime == ContainerRuntimeCRIO {
 		t.Skipf("Skip running trace network test for %q runtime. See issue #2358", containerRuntime)
 	}
+	if containerRuntime == ContainerRuntimeContainerd {
+		t.Skipf("Skip running trace network test for %q runtime. See issue #3643", containerRuntime)
+	}
 
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-network")

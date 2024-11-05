@@ -3,6 +3,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TEST_ARTIFACTS = \
 	fields \
 	dataarray \
+	dataemit \
 	badguest \
 	params \
 	config \

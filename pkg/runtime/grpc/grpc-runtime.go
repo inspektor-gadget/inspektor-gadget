@@ -36,7 +36,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -152,44 +151,41 @@ func checkForDuplicates(subject string) func(value string) error {
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
 	p := params.ParamDescs{}
-
-	// Currently detaching is only available for local environment (e.g. gadgetctl)
-	if environment.Environment == environment.Local {
-		p.Add(params.ParamDescs{
-			{
-				Key:          ParamDetach,
-				Description:  "Create a headless gadget instance that will keep running in the background",
-				TypeHint:     params.TypeBool,
-				DefaultValue: "false",
-				Tags:         []string{"!attach"},
-			},
-			{
-				Key:         ParamTags,
-				Description: "Comma-separated list of tags to apply to the gadget instance",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:         ParamName,
-				Description: "Distinctive name to assign to the gadget instance",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:         ParamID,
-				Description: "ID to assign to the gadget instance; if unset, it will be generated",
-				TypeHint:    params.TypeString,
-				Tags:        []string{"!attach"},
-			},
-			{
-				Key:          ParamEventBufferLength,
-				Description:  "Number of events to buffer on the server so they can be replayed when attaching; used with --detach; 0 = use server settings",
-				TypeHint:     params.TypeInt,
-				DefaultValue: "0",
-				Tags:         []string{"!attach"},
-			},
-		}...)
-	}
+	// Add params for headless mode
+	p.Add(params.ParamDescs{
+		{
+			Key:          ParamDetach,
+			Description:  "Create a headless gadget instance that will keep running in the background",
+			TypeHint:     params.TypeBool,
+			DefaultValue: "false",
+			Tags:         []string{"!attach"},
+		},
+		{
+			Key:         ParamTags,
+			Description: "Comma-separated list of tags to apply to the gadget instance",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:         ParamName,
+			Description: "Distinctive name to assign to the gadget instance",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:         ParamID,
+			Description: "ID to assign to the gadget instance; if unset, it will be generated",
+			TypeHint:    params.TypeString,
+			Tags:        []string{"!attach"},
+		},
+		{
+			Key:          ParamEventBufferLength,
+			Description:  "Number of events to buffer on the server so they can be replayed when attaching; used with --detach; 0 = use server settings",
+			TypeHint:     params.TypeInt,
+			DefaultValue: "0",
+			Tags:         []string{"!attach"},
+		},
+	}...)
 	switch r.connectionMode {
 	case ConnectionModeDirect:
 		return p
@@ -312,6 +308,8 @@ nodesLoop:
 	return res, nil
 }
 
+// getTargets returns targets depending on the params given and the environment. The returned
+// bool is true, if the user explicitly selected the nodes using params.
 func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]target, error) {
 	switch r.connectionMode {
 	case ConnectionModeKubernetesProxy:

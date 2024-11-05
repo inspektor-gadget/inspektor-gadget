@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package types contains the names and Golang representation of the types used
+// by the eBPF programs. Keep this aligned with include/gadget/types.h
 package types
 
-// Keep this aligned with include/gadget/types.h
 const (
 	IPAddrTypeName      = "gadget_ip_addr_t"
 	L3EndpointTypeName  = "gadget_l3endpoint_t"
@@ -42,3 +43,10 @@ const (
 	HistogramSlotU32TypeName = "gadget_histogram_slot__u32"
 	HistogramSlotU64TypeName = "gadget_histogram_slot__u64"
 )
+
+// L3Endpoint is the Golang representation of struct gadget_l3endpoint_t
+type L3Endpoint struct {
+	V6      [16]byte
+	Version uint8
+	_       [3]byte
+}

@@ -163,3 +163,42 @@ You can stop the metrics collection at any time by deleting the gadget instance:
         ```
     </TabItem>
 </Tabs>
+
+## Other Exporters
+
+If you have more complex requirements for metric exporting, you can setup multiple exporters using the
+config file. In this section we're exploring other exporters.
+
+### OTLP-gRPC
+
+In order to setup an exporter using [OTLP](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/otlp/) over
+gRPC, you can add the following section to your config file:
+
+```yaml
+operator:
+  otel-metrics:
+    exporters:
+      myexporter:
+        exporter: otlp-grpc
+        endpoint: "localhost:4317"
+        insecure: true
+        temporality: delta
+        interval: 30s
+```
+
+This will add a new exporter named "myexporter" that can be selected by using the flag
+`--otel-metric-exporter myexporter` when running a gadget. `exporter` needs to be set to `otlp-grpc` and you at least
+need to configure an `endpoint`.
+
+#### Insecure
+
+This boolean flag determines whether to use encryption when communicating with the server.
+
+#### Temporality
+
+Can be `cumulative` (default) or `delta`. See the
+[official documentation](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/otlp/) for more information.
+
+#### Interval
+
+Interval in which to report metrics to the server.
