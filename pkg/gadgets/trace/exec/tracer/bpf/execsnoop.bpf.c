@@ -98,6 +98,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
+	event->tid = id & 0xffffffff;
 	event->uid = uid;
 	event->gid = gid;
 	// loginuid is only available when CONFIG_AUDIT is set

@@ -204,8 +204,10 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 		errval = -ret;
 	}
 
+	u64 pid_tgid = bpf_get_current_pid_tgid();
 	/* event data */
-	event->pid = bpf_get_current_pid_tgid() >> 32;
+	event->pid = pid_tgid >> 32;
+	event->tid = pid_tgid & 0xffffffff;
 	event->uid = (u32)uid_gid;
 	event->gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));

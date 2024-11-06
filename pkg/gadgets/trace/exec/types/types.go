@@ -26,6 +26,7 @@ type Event struct {
 	eventtypes.WithMountNsID
 
 	Pid         uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid         uint32   `json:"tid,omitempty" column:"tid,template:pid"`
 	Ppid        uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
 	Comm        string   `json:"comm,omitempty" column:"comm,template:comm"`
 	Pcomm       string   `json:"pcomm,omitempty" column:"pcomm,template:comm"`

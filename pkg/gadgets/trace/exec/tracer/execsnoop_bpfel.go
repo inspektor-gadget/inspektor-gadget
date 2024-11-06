@@ -16,6 +16,7 @@ type execsnoopEvent struct {
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32
+	Tid         uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -30,6 +31,7 @@ type execsnoopEvent struct {
 	Comm        [16]uint8
 	Pcomm       [16]uint8
 	Args        [7680]uint8
+	_           [4]byte
 }
 
 // loadExecsnoop returns the embedded CollectionSpec for execsnoop.

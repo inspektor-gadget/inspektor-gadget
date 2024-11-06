@@ -47,9 +47,9 @@ const (
 type opensnoopEventAbbrev struct {
 	Timestamp uint64
 	Pid       uint32
+	Tid       uint32
 	Uid       uint32
 	Gid       uint32
-	_         [4]byte
 	MntnsId   uint64
 	Err       int32
 	Fd        uint32
@@ -228,6 +228,7 @@ func (t *Tracer) run() {
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Pid:           bpfEvent.Pid,
+			Tid:           bpfEvent.Tid,
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),

@@ -15,9 +15,9 @@ import (
 type opensnoopEvent struct {
 	Timestamp uint64
 	Pid       uint32
+	Tid       uint32
 	Uid       uint32
 	Gid       uint32
-	_         [4]byte
 	MntnsId   uint64
 	Err       int32
 	Fd        uint32

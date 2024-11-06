@@ -65,6 +65,7 @@ func TestTraceOpen(t *testing.T) {
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.Pid = 0
+				e.Tid = 0
 
 				normalizeCommonData(&e.CommonData, ns)
 			}
