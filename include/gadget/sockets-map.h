@@ -12,6 +12,7 @@
 
 // Necessary for the SEC() definition
 #include <bpf/bpf_helpers.h>
+#include <gadget/types.h>
 
 // This file is shared between the networking and tracing programs.
 // Therefore, avoid includes that are specific to one of these types of programs.
@@ -244,5 +245,22 @@ gadget_socket_lookup(const struct sock *sk, __u32 netns)
 	return bpf_map_lookup_elem(&gadget_sockets, &key);
 }
 #endif
+
+static __always_inline void
+gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct gadget_process *p) {
+	if (!skb_val)
+		return;
+
+	__builtin_memcpy(p->comm, skb_val->task, sizeof(p->comm));
+	p->pid = skb_val->pid_tgid >> 32;
+	p->tid = skb_val->pid_tgid;
+	p->mntns_id = skb_val->mntns;
+
+	p->creds.uid = skb_val->uid_gid;
+	p->creds.gid = skb_val->uid_gid >> 32;
+
+	__builtin_memcpy(p->parent.comm, skb_val->ptask, sizeof(p->parent.comm));
+	p->parent.pid = skb_val->ppid;
+}
 
 #endif

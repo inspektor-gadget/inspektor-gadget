@@ -26,15 +26,13 @@ import (
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 )
 
 type ExpectedTraceOpenEvent struct {
-	Comm     string `json:"comm"`
-	Pid      int    `json:"pid"`
-	Tid      int    `json:"tid"`
-	Uid      uint32 `json:"uid"`
-	Gid      uint32 `json:"gid"`
+	Proc ebpftypes.Process `json:"proc"`
+
 	Fd       uint32 `json:"fd"`
 	FName    string `json:"fname"`
 	FlagsRaw int    `json:"flags_raw"`
@@ -58,11 +56,7 @@ func TestTraceOpenGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  info.Comm,
-						Pid:   info.Pid,
-						Tid:   info.Tid,
-						Uid:   uint32(info.Uid),
-						Gid:   uint32(info.Gid),
+						Proc:  info.Proc,
 						Fd:    uint32(fd),
 						FName: "/dev/null",
 					}
@@ -88,11 +82,7 @@ func TestTraceOpenGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:  info.Comm,
-						Pid:   info.Pid,
-						Tid:   info.Tid,
-						Uid:   uint32(info.Uid),
-						Gid:   uint32(info.Gid),
+						Proc:  info.Proc,
 						Fd:    uint32(fd),
 						FName: "/dev/null",
 					}
@@ -203,11 +193,7 @@ func TestTraceOpenGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
-						Comm:     info.Comm,
-						Pid:      info.Pid,
-						Tid:      info.Tid,
-						Uid:      uint32(info.Uid),
-						Gid:      uint32(info.Gid),
+						Proc:     info.Proc,
 						Fd:       uint32(fd),
 						FName:    "/tmp/foo/bar.test",
 						ErrRaw:   0,
@@ -228,8 +214,8 @@ func TestTraceOpenGadget(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []ExpectedTraceOpenEvent) {
 				require.Len(t, events, 1, "expected one event")
-				require.Equal(t, uint32(info.Uid), events[0].Uid)
-				require.Equal(t, uint32(info.Gid), events[0].Gid)
+				require.Equal(t, uint32(info.Uid), events[0].Proc.Creds.Uid)
+				require.Equal(t, uint32(info.Gid), events[0].Proc.Creds.Gid)
 			},
 		},
 	}

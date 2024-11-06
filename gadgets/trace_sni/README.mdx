@@ -36,7 +36,7 @@ Running the gadget:
 
         ```bash
         $ kubectl gadget run trace_sni:%IG_TAG%
-        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME
+        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           NAME
         ```
 
         Run a pod on a different terminal and perform some requests:
@@ -58,9 +58,9 @@ Running the gadget:
         Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
 
         ```bash
-        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           UID           GID NAME
-        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 wikimedia.org
-        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742             0             0 www.wikimedia.org
+        K8S.NODE          K8S.NAMESPACE               K8S.PODNAME                 K8S.CONTAINERNAME           COMM                      PID            TID           NAME
+        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742           wikimedia.org
+        minikube-docker   default                     ubuntu                      ubuntu                      wget                   693742         693742           www.wikimedia.org
         ```
     </TabItem>
 
@@ -69,7 +69,7 @@ Running the gadget:
 
         ```bash
         $ sudo ig run trace_sni:%IG_TAG% --containername test-trace-sni
-        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    UID                   GID NAME
+        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    NAME
         ```
 
         Launch a container (in another terminal) that makes requests:
@@ -80,8 +80,8 @@ Running the gadget:
 
         Go back to the terminal where the gadget is running. The requests will be logged by the gadget:
         ```bash
-        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    UID                   GID NAME
-        test-trace-sni                             wget                             697854                 697854                      0                     0 example.com
+        RUNTIME.CONTAINERNAME                      COMM                                PID                    TID                    NAME
+        test-trace-sni                             wget                             697854                 697854                    example.com
         ```
     </TabItem>
 </Tabs>

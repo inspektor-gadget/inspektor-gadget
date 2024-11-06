@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,15 +33,9 @@ import (
 type traceSNIEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-	NetNs     uint64 `json:"netns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	NetNs     uint64            `json:"netns_id"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Name string `json:"name"`
 }
@@ -94,26 +89,19 @@ func TestTraceSNI(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSNIEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "wget",
+				Proc:       utils.BuildProc("wget", 1000, 1111),
 				Name:       "inspektor-gadget.io",
-				Uid:        1000,
-				Gid:        1111,
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				MntNsID:   utils.NormalizedInt,
 				NetNs:     utils.NormalizedInt,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceSNIEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MntNsID)
 				utils.NormalizeInt(&e.NetNs)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
+				utils.NormalizeProc(&e.Proc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

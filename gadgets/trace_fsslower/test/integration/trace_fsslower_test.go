@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -32,14 +33,8 @@ import (
 type traceFSSlowerEvent struct {
 	eventtypes.CommonData
 
-	Timestamp string `json:"timestamp"`
-	MntNsID   uint64 `json:"mntns_id"`
-
-	Comm string `json:"comm"`
-	Pid  uint32 `json:"pid"`
-	Tid  uint32 `json:"tid"`
-	Uid  uint32 `json:"uid"`
-	Gid  uint32 `json:"gid"`
+	Timestamp string            `json:"timestamp"`
+	Proc      ebpftypes.Process `json:"proc"`
 
 	Delta  uint64 `json:"delta_us"`
 	Offset uint64 `json:"offset"`
@@ -101,7 +96,7 @@ func TestTraceFSSlower(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceFSSlowerEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Comm:       "cat",
+				Proc:       utils.BuildProc("cat", 0, 0),
 				File:       "foo",
 				Op:         "F_OPEN",
 				Offset:     0,
@@ -109,18 +104,13 @@ func TestTraceFSSlower(t *testing.T) {
 
 				// Check the existence of the following fields
 				Timestamp: utils.NormalizedStr,
-				Pid:       utils.NormalizedInt,
-				Tid:       utils.NormalizedInt,
-				MntNsID:   utils.NormalizedInt,
 				Delta:     utils.NormalizedInt,
 			}
 
 			normalize := func(e *traceFSSlowerEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.Pid)
-				utils.NormalizeInt(&e.Tid)
-				utils.NormalizeInt(&e.MntNsID)
+				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeInt(&e.Delta)
 			}
 

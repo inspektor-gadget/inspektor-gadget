@@ -10,6 +10,7 @@
 #include <bpf/bpf_endian.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -40,17 +41,10 @@ struct src_dst {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
+	struct gadget_process proc;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
 
 	__u64 latency;
 	gadget_errno error_raw;
@@ -90,11 +84,8 @@ struct {
 } src_dst_per_process SEC(".maps");
 
 struct piddata {
-	gadget_comm comm[TASK_COMM_LEN];
+	struct gadget_process proc;
 	u64 ts;
-	u32 pid;
-	u32 tid;
-	u64 mntns_id;
 };
 
 // sockets_latency keeps track of sockets to calculate the latency between:
@@ -150,10 +141,8 @@ static __always_inline int enter_inet_stream_connect(struct pt_regs *ctx,
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-	__u64 mntns_id;
 	__u32 uid = (u32)uid_gid;
-	;
-	struct piddata piddata = {};
+	struct piddata piddata;
 
 	if (filter_pid && pid != filter_pid)
 		return 0;
@@ -161,17 +150,12 @@ static __always_inline int enter_inet_stream_connect(struct pt_regs *ctx,
 	if (filter_uid != (uid_t)-1 && uid != filter_uid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	if (calculate_latency) {
-		bpf_get_current_comm(&piddata.comm, sizeof(piddata.comm));
+		gadget_process_populate(&piddata.proc);
 		piddata.ts = bpf_ktime_get_ns();
-		piddata.tid = tid;
-		piddata.pid = pid;
-		piddata.mntns_id = mntns_id;
 		bpf_map_update_elem(&sockets_latency, &sk, &piddata, 0);
 	} else {
 		bpf_map_update_elem(&sockets_per_process, &tid, &sk, 0);
@@ -215,7 +199,6 @@ read_l4endpoints_from_sock_v4(struct gadget_l4endpoint_t *src,
 			      struct gadget_l4endpoint_t *dst, struct sock *sk)
 {
 	src->version = dst->version = 4;
-	src->proto_raw = dst->proto_raw = IPPROTO_TCP;
 	BPF_CORE_READ_INTO(&src->addr_raw.v4, sk, __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&dst->addr_raw.v4, sk, __sk_common.skc_daddr);
 	dst->port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
@@ -227,7 +210,6 @@ read_l4endpoints_from_sock_v6(struct gadget_l4endpoint_t *src,
 			      struct gadget_l4endpoint_t *dst, struct sock *sk)
 {
 	src->version = dst->version = 6;
-	src->proto_raw = dst->proto_raw = IPPROTO_TCP;
 	BPF_CORE_READ_INTO(&src->addr_raw.v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	BPF_CORE_READ_INTO(&dst->addr_raw.v6, sk,
@@ -236,73 +218,17 @@ read_l4endpoints_from_sock_v6(struct gadget_l4endpoint_t *src,
 	src->port = BPF_CORE_READ(sk, __sk_common.skc_num);
 }
 
-static __always_inline void trace_v4(struct pt_regs *ctx, __u64 pid_tgid,
-				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id,
-				     struct src_dst *src_dst_entry, int ret)
+static __always_inline void
+read_l4endpoints_from_sock(struct gadget_l4endpoint_t *src,
+			   struct gadget_l4endpoint_t *dst, struct sock *sk,
+			   int family)
 {
-	struct event *event;
+	src->proto_raw = dst->proto_raw = IPPROTO_TCP;
 
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return;
-
-	__u64 uid_gid = bpf_get_current_uid_gid();
-
-	event->pid = pid_tgid >> 32;
-	event->tid = (u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	if (src_dst_entry) {
-		event->src = src_dst_entry->src;
-		event->dst = src_dst_entry->dst;
-	} else {
-		// src_dst_entry is not set when tcp_v{4|6}_connect is not called, e.g.,
-		// when calling inet_stream_connect on an already connected socket. So,
-		// try to read the endpoints from the socket here.
-		read_l4endpoints_from_sock_v4(&event->src, &event->dst, sk);
-	}
-	event->mntns_id = mntns_id;
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->error_raw = -ret;
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
-}
-
-static __always_inline void trace_v6(struct pt_regs *ctx, __u64 pid_tgid,
-				     struct sock *sk, __u16 dport,
-				     __u64 mntns_id,
-				     struct src_dst *src_dst_entry, int ret)
-{
-	struct event *event;
-
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return;
-
-	__u64 uid_gid = bpf_get_current_uid_gid();
-
-	event->pid = pid_tgid >> 32;
-	event->tid = (u32)pid_tgid;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	event->mntns_id = mntns_id;
-	if (src_dst_entry) {
-		event->src = src_dst_entry->src;
-		event->dst = src_dst_entry->dst;
-	} else {
-		// src_dst_entry is not set when tcp_v{4|6}_connect is not called, e.g.,
-		// when calling inet_stream_connect on an already connected socket. So,
-		// try to read the endpoints from the socket here.
-		read_l4endpoints_from_sock_v6(&event->src, &event->dst, sk);
-	}
-
-	bpf_get_current_comm(event->comm, sizeof(event->comm));
-	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->error_raw = -ret;
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
+	if (family == AF_INET)
+		return read_l4endpoints_from_sock_v4(src, dst, sk);
+	else if (family == AF_INET6)
+		return read_l4endpoints_from_sock_v6(src, dst, sk);
 }
 
 static __always_inline int exit_inet_stream_connect(struct pt_regs *ctx,
@@ -313,9 +239,10 @@ static __always_inline int exit_inet_stream_connect(struct pt_regs *ctx,
 	struct sock **skpp;
 	struct sock *sk;
 	struct src_dst *src_dst_entry;
-	u64 mntns_id;
 	__u16 dport;
 	unsigned short family;
+	struct event *event;
+
 	src_dst_entry = bpf_map_lookup_elem(&src_dst_per_process, &tid);
 
 	skpp = bpf_map_lookup_elem(&sockets_per_process, &tid);
@@ -338,16 +265,30 @@ static __always_inline int exit_inet_stream_connect(struct pt_regs *ctx,
 			count_v4(sk, dport);
 		else
 			count_v6(sk, dport);
-	} else {
-		mntns_id = gadget_get_mntns_id();
 
-		if (family == AF_INET)
-			trace_v4(ctx, pid_tgid, sk, dport, mntns_id,
-				 src_dst_entry, ret);
-		else
-			trace_v6(ctx, pid_tgid, sk, dport, mntns_id,
-				 src_dst_entry, ret);
+		return 0;
 	}
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		goto end;
+
+	gadget_process_populate(&event->proc);
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->error_raw = -ret;
+
+	if (src_dst_entry) {
+		event->src = src_dst_entry->src;
+		event->dst = src_dst_entry->dst;
+	} else {
+		// src_dst_entry is not set when tcp_v{4|6}_connect is not called, e.g.,
+		// when calling inet_stream_connect on an already connected socket. So,
+		// try to read the endpoints from the socket here.
+		read_l4endpoints_from_sock(&event->src, &event->dst, sk,
+					   family);
+	}
+
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 end:
 	bpf_map_delete_elem(&sockets_per_process, &tid);
@@ -388,10 +329,8 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	event->latency = ts - piddatap->ts;
 	if (targ_min_latency_ns && event->latency < targ_min_latency_ns)
 		goto cleanup;
-	__builtin_memcpy(&event->comm, piddatap->comm, sizeof(event->comm));
-	event->pid = piddatap->pid;
-	event->tid = piddatap->tid;
-	event->mntns_id = piddatap->mntns_id;
+
+	__builtin_memcpy(&event->proc, &piddatap->proc, sizeof(event->proc));
 	event->src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	// host expects data in host byte order
 	event->dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
@@ -447,13 +386,8 @@ int BPF_KPROBE(ig_tcp_v4_connect, int ret)
 	sk = *skpp;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
-	if (family == AF_INET) {
-		read_l4endpoints_from_sock_v4(&src_dst_entry.src,
-					      &src_dst_entry.dst, sk);
-	} else {
-		read_l4endpoints_from_sock_v6(&src_dst_entry.src,
-					      &src_dst_entry.dst, sk);
-	}
+	read_l4endpoints_from_sock(&src_dst_entry.src, &src_dst_entry.dst, sk,
+				   family);
 
 	bpf_map_update_elem(&src_dst_per_process, &tid, &src_dst_entry, 0);
 	return 0;
@@ -475,13 +409,8 @@ int BPF_KPROBE(ig_tcp_v6_connect, int ret)
 	sk = *skpp;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
-	if (family == AF_INET) {
-		read_l4endpoints_from_sock_v4(&src_dst_entry.src,
-					      &src_dst_entry.dst, sk);
-	} else {
-		read_l4endpoints_from_sock_v6(&src_dst_entry.src,
-					      &src_dst_entry.dst, sk);
-	}
+	read_l4endpoints_from_sock(&src_dst_entry.src, &src_dst_entry.dst, sk,
+				   family);
 
 	bpf_map_update_elem(&src_dst_per_process, &tid, &src_dst_entry, 0);
 	return 0;

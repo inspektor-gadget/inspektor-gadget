@@ -77,5 +77,24 @@ typedef __u64 gadget_gauge__u64;
 typedef __u32 gadget_histogram_slot__u32;
 typedef __u64 gadget_histogram_slot__u64;
 
+struct gadget_creds {
+	gadget_uid uid;
+	gadget_gid gid;
+};
+
+struct gadget_parent {
+	gadget_pcomm comm[TASK_COMM_LEN];
+	gadget_ppid pid;
+};
+
+struct gadget_process {
+	gadget_comm comm[TASK_COMM_LEN];
+	gadget_pid pid;
+	gadget_tid tid;
+	gadget_mntns_id mntns_id;
+
+	struct gadget_creds creds;
+	struct gadget_parent parent;
+};
 
 #endif /* __TYPES_H */

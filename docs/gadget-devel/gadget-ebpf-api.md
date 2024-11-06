@@ -9,6 +9,17 @@ accessible from eBPF code. These features simplify the creation of new gadgets
 by providing convenient functions for common operations, making the developer's
 life easier when implementing gadgets.
 
+Gadgets define structures that contain the information provided to the users.
+The fields of those structures are exposed in different ways according to the
+format chosen by the user (json, columns, etc.). Inspektor Gadget provides some
+special types that can be used to provide enrichment and other features as
+described below.
+
+## Ignoring fields
+
+Fields starting with `__` are considered private and are ignored by Inspektor
+Gadget.
+
 ## Container enrichment
 
 To make use of container enrichment, gadgets must include
@@ -530,3 +541,22 @@ if (kernel_stack_id >= 0) {
 	// gadget_get_kernel_stack() failed
 }
 ```
+
+## Common information
+
+Most gadgets provide common information like comm, pid, etc. Inspektor Gadget
+provides some types and helpers to make it easier for gadgets to collect this
+common information.
+
+### Types
+
+- `gadget_creds`: Contains the user id and group id.
+- `gadget_parent`: Contains the name and pid of the parent process.
+- `gadget_process`: Contains the name, pid, tid, user and parent of the process.
+
+### Helpers
+
+- `void gadget_process_populate(struct gadget_process *p)`: Fill `p` with
+  the current process information
+- `void gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct gadget_process *p)`:
+  Fill `p` with the information on `skb_val` returned by `gadget_socket_lookup()`.

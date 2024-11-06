@@ -12,9 +12,11 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/kernel_stack_map.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
+#include <gadget/types.h>
 
 // include/linux/security.h
 #define CAP_OPT_NOAUDIT (1UL << 1)
@@ -75,14 +77,7 @@ enum cap_effective_flags_set : __u64 {
 
 struct cap_event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	__u64 current_userns;
 	__u64 target_userns;
@@ -248,7 +243,6 @@ SEC("kretprobe/cap_capable")
 int BPF_KRETPROBE(ig_trace_cap_x)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct args_t *ap;
 	struct cap_event *event;
 
@@ -260,16 +254,11 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	if (!event)
 		return 0;
 
+	gadget_process_populate(&event->proc);
 	event->current_userns = ap->current_userns;
 	event->target_userns = ap->target_userns;
 	event->cap_effective_raw = ap->cap_effective;
-	event->pid = pid_tgid >> 32;
-	event->tid = (__u32)pid_tgid;
 	event->cap_raw = ap->cap;
-	event->uid = (u32)uid_gid;
-	event->gid = (u32)(uid_gid >> 32);
-	event->mntns_id = gadget_get_mntns_id();
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	// ret=0 means the process has the requested capability, otherwise ret=-EPERM
 	event->capable = PT_REGS_RC(ctx) == 0;
 	event->kstack_raw = gadget_get_kernel_stack(ctx);
@@ -284,7 +273,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	}
 
 	struct syscall_context *sc_ctx;
-	sc_ctx = bpf_map_lookup_elem(&current_syscall, &event->pid);
+	sc_ctx = bpf_map_lookup_elem(&current_syscall, &event->proc.pid);
 	if (sc_ctx) {
 		event->syscall_raw = sc_ctx->nr;
 	} else {
@@ -307,9 +296,7 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct syscall_context sc_ctx = {};
 
-	u64 mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	u64 nr = ctx->args[1];

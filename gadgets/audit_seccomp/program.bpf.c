@@ -8,6 +8,7 @@
 #include <bpf/bpf_endian.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -27,14 +28,7 @@ enum code {
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
-	// user-space terminology for pid and tid
-	gadget_pid pid;
-	gadget_tid tid;
-	gadget_uid uid;
-	gadget_gid gid;
+	struct gadget_process proc;
 
 	gadget_syscall syscall_raw;
 	enum code code_raw;
@@ -50,32 +44,18 @@ int ig_audit_secc(struct pt_regs *ctx)
 	unsigned long syscall = PT_REGS_PARM1(ctx);
 	int code = PT_REGS_PARM3(ctx);
 	struct event *event;
-	__u64 pid_tgid;
-	__u64 uid_gid;
 
-	__u64 mntns_id = gadget_get_mntns_id();
-	if (mntns_id == 0)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		return 0;
 
-	pid_tgid = bpf_get_current_pid_tgid();
-	uid_gid = bpf_get_current_uid_gid();
-
+	gadget_process_populate(&event->proc);
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
-	event->pid = (__u32)(pid_tgid >> 32);
-	event->tid = (__u32)pid_tgid;
-	event->uid = (__u32)uid_gid;
-	event->gid = (__u32)(uid_gid >> 32);
-	event->mntns_id = mntns_id;
 	event->syscall_raw = syscall;
 	event->code_raw = code;
-	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/constraints"
 
+	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -118,6 +119,33 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 		e.Runtime.RuntimeName = ""
 		e.Runtime.ContainerName = ""
 	}
+}
+
+func BuildProc(comm string, uid, tid uint32) ebpftypes.Process {
+	return ebpftypes.Process{
+		Comm:    comm,
+		Pid:     NormalizedInt,
+		Tid:     NormalizedInt,
+		MntNsID: NormalizedInt,
+		Creds: ebpftypes.Creds{
+			Uid: uid,
+			Gid: tid,
+		},
+		Parent: ebpftypes.Parent{
+			Comm: NormalizedStr,
+			Pid:  NormalizedInt,
+		},
+	}
+}
+
+// NormalizeProc normalizes the pid, tid, parent pid and parent comm fields on
+// p.
+func NormalizeProc(p *ebpftypes.Process) {
+	NormalizeInt(&p.Pid)
+	NormalizeInt(&p.Tid)
+	NormalizeInt(&p.MntNsID)
+	NormalizeInt(&p.Parent.Pid)
+	NormalizeString(&p.Parent.Comm)
 }
 
 func IsDockerRuntime() bool {

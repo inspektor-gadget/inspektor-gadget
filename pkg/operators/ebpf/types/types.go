@@ -34,6 +34,9 @@ const (
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
+	ProcessTypeName     = "gadget_process"
+	CredsTypeName       = "gadget_creds"
+	ParentTypeName      = "gadget_parent"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"
@@ -49,4 +52,23 @@ type L3Endpoint struct {
 	V6      [16]byte
 	Version uint8
 	_       [3]byte
+}
+
+type Creds struct {
+	Uid uint32 `json:"uid,omitempty"`
+	Gid uint32 `json:"gid,omitempty"`
+}
+
+type Parent struct {
+	Comm string `json:"comm,omitempty"`
+	Pid  uint32 `json:"pid,omitempty"`
+}
+
+type Process struct {
+	Comm    string `json:"comm,omitempty"`
+	Pid     uint32 `json:"pid,omitempty"`
+	Tid     uint32 `json:"tid,omitempty"`
+	MntNsID uint64 `json:"mntns_id"`
+	Creds   Creds  `json:"creds,omitempty"`
+	Parent  Parent `json:"parent,omitempty"`
 }

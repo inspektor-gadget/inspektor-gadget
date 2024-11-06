@@ -563,6 +563,147 @@ RUNTIME.CONTAINERN…        PID COMM       FILENAME                            
 Now, the UID and GID columns have the expected format. Notice also that the MNTNS_ID column is
 not showed because the template `ns` hides it by default.
 
+### Using helpers to handle common fields
+
+Most of the gadgets have common fields like `pid`, `comm`, `uid`, `gid`, etc.
+Inspektor Gadget provides some types and common helpers to handle these fields.
+Let's refactor the event structure to use them. This is the new full code of the
+gadget:
+
+```c
+// Kernel types definitions
+// Check https://blog.aquasec.com/vmlinux.h-ebpf-programs for more details
+#include <vmlinux.h>
+
+// eBPF helpers signatures
+// Check https://man7.org/linux/man-pages/man7/bpf-helpers.7.html to learn
+// more about different available helpers
+#include <bpf/bpf_helpers.h>
+
+// Inspektor Gadget buffer
+#include <gadget/buffer.h>
+
+// Helpers to handle common data
+#include <gadget/common.h>
+
+// Inspektor Gadget macros
+#include <gadget/macros.h>
+
+// Inspektor Gadget filtering
+#include <gadget/mntns_filter.h>
+
+// Inspektor Gadget types
+#include <gadget/types.h>
+
+#define NAME_MAX 255
+
+struct event {
+	struct gadget_process proc;
+
+	char filename[NAME_MAX];
+};
+
+// events is the name of the buffer map and 1024 * 256 is its size.
+GADGET_TRACER_MAP(events, 1024 * 256);
+
+// [Optional] Define a tracer
+GADGET_TRACER(open, events, event);
+
+SEC("tracepoint/syscalls/sys_enter_openat")
+int enter_openat(struct syscall_trace_enter *ctx)
+{
+	struct event *event;
+
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+		return 0;
+
+	event = gadget_reserve_buf(&events, sizeof(*event));
+	if (!event)
+		return 0;
+
+	gadget_process_populate(&event->proc);
+	bpf_probe_read_user_str(event->filename, sizeof(event->filename),
+				(const char *)ctx->args[1]);
+
+	gadget_submit_buf(ctx, &events, event, sizeof(*event));
+
+	return 0;
+}
+
+char LICENSE[] SEC("license") = "GPL";
+```
+
+And the metadata can be simplified too, as Inspektor Gadget automatically
+provides field annotations for well-known types:
+
+```yaml
+name: mygadget
+description: Example gadget
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
+datasources:
+  open:
+    fields:
+      filename:
+        annotations:
+           description: Path of the file being opened
+           columns.width: 64
+```
+
+When running the gadget, the `comm`, `pid` and `tid` columns are visible by default:
+
+```bash
+$ sudo ig run mygadget:latest --verify-image=false
+WARN[0001] image signature verification is disabled due to using corresponding option
+WARN[0001] image signature verification is disabled due to using corresponding option
+RUNTIME.CONTAINERNAME           COMM                    PID        TID FILENAME
+...
+mycontainer                     cat                   51020      51020 /dev/null
+```
+
+And the json output contains all the process information:
+
+```json
+{
+  "filename": "/dev/null",
+  "k8s": {
+    "containerName": "",
+    "hostnetwork": false,
+    "namespace": "",
+    "node": "",
+    "owner": {
+      "kind": "",
+      "name": ""
+    },
+    "podName": ""
+  },
+  "proc": {
+    "comm": "cat",
+    "mntns_id": 4026534688,
+    "parent": {
+      "comm": "sh",
+      "pid": 50991
+    },
+    "pid": 51092,
+    "tid": 51092,
+    "creds": {
+      "gid": 0,
+      "group": "root",
+      "uid": 0,
+      "user": "root"
+    }
+  },
+  "runtime": {
+    "containerId": "ff4df9bf30a89c0cc8bd32d1c976875bf5bd8d7c745d09b98358b953ef4d8666",
+    "containerImageDigest": "sha256:768e5c6f5cb6db0794eec98dc7a967f40631746c32232b78a3105fb946f3ab83",
+    "containerImageName": "docker.io/library/busybox:latest",
+    "containerName": "mycontainer",
+    "runtimeName": "docker"
+  }
+}
+```
+
 ### Closing
 
 Congratulations! You've implemented your first gadget. Check out our [documentation](./index.mdx) to get more
