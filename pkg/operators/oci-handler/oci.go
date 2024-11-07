@@ -302,15 +302,39 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		switch len(subject) {
 		case 1:
 			// data source
-			current := viper.GetStringMapString("datasources." + annInfo[0] + ".annotations")
-			current[annotation[0]] = annotation[1]
-			viper.Set("datasources."+subject[0]+".annotations", current)
+			tmpConfig := map[string]any{
+				"datasources": map[string]any{
+					annInfo[0]: map[string]any{
+						"annotations": map[string]any{
+							annotation[0]: annotation[1],
+						},
+					},
+				},
+			}
+			err = viper.MergeConfigMap(tmpConfig)
+			if err != nil {
+				return fmt.Errorf("adding annotation %q: %w", ann, err)
+			}
 			log.Debugf("ds annotation %q added", ann)
 		case 2:
 			// field
-			current := viper.GetStringMapString("datasources." + subject[0] + ".fields." + subject[1] + ".annotations")
-			current[annotation[0]] = annotation[1]
-			viper.Set("datasources."+subject[0]+".fields."+subject[1]+".annotations", current)
+			tmpConfig := map[string]any{
+				"datasources": map[string]any{
+					annInfo[0]: map[string]any{
+						"fields": map[string]any{
+							subject[1]: map[string]any{
+								"annotations": map[string]any{
+									annotation[0]: annotation[1],
+								},
+							},
+						},
+					},
+				},
+			}
+			err = viper.MergeConfigMap(tmpConfig)
+			if err != nil {
+				return fmt.Errorf("adding annotation %q: %w", ann, err)
+			}
 			log.Debugf("field annotation %q added", ann)
 		}
 	}
