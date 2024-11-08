@@ -167,21 +167,23 @@ func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, err
 func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
-	ociParams := o.globalParams
-	if ociParams == nil {
-		ociParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+	globalParams := o.globalParams
+	if globalParams == nil {
+		globalParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
 	}
 
-	*ociParams = append(*ociParams, *apihelpers.ToParamDescs(o.InstanceParams()).ToParams()...)
-	err := ociParams.CopyFromMap(instanceParamValues, "")
+	instanceParams := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
+	err := instanceParams.CopyFromMap(instanceParamValues, "")
 	if err != nil {
 		return nil, err
 	}
 
+	ociParams := append(*globalParams, *instanceParams...)
+
 	instance := &OciHandlerInstance{
 		ociHandler:  o,
 		gadgetCtx:   gadgetCtx,
-		ociParams:   ociParams,
+		ociParams:   &ociParams,
 		paramValues: instanceParamValues,
 	}
 

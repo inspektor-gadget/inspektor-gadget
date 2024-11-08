@@ -317,9 +317,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			isDetach := detachedParam != nil && detachedParam.AsBool()
 
 			if isDetach {
-				// Copy special oci params
-				ociParams.CopyToMap(paramValueMap, "operator.oci.")
-				return runInstanceSpecsDetached(ctx, runtime, specs, runtimeParams, paramValueMap,
+				return runInstanceSpecsDetached(ctx, ociParams, runtime, specs, runtimeParams,
 					gadgetcontext.WithDataOperators(ops...),
 					gadgetcontext.WithTimeout(timeoutDuration),
 					gadgetcontext.WithUseInstance(false),
@@ -342,9 +340,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
 			runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
 
-			tempParams := spec.ParamValues
-			maps.Copy(tempParams, paramValueMap)
-			paramValueMap = tempParams
+			paramValueMap = spec.ParamValues
 		}
 
 		if commandMode == CommandModeAttach {
@@ -368,7 +364,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		}
 
 		// Also copy special oci params
-		ociParams.CopyToMap(paramValueMap, "operator.oci.")
+		copyParamsToMap(ociParams, paramValueMap, "operator.oci.")
 
 		err := runtime.RunGadget(gadgetCtx, runtimeParams, paramValueMap)
 		if err != nil {
@@ -423,10 +419,10 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 func runInstanceSpecsDetached(
 	ctx context.Context,
+	ociParams *params.Params,
 	runtime runtime.Runtime,
 	specs []*gadgetmanifest.InstanceSpec,
 	runtimeParams *params.Params,
-	paramValueMap map[string]string,
 	runOptions ...gadgetcontext.Option,
 ) error {
 	var merr error
@@ -439,16 +435,31 @@ func runInstanceSpecsDetached(
 		runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
 		runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
 
-		maps.Copy(spec.ParamValues, paramValueMap)
+		params := make(map[string]string)
+		maps.Copy(params, spec.ParamValues)
+
+		copyParamsToMap(ociParams, params, "operator.oci.")
 
 		gadgetCtx := gadgetcontext.New(ctx, image, runOptions...)
 
-		err := runtime.RunGadget(gadgetCtx, runtimeParams, spec.ParamValues)
+		err := runtime.RunGadget(gadgetCtx, runtimeParams, params)
 		if err != nil {
 			merr = errors.Join(merr, fmt.Errorf("running gadget from manifest file: %w", err))
 		}
 	}
 	return merr
+}
+
+// copyParamsToMap is like params.CopyToMap but skips copying if the map already
+// constains the key
+func copyParamsToMap(p *params.Params, target map[string]string, prefix string) {
+	for _, param := range *p {
+		if _, ok := target[prefix+param.Key]; ok {
+			continue
+		}
+
+		target[prefix+param.Key] = param.String()
+	}
 }
 
 func AddOCIFlags(cmd *cobra.Command, params *params.Params, skipParams []string, runtime runtime.Runtime) {
