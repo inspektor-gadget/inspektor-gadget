@@ -647,7 +647,7 @@ func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) er
 			gadgetCtx.Logger().Debugf("enabling print for %s", ds.Name())
 
 			// Disable original data source to avoid other operators subscribing to it
-			ds.SetRequested(false)
+			ds.Unreference()
 
 			// Create a new data source for the output with a single field
 			odsName := fmt.Sprintf("%s-%s", ds.Name(), PrintDataSourceSuffix)

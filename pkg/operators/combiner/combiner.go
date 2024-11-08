@@ -248,7 +248,7 @@ func (o *combinerOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 
 	for ds, config := range o.configs {
 		// Disable original data source to avoid other operators subscribing to it
-		ds.SetRequested(false)
+		ds.Unreference()
 
 		// Register a new data source that will emit the combined data
 		combinedDs, err := gadgetCtx.RegisterDataSource(

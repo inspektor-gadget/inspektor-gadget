@@ -239,8 +239,8 @@ func (c *GadgetContext) getDataSources(all bool) map[string]datasource.DataSourc
 
 	ret := maps.Clone(c.dataSources)
 	for name, ds := range ret {
-		// Don't forward unrequested data sources if all is false
-		if !all && !ds.IsRequested() {
+		// Don't forward unreferenced data sources if all is false
+		if !all && !ds.IsReferenced() {
 			delete(ret, name)
 		}
 	}

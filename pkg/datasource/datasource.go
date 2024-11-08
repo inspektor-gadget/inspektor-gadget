@@ -172,8 +172,8 @@ type DataSource interface {
 
 	Accessors(rootOnly bool) []FieldAccessor
 
-	SetRequested(bool)
-	IsRequested() bool
+	Unreference()
+	IsReferenced() bool
 
 	// ByteOrder returns a binary accessor using the byte order of the creator of the DataSource
 	ByteOrder() binary.ByteOrder
