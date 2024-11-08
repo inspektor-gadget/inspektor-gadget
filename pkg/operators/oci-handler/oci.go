@@ -320,7 +320,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			// field
 			tmpConfig := map[string]any{
 				"datasources": map[string]any{
-					annInfo[0]: map[string]any{
+					subject[0]: map[string]any{
 						"fields": map[string]any{
 							subject[1]: map[string]any{
 								"annotations": map[string]any{
