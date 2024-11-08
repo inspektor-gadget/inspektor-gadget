@@ -1440,6 +1440,81 @@ jobs:
           test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
           test-summary-suffix: "gadgets-unittest"
 
+  gadgets-kernel-unittest:
+    name: Gadgets unit tests on kernel
+    needs:
+      - build-ig
+      - build-and-push-gadgets
+      - build-helper-images
+      - check-secrets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel:
+          - "6.8"
+          - "6.7"
+          - "6.6"
+          - "6.1"
+          - "5.15"
+          - "5.10"
+            # - "5.4"
+            # - "4.19"
+
+    steps:
+    - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+    - name: Setup go
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+    - name: Get ig-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      with:
+        name: ig-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/
+    - name: Unpack ig-linux-amd64.tar.gz
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+        sudo mv ig /usr/bin/ig
+    - name: Set up QEMU
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qemu-system-x86
+        sudo chmod 666 /dev/kvm
+    - name: Install vimto
+      run: |
+        CGO_ENABLED=0 GOBIN=$(go env GOPATH)/bin go install lmb.io/vimto@latest
+        ls $(go env GOPATH)/bin | grep vimto
+    - name: Run gadget unit tests for kernel ${{ matrix.kernel }}
+      id: gadgets-kernel-tests
+      shell: bash
+      env:
+        GADGET_REPOSITORY: '${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}'
+        GADGET_TAG: '${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}'
+        IG_VERIFY_IMAGE: 'false'
+        KERNEL_VERSION: '${{ matrix.kernel }}'
+      run: |
+        set -o pipefail
+        export VIMTO=$(go env GOPATH)/bin/vimto
+        make -C gadgets/ pull
+        make -C gadgets/ test-unit -o build |& tee gadgets-kernel-tests.log & wait $! 
+    - name: Prepare and publish test reports
+      if: always()
+      continue-on-error: true
+      uses: ./.github/actions/prepare-and-publish-test-reports
+      with:
+        test-log-file: gadgets-kernel-tests.log
+        test-step-conclusion: ${{ steps.gadgets-kernel-tests.conclusion }}
+        test-summary-suffix: "gadgets-unittest-kernel-${{ matrix.kernel }}"
+
   test-gadgets-local:
     name: Test gadgets locally
     #level 3
