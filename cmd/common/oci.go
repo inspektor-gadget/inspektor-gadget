@@ -364,7 +364,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		}
 
 		// Also copy special oci params
-		copyParamsToMap(ociParams, paramValueMap, "operator.oci.")
+		//copyParamsToMap(ociParams, paramValueMap, "operator.oci.")
+		ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
 		err := runtime.RunGadget(gadgetCtx, runtimeParams, paramValueMap)
 		if err != nil {
