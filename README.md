@@ -27,7 +27,7 @@ Inspektor Gadget is a set of tools and framework for data collection and system 
 
 * Build and package eBPF programs into OCI images called Gadgets
 * Targets Kubernetes clusters and Linux hosts
-* Collect and export data to observability tools with a simple command (and soon via declarative configuration)
+* Collect and export data to observability tools with a simple command and via declarative configuration
 * Security mechanisms to restrict and lock-down which Gadgets can be run
 * Automatic [enrichment](#what-is-enrichment): map kernel data to high-level resources like Kubernetes and container runtimes
 * Supports [WebAssembly](https://webassembly.org/) modules to post-process data and customize IG [operators](#what-is-an-operator); using any WASM-supported language
