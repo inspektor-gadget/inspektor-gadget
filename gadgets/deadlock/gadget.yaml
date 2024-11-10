@@ -5,16 +5,28 @@ homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/deadlock
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/deadlock
 datasources:
+  mutex:
+    annotations:
+      description: Edges of the mutex-wait directed graph
   deadlock:
+    annotations:
+      description: Potential deadlocks
     fields:
-      mutex_addr:
+      pid:
         annotations:
-          columns.hex: "true"
-          columns.width: "20"
-          description: address of mutex lock/unlock operations
-      operation:
+          description: Process ID
+          template: pid
+      nodes:
         annotations:
-          description: mutex operation type
-      operation_raw:
+          description: Number of mutexes involved in the deadlock
+      stack_ids:
+        annoations:
+          description: Stack IDs of all mutexes involved in the deadlock
+      mntns_id:
         annotations:
+          description: Mount namespace inode id
           columns.hidden: "true"
+      comm:
+        annotations:
+          description: Process name
+          template: comm
