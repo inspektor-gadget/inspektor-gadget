@@ -184,21 +184,14 @@ document.
 
 Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/messages/inspektor-gadget/) channel in the Kubernetes Slack.
 
-## Talks
+## Recent Videos
 
-- Demystifying DNS: A Guide to Understanding and Debugging Request Flows in Kubernetes Clusters, Container Days Hamburg - September 2024 ([video](https://www.youtube.com/watch?v=KQpZg_NqbZw))
-- [Collecting Low-Level Metrics with eBPF, KubeCon + CloudNativeCon North America 2023](https://kccncna2023.sched.com/event/a70c0a016973beb5705f5f72fa58f622) ([video](https://www.youtube.com/watch?v=_ft3iTw5uv8), [slides](https://static.sched.com/hosted_files/kccncna2023/91/Collecting%20Low-Level%20Metrics%20with%20eBPF.pdf))
-- [A (re)introduction of Inspektor Gadget: A Containerized Framework for eBPF Systems Inspection, Cloud Native Rejekts Chicago - November 2023](https://cfp.cloud-native.rejekts.io/cloud-native-rejekts-na-chicago-2023/talk/KNU8SK/) ([video](https://youtu.be/KzQ_Whn6oBA?list=PLnfCaIV4aZe-4zfJeSl1bN9xKBhlIEGSt&t=7804))
-- [Gaining Linux insights with Inspektor Gadget, an eBPF tool and systems inspection framework, All Systems Go - September 2023](https://cfp.all-systems-go.io/all-systems-go-2023/talk/ZSTFTF/) ([video](https://www.youtube.com/watch?v=yJsPufVD0hY))
-- Overcoming the Challenges of Debugging Containers, Container Days Hamburg - September 2023 ([video](https://www.youtube.com/watch?v=MC6BkV09GT0))
-- [Using the EBPF Superpowers To Generate Kubernetes Security Policies, KubeCon + CloudNativeCon North America 2022](https://sched.co/182GW) ([video](https://www.youtube.com/watch?v=3dysej_Ydcw), [slides](https://static.sched.com/hosted_files/kccncna2022/5a/Using%20eBPF%20Superpowers%20to%20generate%20Kubernetes%20Security%20Policies.pdf))
-- [Debug Your Clusters with eBPF-Powered Tools, Cloud Native eBPF Day North America 2022](https://sched.co/1Auyw) ([video](https://www.youtube.com/watch?v=6s109Uwr608), [slides](https://static.sched.com/hosted_files/cloudnativeebpfdayna22/10/Debug%20Your%20Clusters%20with%20eBPF-Powered%20Tools.pdf))
-- [Who Needs an API Server to Debug a Kubernetes Cluster?, Cloud Native eBPF Day North America 2022](https://sched.co/1Auz8) ([video](https://www.youtube.com/watch?v=pGLl7Tdw4Zo), [slides](https://static.sched.com/hosted_files/cloudnativeebpfdayna22/01/WhoNeedsAnAPIServerToDebugAKubernetesCluster.pdf))
-- Inspektor Gadget, introduction and demos, eCHO Livestream - September 2021 ([video](https://www.youtube.com/watch?v=RZ2qNm_vlUc))
-- OpenShift Commons Briefing: Unleash eBPF Superpowers with Kubectl Gadget, Openshift Commons 2020 ([video](https://www.youtube.com/watch?v=X9PI7OWLJSY))
-- [Tutorial: Understanding What Happens Inside Kubernetes Clusters Using BPF Tools, Open Source Summit EU 2020](https://events.linuxfoundation.org/archive/2020/open-source-summit-europe/program/schedule/) ([video](https://www.youtube.com/watch?v=2f54ni2X-zo))
-- [Inspektor Gadget and traceloop: Tracing containers syscalls using BPF, FOSDEM 2020](https://fosdem.org/2020/schedule/event/containers_bpf_tracing/) ([video](https://www.youtube.com/watch?v=tcwmAAJATkc), [slides](https://archive.fosdem.org/2020/schedule/event/containers_bpf_tracing/attachments/slides/4029/export/events/attachments/containers_bpf_tracing/slides/4029/Inspektor_Gadget_and_traceloop_FOSDEM.pdf))
-- Traceloop for systemd and Kubernetes + Inspektor Gadget, All Systems Go 2019 ([video](https://www.youtube.com/watch?v=T-kTXo7X93M))
+- Talk: [Demystifying DNS: A Guide to Understanding and Debugging Request Flows in Kubernetes Clusters, Container Days Hamburg - September 2024](https://www.youtube.com/watch?v=KQpZg_NqbZw)
+- Talk: [eBPF Data Collection for Everyone – empowering the community to obtain Linux insights using Inspektor Gadget](https://www.youtube.com/watch?v=tkKXdaqji9c)
+- Talk: [Collecting Low-Level Metrics with eBPF, KubeCon + CloudNativeCon North America 2023](https://kccncna2023.sched.com/event/a70c0a016973beb5705f5f72fa58f622) ([video](https://www.youtube.com/watch?v=_ft3iTw5uv8), [slides](https://static.sched.com/hosted_files/kccncna2023/91/Collecting%20Low-Level%20Metrics%20with%20eBPF.pdf))
+- Interview: [Kubernetes Security and Troubleshooting Multitool: Inspektor Gadget](https://www.youtube.com/watch?v=0GDYDYhPPRw)
+- Interview: [Enlightning - Go Go Gadget! Inspektor Gadget and Observability](https://www.youtube.com/watch?v=Io6vqHitTzQ)
+- Presentation: [Misc - Feat. Kepler, Inspektor Gadget, k8sgpt, Perses, and Pixie (You Choose!, Ch. 04, Ep. 09)](https://youtu.be/OZE1hoT9-gs?t=1267)
 
 ## Thanks
 
