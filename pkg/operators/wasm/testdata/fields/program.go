@@ -31,28 +31,34 @@ func gadgetInit() int {
 		typ  api.FieldKind
 		acc  api.Field
 		val  any
+		tag  string
 	}
 
 	fields := []*field{
-		{"field_bool", api.Kind_Bool, 0, bool(true)},
-		{"field_int8", api.Kind_Int8, 0, int8(-123)},
-		{"field_int16", api.Kind_Int16, 0, int16(-25647)},
-		{"field_int32", api.Kind_Int32, 0, int32(-535245564)},
-		{"field_int64", api.Kind_Int64, 0, int64(-1234567890)},
-		{"field_uint8", api.Kind_Uint8, 0, uint8(56)},
-		{"field_uint16", api.Kind_Uint16, 0, uint16(12345)},
-		{"field_uint32", api.Kind_Uint32, 0, uint32(1234567890)},
-		{"field_uint64", api.Kind_Uint64, 0, uint64(1234567890123456)},
-		{"field_float32", api.Kind_Float32, 0, float32(3.14159)},
-		{"field_float64", api.Kind_Float64, 0, float64(3.14159265359)},
-		{"field_string", api.Kind_String, 0, string("Hello, World!")},
-		{"field_bytes", api.Kind_Bytes, 0, []byte{0x01, 0x02, 0x03, 0x04, 0x05}},
+		{"field_bool", api.Kind_Bool, 0, bool(true), "tag_bool"},
+		{"field_int8", api.Kind_Int8, 0, int8(-123), "tag_int8"},
+		{"field_int16", api.Kind_Int16, 0, int16(-25647), "tag_int16"},
+		{"field_int32", api.Kind_Int32, 0, int32(-535245564), "tag_int32"},
+		{"field_int64", api.Kind_Int64, 0, int64(-1234567890), "tag_int64"},
+		{"field_uint8", api.Kind_Uint8, 0, uint8(56), "tag_uint8"},
+		{"field_uint16", api.Kind_Uint16, 0, uint16(12345), "tag_uint16"},
+		{"field_uint32", api.Kind_Uint32, 0, uint32(1234567890), "tag_uint32"},
+		{"field_uint64", api.Kind_Uint64, 0, uint64(1234567890123456), "tag_uint64"},
+		{"field_float32", api.Kind_Float32, 0, float32(3.14159), "tag_float32"},
+		{"field_float64", api.Kind_Float64, 0, float64(3.14159265359), "tag_float64"},
+		{"field_string", api.Kind_String, 0, string("Hello, World!"), "tag_string"},
+		{"field_bytes", api.Kind_Bytes, 0, []byte{0x01, 0x02, 0x03, 0x04, 0x05}, "tag_bytes"},
 	}
 
 	for _, f := range fields {
 		acc, err := ds.AddField(f.name, f.typ)
 		if err != nil {
 			api.Warnf("failed to add field: %v", err)
+			return 1
+		}
+		err = acc.AddTag(f.tag)
+		if err != nil {
+			api.Warnf("failed to add tag: %v", err)
 			return 1
 		}
 		f.acc = acc
@@ -64,7 +70,7 @@ func gadgetInit() int {
 		return 1
 	}
 
-	fields = append(fields, &field{"host_field", api.Kind_String, hostF, "LOCALHOST"})
+	fields = append(fields, &field{"host_field", api.Kind_String, hostF, "LOCALHOST", "host_tag"})
 
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		for _, f := range fields {

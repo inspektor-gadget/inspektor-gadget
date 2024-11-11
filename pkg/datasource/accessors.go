@@ -104,6 +104,9 @@ type FieldAccessor interface {
 	// Tags returns all tags of the field
 	Tags() []string
 
+	// AddTags adds new tags to the field
+	AddTags(tags ...string)
+
 	// HasAllTagsOf checks whether the field has all given tags
 	HasAllTagsOf(tags ...string) bool
 
@@ -390,6 +393,12 @@ func (a *fieldAccessor) Flags() uint32 {
 
 func (a *fieldAccessor) Tags() []string {
 	return slices.Clone(a.f.Tags)
+}
+
+func (a *fieldAccessor) AddTags(tags ...string) {
+	a.ds.lock.Lock()
+	defer a.ds.lock.Unlock()
+	a.f.Tags = append(a.f.Tags, tags...)
 }
 
 func (a *fieldAccessor) HasAllTagsOf(tags ...string) bool {

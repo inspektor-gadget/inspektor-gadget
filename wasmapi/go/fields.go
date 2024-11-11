@@ -26,6 +26,9 @@ func fieldGet(field uint32, data uint32, kind uint32) uint64
 //go:wasmimport env fieldSet
 func fieldSet(field uint32, data uint32, kind uint32, value uint64) uint32
 
+//go:wasmimport env fieldAddTag
+func fieldAddTag(field uint32, tag uint64) uint32
+
 var errSetField = errors.New("error setting field")
 
 func (f Field) Int8(data Data) (int8, error) {
@@ -203,6 +206,15 @@ func (f Field) SetBool(data Data, b bool) error {
 	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Bool), value)
 	if ret != 0 {
 		return errSetField
+	}
+	return nil
+}
+
+func (f Field) AddTag(tag string) error {
+	ret := fieldAddTag(uint32(f), uint64(stringToBufPtr(tag)))
+	runtime.KeepAlive(tag)
+	if ret != 0 {
+		return errors.New("error adding tag")
 	}
 	return nil
 }

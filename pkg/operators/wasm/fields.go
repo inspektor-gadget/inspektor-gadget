@@ -43,6 +43,14 @@ func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
+
+	exportFunction(env, "fieldAddTag", i.fieldAddTag,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // Accessor
+			wapi.ValueTypeI64, // Tag
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
+	)
 }
 
 // fieldGet returns the field's value.
@@ -237,4 +245,30 @@ func (i *wasmOperatorInstance) fieldSet(ctx context.Context, m wapi.Module, stac
 		stack[0] = 1
 		return
 	}
+}
+
+// fieldAddTag adds a tag to the field
+// Params:
+// - stack[0]: Field handle
+// - stack[1]: Tag to add
+// Return value:
+// - 0 on success, 1 on error
+func (i *wasmOperatorInstance) fieldAddTag(ctx context.Context, m wapi.Module, stack []uint64) {
+	fieldHandle := wapi.DecodeU32(stack[0])
+	tagPtr := stack[1]
+
+	field, ok := getHandle[datasource.FieldAccessor](i, fieldHandle)
+	if !ok {
+		stack[0] = 1
+		return
+	}
+	tag, err := stringFromStack(m, tagPtr)
+	if err != nil {
+		i.logger.Warnf("fieldAddTag: reading string from stack: %v", err)
+		stack[0] = 1
+		return
+	}
+
+	field.AddTags(tag)
+	stack[0] = 0
 }
