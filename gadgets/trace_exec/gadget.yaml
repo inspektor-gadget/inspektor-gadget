@@ -12,6 +12,12 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
+      exepath:
+        annotations:
+          description: The executable file of the process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
       loginuid:
         annotations:
           template: uid
@@ -57,7 +63,7 @@ params:
     paths:
       key: paths
       defaultValue: "false"
-      description: Show the cwd of the process.
+      description: Show current working directory and executable path.
     targ_uid:
       key: uid
       defaultValue: ""

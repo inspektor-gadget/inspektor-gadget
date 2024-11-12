@@ -36,6 +36,7 @@ struct event {
 	bool pupper_layer;
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
+	char exepath[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
@@ -207,6 +208,13 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 
 	gadget_process_populate(&event->proc);
 	event->error_raw = 0;
+
+	if (paths) {
+		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
+		char *exepath = get_path_str(&exe_file->f_path);
+		bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE,
+					  exepath);
+	}
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))

@@ -43,6 +43,7 @@ type traceExecEvent struct {
 	Error       string `json:"error"`
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
+	Exepath     string `json:"exepath"`
 	Cwd         string `json:"cwd"`
 	Args        string `json:"args"`
 }
@@ -108,6 +109,7 @@ func TestTraceExec(t *testing.T) {
 						Cwd:        "/",
 						Args:       strings.Join(shArgs, " "),
 						UpperLayer: false,
+						Exepath:    "/bin/sh",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -121,6 +123,7 @@ func TestTraceExec(t *testing.T) {
 						Cwd:        "/",
 						Args:       strings.Join(innerShArgs, " "),
 						UpperLayer: true,
+						Exepath:    "/usr/bin/sh",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -135,6 +138,7 @@ func TestTraceExec(t *testing.T) {
 						Args:        strings.Join(sleepArgs, " "),
 						UpperLayer:  false,
 						PupperLayer: true,
+						Exepath:     "/bin/sleep",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
