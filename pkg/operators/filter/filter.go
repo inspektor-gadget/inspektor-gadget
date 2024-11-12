@@ -426,3 +426,5 @@ func getFilterFunc(f datasource.FieldAccessor, op comparisonType, negate bool, s
 func init() {
 	operators.RegisterDataOperator(&filterOperator{})
 }
+
+var FilterOperator = &filterOperator{}
