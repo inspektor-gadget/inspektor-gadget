@@ -59,6 +59,10 @@ const (
 	ldCache1Size      = uint32(unsafe.Sizeof(ldCache1{}))
 	ldCache2EntrySize = uint32(unsafe.Sizeof(ldCache2Entry{}))
 	ldCache2Size      = uint32(unsafe.Sizeof(ldCache2{}))
+
+	// ld.so.cache is typically less than 200 KiB.
+	// 16 MiB should be enough.
+	ldCacheMaxSize = int64(16 * 1024 * 1024)
 )
 
 type ldEntry struct {
@@ -136,7 +140,7 @@ func readCacheFormat2(data []byte) []ldEntry {
 // see https://github.com/bminor/glibc/blob/master/elf/cache.c#L292, the `print_cache` func
 // see https://github.com/iovisor/bcc/blob/master/src/cc/bcc_proc.c#L508, the `bcc_procutils_which_so` func
 func parseLdCache(containerPid uint32, ldCachePath string, libraryName string) ([]string, error) {
-	ldCacheFile, err := secureopen.ReadFileInContainer(containerPid, ldCachePath)
+	ldCacheFile, err := secureopen.ReadFileInContainer(containerPid, ldCachePath, ldCacheMaxSize)
 	if err != nil {
 		return nil, fmt.Errorf("reading file %q in container pid %d: %w", ldCachePath, containerPid, err)
 	}

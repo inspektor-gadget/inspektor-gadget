@@ -73,6 +73,16 @@ const (
 	defaultContainerCheckInterval  = 10 * time.Second
 )
 
+const (
+	// config.json is typically less than 100 KiB.
+	// 16 MiB should be enough.
+	configJsonMaxSize = int64(16 * 1024 * 1024)
+
+	// pid files store a string with a int32 value, so 11 characters.
+	// Keep a larger buffer to be able to notice errors with strconv.Atoi.
+	pidFileMaxSize = int64(32)
+)
+
 var (
 	// How long to wait for a container after a "conmon" or a "runc start" command
 	// The values can be overridden by tests.
@@ -465,6 +475,24 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 	// This unblocks whoever is accessing the pidfile
 	defer n.pidFileDirNotify.ResponseAllow(data)
 
+	// Coherence check: the pid file should be a small regular file
+	var stat unix.Stat_t
+	err = unix.Fstat(int(dataFile.Fd()), &stat)
+	if err != nil {
+		log.Errorf("fanotify: could not stat received fd: %s", err)
+		return nil
+	}
+	if stat.Mode&unix.S_IFMT != unix.S_IFREG {
+		log.Errorf("fanotify: received fd is not a regular file: expected %d, got %d",
+			unix.S_IFREG, stat.Mode&unix.S_IFMT)
+		return nil
+	}
+	if stat.Size > pidFileMaxSize {
+		log.Errorf("fanotify: received fd refers to a large file: %d bytes",
+			stat.Size)
+		return nil
+	}
+
 	path, err := data.GetPath()
 	if err != nil {
 		log.Errorf("fanotify: could not get path for pid file")
@@ -495,7 +523,7 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		return nil
 	}
 
-	pidFileContent, err := io.ReadAll(dataFile)
+	pidFileContent, err := io.ReadAll(io.LimitReader(dataFile, pidFileMaxSize))
 	if err != nil {
 		log.Errorf("fanotify: error reading pid file: %s", err)
 		return nil
@@ -510,7 +538,19 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		return nil
 	}
 
-	bundleConfigJSON, err := os.ReadFile(pc.configJSONPath)
+	if containerPID > math.MaxUint32 {
+		log.Errorf("fanotify: Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
+		return nil
+	}
+
+	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
+	if err != nil {
+		log.Errorf("fanotify: could not open config.json: %s", err)
+		return nil
+	}
+	defer bundleConfigJSONFile.Close()
+
+	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
 	if err != nil {
 		log.Errorf("fanotify: could not read config.json: %s", err)
 		return nil
@@ -525,11 +565,6 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 	err = n.AddWatchContainerTermination(pc.id, containerPID)
 	if err != nil {
 		log.Errorf("fanotify: container %s with pid %d terminated before we could watch it: %s", pc.id, containerPID, err)
-		return nil
-	}
-
-	if containerPID > math.MaxUint32 {
-		log.Errorf("fanotify: Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
 		return nil
 	}
 
