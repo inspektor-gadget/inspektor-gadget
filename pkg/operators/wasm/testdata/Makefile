@@ -7,6 +7,7 @@ TEST_ARTIFACTS = \
 	badguest \
 	params \
 	config \
+	map \
 	#
 
 all: $(TEST_ARTIFACTS)

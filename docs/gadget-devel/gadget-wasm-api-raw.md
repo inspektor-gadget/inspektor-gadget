@@ -15,9 +15,9 @@ Data types passed to the API are encoded using 64 bits. Scalar types like
 integers, booleans and floats are casted directly to 64 bit integers and passed
 using the stack.
 
-Strings and byte arrays are stored in the wasm module's memory. A 64 bit
-integer is used to represent a pointer to them, the higher 32 bits contains the
-length and the lower 32 the memory address.
+Strings and byte arrays are stored in the wasm module's memory as `bufPtr`. A 64
+bit integer is used to represent a pointer to them, the higher 32 bits contains
+the length and the lower 32 the memory address.
 
 ## Wasm Module Exported Functions
 
@@ -35,15 +35,15 @@ fails. Currently only version 1 is supported and used. This function is mandator
 ### `gadgetInit`
 
 This function is called when initializing the gadget. In this phase the gadget
-can suscribe to data sources, create new fields, etc. This function is optional.
+can subscribe to data sources, create new fields, etc. This function is optional.
 
 ### `gadgetPreStart`
 
-This function is called before the gadget is started. This fuction is optional.
+This function is called before the gadget is started. This function is optional.
 
 ### `gadgetStart`
 
-This function is called when the gadget is started. This fuction is optional.
+This function is called when the gadget is started. This function is optional.
 
 ### `gadgetStop`
 
@@ -313,7 +313,7 @@ Parameters:
 - `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
 - `data` (u32): Data handle
 - `kind` (u32): Kind of access: How to write the field
-  `value` (u64): Value to store in the field
+- `value` (u64): Value to store in the field
 
 Return value:
 - None
@@ -369,6 +369,54 @@ Parameters:
 - `key` (string): Key to set.
 - `val` (u64): Value to set.
 - `kind` (u32): Kind of `val`.
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+### eBPF Maps
+
+#### `getMap(name string) uint32`
+
+Get a handle to an existing eBPF map.
+
+Parameters:
+- `name` (string): Map's name
+
+Return value:
+- (u32) Handle to map on success, 0 on error.
+
+#### `mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32`
+
+Lookup the map for a value corresponding to given key.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `getMap`)
+- `keyptr` (u64): A `bufPtr` to key.
+- `valueptr` (u64): A `bufPtr` pointer to store the value of the map.
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+#### `mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32`
+
+Update the value corresponding to key in the given map.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `getMap`)
+- `keyptr` (u64): A `bufPtr` to data corresponding to key.
+- `valueptr` (u64): A `bufPtr` to data corresponding to value.
+- `flags` (u64): A set of flags used to modify the update behavior. Correct values are documented [here](https://github.com/cilium/ebpf/blob/061e86d8f5e9/map.go#L790-L801).
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+#### `mapDelete(m uint32, keyptr uint64) uint32`
+
+Delete the value corresponding to key in the given map.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `getMap`)
+- `keyptr` (u64): A `bufPtr` to data corresponding to key.
 
 Return value:
 - 0 in case of success, 1 otherwise.

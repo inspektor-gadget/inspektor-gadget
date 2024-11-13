@@ -20,6 +20,9 @@ package api
 import "C"
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	"slices"
 	"strings"
 	"unsafe"
@@ -47,6 +50,26 @@ func stringToBufPtr(s string) bufPtr {
 	}
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return bufPtr(uint64(len(s))<<32 | uint64(uintptr(unsafePtr)))
+}
+
+// anyToBufPtr returns a bufPtr that encodes the pointer and length of the
+// input.
+// The input is first encoded to binary buffer, which is then used as the
+// returned bufPtr.
+// WARNING the binary encoding will only work on fixed size data, *i.e.* with
+// int32 but not with int, as this data would be exchanged from 32 bits WASM VM
+// to host which can be 64 bits.
+// WARNING the any has to mimic kernel representation of data structure by
+// adding padding if needed.
+func anyToBufPtr(a any) (bufPtr, error) {
+	buffer := new(bytes.Buffer)
+
+	err := binary.Write(buffer, binary.NativeEndian, a)
+	if err != nil {
+		return bufPtr(0), fmt.Errorf("converting %T to []byte: %w", a, err)
+	}
+
+	return bytesToBufPtr(buffer.Bytes()), nil
 }
 
 // bytesToBufPtr returns a bufPtr that encodes the pointer and length of the
