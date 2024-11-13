@@ -42,7 +42,6 @@ import (
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -579,54 +578,6 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 					log.Errorf("kubernetes enricher: failed to get owner reference for container %s: %s", container.Runtime.ContainerID, err)
 					// Don't drop the container. We just have problems getting the owner reference, but still want to trace the container.
 				}
-			}
-			return true
-		})
-		return nil
-	}
-}
-
-// WithRuncFanotify uses fanotify to detect when containers are created and add
-// them in the ContainerCollection.
-//
-// This requires execution in the host pid namespace. For this reason, it is
-// preferable to use WithContainerFanotifyEbpf() instead.
-//
-// ContainerCollection.Initialize(WithRuncFanotify())
-func WithRuncFanotify() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
-		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {
-			switch notif.Type {
-			case runcfanotify.EventTypeAddContainer:
-				container := &Container{
-					Runtime: RuntimeMetadata{
-						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							ContainerID:   notif.ContainerID,
-							ContainerPID:  notif.ContainerPID,
-							ContainerName: notif.ContainerName,
-						},
-					},
-					OciConfig: notif.ContainerConfig,
-				}
-				cc.AddContainer(container)
-			case runcfanotify.EventTypeRemoveContainer:
-				cc.RemoveContainer(notif.ContainerID)
-			}
-		})
-		if err != nil {
-			return fmt.Errorf("starting runc fanotify: %w", err)
-		}
-
-		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
-			runcNotifier.Close()
-		})
-
-		// Future containers
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.ContainerPid()))
-			if err != nil {
-				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
-				return false
 			}
 			return true
 		})

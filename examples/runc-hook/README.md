@@ -1,7 +1,7 @@
-# Example with the runcfanotify package
+# Example with the container-hook package
 
-This example uses the runcfanotify package
-("github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify") in order to:
+This example uses the container-hook package
+("github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook") in order to:
 
 1. receive notifications when a container starts (including its
    [configuration](https://github.com/opencontainers/runtime-spec/blob/main/config.md))

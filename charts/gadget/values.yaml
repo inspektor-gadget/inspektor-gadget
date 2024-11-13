@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 config:
-  # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify, fanotify+ebpf")
+  # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify+ebpf")
   hookMode: auto
 
   # -- Whether to use the fallback pod informer

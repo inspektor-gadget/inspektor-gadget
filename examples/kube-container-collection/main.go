@@ -126,7 +126,7 @@ func main() {
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithKubernetesEnrichment(*node, config),
-		containercollection.WithRuncFanotify(),
+		containercollection.WithContainerFanotifyEbpf(),
 	}
 
 	cc = &containercollection.ContainerCollection{}

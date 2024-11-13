@@ -32,8 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -112,7 +112,7 @@ func runCommand(command, dir string, env []string, timeout time.Duration, ociSta
 	return cmd.Run()
 }
 
-func callback(notif runcfanotify.ContainerEvent) {
+func callback(notif containerhook.ContainerEvent) {
 	// The OCI State is defined at:
 	//     https://github.com/opencontainers/runtime-spec/blob/main/runtime.md#state
 	// and is passed to OCI hooks over stdin, see:
@@ -136,7 +136,7 @@ func callback(notif runcfanotify.ContainerEvent) {
 
 	var cmd string
 	switch notif.Type {
-	case runcfanotify.EventTypeAddContainer:
+	case containerhook.EventTypeAddContainer:
 		ociState.Status = ocispec.StateCreated
 		var config string
 		if notif.ContainerConfig != nil {
@@ -168,7 +168,7 @@ func callback(notif runcfanotify.ContainerEvent) {
 		if *hookPreStart != "" {
 			cmd = *hookPreStart
 		}
-	case runcfanotify.EventTypeRemoveContainer:
+	case containerhook.EventTypeRemoveContainer:
 		ociState.Status = ocispec.StateStopped
 		if outputRemove {
 			fmt.Printf("Container removed: %v pid %d\n", notif.ContainerID, notif.ContainerPID)
@@ -229,14 +229,14 @@ func main() {
 		}
 	}
 
-	if !runcfanotify.Supported() {
-		fmt.Printf("runcfanotify not supported\n")
+	if !containerhook.Supported() {
+		fmt.Printf("containerhook not supported\n")
 		os.Exit(1)
 	}
 
-	notifier, err := runcfanotify.NewRuncNotifier(callback)
+	notifier, err := containerhook.NewContainerNotifier(callback)
 	if err != nil {
-		fmt.Printf("runcfanotify failed: %v\n", err)
+		fmt.Printf("containerhook failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer notifier.Close()

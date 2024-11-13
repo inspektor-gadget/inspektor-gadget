@@ -90,7 +90,6 @@ var (
 	livenessProbe       bool
 	deployTimeout       time.Duration
 	fallbackPodInformer bool
-	legacyHostPID       bool
 	printOnly           bool
 	quiet               bool
 	debug               bool
@@ -113,7 +112,7 @@ var (
 	disallowGadgetsPull bool
 )
 
-var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
+var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify+ebpf"}
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
 	Group:   "policy.sigstore.dev",
@@ -167,11 +166,6 @@ func init() {
 		"fallback-podinformer", "",
 		true,
 		"use pod informer as a fallback for the main hook")
-	deployCmd.PersistentFlags().BoolVarP(
-		&legacyHostPID,
-		"legacy-host-pid", "",
-		false,
-		"use hostPID=true for the gadget pod (legacy)")
 	deployCmd.PersistentFlags().BoolVarP(
 		&printOnly,
 		"print-only", "",
@@ -614,11 +608,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			daemonSet.Namespace = gadgetNamespace
 
-			// Inspektor Gadget used to require hostPID=true. This is no longer
-			// required, so keep hostPID=false unless the user explicitly
-			// requests it for compatibility with older clusters.
-			daemonSet.Spec.Template.Spec.HostPID = legacyHostPID
-
 			if seccompProfile != "" {
 				path := "operator/gadget/profile.json"
 				daemonSet.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{
@@ -719,7 +708,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			// skip SELinux options if the user explicitly requests it
-			if legacyHostPID || skipSELinuxOpts {
+			if skipSELinuxOpts {
 				gadgetContainer.SecurityContext.SELinuxOptions = nil
 			}
 
