@@ -13,6 +13,7 @@
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
 struct record {
+	__u64 mntns_id;
 	__u32 pid;
 	unsigned int args_size;
 	__u8 caller_comm[TASK_COMM_LEN];

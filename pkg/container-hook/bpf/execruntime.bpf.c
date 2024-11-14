@@ -134,6 +134,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	task = (struct task_struct *)bpf_get_current_task();
 
 	bpf_get_current_comm(&record->caller_comm, sizeof(record->caller_comm));
+	record->mntns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	record->pid = tgid;
 	record->args_size = 0;
 
