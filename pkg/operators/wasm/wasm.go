@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -45,6 +46,8 @@ const (
 	// Current version of this API. This is used to check that the wasm module
 	// uses the same version.
 	apiVersion = 1
+
+	wasmInstanceTestingVarName = "testingWasmInstance"
 )
 
 type wasmOperator struct{}
@@ -94,6 +97,9 @@ func (w *wasmOperator) InstantiateImageOperator(
 		}
 	}
 
+	if testing.Testing() {
+		gadgetCtx.SetVar(wasmInstanceTestingVarName, instance)
+	}
 	return instance, nil
 }
 
