@@ -35,18 +35,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 
-	// This is a blank include that actually imports all gadgets
-	// TODO: traceloop is imported separately because it is not in all-gadgets
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
-
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"

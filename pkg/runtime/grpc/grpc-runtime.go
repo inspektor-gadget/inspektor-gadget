@@ -17,7 +17,6 @@ package grpcruntime
 import (
 	"context"
 	"crypto/tls"
-	_ "embed"
 	"errors"
 	"fmt"
 	"io"
