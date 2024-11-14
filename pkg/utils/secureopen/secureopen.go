@@ -80,11 +80,15 @@ func OpenInContainer(containerPid uint32, unsafePath string) (*os.File, error) {
 //
 // This is similar to os.ReadFile() except the file is opened with
 // OpenInContainer().
-func ReadFileInContainer(containerPid uint32, unsafePath string) ([]byte, error) {
+func ReadFileInContainer(containerPid uint32, unsafePath string, limitBytes int64) ([]byte, error) {
 	fh, err := OpenInContainer(containerPid, unsafePath)
 	if err != nil {
 		return nil, fmt.Errorf("secureopen: %w", err)
 	}
 	defer fh.Close()
+
+	if limitBytes > 0 {
+		return io.ReadAll(io.LimitReader(fh, limitBytes))
+	}
 	return io.ReadAll(fh)
 }
