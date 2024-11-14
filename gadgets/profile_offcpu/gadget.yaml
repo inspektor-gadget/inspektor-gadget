@@ -1,0 +1,21 @@
+name: profile_offcpu
+params:
+  wasm:
+    flamegraph:
+      key: flamegraph
+      typeHint: bool
+      defaultValue: false
+      description: output a flamegraph
+datasources:
+  stacks:
+    annotations:
+      cli.supported-output-modes: none
+      cli.default-output-mode: none
+  flamegraph:
+    annotations:
+      cli.supported-output-modes: raw
+      cli.default-output-mode: raw
+    fields:
+      text:
+        annotations:
+          content-type: text/plain
