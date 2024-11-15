@@ -62,11 +62,6 @@ const (
 	ParamIface       = "iface"
 	ParamTraceKernel = "trace-pipe"
 
-	// Keep in sync with `include/gadget/kernel_stack_map.h`
-	KernelStackMapName       = "ig_kstack"
-	KernelStackMapMaxEntries = 10000
-	PerfMaxStackDepth        = 127
-
 	kernelTypesVar = "kernelTypes"
 )
 
@@ -184,7 +179,8 @@ type ebpfInstance struct {
 	enums      []*enum
 	formatters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 
-	stackIdMap *ebpf.Map
+	kernelStackMap *ebpf.Map
+	userStackMap   *ebpf.Map
 
 	gadgetCtx operators.GadgetContext
 	done      chan struct{}
@@ -659,8 +655,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	for name, m := range i.collection.Maps {
 		gadgetCtx.SetVar(operators.MapPrefix+name, m)
 
-		if name == KernelStackMapName {
-			i.stackIdMap = m
+		if name == ebpftypes.KernelStackMapName {
+			i.kernelStackMap = m
+		}
+		if name == ebpftypes.UserStackMapName {
+			i.userStackMap = m
 		}
 	}
 

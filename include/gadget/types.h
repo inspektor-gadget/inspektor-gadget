@@ -59,6 +59,28 @@ typedef __u64 gadget_syscall;
 
 typedef __u32 gadget_kernel_stack;
 
+struct gadget_user_stack {
+	// Identify the executable. Leave it as 0 to disable user stacks.
+	__u64 exe_inode;
+	__u64 mtime_sec;
+	__u32 mtime_nsec;
+
+	// The stack id as returned by bpf_get_stackid.
+	__u32 stack_id;
+
+	// Pid number from the initial pid namespace's point of view.
+	// In some setups (e.g. Minikube with Docker driver), the pidns of ig's
+	// /host/proc mount is not the init pidns. To support this edge case, we
+	// give the pid numbers from the level 1 pidns as well. Userspace can
+	// figure out which pid to use based on the pidns.
+	// Use separate fields because arrays are not supported:
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/4060
+	__u32 pid_level0;
+	__u32 pidns_level0;
+	__u32 pid_level1;
+	__u32 pidns_level1;
+};
+
 #ifndef TASK_COMM_LEN
 #define TASK_COMM_LEN 16
 #endif

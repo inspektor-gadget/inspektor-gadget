@@ -28,6 +28,7 @@ const (
 	UidTypeName         = "gadget_uid"
 	GidTypeName         = "gadget_gid"
 	KernelStackTypeName = "gadget_kernel_stack"
+	UserStackTypeName   = "gadget_user_stack"
 	PidTypeName         = "gadget_pid"
 	PpidTypeName        = "gadget_ppid"
 	TidTypeName         = "gadget_tid"
@@ -47,6 +48,14 @@ const (
 	GaugeU64TypeName         = "gadget_gauge__u64"
 	HistogramSlotU32TypeName = "gadget_histogram_slot__u32"
 	HistogramSlotU64TypeName = "gadget_histogram_slot__u64"
+
+	// Map names and definitions
+	// Keep in sync with `include/gadget/kernel_stack_map.h`
+	KernelStackMapName      = "ig_kstack"
+	KernelPerfMaxStackDepth = 127
+	// Keep in sync with `include/gadget/user_stack_map.h`
+	UserStackMapName      = "ig_ustack"
+	UserPerfMaxStackDepth = 127
 )
 
 // L3Endpoint is the Golang representation of struct gadget_l3endpoint_t
