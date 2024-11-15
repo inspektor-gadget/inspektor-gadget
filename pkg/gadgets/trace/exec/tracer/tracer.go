@@ -49,6 +49,7 @@ type execsnoopEventAbbrev struct {
 	ArgsCount   int32
 	UpperLayer  bool
 	PupperLayer bool
+	FromMemfd   bool
 	_           [2]byte
 	ArgsSize    uint32
 	Comm        [16]uint8
@@ -69,6 +70,7 @@ type execsnoopWithLongPathsEventAbbrev struct {
 	ArgsCount   int32
 	UpperLayer  bool
 	PupperLayer bool
+	FromMemfd   bool
 	_           [2]byte
 	ArgsSize    uint32
 	Comm        [16]uint8
@@ -218,6 +220,7 @@ func (t *Tracer) run() {
 			SessionId:     bpfEvent.Sessionid,
 			UpperLayer:    bpfEvent.UpperLayer,
 			PupperLayer:   bpfEvent.PupperLayer,
+			FromMemfd:     bpfEvent.FromMemfd,
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Retval:        int(bpfEvent.Retval),
 			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),

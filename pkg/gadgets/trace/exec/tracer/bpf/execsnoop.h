@@ -11,6 +11,8 @@
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
+#define MEMFD_PREFIX "memfd:"
+#define MEMFD_PREFIX_LEN 6
 
 // this needs to be manually kept in sync with execsnoopEventAbbrev in tracer.go (without the args field)
 struct event {
@@ -26,6 +28,7 @@ struct event {
 	int args_count;
 	bool upper_layer;
 	bool pupper_layer;
+	bool from_memfd;
 	unsigned int args_size;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 pcomm[TASK_COMM_LEN];

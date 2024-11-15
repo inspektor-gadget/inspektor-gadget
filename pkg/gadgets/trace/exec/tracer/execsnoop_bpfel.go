@@ -25,7 +25,8 @@ type execsnoopEvent struct {
 	ArgsCount   int32
 	UpperLayer  bool
 	PupperLayer bool
-	_           [2]byte
+	FromMemfd   bool
+	_           [1]byte
 	ArgsSize    uint32
 	Comm        [16]uint8
 	Pcomm       [16]uint8
