@@ -60,7 +60,7 @@ type MapType uint32
 const (
 	UnspecifiedMap MapType = iota
 	Hash
-	Array
+	ArrayMap
 	ProgramArray
 	PerfEventArray
 	PerCPUHash
