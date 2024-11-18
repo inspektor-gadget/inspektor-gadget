@@ -91,6 +91,7 @@ func TestTraceExec(t *testing.T) {
 			normalize := func(e *traceexecTypes.Event) {
 				e.Timestamp = 0
 				e.Pid = 0
+				e.Tid = 0
 				e.Ppid = 0
 				e.LoginUid = 0
 				e.SessionId = 0
@@ -162,6 +163,7 @@ func TestTraceExecHost(t *testing.T) {
 			normalize := func(e *traceexecTypes.Event) {
 				e.Timestamp = 0
 				e.Pid = 0
+				e.Tid = 0
 				e.Ppid = 0
 				e.LoginUid = 0
 				e.SessionId = 0

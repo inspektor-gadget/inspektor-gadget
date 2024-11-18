@@ -40,6 +40,7 @@ type execsnoopEventAbbrev struct {
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32
+	Tid         uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -60,6 +61,7 @@ type execsnoopWithLongPathsEventAbbrev struct {
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32
+	Tid         uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -211,6 +213,7 @@ func (t *Tracer) run() {
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
 			Pid:           bpfEvent.Pid,
+			Tid:           bpfEvent.Tid,
 			Ppid:          bpfEvent.Ppid,
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,

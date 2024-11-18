@@ -18,6 +18,7 @@ type execsnoopWithLongPathsEvent struct {
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32
+	Tid         uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -34,6 +35,7 @@ type execsnoopWithLongPathsEvent struct {
 	Cwd         [4096]uint8
 	Exepath     [4096]uint8
 	Args        [7680]uint8
+	_           [4]byte
 }
 
 // loadExecsnoopWithLongPaths returns the embedded CollectionSpec for execsnoopWithLongPaths.
