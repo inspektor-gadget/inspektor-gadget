@@ -174,7 +174,24 @@ func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
 	}
 }
 
-// getHandleTyped returns the handle with the given ID, casted to the given type.
+func (i *wasmOperatorInstance) updateHandle(handleIndex uint32, obj any) error {
+	if obj == nil {
+		return errors.New("object is nil")
+	}
+
+	i.handleLock.Lock()
+	defer i.handleLock.Unlock()
+
+	if handleIndex > uint32(len(i.handleMap)) {
+		return fmt.Errorf("handle %d is out of handle map", handleIndex)
+	}
+
+	i.handleMap[handleIndex] = obj
+
+	return nil
+}
+
+// getHandle returns the handle with the given ID, casted to the given type.
 // It can't be implemented as a generic method because it's not supported by Go yet.
 func getHandle[T any](i *wasmOperatorInstance, handleID uint32) (T, bool) {
 	i.handleLock.RLock()
@@ -223,6 +240,7 @@ func (i *wasmOperatorInstance) init(
 	i.addConfigFuncs(env)
 	i.addMapFuncs(env)
 	i.addSyscallsDeclarationsFuncs(env)
+	i.addArrayFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
