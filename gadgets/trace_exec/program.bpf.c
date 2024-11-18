@@ -34,6 +34,7 @@ struct event {
 	int args_count;
 	bool upper_layer;
 	bool pupper_layer;
+	bool from_memfd;
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
@@ -184,6 +185,31 @@ static __always_inline bool has_upper_layer(struct inode *inode)
 	return upperdentry != NULL;
 }
 
+static __always_inline bool from_memfd(struct file *file) {
+	struct dentry *dentry = BPF_CORE_READ(file, f_path.dentry);
+	if(!dentry)
+		return false;
+	
+	struct dentry *parent = BPF_CORE_READ(dentry, d_parent);
+	if(!parent)
+		return false;
+	
+	if(parent != dentry)
+		return false;
+	
+	const unsigned char *name = BPF_CORE_READ(dentry, d_name.name);
+	if(!name)
+		return false;
+
+	const char expected_prefix[] = "memfd:";
+  char memfd_name[sizeof(expected_prefix)] = {'\0'};
+
+	if(bpf_probe_read_kernel_str(memfd_name, sizeof(memfd_name), name) != sizeof(expected_prefix))
+		return false;
+
+	return __builtin_memcmp(memfd_name, expected_prefix, sizeof(expected_prefix)) == 0;
+}
+
 // tracepoint/sched/sched_process_exec is called after a successful execve
 SEC("tracepoint/sched/sched_process_exec")
 int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
@@ -196,6 +222,10 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	event = bpf_map_lookup_elem(&execs, &execs_lookup_key);
 	if (!event)
 		return 0;
+
+	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
+	if (exe_file)
+		event->from_memfd = from_memfd(exe_file);
 
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
 	if (inode)

@@ -37,6 +37,7 @@ type Event struct {
 	Groupname   string   `json:"group,omitempty" column:"group,hide"`
 	UpperLayer  bool     `json:"upperlayer" column:"upperlayer,width:10,fixed,hide"`
 	PupperLayer bool     `json:"pupperlayer" column:"pupperlayer,width:11,fixed,hide"`
+	FromMemfd   bool     `json:"frommemfd" column:"frommemfd,width:11,fixed,hide"`
 	LoginUid    uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
 	SessionId   uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
 	Cwd         string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:paths"`
