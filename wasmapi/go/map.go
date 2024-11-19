@@ -21,6 +21,9 @@ import (
 	"unsafe"
 )
 
+//go:wasmimport env newMap
+func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32
+
 //go:wasmimport env getMap
 func getMap(name uint64) uint32
 
@@ -45,6 +48,60 @@ const (
 	UpdateExist
 	UpdateLock
 )
+
+type MapType uint32
+
+// Taken from:
+// https://github.com/cilium/ebpf/blob/061e86d8f5e9/types.go#L15-L98
+const (
+	UnspecifiedMap MapType = iota
+	Hash
+	Array
+	ProgramArray
+	PerfEventArray
+	PerCPUHash
+	PerCPUArray
+	StackTrace
+	CGroupArray
+	LRUHash
+	LRUCPUHash
+	LPMTrie
+	ArrayOfMaps
+	HashOfMaps
+	DevMap
+	SockMap
+	CPUMap
+	XSKMap
+	SockHash
+	CGroupStorage
+	ReusePortSockArray
+	PerCPUCGroupStorage
+	Queue
+	Stack
+	SkStorage
+	DevMapHash
+	StructOpsMap
+	RingBuf
+	InodeStorage
+	TaskStorage
+)
+
+type MapSpec struct {
+	Name       string
+	Type       MapType
+	KeySize    uint32
+	ValueSize  uint32
+	MaxEntries uint32
+}
+
+func NewMap(spec MapSpec) (Map, error) {
+	ret := newMap(uint64(stringToBufPtr(spec.Name)), uint32(spec.Type), spec.KeySize, spec.ValueSize, spec.MaxEntries)
+	runtime.KeepAlive(spec.Name)
+	if ret == 0 {
+		return 0, fmt.Errorf("creating map %s", spec.Name)
+	}
+	return Map(ret), nil
+}
 
 func GetMap(name string) (Map, error) {
 	ret := getMap(uint64(stringToBufPtr(name)))

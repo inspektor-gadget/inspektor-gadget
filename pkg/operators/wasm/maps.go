@@ -25,6 +25,17 @@ import (
 )
 
 func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
+	exportFunction(env, "newMap", i.newMap,
+		[]wapi.ValueType{
+			wapi.ValueTypeI64, // Map name
+			wapi.ValueTypeI32, // Map type
+			wapi.ValueTypeI32, // Key size
+			wapi.ValueTypeI32, // Value size
+			wapi.ValueTypeI32, // Max entries
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
+	)
+
 	exportFunction(env, "getMap", i.getMap,
 		[]wapi.ValueType{wapi.ValueTypeI64}, // MapName
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
@@ -56,6 +67,45 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
+}
+
+// newMap creates a new map.
+// Params:
+// - stack[0] is the map name
+// - stack[1] is the map type
+// - stack[2] is the key size
+// - stack[3] is the value size
+// - stack[4] is the max entries
+// Return value:
+// - Map handle on success, 0 on error
+func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack []uint64) {
+	mapNamePtr := stack[0]
+	mapType := ebpf.MapType(wapi.DecodeU32(stack[1]))
+	keySize := wapi.DecodeU32(stack[2])
+	valueSize := wapi.DecodeU32(stack[3])
+	maxEntries := wapi.DecodeU32(stack[4])
+
+	mapName, err := stringFromStack(m, mapNamePtr)
+	if err != nil {
+		i.logger.Warnf("newMap: reading string from stack: %v", err)
+		stack[0] = 0
+		return
+	}
+
+	ebpfMap, err := ebpf.NewMap(&ebpf.MapSpec{
+		Name:       mapName,
+		Type:       mapType,
+		KeySize:    keySize,
+		ValueSize:  valueSize,
+		MaxEntries: maxEntries,
+	})
+	if err != nil {
+		i.logger.Warnf("newMap: creating map: %v", err)
+		stack[0] = 0
+		return
+	}
+
+	stack[0] = wapi.EncodeU32(i.addHandle(ebpfMap))
 }
 
 // getMap gets an existing map.
