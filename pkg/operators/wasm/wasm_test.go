@@ -17,6 +17,7 @@ package wasm_test
 import (
 	"context"
 	"fmt"
+	"syscall"
 	"testing"
 	"time"
 
@@ -611,5 +612,51 @@ func TestSyscall(t *testing.T) {
 		"operator.oci.verify-image": "false",
 	}
 	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
+}
+
+func TestPerf(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/perf.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"perf:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	stop := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				// Generate events to fill the perf buffer.
+				fd, err := syscall.Creat("/tmp/test-perf-array", 0)
+				require.NoError(t, err, "opening file to generate gadget events")
+				syscall.Close(fd)
+			}
+		}
+	}()
+
+	params := map[string]string{
+		"operator.oci.verify-image": "false",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	stop <- true
 	require.NoError(t, err, "running gadget")
 }
