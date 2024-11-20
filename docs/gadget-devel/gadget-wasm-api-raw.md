@@ -479,3 +479,58 @@ type syscallDeclaration struct {
 
 Return value:
 - (u32) 0 in case of success, 1 otherwise.
+
+### Perf buffer
+
+#### `func newPerfReader(mapHandle uint32, size uint32, isOverwritable uint32) uint32`
+
+Create a new perf buffer.
+
+Parameters:
+- `mapHandle` (u32): Map handle to a PerfEventArray map.
+- `size` (u32): Perf buffer size.
+- `isOverwritable` (u32): Whether the buffer is overwritable or not.
+
+Return value:
+- (u32) Handle to a perf buffer on success, 0 on error.
+
+#### `func perfReaderPause(perfMapHandle uint32) uint32`
+
+Pause the perf buffer.
+
+Parameters:
+- `perfMapHandle` (u32): Handle to a perf buffer.
+
+Return value:
+- (u32) 0 on success, 1 on error.
+
+#### `func perfReaderResume(perfMapHandle uint32) uint32`
+
+Resume the perf buffer.
+
+Parameters:
+- `perfMapHandle` (u32): Handle to a perf buffer.
+
+Return value:
+- (u32) 0 on success, 1 on error.
+
+#### `func perfReaderRead(perfMapHandle uint32, addrBufPtr uint32) uint32`
+
+Read the perf buffer.
+
+Parameters:
+- `perfMapHandle` (u32): Handle to a perf buffer.
+- `addrBufPtr` (u32): Address to a bufptr where the record will be written. The bufptr will be allocated by the function and must be freed by the caller.
+
+Return value:
+- (u32) 0 on success, 1 on error, 2 on deadline exceeded.
+
+#### `func perfReaderClose(perfMapHandle uint32) uint32`
+
+Close the perf buffer.
+
+Parameters:
+- `perfMapHandle` (u32): Handle to a perf buffer.
+
+Return value:
+- (u32) 0 on success, 1 on error.
