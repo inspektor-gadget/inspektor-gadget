@@ -52,6 +52,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// Blank import for some operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/eventgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
