@@ -119,13 +119,24 @@ func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInsta
 	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
+		preStop, ok := opInst.(operators.PreStop)
+		if !ok {
+			continue
+		}
+		c.Logger().Debugf("pre-stopping op %q", opInst.Name())
+		err := preStop.PreStop(c)
+		if err != nil {
+			c.Logger().Errorf("pre-stopping operator %q: %v", opInst.Name(), err)
+		}
+	}
+	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
+		opInst := dataOperatorInstances[i]
 		c.Logger().Debugf("stopping op %q", opInst.Name())
 		err := opInst.Stop(c)
 		if err != nil {
 			c.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
-	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
 		postStop, ok := opInst.(operators.PostStop)
