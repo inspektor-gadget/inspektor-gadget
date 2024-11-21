@@ -101,6 +101,8 @@ func (w *wasmOperator) InstantiateImageOperator(
 }
 
 type wasmOperatorInstance struct {
+	ctx       context.Context
+	cancel    func()
 	rt        wazero.Runtime
 	gadgetCtx operators.GadgetContext
 	mod       wapi.Module
@@ -295,14 +297,19 @@ func (i *wasmOperatorInstance) callGuestFunction(ctx context.Context, name strin
 }
 
 func (i *wasmOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPreStart")
+	// We're creating a new context here that gets cancelled when Stop() is called; it is important to know
+	// that gadgetInit uses the gadgetContext instead, which will be cancelled whenever the gadgetCtx is cancelled
+	// (and so are any callbacks registered in gadgetInit)
+	i.ctx, i.cancel = context.WithCancel(context.Background())
+	return i.callGuestFunction(i.ctx, "gadgetPreStart")
 }
 
 func (i *wasmOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
-	return i.callGuestFunction(gadgetCtx.Context(), "gadgetStart")
+	return i.callGuestFunction(i.ctx, "gadgetStart")
 }
 
 func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	i.cancel()
 	defer func() {
 		i.handleLock.Lock()
 		i.handleMap = nil
