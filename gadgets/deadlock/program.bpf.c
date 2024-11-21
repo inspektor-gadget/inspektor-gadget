@@ -41,6 +41,13 @@ struct {
 	       struct held_mutex[MAX_HELD_MUTEXES]); // array of held mutexes
 } thread_to_held_mutexes SEC(".maps");
 
+// Represents a dead process.
+struct dead_pid {
+	gadget_pid pid;
+};
+
+GADGET_TRACER_MAP(dead_pids, 1024 * 256);
+
 // Key type for edges. Represents an edge from mutex1 to mutex2.
 struct edges_key {
 	__u64 mutex1;
@@ -68,7 +75,11 @@ struct {
 	__type(value, struct edges_value);
 } edges SEC(".maps");
 
+const volatile pid_t targ_pid = 0;
+GADGET_PARAM(targ_pid);
+
 GADGET_MAPITER(mutex, edges);
+GADGET_TRACER(process_exit, dead_pids, dead_pid);
 
 /*
  * Creates edges in the mutex wait graph from each mutex
@@ -83,6 +94,10 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
+
+	/* filters */
+	if (targ_pid && targ_pid != pid)
+		return 0;
 
 	struct held_mutex *held_mutexes = bpf_map_lookup_or_try_init(
 		&thread_to_held_mutexes, &tid, &EMPTY_HELD_MUTEXES);
@@ -160,7 +175,13 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
 		return 0;
 
-	u32 tid = (u32)bpf_get_current_pid_tgid();
+	u64 pid_tgid = bpf_get_current_pid_tgid();
+	u32 tid = (u32)pid_tgid;
+	u32 pid = pid_tgid >> 32;
+
+	/* filters */
+	if (targ_pid && targ_pid != pid)
+		return 0;
 
 	// Fetch the held mutexes for the current thread
 	struct held_mutex *held_mutexes =
@@ -196,6 +217,40 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 	return 0;
 }
 
+/*
+ * Removes dead threads from BPF maps and
+ * sends dead process IDs to userspace for clean-up
+ */
+static __always_inline int trace_process_exit(void *ctx)
+{
+	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+		return 0;
+
+	u64 pid_tgid = bpf_get_current_pid_tgid();
+	u32 tid = (u32)pid_tgid;
+	u32 pid = pid_tgid >> 32;
+
+	/* filters */
+	if (targ_pid && targ_pid != pid)
+		return 0;
+
+	bpf_map_delete_elem(&thread_to_held_mutexes, &tid);
+
+	if (tid == pid) {
+		// Process exited, send dead PID to userspace
+		struct dead_pid *event;
+
+		event = gadget_reserve_buf(&dead_pids, sizeof(*event));
+		if (!event)
+			return 0;
+
+		event->pid = pid;
+
+		gadget_submit_buf(ctx, &dead_pids, event, sizeof(*event));
+	}
+	return 0;
+}
+
 /* mutex acquisition */
 SEC("uprobe/libc:pthread_mutex_lock")
 int BPF_UPROBE(trace_uprobe_mutex_lock, void *mutex_addr)
@@ -208,6 +263,13 @@ SEC("uprobe/libc:pthread_mutex_unlock")
 int BPF_UPROBE(trace_uprobe_mutex_unlock, void *mutex_addr)
 {
 	return trace_mutex_release(ctx, (u64)mutex_addr);
+}
+
+/* process exit */
+SEC("tracepoint/sched/sched_process_exit")
+int trace_sched_process_exit(void *ctx)
+{
+	return trace_process_exit(ctx);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";

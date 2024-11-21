@@ -45,7 +45,7 @@ func gadgetInit() int {
 	graphs = make(map[uint32]*digraph.DiGraph)
 	detectedCycles = make(map[uint32]map[string]struct{})
 
-	// Get the mutex datasource and its fields
+	// Get the `mutex` datasource and its fields
 	dsMutex, err := api.GetDataSource("mutex")
 	if err != nil {
 		api.Warnf("failed to get datasource: %s", err)
@@ -97,7 +97,24 @@ func gadgetInit() int {
 		return 1
 	}
 
-	// Create the deadlock datasource and its fields
+	// Get the `process_exit` datasource and its fields
+	dsProcessExit, err := api.GetDataSource("process_exit")
+	if err != nil {
+		api.Warnf("failed to get datasource: %s", err)
+		return 1
+	}
+	deadPidF, err := dsProcessExit.GetField("pid")
+	if err != nil {
+		api.Warnf("failed to get field: %s", err)
+		return 1
+	}
+	err = dsProcessExit.Unreference()
+	if err != nil {
+		api.Warnf("failed to unreference datasource: %s", err)
+		return 1
+	}
+
+	// Create the `deadlock` datasource and its fields
 	dsDeadlock, err := api.NewDataSource("deadlock", api.DataSourceTypeSingle)
 	if err != nil {
 		api.Warnf("failed to create datasource: %s", err)
@@ -134,7 +151,7 @@ func gadgetInit() int {
 		return 1
 	}
 
-	// Build the graph for deadlock detection using edges from the mutex datasource
+	// Build the graph for deadlock detection using edges from the `mutex` datasource
 	dsMutex.SubscribeArray(func(source api.DataSource, data api.DataArray) error {
 		affectedPIDs := make(map[uint32]struct{})
 		for i := 0; i < data.Len(); i++ {
@@ -246,6 +263,19 @@ func gadgetInit() int {
 		}
 		return nil
 	}, 0)
+
+	// Clean up dead processes using pid from the `process_exit` datasource
+	dsProcessExit.Subscribe(func(source api.DataSource, data api.Data) {
+		deadPid, err := deadPidF.Uint32(data)
+		if err != nil {
+			api.Warnf("failed to get pid: %s", err)
+			return
+		}
+		delete(pidInfo, deadPid)
+		delete(graphs, deadPid)
+		delete(detectedCycles, deadPid)
+	}, 0)
+
 	return 0
 }
 
