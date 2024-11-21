@@ -48,6 +48,8 @@ type mapIter struct {
 
 	interval time.Duration
 	count    int
+
+	flushOnStop bool
 }
 
 func (i *ebpfInstance) populateMap(t btf.Type, varName string) error {
@@ -204,18 +206,26 @@ func (i *ebpfInstance) runMapIterators() error {
 		i.wg.Add(1)
 		go func() {
 			defer i.wg.Done()
-			if iter.interval == 0 {
-				// Only a single time; is this really useful?
+			if iter.interval == 0 && iter.count == 1 {
+				// Only a single time if interval is zero and count is 1
 				fetch()
 				return
 			}
 			ctr := 0
-			ticker := time.NewTicker(iter.interval)
+
+			tickerChan := make(<-chan time.Time)
+			if iter.interval > 0 {
+				tickerChan = time.NewTicker(iter.interval).C
+			}
 			for {
 				select {
 				case <-i.done:
+					if iter.flushOnStop {
+						i.logger.Debugf("flushing map")
+						fetch()
+					}
 					return
-				case <-ticker.C:
+				case <-tickerChan:
 					fetch()
 					ctr++
 					if iter.count > 0 && ctr >= iter.count {
