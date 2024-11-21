@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -318,9 +317,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			isDetach := detachedParam != nil && detachedParam.AsBool()
 
 			if isDetach {
-				// Copy special oci params
-				ociParams.CopyToMap(paramValueMap, "operator.oci.")
-				return runInstanceSpecsDetached(ctx, runtime, specs, runtimeParams, paramValueMap,
+				return runInstanceSpecsDetached(ctx, runtime, specs, runtimeParams,
 					gadgetcontext.WithDataOperators(ops...),
 					gadgetcontext.WithTimeout(timeoutDuration),
 					gadgetcontext.WithUseInstance(false),
@@ -343,9 +340,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
 			runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
 
-			tempParams := spec.ParamValues
-			maps.Copy(tempParams, paramValueMap)
-			paramValueMap = tempParams
+			paramValueMap = spec.ParamValues
 		}
 
 		if commandMode == CommandModeAttach {
@@ -427,7 +422,6 @@ func runInstanceSpecsDetached(
 	runtime runtime.Runtime,
 	specs []*gadgetmanifest.InstanceSpec,
 	runtimeParams *params.Params,
-	paramValueMap map[string]string,
 	runOptions ...gadgetcontext.Option,
 ) error {
 	var merr error
@@ -439,8 +433,6 @@ func runInstanceSpecsDetached(
 		runtimeParams.Set("name", spec.Name)
 		runtimeParams.Set("tags", strings.Join(spec.Tags, ","))
 		runtimeParams.Set("node", strings.Join(spec.Nodes, ","))
-
-		maps.Copy(spec.ParamValues, paramValueMap)
 
 		gadgetCtx := gadgetcontext.New(ctx, image, runOptions...)
 
