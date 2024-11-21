@@ -1,0 +1,14 @@
+name: advise_seccomp
+datasources:
+  syscallconv:
+    annotations:
+      cli.output-mode: none
+  syscalls:
+    annotations:
+      cli.output-mode: none
+      ebpf.map.flush-on-stop: true
+      ebpf.map.init.0.key: "0000000000000000"
+  advise:
+    annotations:
+      cli.supported-output-modes: advise
+      cli.default-output-mode: advise
