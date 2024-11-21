@@ -1,0 +1,81 @@
+# Check if all gadgets have tagged official and cncf in artifacthub.
+name: Check ArtifactHub Tags of Gadgets
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'
+
+env:
+  NO_COLOR: '\033[0m'
+  RED: '\033[0;31m'
+  GREEN: '\033[0;32m'
+  LIGHT_YELLOW: '\033[0;33m'
+
+jobs:
+  check-gadgets:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Gather valid gadgets
+      id: filter-gadgets
+      run: |
+        gadgets=$(find gadgets -name 'artifacthub-pkg.yml' | cut -d'/' -f2 | perl -p -e 's/_/-/')
+        gadgets=$(echo "$gadgets" | tr '\n' ',' | sed 's/,$//')
+
+        echo "valid-gadgets-string=${gadgets}" >> $GITHUB_OUTPUT
+
+    - name: Check artifacthub tags
+      id: check-artifacthub-tags
+      env:
+        VALID_GADGETS_STRING: ${{ steps.filter-gadgets.outputs.valid-gadgets-string }}
+      run: |
+        passed_gadgets=()
+        failed_gadgets=()
+
+        # Iterate over each gadget name in the string
+        IFS=',' read -ra GADGETS <<< "$VALID_GADGETS_STRING"
+
+        if [ ${#GADGETS[@]} -eq 0 ]; then
+          echo -e "${LIGHT_YELLOW}Zero gadgets to be checked${NO_COLOR}"
+          exit 0
+        fi
+
+        for gadget in "${GADGETS[@]}"; do
+          echo -e "Checking gadget: ${LIGHT_YELLOW}$gadget${NO_COLOR}"
+
+          # Perform the curl request to get JSON data
+          response=$(curl -s -X 'GET' \
+            "https://artifacthub.io/api/v1/packages/inspektor-gadget/gadgets/$gadget" \
+            -H 'accept: application/json')
+
+          # Extract 'official' and 'cncf' values (if there are no keys, jq will return null)
+          official=$(echo "$response" | jq -r '.official')
+          cncf=$(echo "$response" | jq -r '.cncf')
+
+          if [[ "$official" == "true" && "$cncf" == "true" ]]; then
+            passed_gadgets+=("$gadget")
+          else
+            failed_gadgets+=("$gadget")
+          fi
+
+          # Gracefully handle rate limits by adding a 0.5-second delay between requests
+          sleep 0.5
+        done
+
+        if [ ${#passed_gadgets[@]} -gt 0 ]; then
+          echo -e "\n${GREEN}Passed Gadgets: ${passed_gadgets[@]}${NO_COLOR}"
+        else
+          >&2 echo -e "\n${RED}All gadgets failed: ${failed_gadgets[@]}${NO_COLOR}"
+          exit 1
+        fi
+
+        if [ ${#failed_gadgets[@]} -gt 0 ]; then
+          >&2 echo -e "\n${RED}Failed Gadgets: ${failed_gadgets[@]}${NO_COLOR}"
+          exit 1
+        else
+          echo -e "\n${GREEN}All Passed!${NO_COLOR}"
+        fi
