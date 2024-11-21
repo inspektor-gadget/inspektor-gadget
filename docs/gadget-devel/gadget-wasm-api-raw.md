@@ -434,3 +434,14 @@ Parameters:
 
 Return value:
 - 0 in case of success, 1 otherwise.
+
+#### `mapRelease(m uint32) uint32`
+
+Close the map created by `newMap()`.
+The map handle is released and can no longer be used.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `newMap()`)
+
+Return value:
+- 0 in case of success, 1 otherwise.

@@ -67,6 +67,13 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
+
+	exportFunction(env, "mapRelease", i.mapRelease,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // Map
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
+	)
 }
 
 // newMap creates a new map.
@@ -105,7 +112,13 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 		return
 	}
 
-	stack[0] = wapi.EncodeU32(i.addHandle(ebpfMap))
+	mapHandle := i.addHandle(ebpfMap)
+
+	i.createdMapMutex.Lock()
+	i.createdMap[mapHandle] = struct{}{}
+	i.createdMapMutex.Unlock()
+
+	stack[0] = wapi.EncodeU32(mapHandle)
 }
 
 // getMap gets an existing map.
@@ -262,4 +275,43 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 		return
 	}
 	stack[0] = 0
+}
+
+// mapRelease close the map and release the handle.
+// Params:
+// - stack[0]: Map handle
+// Return value:
+// - 0 on success, 1 on error
+func (i *wasmOperatorInstance) mapRelease(ctx context.Context, m wapi.Module, stack []uint64) {
+	mapHandle := wapi.DecodeU32(stack[0])
+
+	ebpfMap, ok := getHandle[*ebpf.Map](i, mapHandle)
+	if !ok {
+		stack[0] = 1
+		return
+	}
+
+	i.createdMapMutex.RLock()
+	_, ok = i.createdMap[mapHandle]
+	i.createdMapMutex.RUnlock()
+
+	if !ok {
+		i.logger.Warnf("mapRelease: map %d was not created by newMap() or was already closed", mapHandle)
+		stack[0] = 1
+		return
+	}
+
+	stack[0] = 0
+
+	err := ebpfMap.Close()
+	if err != nil {
+		i.logger.Warnf("mapRelease: closing map: %v", err)
+		stack[0] = 1
+	}
+
+	i.createdMapMutex.Lock()
+	delete(i.createdMap, mapHandle)
+	i.createdMapMutex.Unlock()
+
+	i.delHandle(mapHandle)
 }

@@ -128,6 +128,12 @@ func gadgetStart() int {
 		return 1
 	}
 
+	err = m.Close()
+	if err == nil {
+		api.Errorf("cannot close a map got with GetMap()")
+		return 1
+	}
+
 	mapSpec := api.MapSpec{
 		Name:       "map_test",
 		Type:       api.Hash,
@@ -140,6 +146,7 @@ func gadgetStart() int {
 	if err != nil {
 		api.Errorf("creating map %s", mapSpec.Name)
 	}
+	defer newMap.Close()
 
 	k := int32(42)
 	val = int32(43)
