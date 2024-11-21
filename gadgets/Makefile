@@ -19,6 +19,7 @@ UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
 
 GADGETS = \
+	advise_seccomp \
 	audit_seccomp \
 	deadlock \
 	fdpass \
