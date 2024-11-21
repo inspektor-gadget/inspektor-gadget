@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -147,8 +148,46 @@ func (i *ebpfInstance) evaluateMapParams(paramValues api.ParamValues) error {
 func (i *ebpfInstance) runMapIterators() error {
 	for _, iter := range i.mapIters {
 		iterMap, ok := i.collection.Maps[iter.mapName]
+
 		if !ok {
 			return fmt.Errorf("map %q not found", iter.mapName)
+		}
+
+		// Check init values and apply them to the map
+		annotations := iter.ds.Annotations()
+		for k, keyValue := range annotations {
+			if r1, found := strings.CutPrefix(k, "ebpf.map.init."); found {
+				if r2, found := strings.CutSuffix(r1, ".key"); found {
+					i.logger.Debugf("writing inital value to map")
+					valueValue := annotations["ebpf.map.init."+r2+".value"]
+					mapKey := make([]byte, iterMap.KeySize())
+					mapValue := make([]byte, iterMap.ValueSize())
+					if len(keyValue) > 0 {
+						keyBytes, err := hex.DecodeString(keyValue)
+						if err != nil {
+							return fmt.Errorf("decoding init key %s for map %q from hex: %w", iter.ds.Name(), r2, err)
+						}
+						if len(mapKey) != len(keyBytes) {
+							return fmt.Errorf("decoding init key %s for map %q from hex: expected len of %d, got %d", iter.ds.Name(), r2, len(mapKey), len(keyBytes))
+						}
+						copy(mapKey, keyBytes)
+					}
+					if len(valueValue) > 0 {
+						valBytes, err := hex.DecodeString(valueValue)
+						if err != nil {
+							return fmt.Errorf("decoding init value %s for map %q from hex: %w", iter.ds.Name(), r2, err)
+						}
+						if len(mapValue) != len(valBytes) {
+							return fmt.Errorf("decoding init value %s for map %q from hex: expected len of %d, got %d", iter.ds.Name(), r2, len(mapValue), len(valBytes))
+						}
+						copy(mapValue, valBytes)
+					}
+					err := iterMap.Update(mapKey, mapValue, ebpf.UpdateNoExist)
+					if err != nil {
+						i.logger.Warnf("error updating map %q with initial value: %w", iter.ds.Name(), err)
+					}
+				}
+			}
 		}
 		fetch := func() {
 			p, err := iter.ds.NewPacketArray()
