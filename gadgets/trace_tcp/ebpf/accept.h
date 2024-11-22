@@ -19,7 +19,7 @@ static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 	if (!sk)
 		return;
 
-	if (filter_event(sk))
+	if (filter_event(sk, accept))
 		return;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
@@ -34,8 +34,7 @@ static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 	if (!event)
 		return;
 
-	fill_event(event, &t, accept);
-	gadget_process_populate(&event->proc);
+	fill_event(event, &t, NULL, 0, accept);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }

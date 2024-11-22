@@ -16,7 +16,7 @@ static __always_inline void handle_tcp_close(struct pt_regs *ctx,
 	struct event *event;
 	u16 family;
 
-	if (filter_event(sk))
+	if (filter_event(sk, close))
 		return;
 
 	/*
@@ -36,8 +36,7 @@ static __always_inline void handle_tcp_close(struct pt_regs *ctx,
 	if (!event)
 		return;
 
-	fill_event(event, &tuple, close);
-	gadget_process_populate(&event->proc);
+	fill_event(event, &tuple, NULL, 0, close);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }
