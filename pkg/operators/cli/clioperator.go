@@ -58,8 +58,15 @@ const (
 	// output modes for a DataSource in a comma-separated list.
 	AnnotationSupportedOutputModes = "cli.supported-output-modes"
 
+	// AnnotationOutputMode can be used to specify the output mode for a
+	// DataSource.
+	AnnotationOutputMode = "cli.output-mode"
+
 	// AnnotationDefaultOutputMode can be used to specify the default output mode for a DataSource.
 	AnnotationDefaultOutputMode = "cli.default-output-mode"
+
+	// OutputModeNone can be used to disable output for a DataSource.
+	OutputModeNone = "none"
 )
 
 var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
@@ -139,6 +146,10 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
   Supported data sources / output modes:`)
 	outputDefaultValues := make([]string, 0, len(dataSources))
 	for _, ds := range dataSources {
+		if ds.Annotations()[AnnotationOutputMode] == OutputModeNone {
+			continue
+		}
+
 		// Fields
 		fields := ds.Fields()
 		availableFields := make([]*api.Field, 0, len(fields))
@@ -299,7 +310,10 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	}
 
 	for _, ds := range gadgetCtx.GetDataSources() {
-		gadgetCtx.Logger().Debugf("subscribing to %s", ds.Name())
+		// this needs to be discussed
+		if ds.Annotations()[AnnotationOutputMode] == OutputModeNone {
+			continue
+		}
 
 		fields, hasFields := fieldLookup[ds.Name()]
 		if !hasFields {
