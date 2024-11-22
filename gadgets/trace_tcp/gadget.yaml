@@ -18,3 +18,12 @@ datasources:
       type:
         annotations:
           description: Type of TCP connection event
+      error_raw:
+        annotations:
+          columns.hidden: true
+params:
+  ebpf:
+    connect_only:
+      key: connect-only
+      defaultValue: "false"
+      description: Show only connect events

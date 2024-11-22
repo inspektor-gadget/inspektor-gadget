@@ -35,6 +35,7 @@ struct event {
 	struct gadget_l4endpoint_t dst;
 
 	enum event_type type_raw;
+	gadget_errno error_raw;
 };
 
 struct tuple_key_t {
@@ -47,6 +48,10 @@ __u8 ip_v6_zero[16] = {
 	0,
 };
 
+const volatile bool connect_only = false;
+
+GADGET_PARAM(connect_only);
+
 /* Define here, because there are conflicts with include files */
 #define AF_INET 2
 #define AF_INET6 10
@@ -58,9 +63,12 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(tracetcp, events, event);
 
 /* returns true if the event should be skipped */
-static __always_inline bool filter_event(struct sock *sk)
+static __always_inline bool filter_event(struct sock *sk, enum event_type type)
 {
 	u16 family;
+
+	if (connect_only && type != connect)
+		return true;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family != AF_INET && family != AF_INET6)
@@ -130,13 +138,20 @@ static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
 }
 
 static __always_inline void fill_event(struct event *event,
-				       struct tuple_key_t *tuple, __u8 type)
+				       struct tuple_key_t *tuple,
+				       struct gadget_process *proc, int err,
+				       enum event_type type)
 {
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->type_raw = type;
 	event->src = tuple->src;
 	event->dst = tuple->dst;
 	event->netns_id = tuple->netns;
+	event->error_raw = err;
+	if (proc)
+		event->proc = *proc;
+	else
+		gadget_process_populate(&event->proc);
 }
 
 #endif // __IG_TCP_COMMON_H
