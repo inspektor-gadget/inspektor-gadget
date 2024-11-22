@@ -137,6 +137,10 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
   Supported data sources / output modes:`)
 	outputDefaultValues := make([]string, 0, len(dataSources))
 	for _, ds := range dataSources {
+		if ds.Annotations()["cli.output-mode"] == "none" {
+			continue
+		}
+
 		// Fields
 		fields := ds.Fields()
 		availableFields := make([]*api.Field, 0, len(fields))
@@ -297,7 +301,10 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	}
 
 	for _, ds := range gadgetCtx.GetDataSources() {
-		gadgetCtx.Logger().Debugf("subscribing to %s", ds.Name())
+		// this needs to be discussed
+		if ds.Annotations()["cli.output-mode"] == "none" {
+			continue
+		}
 
 		fields, hasFields := fieldLookup[ds.Name()]
 		if !hasFields {
