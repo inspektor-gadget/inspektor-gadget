@@ -50,6 +50,12 @@ config:
   # -- Set AppArmor profile.
   appArmorProfile: "unconfined"
 
+  # -- Enable OpenTelemetry metrics listener
+  otelMetricsListen: false
+
+  # -- Address to listen for OpenTelemetry metrics
+  otelMetricsAddress: "0.0.0.0:2224"
+
 image:
   # -- Container repository for the container image
   repository: ghcr.io/inspektor-gadget/inspektor-gadget
