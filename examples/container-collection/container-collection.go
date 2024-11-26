@@ -47,7 +47,7 @@ func main() {
 		containercollection.WithPubSub(callback),
 
 		// Get containers created with runc
-		containercollection.WithRuncFanotify(),
+		containercollection.WithContainerFanotifyEbpf(),
 
 		// Enrich those containers with data from the container
 		// runtime. docker and containerd in this case.

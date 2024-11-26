@@ -116,10 +116,6 @@ The different supported modes can be set by using the `hook-mode` option:
   available.
 - `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri).
   It requires containerd v1.5 and it's not considered when `auto` is used.
-- `fanotify`: Uses the Linux
-  [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API. It
-  works with both runc and crun. It requires to run in the host pid namespace
-  (`hostPID=true`).
 - `fanotify+ebpf`:  Uses the Linux
   [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
   eBPF module. It works with both runc and crun. It works regardless of the

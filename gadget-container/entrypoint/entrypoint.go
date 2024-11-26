@@ -309,7 +309,7 @@ func main() {
 	switch hookMode {
 	case "crio", "nri":
 		gadgetTracerManagerHookMode = "none"
-	case "fanotify", "fanotify+ebpf", "podinformer":
+	case "fanotify+ebpf", "podinformer":
 		gadgetTracerManagerHookMode = hookMode
 	}
 

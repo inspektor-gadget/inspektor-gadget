@@ -74,7 +74,6 @@
 /pkg/rawsock/ @alban
 /pkg/resources/manifests/ @eiffel-fl
 /pkg/resources/rbac/ @eiffel-fl
-/pkg/runcfanotify/ @alban
 /pkg/runtime/ @flyth @mauriciovasquezbernal
 /pkg/socketenricher/ @alban
 /pkg/standardgadgets/ @mauriciovasquezbernal

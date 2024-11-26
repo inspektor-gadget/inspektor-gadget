@@ -66,8 +66,8 @@ func main() {
 		// there is an event
 		containercollection.WithTracerCollection(tracerCollection),
 
-		// Get containers created with runc
-		containercollection.WithRuncFanotify(),
+		// Get containers created with runc or crun
+		containercollection.WithContainerFanotifyEbpf(),
 
 		// Enrich events with Linux namespaces information
 		// It's needed to be able to filter by containers in this example.

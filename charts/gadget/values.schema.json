@@ -21,7 +21,6 @@
             "crio",
             "podinformer",
             "nri",
-            "fanotify",
             "fanotify+ebpf"
           ]
         },

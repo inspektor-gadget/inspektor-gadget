@@ -1,7 +1,7 @@
-# Example with the runcfanotify package
+# Example with the container-hook package
 
-This example uses the runcfanotify package
-("github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify") in order to:
+This example uses the container-hook package
+("github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook") in order to:
 
 1. receive notifications when a container starts (including its
    [configuration](https://github.com/opencontainers/runtime-spec/blob/main/config.md))
@@ -35,7 +35,7 @@ $ kubectl run -ti --rm --image busybox shell1 -- sh
 
 Notice the logs:
 ```
-$ kubectl logs -n runc-hook runc-hook-c9nsf
+$ kubectl logs -n container-hook container-hook-c9nsf
 Container added: 27e08a048becd153a3a73447dfb9dd241079a9f5d24fb2eab768289e06ee73ff pid 417824
 {"ociVersion":"1.0.2-dev",...}
 OCI State in prestart hook:

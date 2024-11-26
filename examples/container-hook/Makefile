@@ -15,5 +15,14 @@ test-output:
 test-hook:
 	sudo ./container-hook -prestart 'cat > /tmp/hooks.log'
 
+build-container:
+	DOCKER_BUILDKIT=1 docker build -t $(CONTAINER_REPO)-container-hook:$(IMAGE_TAG) -f Dockerfile ../..
+
+install:
+	sed "s|image: .*:latest|image: $(CONTAINER_REPO)-container-hook:$(IMAGE_TAG)|" deploy.yaml | kubectl apply -f -
+
+uninstall:
+	kubectl delete -f deploy.yaml
+
 clean:
 	rm -f container-hook container-hook-static

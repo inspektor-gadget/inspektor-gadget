@@ -6,7 +6,7 @@ developers that want to use the Golang packages exposed by Inspektor
 Gadget directly. End-users do not need this and can use `kubectl-gadget`
 or `ig` directly.
 
-- [runc-hook](runc-hook/): Use of the runcfanotify package to
+- [container-hook](container-hook/): Use of the container-hook package to
   - receive notifications when a container starts or terminates
   - execute PreStart and PostStop hooks
 - [container-collection](container-collection/): Use the
