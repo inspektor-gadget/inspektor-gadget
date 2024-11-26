@@ -138,13 +138,16 @@ func (t *Handler) newAttachment(pid uint32, iface *net.Interface, netns uint64, 
 		users: map[uint32]struct{}{pid: {}},
 	}
 
-	var qdisc *tc.Object
+	var fqQdisc, clsactQdisc *tc.Object
 
 	defer func() {
 		if err != nil {
 			t.closeAttachment(a)
-			if qdisc != nil {
-				t.tcnl.Qdisc().Delete(qdisc)
+			if clsactQdisc != nil {
+				t.tcnl.Qdisc().Delete(clsactQdisc)
+			}
+			if fqQdisc != nil {
+				t.tcnl.Qdisc().Delete(fqQdisc)
 			}
 		}
 	}()
@@ -162,9 +165,13 @@ func (t *Handler) newAttachment(pid uint32, iface *net.Interface, netns uint64, 
 		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
 	}
 
-	// We create the clsact qdisc and leak it. We can't remove it because we'll break any other
-	// application (including other ig instances) that are using it.
-	if qdisc, err = createClsActQdisc(t.tcnl, iface); err != nil && !errors.Is(err, unix.EEXIST) {
+	// Step 1: Add fq qdisc for egress traffic shaping
+	if fqQdisc, err = createFqQdisc(t.tcnl, iface); err != nil && !errors.Is(err, unix.EEXIST) {
+		return nil, fmt.Errorf("creating fq qdisc: %w", err)
+	}
+
+	// Step 2: Add clsact qdisc for attaching eBPF programs
+	if clsactQdisc, err = createClsActQdisc(t.tcnl, iface); err != nil && !errors.Is(err, unix.EEXIST) {
 		return nil, fmt.Errorf("creating clsact qdisc: %w", err)
 	}
 
@@ -177,6 +184,7 @@ func (t *Handler) newAttachment(pid uint32, iface *net.Interface, netns uint64, 
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
+	// Step 3: Attach the eBPF program to the clsact qdisc
 	a.filter, err = addTCFilter(t.tcnl, a.dispatcher.IgNetDisp, iface, direction)
 	if err != nil {
 		return nil, fmt.Errorf("attaching ebpf program to interface %s: %w", iface.Name, err)
