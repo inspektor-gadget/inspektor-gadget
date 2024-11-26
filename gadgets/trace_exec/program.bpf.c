@@ -15,9 +15,8 @@
 // Defined in include/uapi/linux/magic.h
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
 
-#define ARGSIZE 128
-#define TOTAL_MAX_ARGS 60
-#define DEFAULT_MAXARGS 20
+#define ARGSIZE 256
+#define TOTAL_MAX_ARGS 20
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
 #define INVALID_UID ((uid_t)-1)
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
@@ -42,7 +41,6 @@ struct event {
 
 const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
-const volatile int max_args = DEFAULT_MAXARGS;
 const volatile bool paths = false;
 
 GADGET_PARAM(ignore_failed);
@@ -137,7 +135,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 
 	event->args_count++;
 #pragma unroll
-	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
+	for (i = 1; i < TOTAL_MAX_ARGS; i++) {
 		bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (!argp)
 			return 0;
@@ -154,7 +152,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 		event->args_size += ret;
 	}
 	/* try to read one more argument to check if there is one */
-	bpf_probe_read_user(&argp, sizeof(argp), &args[max_args]);
+	bpf_probe_read_user(&argp, sizeof(argp), &args[TOTAL_MAX_ARGS]);
 	if (!argp)
 		return 0;
 

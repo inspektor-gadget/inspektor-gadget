@@ -6,8 +6,6 @@
 
 #include "execruntime.h"
 
-const volatile int max_args = DEFAULT_MAXARGS;
-
 static const struct record empty_record = {};
 
 // configured by userspace
@@ -149,7 +147,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	}
 
 #pragma unroll
-	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
+	for (i = 1; i < TOTAL_MAX_ARGS; i++) {
 		ret = bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (ret != 0 || !argp)
 			return 0;

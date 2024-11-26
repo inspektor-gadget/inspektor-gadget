@@ -30,7 +30,7 @@ type execsnoopEvent struct {
 	ArgsSize    uint32
 	Comm        [16]uint8
 	Pcomm       [16]uint8
-	Args        [7680]uint8
+	Args        [5120]uint8
 	_           [4]byte
 }
 

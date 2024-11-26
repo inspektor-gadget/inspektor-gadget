@@ -34,7 +34,7 @@ type execsnoopWithLongPathsEvent struct {
 	Pcomm       [16]uint8
 	Cwd         [4096]uint8
 	Exepath     [4096]uint8
-	Args        [7680]uint8
+	Args        [5120]uint8
 	_           [4]byte
 }
 
