@@ -27,8 +27,14 @@ import (
 	"syscall"
 	"time"
 
-	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
@@ -45,7 +51,48 @@ var (
 	timeout      = flag.String("timeout", "10s", "timeout")
 
 	timeoutDuration time.Duration
+
+	publishKubernetesEvent = flag.Bool("publish-kubernetes-event", false, "Publish an event using the Kubernetes Event API")
+	kubeconfig             = flag.String("kubeconfig", "", "kubeconfig")
+	node                   = flag.String("node", "", "Node name")
+
+	client *kubernetes.Clientset
 )
+
+func publishEvent(reason, message string) {
+	eventTime := metav1.NewTime(time.Now())
+	event := &api.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v.%x", *node, time.Now().UnixNano()),
+			Namespace: "default",
+		},
+		Source: api.EventSource{
+			Component: "RuncHook",
+			Host:      *node,
+		},
+		Count:               1,
+		ReportingController: "github.com/inspektor-gadget/inspektor-gadget",
+		ReportingInstance:   os.Getenv("POD_NAME"), // pod name
+		FirstTimestamp:      eventTime,
+		LastTimestamp:       eventTime,
+		InvolvedObject: api.ObjectReference{
+			Kind: "Node",
+			Name: *node,
+			// Uncomment to make it visible in 'kubectl describe node'
+			//UID: types.UID(*node),
+		},
+		Type:    api.EventTypeNormal,
+		Reason:  reason,
+		Message: message,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := client.CoreV1().Events("default").Create(ctx, event, metav1.CreateOptions{}); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create event: %s\n", err)
+	}
+}
 
 func runCommand(command, dir string, env []string, timeout time.Duration, ociState *ocispec.State) error {
 	b, err := json.Marshal(ociState)
@@ -110,6 +157,13 @@ func callback(notif containerhook.ContainerEvent) {
 				fmt.Fprintf(os.Stderr, "Error: container config not found for container %s\n", notif.ContainerID)
 			}
 		}
+		if *publishKubernetesEvent {
+			if config != "" {
+				publishEvent("NewContainerConfig", config)
+			} else {
+				publishEvent("ContainerConfigNotFound", "")
+			}
+		}
 
 		if *hookPreStart != "" {
 			cmd = *hookPreStart
@@ -135,12 +189,17 @@ func callback(notif containerhook.ContainerEvent) {
 }
 
 func main() {
+	host.Init(host.Config{})
+
 	flag.Parse()
 	var err error
 	timeoutDuration, err = time.ParseDuration(*timeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid timeout %q: %s\n", *timeout, err)
 		os.Exit(1)
+	}
+	if *node == "" && os.Getenv("NODE_NAME") != "" {
+		*node = os.Getenv("NODE_NAME")
 	}
 
 	for _, o := range strings.Split(*outputList, ",") {
@@ -157,6 +216,22 @@ func main() {
 			fmt.Fprintf(os.Stderr, "invalid option: %q\n", o)
 			os.Exit(1)
 		}
+	}
+
+	if *publishKubernetesEvent {
+		if *kubeconfig == "" && os.Getenv("KUBECONFIG") != "" {
+			*kubeconfig = os.Getenv("KUBECONFIG")
+		}
+		client, err = k8sutil.NewClientset(*kubeconfig)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get Kubernetes client set: %s\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if !containerhook.Supported() {
+		fmt.Printf("containerhook not supported\n")
+		os.Exit(1)
 	}
 
 	notifier, err := containerhook.NewContainerNotifier(callback)

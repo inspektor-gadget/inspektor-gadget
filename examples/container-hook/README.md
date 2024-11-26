@@ -35,7 +35,7 @@ $ kubectl run -ti --rm --image busybox shell1 -- sh
 
 Notice the logs:
 ```
-$ kubectl logs -n runc-hook runc-hook-c9nsf
+$ kubectl logs -n container-hook container-hook-c9nsf
 Container added: 27e08a048becd153a3a73447dfb9dd241079a9f5d24fb2eab768289e06ee73ff pid 417824
 {"ociVersion":"1.0.2-dev",...}
 OCI State in prestart hook:

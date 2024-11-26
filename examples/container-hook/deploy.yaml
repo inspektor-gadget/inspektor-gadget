@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: runc-hook
+  name: container-hook
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: runc-hook
-  namespace: runc-hook
+  name: container-hook
+  namespace: container-hook
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: runc-hook-cluster-role
+  name: container-hook-cluster-role
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -29,41 +29,41 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: runc-hook-cluster-role-binding
+  name: container-hook-cluster-role-binding
 subjects:
 - kind: ServiceAccount
-  name: runc-hook
-  namespace: runc-hook
+  name: container-hook
+  namespace: container-hook
 roleRef:
   kind: ClusterRole
-  name: runc-hook-cluster-role
+  name: container-hook-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: runc-hook
-  namespace: runc-hook
+  name: container-hook
+  namespace: container-hook
   labels:
-    k8s-app: runc-hook
+    k8s-app: container-hook
 spec:
   selector:
     matchLabels:
-      k8s-app: runc-hook
+      k8s-app: container-hook
   template:
     metadata:
       labels:
-        k8s-app: runc-hook
+        k8s-app: container-hook
     spec:
-      serviceAccount: runc-hook
+      serviceAccount: container-hook
       hostPID: false
       hostNetwork: false
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError
-        image: gadget-runc-hook:latest
+        image: gadget-container-hook:latest
         imagePullPolicy: Always
-        command: ["runc-hook"]
+        command: ["container-hook"]
         args:
           - "-publish-kubernetes-event=true"
           - "-output=add,remove,config"
