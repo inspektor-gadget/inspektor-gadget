@@ -469,6 +469,7 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	gadgetCtx.Logger().Debugf("set mountnsmap for gadget")
 	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
 	gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
+	gadgetCtx.SetVar("containercollection", m.manager.gadgetTracerManager)
 
 	m.mountnsmap = mountnsmap
 	// using PreGadgetRun() for the time being to register attacher funcs
