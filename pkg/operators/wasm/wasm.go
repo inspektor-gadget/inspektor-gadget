@@ -70,6 +70,7 @@ func (w *wasmOperator) InstantiateImageOperator(
 		handleMap:   map[uint32]any{},
 		logger:      gadgetCtx.Logger(),
 		paramValues: paramValues,
+		createdMap:  map[uint32]struct{}{},
 	}
 
 	if err := instance.init(gadgetCtx, target, desc); err != nil {
@@ -117,6 +118,9 @@ type wasmOperatorInstance struct {
 
 	extraParams api.Params
 	paramValues map[string]string
+
+	createdMap      map[uint32]struct{}
+	createdMapMutex sync.RWMutex
 }
 
 func (i *wasmOperatorInstance) Name() string {
@@ -301,6 +305,10 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		i.handleLock.Lock()
 		i.handleMap = nil
 		i.handleLock.Unlock()
+
+		i.createdMapMutex.Lock()
+		i.createdMap = nil
+		i.createdMapMutex.Unlock()
 	}()
 
 	// We need a new context in here, as gadgetCtx has already been cancelled

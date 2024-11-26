@@ -25,6 +25,17 @@ import (
 )
 
 func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
+	exportFunction(env, "newMap", i.newMap,
+		[]wapi.ValueType{
+			wapi.ValueTypeI64, // Map name
+			wapi.ValueTypeI32, // Map type
+			wapi.ValueTypeI32, // Key size
+			wapi.ValueTypeI32, // Value size
+			wapi.ValueTypeI32, // Max entries
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
+	)
+
 	exportFunction(env, "getMap", i.getMap,
 		[]wapi.ValueType{wapi.ValueTypeI64}, // MapName
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
@@ -56,6 +67,58 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
+
+	exportFunction(env, "mapRelease", i.mapRelease,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // Map
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
+	)
+}
+
+// newMap creates a new map.
+// Params:
+// - stack[0] is the map name
+// - stack[1] is the map type
+// - stack[2] is the key size
+// - stack[3] is the value size
+// - stack[4] is the max entries
+// Return value:
+// - Map handle on success, 0 on error
+func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack []uint64) {
+	mapNamePtr := stack[0]
+	mapType := ebpf.MapType(wapi.DecodeU32(stack[1]))
+	keySize := wapi.DecodeU32(stack[2])
+	valueSize := wapi.DecodeU32(stack[3])
+	maxEntries := wapi.DecodeU32(stack[4])
+
+	mapName, err := stringFromStack(m, mapNamePtr)
+	if err != nil {
+		i.logger.Warnf("newMap: reading string from stack: %v", err)
+		stack[0] = 0
+		return
+	}
+
+	ebpfMap, err := ebpf.NewMap(&ebpf.MapSpec{
+		Name:       mapName,
+		Type:       mapType,
+		KeySize:    keySize,
+		ValueSize:  valueSize,
+		MaxEntries: maxEntries,
+	})
+	if err != nil {
+		i.logger.Warnf("newMap: creating map: %v", err)
+		stack[0] = 0
+		return
+	}
+
+	mapHandle := i.addHandle(ebpfMap)
+
+	i.createdMapMutex.Lock()
+	i.createdMap[mapHandle] = struct{}{}
+	i.createdMapMutex.Unlock()
+
+	stack[0] = wapi.EncodeU32(mapHandle)
 }
 
 // getMap gets an existing map.
@@ -212,4 +275,43 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 		return
 	}
 	stack[0] = 0
+}
+
+// mapRelease close the map and release the handle.
+// Params:
+// - stack[0]: Map handle
+// Return value:
+// - 0 on success, 1 on error
+func (i *wasmOperatorInstance) mapRelease(ctx context.Context, m wapi.Module, stack []uint64) {
+	mapHandle := wapi.DecodeU32(stack[0])
+
+	ebpfMap, ok := getHandle[*ebpf.Map](i, mapHandle)
+	if !ok {
+		stack[0] = 1
+		return
+	}
+
+	i.createdMapMutex.RLock()
+	_, ok = i.createdMap[mapHandle]
+	i.createdMapMutex.RUnlock()
+
+	if !ok {
+		i.logger.Warnf("mapRelease: map %d was not created by newMap() or was already closed", mapHandle)
+		stack[0] = 1
+		return
+	}
+
+	stack[0] = 0
+
+	err := ebpfMap.Close()
+	if err != nil {
+		i.logger.Warnf("mapRelease: closing map: %v", err)
+		stack[0] = 1
+	}
+
+	i.createdMapMutex.Lock()
+	delete(i.createdMap, mapHandle)
+	i.createdMapMutex.Unlock()
+
+	i.delHandle(mapHandle)
 }

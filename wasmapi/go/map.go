@@ -15,11 +15,15 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
 	"unsafe"
 )
+
+//go:wasmimport env newMap
+func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32
 
 //go:wasmimport env getMap
 func getMap(name uint64) uint32
@@ -33,6 +37,9 @@ func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
 //go:wasmimport env mapDelete
 func mapDelete(m uint32, keyptr uint64) uint32
 
+//go:wasmimport env mapRelease
+func mapRelease(m uint32) uint32
+
 type Map uint32
 
 type MapUpdateFlags uint64
@@ -45,6 +52,60 @@ const (
 	UpdateExist
 	UpdateLock
 )
+
+type MapType uint32
+
+// Taken from:
+// https://github.com/cilium/ebpf/blob/061e86d8f5e9/types.go#L15-L98
+const (
+	UnspecifiedMap MapType = iota
+	Hash
+	Array
+	ProgramArray
+	PerfEventArray
+	PerCPUHash
+	PerCPUArray
+	StackTrace
+	CGroupArray
+	LRUHash
+	LRUCPUHash
+	LPMTrie
+	ArrayOfMaps
+	HashOfMaps
+	DevMap
+	SockMap
+	CPUMap
+	XSKMap
+	SockHash
+	CGroupStorage
+	ReusePortSockArray
+	PerCPUCGroupStorage
+	Queue
+	Stack
+	SkStorage
+	DevMapHash
+	StructOpsMap
+	RingBuf
+	InodeStorage
+	TaskStorage
+)
+
+type MapSpec struct {
+	Name       string
+	Type       MapType
+	KeySize    uint32
+	ValueSize  uint32
+	MaxEntries uint32
+}
+
+func NewMap(spec MapSpec) (Map, error) {
+	ret := newMap(uint64(stringToBufPtr(spec.Name)), uint32(spec.Type), spec.KeySize, spec.ValueSize, spec.MaxEntries)
+	runtime.KeepAlive(spec.Name)
+	if ret == 0 {
+		return 0, fmt.Errorf("creating map %s", spec.Name)
+	}
+	return Map(ret), nil
+}
 
 func GetMap(name string) (Map, error) {
 	ret := getMap(uint64(stringToBufPtr(name)))
@@ -74,7 +135,7 @@ func (m Map) Lookup(key any, value any) error {
 	runtime.KeepAlive(key)
 	runtime.KeepAlive(value)
 	if ret != 0 {
-		return fmt.Errorf("looking up map")
+		return errors.New("looking up map")
 	}
 
 	v := reflect.ValueOf(value)
@@ -102,7 +163,7 @@ func (m Map) Update(key any, value any, flags MapUpdateFlags) error {
 	runtime.KeepAlive(key)
 	runtime.KeepAlive(value)
 	if ret != 0 {
-		return fmt.Errorf("updating value in map")
+		return errors.New("updating value in map")
 	}
 	return nil
 }
@@ -116,7 +177,15 @@ func (m Map) Delete(key any) error {
 	ret := mapDelete(uint32(m), uint64(keyPtr))
 	runtime.KeepAlive(key)
 	if ret != 0 {
-		return fmt.Errorf("deleting value in map")
+		return errors.New("deleting value in map")
+	}
+	return nil
+}
+
+func (m Map) Close() error {
+	ret := mapRelease(uint32(m))
+	if ret != 0 {
+		return errors.New("closing map")
 	}
 	return nil
 }

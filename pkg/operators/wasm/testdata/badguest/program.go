@@ -100,6 +100,9 @@ func getParamValue(key uint64) uint64
 //go:wasmimport env setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
 
+//go:wasmimport env newMap
+func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32
+
 //go:wasmimport env getMap
 func getMap(name uint64) uint32
 
@@ -111,6 +114,9 @@ func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
 
 //go:wasmimport env mapDelete
 func mapDelete(m uint32, keyptr uint64) uint32
+
+//go:wasmimport env mapRelease
+func mapRelease(m uint32) uint32
 
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
@@ -319,6 +325,12 @@ func gadgetStart() int {
 	assertNonZero(mapLookup(handle, invalidStrPtr, invalidStrPtr), "mapLookup: bad value pointer")
 
 	assertNonZero(mapDelete(handle, invalidStrPtr), "mapDelete: bad key pointer")
+
+	badMap := newMap(stringToBufPtr("badMap"), uint32(api.Hash), uint32(4), uint32(4), 1)
+	assertNonZero(badMap, "newMap: creating map")
+	assertZero(mapRelease(badMap), "mapRelease: closing map")
+	assertNonZero(mapLookup(badMap, invalidStrPtr, invalidStrPtr), "mapLookup: bad handle")
+	assertNonZero(mapRelease(badMap), "mapRelease: bad handle")
 
 	return 0
 }

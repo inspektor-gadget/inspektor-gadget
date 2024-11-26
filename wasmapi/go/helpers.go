@@ -81,7 +81,7 @@ func bytesToBufPtr(b []byte) bufPtr {
 }
 
 // string returns a copy of the string stored in the buffer.
-// The called must call free() on the buffer when done.
+// The caller must call free() on the buffer when done.
 func (b bufPtr) string() string {
 	if b == 0 {
 		return ""
@@ -93,7 +93,7 @@ func (b bufPtr) string() string {
 }
 
 // bytes returns a copy of the bytes stored in the buffer.
-// The called must call free() on the buffer when done.
+// The caller must call free() on the buffer when done.
 func (b bufPtr) bytes() []byte {
 	if b == 0 {
 		return nil

@@ -128,6 +128,54 @@ func gadgetStart() int {
 		return 1
 	}
 
+	err = m.Close()
+	if err == nil {
+		api.Errorf("cannot close a map got with GetMap()")
+		return 1
+	}
+
+	mapSpec := api.MapSpec{
+		Name:       "map_test",
+		Type:       api.Hash,
+		KeySize:    uint32(4),
+		ValueSize:  uint32(4),
+		MaxEntries: 1,
+	}
+
+	newMap, err := api.NewMap(mapSpec)
+	if err != nil {
+		api.Errorf("creating map %s", mapSpec.Name)
+	}
+	defer newMap.Close()
+
+	k := int32(42)
+	val = int32(43)
+	err = newMap.Put(k, val)
+	if err != nil {
+		api.Errorf("setting %v value for key %v in %s", val, k, mapSpec.Name)
+		return 1
+	}
+
+	err = newMap.Lookup(k, &val)
+	if err != nil {
+		api.Errorf("no value found for key %v in %s", k, mapSpec.Name)
+		return 1
+	}
+
+	expectedVal = int32(43)
+	if val != expectedVal {
+		api.Errorf("expected value %d, got %d", expectedVal, val)
+		return 1
+	}
+
+	k = int32(0xdead)
+	val = int32(0xcafe)
+	err = newMap.Put(k, val)
+	if err == nil {
+		api.Errorf("map %s has one max entry, trying to put two", mapSpec.Name)
+		return 1
+	}
+
 	return 0
 }
 

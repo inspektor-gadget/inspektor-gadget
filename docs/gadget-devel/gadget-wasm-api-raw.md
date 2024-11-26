@@ -375,6 +375,20 @@ Return value:
 
 ### eBPF Maps
 
+#### `newMap(name string, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32`
+
+Create a new eBPF map.
+
+Parameters:
+- `name` (string): Map's name
+- `typ` (u32): Map's type
+- `keySize` (u32): Map's keys size
+- `valueSize` (u32): Map's values size
+- `maxEntries` (u32): Map's max entries
+
+Return value:
+- (u32) Handle to map on success, 0 on error.
+
 #### `getMap(name string) uint32`
 
 Get a handle to an existing eBPF map.
@@ -417,6 +431,17 @@ Delete the value corresponding to key in the given map.
 Parameters:
 - `m` (u32): Map handle (as returned by `getMap`)
 - `keyptr` (u64): A `bufPtr` to data corresponding to key.
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+#### `mapRelease(m uint32) uint32`
+
+Close the map created by `newMap()`.
+The map handle is released and can no longer be used.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `newMap()`)
 
 Return value:
 - 0 in case of success, 1 otherwise.
