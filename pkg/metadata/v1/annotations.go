@@ -132,6 +132,7 @@ var AnnotationsTemplates = map[string]map[string]string{
 		ColumnsMaxWidthAnnotation: "52",
 	},
 	"syscall": {
+		DescriptionAnnotation:     "Syscall",
 		ColumnsWidthAnnotation:    "18",
 		ColumnsMaxWidthAnnotation: "28",
 	},

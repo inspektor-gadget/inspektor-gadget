@@ -1,0 +1,35 @@
+name: traceloop
+description: syscalls flight recorder
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/traceloop
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/traceloop
+annotations:
+  enable-containers-datasource: true
+datasources:
+  traceloop:
+    annotations:
+      description: Syscalls
+    fields:
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+          columns.hidden: "true"
+      cpu:
+        annotations:
+          description: CPU number where the syscall was executed
+          columns.maxwidth: 4
+      pid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      syscall:
+        annotations:
+          template: syscall
+      ret:
+        annotations:
+          description: Syscall's return value
+          columns.width: 10
+          columns.alignment: right
