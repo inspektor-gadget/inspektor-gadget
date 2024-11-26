@@ -238,6 +238,7 @@ func (i *wasmOperatorInstance) init(
 	i.addConfigFuncs(env)
 	i.addMapFuncs(env)
 	i.addArrayFuncs(env)
+	i.addContainersFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
