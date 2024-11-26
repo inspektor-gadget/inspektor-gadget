@@ -30,6 +30,7 @@ GADGETS = \
 	trace_exec \
 	trace_fsslower \
 	trace_lsm \
+	traceloop \
 	trace_malloc \
 	trace_mount \
 	trace_oomkill \
