@@ -430,6 +430,8 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		}
 	}
 
+	l.gadgetCtx.SetVar("containercollection", l.manager.igManager)
+
 	return nil
 }
 
