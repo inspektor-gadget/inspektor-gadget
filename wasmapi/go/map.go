@@ -37,6 +37,9 @@ func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
 //go:wasmimport env mapDelete
 func mapDelete(m uint32, keyptr uint64) uint32
 
+//go:wasmimport env mapGetFD
+func mapGetFD(m uint32) int64
+
 //go:wasmimport env mapRelease
 func mapRelease(m uint32) uint32
 
@@ -180,6 +183,10 @@ func (m Map) Delete(key any) error {
 		return errors.New("deleting value in map")
 	}
 	return nil
+}
+
+func (m Map) FD() int {
+	return int(mapGetFD(uint32(m)))
 }
 
 func (m Map) Close() error {

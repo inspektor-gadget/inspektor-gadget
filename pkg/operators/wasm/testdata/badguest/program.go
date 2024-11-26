@@ -106,6 +106,9 @@ func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntrie
 //go:wasmimport env getMap
 func getMap(name uint64) uint32
 
+//go:wasmimport env mapGetFD
+func mapGetFD(name uint32) int64
+
 //go:wasmimport env mapLookup
 func mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32
 
@@ -150,15 +153,21 @@ func assertZero[T uint64 | uint32](v T, msg string) {
 	}
 }
 
-func assertNonZero[T uint64 | uint32](v T, msg string) {
+func assertNonZero[T uint64 | uint32 | int32 | int64](v T, msg string) {
 	if v == 0 {
 		logAndPanic(fmt.Sprintf("v is zero: %s", msg))
 	}
 }
 
-func assertEqual[T uint64 | uint32 | int32](v1, v2 T, msg string) {
+func assertEqual[T uint64 | uint32 | int32 | int64](v1, v2 T, msg string) {
 	if v1 != v2 {
 		logAndPanic(fmt.Sprintf("%d != %d: %s", v1, v2, msg))
+	}
+}
+
+func assertLowerThan[T uint64 | uint32 | int32 | int64](v1, v2 T, msg string) {
+	if v1 < v2 {
+		logAndPanic(fmt.Sprintf("%d >= %d: %s", v1, v2, msg))
 	}
 }
 
@@ -298,6 +307,7 @@ func gadgetInit() int {
 	assertNonZero(mapUpdate(0, invalidStrPtr, invalidStrPtr, 0), "mapUpdate: bad handle")
 	assertNonZero(mapLookup(0, invalidStrPtr, invalidStrPtr), "mapLookup: bad handle")
 	assertNonZero(mapDelete(0, invalidStrPtr), "mapDelete: bad handle")
+	assertNonZero(mapGetFD(0), "mapGetFD: bad handle")
 
 	return 0
 }
@@ -331,6 +341,7 @@ func gadgetStart() int {
 	assertZero(mapRelease(badMap), "mapRelease: closing map")
 	assertNonZero(mapLookup(badMap, invalidStrPtr, invalidStrPtr), "mapLookup: bad handle")
 	assertNonZero(mapRelease(badMap), "mapRelease: bad handle")
+	assertLowerThan(mapGetFD(handle), 0, "mapGetFD: map was closed, invalid FD")
 
 	return 0
 }

@@ -134,6 +134,12 @@ func gadgetStart() int {
 		return 1
 	}
 
+	fd := m.FD()
+	if fd < 0 {
+		api.Errorf("invalid fd: expected greater than 0, got: %d", fd)
+		return 1
+	}
+
 	mapSpec := api.MapSpec{
 		Name:       "map_test",
 		Type:       api.Hash,

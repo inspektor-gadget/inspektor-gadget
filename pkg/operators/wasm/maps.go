@@ -41,6 +41,11 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
 	)
 
+	exportFunction(env, "mapGetFD", i.mapGetFD,
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Map
+		[]wapi.ValueType{wapi.ValueTypeI64}, // Map FD
+	)
+
 	exportFunction(env, "mapLookup", i.mapLookup,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // Map
@@ -151,6 +156,26 @@ func (i *wasmOperatorInstance) getMap(ctx context.Context, m wapi.Module, stack 
 	}
 
 	stack[0] = wapi.EncodeU32(i.addHandle(ebpfMap))
+}
+
+// getMapFD gets map file descriptor .
+// Params:
+// - stack[0] is the name of the map (string encoded)
+// Return value:
+// - Map FD
+func (i *wasmOperatorInstance) mapGetFD(ctx context.Context, m wapi.Module, stack []uint64) {
+	mapHandle := wapi.DecodeU32(stack[0])
+
+	ebpfMap, ok := getHandle[*ebpf.Map](i, mapHandle)
+	if !ok {
+		stack[0] = 1
+		return
+	}
+
+	// FD() returns an int, which can be 32 or 64 bits depending on the
+	// architecture.
+	// Let's cast it to int64 to be handle both type of architectures.
+	stack[0] = wapi.EncodeI64(int64(ebpfMap.FD()))
 }
 
 // mapLookup searches the map for a value corresponding to the given key.
