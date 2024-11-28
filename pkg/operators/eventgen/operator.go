@@ -129,58 +129,43 @@ func (e *eventGenOperatorInstance) Name() string {
 }
 
 func (e *eventGenOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
-    if !e.enable {
-        if e.eventType != "" {
-            gadgetCtx.Logger().Info("Eventgen not enabled, skipping")
-        }
-        return nil
-    }
+	if !e.enable {
+		if e.eventType != "" {
+			gadgetCtx.Logger().Info("Eventgen not enabled, skipping")
+		}
+		return nil
+	}
 
-    gadgetCtx.Logger().Debugf("Starting EventGen with type: %s, params: %v", e.eventType, e.params)
+	gadgetCtx.Logger().Debugf("Starting EventGen with type: %s, params: %v", e.eventType, e.params)
+	var err error
 
-    // First determine which type of generator we want, without creating it
-    var generatorType string
-    if e.useNamespaceApproach {
-        switch e.eventType {
-        case EventTypeDNS:
-            generatorType = "namespace_dns"
-        case EventTypeHTTP:
-            return fmt.Errorf("HTTP events with namespace approach not implemented yet")
-        default:
-            return fmt.Errorf("unsupported event type for namespace approach: %s", e.eventType)
-        }
-    } else {
-        switch e.eventType {
-        case EventTypeDNS, EventTypeHTTP:
-            generatorType = "pod_" + e.eventType
-        default:
-            return fmt.Errorf("unsupported event type for pod approach: %s", e.eventType)
-        }
-    }
-
-    // Now create the generator just once
-    var err error
-    switch generatorType {
-    case "namespace_dns":
-        e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
-    case "pod_dns", "pod_http":
+	if e.useNamespaceApproach {
+		switch e.eventType {
+		case EventTypeDNS:
+			e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
+		case EventTypeHTTP:
+			return fmt.Errorf("HTTP events with namespace approach not implemented yet")
+		default:
+			return fmt.Errorf("unsupported event type for namespace approach: %s", e.eventType)
+		}
+	} else {
         e.generator, err = eventgenerator.NewPodGenerator(e.eventType, gadgetCtx.Logger())
-    }
+	}
 
-    if err != nil {
-        return fmt.Errorf("creating generator: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("creating generator: %w", err)
+	}
 
-    // Use the generator
-    err = e.generator.Generate(e.params, e.count, e.interval)
-    if err != nil {
-        return fmt.Errorf("generating event: %w", err)
-    }
+	//Generate events using selected generator
+	err = e.generator.Generate(e.params, e.count, e.interval)
+	if err != nil {
+		return fmt.Errorf("generating event: %w", err)
+	}
 
-    gadgetCtx.Logger().Debugf("Generated %s event successfully using %s approach",
-        e.eventType,
-        map[bool]string{true: "namespace", false: "pod"}[e.useNamespaceApproach])
-    return nil
+	gadgetCtx.Logger().Debugf("Generated %s event successfully using %s approach",
+		e.eventType,
+		map[bool]string{true: "namespace", false: "pod"}[e.useNamespaceApproach])
+	return nil
 }
 
 func (e *eventGenOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
