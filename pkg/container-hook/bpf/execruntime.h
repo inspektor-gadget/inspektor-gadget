@@ -4,8 +4,7 @@
 
 #define ARGSIZE 256
 #define TASK_COMM_LEN 16
-#define TOTAL_MAX_ARGS 60
-#define DEFAULT_MAXARGS 20
+#define TOTAL_MAX_ARGS 20
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
 #define INVALID_UID ((uid_t)-1)
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)

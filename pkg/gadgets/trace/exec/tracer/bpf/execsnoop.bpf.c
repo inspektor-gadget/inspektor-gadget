@@ -17,7 +17,6 @@
 
 const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
-const volatile int max_args = DEFAULT_MAXARGS;
 
 static const struct event empty_event = {};
 
@@ -133,7 +132,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 
 	event->args_count++;
 #pragma unroll
-	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
+	for (i = 1; i < TOTAL_MAX_ARGS; i++) {
 		bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (!argp)
 			return 0;
@@ -150,7 +149,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 		event->args_size += ret;
 	}
 	/* try to read one more argument to check if there is one */
-	bpf_probe_read_user(&argp, sizeof(argp), &args[max_args]);
+	bpf_probe_read_user(&argp, sizeof(argp), &args[TOTAL_MAX_ARGS]);
 	if (!argp)
 		return 0;
 
