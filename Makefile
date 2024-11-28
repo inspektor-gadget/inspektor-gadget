@@ -167,6 +167,7 @@ kubectl-gadget-%: phony_explicit
 	export GOOS=$(shell echo $* | cut -f1 -d-) GOARCH=$(shell echo $* | cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
 		-tags withoutebpf \
+		-tags netgo \
 		-o kubectl-gadget-$${GOOS}-$${GOARCH}$(if $(findstring windows,$*),.exe,) \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget
 
