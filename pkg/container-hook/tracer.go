@@ -54,6 +54,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	runtimefinder "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/runtime-finder"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -127,6 +128,7 @@ type pendingContainer struct {
 	configJSONPath string
 	pidFile        string
 	pidFileDir     string
+	mntnsId        uint64
 	timestamp      time.Time
 	removeMarks    []func()
 }
@@ -543,6 +545,17 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		return nil
 	}
 
+	// Coherence check: mntns changed
+	newMntNs, err := containerutils.GetMntNs(containerPID)
+	if err != nil {
+		log.Errorf("fanotify: checking mnt namespace of pid %d: %s", containerPID, err)
+		return nil
+	}
+	if pc.mntnsId == newMntNs {
+		log.Errorf("fanotify: new container does not have a new mnt namespace: pid %d mntns %d", containerPID, newMntNs)
+		return nil
+	}
+
 	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
 	if err != nil {
 		log.Errorf("fanotify: could not open config.json: %s", err)
@@ -612,12 +625,20 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 	return os.SameFile(f1, f2), nil
 }
 
-func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile string) error {
+func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir string, pidFile string) error {
 	removeMarks := []func(){}
 
 	// The pidfile does not exist yet, so we cannot monitor it directly.
 	// Instead we monitor its parent directory with FAN_EVENT_ON_CHILD to
 	// get events on the directory's children.
+
+	// Coherence check: the pidfile does not exist yet.
+	if _, err := os.Stat(pidFile); err == nil {
+		return fmt.Errorf("pidfile already exists: %s", pidFile)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("checking pidfile existence: %s: %w", pidFile, err)
+	}
+
 	pidFileDir := filepath.Dir(pidFile)
 	err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	if err != nil {
@@ -682,7 +703,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 	n.pendingMu.Lock()
 	defer n.pendingMu.Unlock()
 
-	// Delete old entries
+	// Insert new entry
 	now := time.Now()
 	n.pendingContainers[pidFile] = &pendingContainer{
 		id:             containerID,
@@ -690,6 +711,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 		configJSONPath: configJSONPath,
 		pidFile:        pidFile,
 		pidFileDir:     pidFileDir,
+		mntnsId:        mntnsId,
 		timestamp:      now,
 		removeMarks:    removeMarks,
 	}
@@ -805,7 +827,7 @@ func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 	n.futureMu.Unlock()
 }
 
-func (n *ContainerNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
+func (n *ContainerNotifier) parseOCIRuntime(mntnsId uint64, cmdlineArr []string) {
 	// Parse oci-runtime (runc/crun) command line
 	createFound := false
 	bundleDir := ""
@@ -829,7 +851,7 @@ func (n *ContainerNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 	}
 
 	if createFound && bundleDir != "" && pidFile != "" {
-		err := n.monitorRuntimeInstance(bundleDir, pidFile)
+		err := n.monitorRuntimeInstance(mntnsId, bundleDir, pidFile)
 		if err != nil {
 			log.Errorf("error monitoring runtime instance: %v\n", err)
 		}
@@ -873,6 +895,10 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 
 	// Skip empty record
 	// This can happen when the ebpf code didn't find the exec args
+	if record.MntnsId == 0 {
+		log.Debugf("fanotify: skip event with mntns=0")
+		return nil
+	}
 	if record.Pid == 0 {
 		log.Debugf("fanotify: skip event with pid=0")
 		return nil
@@ -899,8 +925,8 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		calleeComm = filepath.Base(cmdlineArr[0])
 	}
 
-	log.Debugf("got event with pid=%d caller=%q callee=%q args=%v",
-		record.Pid,
+	log.Debugf("got event with mntns=%d pid=%d caller=%q callee=%q args=%v",
+		record.MntnsId, record.Pid,
 		callerComm, calleeComm,
 		cmdlineArr)
 
@@ -915,7 +941,7 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		// Calling sequence: crio/podman -> conmon -> runc/crun
 		n.parseConmonCmdline(cmdlineArr)
 	case "runc", "crun":
-		n.parseOCIRuntime(calleeComm, cmdlineArr)
+		n.parseOCIRuntime(record.MntnsId, cmdlineArr)
 	default:
 		return nil
 	}
