@@ -83,7 +83,18 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		parts := strings.Split(attachTo, "/")
 		return link.Tracepoint(parts[0], parts[1], prog, nil)
 	case ebpf.SocketFilter:
-		i.logger.Debugf("Attaching socket filter %q to %q", p.Name, attachTo)
+		vs := strings.Split(p.SectionName, "/")
+		if len(vs) > 1 {
+			i.logger.Debugf("socket filter result: %s", vs[1])
+			// what is it?
+			if strings.Contains(p.SectionName, "nok") {
+				i.bpfFilters["filter"].nokProg = prog
+			} else if strings.Contains(p.SectionName, "ok") {
+				i.bpfFilters["filter"].okProg = prog
+			}
+			return nil, nil
+		}
+		i.logger.Debugf("Attaching socket filter %q to %q %q", p.Name, attachTo, p.SectionName)
 		networkTracer := i.networkTracers[p.Name]
 		return nil, networkTracer.AttachProg(prog)
 	case ebpf.Tracing:

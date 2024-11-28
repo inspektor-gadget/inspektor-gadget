@@ -119,6 +119,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		snapshotters: make(map[string]*Snapshotter),
 		params:       make(map[string]*param),
 		mapIters:     make(map[string]*mapIter),
+		bpfFilters:   make(map[string]*BPFFilter),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -173,6 +174,7 @@ type ebpfInstance struct {
 	mapIters     map[string]*mapIter
 	params       map[string]*param
 	paramValues  map[string]string
+	bpfFilters   map[string]*BPFFilter
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -238,6 +240,11 @@ func (i *ebpfInstance) analyze() error {
 			prefixFunc:   hasPrefix(mapIterPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateMapIter,
+		},
+		{
+			prefixFunc:   hasPrefix("gadget_bpf_filter_"),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.prepareBPFFilter,
 		},
 		{
 			prefixFunc: func(s string) (string, bool) {
@@ -470,13 +477,18 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 				i.uprobeTracers[p.Name] = uprobeTracer
 			}
 		case ebpf.SocketFilter:
-			if strings.HasPrefix(p.SectionName, "socket") {
-				networkTracer, err := networktracer.NewTracer[api.GadgetData]()
-				if err != nil {
-					i.Close()
-					return fmt.Errorf("creating network tracer: %w", err)
+			v := strings.Split(p.SectionName, "/")
+			if len(v) > 1 {
+				// skip for now
+			} else {
+				if strings.HasPrefix(p.SectionName, "socket") {
+					networkTracer, err := networktracer.NewTracer[api.GadgetData]()
+					if err != nil {
+						i.Close()
+						return fmt.Errorf("creating network tracer: %w", err)
+					}
+					i.networkTracers[p.Name] = networkTracer
 				}
-				i.networkTracers[p.Name] = networkTracer
 			}
 		case ebpf.SchedCLS:
 			parts := strings.Split(p.SectionName, "/")
@@ -716,6 +728,22 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			if !found {
 				i.logger.Warnf("None snapshotter will run iterator %q", progName)
 			}
+		}
+	}
+
+	// Place bpf filters
+	for _, f := range i.bpfFilters {
+		err := i.collection.Maps[f.mapName].Update(uint32(0), uint32(f.filterProg.FD()), ebpf.UpdateAny)
+		if err != nil {
+			i.logger.Errorf("error putting filter %q into collection map %q: %v", f.name, f.mapName, err)
+		}
+		if f.okProg != nil {
+			i.logger.Debugf("adding filter prog ok: %s", f.name)
+			f.progMap.Update(uint32(0), uint32(f.okProg.FD()), ebpf.UpdateAny)
+		}
+		if f.nokProg != nil {
+			i.logger.Debugf("adding filter prog nok: %s", f.name)
+			f.progMap.Update(uint32(1), uint32(f.nokProg.FD()), ebpf.UpdateAny)
 		}
 	}
 

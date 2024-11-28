@@ -22,6 +22,7 @@ GADGETS = \
 	audit_seccomp \
 	deadlock \
 	fsnotify \
+	pcap \
 	profile_blockio \
 	profile_tcprtt \
 	trace_bind \
