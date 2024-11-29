@@ -26,11 +26,20 @@ struct {
 
 GADGET_BPF_FILTER(filter, filterprog)
 
+__attribute__((noinline)) int filterfunc(struct __sk_buff *skb)
+{
+    volatile int ret = skb != NULL;
+    return ret;
+}
+
 SEC("socket1")
 int main_prog(struct __sk_buff *skb)
 {
     bpf_printk("in main");
-    bpf_tail_call(skb, &filterprog, TAIL_CALL_PROG_INDEX);
+    if (filterfunc(skb) == 0) {
+        return 0;
+    }
+    // bpf_tail_call(skb, &filterprog, TAIL_CALL_PROG_INDEX);
     return 0;
 }
 

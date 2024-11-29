@@ -20,6 +20,8 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -94,8 +96,60 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			}
 			return nil, nil
 		}
+
+		var b btf.Builder
+		// b.Add()
+
+		var targetFunc *btf.Func
+		err := i.collectionSpec.Types.TypeByName("filterfunc", &targetFunc)
+		if err != nil {
+			i.logger.Errorf("Error getting AnyType: %v", err)
+		}
+		b.Add(targetFunc)
+
+		// handle, err := btf.NewHandle(&b)
+		// if err != nil {
+		// 	i.logger.Errorf("Error creating btf handle: %v", err)
+		// }
+		// spc, err := handle.Spec(nil)
+		// if err != nil {
+		// 	i.logger.Errorf("Error getting btf spec: %v", err)
+		// }
+
+		insns := asm.Instructions{
+			asm.Mov.Imm(asm.R0, 0), // Default return value if tail call fails
+			asm.Return(),
+		}
+
+		insns[0] = btf.WithFuncMetadata(insns[0], targetFunc)
+		// for i, v := range insns {
+		// 	insns[i] = btf.WithFuncMetadata(v, targetFunc)
+		// }
+
+		xp, err := ebpf.NewProgram(&ebpf.ProgramSpec{
+			Type:         ebpf.Extension,
+			Instructions: insns,
+			AttachTarget: prog,
+			AttachTo:     "filterfunc",
+			License:      "GPL",
+		})
+		// }, ebpf.ProgramOptions{
+		// 	LogLevel:    0,
+		// 	LogDisabled: false,
+		// 	KernelTypes: spc,
+		// })
+		if err != nil {
+			i.logger.Errorf("Failed to compile program %q: %v", p.Name, err)
+		}
+
+		_, err = link.AttachFreplace(prog, "filterfunc", xp)
+		if err != nil {
+			i.logger.Errorf("Failed to attach filter program: %v", err)
+		}
+
 		i.logger.Debugf("Attaching socket filter %q to %q %q", p.Name, attachTo, p.SectionName)
 		networkTracer := i.networkTracers[p.Name]
+
 		return nil, networkTracer.AttachProg(prog)
 	case ebpf.Tracing:
 		switch {
