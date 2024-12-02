@@ -36,8 +36,8 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
