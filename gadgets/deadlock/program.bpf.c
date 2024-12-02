@@ -12,16 +12,24 @@
 #include <gadget/maps.bpf.h>
 
 #define MAX_HELD_MUTEXES 16
-#define MAX_ENTRIES 65536
+#define MAX_ENTRIES 10240
 #define MAX_STACK_DEPTH 50
 
 /* Stack map */
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__type(key, u32);
-	__uint(max_entries, 256);
+	__uint(max_entries, MAX_ENTRIES);
 	__uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
 } stackmap SEC(".maps");
+
+/* Map of traced PIDs */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, gadget_pid);
+	__type(value, u32); // dummy value
+} traced_pids SEC(".maps");
 
 // Represents a mutex held by a thread.
 struct held_mutex {
@@ -37,8 +45,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
 	__type(key, gadget_tid);
-	__type(value,
-	       struct held_mutex[MAX_HELD_MUTEXES]); // array of held mutexes
+	__type(value, struct held_mutex[MAX_HELD_MUTEXES]);
 } thread_to_held_mutexes SEC(".maps");
 
 // Represents a dead process.
@@ -46,6 +53,7 @@ struct dead_pid {
 	gadget_pid pid;
 };
 
+/* Map of dead PIDs */
 GADGET_TRACER_MAP(dead_pids, 1024 * 256);
 
 // Key type for edges. Represents an edge from mutex1 to mutex2.
@@ -92,10 +100,15 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
 
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
+	// Record traced process ID
+	int result =
+		bpf_map_update_elem(&traced_pids, &pid, &((u32){ 1 }), BPF_ANY);
+	if (result) {
+		bpf_printk("could not add traced_pids key. pid: %d\n", pid);
+		return 1; // out of memory
+	}
 
+	// Record TID and corresponding mutex
 	struct held_mutex *held_mutexes = bpf_map_lookup_or_try_init(
 		&thread_to_held_mutexes, &tid, &EMPTY_HELD_MUTEXES);
 	if (!held_mutexes) {
@@ -112,7 +125,15 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 			return 1; // disallow self edges
 		}
 	}
-	u64 stack_id = bpf_get_stackid(ctx, &stackmap, BPF_F_USER_STACK);
+
+	u64 stack_id;
+	long ret = bpf_get_stackid(ctx, &stackmap, BPF_F_USER_STACK);
+	if (ret < 0) {
+		bpf_printk("could not get stack id. error: %d\n", ret);
+		stack_id = (u64)-1;
+	} else {
+		stack_id = (u64)ret;
+	}
 
 	// Add mutex to `held_mutexes` and update the graph
 	int added_mutex =
@@ -151,7 +172,8 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 		}
 	}
 	if (!added_mutex) {
-		bpf_printk("could not add mutex %p\n", mutex);
+		bpf_printk("could not add mutex to held_mutexes. mutex: %p\n",
+			   mutex);
 		return 1; // no more free space on `held_mutexes`
 	}
 	return 0;
@@ -176,10 +198,6 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
 
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
-
 	// Fetch the held mutexes for the current thread
 	struct held_mutex *held_mutexes =
 		bpf_map_lookup_elem(&thread_to_held_mutexes, &tid);
@@ -193,23 +211,12 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 			tid, mutex);
 		return 1;
 	}
-
-	int is_cleared =
-		1; // flag indicating whether all held mutexes by the current thread are cleared
 	for (int i = 0; i < MAX_HELD_MUTEXES; ++i) {
 		// Find the current mutex and clear it
 		if (held_mutexes[i].mutex == mutex) {
 			held_mutexes[i].mutex = 0;
 			held_mutexes[i].stack_id = 0;
 		}
-		if (held_mutexes[i].mutex != 0 && held_mutexes[i].mutex != 0) {
-			// Thread still holds a mutex
-			is_cleared = 0;
-		}
-	}
-	if (is_cleared) {
-		// Remove the entry from the map if no mutex is held by the thread
-		bpf_map_delete_elem(&thread_to_held_mutexes, &tid);
 	}
 	return 0;
 }
@@ -227,23 +234,21 @@ static __always_inline int trace_process_exit(void *ctx)
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
 
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
-
-	bpf_map_delete_elem(&thread_to_held_mutexes, &tid);
-
 	if (tid == pid) {
-		// Process exited, send dead PID to userspace
-		struct dead_pid *event;
+		if (bpf_map_lookup_elem(&traced_pids, &pid) == NULL)
+			return 0; // ignore pids we haven't traced
 
-		event = gadget_reserve_buf(&dead_pids, sizeof(*event));
+		// Process exited, send dead PID to userspace
+		struct dead_pid *event =
+			gadget_reserve_buf(&dead_pids, sizeof(*event));
 		if (!event)
 			return 0;
 
 		event->pid = pid;
 
 		gadget_submit_buf(ctx, &dead_pids, event, sizeof(*event));
+
+		bpf_map_delete_elem(&traced_pids, &pid);
 	}
 	return 0;
 }

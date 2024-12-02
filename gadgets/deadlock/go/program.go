@@ -39,6 +39,9 @@ var graphs map[uint32]*digraph.DiGraph
 // The detectedCycles map stores the set of detected cycles for each PID.
 var detectedCycles map[uint32]map[string]struct{}
 
+// threadToHeldMutexesBPFMap points to the `thread_to_held_mutexes` BPF map.
+var threadToHeldMutexesBPFMap api.Map
+
 //export gadgetInit
 func gadgetInit() int {
 	pidInfo = make(map[uint32]ProcInfo)
@@ -241,7 +244,18 @@ func gadgetInit() int {
 						attrs := g.Attributes(edge[0], edge[1])
 						stackId1 := attrs["mutex1StackId"].(uint64)
 						stackId2 := attrs["mutex2StackId"].(uint64)
-						stackIds = append(stackIds, fmt.Sprintf("[%d, %d]", stackId1, stackId2))
+
+						// Format invalid stack IDs
+						stackId1Str := fmt.Sprintf("%d", stackId1)
+						stackId2Str := fmt.Sprintf("%d", stackId2)
+						if stackId1 == ^uint64(0) {
+							stackId1Str = "_"
+						}
+						if stackId2 == ^uint64(0) {
+							stackId2Str = "_"
+						}
+
+						stackIds = append(stackIds, fmt.Sprintf("[%s, %s]", stackId1Str, stackId2Str))
 					}
 					stackIdsStr := strings.Join(stackIds, ", ")
 
@@ -264,17 +278,51 @@ func gadgetInit() int {
 		return nil
 	}, 0)
 
-	// Clean up dead processes using pid from the `process_exit` datasource
+	// Clean up remains of dead processes using pid from the `process_exit` datasource
 	dsProcessExit.Subscribe(func(source api.DataSource, data api.Data) {
 		deadPid, err := deadPidF.Uint32(data)
 		if err != nil {
 			api.Warnf("failed to get pid: %s", err)
 			return
 		}
+
+		// Delete dead keys from the `thread_to_held_mutexes` BPF map
+		if g, exists := graphs[deadPid]; exists {
+			deadTids := make(map[uint32]struct{})
+			edges := g.Edges()
+			for _, edge := range edges {
+				// Built set of TIDs to delete
+				tid := g.Attributes(edge[0], edge[1])["tid"].(uint32)
+				deadTids[tid] = struct{}{}
+			}
+			for deadTid := range deadTids {
+				err := threadToHeldMutexesBPFMap.Delete(deadTid)
+				if err != nil {
+					api.Warnf("failed to delete key from threads: %s", err)
+					continue
+				}
+			}
+		}
+
+		// Clear buffers
 		delete(pidInfo, deadPid)
 		delete(graphs, deadPid)
 		delete(detectedCycles, deadPid)
 	}, 0)
+
+	return 0
+}
+
+//export gadgetStart
+func gadgetStart() int {
+	var err error
+
+	// Get the `thread_to_held_mutexes` map
+	threadToHeldMutexesBPFMap, err = api.GetMap("thread_to_held_mutexes")
+	if err != nil {
+		api.Warnf("failed to get map: %s", err)
+		return 1
+	}
 
 	return 0
 }
@@ -296,5 +344,5 @@ func cycleToKeyString(cycle [][2]uint64) string {
 	return strings.Join(parts, ",")
 }
 
-// The main function is not used, but it's still required by the compiler
+// The main function is not used, but it's still required by the compiler.
 func main() {}
