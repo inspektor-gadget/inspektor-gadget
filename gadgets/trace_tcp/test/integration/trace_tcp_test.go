@@ -37,9 +37,10 @@ type traceTCPEvent struct {
 	Proc      ebpftypes.Process `json:"proc"`
 	NetNsID   uint64            `json:"netns_id"`
 
-	Src  utils.L4Endpoint `json:"src"`
-	Dst  utils.L4Endpoint `json:"dst"`
-	Type string           `json:"type"`
+	Src   utils.L4Endpoint `json:"src"`
+	Dst   utils.L4Endpoint `json:"dst"`
+	Type  string           `json:"type"`
+	Error string           `json:"error"`
 }
 
 func TestTraceTCP(t *testing.T) {
@@ -105,7 +106,8 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Type: "connect",
+					Type:  "connect",
+					Error: "",
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
@@ -126,7 +128,8 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Type: "accept",
+					Type:  "accept",
+					Error: "",
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
@@ -147,7 +150,8 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Type: "close",
+					Type:  "close",
+					Error: "",
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
