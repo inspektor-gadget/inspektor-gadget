@@ -33,7 +33,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -320,84 +319,15 @@ type metricsCollector struct {
 	useGlobalProvider bool
 }
 
-func asInt64Func[T constraints.Integer](extract func(datasource.Data) (T, error)) func(datasource.Data) int64 {
-	return func(data datasource.Data) int64 {
-		v, _ := extract(data)
-		return int64(v)
-	}
-}
-
-func asInt64(f datasource.FieldAccessor) func(datasource.Data) int64 {
-	switch f.Type() {
-	default:
-		// This should not be called with types other than int
-		panic("unsupported field type for asInt64")
-	case api.Kind_Int8:
-		return asInt64Func(f.Int8)
-	case api.Kind_Int16:
-		return asInt64Func(f.Int16)
-	case api.Kind_Int32:
-		return asInt64Func(f.Int32)
-	case api.Kind_Int64:
-		return asInt64Func(f.Int64)
-	case api.Kind_Uint8:
-		return asInt64Func(f.Uint8)
-	case api.Kind_Uint16:
-		return asInt64Func(f.Uint16)
-	case api.Kind_Uint32:
-		return asInt64Func(f.Uint32)
-	case api.Kind_Uint64:
-		return asInt64Func(f.Uint64)
-	}
-}
-
-func asFloat64Func[T constraints.Float](extract func(datasource.Data) (T, error)) func(datasource.Data) float64 {
-	return func(data datasource.Data) float64 {
-		v, _ := extract(data)
-		return float64(v)
-	}
-}
-
-func asFloat64(f datasource.FieldAccessor) func(datasource.Data) float64 {
-	switch f.Type() {
-	default:
-		// This should not be called with types other than float
-		panic("unsupported field type for asFloat4")
-	case api.Kind_Float32:
-		return asFloat64Func(f.Float32)
-	case api.Kind_Float64:
-		return asFloat64Func(f.Float64)
-	}
-}
-
 func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
-	name := f.Name()
-	switch f.Type() {
-	default:
-		return fmt.Errorf("unsupported field type for metrics key: %s", f.Type())
-	case api.Kind_String, api.Kind_CString:
-		mc.keys = append(mc.keys, func(data datasource.Data) attribute.KeyValue {
-			val, _ := f.String(data)
-			return attribute.KeyValue{Key: attribute.Key(name), Value: attribute.StringValue(val)}
-		})
-	case api.Kind_Uint8,
-		api.Kind_Uint16,
-		api.Kind_Uint32,
-		api.Kind_Uint64,
-		api.Kind_Int8,
-		api.Kind_Int16,
-		api.Kind_Int32,
-		api.Kind_Int64:
-		asIntFn := asInt64(f)
-		mc.keys = append(mc.keys, func(data datasource.Data) attribute.KeyValue {
-			return attribute.KeyValue{Key: attribute.Key(name), Value: attribute.Int64Value(asIntFn(data))}
-		})
-	case api.Kind_Float32, api.Kind_Float64:
-		asFloatFn := asFloat64(f)
-		mc.keys = append(mc.keys, func(data datasource.Data) attribute.KeyValue {
-			return attribute.KeyValue{Key: attribute.Key(name), Value: attribute.Float64Value(asFloatFn(data))}
-		})
+	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
+	if err != nil {
+		return err
 	}
+	mc.keys = append(mc.keys, func(ds datasource.Data) attribute.KeyValue {
+		key, val := vf(ds)
+		return attribute.KeyValue{Key: key, Value: val}
+	})
 	return nil
 }
 
@@ -421,7 +351,7 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 		api.Kind_Int16,
 		api.Kind_Int32,
 		api.Kind_Int64:
-		asIntFn := asInt64(f)
+		asIntFn, _ := datasource.AsInt64(f) // error can't happen
 		switch metricType {
 		case MetricTypeCounter:
 			tOptions := make([]metric.Int64CounterOption, len(options))
@@ -450,7 +380,7 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 		}
 		return nil
 	case api.Kind_Float32, api.Kind_Float64:
-		asFloatFn := asFloat64(f)
+		asFloatFn, _ := datasource.AsFloat64(f) // error can't happen
 		switch metricType {
 		case MetricTypeCounter:
 			tOptions := make([]metric.Float64CounterOption, len(options))
@@ -583,7 +513,7 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 		if err != nil {
 			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
 		}
-		asIntFn := asInt64(f)
+		asIntFn, _ := datasource.AsInt64(f) // error can't happen
 		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 			hist.Record(ctx, asIntFn(data), metric.WithAttributeSet(set))
 		})
@@ -597,7 +527,7 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 		if err != nil {
 			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
 		}
-		asFloatFn := asFloat64(f)
+		asFloatFn, _ := datasource.AsFloat64(f) // error can't happen
 		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 			hist.Record(ctx, asFloatFn(data), metric.WithAttributeSet(set))
 		})

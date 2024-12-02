@@ -70,12 +70,16 @@ require (
 
 require (
 	github.com/containerd/errdefs v1.0.0
+	github.com/expr-lang/expr v1.16.9
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gopacket/gopacket v1.3.1
 	github.com/sigstore/sigstore v1.8.10
 	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.8.1
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.7.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.31.0
+	go.opentelemetry.io/otel/log v0.7.0
+	go.opentelemetry.io/otel/sdk/log v0.7.0
 )
 
 require (
