@@ -42,6 +42,7 @@ var RuntimePaths = []string{
 	"/usr/bin/crun",
 	"/var/lib/rancher/k3s/data/current/bin/runc", // Used in k3s
 	"/var/lib/rancher/rke2/bin/runc",             // Used in RKE2
+	"/usr/libexec/crio/runc",                     // Used in kubeadm on Debian, upstream crio
 }
 
 // Notify marks the runtime path given as argument if it exists.
