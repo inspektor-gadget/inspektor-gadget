@@ -55,6 +55,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: 'Artifact Hub: Update gadgets version to v${{ steps.bump_gadgets.outputs.version }}'
+        signoff: true
         branch: 'auto_bump_gadgets_v${{ steps.bump_gadgets.outputs.version }}'
         base: main
         delete-branch: true
