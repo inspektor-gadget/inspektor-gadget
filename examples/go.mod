@@ -7,9 +7,9 @@ require (
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/quay/claircore v1.5.33
-	k8s.io/api v0.31.2
-	k8s.io/apimachinery v0.31.2
-	k8s.io/client-go v0.31.2
+	k8s.io/api v0.31.3
+	k8s.io/apimachinery v0.31.3
+	k8s.io/client-go v0.31.3
 	oras.land/oras-go/v2 v2.5.0
 )
 
