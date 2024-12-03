@@ -60,7 +60,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
@@ -672,8 +671,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
-				case "INSPEKTOR_GADGET_VERSION":
-					gadgetContainer.Env[i].Value = version.Version().String()
 				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
 					gadgetContainer.Env[i].Value = hookMode
 				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
