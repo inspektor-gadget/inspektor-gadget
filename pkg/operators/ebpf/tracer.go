@@ -51,6 +51,22 @@ func validateTracerMap(traceMap *ebpf.MapSpec) error {
 	return nil
 }
 
+// fixTracerMap updates the tracer map type in case ringbuf is not available.
+func (i *ebpfInstance) fixTracerMap(t btf.Type, varName string) error {
+	bufMap, ok := i.collectionSpec.Maps[varName]
+	if !ok {
+		return fmt.Errorf("map %q not found in eBPF object", varName)
+	}
+
+	if !isRingbufAvailable() {
+		bufMap.Type = ebpf.PerfEventArray
+		bufMap.KeySize = 4
+		bufMap.ValueSize = 4
+	}
+
+	return nil
+}
+
 func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	i.logger.Debugf("populating tracer %q", varName)
 

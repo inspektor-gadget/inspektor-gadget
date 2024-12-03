@@ -49,6 +49,10 @@ type testDef struct {
 }
 
 func TestTopFileGadget(t *testing.T) {
+	// BPF_MAP_LOOKUP_AND_DELETE_BATCH used by the ebpf operator was introduced
+	// in
+	// https://github.com/torvalds/linux/commit/057996380a42bb64ccc04383cfa9c0ace4ea11f0
+	gadgettesting.MinimumKernelVersion(t, "5.6")
 	gadgettesting.InitUnitTest(t)
 	runnerConfig := &utilstest.RunnerConfig{}
 
