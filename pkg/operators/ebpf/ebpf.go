@@ -229,11 +229,11 @@ func (i *ebpfInstance) analyze() error {
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateParam,
 		},
-		// {
-		// 	prefixFunc:   hasPrefix(tracerMapPrefix),
-		// 	validator:    i.validateGlobalConstVoidPtrVar,
-		// 	populateFunc: i.populateMap,
-		// },
+		{
+			prefixFunc:   hasPrefix(tracerMapPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.fixTracerMap,
+		},
 		{
 			prefixFunc:   hasPrefix(mapIterPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
