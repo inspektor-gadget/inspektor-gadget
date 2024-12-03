@@ -261,8 +261,6 @@ func main() {
 		log.Infof("%s: %v", k, v)
 	}
 
-	log.Infof("Inspektor Gadget version: %s", os.Getenv("INSPEKTOR_GADGET_VERSION"))
-
 	if hasGadgetPullSecret() {
 		err = prepareGadgetPullSecret()
 		if err != nil {

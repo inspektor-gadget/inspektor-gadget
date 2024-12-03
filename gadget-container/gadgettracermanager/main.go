@@ -37,6 +37,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	// Import this early to set the environment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
@@ -119,6 +120,8 @@ func init() {
 }
 
 func main() {
+	log.Infof("Inspektor Gadget version: %s", version.Version().String())
+
 	flag.Parse()
 
 	if flag.NArg() > 0 {
