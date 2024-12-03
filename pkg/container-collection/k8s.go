@@ -41,10 +41,11 @@ import (
 )
 
 type K8sClient struct {
-	clientset     *kubernetes.Clientset
-	nodeName      string
-	fieldSelector string
-	runtimeClient runtimeclient.ContainerRuntimeClient
+	clientset         *kubernetes.Clientset
+	nodeName          string
+	fieldSelector     string
+	runtimeClient     runtimeclient.ContainerRuntimeClient
+	RuntimeSocketPath string
 }
 
 func NewK8sClient(nodeName string) (*K8sClient, error) {
@@ -94,10 +95,11 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	}
 
 	return &K8sClient{
-		clientset:     clientset,
-		nodeName:      nodeName,
-		fieldSelector: fieldSelector,
-		runtimeClient: runtimeClient,
+		clientset:         clientset,
+		nodeName:          nodeName,
+		fieldSelector:     fieldSelector,
+		runtimeClient:     runtimeClient,
+		RuntimeSocketPath: socketPath,
 	}, nil
 }
 
