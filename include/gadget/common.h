@@ -10,7 +10,8 @@
 
 // gadget_process_populate fills the given process struct with the current
 // process information.
-void static __always_inline gadget_process_populate(struct gadget_process *p) {
+void static __always_inline gadget_process_populate(struct gadget_process *p)
+{
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
@@ -28,7 +29,8 @@ void static __always_inline gadget_process_populate(struct gadget_process *p) {
 	if (parent == NULL)
 		return;
 
-	bpf_probe_read_kernel(&p->parent.comm, sizeof(p->parent.comm), parent->comm);
+	bpf_probe_read_kernel(&p->parent.comm, sizeof(p->parent.comm),
+			      parent->comm);
 	p->parent.pid = BPF_CORE_READ(parent, tgid);
 }
 

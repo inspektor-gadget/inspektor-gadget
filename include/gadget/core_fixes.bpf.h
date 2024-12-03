@@ -47,7 +47,7 @@
  *     https://github.com/cilium/ebpf/commit/b2df9e8f0042
  *     https://github.com/cilium/ebpf/blob/v0.13.2/btf/core.go#L44
  */
-static void (*bpf_core_unreachable)(void) = (void *) 0xbad2310;
+static void (*bpf_core_unreachable)(void) = (void *)0xbad2310;
 
 /**
  * commit 2f064a59a1 ("sched: Change task_struct::state") changes
