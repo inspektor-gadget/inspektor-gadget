@@ -120,8 +120,6 @@ func init() {
 }
 
 func main() {
-	log.Infof("Inspektor Gadget version: %s", version.Version().String())
-
 	flag.Parse()
 
 	if flag.NArg() > 0 {
@@ -284,6 +282,8 @@ func main() {
 	}
 
 	if serve {
+		log.Infof("Inspektor Gadget version: %s", version.Version().String())
+
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
 		}
