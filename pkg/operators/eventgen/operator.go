@@ -9,6 +9,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	log "github.com/sirupsen/logrus"
 )
 
 type eventGenOperator struct{}
@@ -35,14 +36,31 @@ func (e eventGenOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 	paramsStr, _ := instanceParamValues[ParamEventGenParams]
 	countVal, _ := instanceParamValues[ParamEventGenCount]
 	intervalVal, _ := instanceParamValues[ParamEventGenInterval]
+	namespace, hasNamespace := instanceParamValues[ParamEventGenNamespace]
+	podName, _ := instanceParamValues[ParamEventGenPodName]
+	container, _ := instanceParamValues[ParamEventGenContainer]
 
-	// If enable parameter doesn't exist, return disabled instance without logging
 	if !exists || enable != "true" {
 		return &eventGenOperatorInstance{enable: false}, nil
 	}
 
 	if eventType == "" {
 		return nil, fmt.Errorf("eventgen-type not specified")
+	}
+
+	// Determine which approach to use
+	useNamespaceApproach := hasNamespace && namespace != ""
+
+	// disable if on the client side and namespace approach is used
+	if !gadgetCtx.IsRemoteCall() && useNamespaceApproach || gadgetCtx.IsRemoteCall() && !useNamespaceApproach {
+		log.Debugf("EventGen disabled for since approach is not supported")
+		return &eventGenOperatorInstance{enable: false}, nil
+	}
+
+	if useNamespaceApproach {
+		if podName == "" || container == "" {
+			return nil, fmt.Errorf("pod name and container name are required when using namespace approach")
+		}
 	}
 
 	// Parse count
@@ -65,13 +83,24 @@ func (e eventGenOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 		}
 		interval = parsedInterval
 	}
+	params := ParseParams(paramsStr)
+
+	if useNamespaceApproach {
+		params["namespace"] = namespace
+		params["pod"] = podName
+		params["container"] = container
+	}
 
 	return &eventGenOperatorInstance{
-		enable:    true,
-		eventType: eventType,
-		params:    ParseParams(paramsStr),
-		count:     count,
-		interval:  interval,
+		enable:               true,
+		eventType:            eventType,
+		params:               params,
+		count:                count,
+		interval:             interval,
+		namespace:            namespace,
+		podName:              podName,
+		container:            container,
+		useNamespaceApproach: useNamespaceApproach,
 	}, nil
 }
 
@@ -80,12 +109,16 @@ func (e eventGenOperator) Priority() int {
 }
 
 type eventGenOperatorInstance struct {
-	enable    bool
-	eventType string
-	params    map[string]string
-	count     int
-	interval  time.Duration
-	generator eventgenerator.Generator
+	enable               bool
+	eventType            string
+	params               map[string]string
+	count                int
+	interval             time.Duration
+	generator            eventgenerator.Generator
+	namespace            string
+	podName              string
+	container            string
+	useNamespaceApproach bool
 }
 
 func (e *eventGenOperatorInstance) Name() string {
@@ -101,19 +134,34 @@ func (e *eventGenOperatorInstance) Start(gadgetCtx operators.GadgetContext) erro
 	}
 
 	gadgetCtx.Logger().Debugf("Starting EventGen with type: %s, params: %v", e.eventType, e.params)
-
 	var err error
-	e.generator, err = eventgenerator.NewGenerator(e.eventType, gadgetCtx.Logger())
+
+	if e.useNamespaceApproach {
+		switch e.eventType {
+		case EventTypeDNS:
+			e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
+		case EventTypeHTTP:
+			e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
+		default:
+			return fmt.Errorf("unsupported event type for namespace approach: %s", e.eventType)
+		}
+	} else {
+		e.generator, err = eventgenerator.NewPodGenerator(e.eventType, gadgetCtx.Logger())
+	}
+
 	if err != nil {
 		return fmt.Errorf("creating generator: %w", err)
 	}
 
+	//Generate events using selected generator
 	err = e.generator.Generate(e.params, e.count, e.interval)
 	if err != nil {
 		return fmt.Errorf("generating event: %w", err)
 	}
 
-	gadgetCtx.Logger().Debugf("Generated %s event successfully", e.eventType)
+	gadgetCtx.Logger().Debugf("Generated %s event successfully using %s approach",
+		e.eventType,
+		map[bool]string{true: "namespace", false: "pod"}[e.useNamespaceApproach])
 	return nil
 }
 
@@ -121,11 +169,14 @@ func (e *eventGenOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error
 	if e.generator != nil {
 		_, err := e.generator.Cleanup()
 		if err != nil {
-			return fmt.Errorf("cleaning up event pod: %w", err)
+			return fmt.Errorf("cleaning up event generator: %w", err)
 		}
 	}
 	return nil
 }
 
-// EventGen is used to expose the eventgen operator
 var EventGen = &eventGenOperator{}
+
+func init() {
+	operators.RegisterDataOperator(EventGen)
+}

@@ -14,7 +14,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
-type Generator struct {
+type PodGenerator struct {
 	clientset *kubernetes.Clientset
 	config    *rest.Config
 	logger    logger.Logger
@@ -22,12 +22,12 @@ type Generator struct {
 	podName   string
 }
 
-func NewGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
+func NewHTTPPodGenerator(config *rest.Config, log logger.Logger) (*PodGenerator, error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("creating Kubernetes client: %w", err)
 	}
-	return &Generator{
+	return &PodGenerator{
 		clientset: clientset,
 		config:    config,
 		logger:    log,
@@ -36,13 +36,13 @@ func NewGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
 	}, nil
 }
 
-func (h *Generator) Generate(params map[string]string, count int, interval time.Duration) error {
+func (h *PodGenerator) Generate(params map[string]string, count int, interval time.Duration) error {
 	pods, err := h.clientset.CoreV1().Pods(h.namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing pods: %w", err)
 	}
 
-	// Check for any pod with the dns-eventgen-pod prefix
+	// Check for existing http-eventgen-pod prefix
 	for _, pod := range pods.Items {
 		if strings.HasPrefix(pod.Name, "http-eventgen-pod-") {
 			return fmt.Errorf("HTTP event generator is already running with pod %s, please stop it first", pod.Name)
@@ -79,9 +79,9 @@ func (h *Generator) Generate(params map[string]string, count int, interval time.
 	return nil
 }
 
-func (h *Generator) Cleanup() (string, error) {
+func (h *PodGenerator) Cleanup() (string, error) {
 	if h.podName == "" {
-		return "", fmt.Errorf("pod %s is not found in %s namespace", h.podName, h.namespace)
+		return "", nil
 	}
 	err := h.clientset.CoreV1().Pods(h.namespace).Delete(context.Background(), h.podName, metav1.DeleteOptions{})
 	if err != nil {

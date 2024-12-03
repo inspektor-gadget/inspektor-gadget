@@ -6,15 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
-type Generator struct {
+type PodGenerator struct {
 	clientset *kubernetes.Clientset
 	config    *rest.Config
 	logger    logger.Logger
@@ -22,12 +21,13 @@ type Generator struct {
 	podName   string
 }
 
-func NewGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
+func NewDNSPodGenerator(config *rest.Config, log logger.Logger) (*PodGenerator, error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("creating Kubernetes client: %w", err)
 	}
-	return &Generator{
+
+	return &PodGenerator{
 		clientset: clientset,
 		config:    config,
 		logger:    log,
@@ -36,13 +36,15 @@ func NewGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
 	}, nil
 }
 
-func (d *Generator) Generate(params map[string]string, count int, interval time.Duration) error {
+func (d *PodGenerator) Generate(params map[string]string, count int, interval time.Duration) error {
+	d.logger.Debugf("Starting pod generation with params: %v", params)
+
 	pods, err := d.clientset.CoreV1().Pods(d.namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing pods: %w", err)
 	}
 
-	// Check for any pod with the dns-eventgen-pod prefix
+	// Check for existing dns-eventgen pods
 	for _, pod := range pods.Items {
 		if strings.HasPrefix(pod.Name, "dns-eventgen-pod-") {
 			return fmt.Errorf("DNS event generator is already running with pod %s, please stop it first", pod.Name)
@@ -54,8 +56,11 @@ func (d *Generator) Generate(params map[string]string, count int, interval time.
 		return fmt.Errorf("domain parameter is required for DNS event generation")
 	}
 
+	d.logger.Debugf("Creating new pod with name: %s", d.podName)
+
 	sleepCount := fmt.Sprintf("%.0fs", interval.Seconds())
-	command := fmt.Sprintf("i=1; while [ $i -le %d ] || [ %d -eq -1 ]; do nslookup %s; i=$((i+1)); sleep %s; done", count, count, domain, sleepCount)
+	command := fmt.Sprintf("i=1; while [ $i -le %d ] || [ %d -eq -1 ]; do nslookup %s; i=$((i+1)); sleep %s; done",
+		count, count, domain, sleepCount)
 
 	container := corev1.Container{
 		Name:    "dns-eventgen-container",
@@ -71,24 +76,28 @@ func (d *Generator) Generate(params map[string]string, count int, interval time.
 		},
 	}
 
+	d.logger.Debugf("Creating pod with command: %s", command)
+
 	_, err = d.clientset.CoreV1().Pods(d.namespace).Create(context.Background(), pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("creating pod: %w", err)
 	}
 
-	d.logger.Debugf("Created DNS event generation pod: %s", d.podName)
+	d.logger.Debugf("Successfully created DNS event generation pod: %s", d.podName)
 	return nil
 }
 
-func (d *Generator) Cleanup() (string, error) {
+func (d *PodGenerator) Cleanup() (string, error) {
 	if d.podName == "" {
-		return "", fmt.Errorf("pod %s is not found in %s namespace", d.podName, d.namespace)
+		return "", nil
 	}
+
 	err := d.clientset.CoreV1().Pods(d.namespace).Delete(context.Background(), d.podName, metav1.DeleteOptions{})
 	if err != nil {
 		return "", fmt.Errorf("deleting pod %s: %w", d.podName, err)
 	}
+
 	d.logger.Debugf("Successfully terminated DNS event generation pod: %s", d.podName)
-	d.podName = "" // Reset the podName after cleanup
+	d.podName = ""
 	return "", nil
 }

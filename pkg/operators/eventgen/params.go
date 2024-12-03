@@ -7,12 +7,15 @@ import (
 )
 
 const (
-	name                  = "eventgen"
-	ParamEventGenEnable   = "eventgen-enable"
-	ParamEventGenType     = "eventgen-type"
-	ParamEventGenParams   = "eventgen-params"
-	ParamEventGenCount    = "eventgen-count"
-	ParamEventGenInterval = "eventgen-interval"
+	name                   = "eventgen"
+	ParamEventGenEnable    = "eventgen-enable"
+	ParamEventGenType      = "eventgen-type"
+	ParamEventGenParams    = "eventgen-params"
+	ParamEventGenCount     = "eventgen-count"
+	ParamEventGenInterval  = "eventgen-interval"
+	ParamEventGenPodName   = "eventgen-pod"
+	ParamEventGenNamespace = "eventgen-namespace"
+	ParamEventGenContainer = "eventgen-container"
 )
 
 const (
@@ -73,6 +76,21 @@ func getInstanceParams() api.Params {
 			Description:  "Interval between events in seconds",
 			TypeHint:     api.TypeString,
 			DefaultValue: "1s",
+		},
+		&api.Param{
+			Key:         ParamEventGenPodName,
+			Description: "Name of the target pod",
+			TypeHint:    api.TypeString,
+		},
+		&api.Param{
+			Key:         ParamEventGenNamespace,
+			Description: "Namespace of the target pod",
+			TypeHint:    api.TypeString,
+		},
+		&api.Param{
+			Key:         ParamEventGenContainer,
+			Description: "container to generate events from",
+			TypeHint:    api.TypeString,
 		},
 	}
 }
