@@ -32,6 +32,9 @@ updates:
       otel:
         patterns:
           - "go.opentelemetry.io/*"
+      containers:
+        patterns:
+          - "github.com/containers/*"
   # Update other go depedendencies
   - package-ecosystem: "gomod"
     directory: "/examples/"
@@ -55,6 +58,9 @@ updates:
       otel:
         patterns:
           - "go.opentelemetry.io/*"
+      containers:
+        patterns:
+          - "github.com/containers/*"
   - package-ecosystem: "gomod"
     directory: "/tools/eks-cleanup/"
     schedule:
