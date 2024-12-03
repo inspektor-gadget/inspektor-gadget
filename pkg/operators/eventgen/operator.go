@@ -51,7 +51,7 @@ func (e eventGenOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 	// Determine which approach to use
 	useNamespaceApproach := hasNamespace && namespace != ""
 
-    // disable if on the client side and namespace approach is used
+	// disable if on the client side and namespace approach is used
 	if !gadgetCtx.IsRemoteCall() && useNamespaceApproach || gadgetCtx.IsRemoteCall() && !useNamespaceApproach {
 		log.Debugf("EventGen disabled for since approach is not supported")
 		return &eventGenOperatorInstance{enable: false}, nil
@@ -83,11 +83,8 @@ func (e eventGenOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 		}
 		interval = parsedInterval
 	}
-
-	// Create params map
 	params := ParseParams(paramsStr)
 
-	// Add namespace approach params to the map if using that approach
 	if useNamespaceApproach {
 		params["namespace"] = namespace
 		params["pod"] = podName
@@ -144,12 +141,12 @@ func (e *eventGenOperatorInstance) Start(gadgetCtx operators.GadgetContext) erro
 		case EventTypeDNS:
 			e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
 		case EventTypeHTTP:
-			return fmt.Errorf("HTTP events with namespace approach not implemented yet")
+			e.generator, err = eventgenerator.NewNamespaceGenerator(e.eventType, gadgetCtx.Logger())
 		default:
 			return fmt.Errorf("unsupported event type for namespace approach: %s", e.eventType)
 		}
 	} else {
-        e.generator, err = eventgenerator.NewPodGenerator(e.eventType, gadgetCtx.Logger())
+		e.generator, err = eventgenerator.NewPodGenerator(e.eventType, gadgetCtx.Logger())
 	}
 
 	if err != nil {

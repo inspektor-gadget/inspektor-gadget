@@ -1,12 +1,14 @@
-package dns
+package http
 
+// Using exact same imports as DNS generator
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
-	"github.com/miekg/dns"
 	"github.com/vishvananda/netns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,7 +31,7 @@ type Generator struct {
 	origNetNS           netns.NsHandle // Store original namespace
 }
 
-func NewDNSNSGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
+func NewHTTPNSGenerator(config *rest.Config, log logger.Logger) (*Generator, error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("creating Kubernetes client: %w", err)
@@ -46,7 +48,6 @@ func NewDNSNSGenerator(config *rest.Config, log logger.Logger) (*Generator, erro
 
 	nodeName := pods.Items[0].Spec.NodeName
 
-	// Create container collection instance
 	cc := &containercollection.ContainerCollection{}
 
 	opts := []containercollection.ContainerCollectionOption{
@@ -62,7 +63,6 @@ func NewDNSNSGenerator(config *rest.Config, log logger.Logger) (*Generator, erro
 		return nil, fmt.Errorf("initializing container collection: %w", err)
 	}
 
-	// Store current network namespace
 	origNetNS, err := netns.Get()
 	if err != nil {
 		return nil, fmt.Errorf("getting current network namespace: %w", err)
@@ -77,76 +77,68 @@ func NewDNSNSGenerator(config *rest.Config, log logger.Logger) (*Generator, erro
 	}, nil
 }
 
-func (d *Generator) Generate(params map[string]string, count int, interval time.Duration) error {
-	// Lock OS thread for namespace operations
+func (h *Generator) Generate(params map[string]string, count int, interval time.Duration) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Extract parameters
-	d.namespace = params["namespace"]
-	d.podName = params["pod"]
-	d.containerName = params["container"]
-	domain, ok := params["domain"]
-	if !ok || domain == "" {
-		return fmt.Errorf("domain parameter is required for DNS event generation")
+	h.namespace = params["namespace"]
+	h.podName = params["pod"]
+	h.containerName = params["container"]
+	url, ok := params["url"]
+	if !ok {
+		return fmt.Errorf("url parameter is required for HTTP event generation")
 	}
 
-	// Validate required parameters
-	if d.namespace == "" || d.podName == "" || d.containerName == "" {
+	if h.namespace == "" || h.podName == "" || h.containerName == "" {
 		return fmt.Errorf("namespace, pod and container parameters are required")
 	}
 
-	// Get pod to find its node
-	pod, err := d.clientset.CoreV1().Pods(d.namespace).Get(context.TODO(), d.podName, metav1.GetOptions{})
+	pod, err := h.clientset.CoreV1().Pods(h.namespace).Get(context.TODO(), h.podName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("getting pod %s/%s: %w", d.namespace, d.podName, err)
+		return fmt.Errorf("getting pod %s/%s: %w", h.namespace, h.podName, err)
 	}
 
-	// Get node name from pod
 	nodeName := pod.Spec.NodeName
 	if nodeName == "" {
-		return fmt.Errorf("pod %s/%s not scheduled to any node", d.namespace, d.podName)
+		return fmt.Errorf("pod %s/%s not scheduled to any node", h.namespace, h.podName)
 	}
 
-	// Create K8sClient for the node
 	k8sClient, err := containercollection.NewK8sClient(nodeName)
 	if err != nil {
 		return fmt.Errorf("creating k8s client for node %s: %w", nodeName, err)
 	}
 	defer k8sClient.Close()
 
-	// Get running containers
 	containers := k8sClient.GetRunningContainers(pod)
 	if len(containers) == 0 {
-		return fmt.Errorf("no running containers found in pod %s/%s", d.namespace, d.podName)
+		return fmt.Errorf("no running containers found in pod %s/%s", h.namespace, h.podName)
 	}
 
 	var targetContainer *containercollection.Container
 	for _, c := range containers {
-		if c.K8s.ContainerName == d.containerName {
+		if c.K8s.ContainerName == h.containerName {
 			targetContainer = &c
 			break
 		}
 	}
 
 	if targetContainer == nil {
-		return fmt.Errorf("container %s not found in pod %s/%s", d.containerName, d.namespace, d.podName)
+		return fmt.Errorf("container %s not found in pod %s/%s", h.containerName, h.namespace, h.podName)
 	}
 
 	pid := targetContainer.Runtime.ContainerPID
-	// Get container's network namespace
 	netnse, err := containerutils.GetNetNs(int(pid))
 	if err != nil {
-		d.logger.Debugf("Direct GetNetNs error: %v", err)
+		h.logger.Debugf("Direct GetNetNs error: %v", err)
 	} else {
-		d.logger.Debugf("Direct NetworkNS value: %d", netnse)
+		h.logger.Debugf("Direct NetworkNS value: %d", netnse)
 	}
 
 	err = nsenter.NetnsEnter(int(pid), func() error {
 		i := 1
 		for i <= count || count == -1 {
-			if err := d.generateDNSQuery(domain); err != nil {
-				d.logger.Warnf("DNS query failed: %v", err)
+			if err := h.generateHTTPQuery(url); err != nil {
+				h.logger.Warnf("HTTP request failed: %v", err)
 			}
 			if i < count || count == -1 {
 				time.Sleep(interval)
@@ -156,34 +148,64 @@ func (d *Generator) Generate(params map[string]string, count int, interval time.
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("executing DNS Queryin network namespace: %w", err)
+		return fmt.Errorf("executing HTTP Query in network namespace: %w", err)
 	}
 
 	return nil
 }
 
-func (d *Generator) generateDNSQuery(domain string) error {
-    c := new(dns.Client)
-    m := new(dns.Msg)
-    m.SetQuestion(domain, dns.TypeA)
-    
-    _, _, err := c.Exchange(m, "8.8.8.8:53")
-    if err != nil {
-        return fmt.Errorf("DNS query failed: %w", err)
+func (h *Generator) generateHTTPQuery(url string) error {
+    if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+        url = "http://" + url
+    }
+
+    client := &http.Client{
+        Timeout: 10 * time.Second,
     }
     
-    d.logger.Debugf("DNS query successful for: %s", domain)
+    resp, err := client.Get(url)
+    if err != nil {
+        return fmt.Errorf("HTTP request failed: %w", err)
+    }
+    defer resp.Body.Close()
+    
+    h.logger.Debugf("HTTP request to %s returned status code: %d", url, resp.StatusCode)
     return nil
 }
+// func (h *Generator) generateHTTPQuery(url string) error {
+//     // Try different possible paths for curl
+//     curlPaths := []string{
+//         "/usr/bin/curl",
+//         "/bin/curl",
+//         "/usr/local/bin/curl",
+//         "curl",  // if it's in PATH
+//     }
 
-func (d *Generator) Cleanup() (string, error) {
-	// Ensure we're back in original namespace
-	if d.origNetNS != 0 {
-		err := netns.Set(d.origNetNS)
+//     var cmd *exec.Cmd
+//     var output []byte
+//     var err error
+
+//     for _, curlPath := range curlPaths {
+//         cmd = exec.Command("/usr/bin/curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "-L", url)
+//         output, err = cmd.CombinedOutput()
+//         if err == nil {
+//             h.logger.Debugf("HTTP request to %s returned status code: %s", url, string(output))
+//             return nil
+//         }
+//         h.logger.Debugf("Tried curl at %s: %v", curlPath, err)
+//     }
+    
+//     return fmt.Errorf("HTTP request failed: no working curl found")
+// }
+
+func (h *Generator) Cleanup() (string, error) {
+	// Ensure we are back in original namespace
+	if h.origNetNS != 0 {
+		err := netns.Set(h.origNetNS)
 		if err != nil {
 			return "", fmt.Errorf("restoring original network namespace: %w", err)
 		}
-		d.origNetNS.Close()
+		h.origNetNS.Close()
 	}
 	return "", nil
 }

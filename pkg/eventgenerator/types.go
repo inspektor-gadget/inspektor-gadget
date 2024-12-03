@@ -6,7 +6,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/eventgenerator/dns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/eventgenerator/http"
-    "github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -29,8 +29,8 @@ func NewPodGenerator(eventType string, log logger.Logger) (Generator, error) {
 	switch eventType {
 	case "dns":
 		return dns.NewDNSPodGenerator(config, log)
-    case "http":
-        return http.NewHTTPPodGenerator(config, log)
+	case "http":
+		return http.NewHTTPPodGenerator(config, log)
 	default:
 		return nil, fmt.Errorf("unknown generator type: %s", eventType)
 	}
@@ -44,7 +44,9 @@ func NewNamespaceGenerator(eventType string, log logger.Logger) (Generator, erro
 
 	switch eventType {
 	case "dns":
-		return dns.NewNSGenerator(config, log)
+		return dns.NewDNSNSGenerator(config, log)
+	case "http":
+		return http.NewHTTPNSGenerator(config, log)
 	default:
 		return nil, fmt.Errorf("unknown generator type: %s", eventType)
 	}
