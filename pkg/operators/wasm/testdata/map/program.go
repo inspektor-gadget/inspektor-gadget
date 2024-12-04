@@ -134,6 +134,12 @@ func gadgetStart() int {
 		return 1
 	}
 
+	err = api.ReleaseHandle(m)
+	if err != nil {
+		api.Errorf("releasing handle for map got with GetMap(): %w", err)
+		return 1
+	}
+
 	mapSpec := api.MapSpec{
 		Name:       "map_test",
 		Type:       api.Hash,
