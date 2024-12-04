@@ -394,6 +394,7 @@ func (i *wasmOperatorInstance) dataSourceEmitAndRelease(ctx context.Context, m w
 		stack[0] = 1
 		return
 	}
+	i.delHandle(packetHandle)
 	if err := ds.EmitAndRelease(packet); err != nil {
 		i.logger.Warnf("failed to emit and release packet: %v", err)
 		stack[0] = 1
@@ -422,6 +423,7 @@ func (i *wasmOperatorInstance) dataSourceRelease(ctx context.Context, m wapi.Mod
 		stack[0] = 1
 		return
 	}
+	i.delHandle(packetHandle)
 	ds.Release(packet)
 	stack[0] = 0
 }
@@ -530,7 +532,7 @@ func (i *wasmOperatorInstance) dataArrayRelease(ctx context.Context, m wapi.Modu
 		stack[0] = 1
 		return
 	}
-
+	i.delHandle(dataHandle)
 	dataArray.Release(data)
 	stack[0] = 0
 }
@@ -552,7 +554,8 @@ func (i *wasmOperatorInstance) dataArrayLen(ctx context.Context, m wapi.Module, 
 	stack[0] = wapi.EncodeI32(int32(dataArray.Len()))
 }
 
-// dataArrayGet returns the element at the given index
+// dataArrayGet returns the element at the given index.
+// releaseHandle must be called when the data is no longer needed.
 // Params:
 // - stack[0]: DataArray handle
 // - stack[1]: Data index

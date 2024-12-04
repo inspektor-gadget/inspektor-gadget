@@ -156,66 +156,71 @@ func gadgetInit() int {
 		affectedPIDs := make(map[uint32]struct{})
 		for i := 0; i < data.Len(); i++ {
 			datum := data.Get(i)
-			mutex1, err := mutex1F.Uint64(datum)
-			if err != nil {
-				api.Warnf("failed to get mutex1: %s", err)
-				continue
-			}
-			mutex2, err := mutex2F.Uint64(datum)
-			if err != nil {
-				api.Warnf("failed to get mutex2: %s", err)
-				continue
-			}
-			tid, err := tidF.Uint32(datum)
-			if err != nil {
-				api.Warnf("failed to get tid: %s", err)
-				continue
-			}
-			pid, err := pidF.Uint32(datum)
-			if err != nil {
-				api.Warnf("failed to get pid: %s", err)
-				continue
-			}
-			mutex1Stack, err := mutex1StackF.Uint64(datum)
-			if err != nil {
-				api.Warnf("failed to get mutex1_stack_id: %s", err)
-				continue
-			}
-			mutex2Stack, err := mutex2StackF.Uint64(datum)
-			if err != nil {
-				api.Warnf("failed to get mutex2_stack_id: %s", err)
-				continue
-			}
+			// Closure to release the datum handle in this iteration with defer()
+			// and to avoid passing many arguments to the outer function
+			func() {
+				defer api.ReleaseHandle(datum)
+				mutex1, err := mutex1F.Uint64(datum)
+				if err != nil {
+					api.Warnf("failed to get mutex1: %s", err)
+					return
+				}
+				mutex2, err := mutex2F.Uint64(datum)
+				if err != nil {
+					api.Warnf("failed to get mutex2: %s", err)
+					return
+				}
+				tid, err := tidF.Uint32(datum)
+				if err != nil {
+					api.Warnf("failed to get tid: %s", err)
+					return
+				}
+				pid, err := pidF.Uint32(datum)
+				if err != nil {
+					api.Warnf("failed to get pid: %s", err)
+					return
+				}
+				mutex1Stack, err := mutex1StackF.Uint64(datum)
+				if err != nil {
+					api.Warnf("failed to get mutex1_stack_id: %s", err)
+					return
+				}
+				mutex2Stack, err := mutex2StackF.Uint64(datum)
+				if err != nil {
+					api.Warnf("failed to get mutex2_stack_id: %s", err)
+					return
+				}
 
-			// Record process information for the PID
-			if _, exists := pidInfo[pid]; !exists {
-				comm, err := commF.String(datum)
-				if err != nil {
-					api.Warnf("failed to get comm: %s", err)
-					continue
+				// Record process information for the PID
+				if _, exists := pidInfo[pid]; !exists {
+					comm, err := commF.String(datum)
+					if err != nil {
+						api.Warnf("failed to get comm: %s", err)
+						return
+					}
+					mntnsId, err := mntnsIdF.Uint64(datum)
+					if err != nil {
+						api.Warnf("failed to get mntns_id: %s", err)
+						return
+					}
+					pidInfo[pid] = ProcInfo{
+						comm:    comm,
+						mntnsId: mntnsId,
+					}
 				}
-				mntnsId, err := mntnsIdF.Uint64(datum)
-				if err != nil {
-					api.Warnf("failed to get mntns_id: %s", err)
-					continue
+				// Update the graph for the PID
+				g, exists := graphs[pid]
+				if !exists {
+					g = digraph.NewDiGraph()
+					graphs[pid] = g
 				}
-				pidInfo[pid] = ProcInfo{
-					comm:    comm,
-					mntnsId: mntnsId,
-				}
-			}
-			// Update the graph for the PID
-			g, exists := graphs[pid]
-			if !exists {
-				g = digraph.NewDiGraph()
-				graphs[pid] = g
-			}
-			g.AddEdge(mutex1, mutex2, map[string]interface{}{
-				"tid":           tid,
-				"mutex1StackId": mutex1Stack,
-				"mutex2StackId": mutex2Stack,
-			})
-			affectedPIDs[pid] = struct{}{}
+				g.AddEdge(mutex1, mutex2, map[string]interface{}{
+					"tid":           tid,
+					"mutex1StackId": mutex1Stack,
+					"mutex2StackId": mutex2Stack,
+				})
+				affectedPIDs[pid] = struct{}{}
+			}()
 		}
 
 		// Check for cycles only in the affected PIDs
