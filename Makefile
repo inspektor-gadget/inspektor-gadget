@@ -318,7 +318,7 @@ lint:
 		linter
 
 clang-format:
-	find ./ -type f \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' -execdir $(CLANG_FORMAT) -i {} \;
+	find ./ -type f \( \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' \) -execdir $(CLANG_FORMAT) -i {} \;
 
 # minikube
 LIVENESS_PROBE ?= true
@@ -381,7 +381,7 @@ push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
 .PHONY: unit-test-gadgets
-unit-test-gadgets: 
+unit-test-gadgets:
 	$(MAKE) -C gadgets/ test-unit
 
 .PHONY: integration-test-gadgets
