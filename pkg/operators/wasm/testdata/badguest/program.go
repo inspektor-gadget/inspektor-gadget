@@ -20,8 +20,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"encoding/binary"
+	"fmt"
 	"runtime/debug"
 	"unsafe"
 
@@ -252,7 +252,7 @@ func gadgetInit() int {
 	assertNonZero(dataSourceEmitAndRelease(dsSingleHandle, fieldHandle), "dataSourceEmitAndRelease: bad packet handle type ")
 
 	assertZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: ok")
-	assertZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: double release")
+	assertNonZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: double release")
 	assertNonZero(dataSourceRelease(42, packetSingleHandle), "dataSourceRelease: bad handle")
 	assertNonZero(dataSourceRelease(fieldHandle, packetSingleHandle), "dataSourceRelease: bad handle type")
 	assertNonZero(dataSourceRelease(dsSingleHandle, 42), "dataSourceRelease: bad packet handle")
@@ -264,6 +264,7 @@ func gadgetInit() int {
 	assertZero(dataArrayNew(fieldHandle), "dataArrayNew: bad handle type")
 
 	assertZero(dataArrayAppend(packetArrayHandle, dataElemHandle), "dataArrayAppend: ok")
+	assertNonZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: bad data handle after append")
 	assertNonZero(dataArrayAppend(packetArrayHandle, 42), "dataArrayAppend: bad data handle")
 	assertNonZero(dataArrayAppend(packetArrayHandle, fieldHandle), "dataArrayAppend: bad data handle type")
 	assertNonZero(dataArrayAppend(42, dataElemHandle), "dataArrayAppend: bad handle")
@@ -273,12 +274,13 @@ func gadgetInit() int {
 	assertZero(dataArrayLen(42), "dataArrayLen: bad handle")
 	assertZero(dataArrayLen(packetSingleHandle), "dataArrayLen: bad handle type")
 
-	assertZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: ok")
-	assertZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: double release")
+	dataElemHandle2 := dataArrayNew(packetArrayHandle)
+	assertZero(dataArrayRelease(packetArrayHandle, dataElemHandle2), "dataArrayRelease: ok")
+	assertNonZero(dataArrayRelease(packetArrayHandle, dataElemHandle2), "dataArrayRelease: double release")
 	assertNonZero(dataArrayRelease(packetArrayHandle, 42), "dataArrayRelease: bad data handle")
 	assertNonZero(dataArrayRelease(packetArrayHandle, fieldHandle), "dataArrayRelease: bad data handle type")
-	assertNonZero(dataArrayRelease(42, dataElemHandle), "dataArrayRelease: bad array handle")
-	assertNonZero(dataArrayRelease(fieldHandle, dataElemHandle), "dataArrayRelease: bad array handle type")
+	assertNonZero(dataArrayRelease(42, dataElemHandle2), "dataArrayRelease: bad array handle")
+	assertNonZero(dataArrayRelease(fieldHandle, dataElemHandle2), "dataArrayRelease: bad array handle type")
 
 	assertNonZero(dataArrayGet(packetArrayHandle, 0), "dataArrayGet: index 0")
 	assertZero(dataArrayGet(packetArrayHandle, 1), "dataArrayGet: index 1")
@@ -319,7 +321,7 @@ func gadgetInit() int {
 	/* SyscallDeclaration */
 	syscallDeclarationSize := unsafe.Sizeof(syscallDeclaration{})
 	syscallDeclarationPtr := bytesToBufPtr(make([]byte, syscallDeclarationSize))
-	invalidSyscallDeclarationPtr := bytesToBufPtr(make([]byte, syscallDeclarationSize / 2))
+	invalidSyscallDeclarationPtr := bytesToBufPtr(make([]byte, syscallDeclarationSize/2))
 	assertZero(getSyscallDeclaration(stringToBufPtr("execve"), syscallDeclarationPtr), "getSyscallDeclaration: good")
 	assertNonZero(getSyscallDeclaration(invalidStrPtr, syscallDeclarationPtr), "getSyscallDeclaration: bad syscall name pointer")
 	assertNonZero(getSyscallDeclaration(stringToBufPtr("execve"), invalidSyscallDeclarationPtr), "getSyscallDeclaration: bad syscall decl pointer")
@@ -342,7 +344,7 @@ func gadgetStart() int {
 	handle := getMap(stringToBufPtr("test_map"))
 	assertNonZero(handle, "getMap: test_map should exist")
 
-	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 1 << 3), "mapUpdate: bad flag value")
+	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 1<<3), "mapUpdate: bad flag value")
 	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 0), "mapUpdate: bad key pointer")
 	assertNonZero(mapUpdate(handle, keyPtr, invalidStrPtr, 0), "mapUpdate: bad value pointer")
 

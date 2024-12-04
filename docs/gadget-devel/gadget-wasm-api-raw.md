@@ -392,6 +392,7 @@ Return value:
 #### `getMap(name string) uint32`
 
 Get a handle to an existing eBPF map.
+It is required to release the handle through `releaseHandle(uint32)`
 
 Parameters:
 - `name` (string): Map's name
@@ -444,6 +445,18 @@ The map handle is released and can no longer be used.
 
 Parameters:
 - `m` (u32): Map handle (as returned by `newMap()`)
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+### Handles
+
+#### `releaseHandle(h uint32) uint32`
+
+Releases the handle
+
+Parameters:
+- `h` (u32): handle
 
 Return value:
 - 0 in case of success, 1 otherwise.
