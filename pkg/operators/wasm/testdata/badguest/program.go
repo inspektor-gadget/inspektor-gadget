@@ -20,8 +20,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"encoding/binary"
+	"fmt"
 	"runtime/debug"
 	"unsafe"
 
@@ -235,7 +235,7 @@ func gadgetInit() int {
 	assertNonZero(dataSourceEmitAndRelease(dsSingleHandle, fieldHandle), "dataSourceEmitAndRelease: bad packet handle type ")
 
 	assertZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: ok")
-	assertZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: double release")
+	assertNonZero(dataSourceRelease(dsSingleHandle, packetSingleHandle), "dataSourceRelease: double release")
 	assertNonZero(dataSourceRelease(42, packetSingleHandle), "dataSourceRelease: bad handle")
 	assertNonZero(dataSourceRelease(fieldHandle, packetSingleHandle), "dataSourceRelease: bad handle type")
 	assertNonZero(dataSourceRelease(dsSingleHandle, 42), "dataSourceRelease: bad packet handle")
@@ -257,7 +257,7 @@ func gadgetInit() int {
 	assertZero(dataArrayLen(packetSingleHandle), "dataArrayLen: bad handle type")
 
 	assertZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: ok")
-	assertZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: double release")
+	assertNonZero(dataArrayRelease(packetArrayHandle, dataElemHandle), "dataArrayRelease: double release")
 	assertNonZero(dataArrayRelease(packetArrayHandle, 42), "dataArrayRelease: bad data handle")
 	assertNonZero(dataArrayRelease(packetArrayHandle, fieldHandle), "dataArrayRelease: bad data handle type")
 	assertNonZero(dataArrayRelease(42, dataElemHandle), "dataArrayRelease: bad array handle")
@@ -317,7 +317,7 @@ func gadgetStart() int {
 	handle := getMap(stringToBufPtr("test_map"))
 	assertNonZero(handle, "getMap: test_map should exist")
 
-	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 1 << 3), "mapUpdate: bad flag value")
+	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 1<<3), "mapUpdate: bad flag value")
 	assertNonZero(mapUpdate(handle, invalidStrPtr, invalidStrPtr, 0), "mapUpdate: bad key pointer")
 	assertNonZero(mapUpdate(handle, keyPtr, invalidStrPtr, 0), "mapUpdate: bad value pointer")
 
