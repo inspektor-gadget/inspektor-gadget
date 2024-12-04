@@ -225,6 +225,7 @@ func (i *wasmOperatorInstance) init(
 	i.addParamsFuncs(env)
 	i.addConfigFuncs(env)
 	i.addMapFuncs(env)
+	i.addHandleFuncs(env)
 	i.addSyscallsDeclarationsFuncs(env)
 	i.addPerfFuncs(env)
 

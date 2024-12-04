@@ -160,6 +160,7 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 }
 
 // getMap gets an existing map.
+// releaseHandle must be called when the map is no longer needed.
 // Params:
 // - stack[0] is the name of the map (string encoded)
 // Return value:
@@ -198,7 +199,8 @@ func (i *wasmOperatorInstance) getMap(ctx context.Context, m wapi.Module, stack 
 	stack[0] = wapi.EncodeU32(i.addHandle(ebpfMap))
 }
 
-// mapLookup searches the map for a value corresponding to the given key.
+// mapLookup searches the map for a value corresponding to the given key. If this is a map of maps,
+// the returned value is a handle to the inner map and has to be released through releaseHandle.
 // Params:
 // - stack[0]: Map handle
 // - stack[1]: Key pointer
@@ -255,6 +257,10 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 	if err != nil {
 		i.logger.Warnf("mapLookup: writing back value to stack: %v", err)
 		stack[0] = 1
+
+		if isMapOfMaps(ebpfMap.Type()) {
+			i.delHandle(uint32(binary.NativeEndian.Uint32(value)))
+		}
 		return
 	}
 
@@ -376,6 +382,7 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 }
 
 // mapRelease close the map and release the handle.
+// This should only be called by maps that were created by newMap
 // Params:
 // - stack[0]: Map handle
 // Return value:
