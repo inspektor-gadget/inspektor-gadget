@@ -46,6 +46,7 @@ func gadgetInit() int {
 				panic("failed to get field")
 			}
 			fooF.SetUint32(data, val*uint32(i))
+			api.ReleaseHandle(data)
 		}
 
 		// Add 5 additional elements
@@ -53,6 +54,7 @@ func gadgetInit() int {
 			data := dataArray.New()
 			fooF.SetUint32(data, 424143*uint32(i))
 			dataArray.Append(data)
+			api.ReleaseHandle(data)
 		}
 
 		return nil
