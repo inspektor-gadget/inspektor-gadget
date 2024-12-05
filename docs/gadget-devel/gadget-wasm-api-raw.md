@@ -239,7 +239,7 @@ Return value:
 
 #### `dataArrayAppend(d uint32, data uint32)`
 
-Append data to the array.
+Append data to the array. As a side-effect, the data handle is released and it shouldn't be used after this call.
 
 Parameters:
 - `d` (u32): DataArray handle
@@ -275,7 +275,7 @@ Get the element at the given index.
 
 Parameters:
 - `d` (u32): DataArray handle
-- `index` (u32): Data index
+- `index` (u32): Data index. Max index is 32767
 
 Return value:
 - (u32): Data handle on success, 0 on error
