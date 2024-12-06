@@ -149,12 +149,10 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 	err = newInstance.init(gadgetCtx)
 	if err != nil {
+		// be sure to undo all changes done by init(), as we'll return a nil
+		// instance and Close() isn't called by the caller of this function
+		newInstance.Close(gadgetCtx)
 		return nil, fmt.Errorf("initializing ebpf gadget: %w", err)
-	}
-
-	err = newInstance.evaluateMapParams(paramValues)
-	if err != nil {
-		return nil, fmt.Errorf("evaluating map params: %w", err)
 	}
 
 	return newInstance, nil
@@ -345,6 +343,80 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("initializing formatters: %w", err)
 	}
 
+	if err := i.evaluateMapParams(i.paramValues); err != nil {
+		return fmt.Errorf("evaluating map params: %w", err)
+	}
+
+	// Create network tracers, one for each socket filter program
+	// The same applies to uprobe / uretprobe as well.
+	for _, p := range i.collectionSpec.Programs {
+		switch p.Type {
+		case ebpf.Kprobe:
+			if strings.HasPrefix(p.SectionName, "uprobe/") ||
+				strings.HasPrefix(p.SectionName, "uretprobe/") ||
+				strings.HasPrefix(p.SectionName, "usdt/") {
+				uprobeTracer, err := uprobetracer.NewTracer[api.GadgetData](gadgetCtx.Logger())
+				if err != nil {
+					return fmt.Errorf("creating uprobe tracer: %w", err)
+				}
+				i.uprobeTracers[p.Name] = uprobeTracer
+			}
+		case ebpf.SocketFilter:
+			if strings.HasPrefix(p.SectionName, "socket") {
+				networkTracer, err := networktracer.NewTracer[api.GadgetData]()
+				if err != nil {
+					return fmt.Errorf("creating network tracer: %w", err)
+				}
+				i.networkTracers[p.Name] = networkTracer
+			}
+		case ebpf.SchedCLS:
+			parts := strings.Split(p.SectionName, "/")
+			if len(parts) != 3 {
+				return fmt.Errorf("invalid section name %q", p.SectionName)
+			}
+			if parts[0] != "classifier" {
+				return fmt.Errorf("invalid section name %q", p.SectionName)
+			}
+
+			var direction tchandler.AttachmentDirection
+
+			switch parts[1] {
+			case "ingress":
+				direction = tchandler.AttachmentDirectionIngress
+			case "egress":
+				direction = tchandler.AttachmentDirectionEgress
+			default:
+				return fmt.Errorf("unsupported hook type %q", parts[1])
+			}
+
+			handler, err := tchandler.NewHandler(direction)
+			if err != nil {
+				return fmt.Errorf("creating tc network tracer: %w", err)
+			}
+
+			i.tcHandlers[p.Name] = handler
+		}
+	}
+
+	if len(i.tcHandlers) > 0 {
+		// For now, override enrichment
+		gadgetCtx.SetVar("NeedContainerEvents", true)
+		i.params["iface"] = &param{
+			Param: &api.Param{
+				Key:         ParamIface,
+				Description: "Network interface to attach to",
+			},
+		}
+	}
+
+	i.params[ParamTraceKernel] = &param{
+		Param: &api.Param{
+			Key:          ParamTraceKernel,
+			DefaultValue: "false",
+			TypeHint:     api.TypeBool,
+		},
+	}
+
 	return nil
 }
 
@@ -453,91 +525,6 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 	return res
 }
 
-func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
-	for ds, formatters := range i.formatters {
-		for _, formatter := range formatters {
-			formatter := formatter
-			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-				return formatter(ds, data)
-			}, 0)
-		}
-	}
-
-	// Create network tracers, one for each socket filter program
-	// The same applies to uprobe / uretprobe as well.
-	for _, p := range i.collectionSpec.Programs {
-		switch p.Type {
-		case ebpf.Kprobe:
-			if strings.HasPrefix(p.SectionName, "uprobe/") ||
-				strings.HasPrefix(p.SectionName, "uretprobe/") ||
-				strings.HasPrefix(p.SectionName, "usdt/") {
-				uprobeTracer, err := uprobetracer.NewTracer[api.GadgetData](gadgetCtx.Logger())
-				if err != nil {
-					i.Close()
-					return fmt.Errorf("creating uprobe tracer: %w", err)
-				}
-				i.uprobeTracers[p.Name] = uprobeTracer
-			}
-		case ebpf.SocketFilter:
-			if strings.HasPrefix(p.SectionName, "socket") {
-				networkTracer, err := networktracer.NewTracer[api.GadgetData]()
-				if err != nil {
-					i.Close()
-					return fmt.Errorf("creating network tracer: %w", err)
-				}
-				i.networkTracers[p.Name] = networkTracer
-			}
-		case ebpf.SchedCLS:
-			parts := strings.Split(p.SectionName, "/")
-			if len(parts) != 3 {
-				return fmt.Errorf("invalid section name %q", p.SectionName)
-			}
-			if parts[0] != "classifier" {
-				return fmt.Errorf("invalid section name %q", p.SectionName)
-			}
-
-			var direction tchandler.AttachmentDirection
-
-			switch parts[1] {
-			case "ingress":
-				direction = tchandler.AttachmentDirectionIngress
-			case "egress":
-				direction = tchandler.AttachmentDirectionEgress
-			default:
-				return fmt.Errorf("unsupported hook type %q", parts[1])
-			}
-
-			handler, err := tchandler.NewHandler(direction)
-			if err != nil {
-				i.Close()
-				return fmt.Errorf("creating tc network tracer: %w", err)
-			}
-
-			i.tcHandlers[p.Name] = handler
-		}
-	}
-
-	if len(i.tcHandlers) > 0 {
-		// For now, override enrichment
-		gadgetCtx.SetVar("NeedContainerEvents", true)
-		i.params["iface"] = &param{
-			Param: &api.Param{
-				Key:         ParamIface,
-				Description: "Network interface to attach to",
-			},
-		}
-	}
-
-	i.params[ParamTraceKernel] = &param{
-		Param: &api.Param{
-			Key:          ParamTraceKernel,
-			DefaultValue: "false",
-			TypeHint:     api.TypeBool,
-		},
-	}
-	return nil
-}
-
 func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 	tracePipe, err := os.Open("/sys/kernel/debug/tracing/trace_pipe")
 	if err != nil {
@@ -556,6 +543,17 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 			log.Info(scanner.Text())
 		}
 	}()
+	return nil
+}
+
+func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	for ds, formatters := range i.formatters {
+		for _, formatter := range formatters {
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				return formatter(ds, data)
+			}, 0)
+		}
+	}
 	return nil
 }
 
@@ -755,7 +753,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
 		err := i.runTracer(gadgetCtx, tracer)
 		if err != nil {
-			i.Close()
 			return fmt.Errorf("running tracer %q: %w", tracer.mapName, err)
 		}
 	}
@@ -764,7 +761,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	for progName, p := range i.collectionSpec.Programs {
 		l, err := i.attachProgram(gadgetCtx, p, i.collection.Programs[progName])
 		if err != nil {
-			i.Close()
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
 		}
 
@@ -778,7 +774,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
 			lIter, ok := l.(*link.Iter)
 			if !ok {
-				i.Close()
 				return fmt.Errorf("link is not an iterator")
 			}
 
@@ -801,13 +796,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	err = i.runSnapshotters()
 	if err != nil {
-		i.Close()
 		return fmt.Errorf("running snapshotters: %w", err)
 	}
 
 	err = i.runMapIterators()
 	if err != nil {
-		i.Close()
 		return fmt.Errorf("running map iterators: %w", err)
 	}
 
@@ -815,38 +808,20 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) PreStop(gadgetCtx operators.GadgetContext) error {
-	i.Close()
+	close(i.done)
 	return nil
 }
 
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	i.bpfOperator.mu.Lock()
-	delete(i.bpfOperator.gadgetObjs, gadgetCtx)
-	i.bpfOperator.mu.Unlock()
-	return nil
-}
-
-func (i *ebpfInstance) Close() {
-	close(i.done)
-
 	for _, t := range i.tracers {
 		t.close()
 	}
+	i.tracers = nil
 
 	for _, l := range i.links {
 		gadgets.CloseLink(l)
 	}
 	i.links = nil
-
-	for _, networkTracer := range i.networkTracers {
-		networkTracer.Close()
-	}
-	for _, handler := range i.tcHandlers {
-		handler.Close()
-	}
-	for _, uprobeTracer := range i.uprobeTracers {
-		uprobeTracer.Close()
-	}
 
 	for _, fd := range i.perfFds {
 		// Disable perf event.
@@ -862,11 +837,30 @@ func (i *ebpfInstance) Close() {
 	}
 
 	i.wg.Wait()
+	return nil
+}
 
+func (i *ebpfInstance) Close(gadgetCtx operators.GadgetContext) error {
 	if i.collection != nil {
 		i.collection.Close()
 		i.collection = nil
 	}
+
+	for _, networkTracer := range i.networkTracers {
+		networkTracer.Close()
+	}
+	for _, handler := range i.tcHandlers {
+		handler.Close()
+	}
+	for _, uprobeTracer := range i.uprobeTracers {
+		uprobeTracer.Close()
+	}
+
+	i.bpfOperator.mu.Lock()
+	delete(i.bpfOperator.gadgetObjs, gadgetCtx)
+	i.bpfOperator.mu.Unlock()
+
+	return nil
 }
 
 // Using Attacher interface for network tracers for now

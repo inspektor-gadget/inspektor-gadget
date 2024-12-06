@@ -21,10 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 // newSimpleOperator takes a name, a priority and a pointer to a string that the operator writes its name
@@ -84,56 +82,6 @@ func TestOperatorOrder(t *testing.T) {
 			assert.Equal(t, tc.expectedOrder, out)
 		})
 	}
-}
-
-type fakeOperator struct {
-	name     string
-	priority int
-}
-
-func (s *fakeOperator) Name() string {
-	return s.name
-}
-
-func (s *fakeOperator) Init(*params.Params) error {
-	return nil
-}
-
-func (s *fakeOperator) GlobalParams() api.Params {
-	return nil
-}
-
-func (s *fakeOperator) InstanceParams() api.Params {
-	return api.Params{
-		{
-			Key:          "foo",
-			DefaultValue: "567",
-		},
-	}
-}
-
-func (s *fakeOperator) InstantiateDataOperator(operators.GadgetContext, api.ParamValues) (operators.DataOperatorInstance, error) {
-	return s, nil
-}
-
-func (s *fakeOperator) Priority() int {
-	return s.priority
-}
-
-func (s *fakeOperator) PreStart(operators.GadgetContext) error {
-	return nil
-}
-
-func (s *fakeOperator) Start(operators.GadgetContext) error {
-	return nil
-}
-
-func (s *fakeOperator) Stop(operators.GadgetContext) error {
-	return nil
-}
-
-func (s *fakeOperator) PostStop(operators.GadgetContext) error {
-	return nil
 }
 
 func TestParamsDefault(t *testing.T) {
