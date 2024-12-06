@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -35,7 +34,7 @@ type traceSNIEvent struct {
 
 	Timestamp string            `json:"timestamp"`
 	NetNs     uint64            `json:"netns_id"`
-	Proc      ebpftypes.Process `json:"proc"`
+	Proc      utils.Process `json:"proc"`
 
 	Name string `json:"name"`
 }

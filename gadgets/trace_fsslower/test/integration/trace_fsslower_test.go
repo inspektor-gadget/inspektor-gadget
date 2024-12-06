@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -34,7 +33,7 @@ type traceFSSlowerEvent struct {
 	eventtypes.CommonData
 
 	Timestamp string            `json:"timestamp"`
-	Proc      ebpftypes.Process `json:"proc"`
+	Proc      utils.Process `json:"proc"`
 
 	Delta  uint64 `json:"delta_us"`
 	Offset uint64 `json:"offset"`
