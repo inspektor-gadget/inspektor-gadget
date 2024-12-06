@@ -382,6 +382,10 @@ func (p *processOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error 
 	return nil
 }
 
+func (p *processOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func (p *processOperatorInstance) TotalMemory() uint64 {
 	return p.totalMemory
 }
