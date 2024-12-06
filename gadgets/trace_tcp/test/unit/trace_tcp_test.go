@@ -24,14 +24,13 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 type ExpectedTraceTcpEvent struct {
-	Proc ebpftypes.Process `json:"proc"`
+	Proc utils.Process `json:"proc"`
 
 	Type    string           `json:"type"`
 	NetNsId int              `json:"netns_id"`

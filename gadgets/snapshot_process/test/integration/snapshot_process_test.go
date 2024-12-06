@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -33,7 +32,7 @@ import (
 
 type snapshotProcessEntry struct {
 	eventtypes.CommonData
-	ebpftypes.Process
+	utils.Process
 }
 
 func TestSnapshotProcess(t *testing.T) {

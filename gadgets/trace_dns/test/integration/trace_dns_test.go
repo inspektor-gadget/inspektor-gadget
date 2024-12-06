@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -36,7 +35,7 @@ type traceDNSEvent struct {
 
 	Timestamp string            `json:"timestamp"`
 	NetNsID   uint64            `json:"netns_id"`
-	Proc      ebpftypes.Process `json:"proc"`
+	Proc      utils.Process `json:"proc"`
 
 	Src utils.L4Endpoint `json:"src"`
 	Dst utils.L4Endpoint `json:"dst"`

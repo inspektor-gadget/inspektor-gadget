@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -34,7 +33,7 @@ type traceOpenEvent struct {
 	eventtypes.CommonData
 
 	Timestamp string            `json:"timestamp"`
-	Proc      ebpftypes.Process `json:"proc"`
+	Proc      utils.Process `json:"proc"`
 
 	Fd    uint32 `json:"fd"`
 	Error string `json:"error"`
