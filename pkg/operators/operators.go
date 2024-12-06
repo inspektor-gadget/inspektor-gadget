@@ -108,10 +108,9 @@ type ImageOperator interface {
 
 type ImageOperatorInstance interface {
 	Name() string
-	Prepare(gadgetCtx GadgetContext) error
 	Start(gadgetCtx GadgetContext) error
 	Stop(gadgetCtx GadgetContext) error
-	ExtraParams(gadgetCtx GadgetContext) api.Params
+	Close(gadgetCtx GadgetContext) error
 }
 
 type DataOperator interface {
@@ -138,10 +137,11 @@ type DataOperatorInstance interface {
 	Name() string
 	Start(gadgetCtx GadgetContext) error
 	Stop(gadgetCtx GadgetContext) error
+	Close(gadgetCtx GadgetContext) error
 }
 
-type DataOperatorExtraParams interface {
-	// ExtraParams can return dynamically created params; they are read after Prepare() has been called
+type ExtraParams interface {
+	// ExtraParams can return dynamically created params
 	ExtraParams(gadgetCtx GadgetContext) api.Params
 }
 

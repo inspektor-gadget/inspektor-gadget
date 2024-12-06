@@ -73,6 +73,8 @@ type GadgetContext struct {
 	imageName        string
 	metadata         []byte
 	orasTarget       oras.ReadOnlyTarget
+
+	dataOperatorInstances []operators.DataOperatorInstance
 }
 
 func NewBuiltIn(
@@ -350,14 +352,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		c.SetVar("config", v)
 	}
 
+	defer c.close()
 	// After loading gadget info, start local operators as well
-	localOperators, err := c.initAndPrepareOperators(paramValues)
+	err := c.instantiateOperators(paramValues)
 	if err != nil {
 		return fmt.Errorf("initializing local operators: %w", err)
 	}
 
 	if run {
-		if err := c.start(localOperators); err != nil {
+		if err := c.preStart(); err != nil {
+			return fmt.Errorf("pre-starting operators: %w", err)
+		}
+		if err := c.start(); err != nil {
 			return fmt.Errorf("starting local operators: %w", err)
 		}
 
@@ -367,7 +373,8 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 			// TODO: Client shouldn't need to wait for the timeout. It should be
 			// managed only on the server side.
 			WaitForTimeoutOrDone(c)
-			c.stop(localOperators)
+			c.stop()
+			c.postStop()
 		}()
 	}
 
