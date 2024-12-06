@@ -529,6 +529,10 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (m *KubeManagerInstance) Close(gadgetCtx operators.GadgetContext) error {
 	m.manager.gadgetTracerManager.RemoveTracer(m.id)
 
 	if m.containersPublisher != nil {

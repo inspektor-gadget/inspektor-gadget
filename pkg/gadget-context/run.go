@@ -15,6 +15,7 @@
 package gadgetcontext
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -23,7 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
-func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]operators.DataOperatorInstance, error) {
+func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error {
 	log := c.Logger()
 
 	ops := c.DataOperators()
@@ -42,7 +43,7 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 	params := make([]*api.Param, 0)
 
-	dataOperatorInstances := make([]operators.DataOperatorInstance, 0, len(ops))
+	c.dataOperatorInstances = make([]operators.DataOperatorInstance, 0, len(ops))
 	for _, op := range ops {
 		log.Debugf("initializing data op %q", op.Name())
 		opParamPrefix := fmt.Sprintf("operator.%s", op.Name())
@@ -54,36 +55,36 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		// Ensure all params are present
 		err := apihelpers.NormalizeWithDefaults(instanceParams, opParamValues)
 		if err != nil {
-			return nil, fmt.Errorf("normalizing instance params for operator %q: %w", op.Name(), err)
+			return fmt.Errorf("normalizing instance params for operator %q: %w", op.Name(), err)
 		}
 
 		err = apihelpers.Validate(instanceParams, opParamValues)
 		if err != nil {
-			return nil, fmt.Errorf("validating instance params for operator %q: %w", op.Name(), err)
+			return fmt.Errorf("validating instance params for operator %q: %w", op.Name(), err)
 		}
 
 		opInst, err := op.InstantiateDataOperator(c, opParamValues)
 		if err != nil {
-			return nil, fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
+			return fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
 		}
 		if opInst == nil {
 			log.Debugf("> skipped %s", op.Name())
 			continue
 		}
-		dataOperatorInstances = append(dataOperatorInstances, opInst)
+		c.dataOperatorInstances = append(c.dataOperatorInstances, opInst)
 
 		// Add instance params only if operator was actually instantiated (i.e., activated)
 		params = append(params, instanceParams...)
 	}
 
-	for _, opInst := range dataOperatorInstances {
+	for _, opInst := range c.dataOperatorInstances {
 		log.Debugf("preparing op %q", opInst.Name())
 		opParamPrefix := fmt.Sprintf("operator.%s", opInst.Name())
 
 		// Second pass params; this time the operator had the chance to prepare itself based on DataSources, etc.
 		// this mainly is postponed to read default values that might differ from before; this second pass is
 		// what is handed over to the remote end
-		if extra, ok := opInst.(operators.DataOperatorExtraParams); ok {
+		if extra, ok := opInst.(operators.ExtraParams); ok {
 			pd := extra.ExtraParams(c)
 			params = append(params, pd.AddPrefix(opParamPrefix)...)
 		}
@@ -91,90 +92,140 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 	c.SetParams(params)
 
-	return dataOperatorInstances, nil
+	return nil
 }
 
-func (c *GadgetContext) start(dataOperatorInstances []operators.DataOperatorInstance) error {
-	for _, opInst := range dataOperatorInstances {
-		preStart, ok := opInst.(operators.PreStart)
-		if !ok {
-			continue
-		}
-		c.Logger().Debugf("pre-starting op %q", opInst.Name())
-		err := preStart.PreStart(c)
-		if err != nil {
-			c.cancel()
-			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
-		}
-	}
-	for _, opInst := range dataOperatorInstances {
-		c.Logger().Debugf("starting op %q", opInst.Name())
-		err := opInst.Start(c)
-		if err != nil {
-			c.cancel()
-			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
+func (c *GadgetContext) preStart() error {
+	for _, opInst := range c.dataOperatorInstances {
+		if preStart, ok := opInst.(operators.PreStart); ok {
+			c.Logger().Debugf("pre-starting op %q", opInst.Name())
+			err := preStart.PreStart(c)
+			if err != nil {
+				return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+			}
 		}
 	}
 	return nil
 }
 
-func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInstance) {
-	// Stop/DeInit in reverse order
-	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
-		opInst := dataOperatorInstances[i]
-		preStop, ok := opInst.(operators.PreStop)
-		if !ok {
-			continue
-		}
-		c.Logger().Debugf("pre-stopping op %q", opInst.Name())
-		err := preStop.PreStop(c)
+func (c *GadgetContext) start() error {
+	started := []operators.DataOperatorInstance{}
+
+	for _, opInst := range c.dataOperatorInstances {
+		c.Logger().Debugf("starting op %q", opInst.Name())
+		err := opInst.Start(c)
 		if err != nil {
-			c.Logger().Errorf("pre-stopping operator %q: %v", opInst.Name(), err)
+			// Stop all operators that were started to be sure they're able to
+			// release resources there
+			c.stopOperators(started)
+			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
+		}
+		started = append(started, opInst)
+	}
+	return nil
+}
+
+func (c *GadgetContext) preStop() error {
+	var errs []error
+
+	// PreStop in reverse order
+	for i := len(c.dataOperatorInstances) - 1; i >= 0; i-- {
+		opInst := c.dataOperatorInstances[i]
+		if preStop, ok := opInst.(operators.PreStop); ok {
+			c.Logger().Debugf("pre-stopping op %q", opInst.Name())
+			err := preStop.PreStop(c)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("pre-stopping operator %q: %w", opInst.Name(), err))
+			}
 		}
 	}
-	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
-		opInst := dataOperatorInstances[i]
+	return errors.Join(errs...)
+}
+
+func (c *GadgetContext) stopOperators(ops []operators.DataOperatorInstance) error {
+	var errs []error
+
+	// Stop in reverse order
+	for i := len(ops) - 1; i >= 0; i-- {
+		opInst := ops[i]
 		c.Logger().Debugf("stopping op %q", opInst.Name())
-		err := opInst.Stop(c)
-		if err != nil {
-			c.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
+		errs = append(errs, opInst.Stop(c))
+	}
+	return errors.Join(errs...)
+}
+
+func (c *GadgetContext) stop() error {
+	return c.stopOperators(c.dataOperatorInstances)
+}
+
+func (c *GadgetContext) postStop() error {
+	var errs []error
+
+	// PostStop in reverse order
+	for i := len(c.dataOperatorInstances) - 1; i >= 0; i-- {
+		opInst := c.dataOperatorInstances[i]
+		if postStop, ok := opInst.(operators.PostStop); ok {
+			c.Logger().Debugf("post-stopping op %q", opInst.Name())
+			err := postStop.PostStop(c)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("stopping operator %q: %w", opInst.Name(), err))
+			}
 		}
 	}
-	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
-		opInst := dataOperatorInstances[i]
-		postStop, ok := opInst.(operators.PostStop)
-		if !ok {
-			continue
-		}
-		c.Logger().Debugf("post-stopping op %q", opInst.Name())
-		err := postStop.PostStop(c)
-		if err != nil {
-			c.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
+	return errors.Join(errs...)
+}
+
+func (c *GadgetContext) close() error {
+	var errs []error
+
+	// Close in reverse order
+	for i := len(c.dataOperatorInstances) - 1; i >= 0; i-- {
+		opInst := c.dataOperatorInstances[i]
+		c.Logger().Debugf("closing op %q", opInst.Name())
+		if err := opInst.Close(c); err != nil {
+			errs = append(errs, fmt.Errorf("closing operator %q: %w", opInst.Name(), err))
 		}
 	}
+	return errors.Join(errs...)
 }
 
 func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
-	_, err := c.initAndPrepareOperators(paramValues)
+	err := c.instantiateOperators(paramValues)
+	c.close()
 	return err
 }
 
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 	defer c.cancel()
+	defer c.close()
 
-	dataOperatorInstances, err := c.initAndPrepareOperators(paramValues)
+	err := c.instantiateOperators(paramValues)
 	if err != nil {
 		return fmt.Errorf("initializing and preparing operators: %w", err)
 	}
 
-	if err := c.start(dataOperatorInstances); err != nil {
+	if err := c.preStart(); err != nil {
+		return fmt.Errorf("pre-starting operators: %w", err)
+	}
+
+	if err := c.start(); err != nil {
 		return fmt.Errorf("starting operators: %w", err)
 	}
 
 	c.Logger().Debugf("running...")
-
 	WaitForTimeoutOrDone(c)
-	c.stop(dataOperatorInstances)
 
-	return nil
+	var errs []error
+
+	if err := c.preStop(); err != nil {
+		errs = append(errs, fmt.Errorf("pre-stopping operators: %w", err))
+	}
+	if err := c.stop(); err != nil {
+		errs = append(errs, fmt.Errorf("stopping operators: %w", err))
+	}
+	if err := c.postStop(); err != nil {
+		errs = append(errs, fmt.Errorf("post-stopping operators: %w", err))
+	}
+
+	return errors.Join(errs...)
 }

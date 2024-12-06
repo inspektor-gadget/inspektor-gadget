@@ -17,6 +17,7 @@ package ocihandler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -445,16 +446,25 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
-		err := opInst.Prepare(o.gadgetCtx)
-		if err != nil {
-			return fmt.Errorf("preparing operator %q: %w", opInst.Name(), err)
+		if extra, ok := opInst.(operators.ExtraParams); ok {
+			params := extra.ExtraParams(gadgetCtx)
+			extraParams = append(extraParams, params.AddPrefix(opInst.Name())...)
 		}
-
-		// Add gadget params prefixed with operators' name
-		extraParams = append(extraParams, opInst.ExtraParams(gadgetCtx).AddPrefix(opInst.Name())...)
 	}
 
 	o.extraParams = extraParams
+	return nil
+}
+
+func (o *OciHandlerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	for _, opInst := range o.imageOperatorInstances {
+		if preStart, ok := opInst.(operators.PreStart); ok {
+			err := preStart.PreStart(gadgetCtx)
+			if err != nil {
+				return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -462,29 +472,21 @@ func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
 	started := []operators.ImageOperatorInstance{}
 
 	for _, opInst := range o.imageOperatorInstances {
-		preStart, ok := opInst.(operators.PreStart)
-		if !ok {
-			continue
-		}
-		err := preStart.PreStart(gadgetCtx)
-		if err != nil {
-			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
-		}
-	}
-
-	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
 		if err != nil {
-			// Stop all started operators
+			// Stop all operators that were started to be sure they're able to
+			// release resources there
 			for _, startedOp := range started {
 				startedOp.Stop(o.gadgetCtx)
+				if postStop, ok := startedOp.(operators.PostStop); ok {
+					postStop.PostStop(o.gadgetCtx)
+				}
 			}
-
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
-
 		started = append(started, opInst)
 	}
+
 	return nil
 }
 
@@ -503,25 +505,41 @@ func (o *OciHandlerInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	var errs []error
+
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Stop(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
+			errs = append(errs, fmt.Errorf("stopping operator %q: %w", opInst.Name(), err))
 		}
 	}
+
+	return errors.Join(errs...)
+}
+
+func (o *OciHandlerInstance) PostStop(gadgetCtx operators.GadgetContext) error {
+	var errs []error
 
 	for _, opInst := range o.imageOperatorInstances {
-		postStop, ok := opInst.(operators.PostStop)
-		if !ok {
-			continue
-		}
-		err := postStop.PostStop(gadgetCtx)
-		if err != nil {
-			o.gadgetCtx.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
+		if preStart, ok := opInst.(operators.PostStop); ok {
+			err := preStart.PostStop(gadgetCtx)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("post-stopping operator %q: %w", opInst.Name(), err))
+			}
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
+}
+
+func (o *OciHandlerInstance) Close(gadgetCtx operators.GadgetContext) error {
+	var errs []error
+
+	for _, opInst := range o.imageOperatorInstances {
+		errs = append(errs, opInst.Close(o.gadgetCtx))
+	}
+
+	return errors.Join(errs...)
 }
 
 type OciHandlerInstance struct {

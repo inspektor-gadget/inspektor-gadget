@@ -488,6 +488,10 @@ func (i *ebpfOperatorDataInstance) Start(gadgetCtx operators.GadgetContext) erro
 }
 
 func (i *ebpfOperatorDataInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (i *ebpfOperatorDataInstance) Close(gadgetCtx operators.GadgetContext) error {
 	defer close(i.done)
 
 	if err := bpfstats.DisableBPFStats(); err != nil {

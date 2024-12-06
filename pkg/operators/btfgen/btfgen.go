@@ -66,48 +66,38 @@ func (o *btfgenOperator) InstantiateImageOperator(
 		return nil, nil
 	}
 
-	return &btfgenOperatorInstance{
-		target: target,
-		desc:   desc,
-	}, nil
-}
-
-type btfgenOperatorInstance struct {
-	target oras.ReadOnlyTarget
-	desc   ocispec.Descriptor
-}
-
-func (i *btfgenOperatorInstance) Name() string {
-	return "btfgenInstance"
-}
-
-func (i *btfgenOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 	info, err := btfgen.GetOSInfo()
 	if err != nil {
-		return fmt.Errorf("getting OS info: %w", err)
+		return nil, fmt.Errorf("getting OS info: %w", err)
 	}
 
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), i.target, i.desc)
+	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, desc)
 	if err != nil {
-		return fmt.Errorf("getting ebpf binary: %w", err)
+		return nil, fmt.Errorf("getting ebpf binary: %w", err)
 	}
 	defer r.Close()
 
 	btfFileName := fmt.Sprintf("%s/%s/%s/%s.btf", info.ID, info.VersionID, info.Arch, info.Kernel)
 	btfBytes, err := getBTFFile(r, btfFileName)
 	if err != nil {
-		return fmt.Errorf("getting BTF file: %w", err)
+		return nil, fmt.Errorf("getting BTF file: %w", err)
 	}
 
 	btfSpec, err := btf.LoadSpecFromReader(bytes.NewReader(btfBytes))
 	if err != nil {
-		return fmt.Errorf("loading BTF spec: %w", err)
+		return nil, fmt.Errorf("loading BTF spec: %w", err)
 	}
 
 	// save the kernel types to be used by the ebpf operator when loading bpf the spec.
 	gadgetCtx.SetVar(kernelTypesVar, btfSpec)
 
-	return nil
+	return &btfgenOperatorInstance{}, nil
+}
+
+type btfgenOperatorInstance struct{}
+
+func (i *btfgenOperatorInstance) Name() string {
+	return "btfgenInstance"
 }
 
 func (i *btfgenOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
@@ -115,6 +105,10 @@ func (i *btfgenOperatorInstance) Start(gadgetCtx operators.GadgetContext) error 
 }
 
 func (i *btfgenOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (i *btfgenOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
@@ -143,10 +137,6 @@ func getBTFFile(r io.Reader, filename string) ([]byte, error) {
 			return b, nil
 		}
 	}
-}
-
-func (i *btfgenOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
-	return nil
 }
 
 func init() {

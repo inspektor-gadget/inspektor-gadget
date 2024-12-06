@@ -280,13 +280,6 @@ func (o *OperatorInstance) Name() string {
 	return Name
 }
 
-func (o *OperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	if o.symbolizer != nil {
-		o.symbolizer.Close()
-	}
-	return nil
-}
-
 func (o *OperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 	userStackMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.UserStackMapName)
 	if !ok || userStackMapAny == nil {
@@ -306,6 +299,17 @@ func (o *OperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 		for _, f := range funcs {
 			ds.Subscribe(f, Priority)
 		}
+	}
+	return nil
+}
+
+func (o *OperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (o *OperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	if o.symbolizer != nil {
+		o.symbolizer.Close()
 	}
 	return nil
 }

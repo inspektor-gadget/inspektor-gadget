@@ -667,10 +667,10 @@ func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) erro
 }
 
 func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error {
-	if l.containersPublisher != nil {
-		l.containersPublisher.Unsubscribe()
-	}
+	return nil
+}
 
+func (l *localManagerTraceWrapper) Close(gadgetCtx operators.GadgetContext) error {
 	return l.PostGadgetRun()
 }
 

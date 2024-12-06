@@ -94,13 +94,13 @@ func (w *wasmOperator) InstantiateImageOperator(
 		createdMap:  map[uint32]struct{}{},
 	}
 
-	if err := instance.init(gadgetCtx, target, desc, w.cache); err != nil {
-		instance.close(gadgetCtx)
-		return nil, fmt.Errorf("initializing wasm: %w", err)
-	}
-
 	if configVar, ok := gadgetCtx.GetVar("config"); ok {
 		instance.config, _ = configVar.(*viper.Viper)
+	}
+
+	if err := instance.init(gadgetCtx, target, desc, w.cache); err != nil {
+		instance.Close(gadgetCtx)
+		return nil, fmt.Errorf("initializing wasm: %w", err)
 	}
 
 	if instance.config != nil {
@@ -152,14 +152,6 @@ type wasmOperatorInstance struct {
 
 func (i *wasmOperatorInstance) Name() string {
 	return "wasm"
-}
-
-func (i *wasmOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) error {
-	if err := i.callGuestFunction(gadgetCtx.Context(), "gadgetInit"); err != nil {
-		return fmt.Errorf("initializing wasm guest: %w", err)
-	}
-
-	return nil
 }
 
 func (i *wasmOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
@@ -309,6 +301,10 @@ func (i *wasmOperatorInstance) init(
 
 	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")
 
+	if err := i.callGuestFunction(gadgetCtx.Context(), "gadgetInit"); err != nil {
+		return fmt.Errorf("initializing wasm guest: %w", err)
+	}
+
 	return err
 }
 
@@ -363,23 +359,14 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := i.callGuestFunction(ctx, "gadgetStop")
-
-	// TODO: This should be called directly from the outside, in case prepare or
-	// start fails, this won't be called.
-	i.close(gadgetCtx)
-
-	return err
+	return i.callGuestFunction(ctx, "gadgetStop")
 }
 
 func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error {
-	// TODO: reenable it when
-	// https://github.com/inspektor-gadget/inspektor-gadget/pull/3778 is merged
-	// return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
-	return nil
+	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
 }
 
-func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
+func (i *wasmOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	var errs []error
 
 	if i.rt != nil {

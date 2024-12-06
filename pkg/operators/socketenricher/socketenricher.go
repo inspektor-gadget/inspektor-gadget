@@ -193,6 +193,10 @@ func (i *SocketEnricherInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return i.PostGadgetRun()
 }
 
+func (i *SocketEnricherInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map) {
 	i.gadgetCtx.Logger().Debugf("setting sockets map")
 	i.gadgetCtx.SetVar(tracer.SocketsMapName, m)
