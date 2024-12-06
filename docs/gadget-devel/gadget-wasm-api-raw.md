@@ -399,6 +399,16 @@ Parameters:
 Return value:
 - (u32) Handle to map on success, 0 on error.
 
+#### `mapGetFD(m uint32) int64`
+
+Returns the map file descriptor.
+
+Parameters:
+- `m` (u32): Map handle (as returned by `getMap`)
+
+Return value:
+- (i64) The map FD.
+
 #### `mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32`
 
 Lookup the map for a value corresponding to given key.
