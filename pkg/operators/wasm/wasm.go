@@ -74,7 +74,7 @@ func (w *wasmOperator) InstantiateImageOperator(
 	}
 
 	if err := instance.init(gadgetCtx, target, desc); err != nil {
-		instance.close(gadgetCtx)
+		instance.Close(gadgetCtx)
 		return nil, fmt.Errorf("initializing wasm: %w", err)
 	}
 
@@ -315,20 +315,14 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := i.callGuestFunction(ctx, "gadgetStop")
-
-	// TODO: This should be called directly from the outside, in case prepare or
-	// start fails, this won't be called.
-	i.close(gadgetCtx)
-
-	return err
+	return i.callGuestFunction(ctx, "gadgetStop")
 }
 
 func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error {
 	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
 }
 
-func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
+func (i *wasmOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	var result error
 
 	if i.rt != nil {

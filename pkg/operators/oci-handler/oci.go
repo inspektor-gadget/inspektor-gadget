@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -380,19 +381,20 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
-	started := []operators.ImageOperatorInstance{}
-
+func (o *OciHandlerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	for _, opInst := range o.imageOperatorInstances {
-		preStart, ok := opInst.(operators.PreStart)
-		if !ok {
-			continue
-		}
-		err := preStart.PreStart(gadgetCtx)
-		if err != nil {
-			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+		if preStart, ok := opInst.(operators.PreStart); ok {
+			err := preStart.PreStart(gadgetCtx)
+			if err != nil {
+				return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+			}
 		}
 	}
+	return nil
+}
+
+func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
+	started := []operators.ImageOperatorInstance{}
 
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
@@ -414,22 +416,35 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Stop(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
+			return fmt.Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
 	}
+	return nil
+}
+
+func (o *OciHandlerInstance) PostStop(gadgetCtx operators.GadgetContext) error {
+	for _, opInst := range o.imageOperatorInstances {
+		if preStart, ok := opInst.(operators.PostStop); ok {
+			err := preStart.PostStop(gadgetCtx)
+			if err != nil {
+				return fmt.Errorf("post-stopping operator %q: %w", opInst.Name(), err)
+			}
+		}
+	}
+	return nil
+}
+
+func (o *OciHandlerInstance) Close(gadgetCtx operators.GadgetContext) error {
+	var result error
 
 	for _, opInst := range o.imageOperatorInstances {
-		postStop, ok := opInst.(operators.PostStop)
-		if !ok {
-			continue
-		}
-		err := postStop.PostStop(gadgetCtx)
+		err := opInst.Close(o.gadgetCtx)
 		if err != nil {
-			o.gadgetCtx.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
+			result = multierror.Append(result, err)
 		}
 	}
 
-	return nil
+	return result
 }
 
 type OciHandlerInstance struct {

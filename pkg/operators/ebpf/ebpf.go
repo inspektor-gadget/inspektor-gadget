@@ -146,6 +146,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 	err = newInstance.init(gadgetCtx)
 	if err != nil {
+		newInstance.Close(gadgetCtx)
 		return nil, fmt.Errorf("initializing ebpf gadget: %w", err)
 	}
 
@@ -464,7 +465,6 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 				strings.HasPrefix(p.SectionName, "usdt/") {
 				uprobeTracer, err := uprobetracer.NewTracer[api.GadgetData](gadgetCtx.Logger())
 				if err != nil {
-					i.Close()
 					return fmt.Errorf("creating uprobe tracer: %w", err)
 				}
 				i.uprobeTracers[p.Name] = uprobeTracer
@@ -473,7 +473,6 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 			if strings.HasPrefix(p.SectionName, "socket") {
 				networkTracer, err := networktracer.NewTracer[api.GadgetData]()
 				if err != nil {
-					i.Close()
 					return fmt.Errorf("creating network tracer: %w", err)
 				}
 				i.networkTracers[p.Name] = networkTracer
@@ -500,7 +499,6 @@ func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 
 			handler, err := tchandler.NewHandler(direction)
 			if err != nil {
-				i.Close()
 				return fmt.Errorf("creating tc network tracer: %w", err)
 			}
 
@@ -675,7 +673,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
 		err := i.runTracer(gadgetCtx, tracer)
 		if err != nil {
-			i.Close()
 			return fmt.Errorf("running tracer %q: %w", tracer.mapName, err)
 		}
 	}
@@ -684,7 +681,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	for progName, p := range i.collectionSpec.Programs {
 		l, err := i.attachProgram(gadgetCtx, p, i.collection.Programs[progName])
 		if err != nil {
-			i.Close()
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
 		}
 
@@ -698,7 +694,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, iterPrefix) {
 			lIter, ok := l.(*link.Iter)
 			if !ok {
-				i.Close()
 				return fmt.Errorf("link is not an iterator")
 			}
 
@@ -721,13 +716,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	err = i.runSnapshotters()
 	if err != nil {
-		i.Close()
 		return fmt.Errorf("running snapshotters: %w", err)
 	}
 
 	err = i.runMapIterators()
 	if err != nil {
-		i.Close()
 		return fmt.Errorf("running map iterators: %w", err)
 	}
 
@@ -735,26 +728,26 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	i.Close()
-	i.wg.Wait()
-	return nil
-}
-
-func (i *ebpfInstance) Close() {
 	close(i.done)
 
 	for _, t := range i.tracers {
 		t.close()
 	}
 
-	if i.collection != nil {
-		i.collection.Close()
-		i.collection = nil
-	}
 	for _, l := range i.links {
 		gadgets.CloseLink(l)
 	}
 	i.links = nil
+
+	i.wg.Wait()
+	return nil
+}
+
+func (i *ebpfInstance) Close(gadgetCtx operators.GadgetContext) error {
+	if i.collection != nil {
+		i.collection.Close()
+		i.collection = nil
+	}
 
 	for _, networkTracer := range i.networkTracers {
 		networkTracer.Close()
@@ -765,6 +758,7 @@ func (i *ebpfInstance) Close() {
 	for _, uprobeTracer := range i.uprobeTracers {
 		uprobeTracer.Close()
 	}
+	return nil
 }
 
 // Using Attacher interface for network tracers for now

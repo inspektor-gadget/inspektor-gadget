@@ -822,6 +822,10 @@ func (m *otelMetricsOperatorInstance) Start(gadgetCtx operators.GadgetContext) e
 }
 
 func (m *otelMetricsOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (m *otelMetricsOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	m.shutdown()
 	m.wg.Wait()
 	gadgetCtx.Logger().Debug("shutting down metrics")

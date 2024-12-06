@@ -118,6 +118,10 @@ func (i *btfgenOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (i *btfgenOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func getBTFFile(r io.Reader, filename string) ([]byte, error) {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
