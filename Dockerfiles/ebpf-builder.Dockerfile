@@ -6,7 +6,7 @@ ARG TINYGO_VERSION=0.31.2
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM golang:1.22.8@sha256:ed01175ba5c08d20d824d3a3387ec2e392827e1116212ff0ab3e6db7b7de63ba AS builder
+FROM golang:1.23.4@sha256:574185e5c6b9d09873f455a7c205ea0514bfd99738c5dc7750196403a44ed4b7 AS builder
 ARG BPFTOOL_VERSION
 ARG LIBBPF_VERSION
 
@@ -23,7 +23,7 @@ RUN \
 	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
 	chmod +x /usr/local/bin/bpftool
 
-FROM golang:1.22.8@sha256:ed01175ba5c08d20d824d3a3387ec2e392827e1116212ff0ab3e6db7b7de63ba
+FROM golang:1.23.4@sha256:574185e5c6b9d09873f455a7c205ea0514bfd99738c5dc7750196403a44ed4b7
 ARG CLANG_LLVM_VERSION
 ARG TINYGO_VERSION
 # libc-dev is needed for various headers, among others
