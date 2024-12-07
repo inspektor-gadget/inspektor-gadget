@@ -69,11 +69,6 @@ const (
 	kernelTypesVar = "kernelTypes"
 )
 
-type param struct {
-	*api.Param
-	fromEbpf bool
-}
-
 // ebpfOperator reads ebpf programs from OCI images and runs them
 type ebpfOperator struct{}
 
@@ -604,6 +599,15 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 				return fmt.Errorf("invalid IP address: %v", ipParam)
 			}
 			constReplacements[name] = ipAddr
+		case api.TypeString:
+			i.logger.Debugf("handling string param: %q", name)
+			bytes := make([]byte, p.strLen)
+			strBytes := []byte(paramMap[name].AsString())
+			if len(strBytes) > p.strLen {
+				return fmt.Errorf("string param %q too long: %d > %d", name, len(strBytes), p.strLen)
+			}
+			copy(bytes[:], []byte(paramMap[name].AsString()))
+			constReplacements[name] = bytes
 		}
 
 		i.logger.Debugf("setting param value %q = %v", name, constReplacements[name])
