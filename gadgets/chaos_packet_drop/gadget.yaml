@@ -1,0 +1,83 @@
+name: chaos_packet_drop
+description: Drop egress/ingress TCP/UDP packets based on target address, port pair
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/chaos_packet_drop
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/chaos_packet_drop
+datasources:
+  events_map:
+    annotations:
+      events_map.collect: "true"
+    fields: {}
+  events_map_iter:
+    fields:
+      src:
+        annotations:
+          description: Source endpoint
+          template: l4endpoint
+      dst:
+        annotations:
+          description: Destination endpoint
+          template: l4endpoint
+      drop_cnt:
+        annotations:
+          description: The number of packets dropped per destination address, port
+            pair
+      egress:
+        annotations:
+          description: A boolean parameter to indicate whether the program is attached
+            at the egress hookpoint or not
+      ingress:
+        annotations:
+          description: A boolean parameter to indicate whether the program is attached
+            at the ingress hookpoint or not
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
+      proc:
+        annotations:
+          description: Process information such as pid, tid, comm, ppid, pcomm, mntns_id,
+            uid, gid etc.
+      timestamp_raw:
+        annotations:
+          columns.hidden: "true"
+          description: Timestamp at which the event was generated
+          template: timestamp
+params:
+  ebpf:
+    egress:
+      key: egress
+      defaultValue: "true"
+      description: This is a boolean parameter to indicate whether the program is
+        to be attached at the egress hookpoint or not
+    filter_ip:
+      key: filter_ip
+      defaultValue: 0.0.0.0
+      description: This parameter specifies the IP address used to filter packets
+        based on the target address. When attached at the egress hookpoint, packets
+        with a destination IP matching this address will be dropped. When attached
+        at the ingress hookpoint, packets with a source IP matching this address will
+        be dropped.
+    filter_tcp:
+      key: filter_tcp
+      defaultValue: "true"
+      description: This is a boolean parameter to decide whether TCP packets should
+        be filtered or not
+    filter_udp:
+      key: filter_udp
+      defaultValue: "true"
+      description: This is a boolean parameter to decide whether UDP packets should
+        be filtered or not
+    ingress:
+      key: ingress
+      defaultValue: "false"
+      description: This is a boolean parameter to indicate whether the program is
+        to be attached at the ingress hookpoint or not
+    loss_percentage:
+      key: loss_percentage
+      defaultValue: "100"
+      description: This is the percentage of packets to be dropped (Eg:- 100)
+    port:
+      key: port
+      defaultValue: "0"
+      description: port number (Eg:- 443)
