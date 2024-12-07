@@ -16,6 +16,7 @@ package compat
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -49,7 +50,9 @@ type EventWrapperBase struct {
 	containerpidAccessor         datasource.FieldAccessor
 	containerimagenameAccessor   datasource.FieldAccessor
 	containerimagedigestAccessor datasource.FieldAccessor
+	containerStartedAtAccessor   datasource.FieldAccessor
 	hostNetworkAccessor          datasource.FieldAccessor
+	podLabelsAccessor            datasource.FieldAccessor
 	ownerKindAccessor            datasource.FieldAccessor
 	ownerNameAccessor            datasource.FieldAccessor
 }
@@ -199,6 +202,16 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	if err != nil {
 		return nil, err
 	}
+	ev.podLabelsAccessor, err = k8s.AddSubField(
+		"podLabels",
+		api.Kind_String,
+		datasource.WithTags("kubernetes"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-26),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	owner, err := k8s.AddSubField("owner", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
 	if err != nil {
@@ -299,6 +312,15 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 	if err != nil {
 		return nil, err
 	}
+	ev.containerStartedAtAccessor, err = runtime.AddSubField(
+		"containerStartedAt",
+		api.Kind_Int64,
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-21),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: Instead of just hiding fields, we can skip adding them in the first place (integration tests don't like
 	// that right now, though)
@@ -358,6 +380,13 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 		if ev.ownerNameAccessor.IsRequested() {
 			ev.ownerNameAccessor.PutString(ev.Data, container.K8sOwnerReference().Name)
 		}
+		if ev.podLabelsAccessor.IsRequested() {
+			kvPairs := make([]string, 0, len(k8s.PodLabels))
+			for k, v := range k8s.PodLabels {
+				kvPairs = append(kvPairs, fmt.Sprintf("%s=%s", k, v))
+			}
+			ev.podLabelsAccessor.PutString(ev.Data, strings.Join(kvPairs, ","))
+		}
 	}
 	rt := container.RuntimeMetadata()
 	if rt != nil {
@@ -375,6 +404,9 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 		}
 		if ev.containerimagedigestAccessor.IsRequested() {
 			ev.containerimagedigestAccessor.Set(ev.Data, []byte(rt.ContainerImageDigest))
+		}
+		if ev.containerStartedAtAccessor.IsRequested() {
+			ev.containerStartedAtAccessor.PutInt64(ev.Data, int64(rt.ContainerStartedAt))
 		}
 	}
 }

@@ -21,11 +21,32 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type testEvent struct {
 	Foo int    `json:"foo"`
 	Bar string `json:"bar"`
+}
+
+func TestPodLabelsUnmarshal(t *testing.T) {
+	input := `{"node": "node1", "namespace": "default", "podName": "test", "podLabels": "app=nginx,foo=bar"}`
+	expected := &types.K8sMetadata{
+		Node: "node1",
+		BasicK8sMetadata: types.BasicK8sMetadata{
+			Namespace: "default",
+			PodName:   "test",
+			PodLabels: map[string]string{
+				"app": "nginx",
+				"foo": "bar",
+			},
+		},
+	}
+	actual := decodeJSONOutput(t, JSONSingleObjectMode, input, func(*types.K8sMetadata) {})
+
+	require.Len(t, actual, 1)
+	assert.Equal(t, expected, actual[0])
 }
 
 func TestSingleObject(t *testing.T) {
