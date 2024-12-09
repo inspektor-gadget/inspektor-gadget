@@ -67,6 +67,8 @@ const (
 	PerfMaxStackDepth        = 127
 
 	kernelTypesVar = "kernelTypes"
+
+	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
 )
 
 type param struct {
@@ -424,6 +426,12 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		}
 		m.valAccessor = accessor
 
+		annotations := ds.Annotations()
+		if flushOnStop := annotations[AnnotationFlushOnStop]; flushOnStop == "true" {
+			i.logger.Debugf("flushing on stop enabled")
+			m.flushOnStop = true
+		}
+
 		m.ds = ds
 	}
 	return nil
@@ -734,9 +742,12 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
+func (i *ebpfInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 	i.Close()
-	i.wg.Wait()
+	return nil
+}
+
+func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
@@ -747,10 +758,6 @@ func (i *ebpfInstance) Close() {
 		t.close()
 	}
 
-	if i.collection != nil {
-		i.collection.Close()
-		i.collection = nil
-	}
 	for _, l := range i.links {
 		gadgets.CloseLink(l)
 	}
@@ -764,6 +771,13 @@ func (i *ebpfInstance) Close() {
 	}
 	for _, uprobeTracer := range i.uprobeTracers {
 		uprobeTracer.Close()
+	}
+
+	i.wg.Wait()
+
+	if i.collection != nil {
+		i.collection.Close()
+		i.collection = nil
 	}
 }
 
