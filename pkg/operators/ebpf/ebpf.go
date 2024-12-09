@@ -103,8 +103,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 	// TODO: do some pre-checks in here, maybe validate hashes, signatures, etc.
 
 	return &ebpfInstance{
-		gadgetCtx: gadgetCtx, // context usually should not be stored, but should we really carry it through all funcs?
-		done:      make(chan struct{}),
+		done: make(chan struct{}),
 
 		logger:  gadgetCtx.Logger(),
 		program: program,
@@ -615,7 +614,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			} else {
 				i.logger.Warnf("Replacement map %q incompatible: %s",
 					v.name, err)
-				i.logger.Warnf("Is %s compatible with ig %s?", i.gadgetCtx.ImageName(), version.Version().String())
+				i.logger.Warnf("Is %s compatible with ig %s?", gadgetCtx.ImageName(), version.Version().String())
 			}
 		default:
 			if !reflect.TypeOf(res).AssignableTo(v.refType) {
