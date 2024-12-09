@@ -25,13 +25,12 @@ import (
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 type ExpectedTopFileEvent struct {
-	Proc   ebpftypes.Process `json:"proc"`
+	Proc   utils.Process `json:"proc"`
 	Dev    uint32            `json:"dev"`
 	File   string            `json:"file"`
 	RBytes uint64            `json:"rbytes"`

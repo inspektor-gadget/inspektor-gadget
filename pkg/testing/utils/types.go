@@ -14,6 +14,8 @@
 
 package utils
 
+import ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
+
 // Define some types that are only used for testing purposes
 
 type K8s struct {
@@ -35,3 +37,7 @@ type L3Endpoint struct {
 	Addr    string `json:"addr"`
 	Version uint8  `json:"version"`
 }
+
+type Creds = ebpftypes.Creds
+type Parent = ebpftypes.Parent
+type Process = ebpftypes.Process
