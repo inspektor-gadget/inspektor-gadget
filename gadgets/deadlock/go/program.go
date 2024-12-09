@@ -159,31 +159,37 @@ func gadgetInit() int {
 			mutex1, err := mutex1F.Uint64(datum)
 			if err != nil {
 				api.Warnf("failed to get mutex1: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 			mutex2, err := mutex2F.Uint64(datum)
 			if err != nil {
 				api.Warnf("failed to get mutex2: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 			tid, err := tidF.Uint32(datum)
 			if err != nil {
 				api.Warnf("failed to get tid: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 			pid, err := pidF.Uint32(datum)
 			if err != nil {
 				api.Warnf("failed to get pid: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 			mutex1Stack, err := mutex1StackF.Uint64(datum)
 			if err != nil {
 				api.Warnf("failed to get mutex1_stack_id: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 			mutex2Stack, err := mutex2StackF.Uint64(datum)
 			if err != nil {
 				api.Warnf("failed to get mutex2_stack_id: %s", err)
+				api.ReleaseHandle(datum)
 				continue
 			}
 
@@ -192,11 +198,13 @@ func gadgetInit() int {
 				comm, err := commF.String(datum)
 				if err != nil {
 					api.Warnf("failed to get comm: %s", err)
+					api.ReleaseHandle(datum)
 					continue
 				}
 				mntnsId, err := mntnsIdF.Uint64(datum)
 				if err != nil {
 					api.Warnf("failed to get mntns_id: %s", err)
+					api.ReleaseHandle(datum)
 					continue
 				}
 				pidInfo[pid] = ProcInfo{
@@ -216,6 +224,7 @@ func gadgetInit() int {
 				"mutex2StackId": mutex2Stack,
 			})
 			affectedPIDs[pid] = struct{}{}
+			api.ReleaseHandle(datum)
 		}
 
 		// Check for cycles only in the affected PIDs
