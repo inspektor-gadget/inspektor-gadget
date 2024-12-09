@@ -8,6 +8,7 @@ TEST_ARTIFACTS = \
 	params \
 	config \
 	map \
+	perf \
 	#
 
 all: $(TEST_ARTIFACTS)
