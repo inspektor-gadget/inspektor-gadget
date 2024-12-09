@@ -75,7 +75,7 @@ require (
 	github.com/gopacket/gopacket v1.3.1
 	github.com/sigstore/sigstore v1.8.10
 	github.com/spf13/pflag v1.0.5
-	github.com/tetratelabs/wazero v1.8.1
+	github.com/tetratelabs/wazero v1.8.2
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.8.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.32.0
 	go.opentelemetry.io/otel/log v0.8.0
