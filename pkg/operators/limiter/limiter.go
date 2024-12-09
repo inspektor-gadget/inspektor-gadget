@@ -162,6 +162,10 @@ func (l *limiterOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error 
 	return nil
 }
 
+func (l *limiterOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var Operator = &limiterOperator{}
 
 func init() {

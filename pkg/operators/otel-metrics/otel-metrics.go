@@ -546,21 +546,6 @@ func (mc *metricsCollector) Collect(ctx context.Context, data datasource.Data) {
 	}
 }
 
-func (m *otelMetricsOperatorInstance) shutdown() {
-	close(m.done)
-	ctx := context.Background()
-	for _, collector := range m.collectors {
-		if collector.meterProvider != nil {
-			collector.meterProvider.Shutdown(ctx)
-			collector.meterProvider = nil
-		}
-		if collector.exporter != nil {
-			collector.exporter.Shutdown(ctx)
-			collector.exporter = nil
-		}
-	}
-}
-
 func (m *otelMetricsOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 	for _, ds := range gadgetCtx.GetDataSources() {
 		annotations := ds.Annotations()
@@ -822,9 +807,24 @@ func (m *otelMetricsOperatorInstance) Start(gadgetCtx operators.GadgetContext) e
 }
 
 func (m *otelMetricsOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	m.shutdown()
-	m.wg.Wait()
+	return nil
+}
+
+func (m *otelMetricsOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	gadgetCtx.Logger().Debug("shutting down metrics")
+	close(m.done)
+	ctx := context.Background()
+	for _, collector := range m.collectors {
+		if collector.meterProvider != nil {
+			collector.meterProvider.Shutdown(ctx)
+			collector.meterProvider = nil
+		}
+		if collector.exporter != nil {
+			collector.exporter.Shutdown(ctx)
+			collector.exporter = nil
+		}
+	}
+	m.wg.Wait()
 	return nil
 }
 
