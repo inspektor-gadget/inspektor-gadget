@@ -17,6 +17,7 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>

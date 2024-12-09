@@ -49,6 +49,10 @@ func GetType(typ btf.Type) (reflect.Type, []string) {
 		default:
 			return GetType(typed)
 		}
+	case *btf.Volatile:
+		return GetType(typed.Type)
+	case *btf.Const:
+		return GetType(typed.Type)
 	default:
 		refType = getSimpleType(typ)
 	}
@@ -61,6 +65,21 @@ func GetUnderlyingType(tf *btf.Typedef) btf.Type {
 	switch typed := tf.Type.(type) {
 	case *btf.Typedef:
 		return GetUnderlyingType(typed)
+	default:
+		return typed
+	}
+}
+
+// ResolveType returns the underlying type removing qualitiers like typedef,
+// const, volatile.
+func ResolveType(tf btf.Type) btf.Type {
+	switch typed := tf.(type) {
+	case *btf.Typedef:
+		return ResolveType(typed.Type)
+	case *btf.Volatile:
+		return ResolveType(typed.Type)
+	case *btf.Const:
+		return ResolveType(typed.Type)
 	default:
 		return typed
 	}
