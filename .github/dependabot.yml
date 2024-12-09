@@ -11,7 +11,8 @@ updates:
       prefix: "ci:"
   # Update root go dependencies
   - package-ecosystem: "gomod"
-    directory: "/"
+    directories:
+      - "**/*"
     schedule:
       interval: "daily"
       time: "05:00"
@@ -35,56 +36,6 @@ updates:
       containers:
         patterns:
           - "github.com/containers/*"
-  # Update other go depedendencies
-  - package-ecosystem: "gomod"
-    directory: "/examples/"
-    schedule:
-      interval: "daily"
-      time: "05:00"
-      timezone: "Europe/Paris"
-    commit-message:
-      prefix: "go:"
-    groups:
-      golang-x:
-        patterns:
-          - "golang.org/x/*"
-      k8s:
-        patterns:
-          - "k8s.io/*"
-      docker:
-        patterns:
-          - "github.com/docker/docker/*"
-          - "github.com/moby/moby/*"
-      otel:
-        patterns:
-          - "go.opentelemetry.io/*"
-      containers:
-        patterns:
-          - "github.com/containers/*"
-  - package-ecosystem: "gomod"
-    directory: "/tools/eks-cleanup/"
-    schedule:
-      interval: "daily"
-      time: "05:00"
-      timezone: "Europe/Paris"
-    commit-message:
-      prefix: "go:"
-  - package-ecosystem: "gomod"
-    directory: "/tools/testjson2md/"
-    schedule:
-      interval: "daily"
-      time: "05:00"
-      timezone: "Europe/Paris"
-    commit-message:
-      prefix: "go:"
-  - package-ecosystem: "gomod"
-    directory: "/tools/dnstester/"
-    schedule:
-      interval: "daily"
-      time: "05:00"
-      timezone: "Europe/Paris"
-    commit-message:
-      prefix: "go:"
   - package-ecosystem: "docker"
     directory: "/Dockerfiles"
     schedule:
