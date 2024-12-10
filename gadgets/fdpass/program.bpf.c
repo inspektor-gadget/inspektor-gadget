@@ -3,11 +3,12 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-#include <gadget/common.h>
+
 #include <gadget/buffer.h>
-#include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
+#include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/filesystem.h>
+#include <gadget/macros.h>
 #include <gadget/types.h>
 
 #define PATH_MAX 4096
@@ -58,7 +59,7 @@ static __always_inline int sys_sendmsg_e(struct syscall_trace_enter *ctx)
 	u64 pid_tgid;
 	u32 sockfd;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -115,7 +116,7 @@ int BPF_KPROBE(scm_snd_e, struct socket *sock)
 	u64 pid_tgid;
 	u64 socket_ino;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -144,7 +145,7 @@ int BPF_KPROBE(fget_raw_e, unsigned int _fd)
 	u64 *socket_ino;
 	u32 fd;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
