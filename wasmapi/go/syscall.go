@@ -15,16 +15,18 @@
 package api
 
 import (
-	"errors"
+// 	"errors"
 	"fmt"
+	"reflect"
 	"runtime"
+	"unsafe"
 )
 
 //go:wasmimport env getSyscallName
 func getSyscallName(id uint32) uint64
 
 //go:wasmimport env getSyscallDeclaration
-func getSyscallDeclaration(name uint64) uint32
+func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
 //go:wasmimport env syscallDeclarationGetParameterCount
 func syscallDeclarationGetParameterCount(s uint32) int32
@@ -35,7 +37,30 @@ func syscallDeclarationParamIsPointer(s uint32, param uint32) uint32
 //go:wasmimport env syscallDeclarationGetParameterName
 func syscallDeclarationGetParameterName(s uint32, param uint32) uint64
 
-type SyscallDeclaration uint32
+// type SyscallDeclaration uint32
+
+// Keep in sync with
+type syscallParam struct {
+	name      [32]byte
+	isPointer uint8
+}
+
+// Keep in sync with
+type syscallDeclaration struct {
+	name     [32]byte
+	nrParams uint8
+	params [6]syscallParam
+}
+
+type SyscallParam struct {
+	Name string
+	IsPointer bool
+}
+
+type SyscallDeclaration struct {
+	Name   string
+	Params []SyscallParam
+}
 
 func GetSyscallName(id uint16) (string, error) {
 	ptr := bufPtr(getSyscallName(uint32(id)))
@@ -47,41 +72,64 @@ func GetSyscallName(id uint16) (string, error) {
 }
 
 func GetSyscallDeclaration(name string) (SyscallDeclaration, error) {
-	ret := getSyscallDeclaration(uint64(stringToBufPtr(name)))
+	var decl syscallDeclaration
+
+	bufPtr, err := anyToBufPtr(&decl)
+	if err != nil {
+		return SyscallDeclaration{}, err
+	}
+
+	ret := getSyscallDeclaration(uint64(stringToBufPtr(name)), uint64(bufPtr))
 	runtime.KeepAlive(name)
-	if ret == 0 {
-		return 0, fmt.Errorf("syscall declaration %s not found", name)
-	}
-	return SyscallDeclaration(ret), nil
-}
-
-func (s SyscallDeclaration) GetParameterCount() (uint32, error) {
-	ret := syscallDeclarationGetParameterCount(uint32(s))
-	if ret == -1 {
-		return 0, errors.New("getting syscall number of parameters")
-	}
-	return uint32(ret), nil
-}
-
-func (s SyscallDeclaration) ParamIsPointer(paramNumber uint32) (bool, error) {
-	ret := syscallDeclarationParamIsPointer(uint32(s), paramNumber)
-	switch ret {
-	case 0:
-		return false, fmt.Errorf("checking whether syscall param number %d is a pointer", paramNumber)
-	case 1:
-		return true, nil
-	case 2:
-		return false, nil
-	default:
-		return false, fmt.Errorf("get %d returned, expected 0, 1 or 2", ret)
-	}
-}
-
-func (s SyscallDeclaration) GetParameterName(paramNumber uint32) (string, error) {
-	ptr := bufPtr(syscallDeclarationGetParameterName(uint32(s), paramNumber))
-	if ptr == 0 {
-		return "", fmt.Errorf("getting syscall param number %d name", paramNumber)
+	runtime.KeepAlive(decl)
+	if ret == 1 {
+		return SyscallDeclaration{}, fmt.Errorf("syscall declaration %s not found", name)
 	}
 
-	return ptr.string(), nil
+	v := reflect.ValueOf(&decl)
+	copy(unsafe.Slice((*byte)(v.UnsafePointer()), v.Type().Elem().Size()), bufPtr.bytes())
+
+	declaration := SyscallDeclaration{
+		Name:   fromCString(decl.name[:]),
+		Params: make([]SyscallParam, decl.nrParams),
+	}
+	for i := range decl.nrParams {
+		declaration.Params[i] = SyscallParam{
+			Name:      fromCString(decl.params[i].name[:]),
+			IsPointer: decl.params[i].isPointer == 1,
+		}
+	}
+
+	return declaration, nil
 }
+
+// func (s SyscallDeclaration) GetParameterCount() (uint32, error) {
+// 	ret := syscallDeclarationGetParameterCount(uint32(s))
+// 	if ret == -1 {
+// 		return 0, errors.New("getting syscall number of parameters")
+// 	}
+// 	return uint32(ret), nil
+// }
+//
+// func (s SyscallDeclaration) ParamIsPointer(paramNumber uint32) (bool, error) {
+// 	ret := syscallDeclarationParamIsPointer(uint32(s), paramNumber)
+// 	switch ret {
+// 	case 0:
+// 		return false, fmt.Errorf("checking whether syscall param number %d is a pointer", paramNumber)
+// 	case 1:
+// 		return true, nil
+// 	case 2:
+// 		return false, nil
+// 	default:
+// 		return false, fmt.Errorf("get %d returned, expected 0, 1 or 2", ret)
+// 	}
+// }
+//
+// func (s SyscallDeclaration) GetParameterName(paramNumber uint32) (string, error) {
+// 	ptr := bufPtr(syscallDeclarationGetParameterName(uint32(s), paramNumber))
+// 	if ptr == 0 {
+// 		return "", fmt.Errorf("getting syscall param number %d name", paramNumber)
+// 	}
+//
+// 	return ptr.string(), nil
+// }

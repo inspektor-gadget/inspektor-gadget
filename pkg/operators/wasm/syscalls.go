@@ -15,7 +15,9 @@
 package wasm
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
@@ -30,7 +32,10 @@ func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModul
 	)
 
 	exportFunction(env, "getSyscallDeclaration", i.getSyscallDeclaration,
-		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall Name
+		[]wapi.ValueType{
+			wapi.ValueTypeI64, // Syscall Name
+			wapi.ValueTypeI64, // Syscall Declaration pointer
+		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // SyscallDeclaration
 	)
 
@@ -75,18 +80,37 @@ func (i *wasmOperatorInstance) getSyscallName(ctx context.Context, m wapi.Module
 	stack[0] = bufPtr
 }
 
+// Keep in sync with
+type syscallParam struct {
+	name      [32]byte
+	isPointer uint8
+}
+
+// Keep in sync with
+type syscallDeclaration struct {
+	// landlock_create_ruleset() is one of the longest syscall name with 24
+	// characters, let's round up to 32 to be sure.
+	name     [32]byte
+	nrParams uint8
+	// syscalls have maximum 6 arguments:
+	// https://github.com/torvalds/linux/blob/7cb1b4663150/include/linux/syscalls.h#L231
+	params [6]syscallParam
+}
+
 // getSyscallDeclaration gets a syscall declaration.
 // Params:
 // - stack[0] is the name of the syscall (string encoded)
+// - stack[1] TODO
 // Return value:
-// - Syscall declaration handle on success, 0 on error
+// - 0 on success, 1 on error
 func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi.Module, stack []uint64) {
 	syscallNamePtr := stack[0]
+	syscallDeclPtr := stack[1]
 
 	syscallName, err := stringFromStack(m, syscallNamePtr)
 	if err != nil {
 		i.logger.Warnf("getSyscallDeclaration: reading string from stack: %v", err)
-		stack[0] = 0
+		stack[0] = 1
 		return
 	}
 
@@ -95,7 +119,7 @@ func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi
 		declarations, err := syscallhelpers.GatherSyscallsDeclarations()
 		if err != nil {
 			i.logger.Warnf("getSyscallDeclaration: gathering syscall declarations: %v", err)
-			stack[0] = 0
+			stack[0] = 1
 			return
 		}
 		i.syscallsDeclarations = declarations
@@ -104,11 +128,54 @@ func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi
 	declaration, err := syscallhelpers.GetSyscallDeclaration(i.syscallsDeclarations, syscallName)
 	if err != nil {
 		i.logger.Warnf("getSyscallDeclaration: getting syscall declaration for %q: %v", syscallName, err)
-		stack[0] = 0
+		stack[0] = 1
 		return
 	}
 
-	stack[0] = wapi.EncodeU32(i.addHandle(&declaration))
+	syscallDecl := syscallDeclaration{nrParams: declaration.GetParameterCount()}
+	copy(syscallDecl.name[:], syscallName)
+
+	for idx := range syscallDecl.nrParams {
+		name, err := declaration.GetParameterName(idx)
+		if err != nil {
+			i.logger.Warnf("getSyscallDeclaration: getting parameter name %d for %q: %v", idx, syscallName, err)
+			stack[0] = 1
+			return
+		}
+
+		isPointer, err := declaration.ParamIsPointer(idx)
+		if err != nil {
+			i.logger.Warnf("getSyscallDeclaration: getting parameter type %d for %q: %v", syscallName, err)
+			stack[0] = 1
+			return
+		}
+
+		copy(syscallDecl.params[idx].name[:], name)
+		if isPointer {
+			syscallDecl.params[idx].isPointer = 1
+		} else {
+			syscallDecl.params[idx].isPointer = 0
+		}
+	}
+
+	var buf bytes.Buffer
+	// WASM is little endian:
+	// https://webassembly.org/docs/portability/
+	err = binary.Write(&buf, binary.LittleEndian, syscallDecl)
+	if err != nil {
+		i.logger.Warnf("getSyscallDeclaration: converting syscall declaration to bytes: %v", err)
+		stack[0] = 1
+		return
+	}
+
+	err = bufToStack(m, buf.Bytes(), syscallDeclPtr)
+	if err != nil {
+		i.logger.Warnf("getSyscallDeclaration: writing back syscall declaration to stack: %v", err)
+		stack[0] = 1
+		return
+	}
+
+	stack[0] = 0
 }
 
 // syscallDeclarationGetParameterCount returns the number of parameter for the given syscall declaration.

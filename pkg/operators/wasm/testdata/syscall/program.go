@@ -41,38 +41,40 @@ func gadgetInit() int {
 		return 1
 	}
 
-	paramCount, err := declaration.GetParameterCount()
-	if err != nil {
-		api.Errorf("%v", err)
-		return 1
-	}
+// 	paramCount, err := declaration.GetParameterCount()
+// 	if err != nil {
+// 		api.Errorf("%v", err)
+// 		return 1
+// 	}
 
-	expectedParamCount := uint32(3)
+	paramCount := len(declaration.Params)
+	expectedParamCount := 3
 	if paramCount != expectedParamCount {
 		api.Errorf("syscall %q has %d parameters, got %d", syscallName, expectedParamCount, paramCount)
 		return 1
 	}
 
-	param := uint32(0)
-	paramName, err := declaration.GetParameterName(param)
-	if err != nil {
-		api.Errorf("%v", err)
-		return 1
-	}
+// 	param := uint32(0)
+// 	paramName, err := declaration.GetParameterName(param)
+// 	if err != nil {
+// 		api.Errorf("%v", err)
+// 		return 1
+// 	}
 
+	paramName := string(declaration.Params[0].Name)
 	expectedParamName := "filename"
 	if paramName != expectedParamName {
-		api.Errorf("syscall %q, parameter number %d is named %q, got %q", syscallName, param, expectedParamName, paramName)
+		api.Errorf("syscall %q, first parameter is named %q, got %q", syscallName, expectedParamName, paramName)
 		return 1
 	}
 
-	isPointer, err := declaration.ParamIsPointer(param)
-	if err != nil {
-		api.Errorf("%v", err)
-		return 1
-	}
+// 	isPointer, err := declaration.ParamIsPointer(param)
+// 	if err != nil {
+// 		api.Errorf("%v", err)
+// 		return 1
+// 	}
 
-	if !isPointer {
+	if !declaration.Params[0].IsPointer {
 		api.Errorf("in %s, parameter %s is a pointer", syscallName, paramName)
 		return 1
 	}
