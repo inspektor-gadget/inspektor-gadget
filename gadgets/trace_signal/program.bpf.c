@@ -6,8 +6,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 struct value {
@@ -25,12 +25,10 @@ struct event {
 	gadget_errno error_raw;
 };
 
-const volatile pid_t filtered_pid = 0;
 const volatile int target_signal = 0;
 const volatile bool failed_only = false;
 const volatile bool kill_only = false;
 
-GADGET_PARAM(filtered_pid);
 GADGET_PARAM(target_signal);
 GADGET_PARAM(failed_only);
 GADGET_PARAM(kill_only);
@@ -50,25 +48,22 @@ static int probe_entry(pid_t tpid, int sig)
 {
 	struct value v = {};
 	__u64 pid_tgid;
-	__u32 pid, tid;
+	__u32 tid;
 	u64 mntns_id;
 
 	if (!kill_only)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_data_current())
 		return 0;
+
+	mntns_id = gadget_get_mntns_id();
 
 	if (target_signal && sig != target_signal)
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
-	pid = pid_tgid >> 32;
 	tid = (__u32)pid_tgid;
-	if (filtered_pid && pid != filtered_pid)
-		return 0;
 
 	v.sig = sig;
 	v.mntns_id = mntns_id;
@@ -160,24 +155,17 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	pid_t tpid = ctx->pid;
 	int ret = ctx->errno;
 	int sig = ctx->sig;
-	__u64 pid_tgid;
-	__u32 pid;
 
 	if (kill_only)
 		return 0;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	if (failed_only && ret == 0)
 		return 0;
 
 	if (target_signal && sig != target_signal)
-		return 0;
-
-	pid_tgid = bpf_get_current_pid_tgid();
-	pid = pid_tgid >> 32;
-	if (filtered_pid && pid != filtered_pid)
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
