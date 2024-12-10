@@ -25,7 +25,16 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
+type param struct {
+	*api.Param
+	fromEbpf bool
+	// Only valid for string parameters
+	strLen int
+}
+
 func getTypeHint(typ btf.Type) params.TypeHint {
+	typ = btfhelpers.ResolveType(typ)
+
 	switch typedMember := typ.(type) {
 	case *btf.Int:
 		switch typedMember.Encoding {
@@ -63,18 +72,15 @@ func getTypeHint(typ btf.Type) params.TypeHint {
 		case 8:
 			return params.TypeFloat64
 		}
-	case *btf.Typedef:
-		typ := btfhelpers.GetUnderlyingType(typedMember)
-		if typ == nil {
-			return params.TypeUnknown
-		}
-		return getTypeHint(typ)
-	case *btf.Volatile:
-		return getTypeHint(typedMember.Type)
 	case *btf.Struct:
 		switch typedMember.Name {
 		case ebpftypes.L3EndpointTypeName:
 			return params.TypeIP
+		}
+	case *btf.Array:
+		arrayType := btfhelpers.ResolveType(typedMember.Type)
+		if arrayType.TypeName() == "char" {
+			return params.TypeString
 		}
 	}
 
@@ -93,19 +99,23 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 		return fmt.Errorf("no BTF type found for: %s: %w", varName, err)
 	}
 
-	btfConst, ok := btfVar.Type.(*btf.Const)
-	if !ok {
-		return fmt.Errorf("type for %s is not a constant, got %s", varName, btfVar.Type)
+	newParam := &param{
+		Param: &api.Param{
+			Key: varName,
+		},
+		fromEbpf: true,
 	}
 
-	th := getTypeHint(btfConst.Type)
+	th := getTypeHint(btfVar.Type)
+	newParam.TypeHint = string(th)
+	if th == params.TypeString {
+		typ := btfhelpers.ResolveType(btfVar.Type)
+		if arrayType, ok := typ.(*btf.Array); ok {
+			newParam.strLen = int(arrayType.Nelems)
+		}
+	}
 
 	i.logger.Debugf("adding param %q (%v)", btfVar.Name, th)
-
-	newParam := &api.Param{
-		Key:      varName,
-		TypeHint: string(th),
-	}
 
 	// Fill additional information from metadata
 	paramInfo := i.config.Sub("params.ebpf." + varName)
@@ -126,9 +136,6 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 		}
 	}
 
-	i.params[varName] = &param{
-		Param:    newParam,
-		fromEbpf: true,
-	}
+	i.params[varName] = newParam
 	return nil
 }
