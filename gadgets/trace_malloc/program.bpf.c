@@ -7,8 +7,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 
 #define MAX_ENTRIES 10240
 
@@ -90,7 +90,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	u64 *size_ptr;
 	u64 size;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -121,7 +121,7 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 {
 	struct event *event;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));

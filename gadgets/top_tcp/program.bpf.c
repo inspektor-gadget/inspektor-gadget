@@ -6,7 +6,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
-#include <gadget/mntns_filter.h>
+#include <gadget/filter.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
 
@@ -65,10 +65,10 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_data_current())
 		return 0;
+
+	mntns_id = gadget_get_mntns_id();
 
 	ip_key.pid = pid;
 	ip_key.tid = tid;

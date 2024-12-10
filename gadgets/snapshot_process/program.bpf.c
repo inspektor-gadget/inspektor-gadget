@@ -12,7 +12,7 @@
 #include <bpf/bpf_helpers.h>
 
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
+#include <gadget/filter.h>
 #include <gadget/types.h>
 
 const volatile bool show_threads = false;
@@ -36,12 +36,12 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	if (!show_threads && task->tgid != task->pid)
 		return 0;
 
-	__u64 mntns_id = task->nsproxy->mnt_ns->ns.inum;
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_data(
+		    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
+		    task->comm, task->cred->uid.val, task->cred->gid.val))
 		return 0;
 
-	process.mntns_id = mntns_id;
+	process.mntns_id = task->nsproxy->mnt_ns->ns.inum;
 	__builtin_memcpy(process.comm, task->comm, TASK_COMM_LEN);
 	process.pid = task->tgid;
 	process.tid = task->pid;

@@ -7,11 +7,11 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
 #include <gadget/core_fixes.bpf.h>
-#include <gadget/mntns_filter.h>
 
 #define REQ_OP_BITS 8
 #define REQ_OP_MASK ((1 << REQ_OP_BITS) - 1)
@@ -67,7 +67,7 @@ GADGET_MAPITER(blockio, counts);
 
 static __always_inline int trace_start(struct request *req)
 {
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	struct gadget_process who;

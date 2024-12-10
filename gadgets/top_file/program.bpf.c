@@ -8,7 +8,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/common.h>
-#include <gadget/mntns_filter.h>
+#include <gadget/filter.h>
 #include <gadget/filesystem.h>
 #include <gadget/types.h>
 #include <gadget/macros.h>
@@ -46,9 +46,6 @@ struct file_stat {
 
 #define MAX_ENTRIES 10240
 
-const volatile pid_t target_pid = 0;
-GADGET_PARAM(target_pid);
-
 // By default, only regular files are traced
 const volatile bool all_files = false;
 GADGET_PARAM(all_files);
@@ -76,15 +73,11 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		       enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	int mode;
 	struct file_id key = {};
 	struct file_stat *valuep;
 
-	if (target_pid && target_pid != pid)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	mode = BPF_CORE_READ(file, f_inode, i_mode);

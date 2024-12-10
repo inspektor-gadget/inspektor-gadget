@@ -12,8 +12,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 
 #define MAX_BUF_SIZE 8192
 #define MAX_ENTRIES 8192
@@ -113,7 +113,7 @@ static __always_inline int probe_ssl_rw_enter(struct pt_regs *ctx, void *buf)
 	u32 tid;
 	u64 ts;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
@@ -203,7 +203,7 @@ int trace_uprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 	u32 tid;
 	u64 ts;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
@@ -282,7 +282,7 @@ static __always_inline int probe_crypto_enter(struct pt_regs *ctx)
 	u32 tid;
 	u64 ts;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	tid = (u32)bpf_get_current_pid_tgid();
