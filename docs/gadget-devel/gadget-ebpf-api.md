@@ -73,7 +73,41 @@ and the container runtime (docker, cri-o, containerd, etc.).
 | runtime.containerImageName   | Name of the container image, e.g. `nginx:latest` |
 | runtime.containerImageDigest | Digest (hash value) of the container image       |
 
-## Container filtering
+## Event filtering
+
+One of the key functionalities of Inspektor Gadget is to efficiently filter
+events in the kernel. Inspektor Gadget provides a set of helpers that should be
+used by the Gadget authors. The following helpers (and in general any operation
+that discards an event) should be executed as early as possible in the eBPF
+program to minimize the performance overhead of processing events that will be
+discarded.
+
+The following helpers are available on the
+[gadget/filter.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/filter.h)
+file. Inspektor Gadget automatically exposes the `pid`, `tid`, `comm`, `uid`,
+`gid` and container related parameters to the user when this file is included in
+a Gadget.
+
+### `gadget_should_discard_data`
+
+```c
+bool gadget_should_discard_data(gadget_mntns_id mntns_id, gadget_pid pid, gadget_tid tid,
+		      gadget_comm comm[TASK_COMM_LEN], gadget_uid uid, gadget_uid gid)
+```
+
+This function receives the common fields of an event and returns `true` if it
+should be discarded.
+
+### `gadget_should_discard_data_current`
+
+```c
+bool gadget_should_discard_data_current()
+```
+
+This function returns `true` if an event should be discarded based on the
+current process.
+
+### Container filtering
 
 To make use of container filtering, gadgets must include
 [gadget/mntns_filter.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/mntns_filter.h):
