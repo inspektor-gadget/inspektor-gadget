@@ -10,8 +10,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 enum bind_options_set : __u8 {
@@ -44,11 +44,9 @@ struct event {
 	__u32 bound_dev_if;
 };
 
-const volatile pid_t target_pid = 0;
 const volatile bool ignore_errors = true;
 const volatile bool filter_by_port = false;
 
-GADGET_PARAM(target_pid);
 GADGET_PARAM(ignore_errors);
 // TODO: Add support for filtering by port
 //GADGET_PARAM(filter_by_port);
@@ -130,13 +128,9 @@ struct {
 static int probe_entry(struct pt_regs *ctx, struct socket *socket)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 
-	if (target_pid && target_pid != pid)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	bpf_map_update_elem(&sockets, &tid, &socket, BPF_ANY);
