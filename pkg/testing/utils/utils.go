@@ -112,6 +112,8 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 
 	e.Runtime.ContainerPID = 0
 
+	e.Runtime.ContainerStartedAt = 0
+
 	if CurrentTestComponent == KubectlGadgetTestComponent {
 		e.K8s.Node = ""
 		// TODO: Verify container runtime and container name
