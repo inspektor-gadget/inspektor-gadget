@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.33.0
+name: "profile qdisc latency"
+category: monitoring-logging
+displayName: "profile qdisc latency"
+createdAt: "2024-11-06T19:00:00Z"
+digest: "2024-11-06T19:00:00Z"
+description: "Profile network scheduler latency"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/profile_qdisc_latency/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/profile_qdisc_latency:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_qdisc_latency"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/profile_qdisc_latency:latest
+    ```
+provider:
+    name: Inspektor Gadget
