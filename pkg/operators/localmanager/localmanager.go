@@ -622,6 +622,10 @@ func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) erro
 }
 
 func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (l *localManagerTraceWrapper) Close(gadgetCtx operators.GadgetContext) error {
 	return l.PostGadgetRun()
 }
 
