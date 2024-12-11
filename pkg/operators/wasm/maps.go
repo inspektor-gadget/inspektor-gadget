@@ -122,6 +122,7 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 }
 
 // getMap gets an existing map.
+// mapRelease must be called when the map is no longer needed.
 // Params:
 // - stack[0] is the name of the map (string encoded)
 // Return value:
