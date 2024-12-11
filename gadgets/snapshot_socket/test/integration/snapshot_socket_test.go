@@ -27,11 +27,10 @@ import (
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type snapshotSocketEntry struct {
-	eventtypes.CommonData
+	utils.CommonData
 
 	NetNsID     uint64 `json:"netns_id"`
 	InodeNumber uint64 `json:"ino"`
