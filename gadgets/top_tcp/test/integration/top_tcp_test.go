@@ -26,11 +26,10 @@ import (
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type topTcpEntry struct {
-	eventtypes.CommonData
+	utils.CommonData
 
 	MntNsID uint64 `json:"mntns_id"`
 

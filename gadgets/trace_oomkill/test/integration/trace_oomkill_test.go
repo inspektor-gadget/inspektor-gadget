@@ -25,11 +25,10 @@ import (
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type traceOomKillEvent struct {
-	eventtypes.CommonData
+	utils.CommonData
 
 	Fpid      uint32 `json:"fpid"`
 	Fuid      uint32 `json:"fuid"`
