@@ -31,6 +31,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
@@ -154,12 +155,8 @@ func (t *Handler) newAttachment(pid uint32, iface *net.Interface, netns uint64, 
 		return nil, err
 	}
 
-	consts := map[string]interface{}{
-		"current_netns": uint32(netns),
-	}
-	//nolint:staticcheck
-	if err := dispatcherSpec.RewriteConstants(consts); err != nil {
-		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
+	if err := ebpfutils.SpecSetVar(dispatcherSpec, "current_netns", uint32(netns)); err != nil {
+		return nil, err
 	}
 
 	// We create the clsact qdisc and leak it. We can't remove it because we'll break any other

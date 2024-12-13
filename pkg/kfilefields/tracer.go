@@ -26,6 +26,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types filefields ./bpf/filefields.bpf.c -- -I./bpf/
@@ -106,19 +107,14 @@ func (t *Tracer) install() error {
 	if !ok {
 		return errors.New("not a syscall.Stat_t")
 	}
-	fdIno := fdStat.Ino
 
 	// Load ebpf program configured with the socket inode
 	spec, err := loadFilefields()
 	if err != nil {
 		return fmt.Errorf("load ebpf program to read file fields: %w", err)
 	}
-	consts := map[string]interface{}{
-		"socket_ino": uint64(fdIno),
-	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+	if err := ebpfutils.SpecSetVar(spec, "socket_ino", uint64(fdStat.Ino)); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{
