@@ -238,13 +238,19 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger) error {
 	portsArray := [maxPorts]uint16{0}
 	copy(portsArray[:], t.config.Ports)
 
-	constants := map[string]any{
-		"ports":     portsArray,
-		"ports_len": uint16(len(t.config.Ports)),
+	dnsSpec := &dnsSpecs{}
+	if err := spec.Assign(dnsSpec); err != nil {
+		return err
 	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(constants); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+
+	constants := map[*ebpf.VariableSpec]any{
+		dnsSpec.Ports:    portsArray,
+		dnsSpec.PortsLen: uint16(len(t.config.Ports)),
+	}
+	for varSpec, val := range constants {
+		if err := varSpec.Set(val); err != nil {
+			return fmt.Errorf("setting variable %s: %w", varSpec, err)
+		}
 	}
 
 	if err := t.Tracer.Run(spec, types.Base, t.parseDNSPacket); err != nil {
