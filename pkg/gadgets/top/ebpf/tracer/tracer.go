@@ -204,75 +204,25 @@ func getPidMapFromProcFs() (map[uint32][]*types.Process, error) {
 	return pidmap, nil
 }
 
-func getMemoryUsage(m *ebpf.Map) (uint64, error) {
-	fdInfoPath := filepath.Join(host.HostProcFs, "self", "fdinfo", fmt.Sprint(m.FD()))
-	f, err := os.Open(fdInfoPath)
-	if err != nil {
-		return 0, fmt.Errorf("reading fdinfo: %w", err)
-	}
-	defer f.Close()
-
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if strings.HasPrefix(sc.Text(), "memlock:\t") {
-			lineSplit := strings.Split(sc.Text(), "\t")
-			if len(lineSplit) == 2 {
-				size, err := strconv.ParseUint(lineSplit[1], 10, 64)
-				if err != nil {
-					return 0, fmt.Errorf("reading memlock: %w", err)
-				}
-				return size, nil
-			}
-		}
-	}
-	return 0, fmt.Errorf("finding memlock in fdinfo")
-}
-
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	stats := make([]*types.Stats, 0)
 
 	var err error
 	var prog *ebpf.Program
-	var mapData *ebpf.Map
 	var pids []*piditer.PidIterEntry
 	curID := ebpf.ProgramID(0)
 	nextID := ebpf.ProgramID(0)
 
-	curMapID := ebpf.MapID(0)
-	nextMapID := ebpf.MapID(0)
-
 	curStats := make(map[string]programStats)
 
-	mapSizes := make(map[ebpf.MapID]uint64)
+	mapSizes, err := bpfstats.GetMapsMemUsage()
+	if err != nil {
+		return nil, fmt.Errorf("getting map memory usage: %w", err)
+	}
 
 	numOnlineCPUs, err := numcpus.GetOnline()
 	if err != nil {
 		return nil, fmt.Errorf("getting number of online cpu: %w", err)
-	}
-
-	// Get memory usage by maps
-	for {
-		nextMapID, err = ebpf.MapGetNextID(curMapID)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				break
-			}
-			return nil, fmt.Errorf("getting next map ID: %w", err)
-		}
-		if nextMapID <= curMapID {
-			break
-		}
-		curMapID = nextMapID
-		mapData, err = ebpf.NewMapFromID(curMapID)
-		if err != nil {
-			continue
-		}
-
-		mapSizes[curMapID], err = getMemoryUsage(mapData)
-		mapData.Close()
-		if err != nil {
-			return nil, fmt.Errorf("getting memory usage of map ID (%d): %w", curMapID, err)
-		}
 	}
 
 	for {
