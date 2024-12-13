@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.16.0
 	github.com/containerd/containerd v1.7.24
-	github.com/containerd/nri v0.8.0
+	github.com/containerd/nri v0.9.0
 	github.com/containers/common v0.61.0
 	github.com/containers/image/v5 v5.33.0
 	github.com/coreos/go-systemd/v22 v22.5.0
