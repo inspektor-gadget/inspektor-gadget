@@ -247,7 +247,7 @@ func getContainerRuntimeSocketPath(clientset *kubernetes.Clientset, nodeName str
 		return "", fmt.Errorf("container runtime socket path is empty")
 	}
 
-	log.Infof("using the detected container runtime socket path from Kubelet's config")
+	log.Infof("using the detected container runtime socket path from Kubelet's config: %s", socketPath)
 	return socketPath, nil
 }
 
