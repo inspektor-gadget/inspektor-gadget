@@ -43,4 +43,6 @@ struct event_t {
 #endif
 };
 
+#define MAX_PACKET (1024 * 9) // 9KB
+
 #endif
