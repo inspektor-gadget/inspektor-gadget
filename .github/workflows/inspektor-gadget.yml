@@ -1266,6 +1266,40 @@ jobs:
         name: gadget-charts-tgz
         path: charts/bin/*.tgz
 
+  publish-helm-charts:
+    name: Publish Helm charts
+    # level: 1
+    if: github.event_name != 'pull_request'
+    needs: package-helm-charts
+    runs-on: ubuntu-latest
+    permissions:
+      # allow publishing helm charts
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Login to Container Registry
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install Helm
+      uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Download Helm charts
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      with:
+        name: gadget-charts-tgz
+    - name: Publish Helm charts
+      run: |
+        # Final name of the chart will be REGISTRY/CONTAINER_REPO/charts/CHART_NAME:CHART_VERSION
+        # where CHART_NAME and CHART_VERSION are derived from the Chart.yaml packaged in the tgz
+        helm push gadget-*.tgz \
+          oci://${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}/charts
+
   test-ig:
     name: Unit tests for ig
     # level: 0
