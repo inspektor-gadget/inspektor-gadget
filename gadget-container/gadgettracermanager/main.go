@@ -52,6 +52,8 @@ import (
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
+	// import for gadgettracermanager entrypoint"
+	"github.com/inspektor-gadget/inspektor-gadget/gadget-container/entrypoint"
 	// Blank import for some operators
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
@@ -333,6 +335,20 @@ func main() {
 		grpcServer := grpc.NewServer(opts...)
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
+		hookMode := config.Config.GetString(gadgettracermanagerconfig.HookModeKey)
+		hookMode, err = entrypoint.Init(hookMode)
+		if err != nil {
+			log.Fatalf("entrypoint.Init() failed: %v", err)
+		}
+		fallbackPodInformerStr := config.Config.GetString(gadgettracermanagerconfig.FallbackPodInformerKey)
+		if fallbackPodInformerStr == "" {
+			log.Warnf("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.FallbackPodInformerKey)
+			fallbackPodInformerStr = os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")
+		}
+		fallbackPodInformer, err := strconv.ParseBool(fallbackPodInformerStr)
+		if err != nil {
+			log.Fatalf("Parsing FallbackPodInformer %q: %v", fallbackPodInformerStr, err)
+		}
 
 		tracerManager, err = gadgettracermanager.NewServer(&gadgettracermanager.Conf{
 			NodeName:            node,
