@@ -5,7 +5,7 @@
 #define TASK_COMM_LEN 16
 #define NAME_MAX 255
 #define PATH_MAX 4096
-#define INVALID_UID ((uid_t)-1)
+#define INVALID_UID ((uid_t) - 1)
 
 struct start_t {
 	int flags;

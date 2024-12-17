@@ -346,6 +346,8 @@ int ig_trace_dns(struct __sk_buff *skb)
 	}
 
 	__u64 skb_len = skb->len;
+	if (skb_len > MAX_PACKET)
+		skb_len = MAX_PACKET;
 	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));
 
