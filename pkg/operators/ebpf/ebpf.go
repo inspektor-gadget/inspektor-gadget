@@ -70,8 +70,16 @@ const (
 	kernelTypesVar = "kernelTypes"
 )
 
+type gadgetObjs struct {
+	programIDs []ebpf.ProgramID
+	mapIDs     []ebpf.MapID
+}
+
 // ebpfOperator reads ebpf programs from OCI images and runs them
-type ebpfOperator struct{}
+type ebpfOperator struct {
+	mu         sync.Mutex
+	gadgetObjs map[operators.GadgetContext]gadgetObjs
+}
 
 func (o *ebpfOperator) Name() string {
 	return "ebpf"
@@ -103,8 +111,9 @@ func (o *ebpfOperator) InstantiateImageOperator(
 	// TODO: do some pre-checks in here, maybe validate hashes, signatures, etc.
 
 	newInstance := &ebpfInstance{
-		gadgetCtx: gadgetCtx, // context usually should not be stored, but should we really carry it through all funcs?
-		done:      make(chan struct{}),
+		bpfOperator: o,
+		gadgetCtx:   gadgetCtx, // context usually should not be stored, but should we really carry it through all funcs?
+		done:        make(chan struct{}),
 
 		logger:  gadgetCtx.Logger(),
 		program: program,
@@ -154,7 +163,8 @@ func (o *ebpfOperator) InstantiateImageOperator(
 }
 
 type ebpfInstance struct {
-	mu sync.Mutex
+	mu          sync.Mutex
+	bpfOperator *ebpfOperator
 
 	config *viper.Viper
 
@@ -676,6 +686,34 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	i.collection = collection
 
+	if i.bpfOperator.gadgetObjs != nil {
+		// collect program IDs and map IDs for this gadget
+		i.bpfOperator.mu.Lock()
+		gadgetObjs := gadgetObjs{}
+
+		for _, p := range i.collection.Programs {
+			info, err := p.Info()
+			if err != nil {
+				continue
+			}
+
+			id, _ := info.ID()
+			gadgetObjs.programIDs = append(gadgetObjs.programIDs, id)
+		}
+
+		for _, m := range i.collection.Maps {
+			info, err := m.Info()
+			if err != nil {
+				continue
+			}
+
+			id, _ := info.ID()
+			gadgetObjs.mapIDs = append(gadgetObjs.mapIDs, id)
+		}
+		i.bpfOperator.gadgetObjs[gadgetCtx] = gadgetObjs
+		i.bpfOperator.mu.Unlock()
+	}
+
 	for name, m := range i.collection.Maps {
 		gadgetCtx.SetVar(operators.MapPrefix+name, m)
 	}
@@ -744,6 +782,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	// TODO: I'm not too confident about this. We should use the gadget ID / name here
+	i.bpfOperator.mu.Lock()
+	delete(i.bpfOperator.gadgetObjs, gadgetCtx)
+	i.bpfOperator.mu.Unlock()
+
 	i.Close()
 	i.wg.Wait()
 	return nil
@@ -834,6 +877,9 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 	return nil
 }
 
+var ebpfOp = &ebpfOperator{}
+
 func init() {
-	operators.RegisterOperatorForMediaType(eBPFObjectMediaType, &ebpfOperator{})
+	operators.RegisterOperatorForMediaType(eBPFObjectMediaType, ebpfOp)
+	operators.RegisterDataOperator(ebpfOp)
 }
