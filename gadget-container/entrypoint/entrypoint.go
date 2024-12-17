@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package entrypoint
 
 import (
 	"bufio"
@@ -221,7 +221,7 @@ func prepareGadgetPullSecret() error {
 	return nil
 }
 
-func main() {
+func Init() {
 	config.Config = config.NewWithPath(gadgettracermanagerconfig.ConfigPath)
 	if err := config.Config.ReadInConfig(); err != nil {
 		log.Warnf("reading config: %v", err)
