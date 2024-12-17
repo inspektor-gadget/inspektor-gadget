@@ -230,6 +230,10 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
+// gopacket/gopacket with:
+// - https://github.com/gopacket/gopacket/pull/101
+replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8
+
 // cilium/ebpf with:
 // - https://github.com/cilium/ebpf/pull/1588
 // - https://github.com/cilium/ebpf/pull/1590
