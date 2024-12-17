@@ -52,6 +52,15 @@ func stringToBufPtr(s string) bufPtr {
 	return bufPtr(uint64(len(s))<<32 | uint64(uintptr(unsafePtr)))
 }
 
+func fromCString(in []byte) string {
+	for i := 0; i < len(in); i++ {
+		if in[i] == 0 {
+			return string(in[:i])
+		}
+	}
+	return string(in)
+}
+
 // anyToBufPtr returns a bufPtr that encodes the pointer and length of the
 // input.
 // The input is first encoded to binary buffer, which is then used as the
