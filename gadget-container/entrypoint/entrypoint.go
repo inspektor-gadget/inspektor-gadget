@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package entrypoint
 
 import (
 	"bufio"
@@ -24,13 +24,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
@@ -126,11 +124,10 @@ func installCRIOHooks() error {
 		hookPath := filepath.Join(host.HostRoot, file)
 
 		log.Infof("Installing OCI hooks configuration in %s", hookPath)
-		os.MkdirAll(hookPath, 0o755)
+		err := os.MkdirAll(hookPath, 0o755)
 		if err != nil {
 			return fmt.Errorf("creating hook path %s: %w", path, err)
 		}
-
 		errCount := 0
 		for _, config := range []string{"/opt/hooks/crio/gadget-prestart.json", "/opt/hooks/crio/gadget-poststop.json"} {
 			err := copyFile(hookPath, config, 0o640)
@@ -221,16 +218,11 @@ func prepareGadgetPullSecret() error {
 	return nil
 }
 
-func main() {
-	config.Config = config.NewWithPath(gadgettracermanagerconfig.ConfigPath)
-	if err := config.Config.ReadInConfig(); err != nil {
-		log.Warnf("reading config: %v", err)
-	}
-
+func Init(hookMode string) (string, error) {
 	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
 	log.SetLevel(tracerManLogLvl)
 	if _, err := os.Stat(filepath.Join(host.HostRoot, "/bin")); os.IsNotExist(err) {
-		log.Fatalf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
+		return "", fmt.Errorf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
 	}
 
 	prettyName, err := getPrettyName()
@@ -242,7 +234,7 @@ func main() {
 
 	kernelRelease, err := getKernelRelease()
 	if err != nil {
-		log.Fatalf("getting kernel release: %v", err)
+		return "", fmt.Errorf("getting kernel release: %w", err)
 	}
 
 	log.Infof("Kernel detected: %s", kernelRelease)
@@ -255,23 +247,17 @@ func main() {
 			log.Infof("[DEPRECATED] %s", variable)
 		}
 	}
-
-	log.Info("Configuration options:")
-	for k, v := range config.Config.AllSettings() {
-		log.Infof("%s: %v", k, v)
-	}
-
 	if hasGadgetPullSecret() {
 		err = prepareGadgetPullSecret()
 		if err != nil {
-			log.Fatalf("preparing gadget pull secret: %v", err)
+			return "", fmt.Errorf("preparing gadget pull secret: %w", err)
 		}
 	}
 
 	path := "/proc/self/cgroup"
 	content, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatalf("reading %s: %v", path, err)
+		return "", fmt.Errorf("reading %s: %w", path, err)
 	}
 
 	crio := false
@@ -280,7 +266,6 @@ func main() {
 		crio = true
 	}
 
-	hookMode := config.Config.GetString(gadgettracermanagerconfig.HookModeKey)
 	if hookMode == "" {
 		log.Warnf("INSPEKTOR_GADGET_OPTION_HOOK_MODE is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.HookModeKey)
 		hookMode = os.Getenv("INSPEKTOR_GADGET_OPTION_HOOK_MODE")
@@ -294,12 +279,12 @@ func main() {
 	case "crio":
 		err := installCRIOHooks()
 		if err != nil {
-			log.Fatalf("installing CRIO hooks: %v", err)
+			return "", fmt.Errorf("installing CRIO hooks: %w", err)
 		}
 	case "nri":
 		err := installNRIHooks()
 		if err != nil {
-			log.Fatalf("installing NRI hooks: %v", err)
+			return "", fmt.Errorf("installing NRI hooks: %w", err)
 		}
 	}
 
@@ -317,31 +302,11 @@ func main() {
 
 	err = os.Chdir("/")
 	if err != nil {
-		log.Fatalf("changing directory: %v", err)
+		return "", fmt.Errorf("changing directory: %w", err)
 	}
 
 	for _, socket := range []string{"/run/gadgettracermanager.socket", "/run/gadgetservice.socket"} {
 		os.Remove(socket)
 	}
-
-	fallbackPodInformer := config.Config.GetString(gadgettracermanagerconfig.FallbackPodInformerKey)
-	if fallbackPodInformer == "" {
-		log.Warnf("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.FallbackPodInformerKey)
-		fallbackPodInformer = os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")
-	}
-
-	args := []string{
-		"gadgettracermanager",
-		"-serve",
-		fmt.Sprintf("-hook-mode=%s", gadgetTracerManagerHookMode),
-		"-controller",
-		fmt.Sprintf("-fallback-podinformer=%s", fallbackPodInformer),
-	}
-
-	err = syscall.Exec("/bin/gadgettracermanager", args, os.Environ())
-	if err != nil {
-		log.Fatalf("exec'ing gadgettracermanager: %v", err)
-	}
-
-	log.Fatal("should never be printed...")
+	return gadgetTracerManagerHookMode, nil
 }
