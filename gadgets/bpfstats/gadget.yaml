@@ -1,0 +1,8 @@
+name: bpfstats
+description: Get memory and CPU usage of eBPF programs and Gadgets
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/bpfstats
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/bpfstats
+operator:
+  ebpf:
+    emitstats: true
