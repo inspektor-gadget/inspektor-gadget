@@ -87,7 +87,7 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 	if (gadget_should_discard_data_current())
 		return 0;
 
-	u64 mtns_id = gadget_get_mntns_id();
+	u64 mtns_id = gadget_get_current_mntns_id();
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;

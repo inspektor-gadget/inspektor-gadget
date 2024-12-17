@@ -57,7 +57,7 @@ static int probe_entry(pid_t tpid, int sig)
 	if (gadget_should_discard_data_current())
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (target_signal && sig != target_signal)
 		return 0;

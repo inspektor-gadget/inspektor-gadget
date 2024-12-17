@@ -120,7 +120,7 @@ clean:
 			return false;
 	}
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return false;
@@ -213,7 +213,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	event->err = errval;
 	event->fd = fd;
-	event->mntns_id = gadget_get_mntns_id();
+	event->mntns_id = gadget_get_current_mntns_id();
 	event->timestamp = bpf_ktime_get_boot_ns();
 
 	// Attempting to extract the full file path with symlink resolution

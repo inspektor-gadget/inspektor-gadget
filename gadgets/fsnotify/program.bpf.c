@@ -285,7 +285,7 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 		return 0;
 
 	process_init(&ee->tracee, pid_tgid, task);
-	ee->tracee_mntns_id = gadget_get_mntns_id();
+	ee->tracee_mntns_id = gadget_get_current_mntns_id();
 	ee->tracee_uid_raw = (u32)uid_gid;
 	ee->tracee_gid_raw = (u32)(uid_gid >> 32);
 
@@ -406,7 +406,7 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	}
 
 	process_init(&gadget_event->tracee, pid_tgid, task);
-	gadget_event->tracee_mntns_id = gadget_get_mntns_id();
+	gadget_event->tracee_mntns_id = gadget_get_current_mntns_id();
 	gadget_event->tracee_uid_raw = (u32)uid_gid;
 	gadget_event->tracee_gid_raw = (u32)(uid_gid >> 32);
 
@@ -515,7 +515,7 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 	gadget_event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	process_init(&gadget_event->tracer, pid_tgid, task);
-	gadget_event->tracer_mntns_id = gadget_get_mntns_id();
+	gadget_event->tracer_mntns_id = gadget_get_current_mntns_id();
 	gadget_event->tracer_uid_raw = (u32)uid_gid;
 	gadget_event->tracer_gid_raw = (u32)(uid_gid >> 32);
 

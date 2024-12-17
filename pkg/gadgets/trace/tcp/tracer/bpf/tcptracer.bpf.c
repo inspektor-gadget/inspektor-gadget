@@ -173,7 +173,7 @@ static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 	__u32 uid = uid_gid;
 	__u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
@@ -257,7 +257,7 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	u16 family;
 	__u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
@@ -338,7 +338,7 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	if (!sk)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
