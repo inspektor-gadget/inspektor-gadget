@@ -46,7 +46,7 @@ static __always_inline int probe_entry(const char *src, const char *dest,
 	struct arg arg = {};
 	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -84,7 +84,7 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		goto cleanup;
 
-	eventp->mount_ns_id = gadget_get_mntns_id();
+	eventp->mount_ns_id = gadget_get_current_mntns_id();
 	eventp->timestamp = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags = argp->flags;

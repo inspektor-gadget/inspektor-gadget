@@ -86,7 +86,7 @@ gadget_should_discard_data(gadget_mntns_id mntns_id, gadget_pid pid,
 // gadget_should_discard_data function.
 static __always_inline bool gadget_should_discard_data_current()
 {
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_mntns_id(gadget_get_current_mntns_id()))
 		return true;
 
 	if (targ_pid != 0 || targ_tid != 0) {
