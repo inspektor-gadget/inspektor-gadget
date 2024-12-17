@@ -64,7 +64,7 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 	//if (target_pid && target_pid != pid)
 	//	return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -113,7 +113,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 		event.size = datap->end - datap->start;
 	event.pid = pid;
 	event.op = op;
-	event.mntns_id = gadget_get_mntns_id();
+	event.mntns_id = gadget_get_current_mntns_id();
 	event.timestamp = bpf_ktime_get_boot_ns();
 	dentry = datap->dentry;
 	file_name = BPF_CORE_READ(dentry, d_name.name);
