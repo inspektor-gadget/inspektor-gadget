@@ -68,7 +68,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	if (gadget_should_discard_data_current())
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	ip_key.pid = pid;
 	ip_key.tid = tid;

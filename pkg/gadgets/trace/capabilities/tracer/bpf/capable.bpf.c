@@ -199,7 +199,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.cap = ap->cap;
 	event.uid = (u32)uid_gid;
 	event.gid = (u32)(uid_gid >> 32);
-	event.mntnsid = gadget_get_mntns_id();
+	event.mntnsid = gadget_get_current_mntns_id();
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
 	event.timestamp = bpf_ktime_get_boot_ns();
@@ -238,7 +238,7 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	struct pt_regs regs = {};
 	struct syscall_context sc_ctx = {};
 
-	u64 mntns_id = gadget_get_mntns_id();
+	u64 mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;

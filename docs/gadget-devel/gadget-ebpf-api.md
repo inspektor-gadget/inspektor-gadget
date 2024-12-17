@@ -50,10 +50,10 @@ An eBPF program can look up the mount namespace inode ID with the following:
 
 ```C
 u64 mntns_id;
-mntns_id = gadget_get_mntns_id();
+mntns_id = gadget_get_current_mntns_id();
 ```
 
-eBPF programs of type socket filter cannot use `gadget_get_mntns_id()`, but instead
+eBPF programs of type socket filter cannot use `gadget_get_current_mntns_id()`, but instead
 use [socket enrichment](#socket-enrichment) to find the mount namespace.
 
 The following fields can be added from the mount or net namespace inode ID. The
