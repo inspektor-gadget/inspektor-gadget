@@ -32,8 +32,8 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event execsnoopWithLongPaths ./bpf/execsnoop.bpf.c -- -DWITH_LONG_PATHS -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type event execsnoopWithLongPaths ./bpf/execsnoop.bpf.c -- -DWITH_LONG_PATHS -I./bpf/
 
 // needs to be kept in sync with execsnoopEvent from execsnoop_bpfel.go without the Args field
 type execsnoopEventAbbrev struct {
@@ -77,6 +77,7 @@ type execsnoopWithLongPathsEventAbbrev struct {
 	Pcomm       [16]uint8
 	Cwd         [4096]uint8
 	Exepath     [4096]uint8
+	File        [4096]uint8
 }
 
 type Config struct {
@@ -94,6 +95,7 @@ type Tracer struct {
 	enterLink     link.Link
 	schedExecLink link.Link
 	exitLink      link.Link
+	securityLink  link.Link
 	reader        *perf.Reader
 }
 
@@ -126,6 +128,7 @@ func (t *Tracer) close() {
 	t.enterLink = gadgets.CloseLink(t.enterLink)
 	t.schedExecLink = gadgets.CloseLink(t.schedExecLink)
 	t.exitLink = gadgets.CloseLink(t.exitLink)
+	t.securityLink = gadgets.CloseLink(t.securityLink)
 
 	if t.reader != nil {
 		t.reader.Close()
@@ -168,6 +171,11 @@ func (t *Tracer) install() error {
 	t.exitLink, err = link.Tracepoint("syscalls", "sys_exit_execve", t.objs.IgExecveX, nil)
 	if err != nil {
 		return fmt.Errorf("attaching exit tracepoint: %w", err)
+	}
+
+	t.securityLink, err = link.Kprobe("security_bprm_check", t.objs.SecurityBprmCheck, nil)
+	if err != nil {
+		return fmt.Errorf("attaching kprobe security_bprm_check: %w", err)
 	}
 
 	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
@@ -235,6 +243,7 @@ func (t *Tracer) run() {
 			bpfEventWithLongPaths := (*execsnoopWithLongPathsEventAbbrev)(unsafe.Pointer(&record.RawSample[0]))
 			event.Cwd = gadgets.FromCString(bpfEventWithLongPaths.Cwd[:])
 			event.ExePath = gadgets.FromCString(bpfEventWithLongPaths.Exepath[:])
+			event.File = gadgets.FromCString(bpfEventWithLongPaths.File[:])
 			args = record.RawSample[unsafe.Offsetof(execsnoopWithLongPathsEvent{}.Args):]
 		}
 
