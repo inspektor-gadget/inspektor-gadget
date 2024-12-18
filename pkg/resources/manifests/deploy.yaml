@@ -158,7 +158,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: ghcr.io/inspektor-gadget/inspektor-gadget:latest
           imagePullPolicy: Always
-          command: [ "/entrypoint" ]
+          command: [ "/bin/gadgettracermanager" ]
           lifecycle:
             preStop:
               exec:

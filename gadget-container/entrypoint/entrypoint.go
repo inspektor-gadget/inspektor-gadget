@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
@@ -127,9 +126,6 @@ func installCRIOHooks() error {
 
 		log.Infof("Installing OCI hooks configuration in %s", hookPath)
 		os.MkdirAll(hookPath, 0o755)
-		if err != nil {
-			return fmt.Errorf("creating hook path %s: %w", path, err)
-		}
 
 		errCount := 0
 		for _, config := range []string{"/opt/hooks/crio/gadget-prestart.json", "/opt/hooks/crio/gadget-poststop.json"} {
@@ -221,7 +217,7 @@ func prepareGadgetPullSecret() error {
 	return nil
 }
 
-func Init() {
+func Init() ( []string,error) {
 	config.Config = config.NewWithPath(gadgettracermanagerconfig.ConfigPath)
 	if err := config.Config.ReadInConfig(); err != nil {
 		log.Warnf("reading config: %v", err)
@@ -230,7 +226,7 @@ func Init() {
 	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
 	log.SetLevel(tracerManLogLvl)
 	if _, err := os.Stat(filepath.Join(host.HostRoot, "/bin")); os.IsNotExist(err) {
-		log.Fatalf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
+		return nil, fmt.Errorf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
 	}
 
 	prettyName, err := getPrettyName()
@@ -242,7 +238,7 @@ func Init() {
 
 	kernelRelease, err := getKernelRelease()
 	if err != nil {
-		log.Fatalf("getting kernel release: %v", err)
+		return nil, fmt.Errorf("getting kernel release: %v", err)
 	}
 
 	log.Infof("Kernel detected: %s", kernelRelease)
@@ -264,14 +260,14 @@ func Init() {
 	if hasGadgetPullSecret() {
 		err = prepareGadgetPullSecret()
 		if err != nil {
-			log.Fatalf("preparing gadget pull secret: %v", err)
+			return nil, fmt.Errorf("preparing gadget pull secret: %v", err)
 		}
 	}
 
 	path := "/proc/self/cgroup"
 	content, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatalf("reading %s: %v", path, err)
+		return nil, fmt.Errorf("reading %s: %v", path, err)
 	}
 
 	crio := false
@@ -294,12 +290,12 @@ func Init() {
 	case "crio":
 		err := installCRIOHooks()
 		if err != nil {
-			log.Fatalf("installing CRIO hooks: %v", err)
+			return nil, fmt.Errorf("installing CRIO hooks: %v", err)
 		}
 	case "nri":
 		err := installNRIHooks()
 		if err != nil {
-			log.Fatalf("installing NRI hooks: %v", err)
+			return nil, fmt.Errorf("installing NRI hooks: %v", err)
 		}
 	}
 
@@ -317,7 +313,7 @@ func Init() {
 
 	err = os.Chdir("/")
 	if err != nil {
-		log.Fatalf("changing directory: %v", err)
+		return nil, fmt.Errorf("changing directory: %v", err)
 	}
 
 	for _, socket := range []string{"/run/gadgettracermanager.socket", "/run/gadgetservice.socket"} {
@@ -330,18 +326,13 @@ func Init() {
 		fallbackPodInformer = os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")
 	}
 
-	args := []string{
+	Args := []string{
 		"gadgettracermanager",
 		"-serve",
 		fmt.Sprintf("-hook-mode=%s", gadgetTracerManagerHookMode),
 		"-controller",
 		fmt.Sprintf("-fallback-podinformer=%s", fallbackPodInformer),
 	}
-
-	err = syscall.Exec("/bin/gadgettracermanager", args, os.Environ())
-	if err != nil {
-		log.Fatalf("exec'ing gadgettracermanager: %v", err)
-	}
-
-	log.Fatal("should never be printed...")
+	
+	return Args,nil
 }

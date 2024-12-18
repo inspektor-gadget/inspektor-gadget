@@ -122,8 +122,11 @@ func init() {
 }
 
 func main() {
-	entrypoint.Init()
-
+	args,err:=entrypoint.Init()
+	if err != nil {
+		log.Fatalf("entrypoint.Init() failed: %v", err)
+	}
+	os.Args=args
 	flag.Parse()
 
 	if flag.NArg() > 0 {
