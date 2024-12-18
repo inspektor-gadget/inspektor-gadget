@@ -16,6 +16,7 @@ package wasm
 
 import (
 	"context"
+	"encoding/binary"
 
 	"github.com/cilium/ebpf"
 	"github.com/tetratelabs/wazero"
@@ -75,6 +76,11 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
 }
+
+// Keep in sync with wasmapi/go/map.go.
+var getFdFlag = uint64(1 << 63)
+
+var mapTypesAcceptingFD = []ebpf.MapType{ebpf.ArrayOfMaps, ebpf.HashOfMaps}
 
 // newMap creates a new map.
 // Params:
@@ -195,6 +201,16 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 	stack[0] = 0
 }
 
+func mapAcceptsFD(m *ebpf.Map) bool {
+	mapType := m.Type()
+	for _, typ := range mapTypesAcceptingFD {
+		if mapType == typ {
+			return true
+		}
+	}
+	return false
+}
+
 // mapUpdate updates a value.
 // Params:
 // - stack[0]: Map handle
@@ -208,6 +224,9 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 	keyPtr := stack[1]
 	valuePtr := stack[2]
 	flags := stack[3]
+
+	getFD := (flags & getFdFlag) != 0
+	flags &= ^getFdFlag
 
 	ebpfFlags := ebpf.MapUpdateFlags(flags)
 	if ebpfFlags > ebpf.UpdateLock {
@@ -236,7 +255,31 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	err = ebpfMap.Update(key, value, ebpfFlags)
+	if getFD {
+		if !mapAcceptsFD(ebpfMap) {
+			i.logger.Warnf("mapUpdate: map type %v does not accept FD, expecting one in: %v", ebpfMap.Type(), mapTypesAcceptingFD)
+			stack[0] = 1
+			return
+		}
+
+		targetMapHandle := binary.NativeEndian.Uint32(value)
+		targetMap, ok := getHandle[*ebpf.Map](i, targetMapHandle)
+		if !ok {
+			stack[0] = 1
+			return
+		}
+
+		err = ebpfMap.Update(key, uint32(targetMap.FD()), ebpfFlags)
+	} else {
+		if mapAcceptsFD(ebpfMap) {
+			i.logger.Warnf("mapUpdate: map type %v accepts FD, expecting any map except one in: %v", ebpfMap.Type(), mapTypesAcceptingFD)
+			stack[0] = 1
+			return
+		}
+
+		err = ebpfMap.Update(key, value, ebpfFlags)
+	}
+
 	if err != nil {
 		i.logger.Warnf("mapUpdate: updating value: %v", err)
 		stack[0] = 1
