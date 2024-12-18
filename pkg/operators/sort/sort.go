@@ -265,6 +265,10 @@ func (s *sortOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (s *sortOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var Operator = &sortOperator{}
 
 func init() {
