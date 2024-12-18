@@ -15,15 +15,20 @@
 package bpfstats
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cilium/ebpf"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 type BPFStatsMethod int
@@ -119,4 +124,65 @@ func GetMethod() BPFStatsMethod {
 	mutex.Lock()
 	defer mutex.Unlock()
 	return method
+}
+
+// GetMapsMemUsage returns a map with the memory usage for all maps on the
+// system
+func GetMapsMemUsage() (map[ebpf.MapID]uint64, error) {
+	var err error
+	mapSizes := make(map[ebpf.MapID]uint64)
+
+	curMapID := ebpf.MapID(0)
+	nextMapID := ebpf.MapID(0)
+
+	for {
+		nextMapID, err = ebpf.MapGetNextID(curMapID)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				break
+			}
+			return nil, fmt.Errorf("getting next map ID: %w", err)
+		}
+		if nextMapID <= curMapID {
+			break
+		}
+		curMapID = nextMapID
+		m, err := ebpf.NewMapFromID(curMapID)
+		if err != nil {
+			continue
+		}
+
+		mapSizes[curMapID], err = GetMapMemUsage(m)
+		m.Close()
+		if err != nil {
+			return nil, fmt.Errorf("getting memory usage of map ID (%d): %w", curMapID, err)
+		}
+	}
+
+	return mapSizes, nil
+}
+
+// GetMapMemUsage returns the memory usage of a map
+func GetMapMemUsage(m *ebpf.Map) (uint64, error) {
+	fdInfoPath := filepath.Join(host.HostProcFs, "self", "fdinfo", fmt.Sprint(m.FD()))
+	f, err := os.Open(fdInfoPath)
+	if err != nil {
+		return 0, fmt.Errorf("reading fdinfo: %w", err)
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if strings.HasPrefix(sc.Text(), "memlock:\t") {
+			lineSplit := strings.Split(sc.Text(), "\t")
+			if len(lineSplit) == 2 {
+				size, err := strconv.ParseUint(lineSplit[1], 10, 64)
+				if err != nil {
+					return 0, fmt.Errorf("reading memlock: %w", err)
+				}
+				return size, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("finding memlock in fdinfo")
 }
