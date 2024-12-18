@@ -34,6 +34,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -cc clang -cflags ${CFLAGS} tcpRTT ./bpf/tcprtt.bpf.c -- -I./bpf/
@@ -249,9 +250,8 @@ func (t *Tracer) install() error {
 		"targ_daddr_v6":   t.config.filterRemoteAddressV6,
 	}
 
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+	if err := ebpfutils.SpecSetVars(spec, consts); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{

@@ -52,6 +52,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} dispatcher ./bpf/dispatcher.bpf.c -- -I./bpf/ -I../socketenricher/bpf
@@ -109,13 +110,8 @@ func (t *Tracer[Event]) newAttachment(
 		return nil, err
 	}
 
-	u32netns := uint32(netns)
-	consts := map[string]interface{}{
-		"current_netns": u32netns,
-	}
-	//nolint:staticcheck
-	if err := dispatcherSpec.RewriteConstants(consts); err != nil {
-		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
+	if err := ebpfutils.SpecSetVar(dispatcherSpec, "current_netns", uint32(netns)); err != nil {
+		return nil, err
 	}
 	opts := ebpf.CollectionOptions{
 		MapReplacements: map[string]*ebpf.Map{

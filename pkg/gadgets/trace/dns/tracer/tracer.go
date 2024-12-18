@@ -33,6 +33,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/
@@ -242,9 +243,8 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger) error {
 		"ports":     portsArray,
 		"ports_len": uint16(len(t.config.Ports)),
 	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(constants); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+	if err := ebpfutils.SpecSetVars(spec, constants); err != nil {
+		return err
 	}
 
 	if err := t.Tracer.Run(spec, types.Base, t.parseDNSPacket); err != nil {

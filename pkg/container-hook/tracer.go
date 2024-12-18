@@ -57,6 +57,7 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -257,12 +258,8 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return fmt.Errorf("reading private data from fanotify fd: %w", err)
 	}
 
-	consts := map[string]interface{}{
-		"tracer_group": fanotifyPrivateData,
-	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+	if err := ebpfutils.SpecSetVar(spec, "tracer_group", fanotifyPrivateData); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{

@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} socketenricher ./bpf/socket-enricher.bpf.c -- -I./bpf/
@@ -97,10 +98,9 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if disableBPFIterators {
-		//nolint:staticcheck
-		spec.RewriteConstants(map[string]interface{}{
-			"disable_bpf_iterators": true,
-		})
+		if err := ebpfutils.SpecSetVar(spec, "disable_bpf_iterators", true); err != nil {
+			return err
+		}
 	} else {
 		opts.MapReplacements = map[string]*ebpf.Map{
 			SocketsMapName: se.objsIter.GadgetSockets,
