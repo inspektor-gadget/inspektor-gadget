@@ -190,6 +190,10 @@ func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, 
 		return nil, err
 	}
 
+	if len(instance.imageOperatorInstances) == 0 {
+		return nil, nil
+	}
+
 	return instance, nil
 }
 
@@ -362,7 +366,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 
 	if len(o.imageOperatorInstances) == 0 {
-		return fmt.Errorf("image doesn't contain valid gadget layers")
+		return nil
 	}
 
 	extraParams := make([]*api.Param, 0)
