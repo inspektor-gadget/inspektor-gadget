@@ -331,3 +331,12 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 	}
 	return indexDesc, nil
 }
+
+func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
+	allPaths := []string{}
+	for _, paths := range opts.ObjectPaths {
+		allPaths = append(allPaths, paths.EBPF, paths.Wasm, paths.Btfgen)
+	}
+
+	return fixOwner(allPaths...)
+}
