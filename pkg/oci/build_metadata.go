@@ -17,6 +17,7 @@ package oci
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func getAnySpec(opts *BuildGadgetImageOpts) (*ebpf.CollectionSpec, error) {
 	}
 
 	if progPath == "" {
-		return nil, fmt.Errorf("no eBPF object file found")
+		return nil, fmt.Errorf("no eBPF object file found: %w", os.ErrNotExist)
 	}
 
 	progContent, err := os.ReadFile(progPath)
@@ -77,6 +78,9 @@ func validateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error
 
 	spec, err := getAnySpec(opts)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
 		return fmt.Errorf("loading spec: %w", err)
 	}
 
