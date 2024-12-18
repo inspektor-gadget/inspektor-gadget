@@ -16,6 +16,8 @@ package wasm
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
 
 	"github.com/cilium/ebpf"
 	"github.com/tetratelabs/wazero"
@@ -76,6 +78,36 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 	)
 }
 
+func isMapTypeKnown(typ ebpf.MapType) bool {
+	// Keep in sync with with wasmapi/go/map.go.
+	return typ <= ebpf.TaskStorage
+}
+
+func isMapTypeFDArray(typ ebpf.MapType) bool {
+	return typ == ebpf.ProgramArray || typ == ebpf.PerfEventArray || typ == ebpf.CGroupArray
+}
+
+func isMapOfMaps(typ ebpf.MapType) bool {
+	return typ == ebpf.ArrayOfMaps || typ == ebpf.HashOfMaps
+}
+
+func isMapTypeSupported(typ ebpf.MapType) error {
+	// We do not permit operation on map unknown to us.
+	// A newer kernel can introduce a new type of map taking an FD as a value,
+	// this way user could use this new map to leak FD in guest WASM.
+	if !isMapTypeKnown(typ) {
+		return fmt.Errorf("unknown map type %v", typ)
+	}
+
+	// We do not support map taking FD different than map FD to avoid leaking them
+	// in guest wasm.
+	if isMapTypeFDArray(typ) {
+		return fmt.Errorf("FD array maps like %v are not supported", typ)
+	}
+
+	return nil
+}
+
 // newMap creates a new map.
 // Params:
 // - stack[0] is the map name
@@ -91,6 +123,13 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 	keySize := wapi.DecodeU32(stack[2])
 	valueSize := wapi.DecodeU32(stack[3])
 	maxEntries := wapi.DecodeU32(stack[4])
+
+	err := isMapTypeSupported(mapType)
+	if err != nil {
+		i.logger.Warnf("newMap: %v", err)
+		stack[0] = 0
+		return
+	}
 
 	mapName, err := stringFromStack(m, mapNamePtr)
 	if err != nil {
@@ -136,16 +175,23 @@ func (i *wasmOperatorInstance) getMap(ctx context.Context, m wapi.Module, stack 
 		return
 	}
 
-	ebpfMap, ok := i.gadgetCtx.GetVar(operators.MapPrefix + mapName)
+	ebpfMapAny, ok := i.gadgetCtx.GetVar(operators.MapPrefix + mapName)
 	if !ok {
-		i.logger.Warnf("get map: no map for name %q", mapName)
+		i.logger.Warnf("getMap: no map for name %q", mapName)
 		stack[0] = 0
 		return
 	}
 
-	ebpfMap, ok = ebpfMap.(*ebpf.Map)
+	ebpfMap, ok := ebpfMapAny.(*ebpf.Map)
 	if !ok {
-		i.logger.Warnf("get map: map %q is not an ebpf map", mapName)
+		i.logger.Warnf("getMap: map %q is not an ebpf map", mapName)
+		stack[0] = 0
+		return
+	}
+
+	err = isMapTypeSupported(ebpfMap.Type())
+	if err != nil {
+		i.logger.Warnf("getMap: %v", err)
 		stack[0] = 0
 		return
 	}
@@ -183,6 +229,19 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 		i.logger.Warnf("mapLookup: getting value: %v", err)
 		stack[0] = 1
 		return
+	}
+
+	if isMapOfMaps(ebpfMap.Type()) {
+		mapID := ebpf.MapID(binary.NativeEndian.Uint32(value))
+
+		innerMap, err := ebpf.NewMapFromID(mapID)
+		if err != nil {
+			i.logger.Warnf("mapLookup: getting inner map from ID %d: %v", mapID, err)
+			stack[0] = 1
+			return
+		}
+
+		binary.NativeEndian.PutUint32(value, i.addHandle(innerMap))
 	}
 
 	err = bufToStack(m, value, valuePtr)
@@ -236,12 +295,29 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	err = ebpfMap.Update(key, value, ebpfFlags)
+	if isMapOfMaps(ebpfMap.Type()) {
+		// We hide the FD behind the handle, this way users can interact with
+		// *OfMaps maps but without handling the FD themselves.
+		// So, for mapUpdate() users give the map handle and we translate it to the
+		// map FD to please eBPF side.
+		targetMapHandle := binary.NativeEndian.Uint32(value)
+		targetMap, ok := getHandle[*ebpf.Map](i, targetMapHandle)
+		if !ok {
+			stack[0] = 1
+			return
+		}
+
+		err = ebpfMap.Update(key, uint32(targetMap.FD()), ebpfFlags)
+	} else {
+		err = ebpfMap.Update(key, value, ebpfFlags)
+	}
+
 	if err != nil {
 		i.logger.Warnf("mapUpdate: updating value: %v", err)
 		stack[0] = 1
 		return
 	}
+
 	stack[0] = 0
 }
 
