@@ -55,10 +55,6 @@ func TestImage(t *testing.T) {
 	err := os.MkdirAll(gadgetSrcFolder, 0o755)
 	require.NoError(t, err)
 
-	// create an empty eBPF program for the test as it compiles fine
-	_, err = os.Create(path.Join(gadgetSrcFolder, "program.bpf.c"))
-	require.NoError(t, err)
-
 	// ensure all images are removed
 	t.Cleanup(func() {
 		// remove local image
