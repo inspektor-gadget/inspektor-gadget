@@ -63,6 +63,7 @@ func TestTraceExec(t *testing.T) {
 					Args:    shArgs,
 					Cwd:     "/",
 					ExePath: "/bin/sh",
+					File:    "/bin/sh",
 				},
 				{
 					Event:      expectedEvent,
@@ -73,6 +74,7 @@ func TestTraceExec(t *testing.T) {
 					Gid:        1111,
 					Cwd:        "/",
 					ExePath:    "/usr/bin/sh",
+					File:       "/usr/bin/sh",
 					UpperLayer: true,
 				},
 				{
@@ -84,6 +86,7 @@ func TestTraceExec(t *testing.T) {
 					Gid:         1111,
 					Cwd:         "/",
 					ExePath:     "/bin/sleep",
+					File:        "/bin/sleep",
 					PupperLayer: true,
 				},
 			}

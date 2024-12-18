@@ -35,6 +35,7 @@ struct event {
 	bool pupper_layer;
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
+	char file[MAX_STRING_SIZE];
 	char exepath[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
 };
@@ -249,6 +250,33 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 		gadget_output_buf(ctx, &events, event, len);
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
+	return 0;
+}
+
+SEC("kprobe/security_bprm_check")
+int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
+{
+	if (!paths)
+		return 0;
+
+	u32 pid = (u32)bpf_get_current_pid_tgid();
+	struct event *event;
+	char *file;
+	struct path f_path;
+
+	event = bpf_map_lookup_elem(&execs, &pid);
+	if (!event)
+		return 0;
+
+	// security_bprm_check is called repeatedly following the shebang
+	// Only get the first call.
+	if (event->file[0] != '\0')
+		return 0;
+
+	f_path = BPF_CORE_READ(bprm, file, f_path);
+	file = get_path_str(&f_path);
+	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
+
 	return 0;
 }
 

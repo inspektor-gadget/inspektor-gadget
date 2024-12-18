@@ -14,7 +14,13 @@ datasources:
           columns.alignment: left
       exepath:
         annotations:
-          description: The executable file of the process (require --paths flag)
+          description: The executable binary file of the process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
+      file:
+        annotations:
+          description: The executable file of the process. It might be different to exepath in case of a script (require --paths flag)
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
@@ -63,7 +69,7 @@ params:
     paths:
       key: paths
       defaultValue: "false"
-      description: Show current working directory and executable path.
+      description: Show current working directory, file path and executable path. The file path and executable path might be different in case of a script.
     targ_uid:
       key: uid
       defaultValue: ""
