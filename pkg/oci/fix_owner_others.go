@@ -18,10 +18,6 @@ package oci
 
 import "fmt"
 
-func fixOwner(_, _ string) error {
-	return fmt.Errorf("fixOwner not implemented on this platform")
-}
-
-func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
-	return fmt.Errorf("fixGeneratedFilesOwner not implemented on this platform")
+func copyFileOwner(modelFile string, targetFiles ...string) error {
+	return fmt.Errorf("copyFileOwner not implemented on this platform")
 }

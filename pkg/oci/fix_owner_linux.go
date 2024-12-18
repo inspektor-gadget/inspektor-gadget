@@ -21,42 +21,22 @@ import (
 	"syscall"
 )
 
-func fixOwner(targetFile, modelFile string) error {
+func copyFileOwner(modelFile string, targetFiles ...string) error {
 	info, err := os.Stat(modelFile)
 	if err != nil {
 		return err
 	}
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-		err := os.Chown(targetFile, int(stat.Uid), int(stat.Gid))
-		if err != nil {
-			return err
-		}
-	}
 
-	return nil
-}
-
-func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
-	info, err := os.Stat(opts.EBPFSourcePath)
-	if err != nil {
-		return err
-	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
 		return nil
 	}
 
-	allPaths := []string{}
-
-	for _, paths := range opts.ObjectPaths {
-		allPaths = append(allPaths, paths.EBPF, paths.Wasm, paths.Btfgen)
-	}
-
-	for _, path := range allPaths {
-		if path == "" {
+	for _, targetFile := range targetFiles {
+		if targetFile == "" {
 			continue
 		}
-		err := os.Chown(path, int(stat.Uid), int(stat.Gid))
+		err := os.Chown(targetFile, int(stat.Uid), int(stat.Gid))
 		if err != nil {
 			return err
 		}

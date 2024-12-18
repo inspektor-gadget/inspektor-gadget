@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -130,7 +131,7 @@ func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts)
 
 	// fix owner of created metadata file
 	if !update {
-		if err := fixOwner(opts.MetadataPath, opts.EBPFSourcePath); err != nil {
+		if err := copyFileOwner(filepath.Dir(opts.MetadataPath), opts.MetadataPath); err != nil {
 			log.Warnf("Failed to fix metadata file owner: %v", err)
 		}
 	}

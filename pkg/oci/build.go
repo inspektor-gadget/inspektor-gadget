@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/distribution/reference"
@@ -330,4 +331,17 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 		return ocispec.Descriptor{}, fmt.Errorf("pushing manifest index: %w", err)
 	}
 	return indexDesc, nil
+}
+
+func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
+	allPaths := []string{}
+	for _, paths := range opts.ObjectPaths {
+		allPaths = append(allPaths, paths.EBPF, paths.Wasm, paths.Btfgen)
+	}
+
+	if len(allPaths) == 0 {
+		return nil
+	}
+
+	return copyFileOwner(filepath.Dir(allPaths[0]), allPaths...)
 }
