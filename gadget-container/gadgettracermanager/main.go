@@ -52,6 +52,8 @@ import (
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
+	// import for gadgettracermanager entrypoint"
+	"github.com/inspektor-gadget/inspektor-gadget/gadget-container/entrypoint"
 	// Blank import for some operators
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
@@ -120,6 +122,11 @@ func init() {
 }
 
 func main() {
+	args,err:=entrypoint.Init()
+	if err != nil {
+		log.Fatalf("entrypoint.Init() failed: %v", err)
+	}
+	os.Args=args
 	flag.Parse()
 
 	if flag.NArg() > 0 {
