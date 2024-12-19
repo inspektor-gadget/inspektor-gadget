@@ -35,7 +35,7 @@ static int probe_entry(pid_t tpid, int sig)
 	__u32 pid, tid;
 	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -141,7 +141,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	u64 mntns_id;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;

@@ -35,7 +35,7 @@ static __always_inline int trace_start(struct request *req)
 {
 	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -58,7 +58,7 @@ int BPF_KPROBE(ig_topio_req, struct request *req)
 	struct start_req_t start_req;
 	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;

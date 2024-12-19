@@ -68,7 +68,7 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 	if (targ_tid != -1 && targ_tid != tid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
