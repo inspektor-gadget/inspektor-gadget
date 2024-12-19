@@ -42,6 +42,7 @@ type Event struct {
 	SessionId   uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
 	Cwd         string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:paths"`
 	ExePath     string   `json:"exepath,omitempty" column:"exepath,width:40" columnTags:"param:paths"`
+	File        string   `json:"file,omitempty" column:"file,width:40" columnTags:"param:paths"`
 }
 
 func (e *Event) GetUid() uint32 {

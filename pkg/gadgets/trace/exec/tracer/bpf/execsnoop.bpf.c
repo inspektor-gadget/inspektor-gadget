@@ -261,4 +261,30 @@ cleanup:
 	return 0;
 }
 
+SEC("kprobe/security_bprm_check")
+int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
+{
+#ifdef WITH_LONG_PATHS
+	u32 pid = (u32)bpf_get_current_pid_tgid();
+	struct event *event;
+	char *file;
+	struct path f_path;
+
+	event = bpf_map_lookup_elem(&execs, &pid);
+	if (!event)
+		return 0;
+
+	// security_bprm_check is called repeatedly following the shebang
+	// Only get the first call.
+	if (event->file[0] != '\0')
+		return 0;
+
+	f_path = BPF_CORE_READ(bprm, file, f_path);
+	file = get_path_str(&f_path);
+	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
+#endif
+
+	return 0;
+}
+
 char LICENSE[] SEC("license") = "GPL";

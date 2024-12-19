@@ -37,7 +37,7 @@ Default value: "true"
 
 ### `--paths`
 
-Show current working directory and executable path.
+Show current working directory, file path and executable path. The file path and executable path might be different in case of a script.
 
 Default value: "false"
 
@@ -139,3 +139,14 @@ Finally, clean the system:
         ```
     </TabItem>
 </Tabs>
+
+## Limitations
+
+- The upper layer field is only available when the executable is executed
+ correctly (ret=0). For example, if the executable does not have the "execute"
+ permission, the execution will fail and the upper layer field will not be
+ defined.
+- In case of a shell script, the upper layer field will refer to the location
+ of the shell program (e.g. `/bin/sh`) and not the script file.
+- The exepath and file paths might not be set when the execution fails
+ (ret!=0), depending on the error.
