@@ -668,7 +668,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 		opts.Programs.KernelTypes = btfSpec
 	}
-	collection, err := ebpf.NewCollectionWithOptions(i.collectionSpec, opts)
+	cspec := i.collectionSpec.Copy()
+	delete(cspec.Programs, "subprogrepl")
+	collection, err := ebpf.NewCollectionWithOptions(cspec, opts)
 	if err != nil {
 		var verifierErr *ebpf.VerifierError
 		if errors.As(err, &verifierErr) {

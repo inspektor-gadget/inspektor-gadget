@@ -57,4 +57,10 @@ int gfilter_nok(struct __sk_buff *skb)
     return 0;
 }
 
+SEC("freplace/filterfunc")
+int subprogrepl(struct __sk_buff *skb)
+{
+    return 0;
+}
+
 char _license[] SEC("license") = "GPL";

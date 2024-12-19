@@ -27,6 +27,7 @@ import (
 
 const (
 	BPF_MAP_LOOKUP_AND_DELETE_BATCH uintptr = 25
+	BPF_LINK_CREATE                 uintptr = 28
 )
 
 type Pointer struct {
@@ -42,6 +43,15 @@ type MapLookupBatchAttr struct {
 	MapFd     uint32
 	ElemFlags uint64
 	Flags     uint64
+}
+
+type LinkCreateAttr struct {
+	ProgFd      uint32
+	TargetFd    uint32
+	AttachType  uint32
+	Flags       uint32
+	TargetBtfId uint32
+	_           [44]byte
 }
 
 func BPF(cmd uintptr, attr unsafe.Pointer, size uintptr) (uintptr, error) {

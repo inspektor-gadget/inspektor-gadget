@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -97,6 +98,10 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			return nil, nil
 		}
 
+		for pg := range i.collection.Programs {
+			i.logger.Infof("program %s", pg)
+		}
+
 		var b btf.Builder
 		// b.Add()
 
@@ -121,18 +126,48 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			asm.Return(),
 		}
 
-		insns[0] = btf.WithFuncMetadata(insns[0], targetFunc)
+		insns[0] = btf.WithFuncMetadata(insns[0], targetFunc).WithSymbol("filterfunc")
+
 		// for i, v := range insns {
 		// 	insns[i] = btf.WithFuncMetadata(v, targetFunc)
 		// }
 
-		xp, err := ebpf.NewProgram(&ebpf.ProgramSpec{
+		// xx, err := ebpf.NewProgram(i.collectionSpec.Programs["filterfunc"])
+		// if err != nil {
+		// 	i.logger.Errorf("Error creating filterfunc: %v", err)
+		// }
+
+		// xp, err := ebpf.NewProgramWithOptions(&ebpf.ProgramSpec{
+		// 	Type:         ebpf.Extension,
+		// 	Instructions: insns,
+		// 	AttachTarget: prog,
+		// 	AttachTo:     "filterfunc",
+		// 	License:      "GPL",
+		// }, ebpf.ProgramOptions{
+		// 	LogLevel:    0,
+		// 	LogDisabled: false,
+		// 	KernelTypes: spc,
+		// })
+
+		i.logger.Infof("O %+v / %d", i.collectionSpec.Programs["subprogrepl"].AttachType, i.collectionSpec.Programs["subprogrepl"].Type)
+
+		rspec := &ebpf.ProgramSpec{
+			AttachType:   ebpf.AttachNone,
+			Name:         "filterfunc",
 			Type:         ebpf.Extension,
 			Instructions: insns,
 			AttachTarget: prog,
 			AttachTo:     "filterfunc",
 			License:      "GPL",
+		}
+		xxy, err := ebpf.NewProgramWithOptions(rspec, ebpf.ProgramOptions{
+			LogLevel: 1,
 		})
+		if err != nil {
+			i.logger.Errorf("Failed to compile program %q: %v", p.Name, err)
+		}
+		xxy.Info()
+		i.logger.Infof("VERIFIER LOG %s", xxy.VerifierLog)
 		// }, ebpf.ProgramOptions{
 		// 	LogLevel:    0,
 		// 	LogDisabled: false,
@@ -142,10 +177,77 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			i.logger.Errorf("Failed to compile program %q: %v", p.Name, err)
 		}
 
-		_, err = link.AttachFreplace(prog, "filterfunc", xp)
+		i.collectionSpec.Programs["subprogrepl"].AttachTarget = prog
+		// i.collectionSpec.Programs["subprogrepl"].AttachTo = ""
+		// xxy, err := ebpf.NewProgramWithOptions(i.collectionSpec.Programs["subprogrepl"], ebpf.ProgramOptions{
+		// 	LogLevel: 1,
+		// })
+		// if err != nil {
+		// 	i.logger.Errorf("Failed to compile repl program %q: %v", p.Name, err)
+		// }
+
+		i.logger.Infof("X %+v", rspec)
+
+		// link.AttachFreplace()
+
+		// l, err := link.AttachFreplace(prog, "filterfunc", xxy)
+		// i, _ := l.Info()
+
+		// _, err = link.AttachFreplace(nil, "", xp)
+		// if err != nil {
+		// 	i.logger.Errorf("Failed to attach filter program: %v", err)
+		// }
+
+		// _, err = link.AttachFreplace(nil, "", xxy)
+
+		var yfunction *btf.Func
+
+		hdl, err := prog.Handle()
 		if err != nil {
-			i.logger.Errorf("Failed to attach filter program: %v", err)
+			i.logger.Errorf("Failed to get handle for program %q: %v", p.Name, err)
 		}
+
+		spec, err := hdl.Spec(nil)
+		if err != nil {
+			i.logger.Errorf("Failed to get spec for program %q: %v", p.Name, err)
+		}
+
+		err = spec.TypeByName("filterfunc", &yfunction)
+		if err != nil {
+			i.logger.Errorf("Error getting TypeByName: %v", err)
+		}
+
+		typeID, err := spec.TypeID(yfunction)
+		if err != nil {
+			i.logger.Errorf("Error getting TypeID: %v", err)
+		}
+
+		i.logger.Infof("type is %d / %s", typeID, yfunction.Name)
+
+		lca := LinkCreateAttr{
+			AttachType: 0,
+			ProgFd:     uint32(xxy.FD()),
+			// TargetFd:    uint32(prog.FD()),
+			// TargetBtfId: uint32(typeID),
+		}
+
+		_, err = BPF(BPF_LINK_CREATE, unsafe.Pointer(&lca), unsafe.Sizeof(lca))
+		// _, err = link.AttachRawLink(link.RawLinkOptions{
+		// 	// Target:  prog.FD(),
+		// 	Program: xxy,
+		// 	Attach:  ebpf.AttachNone,
+		// 	// BTF:     typeID,
+		// 	Flags: 0,
+		// })
+		if err != nil {
+			i.logger.Errorf("Failed to attach filter program xxy: %v", err)
+		}
+
+		// _, err = link.AttachFreplace(prog, "filterfunc", xp)
+		// _, err = link.AttachFreplace(nil, "", xp)
+		// if err != nil {
+		// 	i.logger.Errorf("Failed to attach filter program: %v", err)
+		// }
 
 		i.logger.Debugf("Attaching socket filter %q to %q %q", p.Name, attachTo, p.SectionName)
 		networkTracer := i.networkTracers[p.Name]
@@ -210,6 +312,9 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return link.AttachLSM(link.LSMOptions{
 			Program: prog,
 		})
+	case ebpf.UnspecifiedProgram, ebpf.Extension:
+		// Passthrough
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
