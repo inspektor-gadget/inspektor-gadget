@@ -1,0 +1,19 @@
+name: profile qdisc latency
+description: TODO
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_qdisc_latency
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_qdisc_latency
+datasources:
+  qdisc:
+    annotations:
+      metrics.print: "true"
+    fields:
+      latency:
+        annotations:
+          metrics.unit: µs
+params:
+  ebpf:
+    targ_ms:
+      key: ms
+      defaultValue: "false"
+      description: Convert latency to milliseconds, by default it uses nanoseconds.
