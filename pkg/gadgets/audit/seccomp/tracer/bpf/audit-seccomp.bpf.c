@@ -30,7 +30,7 @@ int ig_audit_secc(struct pt_regs *ctx)
 	unsigned long syscall = PT_REGS_PARM1(ctx);
 	int code = PT_REGS_PARM3(ctx);
 
-	__u64 mntns_id = gadget_get_mntns_id();
+	__u64 mntns_id = gadget_get_current_mntns_id();
 	if (mntns_id == 0)
 		return 0;
 
