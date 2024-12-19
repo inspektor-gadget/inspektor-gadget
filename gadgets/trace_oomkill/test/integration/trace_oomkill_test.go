@@ -30,15 +30,12 @@ import (
 type traceOomKillEvent struct {
 	utils.CommonData
 
-	Fpid      uint32 `json:"fpid"`
-	Fuid      uint32 `json:"fuid"`
-	Fgid      uint32 `json:"fgid"`
-	Tpid      uint32 `json:"tpid"`
-	Pages     uint64 `json:"pages"`
-	MntNsID   uint64 `json:"mntns_id"`
-	Timestamp string `json:"timestamp"`
-	Fcomm     string `json:"fcomm"`
-	Tcomm     string `json:"tcomm"`
+	TMntNsID  uint64        `json:"tmntns_id"`
+	FProc     utils.Process `json:"fprocess"`
+	Tcomm     string        `json:"tcomm"`
+	Tpid      uint32        `json:"tpid"`
+	Pages     uint64        `json:"pages"`
+	Timestamp string        `json:"timestamp"`
 }
 
 func TestTraceOomKill(t *testing.T) {
@@ -87,17 +84,12 @@ func TestTraceOomKill(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOomKillEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				Timestamp:  utils.NormalizedStr,
+				TMntNsID:   utils.NormalizedInt,
+				Pages:      utils.NormalizedInt,
 				Tcomm:      "tail",
-
-				// Check the existence of the following fields
-				Timestamp: utils.NormalizedStr,
-				MntNsID:   utils.NormalizedInt,
-				Fpid:      utils.NormalizedInt,
-				Fuid:      utils.NormalizedInt,
-				Fgid:      utils.NormalizedInt,
-				Tpid:      utils.NormalizedInt,
-				Pages:     utils.NormalizedInt,
-				Fcomm:     utils.NormalizedStr,
+				Tpid:       utils.NormalizedInt,
+				FProc:      utils.BuildProc(utils.NormalizedStr, 0, 0),
 			}
 			expectedEntry.Runtime.ContainerID = utils.NormalizedStr
 
@@ -105,16 +97,13 @@ func TestTraceOomKill(t *testing.T) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Runtime.ContainerID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MntNsID)
-				utils.NormalizeInt(&e.Fpid)
+				utils.NormalizeInt(&e.TMntNsID)
 				utils.NormalizeInt(&e.Tpid)
 				utils.NormalizeInt(&e.Pages)
-				utils.NormalizeString(&e.Fcomm)
-
-				// NormalizeInt only normalizes if the value is not 0
-				// Fuid and Fgid might be 0, so do the normalization manually
-				e.Fuid = utils.NormalizedInt
-				e.Fgid = utils.NormalizedInt
+				utils.NormalizeProc(&e.FProc)
+				// Normalize from process command, as we do not have any guarantee on which
+				// process will trigger the OOM killer.
+				utils.NormalizeString(&e.FProc.Comm)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

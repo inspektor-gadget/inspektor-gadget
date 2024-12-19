@@ -7,6 +7,7 @@
 #include <bpf/bpf_core_read.h>
 
 #include <gadget/buffer.h>
+#include <gadget/common.h>
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -15,14 +16,18 @@
 
 struct event {
 	gadget_timestamp timestamp_raw;
-	gadget_mntns_id mntns_id;
-	__u32 fpid;
-	__u32 fuid;
-	__u32 fgid;
-	__u32 tpid;
+	/*
+	 * WARNING To have enrichment done on the target process, this field
+	 * must be appear before fprocess.
+	 * Also, name it differently than mntns_id to ensure it is used to
+	 * enrichment when this warning is printed:
+	 * WARN[0001] multiple fields of "type:gadget_mntns_id" found in DataSource "oomkill", only "tmntns_id" will be used
+	 */
+	gadget_mntns_id tmntns_id;
+	struct gadget_process fprocess;
+	gadget_pid tpid;
+	gadget_comm tcomm[TASK_COMM_LEN];
 	__u64 pages;
-	char fcomm[TASK_COMM_LEN];
-	char tcomm[TASK_COMM_LEN];
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -45,16 +50,14 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 	if (!event)
 		return 0;
 
-	event->fpid = bpf_get_current_pid_tgid() >> 32;
-	event->fuid = (u32)uid_gid;
-	event->fgid = (u32)(uid_gid >> 32);
+	gadget_process_populate(&event->fprocess);
 	event->tpid = BPF_CORE_READ(oc, chosen, tgid);
-	event->pages = BPF_CORE_READ(oc, totalpages);
-	bpf_get_current_comm(&event->fcomm, sizeof(event->fcomm));
 	bpf_probe_read_kernel(&event->tcomm, sizeof(event->tcomm),
 			      BPF_CORE_READ(oc, chosen, comm));
-	event->mntns_id = mntns_id;
+	event->tmntns_id = mntns_id;
+	event->pages = BPF_CORE_READ(oc, totalpages);
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
+
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
