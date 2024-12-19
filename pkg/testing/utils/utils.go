@@ -120,7 +120,7 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	}
 }
 
-func BuildProc(comm string, uid, tid uint32) Process {
+func BuildProc(comm string, uid, gid uint32) Process {
 	return Process{
 		Comm:    comm,
 		Pid:     NormalizedInt,
@@ -128,7 +128,7 @@ func BuildProc(comm string, uid, tid uint32) Process {
 		MntNsID: NormalizedInt,
 		Creds: Creds{
 			Uid: uid,
-			Gid: tid,
+			Gid: gid,
 		},
 		Parent: Parent{
 			Comm: NormalizedStr,
