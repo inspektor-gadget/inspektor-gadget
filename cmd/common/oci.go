@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -303,10 +304,20 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		paramValueMap := make(map[string]string)
 
 		if inFile != "" {
-			f, err := os.Open(inFile)
-			if err != nil {
-				return fmt.Errorf("opening gadget runtime manifest file %s: %w", inFile, err)
+			var f io.ReadCloser
+			var err error
+			if strings.HasPrefix(inFile, "http://") || strings.HasPrefix(inFile, "https://") {
+				f, err = utils.DownloadFile(inFile)
+				if err != nil {
+					return fmt.Errorf("downloading gadget runtime manifest file %s: %w", inFile, err)
+				}
+			} else {
+				f, err = os.Open(inFile)
+				if err != nil {
+					return fmt.Errorf("opening gadget runtime manifest file %s: %w", inFile, err)
+				}
 			}
+
 			specs, err := gadgetmanifest.InstanceSpecsFromReader(f)
 			f.Close()
 			if err != nil {
@@ -404,7 +415,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 	if commandMode != CommandModeAttach {
 		AddOCIFlags(cmd, ociParams, skipParams, runtime)
-		cmd.PersistentFlags().StringVarP(&inFile, "file", "f", "", "path to gadget runtime manifest to apply")
+		cmd.PersistentFlags().StringVarP(&inFile, "file", "f", "", "path or remote URL (prefixed with http:// or https://) to a gadget runtime manifest file")
 	}
 
 	AddOCIFlags(cmd, runtimeGlobalParams, skipParams, runtime)
