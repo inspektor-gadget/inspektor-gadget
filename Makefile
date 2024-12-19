@@ -317,7 +317,14 @@ lint:
 		--user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app \
 		linter
 
+.PHONY: clang-format
 clang-format:
+	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
+		-v $(shell pwd):/work -w /work $(EBPF_BUILDER) \
+		make clang-format-outside-docker
+
+.PHONY: clang-format-outside-docker
+clang-format-outside-docker:
 	find ./ -type f \( \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' \) -execdir $(CLANG_FORMAT) -i {} \;
 
 # minikube

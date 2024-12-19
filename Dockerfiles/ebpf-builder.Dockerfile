@@ -1,4 +1,4 @@
-ARG CLANG_LLVM_VERSION=15
+ARG CLANG_LLVM_VERSION=18
 ARG BPFTOOL_VERSION=v7.3.0
 ARG LIBBPF_VERSION=v1.3.0
 ARG TINYGO_VERSION=0.31.2
@@ -36,9 +36,10 @@ RUN apt-get update \
 	&& apt-get install -y libc-dev lsb-release wget software-properties-common gnupg xz-utils \
 	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
 # Install clang 15
-RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION \
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \
-	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-$CLANG_LLVM_VERSION) 100
+	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-$CLANG_LLVM_VERSION) 100 \
+	&& update-alternatives --install /usr/local/bin/clang-format clang-format $(which clang-format-$CLANG_LLVM_VERSION) 100
 
 COPY --from=builder /usr/include/bpf /usr/include/bpf
 COPY --from=builder /usr/local/bin/bpftool /usr/local/bin/bpftool
