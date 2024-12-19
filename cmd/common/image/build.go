@@ -115,16 +115,18 @@ func buildCmd(outputDir, ebpf, wasm, cflags, btfhubarchive string, btfgen bool) 
 	cmd := []string{
 		"make", "-f", filepath.Join(outputDir, "Makefile.build"),
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"EBPFSOURCE=" + ebpf,
-		"WASM=" + wasm,
 		"OUTPUTDIR=" + outputDir,
 		"CFLAGS=" + cflags,
-		"all",
 	}
 
+	if ebpf != "" {
+		cmd = append(cmd, "EBPFSOURCE="+ebpf, "ebpf")
+	}
+	if wasm != "" {
+		cmd = append(cmd, "WASM="+wasm, "wasm")
+	}
 	if btfgen {
-		cmd = append(cmd, "BTFHUB_ARCHIVE="+btfhubarchive)
-		cmd = append(cmd, "btfgen")
+		cmd = append(cmd, "BTFHUB_ARCHIVE="+btfhubarchive, "btfgen")
 	}
 
 	return cmd
@@ -193,7 +195,10 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	if _, err := os.Stat(conf.EBPFSource); errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("source file %q not found", conf.EBPFSource)
+		if conf.EBPFSource != DEFAULT_EBPF_SOURCE {
+			return fmt.Errorf("source file %q not found", conf.EBPFSource)
+		}
+		conf.EBPFSource = ""
 	}
 
 	// copy helper files
@@ -238,8 +243,10 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	objectsPaths := map[string]*oci.ObjectPath{}
 
 	for _, arch := range archs {
-		obj := &oci.ObjectPath{
-			EBPF: filepath.Join(opts.outputDir, arch+".bpf.o"),
+		obj := &oci.ObjectPath{}
+
+		if conf.EBPFSource != "" {
+			obj.EBPF = filepath.Join(opts.outputDir, arch+".bpf.o")
 		}
 
 		// TODO: the same wasm file is provided for all architectures. Should we allow per-arch
@@ -364,9 +371,12 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	if conf.Wasm != "" {
 		wasmFullPath = filepath.Join(gadgetSourcePath, conf.Wasm)
 	}
+	ebpfFullPath := ""
+	if conf.EBPFSource != "" {
+		ebpfFullPath = filepath.Join(gadgetSourcePath, conf.EBPFSource)
+	}
 
-	cmd := buildCmd("/out", filepath.Join(gadgetSourcePath, conf.EBPFSource),
-		wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
+	cmd := buildCmd("/out", ebpfFullPath, wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
 	mounts := []mount.Mount{
 		{

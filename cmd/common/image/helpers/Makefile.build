@@ -12,7 +12,10 @@ ARCHS = amd64 arm64
 TARGETS = $(foreach ARCH,$(ARCHS),$(OUTPUTDIR)/$(ARCH).bpf.o)
 
 .PHONY: all
-all: $(TARGETS) wasm
+all:
+
+.PHONY: ebpf
+ebpf: $(TARGETS)
 
 $(OUTPUTDIR)/%.bpf.o: $(EBPFSOURCE)
 	$(CLANG) $(BASECFLAGS) $(CFLAGS) -D __TARGET_ARCH_$(subst amd64,x86,$*) \
