@@ -135,6 +135,10 @@ func (f *filterOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (f *filterOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func getCompareFunc[T constraints.Ordered](op comparisonType) func(a, b T) bool {
 	switch op {
 	default:

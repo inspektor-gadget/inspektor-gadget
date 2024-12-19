@@ -65,36 +65,28 @@ func (w *wasmOperator) InstantiateImageOperator(
 ) (
 	operators.ImageOperatorInstance, error,
 ) {
-	instance := &wasmOperatorInstance{
+	ctx := gadgetCtx.Context()
+
+	reader, err := oci.GetContentFromDescriptor(ctx, target, desc)
+	if err != nil {
+		return nil, fmt.Errorf("getting wasm program: %w", err)
+	}
+
+	wasmProgram, err := io.ReadAll(reader)
+	if err != nil {
+		reader.Close()
+		return nil, fmt.Errorf("reading wasm program: %w", err)
+	}
+	reader.Close()
+
+	return &wasmOperatorInstance{
 		gadgetCtx:   gadgetCtx,
 		handleMap:   map[uint32]any{},
 		logger:      gadgetCtx.Logger(),
 		paramValues: paramValues,
 		createdMap:  map[uint32]struct{}{},
-	}
-
-	if err := instance.init(gadgetCtx, target, desc); err != nil {
-		instance.close(gadgetCtx)
-		return nil, fmt.Errorf("initializing wasm: %w", err)
-	}
-
-	if configVar, ok := gadgetCtx.GetVar("config"); ok {
-		instance.config, _ = configVar.(*viper.Viper)
-	}
-
-	if instance.config != nil {
-		extraParams := map[string]*api.Param{}
-		err := instance.config.UnmarshalKey("params.wasm", &extraParams)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshalling extra params: %w", err)
-		}
-
-		for _, v := range extraParams {
-			instance.extraParams = append(instance.extraParams, v)
-		}
-	}
-
-	return instance, nil
+		wasmProgram: wasmProgram,
+	}, nil
 }
 
 type wasmOperatorInstance struct {
@@ -102,7 +94,8 @@ type wasmOperatorInstance struct {
 	gadgetCtx operators.GadgetContext
 	mod       wapi.Module
 
-	logger logger.Logger
+	logger      logger.Logger
+	wasmProgram []byte
 
 	// malloc function exported by the guest
 	guestMalloc wapi.Function
@@ -127,16 +120,84 @@ func (i *wasmOperatorInstance) Name() string {
 	return "wasm"
 }
 
-func (i *wasmOperatorInstance) Prepare(gadgetCtx operators.GadgetContext) error {
-	if err := i.callGuestFunction(gadgetCtx.Context(), "gadgetInit"); err != nil {
-		return fmt.Errorf("initializing wasm guest: %w", err)
+func (i *wasmOperatorInstance) Init(gadgetCtx operators.GadgetContext) (api.Params, error) {
+	ctx := gadgetCtx.Context()
+	rtConfig := wazero.NewRuntimeConfig().
+		WithCloseOnContextDone(true).
+		WithMemoryLimitPages(256) // 16MB (64KB per page)
+	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
+
+	env := i.rt.NewHostModuleBuilder("env")
+
+	i.addLogFuncs(env)
+	i.addDataSourceFuncs(env)
+	i.addFieldFuncs(env)
+	i.addParamsFuncs(env)
+	i.addConfigFuncs(env)
+	i.addMapFuncs(env)
+
+	if _, err := env.Instantiate(ctx); err != nil {
+		return nil, fmt.Errorf("instantiating host module: %w", err)
 	}
 
-	return nil
-}
+	if _, err := wasi_snapshot_preview1.Instantiate(ctx, i.rt); err != nil {
+		return nil, fmt.Errorf("instantiating WASI: %w", err)
+	}
 
-func (i *wasmOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
-	return i.extraParams
+	config := wazero.NewModuleConfig()
+	mod, err := i.rt.InstantiateWithConfig(ctx, i.wasmProgram, config)
+	if err != nil {
+		return nil, fmt.Errorf("instantiating wasm: %w", err)
+	}
+	i.mod = mod
+
+	versionF := mod.ExportedFunction("gadgetAPIVersion")
+	if versionF == nil {
+		return nil, errors.New("wasm module doesn't export gadgetAPIVersion")
+	}
+
+	ret, err := versionF.Call(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("calling version: %w", err)
+	}
+
+	if len(ret) != 1 {
+		return nil, errors.New("version returned wrong number of values")
+	}
+
+	if ret[0] != apiVersion {
+		return nil, fmt.Errorf("unsupported gadget API version: %d, expected: %d", ret[0], apiVersion)
+	}
+
+	// We need to call malloc on the guest to pass strings
+	i.guestMalloc = mod.ExportedFunction("malloc")
+	if i.guestMalloc == nil {
+		return nil, errors.New("wasm module doesn't export malloc")
+	}
+
+	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")
+
+	if configVar, ok := gadgetCtx.GetVar("config"); ok {
+		i.config, _ = configVar.(*viper.Viper)
+	}
+
+	if i.config != nil {
+		extraParams := map[string]*api.Param{}
+		err := i.config.UnmarshalKey("params.wasm", &extraParams)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshalling extra params: %w", err)
+		}
+
+		for _, v := range extraParams {
+			i.extraParams = append(i.extraParams, v)
+		}
+	}
+
+	if err := i.callGuestFunction(gadgetCtx.Context(), "gadgetInit"); err != nil {
+		return nil, fmt.Errorf("initializing wasm guest: %w", err)
+	}
+
+	return i.extraParams, nil
 }
 
 func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
@@ -201,82 +262,6 @@ func (i *wasmOperatorInstance) delHandle(handleID uint32) {
 	delete(i.handleMap, handleID)
 }
 
-func (i *wasmOperatorInstance) init(
-	gadgetCtx operators.GadgetContext,
-	target oras.ReadOnlyTarget,
-	desc ocispec.Descriptor,
-) error {
-	ctx := gadgetCtx.Context()
-	rtConfig := wazero.NewRuntimeConfig().
-		WithCloseOnContextDone(true).
-		WithMemoryLimitPages(256) // 16MB (64KB per page)
-	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
-
-	env := i.rt.NewHostModuleBuilder("env")
-
-	i.addLogFuncs(env)
-	i.addDataSourceFuncs(env)
-	i.addFieldFuncs(env)
-	i.addParamsFuncs(env)
-	i.addConfigFuncs(env)
-	i.addMapFuncs(env)
-
-	if _, err := env.Instantiate(ctx); err != nil {
-		return fmt.Errorf("instantiating host module: %w", err)
-	}
-
-	if _, err := wasi_snapshot_preview1.Instantiate(ctx, i.rt); err != nil {
-		return fmt.Errorf("instantiating WASI: %w", err)
-	}
-
-	reader, err := oci.GetContentFromDescriptor(ctx, target, desc)
-	if err != nil {
-		return fmt.Errorf("getting wasm program: %w", err)
-	}
-
-	wasmProgram, err := io.ReadAll(reader)
-	if err != nil {
-		reader.Close()
-		return fmt.Errorf("reading wasm program: %w", err)
-	}
-	reader.Close()
-
-	config := wazero.NewModuleConfig()
-	mod, err := i.rt.InstantiateWithConfig(ctx, wasmProgram, config)
-	if err != nil {
-		return fmt.Errorf("instantiating wasm: %w", err)
-	}
-	i.mod = mod
-
-	versionF := mod.ExportedFunction("gadgetAPIVersion")
-	if versionF == nil {
-		return errors.New("wasm module doesn't export gadgetAPIVersion")
-	}
-
-	ret, err := versionF.Call(ctx)
-	if err != nil {
-		return fmt.Errorf("calling version: %w", err)
-	}
-
-	if len(ret) != 1 {
-		return errors.New("version returned wrong number of values")
-	}
-
-	if ret[0] != apiVersion {
-		return fmt.Errorf("unsupported gadget API version: %d, expected: %d", ret[0], apiVersion)
-	}
-
-	// We need to call malloc on the guest to pass strings
-	i.guestMalloc = mod.ExportedFunction("malloc")
-	if i.guestMalloc == nil {
-		return errors.New("wasm module doesn't export malloc")
-	}
-
-	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")
-
-	return err
-}
-
 func (i *wasmOperatorInstance) callGuestFunction(ctx context.Context, name string) error {
 	fn := i.mod.ExportedFunction(name)
 	if fn == nil {
@@ -315,20 +300,14 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := i.callGuestFunction(ctx, "gadgetStop")
-
-	// TODO: This should be called directly from the outside, in case prepare or
-	// start fails, this won't be called.
-	i.close(gadgetCtx)
-
-	return err
+	return i.callGuestFunction(ctx, "gadgetStop")
 }
 
 func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error {
 	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
 }
 
-func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
+func (i *wasmOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	var result error
 
 	if i.rt != nil {
