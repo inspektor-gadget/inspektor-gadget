@@ -62,10 +62,11 @@ static __always_inline bool is_dns_port(__u16 port)
 	return false;
 }
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event_t *unusedevent __attribute__((unused));
+
 // Cannot use gadget_reserve_buf() because this does not support
 // bpf_perf_event_output with packet appended
-static const struct event_t empty_event = {};
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
@@ -222,12 +223,11 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	// Initialize event here only after we know we're interested in this packet to avoid
 	// spending useless cycles.
-	bpf_map_update_elem(&tmp_events, &zero, &empty_event, BPF_NOEXIST);
 	event = bpf_map_lookup_elem(&tmp_events, &zero);
 	if (!event)
 		return 0;
-	bpf_map_delete_elem(&tmp_events, &zero);
 
+	event->latency_ns = 0;
 	event->netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->proto = proto;
@@ -281,6 +281,21 @@ int ig_trace_dns(struct __sk_buff *skb)
 		bpf_probe_read_kernel_str(&event->exepath,
 					  sizeof(event->exepath),
 					  skb_val->exepath);
+#endif
+	} else {
+		event->mount_ns_id = 0;
+		event->pid = 0;
+		event->tid = 0;
+		event->ppid = 0;
+		event->comm[0] = 0;
+		event->pcomm[0] = 0;
+		event->uid = 0;
+		event->gid = 0;
+#ifdef WITH_LONG_PATHS
+		// __builtin_memset() can't be used here because the buffer is too big.
+		// Since it's a string, optimize it further and only clear the first byte.
+		event->cwd[0] = 0;
+		event->exepath[0] = 0;
 #endif
 	}
 
