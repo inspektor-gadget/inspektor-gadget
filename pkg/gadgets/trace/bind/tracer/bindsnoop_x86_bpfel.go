@@ -65,9 +65,10 @@ func loadBindsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type bindsnoopSpecs struct {
 	bindsnoopProgramSpecs
 	bindsnoopMapSpecs
+	bindsnoopVariableSpecs
 }
 
-// bindsnoopSpecs contains programs before they are loaded into the kernel.
+// bindsnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bindsnoopProgramSpecs struct {
@@ -87,12 +88,24 @@ type bindsnoopMapSpecs struct {
 	Sockets              *ebpf.MapSpec `ebpf:"sockets"`
 }
 
+// bindsnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type bindsnoopVariableSpecs struct {
+	FilterByPort        *ebpf.VariableSpec `ebpf:"filter_by_port"`
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	IgnoreErrors        *ebpf.VariableSpec `ebpf:"ignore_errors"`
+	TargetPid           *ebpf.VariableSpec `ebpf:"target_pid"`
+	Unusedbindevent     *ebpf.VariableSpec `ebpf:"unusedbindevent"`
+}
+
 // bindsnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadBindsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bindsnoopObjects struct {
 	bindsnoopPrograms
 	bindsnoopMaps
+	bindsnoopVariables
 }
 
 func (o *bindsnoopObjects) Close() error {
@@ -119,6 +132,17 @@ func (m *bindsnoopMaps) Close() error {
 		m.Ports,
 		m.Sockets,
 	)
+}
+
+// bindsnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadBindsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type bindsnoopVariables struct {
+	FilterByPort        *ebpf.Variable `ebpf:"filter_by_port"`
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	IgnoreErrors        *ebpf.Variable `ebpf:"ignore_errors"`
+	TargetPid           *ebpf.Variable `ebpf:"target_pid"`
+	Unusedbindevent     *ebpf.Variable `ebpf:"unusedbindevent"`
 }
 
 // bindsnoopPrograms contains all programs after they have been loaded into the kernel.

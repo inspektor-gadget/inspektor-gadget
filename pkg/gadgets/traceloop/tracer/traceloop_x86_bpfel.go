@@ -69,9 +69,10 @@ func loadTraceloopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type traceloopSpecs struct {
 	traceloopProgramSpecs
 	traceloopMapSpecs
+	traceloopVariableSpecs
 }
 
-// traceloopSpecs contains programs before they are loaded into the kernel.
+// traceloopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type traceloopProgramSpecs struct {
@@ -91,12 +92,30 @@ type traceloopMapSpecs struct {
 	Syscalls             *ebpf.MapSpec `ebpf:"syscalls"`
 }
 
+// traceloopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type traceloopVariableSpecs struct {
+	PARAM_PROBE_AT_EXIT_MASK           *ebpf.VariableSpec `ebpf:"PARAM_PROBE_AT_EXIT_MASK"`
+	SYSCALL_EVENT_TYPE_ENTER           *ebpf.VariableSpec `ebpf:"SYSCALL_EVENT_TYPE_ENTER"`
+	SYSCALL_EVENT_TYPE_EXIT            *ebpf.VariableSpec `ebpf:"SYSCALL_EVENT_TYPE_EXIT"`
+	USE_ARG_INDEX_AS_PARAM_LENGTH      *ebpf.VariableSpec `ebpf:"USE_ARG_INDEX_AS_PARAM_LENGTH"`
+	USE_ARG_INDEX_AS_PARAM_LENGTH_MASK *ebpf.VariableSpec `ebpf:"USE_ARG_INDEX_AS_PARAM_LENGTH_MASK"`
+	USE_NULL_BYTE_LENGTH               *ebpf.VariableSpec `ebpf:"USE_NULL_BYTE_LENGTH"`
+	USE_RET_AS_PARAM_LENGTH            *ebpf.VariableSpec `ebpf:"USE_RET_AS_PARAM_LENGTH"`
+	FilterSyscall                      *ebpf.VariableSpec `ebpf:"filter_syscall"`
+	GadgetFilterByMntns                *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	UnusedEvent                        *ebpf.VariableSpec `ebpf:"unused_event"`
+	UnusedEventCont                    *ebpf.VariableSpec `ebpf:"unused_event_cont"`
+}
+
 // traceloopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTraceloopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type traceloopObjects struct {
 	traceloopPrograms
 	traceloopMaps
+	traceloopVariables
 }
 
 func (o *traceloopObjects) Close() error {
@@ -127,6 +146,23 @@ func (m *traceloopMaps) Close() error {
 		m.SyscallFilters,
 		m.Syscalls,
 	)
+}
+
+// traceloopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTraceloopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type traceloopVariables struct {
+	PARAM_PROBE_AT_EXIT_MASK           *ebpf.Variable `ebpf:"PARAM_PROBE_AT_EXIT_MASK"`
+	SYSCALL_EVENT_TYPE_ENTER           *ebpf.Variable `ebpf:"SYSCALL_EVENT_TYPE_ENTER"`
+	SYSCALL_EVENT_TYPE_EXIT            *ebpf.Variable `ebpf:"SYSCALL_EVENT_TYPE_EXIT"`
+	USE_ARG_INDEX_AS_PARAM_LENGTH      *ebpf.Variable `ebpf:"USE_ARG_INDEX_AS_PARAM_LENGTH"`
+	USE_ARG_INDEX_AS_PARAM_LENGTH_MASK *ebpf.Variable `ebpf:"USE_ARG_INDEX_AS_PARAM_LENGTH_MASK"`
+	USE_NULL_BYTE_LENGTH               *ebpf.Variable `ebpf:"USE_NULL_BYTE_LENGTH"`
+	USE_RET_AS_PARAM_LENGTH            *ebpf.Variable `ebpf:"USE_RET_AS_PARAM_LENGTH"`
+	FilterSyscall                      *ebpf.Variable `ebpf:"filter_syscall"`
+	GadgetFilterByMntns                *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	UnusedEvent                        *ebpf.Variable `ebpf:"unused_event"`
+	UnusedEventCont                    *ebpf.Variable `ebpf:"unused_event_cont"`
 }
 
 // traceloopPrograms contains all programs after they have been loaded into the kernel.

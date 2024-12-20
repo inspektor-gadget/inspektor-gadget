@@ -69,9 +69,10 @@ func loadFiletopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type filetopSpecs struct {
 	filetopProgramSpecs
 	filetopMapSpecs
+	filetopVariableSpecs
 }
 
-// filetopSpecs contains programs before they are loaded into the kernel.
+// filetopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type filetopProgramSpecs struct {
@@ -87,12 +88,22 @@ type filetopMapSpecs struct {
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
+// filetopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type filetopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	RegularFileOnly     *ebpf.VariableSpec `ebpf:"regular_file_only"`
+	TargetPid           *ebpf.VariableSpec `ebpf:"target_pid"`
+}
+
 // filetopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadFiletopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type filetopObjects struct {
 	filetopPrograms
 	filetopMaps
+	filetopVariables
 }
 
 func (o *filetopObjects) Close() error {
@@ -115,6 +126,15 @@ func (m *filetopMaps) Close() error {
 		m.Entries,
 		m.GadgetMntnsFilterMap,
 	)
+}
+
+// filetopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadFiletopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type filetopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	RegularFileOnly     *ebpf.Variable `ebpf:"regular_file_only"`
+	TargetPid           *ebpf.Variable `ebpf:"target_pid"`
 }
 
 // filetopPrograms contains all programs after they have been loaded into the kernel.

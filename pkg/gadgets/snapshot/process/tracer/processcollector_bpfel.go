@@ -58,9 +58,10 @@ func loadProcessCollectorObjects(obj interface{}, opts *ebpf.CollectionOptions) 
 type processCollectorSpecs struct {
 	processCollectorProgramSpecs
 	processCollectorMapSpecs
+	processCollectorVariableSpecs
 }
 
-// processCollectorSpecs contains programs before they are loaded into the kernel.
+// processCollectorProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type processCollectorProgramSpecs struct {
@@ -74,12 +75,22 @@ type processCollectorMapSpecs struct {
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
+// processCollectorVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type processCollectorVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	ShowThreads         *ebpf.VariableSpec `ebpf:"show_threads"`
+	Unused              *ebpf.VariableSpec `ebpf:"unused"`
+}
+
 // processCollectorObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
 type processCollectorObjects struct {
 	processCollectorPrograms
 	processCollectorMaps
+	processCollectorVariables
 }
 
 func (o *processCollectorObjects) Close() error {
@@ -100,6 +111,15 @@ func (m *processCollectorMaps) Close() error {
 	return _ProcessCollectorClose(
 		m.GadgetMntnsFilterMap,
 	)
+}
+
+// processCollectorVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
+type processCollectorVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	ShowThreads         *ebpf.Variable `ebpf:"show_threads"`
+	Unused              *ebpf.Variable `ebpf:"unused"`
 }
 
 // processCollectorPrograms contains all programs after they have been loaded into the kernel.

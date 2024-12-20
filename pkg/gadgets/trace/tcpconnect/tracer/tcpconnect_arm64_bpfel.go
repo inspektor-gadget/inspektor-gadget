@@ -84,9 +84,10 @@ func loadTcpconnectObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type tcpconnectSpecs struct {
 	tcpconnectProgramSpecs
 	tcpconnectMapSpecs
+	tcpconnectVariableSpecs
 }
 
-// tcpconnectSpecs contains programs before they are loaded into the kernel.
+// tcpconnectProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnectProgramSpecs struct {
@@ -110,12 +111,28 @@ type tcpconnectMapSpecs struct {
 	SocketsPerProcess    *ebpf.MapSpec `ebpf:"sockets_per_process"`
 }
 
+// tcpconnectVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcpconnectVariableSpecs struct {
+	CalculateLatency    *ebpf.VariableSpec `ebpf:"calculate_latency"`
+	DoCount             *ebpf.VariableSpec `ebpf:"do_count"`
+	FilterPid           *ebpf.VariableSpec `ebpf:"filter_pid"`
+	FilterPorts         *ebpf.VariableSpec `ebpf:"filter_ports"`
+	FilterPortsLen      *ebpf.VariableSpec `ebpf:"filter_ports_len"`
+	FilterUid           *ebpf.VariableSpec `ebpf:"filter_uid"`
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	TargMinLatencyNs    *ebpf.VariableSpec `ebpf:"targ_min_latency_ns"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // tcpconnectObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnectObjects struct {
 	tcpconnectPrograms
 	tcpconnectMaps
+	tcpconnectVariables
 }
 
 func (o *tcpconnectObjects) Close() error {
@@ -146,6 +163,21 @@ func (m *tcpconnectMaps) Close() error {
 		m.SocketsLatency,
 		m.SocketsPerProcess,
 	)
+}
+
+// tcpconnectVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcpconnectVariables struct {
+	CalculateLatency    *ebpf.Variable `ebpf:"calculate_latency"`
+	DoCount             *ebpf.Variable `ebpf:"do_count"`
+	FilterPid           *ebpf.Variable `ebpf:"filter_pid"`
+	FilterPorts         *ebpf.Variable `ebpf:"filter_ports"`
+	FilterPortsLen      *ebpf.Variable `ebpf:"filter_ports_len"`
+	FilterUid           *ebpf.Variable `ebpf:"filter_uid"`
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	TargMinLatencyNs    *ebpf.Variable `ebpf:"targ_min_latency_ns"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // tcpconnectPrograms contains all programs after they have been loaded into the kernel.

@@ -64,9 +64,10 @@ func loadTcptopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type tcptopSpecs struct {
 	tcptopProgramSpecs
 	tcptopMapSpecs
+	tcptopVariableSpecs
 }
 
-// tcptopSpecs contains programs before they are loaded into the kernel.
+// tcptopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptopProgramSpecs struct {
@@ -82,12 +83,22 @@ type tcptopMapSpecs struct {
 	IpMap                *ebpf.MapSpec `ebpf:"ip_map"`
 }
 
+// tcptopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcptopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	TargetFamily        *ebpf.VariableSpec `ebpf:"target_family"`
+	TargetPid           *ebpf.VariableSpec `ebpf:"target_pid"`
+}
+
 // tcptopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcptopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptopObjects struct {
 	tcptopPrograms
 	tcptopMaps
+	tcptopVariables
 }
 
 func (o *tcptopObjects) Close() error {
@@ -110,6 +121,15 @@ func (m *tcptopMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.IpMap,
 	)
+}
+
+// tcptopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcptopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcptopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	TargetFamily        *ebpf.Variable `ebpf:"target_family"`
+	TargetPid           *ebpf.Variable `ebpf:"target_pid"`
 }
 
 // tcptopPrograms contains all programs after they have been loaded into the kernel.

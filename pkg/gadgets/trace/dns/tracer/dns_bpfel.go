@@ -101,9 +101,10 @@ func loadDnsObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type dnsSpecs struct {
 	dnsProgramSpecs
 	dnsMapSpecs
+	dnsVariableSpecs
 }
 
-// dnsSpecs contains programs before they are loaded into the kernel.
+// dnsProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsProgramSpecs struct {
@@ -120,12 +121,21 @@ type dnsMapSpecs struct {
 	TmpEvents     *ebpf.MapSpec `ebpf:"tmp_events"`
 }
 
+// dnsVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type dnsVariableSpecs struct {
+	Ports    *ebpf.VariableSpec `ebpf:"ports"`
+	PortsLen *ebpf.VariableSpec `ebpf:"ports_len"`
+}
+
 // dnsObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsObjects struct {
 	dnsPrograms
 	dnsMaps
+	dnsVariables
 }
 
 func (o *dnsObjects) Close() error {
@@ -152,6 +162,14 @@ func (m *dnsMaps) Close() error {
 		m.QueryMap,
 		m.TmpEvents,
 	)
+}
+
+// dnsVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
+type dnsVariables struct {
+	Ports    *ebpf.Variable `ebpf:"ports"`
+	PortsLen *ebpf.Variable `ebpf:"ports_len"`
 }
 
 // dnsPrograms contains all programs after they have been loaded into the kernel.

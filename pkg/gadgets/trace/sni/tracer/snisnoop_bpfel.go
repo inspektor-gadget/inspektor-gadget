@@ -84,9 +84,10 @@ func loadSnisnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type snisnoopSpecs struct {
 	snisnoopProgramSpecs
 	snisnoopMapSpecs
+	snisnoopVariableSpecs
 }
 
-// snisnoopSpecs contains programs before they are loaded into the kernel.
+// snisnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type snisnoopProgramSpecs struct {
@@ -101,12 +102,20 @@ type snisnoopMapSpecs struct {
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
+// snisnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type snisnoopVariableSpecs struct {
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // snisnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSnisnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type snisnoopObjects struct {
 	snisnoopPrograms
 	snisnoopMaps
+	snisnoopVariables
 }
 
 func (o *snisnoopObjects) Close() error {
@@ -129,6 +138,13 @@ func (m *snisnoopMaps) Close() error {
 		m.Events,
 		m.GadgetSockets,
 	)
+}
+
+// snisnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSnisnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type snisnoopVariables struct {
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // snisnoopPrograms contains all programs after they have been loaded into the kernel.
