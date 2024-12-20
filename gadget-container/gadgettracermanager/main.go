@@ -1,4 +1,4 @@
-// Copyright 2019-2024 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ import (
 	// Blank import for some operators
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/env"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
