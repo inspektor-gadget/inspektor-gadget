@@ -39,7 +39,6 @@ GADGETS = \
 	trace_sni \
 	trace_ssl \
 	trace_tcp \
-	trace_tcpconnect \
 	trace_tcpdrop \
 	trace_tcpretrans \
 	top_blockio \
