@@ -8,13 +8,12 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255
-#define INVALID_UID ((uid_t) - 1)
 
 struct args_t {
 	const char *fname;
@@ -33,13 +32,7 @@ struct event {
 	char fname[NAME_MAX];
 };
 
-const volatile pid_t targ_pid = 0;
-const volatile pid_t targ_tgid = 0;
-const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
-
-GADGET_PARAM(targ_tgid);
-GADGET_PARAM(targ_uid);
 GADGET_PARAM(targ_failed);
 
 struct {
@@ -53,52 +46,20 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(open, events, event);
 
-static __always_inline bool valid_uid(uid_t uid)
-{
-	return uid != INVALID_UID;
-}
-
-static __always_inline bool trace_allowed(u32 tgid, u32 pid)
-{
-	u64 mntns_id;
-	u32 uid;
-
-	/* filters */
-	if (targ_tgid && targ_tgid != tgid)
-		return false;
-	if (targ_pid && targ_pid != pid)
-		return false;
-	if (valid_uid(targ_uid)) {
-		uid = (u32)bpf_get_current_uid_gid();
-		if (targ_uid != uid) {
-			return false;
-		}
-	}
-
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
-		return false;
-
-	return true;
-}
-
 static __always_inline int trace_enter(const char *filename, int flags,
 				       __u16 mode)
 {
-	u64 id = bpf_get_current_pid_tgid();
-	/* use kernel terminology here for tgid/pid: */
-	u32 tgid = id >> 32;
-	u32 pid = id;
+	__u64 pid = bpf_get_current_pid_tgid();
 
-	/* store arg info for later lookup */
-	if (trace_allowed(tgid, pid)) {
-		struct args_t args = {};
-		args.fname = filename;
-		args.flags = flags;
-		args.mode = mode;
-		bpf_map_update_elem(&start, &pid, &args, 0);
-	}
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	struct args_t args = {};
+	args.fname = filename;
+	args.flags = flags;
+	args.mode = mode;
+	bpf_map_update_elem(&start, &pid, &args, 0);
+
 	return 0;
 }
 
