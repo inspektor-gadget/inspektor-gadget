@@ -30,15 +30,10 @@ import (
 type traceOomKillEvent struct {
 	utils.CommonData
 
-	Fpid      uint32 `json:"fpid"`
-	Fuid      uint32 `json:"fuid"`
-	Fgid      uint32 `json:"fgid"`
-	Tpid      uint32 `json:"tpid"`
+	FProc     utils.Process `json:"fproc"`
+	TProc     utils.Process `json:"tproc"`
 	Pages     uint64 `json:"pages"`
-	MntNsID   uint64 `json:"mntns_id"`
 	Timestamp string `json:"timestamp"`
-	Fcomm     string `json:"fcomm"`
-	Tcomm     string `json:"tcomm"`
 }
 
 func TestTraceOomKill(t *testing.T) {
@@ -87,17 +82,8 @@ func TestTraceOomKill(t *testing.T) {
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOomKillEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Tcomm:      "tail",
-
-				// Check the existence of the following fields
-				Timestamp: utils.NormalizedStr,
-				MntNsID:   utils.NormalizedInt,
-				Fpid:      utils.NormalizedInt,
-				Fuid:      utils.NormalizedInt,
-				Fgid:      utils.NormalizedInt,
-				Tpid:      utils.NormalizedInt,
-				Pages:     utils.NormalizedInt,
-				Fcomm:     utils.NormalizedStr,
+				TProc:      utils.BuildProc("tail", 0, 0),
+				FProc:      utils.BuildProc(utils.NormalizedStr, 0, 0),
 			}
 			expectedEntry.Runtime.ContainerID = utils.NormalizedStr
 
@@ -105,16 +91,8 @@ func TestTraceOomKill(t *testing.T) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Runtime.ContainerID)
 				utils.NormalizeString(&e.Timestamp)
-				utils.NormalizeInt(&e.MntNsID)
-				utils.NormalizeInt(&e.Fpid)
-				utils.NormalizeInt(&e.Tpid)
-				utils.NormalizeInt(&e.Pages)
-				utils.NormalizeString(&e.Fcomm)
-
-				// NormalizeInt only normalizes if the value is not 0
-				// Fuid and Fgid might be 0, so do the normalization manually
-				e.Fuid = utils.NormalizedInt
-				e.Fgid = utils.NormalizedInt
+				utils.NormalizeProc(&e.FProc)
+				utils.NormalizeProc(&e.TProc)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
