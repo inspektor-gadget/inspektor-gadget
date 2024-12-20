@@ -21,6 +21,9 @@
 #define GADGET_TYPE_NETWORKING
 #include <gadget/sockets-map.h>
 
+// Don't include <gadget/filesystem.h> in networking gadgets
+#define MAX_STRING_SIZE 4096
+
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
 unsigned long long load_half(const void *skb,
@@ -45,6 +48,8 @@ unsigned long long load_word(const void *skb,
 #define MAX_PORTS 16
 const volatile __u16 ports[MAX_PORTS] = { 53, 5353 };
 const volatile __u16 ports_len = 2;
+const volatile bool paths = false;
+GADGET_PARAM(paths);
 
 static __always_inline bool is_dns_port(__u16 port)
 {
@@ -76,6 +81,8 @@ struct event_t {
 	struct gadget_l4endpoint_t dst;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
+	char cwd[MAX_STRING_SIZE];
+	char exepath[MAX_STRING_SIZE];
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
@@ -98,6 +105,8 @@ struct event_header_t {
 	struct gadget_l4endpoint_t dst;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
+	char cwd[MAX_STRING_SIZE];
+	char exepath[MAX_STRING_SIZE];
 
 	enum pkt_type_t pkt_type_raw;
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
@@ -113,6 +122,17 @@ struct {
 } events SEC(".maps");
 
 GADGET_TRACER(dns, events, event_t);
+
+// Cannot use gadget_reserve_buf() because this does not support
+// bpf_perf_event_output with packet appended
+static const struct gadget_process empty_proc = {};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(struct event_t));
+} tmp_events SEC(".maps");
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
@@ -170,7 +190,8 @@ struct {
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
-	struct event_header_t event;
+	struct event_header_t *event;
+	int zero = 0;
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
 	int i;
@@ -254,50 +275,65 @@ int ig_trace_dns(struct __sk_buff *skb)
 	if (!is_dns_port(sport) && !is_dns_port(dport))
 		return 0;
 
-	// Initialize event here only after we know we're interested in this packet to avoid
-	// spending useless cycles.
-	__builtin_memset(&event, 0, sizeof(event));
+	event = bpf_map_lookup_elem(&tmp_events, &zero);
+	if (!event)
+		return 0; // it never happens
 
-	event.timestamp_raw = bpf_ktime_get_boot_ns();
-	event.netns_id = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
-	event.data_len = skb->len;
-	event.dns_off = dns_off;
-	event.pkt_type_raw = skb->pkt_type;
-	event.src.proto_raw = event.dst.proto_raw = proto;
-	event.src.port = sport;
-	event.dst.port = dport;
+	// As an optimization, only clear the fields that can be skipped below.
+	event->latency_ns = 0;
+	event->proc = empty_proc;
+	if (paths) {
+		event->cwd[0] = '\0';
+		event->exepath[0] = '\0';
+	}
+
+	event->timestamp_raw = bpf_ktime_get_boot_ns();
+	event->netns_id = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	event->data_len = skb->len;
+	event->dns_off = dns_off;
+	event->pkt_type_raw = skb->pkt_type;
+	event->src.proto_raw = event->dst.proto_raw = proto;
+	event->src.port = sport;
+	event->dst.port = dport;
 
 	// The packet is DNS: Do a second pass to extract all the information we need
 	switch (h_proto) {
 	case ETH_P_IP:
-		event.src.version = event.dst.version = 4;
-		event.dst.addr_raw.v4 = load_word(
+		event->src.version = event->dst.version = 4;
+		event->dst.addr_raw.v4 = load_word(
 			skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-		event.src.addr_raw.v4 = load_word(
+		event->src.addr_raw.v4 = load_word(
 			skb, ETH_HLEN + offsetof(struct iphdr, saddr));
 		// load_word converts from network to host endianness. Convert back to
 		// network endianness because Inspektor Gadget needs this format for IP addresses.
-		event.src.addr_raw.v4 = bpf_htonl(event.src.addr_raw.v4);
-		event.dst.addr_raw.v4 = bpf_htonl(event.dst.addr_raw.v4);
+		event->src.addr_raw.v4 = bpf_htonl(event->src.addr_raw.v4);
+		event->dst.addr_raw.v4 = bpf_htonl(event->dst.addr_raw.v4);
 		break;
 	case ETH_P_IPV6:
-		event.src.version = event.dst.version = 6;
+		event->src.version = event->dst.version = 6;
 		if (bpf_skb_load_bytes(
 			    skb, ETH_HLEN + offsetof(struct ipv6hdr, saddr),
-			    &event.src.addr_raw.v6,
-			    sizeof(event.src.addr_raw.v6)))
+			    &event->src.addr_raw.v6,
+			    sizeof(event->src.addr_raw.v6)))
 			return 0;
 		if (bpf_skb_load_bytes(
 			    skb, ETH_HLEN + offsetof(struct ipv6hdr, daddr),
-			    &event.dst.addr_raw.v6,
-			    sizeof(event.dst.addr_raw.v6)))
+			    &event->dst.addr_raw.v6,
+			    sizeof(event->dst.addr_raw.v6)))
 			return 0;
 		break;
 	}
 
 	// Enrich event with process metadata
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	gadget_process_populate_from_socket(skb_val, &event.proc);
+	gadget_process_populate_from_socket(skb_val, &event->proc);
+	if (paths) {
+		bpf_probe_read_kernel_str(&event->cwd, sizeof(event->cwd),
+					  skb_val->cwd);
+		bpf_probe_read_kernel_str(&event->exepath,
+					  sizeof(event->exepath),
+					  skb_val->exepath);
+	}
 
 	// Calculate latency:
 	//
@@ -316,7 +352,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// Skip this if skb_val == NULL (gadget_socket_lookup did not set pid_tgid we use in the query key)
 	// or if event->timestamp == 0 (kernels before 5.8 don't support bpf_ktime_get_boot_ns, and the patched
 	// version IG injects always returns zero).
-	if (skb_val != NULL && event.timestamp_raw > 0) {
+	if (skb_val != NULL && event->timestamp_raw > 0) {
 		union dnsflags flags;
 		flags.flags = load_half(skb, dns_off + offsetof(struct dnshdr,
 								flags));
@@ -327,18 +363,19 @@ int ig_trace_dns(struct __sk_buff *skb)
 			.pid_tgid = skb_val->pid_tgid,
 			.id = id,
 		};
-		if (qr == DNS_QR_QUERY && event.pkt_type_raw == OUTGOING) {
+		if (qr == DNS_QR_QUERY && event->pkt_type_raw == OUTGOING) {
 			bpf_map_update_elem(&query_map, &query_key,
-					    &event.timestamp_raw, BPF_NOEXIST);
+					    &event->timestamp_raw, BPF_NOEXIST);
 		} else if (flags.qr == DNS_QR_RESP &&
-			   event.pkt_type_raw == HOST) {
+			   event->pkt_type_raw == HOST) {
 			__u64 *query_ts =
 				bpf_map_lookup_elem(&query_map, &query_key);
 			if (query_ts != NULL) {
 				// query ts should always be less than the event ts, but check anyway to be safe.
-				if (*query_ts < event.timestamp_raw) {
-					event.latency_ns =
-						event.timestamp_raw - *query_ts;
+				if (*query_ts < event->timestamp_raw) {
+					event->latency_ns =
+						event->timestamp_raw -
+						*query_ts;
 				}
 				bpf_map_delete_elem(&query_map, &query_key);
 			}
@@ -349,7 +386,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	if (skb_len > MAX_PACKET)
 		skb_len = MAX_PACKET;
 	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+			      event, sizeof(*event));
 
 	return 0;
 }
