@@ -59,9 +59,10 @@ func loadTcpRTTObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type tcpRTTSpecs struct {
 	tcpRTTProgramSpecs
 	tcpRTTMapSpecs
+	tcpRTTVariableSpecs
 }
 
-// tcpRTTSpecs contains programs before they are loaded into the kernel.
+// tcpRTTProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpRTTProgramSpecs struct {
@@ -75,12 +76,28 @@ type tcpRTTMapSpecs struct {
 	Hists *ebpf.MapSpec `ebpf:"hists"`
 }
 
+// tcpRTTVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcpRTTVariableSpecs struct {
+	TargDaddr     *ebpf.VariableSpec `ebpf:"targ_daddr"`
+	TargDaddrV6   *ebpf.VariableSpec `ebpf:"targ_daddr_v6"`
+	TargDport     *ebpf.VariableSpec `ebpf:"targ_dport"`
+	TargLaddrHist *ebpf.VariableSpec `ebpf:"targ_laddr_hist"`
+	TargMs        *ebpf.VariableSpec `ebpf:"targ_ms"`
+	TargRaddrHist *ebpf.VariableSpec `ebpf:"targ_raddr_hist"`
+	TargSaddr     *ebpf.VariableSpec `ebpf:"targ_saddr"`
+	TargSaddrV6   *ebpf.VariableSpec `ebpf:"targ_saddr_v6"`
+	TargSport     *ebpf.VariableSpec `ebpf:"targ_sport"`
+}
+
 // tcpRTTObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcpRTTObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpRTTObjects struct {
 	tcpRTTPrograms
 	tcpRTTMaps
+	tcpRTTVariables
 }
 
 func (o *tcpRTTObjects) Close() error {
@@ -101,6 +118,21 @@ func (m *tcpRTTMaps) Close() error {
 	return _TcpRTTClose(
 		m.Hists,
 	)
+}
+
+// tcpRTTVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcpRTTObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcpRTTVariables struct {
+	TargDaddr     *ebpf.Variable `ebpf:"targ_daddr"`
+	TargDaddrV6   *ebpf.Variable `ebpf:"targ_daddr_v6"`
+	TargDport     *ebpf.Variable `ebpf:"targ_dport"`
+	TargLaddrHist *ebpf.Variable `ebpf:"targ_laddr_hist"`
+	TargMs        *ebpf.Variable `ebpf:"targ_ms"`
+	TargRaddrHist *ebpf.Variable `ebpf:"targ_raddr_hist"`
+	TargSaddr     *ebpf.Variable `ebpf:"targ_saddr"`
+	TargSaddrV6   *ebpf.Variable `ebpf:"targ_saddr_v6"`
+	TargSport     *ebpf.Variable `ebpf:"targ_sport"`
 }
 
 // tcpRTTPrograms contains all programs after they have been loaded into the kernel.

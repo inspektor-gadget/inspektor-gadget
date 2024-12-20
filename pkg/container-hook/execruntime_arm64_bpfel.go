@@ -55,9 +55,10 @@ func loadExecruntimeObjects(obj interface{}, opts *ebpf.CollectionOptions) error
 type execruntimeSpecs struct {
 	execruntimeProgramSpecs
 	execruntimeMapSpecs
+	execruntimeVariableSpecs
 }
 
-// execruntimeSpecs contains programs before they are loaded into the kernel.
+// execruntimeProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execruntimeProgramSpecs struct {
@@ -77,12 +78,20 @@ type execruntimeMapSpecs struct {
 	IgFaRecords *ebpf.MapSpec `ebpf:"ig_fa_records"`
 }
 
+// execruntimeVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type execruntimeVariableSpecs struct {
+	TracerGroup *ebpf.VariableSpec `ebpf:"tracer_group"`
+}
+
 // execruntimeObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execruntimeObjects struct {
 	execruntimePrograms
 	execruntimeMaps
+	execruntimeVariables
 }
 
 func (o *execruntimeObjects) Close() error {
@@ -107,6 +116,13 @@ func (m *execruntimeMaps) Close() error {
 		m.IgFaPickCtx,
 		m.IgFaRecords,
 	)
+}
+
+// execruntimeVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
+type execruntimeVariables struct {
+	TracerGroup *ebpf.Variable `ebpf:"tracer_group"`
 }
 
 // execruntimePrograms contains all programs after they have been loaded into the kernel.

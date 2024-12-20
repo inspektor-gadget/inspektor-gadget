@@ -77,9 +77,10 @@ func loadTcpdropObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type tcpdropSpecs struct {
 	tcpdropProgramSpecs
 	tcpdropMapSpecs
+	tcpdropVariableSpecs
 }
 
-// tcpdropSpecs contains programs before they are loaded into the kernel.
+// tcpdropProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpdropProgramSpecs struct {
@@ -94,12 +95,20 @@ type tcpdropMapSpecs struct {
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
+// tcpdropVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcpdropVariableSpecs struct {
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // tcpdropObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcpdropObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpdropObjects struct {
 	tcpdropPrograms
 	tcpdropMaps
+	tcpdropVariables
 }
 
 func (o *tcpdropObjects) Close() error {
@@ -122,6 +131,13 @@ func (m *tcpdropMaps) Close() error {
 		m.Events,
 		m.GadgetSockets,
 	)
+}
+
+// tcpdropVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcpdropObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcpdropVariables struct {
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // tcpdropPrograms contains all programs after they have been loaded into the kernel.

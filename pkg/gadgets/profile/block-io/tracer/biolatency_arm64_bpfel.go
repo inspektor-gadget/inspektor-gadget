@@ -54,9 +54,10 @@ func loadBiolatencyObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type biolatencySpecs struct {
 	biolatencyProgramSpecs
 	biolatencyMapSpecs
+	biolatencyVariableSpecs
 }
 
-// biolatencySpecs contains programs before they are loaded into the kernel.
+// biolatencyProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biolatencyProgramSpecs struct {
@@ -74,12 +75,26 @@ type biolatencyMapSpecs struct {
 	Start     *ebpf.MapSpec `ebpf:"start"`
 }
 
+// biolatencyVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type biolatencyVariableSpecs struct {
+	FilterCg    *ebpf.VariableSpec `ebpf:"filter_cg"`
+	FilterDev   *ebpf.VariableSpec `ebpf:"filter_dev"`
+	TargDev     *ebpf.VariableSpec `ebpf:"targ_dev"`
+	TargMs      *ebpf.VariableSpec `ebpf:"targ_ms"`
+	TargPerDisk *ebpf.VariableSpec `ebpf:"targ_per_disk"`
+	TargPerFlag *ebpf.VariableSpec `ebpf:"targ_per_flag"`
+	TargQueued  *ebpf.VariableSpec `ebpf:"targ_queued"`
+}
+
 // biolatencyObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadBiolatencyObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biolatencyObjects struct {
 	biolatencyPrograms
 	biolatencyMaps
+	biolatencyVariables
 }
 
 func (o *biolatencyObjects) Close() error {
@@ -104,6 +119,19 @@ func (m *biolatencyMaps) Close() error {
 		m.Hists,
 		m.Start,
 	)
+}
+
+// biolatencyVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadBiolatencyObjects or ebpf.CollectionSpec.LoadAndAssign.
+type biolatencyVariables struct {
+	FilterCg    *ebpf.Variable `ebpf:"filter_cg"`
+	FilterDev   *ebpf.Variable `ebpf:"filter_dev"`
+	TargDev     *ebpf.Variable `ebpf:"targ_dev"`
+	TargMs      *ebpf.Variable `ebpf:"targ_ms"`
+	TargPerDisk *ebpf.Variable `ebpf:"targ_per_disk"`
+	TargPerFlag *ebpf.Variable `ebpf:"targ_per_flag"`
+	TargQueued  *ebpf.Variable `ebpf:"targ_queued"`
 }
 
 // biolatencyPrograms contains all programs after they have been loaded into the kernel.

@@ -70,9 +70,10 @@ func loadMountsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type mountsnoopSpecs struct {
 	mountsnoopProgramSpecs
 	mountsnoopMapSpecs
+	mountsnoopVariableSpecs
 }
 
-// mountsnoopSpecs contains programs before they are loaded into the kernel.
+// mountsnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type mountsnoopProgramSpecs struct {
@@ -92,12 +93,22 @@ type mountsnoopMapSpecs struct {
 	Heap                 *ebpf.MapSpec `ebpf:"heap"`
 }
 
+// mountsnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type mountsnoopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	TargetPid           *ebpf.VariableSpec `ebpf:"target_pid"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // mountsnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadMountsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type mountsnoopObjects struct {
 	mountsnoopPrograms
 	mountsnoopMaps
+	mountsnoopVariables
 }
 
 func (o *mountsnoopObjects) Close() error {
@@ -124,6 +135,15 @@ func (m *mountsnoopMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.Heap,
 	)
+}
+
+// mountsnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadMountsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type mountsnoopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	TargetPid           *ebpf.Variable `ebpf:"target_pid"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // mountsnoopPrograms contains all programs after they have been loaded into the kernel.

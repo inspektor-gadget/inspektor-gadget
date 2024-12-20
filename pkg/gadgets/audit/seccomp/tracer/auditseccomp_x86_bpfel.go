@@ -56,9 +56,10 @@ func loadAuditseccompObjects(obj interface{}, opts *ebpf.CollectionOptions) erro
 type auditseccompSpecs struct {
 	auditseccompProgramSpecs
 	auditseccompMapSpecs
+	auditseccompVariableSpecs
 }
 
-// auditseccompSpecs contains programs before they are loaded into the kernel.
+// auditseccompProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type auditseccompProgramSpecs struct {
@@ -74,12 +75,20 @@ type auditseccompMapSpecs struct {
 	TmpEvent             *ebpf.MapSpec `ebpf:"tmp_event"`
 }
 
+// auditseccompVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type auditseccompVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+}
+
 // auditseccompObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadAuditseccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type auditseccompObjects struct {
 	auditseccompPrograms
 	auditseccompMaps
+	auditseccompVariables
 }
 
 func (o *auditseccompObjects) Close() error {
@@ -104,6 +113,13 @@ func (m *auditseccompMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.TmpEvent,
 	)
+}
+
+// auditseccompVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadAuditseccompObjects or ebpf.CollectionSpec.LoadAndAssign.
+type auditseccompVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
 }
 
 // auditseccompPrograms contains all programs after they have been loaded into the kernel.

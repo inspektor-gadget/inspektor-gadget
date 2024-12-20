@@ -59,9 +59,10 @@ func loadSigsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type sigsnoopSpecs struct {
 	sigsnoopProgramSpecs
 	sigsnoopMapSpecs
+	sigsnoopVariableSpecs
 }
 
-// sigsnoopSpecs contains programs before they are loaded into the kernel.
+// sigsnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type sigsnoopProgramSpecs struct {
@@ -83,12 +84,24 @@ type sigsnoopMapSpecs struct {
 	Values               *ebpf.MapSpec `ebpf:"values"`
 }
 
+// sigsnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type sigsnoopVariableSpecs struct {
+	FailedOnly          *ebpf.VariableSpec `ebpf:"failed_only"`
+	FilteredPid         *ebpf.VariableSpec `ebpf:"filtered_pid"`
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	TargetSignal        *ebpf.VariableSpec `ebpf:"target_signal"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // sigsnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSigsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type sigsnoopObjects struct {
 	sigsnoopPrograms
 	sigsnoopMaps
+	sigsnoopVariables
 }
 
 func (o *sigsnoopObjects) Close() error {
@@ -113,6 +126,17 @@ func (m *sigsnoopMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.Values,
 	)
+}
+
+// sigsnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSigsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type sigsnoopVariables struct {
+	FailedOnly          *ebpf.Variable `ebpf:"failed_only"`
+	FilteredPid         *ebpf.Variable `ebpf:"filtered_pid"`
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	TargetSignal        *ebpf.Variable `ebpf:"target_signal"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // sigsnoopPrograms contains all programs after they have been loaded into the kernel.

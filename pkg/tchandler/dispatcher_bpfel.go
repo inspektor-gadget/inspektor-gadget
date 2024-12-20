@@ -47,9 +47,10 @@ func loadDispatcherObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type dispatcherSpecs struct {
 	dispatcherProgramSpecs
 	dispatcherMapSpecs
+	dispatcherVariableSpecs
 }
 
-// dispatcherSpecs contains programs before they are loaded into the kernel.
+// dispatcherProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dispatcherProgramSpecs struct {
@@ -63,12 +64,20 @@ type dispatcherMapSpecs struct {
 	GadgetTailCall *ebpf.MapSpec `ebpf:"gadget_tail_call"`
 }
 
+// dispatcherVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type dispatcherVariableSpecs struct {
+	CurrentNetns *ebpf.VariableSpec `ebpf:"current_netns"`
+}
+
 // dispatcherObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadDispatcherObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dispatcherObjects struct {
 	dispatcherPrograms
 	dispatcherMaps
+	dispatcherVariables
 }
 
 func (o *dispatcherObjects) Close() error {
@@ -89,6 +98,13 @@ func (m *dispatcherMaps) Close() error {
 	return _DispatcherClose(
 		m.GadgetTailCall,
 	)
+}
+
+// dispatcherVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadDispatcherObjects or ebpf.CollectionSpec.LoadAndAssign.
+type dispatcherVariables struct {
+	CurrentNetns *ebpf.Variable `ebpf:"current_netns"`
 }
 
 // dispatcherPrograms contains all programs after they have been loaded into the kernel.

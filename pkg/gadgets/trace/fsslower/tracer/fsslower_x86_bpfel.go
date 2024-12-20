@@ -60,9 +60,10 @@ func loadFsslowerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type fsslowerSpecs struct {
 	fsslowerProgramSpecs
 	fsslowerMapSpecs
+	fsslowerVariableSpecs
 }
 
-// fsslowerSpecs contains programs before they are loaded into the kernel.
+// fsslowerProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type fsslowerProgramSpecs struct {
@@ -87,12 +88,23 @@ type fsslowerMapSpecs struct {
 	Starts               *ebpf.MapSpec `ebpf:"starts"`
 }
 
+// fsslowerVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type fsslowerVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	MinLatNs            *ebpf.VariableSpec `ebpf:"min_lat_ns"`
+	TargetPid           *ebpf.VariableSpec `ebpf:"target_pid"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // fsslowerObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadFsslowerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type fsslowerObjects struct {
 	fsslowerPrograms
 	fsslowerMaps
+	fsslowerVariables
 }
 
 func (o *fsslowerObjects) Close() error {
@@ -117,6 +129,16 @@ func (m *fsslowerMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.Starts,
 	)
+}
+
+// fsslowerVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadFsslowerObjects or ebpf.CollectionSpec.LoadAndAssign.
+type fsslowerVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	MinLatNs            *ebpf.Variable `ebpf:"min_lat_ns"`
+	TargetPid           *ebpf.Variable `ebpf:"target_pid"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // fsslowerPrograms contains all programs after they have been loaded into the kernel.
