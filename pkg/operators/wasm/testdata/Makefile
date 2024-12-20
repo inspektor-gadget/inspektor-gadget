@@ -8,6 +8,9 @@ TEST_ARTIFACTS = \
 	params \
 	config \
 	map \
+	perf \
+	array \
+	syscall \
 	#
 
 all: $(TEST_ARTIFACTS)
