@@ -58,6 +58,12 @@ func gadgetStart() int {
 		return 1
 	}
 
+	err = m.Update(key, expectedVal, api.GetFdFlag)
+	if err == nil {
+		api.Errorf("updating %s, which type is BPF_MAP_TYPE_HASH, with GetFdFlag", mapName)
+		return 1
+	}
+
 	err = m.Lookup(key, &val)
 	if err != nil {
 		api.Errorf("no value found for key %v in %s", key, mapName)
@@ -145,6 +151,7 @@ func gadgetStart() int {
 	newMap, err := api.NewMap(mapSpec)
 	if err != nil {
 		api.Errorf("creating map %s", mapSpec.Name)
+		return 1
 	}
 	defer newMap.Close()
 
