@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.34.0
+version: 0.35.0
 name: "trace signal"
 category: monitoring-logging
 displayName: "trace signal"
-createdAt: "2024-11-04T17:16:38Z"
-digest: "2024-11-04T17:16:38Z"
+createdAt: "2024-12-02T10:15:22Z"
+digest: "2024-12-02T10:15:22Z"
 description: "trace signal"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

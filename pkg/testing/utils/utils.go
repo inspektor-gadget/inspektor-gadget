@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/constraints"
 
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -121,17 +120,17 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	}
 }
 
-func BuildProc(comm string, uid, tid uint32) ebpftypes.Process {
-	return ebpftypes.Process{
+func BuildProc(comm string, uid, tid uint32) Process {
+	return Process{
 		Comm:    comm,
 		Pid:     NormalizedInt,
 		Tid:     NormalizedInt,
 		MntNsID: NormalizedInt,
-		Creds: ebpftypes.Creds{
+		Creds: Creds{
 			Uid: uid,
 			Gid: tid,
 		},
-		Parent: ebpftypes.Parent{
+		Parent: Parent{
 			Comm: NormalizedStr,
 			Pid:  NormalizedInt,
 		},
@@ -140,7 +139,7 @@ func BuildProc(comm string, uid, tid uint32) ebpftypes.Process {
 
 // NormalizeProc normalizes the pid, tid, parent pid and parent comm fields on
 // p.
-func NormalizeProc(p *ebpftypes.Process) {
+func NormalizeProc(p *Process) {
 	NormalizeInt(&p.Pid)
 	NormalizeInt(&p.Tid)
 	NormalizeInt(&p.MntNsID)

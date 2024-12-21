@@ -317,8 +317,15 @@ lint:
 		--user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app \
 		linter
 
+.PHONY: clang-format
 clang-format:
-	find ./ -type f \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' -execdir $(CLANG_FORMAT) -i {} \;
+	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
+		-v $(shell pwd):/work -w /work $(EBPF_BUILDER) \
+		make clang-format-outside-docker
+
+.PHONY: clang-format-outside-docker
+clang-format-outside-docker:
+	find ./ -type f \( \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' \) -execdir $(CLANG_FORMAT) -i {} \;
 
 # minikube
 LIVENESS_PROBE ?= true
@@ -381,7 +388,7 @@ push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
 .PHONY: unit-test-gadgets
-unit-test-gadgets: 
+unit-test-gadgets:
 	$(MAKE) -C gadgets/ test-unit
 
 .PHONY: integration-test-gadgets

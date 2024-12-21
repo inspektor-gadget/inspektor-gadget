@@ -26,11 +26,11 @@ import (
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
-type ExpectedSnapshotProcessEvent ebpftypes.Process
+type ExpectedSnapshotProcessEvent utils.Process
 
 type testDef struct {
 	runnerConfig   *utilstest.RunnerConfig
@@ -40,6 +40,8 @@ type testDef struct {
 }
 
 func TestSnapshotProcessGadget(t *testing.T) {
+	// task iterator was introduced in 5.8
+	gadgettesting.MinimumKernelVersion(t, "5.8")
 	gadgettesting.InitUnitTest(t)
 	runnerConfig := &utilstest.RunnerConfig{}
 	testCases := map[string]testDef{
@@ -52,7 +54,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Comm: "sleep",
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
-						Parent: ebpftypes.Parent{
+						Parent: utils.Parent{
 							Pid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},
@@ -83,7 +85,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Comm: "sleep",
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
-						Parent: ebpftypes.Parent{
+						Parent: utils.Parent{
 							Pid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},

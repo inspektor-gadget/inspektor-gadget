@@ -22,19 +22,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type topBlockioEntry struct {
-	eventtypes.CommonData
+	utils.CommonData
 
-	Proc ebpftypes.Process `json:"proc"`
+	Proc utils.Process `json:"proc"`
 
 	Bytes uint64 `json:"bytes"`
 	Io    uint32 `json:"io"`

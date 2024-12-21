@@ -14,7 +14,7 @@
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255
-#define INVALID_UID ((uid_t)-1)
+#define INVALID_UID ((uid_t) - 1)
 
 struct args_t {
 	const char *fname;

@@ -1,0 +1,68 @@
+---
+title: Exporting Logs (OpenTelemetry)
+sidebar_position: 1200
+description: Using OpenTelemetry to export gadget logs
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Inspektor Gadget supports [exporting logs to OpenTelemetry](https://opentelemetry.io/docs/specs/otel/logs/) using the
+otlp-grpc exporter. You can log the events of any datasource by configuring exporters in the `operator.otel-logs`
+section of the config file like so:
+
+```yaml
+operator:
+  otel-logs:
+    exporters:
+      my-log-exporter:
+        exporter: otlp-grpc
+        compression: gzip
+        endpoint: "127.0.0.1:4317"
+        insecure: true
+```
+
+This will configure an exporter named `my-log-exporter` with the given endpoint, gzip compression enabled and TLS
+disabled.
+
+You can then run a gadget and activate the exporter for it by setting the `--otel-logs-exporter=my-log-exporter` flag.
+
+### Exporter settings
+
+#### exporter
+
+Currently we only support `otlp-grpc`.
+
+#### compression
+
+Compression can be set to either "none" (no compression) or "gzip" (gzip compression).
+
+#### endpoint
+
+IP address and port of the gRPC receiver.
+
+#### insecure
+
+If set to true, the gRPC connection will not use TLS encryption. False by default.
+
+## Annotations
+
+Annotations can be used to define how logs should be generated from a datasource. Let's look at an example:
+
+```yaml
+datasources:
+  open:
+    annotations:
+      logs.name: my-gadget
+      logs.severity: 13 # equals WARN severity and will be set for every event
+      logs.body: "file " + fname + " was opened by " + comm + " (PID " + string(pid) + ")"
+    fields:
+      timestamp:
+        logs.name: timestamp # this expects the field to contain the time in unix microseconds
+      ## Alternatively, you could set the severity from a field of any int type like so:
+      # severity:
+      #   logs.name: severity
+      ## You can also set any string typed field as body for the log entry
+      # comm:
+      #   logs.name: body
+```

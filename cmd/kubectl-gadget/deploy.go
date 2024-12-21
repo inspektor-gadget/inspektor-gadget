@@ -60,7 +60,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
@@ -84,32 +83,34 @@ var deployCmd = &cobra.Command{
 var gadgetimage = "undefined"
 
 var (
-	image               string
-	imagePullPolicy     string
-	hookMode            string
-	livenessProbe       bool
-	deployTimeout       time.Duration
-	fallbackPodInformer bool
-	printOnly           bool
-	quiet               bool
-	debug               bool
-	seccompProfile      string
-	wait                bool
-	runtimesConfig      commonutils.RuntimesSocketPathConfig
-	nodeSelector        string
-	experimentalVar     bool
-	skipSELinuxOpts     bool
-	eventBufferLength   uint64
-	daemonLogLevel      string
-	appArmorprofile     string
-	verifyImage         bool
-	publicKey           string
-	strLevels           []string
-	verifyGadgets       bool
-	gadgetsPublicKeys   string
-	allowedGadgets      []string
-	insecureRegistries  []string
-	disallowGadgetsPull bool
+	image                 string
+	imagePullPolicy       string
+	hookMode              string
+	livenessProbe         bool
+	deployTimeout         time.Duration
+	fallbackPodInformer   bool
+	printOnly             bool
+	quiet                 bool
+	debug                 bool
+	seccompProfile        string
+	wait                  bool
+	runtimesConfig        commonutils.RuntimesSocketPathConfig
+	nodeSelector          string
+	experimentalVar       bool
+	skipSELinuxOpts       bool
+	eventBufferLength     uint64
+	daemonLogLevel        string
+	appArmorprofile       string
+	verifyImage           bool
+	publicKey             string
+	strLevels             []string
+	verifyGadgets         bool
+	gadgetsPublicKeys     string
+	allowedGadgets        []string
+	insecureRegistries    []string
+	disallowGadgetsPull   bool
+	otelMetricsListen     bool
+	otelMetricsListenAddr string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify+ebpf"}
@@ -252,6 +253,12 @@ func init() {
 	deployCmd.PersistentFlags().BoolVar(
 		&disallowGadgetsPull,
 		"disallow-gadgets-pulling", false, "Disallow pulling gadgets from registries")
+	deployCmd.PersistentFlags().BoolVar(
+		&otelMetricsListen,
+		"otel-metrics-listen", false, "Enable OpenTelemetry metrics listener (Prometheus compatible) endpoint")
+	deployCmd.PersistentFlags().StringVar(
+		&otelMetricsListenAddr,
+		"otel-metrics-listen-address", "0.0.0.0:2224", "Address and port to create the OpenTelemetry metrics listener (Prometheus compatible) on")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -672,8 +679,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
-				case "INSPEKTOR_GADGET_VERSION":
-					gadgetContainer.Env[i].Value = version.Version().String()
 				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
 					gadgetContainer.Env[i].Value = hookMode
 				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
@@ -787,7 +792,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
 			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
 
-			opOciCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})[gadgettracermanagerconfig.Oci].(map[string]interface{})
+			opCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("%s not found in config.yaml", gadgettracermanagerconfig.Operator)
+			}
+
+			opOciCfg, ok := opCfg[gadgettracermanagerconfig.Oci].(map[string]interface{})
 			if !ok {
 				return fmt.Errorf("%s.%s not found in config.yaml", gadgettracermanagerconfig.Operator, gadgettracermanagerconfig.Oci)
 			}
@@ -797,6 +807,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			opOciCfg[gadgettracermanagerconfig.AllowedGadgets] = allowedGadgets
 			opOciCfg[gadgettracermanagerconfig.InsecureRegistries] = insecureRegistries
 			opOciCfg[gadgettracermanagerconfig.DisallowPulling] = disallowGadgetsPull
+
+			if otelMetricsListen {
+				otelMetricsConfig := map[string]interface{}{
+					gadgettracermanagerconfig.OtelMetricsListen:        otelMetricsListen,
+					gadgettracermanagerconfig.OtelMetricsListenAddress: otelMetricsListenAddr,
+				}
+				opCfg[gadgettracermanagerconfig.OtelMetrics] = otelMetricsConfig
+			}
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {

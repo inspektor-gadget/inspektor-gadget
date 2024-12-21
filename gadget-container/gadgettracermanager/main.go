@@ -37,6 +37,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	// Import this early to set the environment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
@@ -59,6 +60,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
@@ -280,6 +282,8 @@ func main() {
 	}
 
 	if serve {
+		log.Infof("Inspektor Gadget version: %s", version.Version().String())
+
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
 		}

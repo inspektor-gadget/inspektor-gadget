@@ -6,6 +6,18 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   dns:
     fields:
+      cwd:
+        annotations:
+          description: The current working directory of the process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
+      exepath:
+        annotations:
+          description: The executable file of the process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
       anaddr:
         annotations:
           columns.width: "16"
@@ -71,3 +83,9 @@ datasources:
         annotations:
           description: Source endpoint
           template: l4endpoint
+params:
+  ebpf:
+    paths:
+      key: paths
+      defaultValue: "false"
+      description: Show current working directory and executable path.

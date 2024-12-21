@@ -120,9 +120,9 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 
 	case bpf_htons(SE_ETH_P_IPV6):
 		key.family = SE_AF_INET6;
-		err = bpf_skb_load_bytes(
-			skb, SE_ETH_HLEN + SE_IPV6_NEXTHDR_OFFSET,
-			&key.proto, sizeof(key.proto));
+		err = bpf_skb_load_bytes(skb,
+					 SE_ETH_HLEN + SE_IPV6_NEXTHDR_OFFSET,
+					 &key.proto, sizeof(key.proto));
 		if (err < 0)
 			return 0;
 		l4_off = SE_ETH_HLEN + SE_IPV6_HLEN;
@@ -247,7 +247,9 @@ gadget_socket_lookup(const struct sock *sk, __u32 netns)
 #endif
 
 static __always_inline void
-gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct gadget_process *p) {
+gadget_process_populate_from_socket(const struct sockets_value *skb_val,
+				    struct gadget_process *p)
+{
 	if (!skb_val)
 		return;
 
@@ -259,7 +261,8 @@ gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct 
 	p->creds.uid = skb_val->uid_gid;
 	p->creds.gid = skb_val->uid_gid >> 32;
 
-	__builtin_memcpy(p->parent.comm, skb_val->ptask, sizeof(p->parent.comm));
+	__builtin_memcpy(p->parent.comm, skb_val->ptask,
+			 sizeof(p->parent.comm));
 	p->parent.pid = skb_val->ppid;
 }
 

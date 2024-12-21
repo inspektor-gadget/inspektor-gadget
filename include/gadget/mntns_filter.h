@@ -20,7 +20,8 @@ struct {
 
 // gadget_should_discard_mntns_id returns true if events generated from the given mntns_id should
 // not be taken into consideration.
-static __always_inline bool gadget_should_discard_mntns_id(gadget_mntns_id mntns_id)
+static __always_inline bool
+gadget_should_discard_mntns_id(gadget_mntns_id mntns_id)
 {
 	return gadget_filter_by_mntns &&
 	       !bpf_map_lookup_elem(&gadget_mntns_filter_map, &mntns_id);

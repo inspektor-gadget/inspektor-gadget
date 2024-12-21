@@ -23,3 +23,8 @@ data:
           public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}
           allowed-gadgets:{{ toYaml .Values.config.allowedGadgets | nindent 12 }}
           disallow-pulling: {{ .Values.config.disallowGadgetsPulling }}
+      {{- if .Values.config.otelMetricsListen }}
+        otel-metrics:
+            otel-metrics-listen: {{ .Values.config.otelMetricsListen }}
+            otel-metrics-listen-address: {{ .Values.config.otelMetricsAddress }}
+      {{- end }}
