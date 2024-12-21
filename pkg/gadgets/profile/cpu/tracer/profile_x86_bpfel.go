@@ -57,9 +57,10 @@ func loadProfileObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type profileSpecs struct {
 	profileProgramSpecs
 	profileMapSpecs
+	profileVariableSpecs
 }
 
-// profileSpecs contains programs before they are loaded into the kernel.
+// profileProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type profileProgramSpecs struct {
@@ -75,12 +76,25 @@ type profileMapSpecs struct {
 	Stackmap             *ebpf.MapSpec `ebpf:"stackmap"`
 }
 
+// profileVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type profileVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	IncludeIdle         *ebpf.VariableSpec `ebpf:"include_idle"`
+	KernelStacksOnly    *ebpf.VariableSpec `ebpf:"kernel_stacks_only"`
+	TargPid             *ebpf.VariableSpec `ebpf:"targ_pid"`
+	TargTid             *ebpf.VariableSpec `ebpf:"targ_tid"`
+	UserStacksOnly      *ebpf.VariableSpec `ebpf:"user_stacks_only"`
+}
+
 // profileObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type profileObjects struct {
 	profilePrograms
 	profileMaps
+	profileVariables
 }
 
 func (o *profileObjects) Close() error {
@@ -105,6 +119,18 @@ func (m *profileMaps) Close() error {
 		m.GadgetMntnsFilterMap,
 		m.Stackmap,
 	)
+}
+
+// profileVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
+type profileVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	IncludeIdle         *ebpf.Variable `ebpf:"include_idle"`
+	KernelStacksOnly    *ebpf.Variable `ebpf:"kernel_stacks_only"`
+	TargPid             *ebpf.Variable `ebpf:"targ_pid"`
+	TargTid             *ebpf.Variable `ebpf:"targ_tid"`
+	UserStacksOnly      *ebpf.Variable `ebpf:"user_stacks_only"`
 }
 
 // profilePrograms contains all programs after they have been loaded into the kernel.

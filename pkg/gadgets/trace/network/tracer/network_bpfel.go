@@ -88,9 +88,10 @@ func loadNetworkObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type networkSpecs struct {
 	networkProgramSpecs
 	networkMapSpecs
+	networkVariableSpecs
 }
 
-// networkSpecs contains programs before they are loaded into the kernel.
+// networkProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type networkProgramSpecs struct {
@@ -105,12 +106,20 @@ type networkMapSpecs struct {
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
+// networkVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type networkVariableSpecs struct {
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // networkObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadNetworkObjects or ebpf.CollectionSpec.LoadAndAssign.
 type networkObjects struct {
 	networkPrograms
 	networkMaps
+	networkVariables
 }
 
 func (o *networkObjects) Close() error {
@@ -133,6 +142,13 @@ func (m *networkMaps) Close() error {
 		m.Events,
 		m.GadgetSockets,
 	)
+}
+
+// networkVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadNetworkObjects or ebpf.CollectionSpec.LoadAndAssign.
+type networkVariables struct {
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // networkPrograms contains all programs after they have been loaded into the kernel.

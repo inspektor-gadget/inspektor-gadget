@@ -73,9 +73,10 @@ func loadTcptracerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type tcptracerSpecs struct {
 	tcptracerProgramSpecs
 	tcptracerMapSpecs
+	tcptracerVariableSpecs
 }
 
-// tcptracerSpecs contains programs before they are loaded into the kernel.
+// tcptracerProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptracerProgramSpecs struct {
@@ -98,12 +99,24 @@ type tcptracerMapSpecs struct {
 	Tuplepid             *ebpf.MapSpec `ebpf:"tuplepid"`
 }
 
+// tcptracerVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcptracerVariableSpecs struct {
+	FilterPid           *ebpf.VariableSpec `ebpf:"filter_pid"`
+	FilterUid           *ebpf.VariableSpec `ebpf:"filter_uid"`
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	UnusedEventtype     *ebpf.VariableSpec `ebpf:"unused_eventtype"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // tcptracerObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcptracerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptracerObjects struct {
 	tcptracerPrograms
 	tcptracerMaps
+	tcptracerVariables
 }
 
 func (o *tcptracerObjects) Close() error {
@@ -130,6 +143,17 @@ func (m *tcptracerMaps) Close() error {
 		m.Sockets,
 		m.Tuplepid,
 	)
+}
+
+// tcptracerVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcptracerObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcptracerVariables struct {
+	FilterPid           *ebpf.Variable `ebpf:"filter_pid"`
+	FilterUid           *ebpf.Variable `ebpf:"filter_uid"`
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	UnusedEventtype     *ebpf.Variable `ebpf:"unused_eventtype"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // tcptracerPrograms contains all programs after they have been loaded into the kernel.

@@ -73,9 +73,10 @@ func loadSocketsiterObjects(obj interface{}, opts *ebpf.CollectionOptions) error
 type socketsiterSpecs struct {
 	socketsiterProgramSpecs
 	socketsiterMapSpecs
+	socketsiterVariableSpecs
 }
 
-// socketsiterSpecs contains programs before they are loaded into the kernel.
+// socketsiterProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketsiterProgramSpecs struct {
@@ -91,12 +92,20 @@ type socketsiterMapSpecs struct {
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
+// socketsiterVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type socketsiterVariableSpecs struct {
+	SocketFileOpsAddr *ebpf.VariableSpec `ebpf:"socket_file_ops_addr"`
+}
+
 // socketsiterObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSocketsiterObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketsiterObjects struct {
 	socketsiterPrograms
 	socketsiterMaps
+	socketsiterVariables
 }
 
 func (o *socketsiterObjects) Close() error {
@@ -119,6 +128,13 @@ func (m *socketsiterMaps) Close() error {
 		m.Bufs,
 		m.GadgetSockets,
 	)
+}
+
+// socketsiterVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSocketsiterObjects or ebpf.CollectionSpec.LoadAndAssign.
+type socketsiterVariables struct {
+	SocketFileOpsAddr *ebpf.Variable `ebpf:"socket_file_ops_addr"`
 }
 
 // socketsiterPrograms contains all programs after they have been loaded into the kernel.

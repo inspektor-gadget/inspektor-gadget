@@ -54,9 +54,10 @@ func loadContainersmapObjects(obj interface{}, opts *ebpf.CollectionOptions) err
 type containersmapSpecs struct {
 	containersmapProgramSpecs
 	containersmapMapSpecs
+	containersmapVariableSpecs
 }
 
-// containersmapSpecs contains programs before they are loaded into the kernel.
+// containersmapProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type containersmapProgramSpecs struct {
@@ -69,12 +70,19 @@ type containersmapMapSpecs struct {
 	Containers *ebpf.MapSpec `ebpf:"containers"`
 }
 
+// containersmapVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type containersmapVariableSpecs struct {
+}
+
 // containersmapObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadContainersmapObjects or ebpf.CollectionSpec.LoadAndAssign.
 type containersmapObjects struct {
 	containersmapPrograms
 	containersmapMaps
+	containersmapVariables
 }
 
 func (o *containersmapObjects) Close() error {
@@ -95,6 +103,12 @@ func (m *containersmapMaps) Close() error {
 	return _ContainersmapClose(
 		m.Containers,
 	)
+}
+
+// containersmapVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadContainersmapObjects or ebpf.CollectionSpec.LoadAndAssign.
+type containersmapVariables struct {
 }
 
 // containersmapPrograms contains all programs after they have been loaded into the kernel.

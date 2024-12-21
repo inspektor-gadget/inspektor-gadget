@@ -47,9 +47,10 @@ func loadSeccompObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type seccompSpecs struct {
 	seccompProgramSpecs
 	seccompMapSpecs
+	seccompVariableSpecs
 }
 
-// seccompSpecs contains programs before they are loaded into the kernel.
+// seccompProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type seccompProgramSpecs struct {
@@ -63,12 +64,19 @@ type seccompMapSpecs struct {
 	SyscallsPerMntns *ebpf.MapSpec `ebpf:"syscalls_per_mntns"`
 }
 
+// seccompVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type seccompVariableSpecs struct {
+}
+
 // seccompObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSeccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type seccompObjects struct {
 	seccompPrograms
 	seccompMaps
+	seccompVariables
 }
 
 func (o *seccompObjects) Close() error {
@@ -89,6 +97,12 @@ func (m *seccompMaps) Close() error {
 	return _SeccompClose(
 		m.SyscallsPerMntns,
 	)
+}
+
+// seccompVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSeccompObjects or ebpf.CollectionSpec.LoadAndAssign.
+type seccompVariables struct {
 }
 
 // seccompPrograms contains all programs after they have been loaded into the kernel.

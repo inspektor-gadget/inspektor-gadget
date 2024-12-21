@@ -47,9 +47,10 @@ func loadFilefieldsObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type filefieldsSpecs struct {
 	filefieldsProgramSpecs
 	filefieldsMapSpecs
+	filefieldsVariableSpecs
 }
 
-// filefieldsSpecs contains programs before they are loaded into the kernel.
+// filefieldsProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type filefieldsProgramSpecs struct {
@@ -64,12 +65,21 @@ type filefieldsMapSpecs struct {
 	IgFileFields *ebpf.MapSpec `ebpf:"ig_file_fields"`
 }
 
+// filefieldsVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type filefieldsVariableSpecs struct {
+	SocketIno     *ebpf.VariableSpec `ebpf:"socket_ino"`
+	TracerPidTgid *ebpf.VariableSpec `ebpf:"tracer_pid_tgid"`
+}
+
 // filefieldsObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadFilefieldsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type filefieldsObjects struct {
 	filefieldsPrograms
 	filefieldsMaps
+	filefieldsVariables
 }
 
 func (o *filefieldsObjects) Close() error {
@@ -90,6 +100,14 @@ func (m *filefieldsMaps) Close() error {
 	return _FilefieldsClose(
 		m.IgFileFields,
 	)
+}
+
+// filefieldsVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadFilefieldsObjects or ebpf.CollectionSpec.LoadAndAssign.
+type filefieldsVariables struct {
+	SocketIno     *ebpf.Variable `ebpf:"socket_ino"`
+	TracerPidTgid *ebpf.Variable `ebpf:"tracer_pid_tgid"`
 }
 
 // filefieldsPrograms contains all programs after they have been loaded into the kernel.

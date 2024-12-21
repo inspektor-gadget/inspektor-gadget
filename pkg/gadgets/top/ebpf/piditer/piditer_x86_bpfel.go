@@ -53,9 +53,10 @@ func loadPiditerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type piditerSpecs struct {
 	piditerProgramSpecs
 	piditerMapSpecs
+	piditerVariableSpecs
 }
 
-// piditerSpecs contains programs before they are loaded into the kernel.
+// piditerProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type piditerProgramSpecs struct {
@@ -68,12 +69,21 @@ type piditerProgramSpecs struct {
 type piditerMapSpecs struct {
 }
 
+// piditerVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type piditerVariableSpecs struct {
+	BpfProgFopsAddr *ebpf.VariableSpec `ebpf:"bpf_prog_fops_addr"`
+	Unused          *ebpf.VariableSpec `ebpf:"unused"`
+}
+
 // piditerObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadPiditerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type piditerObjects struct {
 	piditerPrograms
 	piditerMaps
+	piditerVariables
 }
 
 func (o *piditerObjects) Close() error {
@@ -91,6 +101,14 @@ type piditerMaps struct {
 
 func (m *piditerMaps) Close() error {
 	return _PiditerClose()
+}
+
+// piditerVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadPiditerObjects or ebpf.CollectionSpec.LoadAndAssign.
+type piditerVariables struct {
+	BpfProgFopsAddr *ebpf.Variable `ebpf:"bpf_prog_fops_addr"`
+	Unused          *ebpf.Variable `ebpf:"unused"`
 }
 
 // piditerPrograms contains all programs after they have been loaded into the kernel.

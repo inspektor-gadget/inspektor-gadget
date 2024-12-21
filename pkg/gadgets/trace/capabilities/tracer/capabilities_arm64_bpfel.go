@@ -79,9 +79,10 @@ func loadCapabilitiesObjects(obj interface{}, opts *ebpf.CollectionOptions) erro
 type capabilitiesSpecs struct {
 	capabilitiesProgramSpecs
 	capabilitiesMapSpecs
+	capabilitiesVariableSpecs
 }
 
-// capabilitiesSpecs contains programs before they are loaded into the kernel.
+// capabilitiesProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesProgramSpecs struct {
@@ -104,12 +105,26 @@ type capabilitiesMapSpecs struct {
 	Start                *ebpf.MapSpec `ebpf:"start"`
 }
 
+// capabilitiesVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type capabilitiesVariableSpecs struct {
+	AuditOnly           *ebpf.VariableSpec `ebpf:"audit_only"`
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	LinuxVersionCode    *ebpf.VariableSpec `ebpf:"linux_version_code"`
+	MyPid               *ebpf.VariableSpec `ebpf:"my_pid"`
+	TargPid             *ebpf.VariableSpec `ebpf:"targ_pid"`
+	Unique              *ebpf.VariableSpec `ebpf:"unique"`
+	Unusedcapevent      *ebpf.VariableSpec `ebpf:"unusedcapevent"`
+}
+
 // capabilitiesObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesObjects struct {
 	capabilitiesPrograms
 	capabilitiesMaps
+	capabilitiesVariables
 }
 
 func (o *capabilitiesObjects) Close() error {
@@ -138,6 +153,19 @@ func (m *capabilitiesMaps) Close() error {
 		m.Seen,
 		m.Start,
 	)
+}
+
+// capabilitiesVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
+type capabilitiesVariables struct {
+	AuditOnly           *ebpf.Variable `ebpf:"audit_only"`
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	LinuxVersionCode    *ebpf.Variable `ebpf:"linux_version_code"`
+	MyPid               *ebpf.Variable `ebpf:"my_pid"`
+	TargPid             *ebpf.Variable `ebpf:"targ_pid"`
+	Unique              *ebpf.Variable `ebpf:"unique"`
+	Unusedcapevent      *ebpf.Variable `ebpf:"unusedcapevent"`
 }
 
 // capabilitiesPrograms contains all programs after they have been loaded into the kernel.

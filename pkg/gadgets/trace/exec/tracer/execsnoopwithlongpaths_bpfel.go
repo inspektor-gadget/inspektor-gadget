@@ -73,9 +73,10 @@ func loadExecsnoopWithLongPathsObjects(obj interface{}, opts *ebpf.CollectionOpt
 type execsnoopWithLongPathsSpecs struct {
 	execsnoopWithLongPathsProgramSpecs
 	execsnoopWithLongPathsMapSpecs
+	execsnoopWithLongPathsVariableSpecs
 }
 
-// execsnoopWithLongPathsSpecs contains programs before they are loaded into the kernel.
+// execsnoopWithLongPathsProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopWithLongPathsProgramSpecs struct {
@@ -94,12 +95,22 @@ type execsnoopWithLongPathsMapSpecs struct {
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
+// execsnoopWithLongPathsVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type execsnoopWithLongPathsVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	IgnoreFailed        *ebpf.VariableSpec `ebpf:"ignore_failed"`
+	TargUid             *ebpf.VariableSpec `ebpf:"targ_uid"`
+}
+
 // execsnoopWithLongPathsObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadExecsnoopWithLongPathsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopWithLongPathsObjects struct {
 	execsnoopWithLongPathsPrograms
 	execsnoopWithLongPathsMaps
+	execsnoopWithLongPathsVariables
 }
 
 func (o *execsnoopWithLongPathsObjects) Close() error {
@@ -126,6 +137,15 @@ func (m *execsnoopWithLongPathsMaps) Close() error {
 		m.Execs,
 		m.GadgetMntnsFilterMap,
 	)
+}
+
+// execsnoopWithLongPathsVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadExecsnoopWithLongPathsObjects or ebpf.CollectionSpec.LoadAndAssign.
+type execsnoopWithLongPathsVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	IgnoreFailed        *ebpf.Variable `ebpf:"ignore_failed"`
+	TargUid             *ebpf.Variable `ebpf:"targ_uid"`
 }
 
 // execsnoopWithLongPathsPrograms contains all programs after they have been loaded into the kernel.

@@ -59,9 +59,10 @@ func loadOomkillObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type oomkillSpecs struct {
 	oomkillProgramSpecs
 	oomkillMapSpecs
+	oomkillVariableSpecs
 }
 
-// oomkillSpecs contains programs before they are loaded into the kernel.
+// oomkillProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type oomkillProgramSpecs struct {
@@ -76,12 +77,21 @@ type oomkillMapSpecs struct {
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
+// oomkillVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type oomkillVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	Unuseddata          *ebpf.VariableSpec `ebpf:"unuseddata"`
+}
+
 // oomkillObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadOomkillObjects or ebpf.CollectionSpec.LoadAndAssign.
 type oomkillObjects struct {
 	oomkillPrograms
 	oomkillMaps
+	oomkillVariables
 }
 
 func (o *oomkillObjects) Close() error {
@@ -104,6 +114,14 @@ func (m *oomkillMaps) Close() error {
 		m.Events,
 		m.GadgetMntnsFilterMap,
 	)
+}
+
+// oomkillVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadOomkillObjects or ebpf.CollectionSpec.LoadAndAssign.
+type oomkillVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	Unuseddata          *ebpf.Variable `ebpf:"unuseddata"`
 }
 
 // oomkillPrograms contains all programs after they have been loaded into the kernel.

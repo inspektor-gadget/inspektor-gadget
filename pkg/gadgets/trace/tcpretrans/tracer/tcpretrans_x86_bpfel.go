@@ -85,9 +85,10 @@ func loadTcpretransObjects(obj interface{}, opts *ebpf.CollectionOptions) error 
 type tcpretransSpecs struct {
 	tcpretransProgramSpecs
 	tcpretransMapSpecs
+	tcpretransVariableSpecs
 }
 
-// tcpretransSpecs contains programs before they are loaded into the kernel.
+// tcpretransProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpretransProgramSpecs struct {
@@ -103,12 +104,20 @@ type tcpretransMapSpecs struct {
 	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
+// tcpretransVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tcpretransVariableSpecs struct {
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // tcpretransObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTcpretransObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpretransObjects struct {
 	tcpretransPrograms
 	tcpretransMaps
+	tcpretransVariables
 }
 
 func (o *tcpretransObjects) Close() error {
@@ -131,6 +140,13 @@ func (m *tcpretransMaps) Close() error {
 		m.Events,
 		m.GadgetSockets,
 	)
+}
+
+// tcpretransVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTcpretransObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tcpretransVariables struct {
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // tcpretransPrograms contains all programs after they have been loaded into the kernel.
