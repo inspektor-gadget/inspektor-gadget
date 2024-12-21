@@ -74,10 +74,11 @@ func BuildCommonData(containerName string, options ...CommonDataOption) eventtyp
 		e = eventtypes.CommonData{
 			K8s: eventtypes.K8sMetadata{
 				BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-					// Pod and Container name are defined by BusyboxPodCommand.
+					// Pod name, Container name and labesl are defined by BusyboxPodCommand.
 					// Note the Pod is also assigned the containerName
 					PodName:       containerName,
 					ContainerName: containerName,
+					PodLabels:     map[string]string{"run": containerName},
 				},
 			},
 			// TODO: Include the Node
@@ -111,6 +112,8 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	e.Runtime.ContainerImageDigest = ""
 
 	e.Runtime.ContainerPID = 0
+
+	e.Runtime.ContainerStartedAt = 0
 
 	if CurrentTestComponent == KubectlGadgetTestComponent {
 		e.K8s.Node = ""
