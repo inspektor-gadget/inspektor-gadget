@@ -32,7 +32,6 @@ LABEL org.opencontainers.image.description="Inspektor Gadget is a collection of 
 LABEL org.opencontainers.image.documentation="https://inspektor-gadget.io/docs"
 LABEL org.opencontainers.image.licenses=Apache-2.0
 
-COPY --from=builder /gadget/gadget-container/bin/entrypoint /
 COPY --from=builder /gadget/gadget-container/bin/cleanup /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
