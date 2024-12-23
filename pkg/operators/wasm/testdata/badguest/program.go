@@ -118,6 +118,18 @@ func mapDelete(m uint32, keyptr uint64) uint32
 //go:wasmimport env mapRelease
 func mapRelease(m uint32) uint32
 
+//go:wasmimport env getSyscallDeclaration
+func getSyscallDeclaration(name uint64) uint32
+
+//go:wasmimport env syscallDeclarationGetParameterCount
+func syscallDeclarationGetParameterCount(s uint32) int32
+
+//go:wasmimport env syscallDeclarationParamIsPointer
+func syscallDeclarationParamIsPointer(s uint32, param uint32) uint32
+
+//go:wasmimport env syscallDeclarationGetParameterName
+func syscallDeclarationGetParameterName(s uint32, param uint32) uint64
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
@@ -298,6 +310,12 @@ func gadgetInit() int {
 	assertNonZero(mapUpdate(0, invalidStrPtr, invalidStrPtr, 0), "mapUpdate: bad handle")
 	assertNonZero(mapLookup(0, invalidStrPtr, invalidStrPtr), "mapLookup: bad handle")
 	assertNonZero(mapDelete(0, invalidStrPtr), "mapDelete: bad handle")
+
+	/* SyscallDeclaration */
+	assertZero(getSyscallDeclaration(invalidStrPtr), "getSyscallDeclaration: bad syscall name pointer")
+	assertEqual(int32(syscallDeclarationGetParameterCount(0)), int32(-1), "syscallDeclarationGetParameterCount: bad handle")
+	assertZero(syscallDeclarationGetParameterName(0, 0), "syscallDeclarationGetParameterName: bad handle")
+	assertZero(syscallDeclarationParamIsPointer(0, 0), "syscallDeclarationParamIsPointer: bad handle")
 
 	return 0
 }
