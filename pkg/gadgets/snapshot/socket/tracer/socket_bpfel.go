@@ -59,9 +59,10 @@ func loadSocketObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type socketSpecs struct {
 	socketProgramSpecs
 	socketMapSpecs
+	socketVariableSpecs
 }
 
-// socketSpecs contains programs before they are loaded into the kernel.
+// socketProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketProgramSpecs struct {
@@ -75,12 +76,20 @@ type socketProgramSpecs struct {
 type socketMapSpecs struct {
 }
 
+// socketVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type socketVariableSpecs struct {
+	Unused *ebpf.VariableSpec `ebpf:"unused"`
+}
+
 // socketObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSocketObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketObjects struct {
 	socketPrograms
 	socketMaps
+	socketVariables
 }
 
 func (o *socketObjects) Close() error {
@@ -98,6 +107,13 @@ type socketMaps struct {
 
 func (m *socketMaps) Close() error {
 	return _SocketClose()
+}
+
+// socketVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSocketObjects or ebpf.CollectionSpec.LoadAndAssign.
+type socketVariables struct {
+	Unused *ebpf.Variable `ebpf:"unused"`
 }
 
 // socketPrograms contains all programs after they have been loaded into the kernel.

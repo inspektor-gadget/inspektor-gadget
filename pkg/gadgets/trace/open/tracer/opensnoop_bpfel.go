@@ -70,9 +70,10 @@ func loadOpensnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type opensnoopSpecs struct {
 	opensnoopProgramSpecs
 	opensnoopMapSpecs
+	opensnoopVariableSpecs
 }
 
-// opensnoopSpecs contains programs before they are loaded into the kernel.
+// opensnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type opensnoopProgramSpecs struct {
@@ -95,12 +96,27 @@ type opensnoopMapSpecs struct {
 	Start                *ebpf.MapSpec `ebpf:"start"`
 }
 
+// opensnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type opensnoopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	GetFullPath         *ebpf.VariableSpec `ebpf:"get_full_path"`
+	PrefixesNr          *ebpf.VariableSpec `ebpf:"prefixes_nr"`
+	TargFailed          *ebpf.VariableSpec `ebpf:"targ_failed"`
+	TargPid             *ebpf.VariableSpec `ebpf:"targ_pid"`
+	TargTgid            *ebpf.VariableSpec `ebpf:"targ_tgid"`
+	TargUid             *ebpf.VariableSpec `ebpf:"targ_uid"`
+	Unusedevent         *ebpf.VariableSpec `ebpf:"unusedevent"`
+}
+
 // opensnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadOpensnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type opensnoopObjects struct {
 	opensnoopPrograms
 	opensnoopMaps
+	opensnoopVariables
 }
 
 func (o *opensnoopObjects) Close() error {
@@ -133,6 +149,20 @@ func (m *opensnoopMaps) Close() error {
 		m.Prefixes,
 		m.Start,
 	)
+}
+
+// opensnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadOpensnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type opensnoopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	GetFullPath         *ebpf.Variable `ebpf:"get_full_path"`
+	PrefixesNr          *ebpf.Variable `ebpf:"prefixes_nr"`
+	TargFailed          *ebpf.Variable `ebpf:"targ_failed"`
+	TargPid             *ebpf.Variable `ebpf:"targ_pid"`
+	TargTgid            *ebpf.Variable `ebpf:"targ_tgid"`
+	TargUid             *ebpf.Variable `ebpf:"targ_uid"`
+	Unusedevent         *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // opensnoopPrograms contains all programs after they have been loaded into the kernel.

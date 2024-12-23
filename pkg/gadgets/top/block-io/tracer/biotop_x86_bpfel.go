@@ -75,9 +75,10 @@ func loadBiotopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type biotopSpecs struct {
 	biotopProgramSpecs
 	biotopMapSpecs
+	biotopVariableSpecs
 }
 
-// biotopSpecs contains programs before they are loaded into the kernel.
+// biotopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biotopProgramSpecs struct {
@@ -98,12 +99,20 @@ type biotopMapSpecs struct {
 	Whobyreq             *ebpf.MapSpec `ebpf:"whobyreq"`
 }
 
+// biotopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type biotopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+}
+
 // biotopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadBiotopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biotopObjects struct {
 	biotopPrograms
 	biotopMaps
+	biotopVariables
 }
 
 func (o *biotopObjects) Close() error {
@@ -130,6 +139,13 @@ func (m *biotopMaps) Close() error {
 		m.Start,
 		m.Whobyreq,
 	)
+}
+
+// biotopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadBiotopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type biotopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
 }
 
 // biotopPrograms contains all programs after they have been loaded into the kernel.

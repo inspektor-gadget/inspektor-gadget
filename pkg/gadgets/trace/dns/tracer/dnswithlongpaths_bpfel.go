@@ -103,9 +103,10 @@ func loadDnsWithLongPathsObjects(obj interface{}, opts *ebpf.CollectionOptions) 
 type dnsWithLongPathsSpecs struct {
 	dnsWithLongPathsProgramSpecs
 	dnsWithLongPathsMapSpecs
+	dnsWithLongPathsVariableSpecs
 }
 
-// dnsWithLongPathsSpecs contains programs before they are loaded into the kernel.
+// dnsWithLongPathsProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsWithLongPathsProgramSpecs struct {
@@ -122,12 +123,21 @@ type dnsWithLongPathsMapSpecs struct {
 	TmpEvents     *ebpf.MapSpec `ebpf:"tmp_events"`
 }
 
+// dnsWithLongPathsVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type dnsWithLongPathsVariableSpecs struct {
+	Ports    *ebpf.VariableSpec `ebpf:"ports"`
+	PortsLen *ebpf.VariableSpec `ebpf:"ports_len"`
+}
+
 // dnsWithLongPathsObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadDnsWithLongPathsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsWithLongPathsObjects struct {
 	dnsWithLongPathsPrograms
 	dnsWithLongPathsMaps
+	dnsWithLongPathsVariables
 }
 
 func (o *dnsWithLongPathsObjects) Close() error {
@@ -154,6 +164,14 @@ func (m *dnsWithLongPathsMaps) Close() error {
 		m.QueryMap,
 		m.TmpEvents,
 	)
+}
+
+// dnsWithLongPathsVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadDnsWithLongPathsObjects or ebpf.CollectionSpec.LoadAndAssign.
+type dnsWithLongPathsVariables struct {
+	Ports    *ebpf.Variable `ebpf:"ports"`
+	PortsLen *ebpf.Variable `ebpf:"ports_len"`
 }
 
 // dnsWithLongPathsPrograms contains all programs after they have been loaded into the kernel.

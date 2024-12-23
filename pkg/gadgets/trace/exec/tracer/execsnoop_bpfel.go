@@ -69,9 +69,10 @@ func loadExecsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type execsnoopSpecs struct {
 	execsnoopProgramSpecs
 	execsnoopMapSpecs
+	execsnoopVariableSpecs
 }
 
-// execsnoopSpecs contains programs before they are loaded into the kernel.
+// execsnoopProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopProgramSpecs struct {
@@ -89,12 +90,22 @@ type execsnoopMapSpecs struct {
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
+// execsnoopVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type execsnoopVariableSpecs struct {
+	GadgetFilterByMntns *ebpf.VariableSpec `ebpf:"gadget_filter_by_mntns"`
+	IgnoreFailed        *ebpf.VariableSpec `ebpf:"ignore_failed"`
+	TargUid             *ebpf.VariableSpec `ebpf:"targ_uid"`
+}
+
 // execsnoopObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopObjects struct {
 	execsnoopPrograms
 	execsnoopMaps
+	execsnoopVariables
 }
 
 func (o *execsnoopObjects) Close() error {
@@ -119,6 +130,15 @@ func (m *execsnoopMaps) Close() error {
 		m.Execs,
 		m.GadgetMntnsFilterMap,
 	)
+}
+
+// execsnoopVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
+type execsnoopVariables struct {
+	GadgetFilterByMntns *ebpf.Variable `ebpf:"gadget_filter_by_mntns"`
+	IgnoreFailed        *ebpf.Variable `ebpf:"ignore_failed"`
+	TargUid             *ebpf.Variable `ebpf:"targ_uid"`
 }
 
 // execsnoopPrograms contains all programs after they have been loaded into the kernel.

@@ -73,9 +73,10 @@ func loadSocketenricherObjects(obj interface{}, opts *ebpf.CollectionOptions) er
 type socketenricherSpecs struct {
 	socketenricherProgramSpecs
 	socketenricherMapSpecs
+	socketenricherVariableSpecs
 }
 
-// socketenricherSpecs contains programs before they are loaded into the kernel.
+// socketenricherProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketenricherProgramSpecs struct {
@@ -101,12 +102,20 @@ type socketenricherMapSpecs struct {
 	Start             *ebpf.MapSpec `ebpf:"start"`
 }
 
+// socketenricherVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type socketenricherVariableSpecs struct {
+	DisableBpfIterators *ebpf.VariableSpec `ebpf:"disable_bpf_iterators"`
+}
+
 // socketenricherObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadSocketenricherObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketenricherObjects struct {
 	socketenricherPrograms
 	socketenricherMaps
+	socketenricherVariables
 }
 
 func (o *socketenricherObjects) Close() error {
@@ -133,6 +142,13 @@ func (m *socketenricherMaps) Close() error {
 		m.IgTmpSocketsValue,
 		m.Start,
 	)
+}
+
+// socketenricherVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadSocketenricherObjects or ebpf.CollectionSpec.LoadAndAssign.
+type socketenricherVariables struct {
+	DisableBpfIterators *ebpf.Variable `ebpf:"disable_bpf_iterators"`
 }
 
 // socketenricherPrograms contains all programs after they have been loaded into the kernel.
