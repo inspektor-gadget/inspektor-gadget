@@ -32,6 +32,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 // CloseLink closes l if it's not nil and returns nil
@@ -227,9 +228,8 @@ func LoadeBPFSpec(
 
 	consts[FilterByMntNsName] = filterByMntNs
 
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+	if err := ebpfutils.SpecSetVars(spec, consts); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{
