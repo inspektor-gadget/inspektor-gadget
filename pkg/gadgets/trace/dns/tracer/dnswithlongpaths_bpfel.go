@@ -127,8 +127,9 @@ type dnsWithLongPathsMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsWithLongPathsVariableSpecs struct {
-	Ports    *ebpf.VariableSpec `ebpf:"ports"`
-	PortsLen *ebpf.VariableSpec `ebpf:"ports_len"`
+	Ports       *ebpf.VariableSpec `ebpf:"ports"`
+	PortsLen    *ebpf.VariableSpec `ebpf:"ports_len"`
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
 }
 
 // dnsWithLongPathsObjects contains all objects after they have been loaded into the kernel.
@@ -170,8 +171,9 @@ func (m *dnsWithLongPathsMaps) Close() error {
 //
 // It can be passed to loadDnsWithLongPathsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsWithLongPathsVariables struct {
-	Ports    *ebpf.Variable `ebpf:"ports"`
-	PortsLen *ebpf.Variable `ebpf:"ports_len"`
+	Ports       *ebpf.Variable `ebpf:"ports"`
+	PortsLen    *ebpf.Variable `ebpf:"ports_len"`
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // dnsWithLongPathsPrograms contains all programs after they have been loaded into the kernel.
