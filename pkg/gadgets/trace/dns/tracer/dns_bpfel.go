@@ -125,8 +125,9 @@ type dnsMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsVariableSpecs struct {
-	Ports    *ebpf.VariableSpec `ebpf:"ports"`
-	PortsLen *ebpf.VariableSpec `ebpf:"ports_len"`
+	Ports       *ebpf.VariableSpec `ebpf:"ports"`
+	PortsLen    *ebpf.VariableSpec `ebpf:"ports_len"`
+	Unusedevent *ebpf.VariableSpec `ebpf:"unusedevent"`
 }
 
 // dnsObjects contains all objects after they have been loaded into the kernel.
@@ -168,8 +169,9 @@ func (m *dnsMaps) Close() error {
 //
 // It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsVariables struct {
-	Ports    *ebpf.Variable `ebpf:"ports"`
-	PortsLen *ebpf.Variable `ebpf:"ports_len"`
+	Ports       *ebpf.Variable `ebpf:"ports"`
+	PortsLen    *ebpf.Variable `ebpf:"ports_len"`
+	Unusedevent *ebpf.Variable `ebpf:"unusedevent"`
 }
 
 // dnsPrograms contains all programs after they have been loaded into the kernel.
