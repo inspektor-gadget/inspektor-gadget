@@ -341,12 +341,12 @@ func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 	return nil
 }
 
-func (m *KubeIPResolverInstance) PostStop(gadgetCtx operators.GadgetContext) error {
-	m.k8sInventory.Stop()
+func (m *KubeIPResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-func (m *KubeIPResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
+func (m *KubeIPResolverInstance) Close(gadgetCtx operators.GadgetContext) error {
+	m.k8sInventory.Stop()
 	return nil
 }
 
