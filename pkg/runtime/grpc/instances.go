@@ -118,7 +118,16 @@ func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeP
 	var err error
 	instanceID := runtimeParams.Get(ParamID).AsString()
 	instanceName := runtimeParams.Get(ParamName).AsString()
-
+	// checks if the instance name already exists
+	instances, err := r.GetGadgetInstances(gadgetCtx.Context(), runtimeParams)
+	if err != nil {
+		return fmt.Errorf("getting gadget instances: %w", err)
+	}
+	for _, instance := range instances {
+		if instance.Name == instanceName {
+			return fmt.Errorf("gadget instance with name %q already exists", instanceName)
+		}
+	}
 	if instanceID != "" && !api.IsValidInstanceID(instanceID) {
 		return fmt.Errorf("id must consist of 32 hexadecimal characters")
 	}
