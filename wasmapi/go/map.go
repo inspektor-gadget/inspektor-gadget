@@ -53,6 +53,10 @@ const (
 	UpdateLock
 )
 
+// nolint:all
+// Keep in sync with pkg/operators/wasm/maps.go
+var UseFdFlag = MapUpdateFlags(1 << 63)
+
 type MapType uint32
 
 // Taken from:
