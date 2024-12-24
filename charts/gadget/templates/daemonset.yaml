@@ -43,7 +43,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: {{ .Values.image.repository }}:{{ include "gadget.image.tag" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: [ "/entrypoint" ]
+          command: [ "/bin/gadgettracermanager", "-serve", "-controller" ]
           lifecycle:
             preStop:
               exec:
