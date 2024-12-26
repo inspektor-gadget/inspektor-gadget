@@ -41,11 +41,11 @@ import (
 )
 
 type K8sClient struct {
-	clientset         *kubernetes.Clientset
-	nodeName          string
-	fieldSelector     string
-	runtimeClient     runtimeclient.ContainerRuntimeClient
-	RuntimeSocketPath string
+	clientset     *kubernetes.Clientset
+	nodeName      string
+	fieldSelector string
+	runtimeClient runtimeclient.ContainerRuntimeClient
+	RuntimeConfig *containerutilsTypes.RuntimeConfig
 }
 
 func NewK8sClient(nodeName string) (*K8sClient, error) {
@@ -84,22 +84,22 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 			log.Warnf("Failed to retrieve socket path for runtime client from config: %v. Falling back to default container runtime", err)
 		}
 	}
-	runtimeClient, err := containerutils.NewContainerRuntimeClient(
-		&containerutilsTypes.RuntimeConfig{
-			Name:            types.String2RuntimeName(list[0]),
-			SocketPath:      socketPath,
-			RuntimeProtocol: containerutilsTypes.RuntimeProtocolCRI,
-		})
+	runtimeConfig := &containerutilsTypes.RuntimeConfig{
+		Name:            types.String2RuntimeName(list[0]),
+		SocketPath:      socketPath,
+		RuntimeProtocol: containerutilsTypes.RuntimeProtocolCRI,
+	}
+	runtimeClient, err := containerutils.NewContainerRuntimeClient(runtimeConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	return &K8sClient{
-		clientset:         clientset,
-		nodeName:          nodeName,
-		fieldSelector:     fieldSelector,
-		runtimeClient:     runtimeClient,
-		RuntimeSocketPath: socketPath,
+		clientset:     clientset,
+		nodeName:      nodeName,
+		fieldSelector: fieldSelector,
+		runtimeClient: runtimeClient,
+		RuntimeConfig: runtimeConfig,
 	}, nil
 }
 
