@@ -32,6 +32,7 @@ struct event {
 #ifdef WITH_LONG_PATHS
 	__u8 cwd[MAX_STRING_SIZE];
 	__u8 exepath[MAX_STRING_SIZE];
+	__u8 file[MAX_STRING_SIZE];
 #endif
 	__u8 args[FULL_MAX_ARGS_ARR];
 };
