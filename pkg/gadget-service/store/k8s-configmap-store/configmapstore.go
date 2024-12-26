@@ -234,6 +234,17 @@ func (s *Store) handleErr(err error, key string) {
 func (s *Store) CreateGadgetInstance(ctx context.Context, req *api.CreateGadgetInstanceRequest) (*api.CreateGadgetInstanceResponse, error) {
 	log.Debugf("create gadget instance: %+v", req.GadgetInstance.GadgetConfig)
 
+	// Check whether the gadget instance with the same name already exists
+	instances, err := s.ListGadgetInstances(ctx, &api.ListGadgetInstancesRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("listing gadget instances: %w", err)
+	}
+
+	for _, instance := range instances.GadgetInstances {
+		if instance.Name == req.GadgetInstance.Name {
+			return nil, fmt.Errorf("gadget instance with name '%s' already exists", req.GadgetInstance.Name)
+		}
+	}
 	tmpTrue := true
 	cmap := &corev1.ConfigMap{
 		TypeMeta: v1.TypeMeta{
@@ -260,7 +271,7 @@ func (s *Store) CreateGadgetInstance(ctx context.Context, req *api.CreateGadgetI
 		BinaryData: nil,
 	}
 
-	_, err := s.clientset.CoreV1().ConfigMaps(gadgetNamespace).Create(ctx, cmap, v1.CreateOptions{})
+	_, err = s.clientset.CoreV1().ConfigMaps(gadgetNamespace).Create(ctx, cmap, v1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
