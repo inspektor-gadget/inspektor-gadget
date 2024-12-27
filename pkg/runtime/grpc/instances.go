@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/moby/moby/pkg/namesgenerator"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -84,7 +83,7 @@ func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtim
 		targets = targets[:1]
 	}
 
-	var merr error
+	var errs []error
 	var merrMutex sync.Mutex
 
 	wg := sync.WaitGroup{}
@@ -95,7 +94,7 @@ func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtim
 			conn, err := r.getConnFromTarget(ctx, runtimeParams, target)
 			if err != nil {
 				merrMutex.Lock()
-				merr = multierror.Append(merr, fmt.Errorf("connecting to target %q: %w", target.node, err))
+				errs = append(errs, fmt.Errorf("connecting to target %q: %w", target.node, err))
 				merrMutex.Unlock()
 				return
 			}
@@ -103,13 +102,13 @@ func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtim
 			err = fn(target, client)
 			if err != nil {
 				merrMutex.Lock()
-				merr = multierror.Append(merr, fmt.Errorf("executing on target %q: %w", target.node, err))
+				errs = append(errs, fmt.Errorf("executing on target %q: %w", target.node, err))
 				merrMutex.Unlock()
 			}
 		}(t)
 	}
 	wg.Wait()
-	return merr
+	return errors.Join(errs...)
 }
 
 func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues map[string]string) error {

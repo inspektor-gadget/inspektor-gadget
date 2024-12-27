@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
@@ -329,20 +328,16 @@ func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error
 }
 
 func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
-	var result error
+	var errs []error
 
 	if i.rt != nil {
-		if err := i.rt.Close(gadgetCtx.Context()); err != nil {
-			result = multierror.Append(result, err)
-		}
+		errs = append(errs, i.rt.Close(gadgetCtx.Context()))
 	}
 	if i.mod != nil {
-		if err := i.mod.Close(gadgetCtx.Context()); err != nil {
-			result = multierror.Append(result, err)
-		}
+		errs = append(errs, i.mod.Close(gadgetCtx.Context()))
 	}
 
-	return result
+	return errors.Join(errs...)
 }
 
 func init() {

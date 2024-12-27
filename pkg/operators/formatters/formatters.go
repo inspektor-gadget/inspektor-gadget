@@ -15,12 +15,12 @@
 package formatters
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -309,20 +309,16 @@ var replacers = []replacer{
 				default:
 					return nil
 				case 8:
-					var result error
+					var errs []error
 
 					// TODO: WallTimeFromBootTime() converts too much for this, create a new func that does less
 					correctedTime := gadgets.WallTimeFromBootTime(ds.ByteOrder().Uint64(inBytes))
 					ds.ByteOrder().PutUint64(inBytes, uint64(correctedTime))
 					t := time.Unix(0, int64(correctedTime))
-					if err := out.Set(data, []byte(t.Format(timestampFormat))); err != nil {
-						multierror.Append(result, err)
-					}
-					if err := in.PutUint64(data, uint64(correctedTime)); err != nil {
-						multierror.Append(result, err)
-					}
+					errs = append(errs, out.Set(data, []byte(t.Format(timestampFormat))))
+					errs = append(errs, in.PutUint64(data, uint64(correctedTime)))
 
-					return result
+					return errors.Join(errs...)
 				}
 			}, nil
 		},
