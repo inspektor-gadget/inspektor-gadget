@@ -97,10 +97,13 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if disableBPFIterators {
-		//nolint:staticcheck
-		spec.RewriteConstants(map[string]interface{}{
-			"disable_bpf_iterators": true,
-		})
+		socketSpec := &socketenricherSpecs{}
+		if err := spec.Assign(socketSpec); err != nil {
+			return err
+		}
+		if err := socketSpec.DisableBpfIterators.Set(true); err != nil {
+			return err
+		}
 	} else {
 		opts.MapReplacements = map[string]*ebpf.Map{
 			SocketsMapName: se.objsIter.GadgetSockets,

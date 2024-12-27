@@ -257,12 +257,13 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return fmt.Errorf("reading private data from fanotify fd: %w", err)
 	}
 
-	consts := map[string]interface{}{
-		"tracer_group": fanotifyPrivateData,
+	execSpec := &execruntimeSpecs{}
+	if err := spec.Assign(execSpec); err != nil {
+		return err
 	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+
+	if err := execSpec.TracerGroup.Set(fanotifyPrivateData); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{
