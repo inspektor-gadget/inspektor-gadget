@@ -5,8 +5,8 @@
 #include <bpf/bpf_core_read.h>
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 #define MAX_ENTRIES 10240
@@ -78,10 +78,6 @@ struct event {
 	enum op op_raw;
 };
 
-const volatile pid_t target_pid = 0;
-
-GADGET_PARAM(target_pid);
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
@@ -102,14 +98,10 @@ static __always_inline int probe_entry(const char *src, const char *dest,
 				       const char *data, enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	struct arg arg = {};
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
-		return 0;
-
-	if (target_pid && target_pid != pid)
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	arg.ts = bpf_ktime_get_ns();

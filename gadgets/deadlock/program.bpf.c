@@ -7,9 +7,9 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
-#include <gadget/mntns_filter.h>
 
 #define MAX_HELD_MUTEXES 16
 #define MAX_ENTRIES 65536
@@ -75,9 +75,6 @@ struct {
 	__type(value, struct edges_value);
 } edges SEC(".maps");
 
-const volatile pid_t targ_pid = 0;
-GADGET_PARAM(targ_pid);
-
 GADGET_MAPITER(mutex, edges);
 GADGET_TRACER(process_exit, dead_pids, dead_pid);
 
@@ -87,10 +84,10 @@ GADGET_TRACER(process_exit, dead_pids, dead_pid);
  */
 static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 {
-	u64 mtns_id = gadget_get_mntns_id();
-	if (gadget_should_discard_mntns_id(mtns_id))
+	if (gadget_should_discard_data_current())
 		return 0;
 
+	u64 mtns_id = gadget_get_current_mntns_id();
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
@@ -172,7 +169,7 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
  */
 static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 {
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	u64 pid_tgid = bpf_get_current_pid_tgid();
@@ -223,7 +220,7 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
  */
 static __always_inline int trace_process_exit(void *ctx)
 {
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	u64 pid_tgid = bpf_get_current_pid_tgid();

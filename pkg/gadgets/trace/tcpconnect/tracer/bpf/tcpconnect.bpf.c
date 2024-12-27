@@ -111,7 +111,7 @@ static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 	if (filter_uid != (uid_t)-1 && uid != filter_uid)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
+	mntns_id = gadget_get_current_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -242,7 +242,7 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 		else
 			count_v6(sk, dport);
 	} else {
-		mntns_id = gadget_get_mntns_id();
+		mntns_id = gadget_get_current_mntns_id();
 
 		if (ip_ver == 4)
 			trace_v4(ctx, pid, sk, dport, mntns_id);

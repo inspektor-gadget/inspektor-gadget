@@ -13,9 +13,9 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/kernel_stack_map.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 // include/linux/security.h
@@ -173,11 +173,10 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	__u64 pid_tgid;
 	struct task_struct *task;
 
-	task = (struct task_struct *)bpf_get_current_task();
-	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
-	if (gadget_should_discard_mntns_id(mntns_id))
+	if (gadget_should_discard_data_current())
 		return 0;
+
+	task = (struct task_struct *)bpf_get_current_task();
 
 	const struct cred *real_cred = BPF_CORE_READ(task, real_cred);
 	if (cred != real_cred) {
@@ -296,7 +295,7 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct syscall_context sc_ctx = {};
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	u64 nr = ctx->args[1];

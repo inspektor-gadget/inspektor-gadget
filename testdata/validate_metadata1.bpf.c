@@ -55,7 +55,7 @@ int enter_openat(struct syscall_trace_enter *ctx)
 {
 	struct event event = {};
 
-	event.mntns_id = gadget_get_mntns_id();
+	event.mntns_id = gadget_get_current_mntns_id();
 	if (gadget_should_discard_mntns_id(event.mntns_id))
 		return 0;
 

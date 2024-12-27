@@ -11,9 +11,9 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 /* The maximum number of items in maps */
@@ -52,8 +52,6 @@ struct event {
 
 const volatile int filter_ports[MAX_PORTS];
 const volatile int filter_ports_len = 0;
-const volatile uid_t filter_uid = -1;
-const volatile pid_t filter_pid = 0;
 const volatile bool do_count = 0;
 const volatile bool calculate_latency = false;
 const volatile __u64 targ_min_latency_ns = 0;
@@ -144,13 +142,7 @@ static __always_inline int enter_inet_stream_connect(struct pt_regs *ctx,
 	__u32 uid = (u32)uid_gid;
 	struct piddata piddata;
 
-	if (filter_pid && pid != filter_pid)
-		return 0;
-
-	if (filter_uid != (uid_t)-1 && uid != filter_uid)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	if (calculate_latency) {

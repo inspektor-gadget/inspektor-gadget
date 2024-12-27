@@ -7,8 +7,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 
 /* Since LSM hooks may change with different kernel versions, here we only list the common ones.
  * TODO: Implement best-effort mechanism and add the remaining ones,
@@ -187,24 +187,24 @@ GADGET_PARAM(trace_all);
 
 FOR_EACH_LSM_HOOK(DECLARE_LSM_PARAMETER)
 
-#define TRACE_LSM(name)                                                    \
-	SEC("lsm/" #name)                                                  \
-	int trace_lsm_##name()                                             \
-	{                                                                  \
-		struct event event;                                        \
-                                                                           \
-		if (!trace_##name && !trace_all)                           \
-			return 0;                                          \
-                                                                           \
-		if (gadget_should_discard_mntns_id(gadget_get_mntns_id())) \
-			return 0;                                          \
-                                                                           \
-		gadget_process_populate(&event.proc);                      \
-		event.timestamp_raw = bpf_ktime_get_boot_ns();             \
-		event.tracepoint_raw = name;                               \
-                                                                           \
-		bpf_ringbuf_output(&events, &event, sizeof(event), 0);     \
-		return 0;                                                  \
+#define TRACE_LSM(name)                                                \
+	SEC("lsm/" #name)                                              \
+	int trace_lsm_##name()                                         \
+	{                                                              \
+		struct event event;                                    \
+                                                                       \
+		if (!trace_##name && !trace_all)                       \
+			return 0;                                      \
+                                                                       \
+		if (gadget_should_discard_data_current())              \
+			return 0;                                      \
+                                                                       \
+		gadget_process_populate(&event.proc);                  \
+		event.timestamp_raw = bpf_ktime_get_boot_ns();         \
+		event.tracepoint_raw = name;                           \
+                                                                       \
+		bpf_ringbuf_output(&events, &event, sizeof(event), 0); \
+		return 0;                                              \
 	}
 
 FOR_EACH_LSM_HOOK(TRACE_LSM)

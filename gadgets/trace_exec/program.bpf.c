@@ -7,8 +7,8 @@
 #define GADGET_NO_BUF_RESERVE
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 #include <gadget/filesystem.h>
 
@@ -18,7 +18,6 @@
 #define ARGSIZE 256
 #define TOTAL_MAX_ARGS 20
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
-#define INVALID_UID ((uid_t) - 1)
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
@@ -41,11 +40,9 @@ struct event {
 };
 
 const volatile bool ignore_failed = true;
-const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool paths = false;
 
 GADGET_PARAM(ignore_failed);
-GADGET_PARAM(targ_uid);
 GADGET_PARAM(paths);
 
 static const struct event empty_event = {};
@@ -77,11 +74,6 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(exec, events, event);
 
-static __always_inline bool valid_uid(uid_t uid)
-{
-	return uid != INVALID_UID;
-}
-
 SEC("tracepoint/syscalls/sys_enter_execve")
 int ig_execve_e(struct syscall_trace_enter *ctx)
 {
@@ -93,13 +85,8 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	const char **args = (const char **)(ctx->args[1]);
 	const char *argp;
 	int i;
-	u64 uid_gid = bpf_get_current_uid_gid();
-	u32 uid = (u32)uid_gid;
 
-	if (valid_uid(targ_uid) && targ_uid != uid)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	id = bpf_get_current_pid_tgid();

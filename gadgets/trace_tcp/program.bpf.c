@@ -11,8 +11,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 /* The maximum number of items in maps */
@@ -34,12 +34,6 @@ struct event {
 
 	enum event_type type_raw;
 };
-
-const volatile uid_t filter_uid = -1;
-const volatile pid_t filter_pid = 0;
-
-GADGET_PARAM(filter_uid);
-GADGET_PARAM(filter_pid);
 
 /* Define here, because there are conflicts with include files */
 #define AF_INET 2
@@ -156,8 +150,7 @@ static __always_inline void fill_event(struct event *event,
 }
 
 /* returns true if the event should be skipped */
-static __always_inline bool filter_event(struct sock *sk, __u32 uid, __u32 pid,
-					 __u64 mntns_id)
+static __always_inline bool filter_event(struct sock *sk)
 {
 	u16 family;
 
@@ -165,31 +158,16 @@ static __always_inline bool filter_event(struct sock *sk, __u32 uid, __u32 pid,
 	if (family != AF_INET && family != AF_INET6)
 		return true;
 
-	if (gadget_should_discard_mntns_id(mntns_id))
-		return true;
-
-	if (filter_pid && pid != filter_pid)
-		return true;
-
-	if (filter_uid != (uid_t)-1 && uid != filter_uid)
-		return true;
-
-	return false;
+	return gadget_should_discard_data_current();
 }
 
 static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 					     struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-	__u64 uid_gid = bpf_get_current_uid_gid();
-	__u32 uid = uid_gid;
-	__u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (filter_event(sk, uid, pid, mntns_id))
+	if (filter_event(sk))
 		return 0;
 
 	bpf_map_update_elem(&sockets, &tid, &sk, 0);
@@ -253,18 +231,11 @@ int BPF_KRETPROBE(ig_tcp_v6_co_x, int ret)
 SEC("kprobe/tcp_close")
 int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 {
-	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
-	__u64 uid_gid = bpf_get_current_uid_gid();
-	__u32 uid = uid_gid;
 	struct tuple_key_t tuple = {};
 	struct event *event;
 	u16 family;
-	__u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (filter_event(sk, uid, pid, mntns_id))
+	if (filter_event(sk))
 		return 0;
 
 	/*
@@ -333,21 +304,14 @@ end:
 SEC("kretprobe/inet_csk_accept")
 int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 {
-	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
-	__u64 uid_gid = bpf_get_current_uid_gid();
-	__u32 uid = uid_gid;
 	__u16 family;
 	struct event *event;
 	struct tuple_key_t t = {};
-	u64 mntns_id;
 
 	if (!sk)
 		return 0;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (filter_event(sk, uid, pid, mntns_id))
+	if (filter_event(sk))
 		return 0;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);

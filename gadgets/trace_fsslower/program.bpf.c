@@ -9,8 +9,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 
 #define FILE_NAME_LEN 32
 
@@ -36,10 +36,7 @@ struct event {
 
 #define MAX_ENTRIES 8192
 
-const volatile pid_t target_pid = 0;
 const volatile __u64 min_lat_ms = 0;
-
-GADGET_PARAM(target_pid);
 GADGET_PARAM(min_lat_ms);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -74,7 +71,6 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 		       loff_t end)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	struct data data;
 	struct data_key key = { .tid = tid, .op = op };
@@ -82,10 +78,7 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 	if (!dentry)
 		return 0;
 
-	if (target_pid && target_pid != pid)
-		return 0;
-
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	data.ts = bpf_ktime_get_ns();
@@ -99,7 +92,6 @@ static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
 static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	__u64 end_ns, delta_ns;
 	const __u8 *file_name;
@@ -107,9 +99,6 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	struct event *event;
 	struct data_key key = { .tid = tid, .op = op };
 	struct dentry *dentry;
-
-	if (target_pid && target_pid != pid)
-		return 0;
 
 	datap = bpf_map_lookup_elem(&starts, &key);
 	if (!datap)

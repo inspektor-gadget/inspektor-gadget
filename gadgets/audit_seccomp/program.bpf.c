@@ -9,8 +9,8 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/filter.h>
 #include <gadget/macros.h>
-#include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
 enum code {
@@ -45,7 +45,7 @@ int ig_audit_secc(struct pt_regs *ctx)
 	int code = PT_REGS_PARM3(ctx);
 	struct event *event;
 
-	if (gadget_should_discard_mntns_id(gadget_get_mntns_id()))
+	if (gadget_should_discard_data_current())
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
