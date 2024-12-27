@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -58,7 +59,7 @@ var versionCmd = &cobra.Command{
 		// Get server version information
 		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
 		if err != nil {
-			return fmt.Errorf("getting running Inspektor Gadget instances: %w", err)
+			fmt.Fprintf(os.Stderr, "Error: getting running Inspektor Gadget instances: %s\n", err)
 		}
 
 		if len(gadgetNamespaces) == 1 {
@@ -66,13 +67,14 @@ var versionCmd = &cobra.Command{
 			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
 			info, err := grpcRuntime.InitDeployInfo()
 			if err != nil {
-				return fmt.Errorf("loading deploy info: %w", err)
-			}
-			versionInfo.ServerVersion = &Version{
-				Version: info.ServerVersion,
+				fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
+			} else {
+				versionInfo.ServerVersion = &Version{
+					Version: info.ServerVersion,
+				}
 			}
 		} else if len(gadgetNamespaces) > 1 {
-			return fmt.Errorf("multiple Inspektor Gadget instances found in namespaces: %v", gadgetNamespaces)
+			fmt.Fprintf(os.Stderr, "Error: multiple Inspektor Gadget instances found in namespaces: %s\n", gadgetNamespaces)
 		}
 
 		// Output based on format
