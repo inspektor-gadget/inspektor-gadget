@@ -68,11 +68,7 @@ func do() error {
 	}
 	defer runtime.Close()
 
-	params := map[string]string{
-		// Capture events coming from the host too
-		"operator.LocalManager.host": "true",
-	}
-	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
+	if err := runtime.RunGadget(gadgetCtx, nil, nil); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
 
