@@ -31,6 +31,7 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -120,6 +121,8 @@ type wasmOperatorInstance struct {
 
 	createdMap      map[uint32]struct{}
 	createdMapMutex sync.RWMutex
+
+	syscallsDeclarations map[string]syscallhelpers.SyscallDeclaration
 }
 
 func (i *wasmOperatorInstance) Name() string {
@@ -171,7 +174,24 @@ func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
 	}
 }
 
-// getHandleTyped returns the handle with the given ID, casted to the given type.
+func (i *wasmOperatorInstance) updateHandle(handleIndex uint32, obj any) error {
+	if obj == nil {
+		return errors.New("object is nil")
+	}
+
+	i.handleLock.Lock()
+	defer i.handleLock.Unlock()
+
+	if handleIndex > uint32(len(i.handleMap)) {
+		return fmt.Errorf("handle %d is out of handle map", handleIndex)
+	}
+
+	i.handleMap[handleIndex] = obj
+
+	return nil
+}
+
+// getHandle returns the handle with the given ID, casted to the given type.
 // It can't be implemented as a generic method because it's not supported by Go yet.
 func getHandle[T any](i *wasmOperatorInstance, handleID uint32) (T, bool) {
 	i.handleLock.RLock()
@@ -219,6 +239,10 @@ func (i *wasmOperatorInstance) init(
 	i.addParamsFuncs(env)
 	i.addConfigFuncs(env)
 	i.addMapFuncs(env)
+	i.addPerfFuncs(env)
+	i.addArrayFuncs(env)
+	i.addContainersFuncs(env)
+	i.addSyscallsDeclarationsFuncs(env)
 
 	if _, err := env.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
