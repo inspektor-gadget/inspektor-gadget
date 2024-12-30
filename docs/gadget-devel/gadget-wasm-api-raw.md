@@ -445,3 +445,26 @@ Parameters:
 
 Return value:
 - 0 in case of success, 1 otherwise.
+
+### Syscall declarations
+
+#### `getSyscallName(id uint32) uint64`
+
+Get the syscall name for this syscall ID.
+
+Parameters:
+- `id` (u32): Syscall ID
+
+Return value:
+- (u64) A string containing the name of the syscall, in case the syscall is unknown, it returns "syscall_ID" with ID displayed as hexadecimal like strace.
+
+#### `getSyscallDeclaration(name uint64, pointer uint64) uint32`
+
+Get the syscall declaration for this syscall name.
+
+Parameters:
+- `name` (u64): Syscall name.
+- `pointer` (u64): A pointer to a syscallDeclaration structure, it is used to store the data instead of returning them.
+
+Return value:
+- (u32) 0 in case of success, 1 otherwise.
