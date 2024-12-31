@@ -419,7 +419,7 @@ Parameters:
 - `m` (u32): Map handle (as returned by `getMap`)
 - `keyptr` (u64): A `bufPtr` to data corresponding to key.
 - `valueptr` (u64): A `bufPtr` to data corresponding to value.
-- `flags` (u64): A set of flags used to modify the update behavior. Correct values are documented [here](https://github.com/cilium/ebpf/blob/061e86d8f5e9/map.go#L790-L801).
+- `flags` (u64): A set of flags used to modify the update behavior. Correct values are documented [here](https://github.com/cilium/ebpf/blob/061e86d8f5e9/map.go#L790-L801). The additional value UseFdFlag can be used to store the FD of the map handle given as `valueptr`.
 
 Return value:
 - 0 in case of success, 1 otherwise.
