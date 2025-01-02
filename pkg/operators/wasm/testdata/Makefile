@@ -9,6 +9,7 @@ TEST_ARTIFACTS = \
 	params \
 	config \
 	map \
+	array \
 	#
 
 all: $(TEST_ARTIFACTS)
