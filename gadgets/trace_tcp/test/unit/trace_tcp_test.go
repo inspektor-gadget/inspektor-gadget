@@ -63,7 +63,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			async:         true, // We only get a close when the connect succeded or the socket is async. Here we know that the connect should error out
 			expectedErrno: syscall.ECONNREFUSED,
 			runnerConfig:  &utilstest.RunnerConfig{},
-			generateEvent: generateEvent,
+			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
@@ -95,7 +95,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			async:         false,
 			expectedErrno: syscall.ECONNREFUSED,
 			runnerConfig:  &utilstest.RunnerConfig{},
-			generateEvent: generateEvent,
+			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
@@ -127,7 +127,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			async:         true,
 			expectedErrno: syscall.ECONNREFUSED,
 			runnerConfig:  &utilstest.RunnerConfig{},
-			generateEvent: generateEvent,
+			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
@@ -153,6 +153,35 @@ func TestTraceTcpGadget(t *testing.T) {
 				return nil
 			},
 		},
+		"captures_accept": {
+			ipAddr:        "127.0.0.1",
+			port:          9071,
+			runnerConfig:  &utilstest.RunnerConfig{HostNetwork: true},
+			generateEvent: generateAcceptConnectEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error {
+				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					return &ExpectedTraceTcpEvent{
+						Proc:    info.Proc,
+						Type:    "accept",
+						NetNsId: int(info.NetworkNsID),
+						Src: utils.L4Endpoint{
+							Addr:    "127.0.0.1",
+							Version: 4,
+							Port:    9071,
+							Proto:   "TCP",
+						},
+						Dst: utils.L4Endpoint{
+							Addr:    "127.0.0.1",
+							Version: 4,
+							Port:    utils.NormalizedInt,
+							Proto:   "TCP",
+						},
+						Fd: fd,
+					}
+				})(t, info, fd, events)
+				return nil
+			},
+		},
 	}
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -161,7 +190,11 @@ func TestTraceTcpGadget(t *testing.T) {
 			normalizeEvent := func(event *ExpectedTraceTcpEvent) {
 				// Src port varies, so we normalize it
 				// TODO: Add a generateEvent function that allows us to test specific src port too.
-				utils.NormalizeInt(&event.Src.Port)
+				if event.Type == "accept" {
+					utils.NormalizeInt(&event.Dst.Port)
+				} else {
+					utils.NormalizeInt(&event.Src.Port)
+				}
 			}
 			var fd int
 
@@ -189,7 +222,7 @@ func TestTraceTcpGadget(t *testing.T) {
 	}
 }
 
-func generateEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int) {
+func generateConnectEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int) {
 	// Split ipAddr into a 4 bytes array
 	ip := net.ParseIP(ipAddr)
 	if ip == nil {
@@ -215,7 +248,9 @@ func rawDial(ipv4 [4]byte, port int, async bool, fdPtr *int) error {
 		return fmt.Errorf("Failed to create socket: %w", err)
 	}
 	defer unix.Close(fd)
-	*fdPtr = fd
+	if fdPtr != nil {
+		*fdPtr = fd
+	}
 
 	addr := &unix.SockaddrInet4{
 		Port: port,
@@ -257,5 +292,55 @@ func rawDial(ipv4 [4]byte, port int, async bool, fdPtr *int) error {
 	if sockErr != 0 {
 		return syscall.Errno(sockErr)
 	}
+	return nil
+}
+
+func generateAcceptConnectEvent(t *testing.T, _ string, port int, _ bool, expectedErrno syscall.Errno, fdPtr *int) {
+	err := rawAcceptConnect(port, fdPtr)
+	if err != nil && !errors.Is(err, expectedErrno) {
+		t.Logf("Failed to accept: %v", err)
+		return
+	}
+}
+
+func rawAcceptConnect(port int, fdPtr *int) error {
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to create socket: %w", err)
+	}
+	defer unix.Close(fd)
+	if fdPtr != nil {
+		*fdPtr = fd
+	}
+
+	addr := &unix.SockaddrInet4{
+		Port: port,
+		Addr: [4]byte{127, 0, 0, 1},
+	}
+
+	// Set socket options to allow address reuse
+	err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+	if err != nil {
+		return fmt.Errorf("Failed to set socket options: %w", err)
+	}
+
+	err = unix.Bind(fd, addr)
+	if err != nil {
+		return fmt.Errorf("Failed to bind: %w", err)
+	}
+
+	err = unix.Listen(fd, 10)
+	if err != nil {
+		return fmt.Errorf("Failed to listen: %w", err)
+	}
+
+	go rawDial([4]byte{127, 0, 0, 1}, port, false, nil)
+	time.Sleep(200 * time.Millisecond)
+
+	_, _, err = unix.Accept(fd)
+	if err != nil {
+		return fmt.Errorf("Failed to accept: %w", err)
+	}
+
 	return nil
 }
