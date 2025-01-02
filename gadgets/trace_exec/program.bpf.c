@@ -35,6 +35,8 @@ struct event {
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
 	char file[MAX_STRING_SIZE];
+	dev_t dev_no;
+	unsigned long inode_no;
 	char exepath[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
 };
@@ -249,6 +251,8 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
 	char *file;
+	dev_t dev_no;
+	unsigned long inode_no;
 	struct path f_path;
 
 	event = bpf_map_lookup_elem(&execs, &pid);
@@ -262,8 +266,12 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 
 	f_path = BPF_CORE_READ(bprm, file, f_path);
 	file = get_path_str(&f_path);
+	struct inode *inode = BPF_CORE_READ(f_path.dentry, d_inode);
+	dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
+	inode_no = BPF_CORE_READ(inode, i_ino);
 	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
-
+	event->dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
+	event->inode_no = BPF_CORE_READ(inode, i_ino);
 	return 0;
 }
 
