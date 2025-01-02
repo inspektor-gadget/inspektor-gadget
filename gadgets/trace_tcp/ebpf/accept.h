@@ -9,12 +9,29 @@
 
 #include "common.h"
 
+static __always_inline int handle_sys_accept_e(struct syscall_trace_enter *ctx)
+{
+	__u32 fd = (__u32)ctx->args[0];
+	__u32 tid = bpf_get_current_pid_tgid();
+	bpf_map_update_elem(&tcp_tid_fd, &tid, &fd, 0);
+	return 0;
+}
+
+static __always_inline int handle_sys_accept_x(struct syscall_trace_exit *ctx)
+{
+	__u32 tid = bpf_get_current_pid_tgid();
+	bpf_map_delete_elem(&tcp_tid_fd, &tid);
+	return 0;
+}
+
 static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 					      struct sock *sk)
 {
 	__u16 family;
 	struct event *event;
 	struct tuple_key_t t = {};
+	__u32 tid;
+	__u32 *fd;
 
 	if (!sk)
 		return;
@@ -30,12 +47,17 @@ static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 	    t.src.port == 0)
 		return;
 
+	tid = bpf_get_current_pid_tgid();
+	fd = bpf_map_lookup_elem(&tcp_tid_fd, &tid);
+	if (!fd)
+		return;
+
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		return;
 
 	fill_event(event, &t, NULL, 0, accept);
-	event->fd = 0;
+	event->fd = *fd;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }

@@ -130,11 +130,11 @@ func TestTraceTCP(t *testing.T) {
 					},
 					Type:  "accept",
 					Error: "",
-					Fd:    0, // The fd is always 0 for the accept event
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),

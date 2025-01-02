@@ -78,4 +78,28 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	return 0;
 }
 
+SEC("tracepoint/syscalls/sys_enter_accept")
+int sys_accept_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_accept_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_enter_accept4")
+int sys_accept4_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_accept_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_accept")
+int sys_accept_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_accept_x(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_accept4")
+int sys_accept4_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_accept_x(ctx);
+}
+
 char LICENSE[] SEC("license") = "GPL";
