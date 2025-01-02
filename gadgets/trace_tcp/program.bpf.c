@@ -42,6 +42,12 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	return 0;
 }
 
+SEC("tracepoint/syscalls/sys_enter_connect")
+int sys_connect_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_connect_e(ctx);
+}
+
 // kprobe for TCP close events
 
 SEC("kprobe/tcp_close")
@@ -49,6 +55,18 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 {
 	handle_tcp_close(ctx, sk);
 	return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_close")
+int sys_close_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_close_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_close")
+int sys_close_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_close_x(ctx);
 }
 
 // kprobe for TCP accept events

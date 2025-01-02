@@ -21,6 +21,10 @@ datasources:
       error_raw:
         annotations:
           columns.hidden: true
+      fd:
+        annotations:
+          description: The FD where the operation happened on
+          columns.hidden: true
 params:
   ebpf:
     connect_only:

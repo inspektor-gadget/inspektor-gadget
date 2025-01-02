@@ -35,6 +35,7 @@ static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 		return;
 
 	fill_event(event, &t, NULL, 0, accept);
+	event->fd = 0;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 }

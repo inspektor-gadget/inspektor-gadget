@@ -10,6 +10,11 @@
 #include "common.h"
 #include <linux/errno.h>
 
+struct extended_info {
+	struct gadget_process proc;
+	__u32 fd;
+};
+
 /*
  * tcp_set_state doesn't run in the context of the process that initiated the
  * connection so we need to store a map TUPLE -> PID to send the right PID on
@@ -20,7 +25,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
 	__type(key, struct tuple_key_t);
-	__type(value, struct gadget_process);
+	__type(value, struct extended_info);
 } tuplepid SEC(".maps");
 
 /*
@@ -30,9 +35,17 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
-	__type(key, u32); // tid
+	__type(key, __u32); // tid
 	__type(value, struct sock *);
 } tcp_connect_sockets SEC(".maps");
+
+static __always_inline int handle_sys_connect_e(struct syscall_trace_enter *ctx)
+{
+	__u32 fd = (__u32)ctx->args[0];
+	__u32 tid = bpf_get_current_pid_tgid();
+	bpf_map_update_elem(&tcp_tid_fd, &tid, &fd, 0);
+	return 0;
+}
 
 static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 					     struct sock *sk)
@@ -53,27 +66,35 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 tid = pid_tgid;
 	struct tuple_key_t tuple = {};
-	struct gadget_process proc = {};
+	struct extended_info ei = {};
 	struct sock **skpp;
 	struct sock *sk;
+	__u32 *fd;
 
 	skpp = bpf_map_lookup_elem(&tcp_connect_sockets, &tid);
 	if (!skpp)
-		return 0;
+		goto end1;
+
+	fd = bpf_map_lookup_elem(&tcp_tid_fd, &tid);
+	if (!fd)
+		goto end1;
+	ei.fd = *fd;
 
 	if (ret)
-		goto end;
+		goto end2;
 
 	sk = *skpp;
 
 	if (!fill_tuple(&tuple, sk, family))
-		goto end;
+		goto end2;
 
-	gadget_process_populate(&proc);
-	bpf_map_update_elem(&tuplepid, &tuple, &proc, 0);
+	gadget_process_populate(&ei.proc);
+	bpf_map_update_elem(&tuplepid, &tuple, &ei, 0);
 
-end:
+end2:
 	bpf_map_delete_elem(&tcp_connect_sockets, &tid);
+end1:
+	bpf_map_delete_elem(&tcp_tid_fd, &tid);
 	return 0;
 }
 
@@ -82,7 +103,7 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 {
 	struct tuple_key_t tuple = {};
 	struct event *event;
-	struct gadget_process *p;
+	struct extended_info *ei;
 	__u16 family;
 	int err;
 
@@ -98,8 +119,8 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	if (!fill_tuple(&tuple, sk, family))
 		return;
 
-	p = bpf_map_lookup_elem(&tuplepid, &tuple);
-	if (!p)
+	ei = bpf_map_lookup_elem(&tuplepid, &tuple);
+	if (!ei)
 		return; /* missed entry */
 
 	event = gadget_reserve_buf(&events, sizeof(*event));
@@ -108,7 +129,14 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 
 	err = BPF_CORE_READ(sk, sk_err);
 
-	fill_event(event, &tuple, p, err, connect);
+	fill_event(event, &tuple, &ei->proc, err, connect);
+	event->fd = ei->fd;
+
+	// tcp_close could be called after this function indirectly and not through
+	// sys_close. Save the sock->fd mapping here
+	if (state == TCP_CLOSE) {
+		bpf_map_update_elem(&tcp_sock_fd, &sk, &ei->fd, 0);
+	}
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 end:
