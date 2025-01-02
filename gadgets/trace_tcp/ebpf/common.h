@@ -36,6 +36,7 @@ struct event {
 
 	enum event_type type_raw;
 	gadget_errno error_raw;
+	__u32 fd;
 };
 
 struct tuple_key_t {
@@ -43,6 +44,17 @@ struct tuple_key_t {
 	struct gadget_l4endpoint_t dst;
 	u32 netns;
 };
+
+/*
+ * There is no function which has the fd and its corresponding socket at the
+ * same time as a parameter.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, __u32); // tid
+	__type(value, __u32); // fd
+} tcp_tid_fd SEC(".maps");
 
 __u8 ip_v6_zero[16] = {
 	0,

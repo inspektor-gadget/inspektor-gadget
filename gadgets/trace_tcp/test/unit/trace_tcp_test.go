@@ -41,6 +41,7 @@ type ExpectedTraceTcpEvent struct {
 	Src     utils.L4Endpoint `json:"src"`
 	Dst     utils.L4Endpoint `json:"dst"`
 	Error   string           `json:"error"`
+	Fd      int              `json:"fd"`
 }
 
 type testDef struct {
@@ -49,7 +50,7 @@ type testDef struct {
 	async         bool
 	expectedErrno syscall.Errno // This is the expected errno from rawDial and not from any events captured by the gadget
 	runnerConfig  *utilstest.RunnerConfig
-	generateEvent func(t *testing.T, addr string, port int, async bool, expectedErrno syscall.Errno)
+	generateEvent func(t *testing.T, addr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int)
 	validateEvent func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceTcpEvent) error
 }
 
@@ -82,6 +83,7 @@ func TestTraceTcpGadget(t *testing.T) {
 							Proto:   "TCP",
 						},
 						Error: "",
+						Fd:    fd,
 					}
 				})(t, info, fd, events)
 				return nil
@@ -113,6 +115,7 @@ func TestTraceTcpGadget(t *testing.T) {
 							Proto:   "TCP",
 						},
 						Error: "ECONNREFUSED",
+						Fd:    fd,
 					}
 				})(t, info, fd, events)
 				return nil
@@ -144,6 +147,7 @@ func TestTraceTcpGadget(t *testing.T) {
 							Proto:   "TCP",
 						},
 						Error: "ECONNREFUSED",
+						Fd:    fd,
 					}
 				})(t, info, fd, events)
 				return nil
@@ -159,10 +163,11 @@ func TestTraceTcpGadget(t *testing.T) {
 				// TODO: Add a generateEvent function that allows us to test specific src port too.
 				utils.NormalizeInt(&event.Src.Port)
 			}
+			var fd int
 
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utilstest.RunWithRunner(t, runner, func() error {
-					testCase.generateEvent(t, testCase.ipAddr, testCase.port, testCase.async, testCase.expectedErrno)
+					testCase.generateEvent(t, testCase.ipAddr, testCase.port, testCase.async, testCase.expectedErrno, &fd)
 					return nil
 				})
 				return nil
@@ -179,12 +184,12 @@ func TestTraceTcpGadget(t *testing.T) {
 
 			gadgetRunner.RunGadget()
 
-			testCase.validateEvent(t, runner.Info, 0, gadgetRunner.CapturedEvents)
+			testCase.validateEvent(t, runner.Info, fd, gadgetRunner.CapturedEvents)
 		})
 	}
 }
 
-func generateEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno) {
+func generateEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int) {
 	// Split ipAddr into a 4 bytes array
 	ip := net.ParseIP(ipAddr)
 	if ip == nil {
@@ -197,19 +202,20 @@ func generateEvent(t *testing.T, ipAddr string, port int, async bool, expectedEr
 		return
 	}
 
-	err := rawDial([4]byte(ipv4), port, async)
+	err := rawDial([4]byte(ipv4), port, async, fdPtr)
 	if err != nil && !errors.Is(err, expectedErrno) {
 		t.Logf("Failed to dial: %v", err)
 		return
 	}
 }
 
-func rawDial(ipv4 [4]byte, port int, async bool) error {
+func rawDial(ipv4 [4]byte, port int, async bool, fdPtr *int) error {
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
 	if err != nil {
 		return fmt.Errorf("Failed to create socket: %w", err)
 	}
 	defer unix.Close(fd)
+	*fdPtr = fd
 
 	addr := &unix.SockaddrInet4{
 		Port: port,
