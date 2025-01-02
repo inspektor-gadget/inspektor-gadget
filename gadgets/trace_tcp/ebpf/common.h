@@ -36,6 +36,8 @@ struct event {
 
 	enum event_type type_raw;
 	gadget_errno error_raw;
+	int fd;
+	int accept_fd;
 };
 
 struct tuple_key_t {
@@ -43,6 +45,57 @@ struct tuple_key_t {
 	struct gadget_l4endpoint_t dst;
 	u32 netns;
 };
+
+/*
+ * Hash tid->fd between enter/exit connect/accept syscalls
+ *
+ * Entries are inserted in:
+ * - tracepoint/syscalls/sys_enter_connect
+ * - tracepoint/syscalls/sys_enter_accept
+ * - tracepoint/syscalls/sys_enter_accept4
+ *
+ * Entries are deleted in sys_exit tracepoints, so there are no kretprobe
+ * maxactive issues and the entries remain short-lived:
+ * - tracepoint/syscalls/sys_exit_connect
+ * - tracepoint/syscalls/sys_exit_accept
+ * - tracepoint/syscalls/sys_exit_accept4
+ *
+ * Entries can be queried in underlying functions:
+ * - kretprobe/tcp_v4_connect
+ * - kretprobe/tcp_v6_connect
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, __u32); // tid
+	__type(value, int); // fd
+} tcp_tid_fd SEC(".maps");
+
+/*
+ * Hash tid->sock within connect/accept syscalls
+ *
+ * Entries are inserted in:
+ * - kprobe/tcp_v4_connect
+ * - kprobe/tcp_v6_connect
+ * - kretprobe/inet_csk_accept
+ *
+ * Entries are deleted in sys_exit tracepoints, so there are no kretprobe
+ * maxactive issues and the entries remain short-lived:
+ * - tracepoint/syscalls/sys_exit_connect
+ * - tracepoint/syscalls/sys_exit_accept
+ * - tracepoint/syscalls/sys_exit_accept4
+ *
+ * Entries can be queried in underlying functions:
+ * - kretprobe/tcp_v4_connect
+ * - kretprobe/tcp_v6_connect
+ * - kretprobe/inet_csk_accept
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, __u32); // tid
+	__type(value, struct sock *);
+} tcp_tid_sock SEC(".maps");
 
 __u8 ip_v6_zero[16] = {
 	0,
@@ -148,10 +201,19 @@ static __always_inline void fill_event(struct event *event,
 	event->dst = tuple->dst;
 	event->netns_id = tuple->netns;
 	event->error_raw = err;
+	event->fd = -1;
+	event->accept_fd = -1;
 	if (proc)
 		event->proc = *proc;
 	else
 		gadget_process_populate(&event->proc);
+}
+
+static __always_inline int update_tcp_tid_fd_map(__u32 fd)
+{
+	__u32 tid = bpf_get_current_pid_tgid();
+	bpf_map_update_elem(&tcp_tid_fd, &tid, &fd, 0);
+	return 0;
 }
 
 #endif // __IG_TCP_COMMON_H

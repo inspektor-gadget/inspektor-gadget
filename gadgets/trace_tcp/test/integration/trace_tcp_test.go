@@ -35,10 +35,12 @@ type traceTCPEvent struct {
 	Proc      utils.Process `json:"proc"`
 	NetNsID   uint64        `json:"netns_id"`
 
-	Src   utils.L4Endpoint `json:"src"`
-	Dst   utils.L4Endpoint `json:"dst"`
-	Type  string           `json:"type"`
-	Error string           `json:"error"`
+	Src      utils.L4Endpoint `json:"src"`
+	Dst      utils.L4Endpoint `json:"dst"`
+	Type     string           `json:"type"`
+	Error    string           `json:"error"`
+	Fd       int              `json:"fd"`
+	AcceptFd int              `json:"accept_fd"`
 }
 
 func TestTraceTCP(t *testing.T) {
@@ -104,12 +106,14 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Type:  "connect",
-					Error: "",
+					Type:     "connect",
+					Error:    "",
+					AcceptFd: -1,
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
@@ -132,6 +136,8 @@ func TestTraceTCP(t *testing.T) {
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
+					AcceptFd:  utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
@@ -148,8 +154,10 @@ func TestTraceTCP(t *testing.T) {
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
 					},
-					Type:  "close",
-					Error: "",
+					Type:     "close",
+					Error:    "",
+					Fd:       -1,
+					AcceptFd: -1,
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
@@ -167,6 +175,12 @@ func TestTraceTCP(t *testing.T) {
 				// https://github.com/curl/curl/issues/6288
 				utils.NormalizeInt(&e.Src.Port)
 				utils.NormalizeInt(&e.Dst.Port)
+				if e.Type == "accept" {
+					utils.NormalizeInt(&e.AcceptFd)
+				}
+				if e.Type != "close" {
+					utils.NormalizeInt(&e.Fd)
+				}
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)

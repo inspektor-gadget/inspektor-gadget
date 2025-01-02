@@ -17,9 +17,17 @@ datasources:
           columns.hidden: true
       type:
         annotations:
-          description: Type of TCP connection event
+          description: Type of TCP connection event (connect, accept, close)
       error_raw:
         annotations:
+          columns.hidden: true
+      fd:
+        annotations:
+          description: The FD where the operation happened on (connect, accept)
+          columns.hidden: true
+      accept_fd:
+        annotations:
+          description: The FD of the new connection returned by accept, or -1 for errors cases or other events
           columns.hidden: true
 params:
   ebpf:
