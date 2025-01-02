@@ -94,7 +94,7 @@ func (cache *userGroupCache) Start() error {
 		cache.groupCache.Clear()
 		passwdFile, err := os.OpenFile(fullPasswdPath, os.O_RDONLY, 0)
 		if err != nil {
-			return fmt.Errorf("UserGroupCache: open %q: %w", fullPasswdPath, err)
+			return fmt.Errorf("UserGroupCache: open /etc/passwd in host file system: %w", err)
 		}
 		defer passwdFile.Close()
 		updateEntries(passwdFile, cache.userCache)
