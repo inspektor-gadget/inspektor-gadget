@@ -45,6 +45,9 @@ type traceExecEvent struct {
 	File        string `json:"file"`
 	Cwd         string `json:"cwd"`
 	Args        string `json:"args"`
+	DevMajor    uint32 `json:"dev_major"`
+	DevMinor    uint32 `json:"dev_minor"`
+	Inode       uint64 `json:"inode"`
 }
 
 func TestTraceExec(t *testing.T) {
@@ -110,6 +113,9 @@ func TestTraceExec(t *testing.T) {
 						UpperLayer: false,
 						Exepath:    "/bin/sh",
 						File:       "/bin/sh",
+						DevMajor:   utils.NormalizedInt,
+						DevMinor:   utils.NormalizedInt,
+						Inode:      utils.NormalizedInt,
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -125,6 +131,9 @@ func TestTraceExec(t *testing.T) {
 						UpperLayer: true,
 						Exepath:    "/usr/bin/sh",
 						File:       "/usr/bin/sh",
+						DevMajor:   utils.NormalizedInt,
+						DevMinor:   utils.NormalizedInt,
+						Inode:      utils.NormalizedInt,
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -141,6 +150,9 @@ func TestTraceExec(t *testing.T) {
 						PupperLayer: true,
 						Exepath:     "/bin/sleep",
 						File:        "/bin/sleep",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -155,6 +167,10 @@ func TestTraceExec(t *testing.T) {
 					utils.NormalizeProc(&e.Proc)
 					utils.NormalizeInt(&e.Loginuid)
 					utils.NormalizeInt(&e.Sessionid)
+					// Don't use NormalizeInt() because 0 is a valid device major for overlayfs
+					e.DevMajor = utils.NormalizedInt
+					utils.NormalizeInt(&e.DevMinor)
+					utils.NormalizeInt(&e.Inode)
 
 					// We can't know the parent process of the first process inside
 					// the container as it depends on the container runtime

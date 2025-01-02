@@ -24,6 +24,24 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
+      dev_major:
+        annotations:
+          description: The major number of the device where the file is located. For scripts, this refers to the script, not the interpreter (requires --paths flag)
+          columns.width: 5
+          columns.hidden: "true"
+          columns.alignment: right
+      dev_minor:
+        annotations:
+          description: The minor number of the device where the file is located. For scripts, this refers to the script, not the interpreter (requires --paths flag)
+          columns.width: 5
+          columns.hidden: "true"
+          columns.alignment: right
+      inode:
+        annotations:
+          description: The inode number of the file. For scripts, this refers to the script, not the interpreter (require --paths flag)
+          columns.width: 5
+          columns.hidden: "true"
+          columns.alignment: right
       loginuid:
         annotations:
           template: uid

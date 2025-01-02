@@ -22,6 +22,13 @@
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
+// Macros from https://github.com/torvalds/linux/blob/v6.12/include/linux/kdev_t.h#L7-L12
+#define MINORBITS 20
+#define MINORMASK ((1U << MINORBITS) - 1)
+#define MAJOR(dev) ((unsigned int)((dev) >> MINORBITS))
+#define MINOR(dev) ((unsigned int)((dev) & MINORMASK))
+#define MKDEV(ma, mi) (((ma) << MINORBITS) | (mi))
+
 struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
@@ -35,6 +42,9 @@ struct event {
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
 	char file[MAX_STRING_SIZE];
+	unsigned int dev_major;
+	unsigned int dev_minor;
+	unsigned long inode;
 	char exepath[MAX_STRING_SIZE];
 	char args[FULL_MAX_ARGS_ARR];
 };
@@ -258,6 +268,8 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
 	char *file;
+	dev_t dev_no;
+	unsigned long inode_no;
 	struct path f_path;
 
 	event = bpf_map_lookup_elem(&execs, &pid);
@@ -271,8 +283,13 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 
 	f_path = BPF_CORE_READ(bprm, file, f_path);
 	file = get_path_str(&f_path);
+	struct inode *inode = BPF_CORE_READ(f_path.dentry, d_inode);
+	dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
+	inode_no = BPF_CORE_READ(inode, i_ino);
 	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
-
+	event->dev_major = MAJOR(dev_no);
+	event->dev_minor = MINOR(dev_no);
+	event->inode = BPF_CORE_READ(inode, i_ino);
 	return 0;
 }
 
