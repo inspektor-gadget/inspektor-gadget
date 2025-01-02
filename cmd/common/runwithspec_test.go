@@ -16,6 +16,8 @@ package common
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"testing"
 
@@ -99,6 +101,35 @@ func createTempManifest(t *testing.T, manifest string) (string, error) {
 		return "", fmt.Errorf("writing temp manifest: %w", err)
 	}
 	return f.Name(), nil
+}
+
+func createAndServeManifest(t *testing.T, manifest string) (string, error) {
+	fn, err := createTempManifest(t, manifest)
+	if err != nil {
+		return "", err
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/manifest", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, fn)
+	})
+
+	server := &http.Server{
+		Addr:    ":0", // random port
+		Handler: mux,
+	}
+
+	listner, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		return "", fmt.Errorf("listening on random port: %w", err)
+	}
+
+	go server.Serve(listner)
+	t.Cleanup(func() {
+		server.Close()
+	})
+
+	return "http://" + listner.Addr().String() + "/manifest", nil
 }
 
 func TestRunWithSpec(t *testing.T) {
@@ -223,9 +254,15 @@ name: invalid-#name*
 	environment.Environment = environment.Local
 
 	for _, tt := range tests {
-		runTest := func(detach bool) func(t *testing.T) {
+		runTest := func(detach, remote bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				fn, err := createTempManifest(t, tt.Manifest)
+				var fn string
+				var err error
+				if remote {
+					fn, err = createAndServeManifest(t, tt.Manifest)
+				} else {
+					fn, err = createTempManifest(t, tt.Manifest)
+				}
 				require.NoError(t, err)
 				rt := &testRuntime{
 					t:        t,
@@ -249,10 +286,12 @@ name: invalid-#name*
 			}
 		}
 		if tt.Mode == testModeInteractiveOnly || tt.Mode == testModeBoth {
-			t.Run(tt.Name, runTest(false))
+			t.Run(tt.Name, runTest(false, false))
+			t.Run(tt.Name+"-remote", runTest(false, true))
 		}
 		if tt.Mode == testModeDetachOnly || tt.Mode == testModeBoth {
-			t.Run(tt.Name, runTest(true))
+			t.Run(tt.Name, runTest(true, false))
+			t.Run(tt.Name+"-remote", runTest(true, true))
 		}
 	}
 }
