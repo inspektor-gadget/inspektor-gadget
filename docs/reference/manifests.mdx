@@ -47,6 +47,16 @@ their IDs.
 
 :::
 
+## Remote Manifests
+
+You can also use a remote manifest file by providing a URL instead of a local file path. The URL must be prefixed with `http://` or `https://`.
+
+```bash
+kubectl gadget run -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/%IG_BRANCH%/examples/instance-manifests/dns/failed-dns-requests-all.yaml
+```
+
+Feel free to check out the [example manifests](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/examples/instance-manifests) in the repository for more examples.
+
 ## Running a single gadget interactively
 
 When running interactively, you are limited to one gadget instance spec per manifest. This applies to `ig` as well as
