@@ -78,6 +78,9 @@ type BuildGadgetImageOpts struct {
 // the "name:tag" format is used to name and tag the created image. If it's empty the image is not
 // named.
 func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image string) (*GadgetImageDesc, error) {
+	l := lock()
+	defer l.Unlock()
+
 	ociStore, err := GetLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
