@@ -20,24 +20,24 @@ static __always_inline int handle_sys_accept_e(struct syscall_trace_enter *ctx)
 static __always_inline int handle_sys_accept_x(struct syscall_trace_exit *ctx)
 {
 	__u32 tid = bpf_get_current_pid_tgid();
-	bpf_map_delete_elem(&tcp_tid_fd, &tid);
-	return 0;
-}
-
-static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
-					      struct sock *sk)
-{
-	__u16 family;
 	struct event *event;
 	struct tuple_key_t t = {};
-	__u32 tid;
-	__u32 *fd;
+	struct sock **skpp;
+	struct sock *sk;
+	__u32 *fdPtr;
+	__u32 fd = 0;
+	int ret = (int)ctx->ret; // Might be a error code or fd
+	__u16 family;
 
-	if (!sk)
-		return;
+	fdPtr = bpf_map_lookup_elem(&tcp_tid_fd, &tid);
+	if (fdPtr)
+		fd = *fdPtr;
+	bpf_map_delete_elem(&tcp_tid_fd, &tid);
 
-	if (filter_event(sk, accept))
-		return;
+	skpp = bpf_map_lookup_elem(&tcp_tid_sock, &tid);
+	if (!skpp)
+		return 0;
+	sk = *skpp;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 
@@ -45,21 +45,40 @@ static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
 	/* do not send event if IP address is 0.0.0.0 or port is 0 */
 	if (is_ipv6_zero(&t.src) || is_ipv6_zero(&t.dst) || t.dst.port == 0 ||
 	    t.src.port == 0)
-		return;
+		goto end;
 
-	tid = bpf_get_current_pid_tgid();
-	fd = bpf_map_lookup_elem(&tcp_tid_fd, &tid);
-	if (!fd)
-		return;
-
+	// --------------
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
-		return;
+		goto end;
 
 	fill_event(event, &t, NULL, 0, accept);
-	event->fd = *fd;
+	event->fd = fd;
+
+	if (ret > 0)
+		event->new_fd = ret;
+	else
+		event->new_fd = 0;
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
+end:
+	bpf_map_delete_elem(&tcp_tid_sock, &tid);
+
+	return 0;
+}
+
+static __always_inline void handle_tcp_accept(struct pt_regs *ctx,
+					      struct sock *sk)
+{
+	__u32 tid = bpf_get_current_pid_tgid();
+
+	if (!sk)
+		return;
+
+	if (filter_event(sk, accept))
+		return;
+
+	bpf_map_update_elem(&tcp_tid_sock, &tid, &sk, 0);
 }
 
 #endif // __IG_TCP_ACCEPT_H
