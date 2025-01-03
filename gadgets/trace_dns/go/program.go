@@ -259,12 +259,12 @@ func gadgetInit() int {
 				ipv6 := answer.Body.(*dnsmessage.AAAAResource)
 				str = net.IP(ipv6.AAAA[:]).String()
 			}
-
-			addresses = append(addresses, str)
+			if str != "" {
+				addresses = append(addresses, str)
+			}
 		}
 
 		addressesF.SetString(data, strings.Join(addresses, ","))
-
 	}, 0)
 
 	return 0
