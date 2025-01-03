@@ -160,7 +160,16 @@ $ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
 
 ### Helm Chart Installation
 
-Inspektor Gadget can also be installed using our [official Helm chart](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/charts). To install using Helm, run the following commands:
+Inspektor Gadget can also be installed using our [official Helm chart](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/charts). To install using Helm, you can use the following approaches:
+
+#### From OCI registry
+
+```bash
+$ CHART_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name | sed 's/^v//')
+$ helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/charts/gadget --version=$CHART_VERSION
+```
+
+#### From HTTP(s) repository
 
 ```bash
 $ helm repo add gadget https://inspektor-gadget.github.io/charts
