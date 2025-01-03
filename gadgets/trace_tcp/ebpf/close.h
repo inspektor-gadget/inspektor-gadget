@@ -30,7 +30,7 @@ static __always_inline void handle_tcp_close(struct pt_regs *ctx,
 	struct tuple_key_t tuple = {};
 	struct event *event;
 	u16 family;
-	__u32 tid;
+	__u32 tid = bpf_get_current_pid_tgid();
 	__u32 *fd;
 
 	if (filter_event(sk, close))
@@ -54,8 +54,8 @@ static __always_inline void handle_tcp_close(struct pt_regs *ctx,
 		goto end;
 
 	fill_event(event, &tuple, NULL, 0, close);
+	event->new_fd = 0;
 
-	tid = bpf_get_current_pid_tgid();
 	fd = bpf_map_lookup_elem(&tcp_tid_fd, &tid);
 	// Best effor approach to see if we can find it through the sock
 	if (!fd)

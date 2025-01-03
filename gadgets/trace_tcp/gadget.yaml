@@ -25,6 +25,10 @@ datasources:
         annotations:
           description: The FD where the operation happened on
           columns.hidden: true
+      new_fd:
+        annotations:
+          description: The FD of the new connection returned by accept
+          columns.hidden: true
 params:
   ebpf:
     connect_only:

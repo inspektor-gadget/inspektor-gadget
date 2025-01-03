@@ -37,6 +37,7 @@ struct event {
 	enum event_type type_raw;
 	gadget_errno error_raw;
 	__u32 fd;
+	__u32 new_fd;
 };
 
 struct tuple_key_t {
@@ -67,6 +68,19 @@ struct {
 	__type(key, __u32); // tid
 	__type(value, __u32); // fd
 } tcp_tid_fd SEC(".maps");
+
+/*
+ * We need to store the sock in kprobes where its available and retrieve it later
+ * in "higher" functions, where we don't have access to it anymore.
+ * It should be said that the entrys are only short lived and used in a single call
+ * chain of a system call.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, __u32); // tid
+	__type(value, struct sock *);
+} tcp_tid_sock SEC(".maps");
 
 __u8 ip_v6_zero[16] = {
 	0,

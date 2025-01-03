@@ -28,17 +28,6 @@ struct {
 	__type(value, struct extended_info);
 } tuplepid SEC(".maps");
 
-/*
- * We store the socket pointer in a map to be able to retrieve it in the
- * kretprobe.
- */
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, MAX_ENTRIES);
-	__type(key, __u32); // tid
-	__type(value, struct sock *);
-} tcp_connect_sockets SEC(".maps");
-
 static __always_inline int handle_sys_connect_e(struct syscall_trace_enter *ctx)
 {
 	__u32 fd = (__u32)ctx->args[0];
@@ -56,7 +45,7 @@ static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
 	if (filter_event(sk, connect))
 		return 0;
 
-	bpf_map_update_elem(&tcp_connect_sockets, &tid, &sk, 0);
+	bpf_map_update_elem(&tcp_tid_sock, &tid, &sk, 0);
 	return 0;
 }
 
@@ -71,7 +60,7 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	struct sock *sk;
 	__u32 *fd;
 
-	skpp = bpf_map_lookup_elem(&tcp_connect_sockets, &tid);
+	skpp = bpf_map_lookup_elem(&tcp_tid_sock, &tid);
 	if (!skpp)
 		goto end1;
 
@@ -92,7 +81,7 @@ static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
 	bpf_map_update_elem(&tuplepid, &tuple, &ei, 0);
 
 end2:
-	bpf_map_delete_elem(&tcp_connect_sockets, &tid);
+	bpf_map_delete_elem(&tcp_tid_sock, &tid);
 end1:
 	bpf_map_delete_elem(&tcp_tid_fd, &tid);
 	return 0;
@@ -131,6 +120,7 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 
 	fill_event(event, &tuple, &ei->proc, err, connect);
 	event->fd = ei->fd;
+	event->new_fd = 0;
 
 	// tcp_close could be called after this function indirectly and not through
 	// sys_close. Save the sock->fd mapping here
