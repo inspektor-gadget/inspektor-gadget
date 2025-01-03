@@ -1,0 +1,8 @@
+apiVersion: 1
+kind: instance-spec
+image: trace_dns:latest
+name: failed-dns-requests-default
+paramValues:
+  operator.KubeManager.namespace: default
+  operator.filter.filter: rcode!=Success,qr==R
+  operator.cli.fields: k8s.podname,src,dst,name,rcode
