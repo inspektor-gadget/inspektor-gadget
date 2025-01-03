@@ -39,6 +39,8 @@ type traceTCPEvent struct {
 	Dst   utils.L4Endpoint `json:"dst"`
 	Type  string           `json:"type"`
 	Error string           `json:"error"`
+	Fd    int              `json:"fd"`
+	NewFd int              `json:"new_fd"`
 }
 
 func TestTraceTCP(t *testing.T) {
@@ -106,10 +108,12 @@ func TestTraceTCP(t *testing.T) {
 					},
 					Type:  "connect",
 					Error: "",
+					NewFd: 0,
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
@@ -132,6 +136,8 @@ func TestTraceTCP(t *testing.T) {
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
+					NewFd:     utils.NormalizedInt,
 				},
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
@@ -150,10 +156,12 @@ func TestTraceTCP(t *testing.T) {
 					},
 					Type:  "close",
 					Error: "",
+					NewFd: 0,
 
 					// Check only the existence of these fields
 					Timestamp: utils.NormalizedStr,
 					NetNsID:   utils.NormalizedInt,
+					Fd:        utils.NormalizedInt,
 				},
 			}
 
@@ -167,6 +175,8 @@ func TestTraceTCP(t *testing.T) {
 				// https://github.com/curl/curl/issues/6288
 				utils.NormalizeInt(&e.Src.Port)
 				utils.NormalizeInt(&e.Dst.Port)
+				utils.NormalizeInt(&e.Fd)
+				utils.NormalizeInt(&e.NewFd)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
