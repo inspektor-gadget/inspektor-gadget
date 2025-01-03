@@ -53,6 +53,22 @@ func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 	)
 }
 
+func (i *wasmOperatorInstance) getDataFromHandle(dataHandle uint32) (datasource.Data, bool) {
+	if dataHandle&dataArrayHandleFlag == 0 {
+		return getHandle[datasource.Data](i, dataHandle)
+	}
+
+	dataArrayHandle := dataHandle & 0xffff
+
+	dataArray, ok := getHandle[datasource.DataArray](i, dataArrayHandle)
+	if !ok {
+		return nil, false
+	}
+	index := dataHandle &^ dataArrayHandleFlag >> 16
+	data := dataArray.Get(int(index))
+	return data, data != nil
+}
+
 // fieldGet returns the field's value.
 // Params:
 // - stack[0]: Field handle
@@ -73,7 +89,7 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 		stack[0] = 0
 		return
 	}
-	data, ok := getHandle[datasource.Data](i, dataHandle)
+	data, ok := i.getDataFromHandle(dataHandle)
 	if !ok {
 		stack[0] = 0
 		return
@@ -184,7 +200,7 @@ func (i *wasmOperatorInstance) fieldSet(ctx context.Context, m wapi.Module, stac
 		stack[0] = 1
 		return
 	}
-	data, ok := getHandle[datasource.Data](i, dataHandle)
+	data, ok := i.getDataFromHandle(dataHandle)
 	if !ok {
 		stack[0] = 1
 		return

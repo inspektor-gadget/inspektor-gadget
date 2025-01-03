@@ -122,6 +122,7 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 }
 
 // getMap gets an existing map.
+// releaseHandle must be called when the map is no longer needed.
 // Params:
 // - stack[0] is the name of the map (string encoded)
 // Return value:
@@ -278,6 +279,7 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 }
 
 // mapRelease close the map and release the handle.
+// This should only be called by maps that were created by newMap
 // Params:
 // - stack[0]: Map handle
 // Return value:
