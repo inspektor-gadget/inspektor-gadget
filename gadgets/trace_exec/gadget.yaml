@@ -24,6 +24,16 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
+      dev_no:
+        annotations:
+          description: The device number of the executable file
+          columns.width: 5
+          columns.hidden: "true"
+      inode_no:
+        annotations:
+          description: The inode number of the executable file
+          columns.width: 5
+          columns.hidden: "true"
       loginuid:
         annotations:
           template: uid
