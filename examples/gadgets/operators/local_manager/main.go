@@ -48,7 +48,7 @@ func do() error {
 	}))
 
 	// Create the local manager operator
-	localManagerOp := &localmanager.LocalManager{}
+	localManagerOp := localmanager.LocalManagerOperator
 	localManagerParams := localManagerOp.GlobalParamDescs().ToParams()
 	localManagerParams.Get(localmanager.Runtimes).Set("docker")
 	if err := localManagerOp.Init(localManagerParams); err != nil {

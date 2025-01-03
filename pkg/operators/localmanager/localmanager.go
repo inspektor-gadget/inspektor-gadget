@@ -67,25 +67,25 @@ type Attacher interface {
 	DetachContainer(*containercollection.Container) error
 }
 
-type LocalManager struct {
+type localManager struct {
 	igManager     *igmanager.IGManager
 	rc            []*containerutilsTypes.RuntimeConfig
 	fakeContainer *containercollection.Container
 }
 
-func (l *LocalManager) Name() string {
+func (l *localManager) Name() string {
 	return OperatorName
 }
 
-func (l *LocalManager) Description() string {
+func (l *localManager) Description() string {
 	return "Handles enrichment of container data and attaching/detaching to and from containers"
 }
 
-func (l *LocalManager) Dependencies() []string {
+func (l *localManager) Dependencies() []string {
 	return nil
 }
 
-func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
+func (l *localManager) GlobalParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:          Runtimes,
@@ -134,7 +134,7 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 	}
 }
 
-func (l *LocalManager) ParamDescs() params.ParamDescs {
+func (l *localManager) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:         ContainerName,
@@ -151,7 +151,7 @@ func (l *LocalManager) ParamDescs() params.ParamDescs {
 	}
 }
 
-func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
+func (l *localManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	// We need to be able to get MountNSID or NetNSID, and set ContainerInfo, so
 	// check for that first
 	_, canEnrichEventFromMountNs := gadget.EventPrototype().(operators.ContainerInfoFromMountNSID)
@@ -181,7 +181,7 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
-func (l *LocalManager) Init(operatorParams *params.Params) error {
+func (l *localManager) Init(operatorParams *params.Params) error {
 	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 
 	runtimesParam := operatorParams.Get(Runtimes)
@@ -277,14 +277,14 @@ func (l *LocalManager) Init(operatorParams *params.Params) error {
 	return nil
 }
 
-func (l *LocalManager) Close() error {
+func (l *localManager) Close() error {
 	if l.igManager != nil {
 		l.igManager.Close()
 	}
 	return nil
 }
 
-func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+func (l *localManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
 	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
 	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
 	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
@@ -306,7 +306,7 @@ func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadget
 }
 
 type localManagerTrace struct {
-	manager         *LocalManager
+	manager         *localManager
 	mountnsmap      *ebpf.Map
 	enrichEvents    bool
 	subscriptionKey string
@@ -480,15 +480,15 @@ type localManagerTraceWrapper struct {
 	runID string
 }
 
-func (l *LocalManager) GlobalParams() api.Params {
+func (l *localManager) GlobalParams() api.Params {
 	return apihelpers.ParamDescsToParams(l.GlobalParamDescs())
 }
 
-func (l *LocalManager) InstanceParams() api.Params {
+func (l *localManager) InstanceParams() api.Params {
 	return apihelpers.ParamDescsToParams(l.ParamDescs())
 }
 
-func (l *LocalManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (
+func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
 	params := l.ParamDescs().ToParams()
@@ -563,7 +563,7 @@ func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext)
 	return l.localManagerTrace.ParamDescs()
 }
 
-func (l *LocalManager) Priority() int {
+func (l *localManager) Priority() int {
 	return -1
 }
 
@@ -626,7 +626,9 @@ func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error
 }
 
 func init() {
-	lm := &LocalManager{}
+	lm := &localManager{}
 	operators.Register(lm)
 	operators.RegisterDataOperator(lm)
 }
+
+var LocalManagerOperator = &localManager{}
