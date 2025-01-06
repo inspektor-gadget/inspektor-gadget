@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.35.0
+version: 0.36.0
 name: "profile tcprtt"
 category: monitoring-logging
 displayName: "profile tcprtt"
-createdAt: "2024-12-02T10:15:22Z"
-digest: "2024-12-02T10:15:22Z"
+createdAt: "2025-01-06T09:19:05Z"
+digest: "2025-01-06T09:19:05Z"
 description: "Profile TCP connections' Round-Trip Time (RTT)"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
