@@ -234,6 +234,10 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	struct event *event;
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+#ifdef WITH_LONG_PATHS
+	struct file *exe_file;
+	char *exepath;
+#endif
 
 	// If the execve was successful, sched/sched_process_exec handled the event
 	// already and deleted the entry. So if we find the entry, it means the
@@ -251,6 +255,12 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	if (parent != NULL)
 		bpf_probe_read_kernel(&event->pcomm, sizeof(event->pcomm),
 				      parent->comm);
+
+#ifdef WITH_LONG_PATHS
+	exe_file = BPF_CORE_READ(task, mm, exe_file);
+	exepath = get_path_str(&exe_file->f_path);
+	bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE, exepath);
+#endif
 
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))

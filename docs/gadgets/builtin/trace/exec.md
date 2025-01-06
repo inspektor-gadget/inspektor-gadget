@@ -145,5 +145,7 @@ Limitations:
  defined.
 - In case of a shell script, the upper layer field will refer to the location
  of the shell program (e.g. `/bin/sh`) and not the script file.
-- The exepath and file paths might not be set when the execution fails
- (ret!=0), depending on the error.
+- The file path might not be set when the execution fails (ret!=0), depending
+ on the error.
+- The exepath is set to the current process and not the new process when the
+ execution fails (ret!=0).
