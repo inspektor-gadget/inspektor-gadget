@@ -27,7 +27,7 @@ BPFTOOL ?= bpftool
 ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/')
 
 # This version number must be kept in sync with CI workflow lint one.
-LINTER_IMAGE ?= golangci/golangci-lint:v1.59.0@sha256:8ad7dc3d98d77dec753f07408c7683ab854752a3eb8dc6a5e5f0728f9a89ae2c
+LINTER_IMAGE ?= golangci/golangci-lint:v1.63.4@sha256:7f4c8ee8a63d56caa41c099cf658f68b192b615e0f30e94b8864e81a3ceafb53
 
 EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 
