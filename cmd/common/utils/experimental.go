@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -42,7 +43,7 @@ func replaceFuncE(f func(cmd *cobra.Command, args []string) error) func(cmd *cob
 	}
 
 	return func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf(errMsgExperimental)
+		return errors.New(errMsgExperimental)
 	}
 }
 

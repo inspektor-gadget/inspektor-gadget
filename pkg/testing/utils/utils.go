@@ -163,12 +163,12 @@ func PrintLogsFn(namespaces ...string) func(t *testing.T) {
 
 		if CurrentTestComponent == KubectlGadgetTestComponent {
 			t.Logf("Inspektor Gadget pod logs:")
-			t.Logf(getPodLogs("gadget"))
+			t.Log(getPodLogs("gadget"))
 		}
 
 		for _, ns := range namespaces {
 			t.Logf("Logs in namespace %s:", ns)
-			t.Logf(getPodLogs(ns))
+			t.Log(getPodLogs(ns))
 		}
 	}
 }
