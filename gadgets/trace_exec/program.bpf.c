@@ -232,6 +232,15 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	gadget_process_populate(&event->proc);
 	event->error_raw = -ctx->ret;
 
+	if (paths) {
+		struct task_struct *task =
+			(struct task_struct *)bpf_get_current_task();
+		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
+		char *exepath = get_path_str(&exe_file->f_path);
+		bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE,
+					  exepath);
+	}
+
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
 		gadget_output_buf(ctx, &events, event, len);
