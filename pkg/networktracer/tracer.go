@@ -104,25 +104,24 @@ func (t *Tracer[Event]) newAttachment(
 		}
 	}()
 
-	dispatcherSpec, err := loadDispatcher()
+	spec, err := loadDispatcher()
 	if err != nil {
 		return nil, err
 	}
-
-	u32netns := uint32(netns)
-	consts := map[string]interface{}{
-		"current_netns": u32netns,
+	dispatcherSpec := &dispatcherSpecs{}
+	if err := spec.Assign(dispatcherSpec); err != nil {
+		return nil, err
 	}
-	//nolint:staticcheck
-	if err := dispatcherSpec.RewriteConstants(consts); err != nil {
-		return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
+
+	if err := dispatcherSpec.CurrentNetns.Set(uint32(netns)); err != nil {
+		return nil, err
 	}
 	opts := ebpf.CollectionOptions{
 		MapReplacements: map[string]*ebpf.Map{
 			"tail_call": t.dispatcherMap,
 		},
 	}
-	if err = dispatcherSpec.LoadAndAssign(&a.dispatcherObjs, &opts); err != nil {
+	if err = spec.LoadAndAssign(&a.dispatcherObjs, &opts); err != nil {
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 

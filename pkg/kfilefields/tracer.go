@@ -106,19 +106,19 @@ func (t *Tracer) install() error {
 	if !ok {
 		return errors.New("not a syscall.Stat_t")
 	}
-	fdIno := fdStat.Ino
 
 	// Load ebpf program configured with the socket inode
 	spec, err := loadFilefields()
 	if err != nil {
 		return fmt.Errorf("load ebpf program to read file fields: %w", err)
 	}
-	consts := map[string]interface{}{
-		"socket_ino": uint64(fdIno),
+	filefieldSpec := &filefieldsSpecs{}
+	if err := spec.Assign(filefieldSpec); err != nil {
+		return err
 	}
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+
+	if err := filefieldSpec.SocketIno.Set(uint64(fdStat.Ino)); err != nil {
+		return err
 	}
 
 	opts := ebpf.CollectionOptions{

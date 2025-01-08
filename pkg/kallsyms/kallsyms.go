@@ -25,6 +25,8 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 type KAllSyms struct {
@@ -209,10 +211,8 @@ func specUpdateAddresses(
 	for _, symbol := range symbols {
 		consts[symbol+"_addr"] = symbolsMap[symbol]
 	}
-
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+	if err := ebpfutils.SpecSetVars(spec, consts); err != nil {
+		return err
 	}
 
 	return nil

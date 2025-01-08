@@ -236,22 +236,27 @@ func (t *Tracer) install() error {
 	if err != nil {
 		return fmt.Errorf("loading specs: %w", err)
 	}
-
-	consts := map[string]interface{}{
-		"targ_ms":         t.config.useMilliseconds,
-		"targ_laddr_hist": t.config.localAddrHist,
-		"targ_raddr_hist": t.config.remoteAddrHist,
-		"targ_sport":      htons(t.config.filterLocalPort),
-		"targ_dport":      htons(t.config.filterRemotePort),
-		"targ_saddr":      t.config.filterLocalAddress,
-		"targ_daddr":      t.config.filterRemoteAddress,
-		"targ_saddr_v6":   t.config.filterLocalAddressV6,
-		"targ_daddr_v6":   t.config.filterRemoteAddressV6,
+	tcpRttSpec := &tcpRTTSpecs{}
+	if err := spec.Assign(tcpRttSpec); err != nil {
+		return err
 	}
 
-	//nolint:staticcheck
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+	consts := map[*ebpf.VariableSpec]interface{}{
+		tcpRttSpec.TargMs:        t.config.useMilliseconds,
+		tcpRttSpec.TargLaddrHist: t.config.localAddrHist,
+		tcpRttSpec.TargRaddrHist: t.config.remoteAddrHist,
+		tcpRttSpec.TargSport:     htons(t.config.filterLocalPort),
+		tcpRttSpec.TargDport:     htons(t.config.filterRemotePort),
+		tcpRttSpec.TargSaddr:     t.config.filterLocalAddress,
+		tcpRttSpec.TargDaddr:     t.config.filterRemoteAddress,
+		tcpRttSpec.TargSaddrV6:   t.config.filterLocalAddressV6,
+		tcpRttSpec.TargDaddrV6:   t.config.filterRemoteAddressV6,
+	}
+
+	for varSpec, val := range consts {
+		if err := varSpec.Set(val); err != nil {
+			return fmt.Errorf("setting variable %s: %w", varSpec, err)
+		}
 	}
 
 	opts := ebpf.CollectionOptions{

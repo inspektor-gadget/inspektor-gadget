@@ -51,6 +51,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
+	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
 
 const (
@@ -570,7 +571,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 
 	mapReplacements := make(map[string]*ebpf.Map)
-	constReplacements := make(map[string]any)
 
 	// create map for kernel stack
 	if i.stackIdMap != nil {
@@ -582,13 +582,14 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if !p.fromEbpf {
 			continue
 		}
-		constReplacements[name] = paramMap[name].AsAny()
+
+		paramVal := paramMap[name].AsAny()
 
 		switch p.TypeHint {
 		case api.TypeIP:
 			i.logger.Debugf("handling IP param: %q", name)
 			ipAddr := ebpftypes.L3Endpoint{}
-			ipParam := constReplacements[name].(net.IP)
+			ipParam := paramVal.(net.IP)
 			if ip := ipParam.To4(); ip != nil {
 				ipAddr.Version = 4
 				copy(ipAddr.V6[:4], ip)
@@ -598,7 +599,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			} else {
 				return fmt.Errorf("invalid IP address: %v", ipParam)
 			}
-			constReplacements[name] = ipAddr
+			paramVal = ipAddr
 		case api.TypeString:
 			i.logger.Debugf("handling string param: %q", name)
 			bytes := make([]byte, p.strLen)
@@ -609,10 +610,14 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 				return fmt.Errorf("string param %q too long: %d > %d", name, len(strBytes), p.strLen)
 			}
 			copy(bytes[:], strBytes)
-			constReplacements[name] = bytes
+			paramVal = bytes
 		}
 
-		i.logger.Debugf("setting param value %q = %v", name, constReplacements[name])
+		i.logger.Debugf("setting param value %q = %v", name, paramVal)
+
+		if err := ebpfutils.SpecSetVar(i.collectionSpec, name, paramVal); err != nil {
+			return err
+		}
 	}
 
 	for _, v := range i.vars {
@@ -639,13 +644,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 				continue
 			}
 			i.logger.Debugf("setting var %q to %v", v.name, t)
-			constReplacements[v.name] = res
-		}
-	}
 
-	//nolint:staticcheck
-	if err := i.collectionSpec.RewriteConstants(constReplacements); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+			if err := ebpfutils.SpecSetVar(i.collectionSpec, v.name, res); err != nil {
+				return err
+			}
+		}
 	}
 
 	i.logger.Debugf("creating ebpf collection")
