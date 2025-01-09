@@ -108,6 +108,7 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 		event->sessionid = BPF_CORE_READ(task, sessionid);
 
 	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
+	event->ptid = (pid_t)BPF_CORE_READ(task, real_parent, pid);
 	event->args_count = 0;
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
