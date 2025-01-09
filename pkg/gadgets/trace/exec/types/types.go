@@ -28,6 +28,7 @@ type Event struct {
 	Pid         uint32   `json:"pid,omitempty" column:"pid,template:pid"`
 	Tid         uint32   `json:"tid,omitempty" column:"tid,template:pid"`
 	Ppid        uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
+	Ptid        uint32   `json:"ptid,omitempty" column:"ptid,template:pid"`
 	Comm        string   `json:"comm,omitempty" column:"comm,template:comm"`
 	Pcomm       string   `json:"pcomm,omitempty" column:"pcomm,template:comm"`
 	Retval      int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
