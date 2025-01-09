@@ -6,25 +6,13 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   events:
     fields:
-      fpid:
-        annotations:
-          template: pid
-      fuid:
-        annotations:
-          template: uid
-      fgid:
-        annotations:
-          template: uid
       tpid:
         annotations:
           template: pid
+      tcomm:
+        annotations:
+          template: comm
       pages:
         annotations:
           columns.width: 8
           columns.alignment: right
-      fcomm:
-        annotations:
-          template: comm
-      tcomm:
-        annotations:
-          template: comm
