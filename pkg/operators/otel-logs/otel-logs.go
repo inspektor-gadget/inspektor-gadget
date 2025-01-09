@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,10 @@ const (
 
 	AnnotationLogsBody     = "logs.body"
 	AnnotationLogsSeverity = "logs.severity"
+
+	AnnotationAttributesPrefix      = "logs.attribute."
+	AnnotationAttributesValueSuffix = ".value"
+	AnnotationAttributesTypeSuffix  = ".type"
 
 	FieldNameBody      = "body"
 	FieldNameTimestamp = "timestamp"
@@ -234,6 +238,51 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				}
 				record.SetBody(otellog.StringValue(s.(string)))
 			})
+		}
+
+		// Add additional (static) attributes
+		for k, v := range annotations {
+			if attributePrefixed, ok := strings.CutPrefix(k, AnnotationAttributesPrefix); ok {
+				attributeName, ok := strings.CutSuffix(attributePrefixed, AnnotationAttributesValueSuffix)
+				if !ok {
+					continue
+				}
+				// check (optional) type
+				attributeType, _ := ds.Annotations()[fmt.Sprintf("%s%s%s", AnnotationAttributesPrefix, attributeName, AnnotationAttributesTypeSuffix)]
+				switch attributeType {
+				default:
+					return fmt.Errorf("invalid attribute type for attribute %q: %s", attributeName, attributeType)
+				case "", "string":
+					prep = append(prep, func(data datasource.Data) otellog.KeyValue {
+						return otellog.KeyValue{
+							Key:   attributeName,
+							Value: otellog.StringValue(v),
+						}
+					})
+				case "int64":
+					i64, err := strconv.ParseInt(v, 10, 64)
+					if err != nil {
+						return fmt.Errorf("invalid value for attribute %q of type %s: %w", attributeName, attributeType, err)
+					}
+					prep = append(prep, func(data datasource.Data) otellog.KeyValue {
+						return otellog.KeyValue{
+							Key:   attributeName,
+							Value: otellog.Int64Value(i64),
+						}
+					})
+				case "float64":
+					f64, err := strconv.ParseFloat(v, 64)
+					if err != nil {
+						return fmt.Errorf("invalid value for attribute %q of type %s: %w", attributeName, attributeType, err)
+					}
+					prep = append(prep, func(data datasource.Data) otellog.KeyValue {
+						return otellog.KeyValue{
+							Key:   attributeName,
+							Value: otellog.Float64Value(f64),
+						}
+					})
+				}
+			}
 		}
 
 		for _, f := range fields {
