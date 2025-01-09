@@ -135,6 +135,9 @@ func mapRelease(m uint32) uint32
 //go:wasmimport env getSyscallDeclaration
 func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
+//go:wasmimport env kallsymsSymbolExists
+func kallsymsSymbolExists(symbol uint64) uint32
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
@@ -326,6 +329,10 @@ func gadgetInit() int {
 	assertNonZero(getSyscallDeclaration(invalidStrPtr, syscallDeclarationPtr), "getSyscallDeclaration: bad syscall name pointer")
 	assertNonZero(getSyscallDeclaration(stringToBufPtr("execve"), invalidSyscallDeclarationPtr), "getSyscallDeclaration: bad syscall decl pointer")
 
+	/* Kallsyms */
+	assertEqual(kallsymsSymbolExists(invalidStrPtr), 0, "kallsymsSymbolExists: bad symbol pointer")
+	assertEqual(kallsymsSymbolExists(stringToBufPtr("abcde_bad_name")), 0, "kallsymsSymbolExists: nonexistent symbol name")
+	assertEqual(kallsymsSymbolExists(stringToBufPtr("socket_file_ops")), 1, "kallsymsSymbolExists: good symbol name")
 	return 0
 }
 
