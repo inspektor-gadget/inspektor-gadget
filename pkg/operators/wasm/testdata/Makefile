@@ -9,6 +9,7 @@ TEST_ARTIFACTS = \
 	params \
 	config \
 	map \
+	kallsyms \
 	#
 
 all: $(TEST_ARTIFACTS)

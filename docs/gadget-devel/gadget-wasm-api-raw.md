@@ -445,3 +445,15 @@ Parameters:
 
 Return value:
 - 0 in case of success, 1 otherwise.
+
+### kallsyms
+
+#### `kallsymsSymbolExists(symbol string) uint32`
+
+Check if a symbol exists in kallsyms.
+
+Parameters:
+- `symbol` (string): Symbol's name
+
+Return value:
+- (u32) 1 if the symbol exists, 0 otherwise.
