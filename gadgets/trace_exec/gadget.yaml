@@ -68,14 +68,17 @@ datasources:
           columns.width: 16
       upper_layer:
         annotations:
-          description: Whether the executable is in the upper layer of the overlay filesystem
+          description: Whether the executable file of the process (interpreter in case of script) is in the upper layer of the overlay filesystem. Only initialized when the execution succeeded.
           columns.width: 5
           columns.hidden: true
       pupper_layer:
         annotations:
-          description: Whether the executable's parent in the process hierarchy
-            is in the upper layer of the overlay filesystem. Only initialized when
-            the execution succeeded.
+          description: Whether the executable's parent in the process hierarchy (interpreter in case of script) is in the upper layer of the overlay filesystem. Only initialized when the execution succeeded.
+          columns.width: 5
+          columns.hidden: true
+      fupper_layer:
+        annotations:
+          description: Whether the executable file of the process (script in case of script) is in the upper layer of the overlay filesystem. Initialized when the execution succeeded or failed with the -ENOEXEC error ("Exec format error"). Notice that to get failed executions, you need to set ignore_failed to false.
           columns.width: 5
           columns.hidden: true
 params:
