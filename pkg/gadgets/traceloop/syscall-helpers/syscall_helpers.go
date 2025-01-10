@@ -14,7 +14,7 @@
 
 //go:build !withoutebpf
 
-package tracer
+package syscallhelpers
 
 import (
 	"fmt"
@@ -35,12 +35,12 @@ type param struct {
 	isPointer bool
 }
 
-type syscallDeclaration struct {
+type SyscallDeclaration struct {
 	name   string
 	params []param
 }
 
-func syscallGetName(nr uint16) string {
+func SyscallGetName(nr uint16) string {
 	name, ok := syscalls.GetSyscallNameByNumber(int(nr))
 	// Just do like strace (https://man7.org/linux/man-pages/man1/strace.1.html):
 	// Syscalls unknown to strace are printed raw
@@ -49,32 +49,6 @@ func syscallGetName(nr uint16) string {
 	}
 
 	return name
-}
-
-// TODO Find all syscalls which take a char * as argument and add them there.
-var syscallDefs = map[string][6]uint64{
-	"execve":      {useNullByteLength, 0, 0, 0, 0, 0},
-	"access":      {useNullByteLength, 0, 0, 0, 0, 0},
-	"open":        {useNullByteLength, 0, 0, 0, 0, 0},
-	"openat":      {0, useNullByteLength, 0, 0, 0, 0},
-	"mkdir":       {useNullByteLength, 0, 0, 0, 0, 0},
-	"chdir":       {useNullByteLength, 0, 0, 0, 0, 0},
-	"pivot_root":  {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
-	"mount":       {useNullByteLength, useNullByteLength, useNullByteLength, 0, 0, 0},
-	"umount2":     {useNullByteLength, 0, 0, 0, 0, 0},
-	"sethostname": {useNullByteLength, 0, 0, 0, 0, 0},
-	"statfs":      {useNullByteLength, 0, 0, 0, 0, 0},
-	"stat":        {useNullByteLength, 0, 0, 0, 0, 0},
-	"statx":       {0, useNullByteLength, 0, 0, 0, 0},
-	"lstat":       {useNullByteLength, 0, 0, 0, 0, 0},
-	"fgetxattr":   {0, useNullByteLength, 0, 0, 0, 0},
-	"lgetxattr":   {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
-	"getxattr":    {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
-	"newfstatat":  {0, useNullByteLength, 0, 0, 0, 0},
-	"read":        {0, useRetAsParamLength | paramProbeAtExitMask, 0, 0, 0, 0},
-	"write":       {0, useArgIndexAsParamLength + 2, 0, 0, 0, 0},
-	"getcwd":      {useNullByteLength | paramProbeAtExitMask, 0, 0, 0, 0, 0},
-	"pread64":     {0, useRetAsParamLength | paramProbeAtExitMask, 0, 0, 0, 0},
 }
 
 var re = regexp.MustCompile(`\s+field:(?P<type>.*?) (?P<name>[a-z_0-9]+);.*`)
@@ -141,7 +115,7 @@ func relateSyscallName(name string) string {
 	}
 }
 
-func parseSyscall(name, format string) (*syscallDeclaration, error) {
+func parseSyscall(name, format string) (*SyscallDeclaration, error) {
 	syscallParts := strings.Split(format, "\n")
 	var skipped bool
 
@@ -163,14 +137,14 @@ func parseSyscall(name, format string) (*syscallDeclaration, error) {
 		}
 	}
 
-	return &syscallDeclaration{
+	return &SyscallDeclaration{
 		name:   name,
 		params: cParams,
 	}, nil
 }
 
-func gatherSyscallsDeclarations() (map[string]syscallDeclaration, error) {
-	cSyscalls := make(map[string]syscallDeclaration)
+func GatherSyscallsDeclarations() (map[string]SyscallDeclaration, error) {
+	cSyscalls := make(map[string]SyscallDeclaration)
 	err := filepath.Walk(syscallsPath, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -219,27 +193,27 @@ func gatherSyscallsDeclarations() (map[string]syscallDeclaration, error) {
 	return cSyscalls, nil
 }
 
-func getSyscallDeclaration(syscallsDeclarations map[string]syscallDeclaration, syscallName string) (syscallDeclaration, error) {
+func GetSyscallDeclaration(syscallsDeclarations map[string]SyscallDeclaration, syscallName string) (SyscallDeclaration, error) {
 	declaration, ok := syscallsDeclarations[syscallName]
 	if !ok {
-		return syscallDeclaration{}, fmt.Errorf("no syscall correspond to %q", syscallName)
+		return SyscallDeclaration{}, fmt.Errorf("no syscall correspond to %q", syscallName)
 	}
 
 	return declaration, nil
 }
 
-func (s syscallDeclaration) getParameterCount() uint8 {
+func (s SyscallDeclaration) GetParameterCount() uint8 {
 	return uint8(len(s.params))
 }
 
-func (s syscallDeclaration) paramIsPointer(paramNumber uint8) (bool, error) {
+func (s SyscallDeclaration) ParamIsPointer(paramNumber uint8) (bool, error) {
 	if int(paramNumber) >= len(s.params) {
 		return false, fmt.Errorf("param number %d out of bounds for syscall %q", paramNumber, s.name)
 	}
 	return s.params[paramNumber].isPointer, nil
 }
 
-func (s syscallDeclaration) getParameterName(paramNumber uint8) (string, error) {
+func (s SyscallDeclaration) GetParameterName(paramNumber uint8) (string, error) {
 	if int(paramNumber) >= len(s.params) {
 		return "", fmt.Errorf("param number %d out of bounds for syscall %q", paramNumber, s.name)
 	}

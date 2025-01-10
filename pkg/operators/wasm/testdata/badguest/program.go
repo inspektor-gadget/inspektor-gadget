@@ -118,6 +118,9 @@ func mapDelete(m uint32, keyptr uint64) uint32
 //go:wasmimport env mapRelease
 func mapRelease(m uint32) uint32
 
+//go:wasmimport env getSyscallDeclaration
+func getSyscallDeclaration(name uint64) uint32
+
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
 	return uint64(len(s))<<32 | uint64(uintptr(unsafePtr))
@@ -298,6 +301,9 @@ func gadgetInit() int {
 	assertNonZero(mapUpdate(0, invalidStrPtr, invalidStrPtr, 0), "mapUpdate: bad handle")
 	assertNonZero(mapLookup(0, invalidStrPtr, invalidStrPtr), "mapLookup: bad handle")
 	assertNonZero(mapDelete(0, invalidStrPtr), "mapDelete: bad handle")
+
+	/* SyscallDeclaration */
+	assertZero(getSyscallDeclaration(invalidStrPtr), "getSyscallDeclaration: bad syscall name pointer")
 
 	return 0
 }

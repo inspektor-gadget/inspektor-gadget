@@ -36,6 +36,7 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
@@ -58,8 +59,34 @@ const (
 
 var (
 	syscallsOnce         sync.Once
-	syscallsDeclarations map[string]syscallDeclaration
+	syscallsDeclarations map[string]syscallhelpers.SyscallDeclaration
 )
+
+// TODO Find all syscalls which take a char * as argument and add them there.
+var syscallDefs = map[string][6]uint64{
+	"execve":      {useNullByteLength, 0, 0, 0, 0, 0},
+	"access":      {useNullByteLength, 0, 0, 0, 0, 0},
+	"open":        {useNullByteLength, 0, 0, 0, 0, 0},
+	"openat":      {0, useNullByteLength, 0, 0, 0, 0},
+	"mkdir":       {useNullByteLength, 0, 0, 0, 0, 0},
+	"chdir":       {useNullByteLength, 0, 0, 0, 0, 0},
+	"pivot_root":  {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
+	"mount":       {useNullByteLength, useNullByteLength, useNullByteLength, 0, 0, 0},
+	"umount2":     {useNullByteLength, 0, 0, 0, 0, 0},
+	"sethostname": {useNullByteLength, 0, 0, 0, 0, 0},
+	"statfs":      {useNullByteLength, 0, 0, 0, 0, 0},
+	"stat":        {useNullByteLength, 0, 0, 0, 0, 0},
+	"statx":       {0, useNullByteLength, 0, 0, 0, 0},
+	"lstat":       {useNullByteLength, 0, 0, 0, 0, 0},
+	"fgetxattr":   {0, useNullByteLength, 0, 0, 0, 0},
+	"lgetxattr":   {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
+	"getxattr":    {useNullByteLength, useNullByteLength, 0, 0, 0, 0},
+	"newfstatat":  {0, useNullByteLength, 0, 0, 0, 0},
+	"read":        {0, useRetAsParamLength | paramProbeAtExitMask, 0, 0, 0, 0},
+	"write":       {0, useArgIndexAsParamLength + 2, 0, 0, 0, 0},
+	"getcwd":      {useNullByteLength | paramProbeAtExitMask, 0, 0, 0, 0, 0},
+	"pread64":     {0, useRetAsParamLength | paramProbeAtExitMask, 0, 0, 0, 0},
+}
 
 type containerRingReader struct {
 	perfReader *perf.Reader
@@ -129,7 +156,7 @@ func (t *Tracer) install() error {
 	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
 
 	syscallsOnce.Do(func() {
-		syscallsDeclarations, err = gatherSyscallsDeclarations()
+		syscallsDeclarations, err = syscallhelpers.GatherSyscallsDeclarations()
 	})
 	if err != nil {
 		return fmt.Errorf("gathering syscall definitions: %w", err)
@@ -470,26 +497,26 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Pid:           enterEvent.pid,
 				Comm:          enterEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: enterEvent.mountNsID},
-				Syscall:       syscallGetName(enterEvent.id),
+				Syscall:       syscallhelpers.SyscallGetName(enterEvent.id),
 			}
 
-			syscallDeclaration, err := getSyscallDeclaration(syscallsDeclarations, event.Syscall)
+			syscallDeclaration, err := syscallhelpers.GetSyscallDeclaration(syscallsDeclarations, event.Syscall)
 			if err != nil {
 				return nil, fmt.Errorf("getting syscall definition")
 			}
 
-			parametersNumber := syscallDeclaration.getParameterCount()
+			parametersNumber := syscallDeclaration.GetParameterCount()
 			event.Parameters = make([]types.SyscallParam, parametersNumber)
 			log.Debugf("\tevent parametersNumber: %d", parametersNumber)
 
 			for i := uint8(0); i < parametersNumber; i++ {
-				paramName, err := syscallDeclaration.getParameterName(i)
+				paramName, err := syscallDeclaration.GetParameterName(i)
 				if err != nil {
 					return nil, fmt.Errorf("getting syscall parameter name: %w", err)
 				}
 				log.Debugf("\t\tevent paramName: %q", paramName)
 
-				isPointer, err := syscallDeclaration.paramIsPointer(i)
+				isPointer, err := syscallDeclaration.ParamIsPointer(i)
 				if err != nil {
 					return nil, fmt.Errorf("checking syscall parameter is a pointer: %w", err)
 				}
@@ -578,7 +605,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	// events to be published.
 	for _, enterTimestampEvents := range syscallEnterEventsMap {
 		for _, enterEvent := range enterTimestampEvents {
-			syscallName := syscallGetName(enterEvent.id)
+			syscallName := syscallhelpers.SyscallGetName(enterEvent.id)
 
 			incompleteEnterEvent := &types.Event{
 				Event: eventtypes.Event{
@@ -605,7 +632,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 	for _, exitTimestampEvents := range syscallExitEventsMap {
 		for _, exitEvent := range exitTimestampEvents {
-			syscallName := syscallGetName(exitEvent.id)
+			syscallName := syscallhelpers.SyscallGetName(exitEvent.id)
 
 			incompleteExitEvent := &types.Event{
 				Event: eventtypes.Event{
