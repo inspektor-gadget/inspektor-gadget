@@ -121,8 +121,7 @@ func (d *GadgetImageDesc) String() string {
 }
 
 func getTimeFromAnnotations(annotations map[string]string) string {
-	created, _ := annotations[ocispec.AnnotationCreated]
-	return created
+	return annotations[ocispec.AnnotationCreated]
 }
 
 // PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
@@ -614,7 +613,7 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	var cfg *configfile.ConfigFile
 	var err error
 
-	if authOptions.SecretBytes != nil && len(authOptions.SecretBytes) != 0 {
+	if len(authOptions.SecretBytes) != 0 {
 		cfg, err = config.LoadFromReader(bytes.NewReader(authOptions.SecretBytes))
 		if err != nil {
 			return nil, fmt.Errorf("loading auth config: %w", err)
