@@ -83,6 +83,19 @@ datasources:
         annotations:
           description: Source endpoint
           template: l4endpoint
+      tc:
+        annotations:
+          columns.hidden: "true"
+          description: Truncated Flag
+      ra:
+        annotations:
+          columns.hidden: "true"
+          description: Recursion Available Flag
+      rd:
+        annotations:
+          columns.hidden: "true"
+          description: Recursion Desired Flag
+
 params:
   ebpf:
     paths:
