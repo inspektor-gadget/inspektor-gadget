@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -43,6 +44,7 @@ const (
 	syscallTargetAnnotation   = "formatters.syscall.target"
 	signalTargetAnnotation    = "formatters.signal.target"
 	errnoTargetAnnotation     = "formatters.errno.target"
+	bytesTargetAnnotation     = "formatters.bytes.target"
 )
 
 type formattersOperator struct{}
@@ -320,6 +322,45 @@ var replacers = []replacer{
 
 					return errors.Join(errs...)
 				}
+			}, nil
+		},
+		priority: 0,
+	},
+	{
+		name:      "bytes",
+		selectors: []string{"type:" + ebpftypes.BytesTypeName},
+		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.bytes", in, bytesTargetAnnotation)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := []datasource.FieldOption{
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.TemplateAnnotation: "bytes",
+				}),
+				datasource.WithSameParentAs(in),
+			}
+
+			bytesField, err := ds.AddField(outName, api.Kind_String, opts...)
+			if err != nil {
+				return nil, err
+			}
+
+			in.SetHidden(true, false)
+
+			return func(data datasource.Data) error {
+				switch in.Type() {
+				case api.Kind_Uint64:
+					bytesValue, err := in.Uint64(data)
+					if err != nil {
+						return err
+					}
+
+					humanReadable := humanize.Bytes(bytesValue)
+					bytesField.PutString(data, humanReadable)
+				}
+				return nil
 			}, nil
 		},
 		priority: 0,

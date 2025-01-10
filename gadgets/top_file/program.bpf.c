@@ -37,9 +37,9 @@ struct file_id {
 struct file_stat {
 	struct gadget_process proc;
 	__u64 reads;
-	__u64 rbytes;
+	gadget_bytes rbytes_raw;
 	__u64 writes;
-	__u64 wbytes;
+	gadget_bytes wbytes_raw;
 	char file[PATH_MAX];
 	enum type t_raw;
 };
@@ -106,10 +106,10 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 	}
 	if (op == READ) {
 		valuep->reads++;
-		valuep->rbytes += count;
+		valuep->rbytes_raw += count;
 	} else { /* op == WRITE */
 		valuep->writes++;
-		valuep->wbytes += count;
+		valuep->wbytes_raw += count;
 	}
 	return 0;
 };

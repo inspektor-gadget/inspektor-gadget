@@ -34,6 +34,7 @@ const (
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
+	BytesTypeName       = "gadget_bytes"
 	ProcessTypeName     = "gadget_process"
 	CredsTypeName       = "gadget_creds"
 	ParentTypeName      = "gadget_parent"
