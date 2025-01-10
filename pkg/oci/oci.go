@@ -39,6 +39,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
+	"github.com/gofrs/flock"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
@@ -80,8 +81,10 @@ type ImageOptions struct {
 }
 
 const (
-	defaultOciStore = "/var/lib/ig/oci-store"
-	DefaultAuthFile = "/var/lib/ig/config.json"
+	igVarLibPath    = "/var/lib/ig/"
+	defaultOciStore = igVarLibPath + "oci-store"
+	DefaultAuthFile = igVarLibPath + "config.json"
+	lockFile        = igVarLibPath + "gadget.lock"
 
 	PullImageAlways  = "always"
 	PullImageMissing = "missing"
@@ -95,6 +98,42 @@ const (
 	// domain-name without a "." or a ":port" are considered a path component.
 	localhost = "localhost"
 )
+
+// getLock returns a lock used to protect the oci store against concurrent
+// access from multiple processes, on the other hand, the safety guarantees for
+// concurrent access from the same process is provided by the oci.Store itself,
+// which is much more efficient as it reduces the critical section a lot. This
+// avoid this locking logic becoming a bottleneck for ig-k8s and ig daemon.
+var getLock = sync.OnceValues(func() (*flock.Flock, error) {
+	if err := os.MkdirAll(igVarLibPath, 0o700); err != nil {
+		return nil, fmt.Errorf("creating %q: %w", igVarLibPath, err)
+	}
+	return flock.New(lockFile), nil
+})
+
+func Lock(ctx context.Context) error {
+	lock, err := getLock()
+	if err != nil {
+		return err
+	}
+
+	if ok, err := lock.TryLock(); err != nil || ok {
+		return err
+	}
+
+	log.Warn("oci store lock is held by another process, waiting for it to be released...")
+
+	return lock.Lock()
+}
+
+func Unlock() error {
+	lock, err := getLock()
+	if err != nil {
+		return err
+	}
+
+	return lock.Unlock()
+}
 
 // getLocalOciStore returns a single local oci store. oci.Store is concurrently safe only
 // against its own instance inside the same go program
@@ -126,6 +165,11 @@ func getTimeFromAnnotations(annotations map[string]string) string {
 
 // PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
 func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -201,6 +245,11 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 
 // PushGadgetImage pushes the gadget image and returns its descriptor.
 func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -241,6 +290,11 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 	if err != nil {
 		return nil, fmt.Errorf("normalizing dst image: %w", err)
 	}
+
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
 
 	ociStore, err := getLocalOciStore()
 	if err != nil {
@@ -296,6 +350,11 @@ func sortIndex(indexPath string) (*ocispec.Index, error) {
 }
 
 func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) error {
+	if err := Lock(ctx); err != nil {
+		return err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
@@ -352,6 +411,11 @@ func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading src bundle: %w", err)
 	}
+
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
 
 	ociStore, err := getLocalOciStore()
 	if err != nil {
@@ -481,6 +545,11 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 
 // GetGadgetImages gets all the gadget images.
 func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -499,6 +568,11 @@ func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 }
 
 func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, error) {
+	if err := Lock(ctx); err != nil {
+		return nil, err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -520,6 +594,11 @@ func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, er
 
 // DeleteGadgetImage removes the given image.
 func DeleteGadgetImage(ctx context.Context, image string) error {
+	if err := Lock(ctx); err != nil {
+		return err
+	}
+	defer Unlock()
+
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
@@ -975,6 +1054,11 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 
 // EnsureImage ensures the image is present in the local store
 func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullPolicy string) error {
+	if err := Lock(ctx); err != nil {
+		return err
+	}
+	defer Unlock()
+
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting local oci store: %w", err)
@@ -1016,6 +1100,11 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 
 func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
 	if target == nil {
+		if err := Lock(ctx); err != nil {
+			return nil, err
+		}
+		defer Unlock()
+
 		var err error
 		target, err = getLocalOciStore()
 		if err != nil {
@@ -1042,6 +1131,11 @@ func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*o
 
 func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	if target == nil {
+		if err := Lock(ctx); err != nil {
+			return nil, err
+		}
+		defer Unlock()
+
 		var err error
 		target, err = getLocalOciStore()
 		if err != nil {

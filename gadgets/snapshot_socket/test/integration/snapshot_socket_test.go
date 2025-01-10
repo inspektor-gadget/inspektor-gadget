@@ -74,7 +74,7 @@ func TestSnapshotSocket(t *testing.T) {
 
 	// TODO: timeout shouldn't be required. We need to use something big like 5
 	// seconds to avoid the message to be lost.
-	const timeoutParam = "--timeout=5"
+	const timeoutParam = "--timeout=10"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), timeoutParam))
