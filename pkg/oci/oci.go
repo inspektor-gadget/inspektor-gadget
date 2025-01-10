@@ -727,7 +727,7 @@ func getPayload(ctx context.Context, repo *remote.Repository, payloadTag string)
 	return payloadBytes, nil
 }
 
-func getImageDigest(ctx context.Context, store *oci.Store, imageRef string) (string, error) {
+func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
 	desc, err := store.Resolve(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
@@ -788,12 +788,7 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 	return nil
 }
 
-func verifyImage(ctx context.Context, image string, imgOpts *ImageOptions) error {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("getting local oci store: %w", err)
-	}
-
+func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image name: %w", err)
@@ -970,7 +965,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return nil
 	}
 
-	err := verifyImage(ctx, image, imgOpts)
+	err := verifyImage(ctx, imageStore, image, imgOpts)
 	if err != nil {
 		return fmt.Errorf("verifying image %q: %w", image, err)
 	}
