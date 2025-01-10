@@ -553,3 +553,33 @@ func TestMap(t *testing.T) {
 	err = runtime.RunGadget(gadgetCtx, nil, params)
 	require.NoError(t, err, "running gadget")
 }
+
+func TestMapOfMap(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/mapofmap.tar")
+	require.NoError(t, err, "creating oci store")
+
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		"mapofmap:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	runtime := local.New()
+	err = runtime.Init(nil)
+	require.NoError(t, err, "runtime init")
+	t.Cleanup(func() { runtime.Close() })
+
+	params := map[string]string{
+		"operator.oci.verify-image": "false",
+	}
+	err = runtime.RunGadget(gadgetCtx, nil, params)
+	require.NoError(t, err, "running gadget")
+}

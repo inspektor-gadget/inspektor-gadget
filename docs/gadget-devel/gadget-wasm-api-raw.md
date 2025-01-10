@@ -402,6 +402,8 @@ Return value:
 #### `mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32`
 
 Lookup the map for a value corresponding to given key.
+When looking up a [map of maps](https://docs.kernel.org/bpf/map_of_maps.html),
+this function returns a map handle which has to be released.
 
 Parameters:
 - `m` (u32): Map handle (as returned by `getMap`)

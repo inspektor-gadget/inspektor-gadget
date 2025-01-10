@@ -145,6 +145,7 @@ func gadgetStart() int {
 	newMap, err := api.NewMap(mapSpec)
 	if err != nil {
 		api.Errorf("creating map %s", mapSpec.Name)
+		return 1
 	}
 	defer newMap.Close()
 
