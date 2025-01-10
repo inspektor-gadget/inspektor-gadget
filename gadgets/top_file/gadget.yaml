@@ -18,12 +18,12 @@ datasources:
           description: Writes by file
           columns.width: 8
           columns.alignment: right
-      rbytes:
+      rbytes_raw:
         annotations:
           description: Bytes read by file
           columns.width: 8
           columns.alignment: right
-      wbytes:
+      wbytes_raw:
         annotations:
           description: Bytes written by file
           columns.width: 8

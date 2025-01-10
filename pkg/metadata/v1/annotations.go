@@ -37,6 +37,10 @@ var AnnotationsTemplates = map[string]map[string]string{
 		ColumnsHiddenAnnotation:   "true",
 		DescriptionAnnotation:     "Microseconds since Unix epoch",
 	},
+	"bytes": {
+		ColumnsWidthAnnotation:     "10",
+		ColumnsAlignmentAnnotation: string(AlignmentRight),
+	},
 	"node": {
 		ColumnsWidthAnnotation:    "30",
 		ColumnsEllipsisAnnotation: string(EllipsisMiddle),

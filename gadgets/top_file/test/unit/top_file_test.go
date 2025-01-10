@@ -33,9 +33,9 @@ type ExpectedTopFileEvent struct {
 	Proc   utils.Process `json:"proc"`
 	Dev    uint32        `json:"dev"`
 	File   string        `json:"file"`
-	RBytes uint64        `json:"rbytes"`
+	RBytes uint64        `json:"rbytes_raw"`
 	Reads  uint64        `json:"reads"`
-	WBytes uint64        `json:"wbytes"`
+	WBytes uint64        `json:"wbytes_raw"`
 	Writes uint64        `json:"writes"`
 	T      string        `json:"t"`
 }

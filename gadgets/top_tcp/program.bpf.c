@@ -30,8 +30,8 @@ struct ip_key_t {
 };
 
 struct traffic_t {
-	size_t sent;
-	size_t received;
+	gadget_bytes sent_raw;
+	gadget_bytes received_raw;
 };
 
 struct {
@@ -110,19 +110,19 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 		struct traffic_t zero;
 
 		if (receiving) {
-			zero.sent = 0;
-			zero.received = size;
+			zero.sent_raw = 0;
+			zero.received_raw = size;
 		} else {
-			zero.sent = size;
-			zero.received = 0;
+			zero.sent_raw = size;
+			zero.received_raw = 0;
 		}
 
 		bpf_map_update_elem(&ip_map, &ip_key, &zero, BPF_NOEXIST);
 	} else {
 		if (receiving)
-			trafficp->received += size;
+			trafficp->received_raw += size;
 		else
-			trafficp->sent += size;
+			trafficp->sent_raw += size;
 
 		bpf_map_update_elem(&ip_map, &ip_key, trafficp, BPF_EXIST);
 	}

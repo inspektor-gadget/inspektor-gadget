@@ -8,10 +8,10 @@ datasources:
     annotations:
       cli.clear-screen-before: "true"
     fields:
-      received:
+      received_raw:
         annotations:
           description: Received bytes
-      sent:
+      sent_raw:
         annotations:
           description: Sent bytes
       src:

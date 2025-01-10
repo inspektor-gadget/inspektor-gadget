@@ -68,6 +68,7 @@ typedef __u32 gadget_ppid;
 typedef __u32 gadget_tid;
 typedef char gadget_comm;
 typedef char gadget_pcomm;
+typedef __u64 gadget_bytes;
 
 // typedefs used for metrics
 typedef __u32 gadget_counter__u32;

@@ -69,6 +69,7 @@ require (
 
 require (
 	github.com/containerd/errdefs v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.16.9
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gopacket/gopacket v1.3.1

@@ -35,8 +35,8 @@ type topFileEntry struct {
 
 	Reads      uint64 `json:"reads"`
 	Writes     uint64 `json:"writes"`
-	ReadBytes  uint64 `json:"rbytes"`
-	WriteBytes uint64 `json:"wbytes"`
+	ReadBytes  uint64 `json:"rbytes_raw"`
+	WriteBytes uint64 `json:"wbytes_raw"`
 
 	FileType  string `json:"t"`
 	FileName  string `json:"file"`
