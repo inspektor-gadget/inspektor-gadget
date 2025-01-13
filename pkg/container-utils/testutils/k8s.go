@@ -104,16 +104,16 @@ func createPodYaml(podname, image, namespace, cmd, commandArgs string, limits ma
 	yamlStr := fmt.Sprintf(`apiVersion: v1
 kind: Pod
 metadata:
-  name: %s
-  namespace: %s
+  name: %q
+  namespace: %q
   labels:
-    run: %s
+    run: %q
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: %s
-    image: %s
+  - name: %q
+    image: %q
 `, podname, namespace, podname, podname, image)
 
 	if cmd != "" {
@@ -121,7 +121,7 @@ spec:
 
 		commandArgsLine := ""
 		if commandArgs != "" {
-			commandArgsLine = fmt.Sprintf("    args:\n    - %s\n", commandArgs)
+			commandArgsLine = fmt.Sprintf("    args:\n    - %q\n", commandArgs)
 		}
 		yamlStr = yamlStr + cmdLine + commandArgsLine
 	}
@@ -129,7 +129,7 @@ spec:
 	if len(limits) > 0 {
 		yamlStr = yamlStr + "    resources:\n      limits:\n"
 		for k, v := range limits {
-			yamlStr = yamlStr + fmt.Sprintf("        %s: \"%s\"\n", k, v)
+			yamlStr = yamlStr + fmt.Sprintf("        %s: %q\n", k, v)
 		}
 	}
 
@@ -137,12 +137,23 @@ spec:
 }
 
 // podCommand returns a Command that starts a pod with a specified image, command and args
+//
+// cmd should either be empty or be formatted as a yaml array on a single line ("" or `["/bin/sh", "-c"]`)
+// commandArgs will automatically be escaped
 func podCommand(t *testing.T, podname, image, namespace, cmd, commandArgs string, limits map[string]string) *command.Command {
+	if cmd != "" {
+		if strings.Contains(cmd, "\n") {
+			t.Fatalf("cmd contains new lines: %q", cmd)
+		}
+		if cmd[0] != '[' {
+			t.Fatalf("cmd is not a yaml array: %q", cmd)
+		}
+	}
 	podYaml := createPodYaml(podname, image, namespace, cmd, commandArgs, limits)
 
-	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
+	cmdStr := fmt.Sprintf(`kubectl apply -f - <<'KUBECTL_EOF'
 %s
-EOF
+KUBECTL_EOF
 `, podYaml)
 
 	return &command.Command{
