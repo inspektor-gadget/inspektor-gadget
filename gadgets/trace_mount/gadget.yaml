@@ -6,7 +6,7 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   mount:
     fields:
-      delta:
+      delta_raw:
         annotations:
           columns.width: 8
           columns.alignment: right

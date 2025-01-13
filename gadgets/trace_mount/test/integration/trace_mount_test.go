@@ -35,7 +35,7 @@ type traceMountEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	Delta uint64 `json:"delta"`
+	Delta uint64 `json:"delta_raw"`
 	Flags string `json:"flags"`
 	Error string `json:"error"`
 	Fs    string `json:"fs"`
