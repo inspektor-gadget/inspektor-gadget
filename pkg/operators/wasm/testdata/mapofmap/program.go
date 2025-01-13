@@ -79,9 +79,21 @@ func gadgetStart() int {
 		return 1
 	}
 
+	err = api.ReleaseHandle(innerMap)
+	if err != nil {
+		api.Errorf("releasing handle for map got with mapOfMap.Lookup(): %w", err)
+		return 1
+	}
+
 	err = mapOfMap.Delete(key)
 	if err != nil {
 		api.Errorf("deleting map %s", hashMap)
+		return 1
+	}
+
+	err = api.ReleaseHandle(mapOfMap)
+	if err != nil {
+		api.Errorf("releasing handle for map got with GetMap(): %w", err)
 		return 1
 	}
 
