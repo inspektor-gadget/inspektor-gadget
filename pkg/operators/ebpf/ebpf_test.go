@@ -56,5 +56,5 @@ func TestEmpty(t *testing.T) {
 		"operator.oci.verify-image": "false",
 	}
 	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.Error(t, err, "running gadget")
+	require.NoError(t, err, "running gadget")
 }

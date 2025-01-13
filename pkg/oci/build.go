@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/distribution/reference"
@@ -203,11 +204,13 @@ func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descripto
 func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, arch string, paths *ObjectPath, createdDate string) (ocispec.Descriptor, error) {
 	layerDescs := []ocispec.Descriptor{}
 
-	progDesc, err := createLayerDesc(ctx, target, paths.EBPF, eBPFObjectMediaType)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
+	if paths.EBPF != "" {
+		progDesc, err := createLayerDesc(ctx, target, paths.EBPF, eBPFObjectMediaType)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
+		}
+		layerDescs = append(layerDescs, progDesc)
 	}
-	layerDescs = append(layerDescs, progDesc)
 
 	if paths.Wasm != "" {
 		wasmDesc, err := createLayerDesc(ctx, target, paths.Wasm, wasmObjectMediaType)
@@ -306,7 +309,7 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 	}
 
 	if len(layers) == 0 {
-		return ocispec.Descriptor{}, fmt.Errorf("no eBPF objects found")
+		return ocispec.Descriptor{}, fmt.Errorf("gadget contains no layers")
 	}
 
 	// Create the index which combines the architectures and push it to the memory store
@@ -330,4 +333,17 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 		return ocispec.Descriptor{}, fmt.Errorf("pushing manifest index: %w", err)
 	}
 	return indexDesc, nil
+}
+
+func fixGeneratedFilesOwner(opts *BuildGadgetImageOpts) error {
+	allPaths := []string{}
+	for _, paths := range opts.ObjectPaths {
+		allPaths = append(allPaths, paths.EBPF, paths.Wasm, paths.Btfgen)
+	}
+
+	if len(allPaths) == 0 {
+		return nil
+	}
+
+	return copyFileOwner(filepath.Dir(allPaths[0]), allPaths...)
 }
