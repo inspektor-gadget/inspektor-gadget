@@ -59,9 +59,11 @@ type GadgetInstance struct {
 	cancel               func()
 	state                gadgetState
 	error                error
+	ready                chan struct{}
 }
 
 func (p *GadgetInstance) GadgetInfo() (*api.GadgetInfo, error) {
+	<-p.ready
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.gadgetInfo, p.error
@@ -186,6 +188,7 @@ func (p *GadgetInstance) Run(
 				Payload: d,
 			}
 			p.gadgetInfo = gi
+			close(p.ready)
 			return nil
 		}),
 	)
