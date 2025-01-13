@@ -382,54 +382,59 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	var errs []error
+
 	for _, opInst := range o.imageOperatorInstances {
 		if preStart, ok := opInst.(operators.PreStart); ok {
-			err := preStart.PreStart(gadgetCtx)
+			err := preStart.PreStart(o.gadgetCtx)
 			if err != nil {
-				return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+				errs = append(errs, fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err))
 			}
 		}
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
-	started := []operators.ImageOperatorInstance{}
+	var errs []error
 
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Start(o.gadgetCtx)
 		if err != nil {
-			// Stop all started operators
-			for _, startedOp := range started {
-				startedOp.Stop(o.gadgetCtx)
-			}
-			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
+			errs = append(errs, fmt.Errorf("starting operator %q: %w", opInst.Name(), err))
 		}
-		started = append(started, opInst)
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	var errs []error
+
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Stop(o.gadgetCtx)
 		if err != nil {
-			return fmt.Errorf("stopping operator %q: %w", opInst.Name(), err)
+			errs = append(errs, fmt.Errorf("stopping operator %q: %w", opInst.Name(), err))
 		}
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (o *OciHandlerInstance) PostStop(gadgetCtx operators.GadgetContext) error {
+	var errs []error
+
 	for _, opInst := range o.imageOperatorInstances {
-		if preStart, ok := opInst.(operators.PostStop); ok {
-			err := preStart.PostStop(gadgetCtx)
+		if postStop, ok := opInst.(operators.PostStop); ok {
+			err := postStop.PostStop(o.gadgetCtx)
 			if err != nil {
-				return fmt.Errorf("post-stopping operator %q: %w", opInst.Name(), err)
+				errs = append(errs, fmt.Errorf("post-starting operator %q: %w", opInst.Name(), err))
 			}
 		}
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (o *OciHandlerInstance) Close(gadgetCtx operators.GadgetContext) error {

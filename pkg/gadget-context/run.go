@@ -93,50 +93,52 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) err
 }
 
 func (c *GadgetContext) preStart() error {
+	var errs []error
+
 	for _, opInst := range c.dataOperatorInstances {
 		if preStart, ok := opInst.(operators.PreStart); ok {
 			c.Logger().Debugf("pre-starting op %q", opInst.Name())
 			err := preStart.PreStart(c)
 			if err != nil {
-				return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
+				errs = append(errs, fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err))
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (c *GadgetContext) start() error {
-	started := []operators.DataOperatorInstance{}
+	var errs []error
 
 	for _, opInst := range c.dataOperatorInstances {
 		c.Logger().Debugf("starting op %q", opInst.Name())
 		err := opInst.Start(c)
 		if err != nil {
-			// Stop all operators that were started
-			for _, startedOp := range started {
-				startedOp.Stop(c)
-			}
-			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
+
+			errs = append(errs, fmt.Errorf("starting operator %q: %w", opInst.Name(), err))
 		}
-		started = append(started, opInst)
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (c *GadgetContext) stop() error {
+	var errs []error
+
 	// Stop in reverse order
 	for i := len(c.dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := c.dataOperatorInstances[i]
 		c.Logger().Debugf("stopping op %q", opInst.Name())
 		err := opInst.Stop(c)
 		if err != nil {
-			return fmt.Errorf("stopping operator %q: %w", opInst.Name(), err)
+			errs = append(errs, fmt.Errorf("stopping operator %q: %w", opInst.Name(), err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (c *GadgetContext) postStop() error {
+	var errs []error
+
 	// PostStop in reverse order
 	for i := len(c.dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := c.dataOperatorInstances[i]
@@ -144,11 +146,11 @@ func (c *GadgetContext) postStop() error {
 			c.Logger().Debugf("post-stopping op %q", opInst.Name())
 			err := postStop.PostStop(c)
 			if err != nil {
-				return fmt.Errorf("post-stopping operator %q: %w", opInst.Name(), err)
+				errs = append(errs, fmt.Errorf("post-stopping operator %q: %w", opInst.Name(), err))
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (c *GadgetContext) close() error {
@@ -172,6 +174,8 @@ func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
 }
 
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
+	var errs []error
+
 	defer c.cancel()
 	defer c.close()
 
@@ -181,22 +185,27 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 	}
 
 	if err := c.preStart(); err != nil {
-		return fmt.Errorf("pre-starting operators: %w", err)
+		errs = append(errs, fmt.Errorf("pre-starting operators: %w", err))
 	}
 
 	if err := c.start(); err != nil {
-		return fmt.Errorf("starting operators: %w", err)
+		errs = append(errs, fmt.Errorf("starting operators: %w", err))
 	}
+
+	// TODO: should it return here?
+	//if len(errs) > 0 {
+	//	return errors.Join(errs...)
+	//}
 
 	c.Logger().Debugf("running...")
-
 	WaitForTimeoutOrDone(c)
+
 	if err := c.stop(); err != nil {
-		return fmt.Errorf("stopping operators: %w", err)
+		errs = append(errs, fmt.Errorf("stopping operators: %w", err))
 	}
 	if err := c.postStop(); err != nil {
-		return fmt.Errorf("post-stopping operators: %w", err)
+		errs = append(errs, fmt.Errorf("post-stopping operators: %w", err))
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
