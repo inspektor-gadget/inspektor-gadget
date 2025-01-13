@@ -7,7 +7,7 @@ sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadget
 datasources:
   ssl:
     fields:
-      latency_ns:
+      latency_ns_raw:
         annotations:
           columns.width: 10
       len:

@@ -41,6 +41,10 @@ var AnnotationsTemplates = map[string]map[string]string{
 		ColumnsWidthAnnotation:     "10",
 		ColumnsAlignmentAnnotation: string(AlignmentRight),
 	},
+	"duration": {
+		ColumnsWidthAnnotation:     "20",
+		ColumnsAlignmentAnnotation: string(AlignmentRight),
+	},
 	"node": {
 		ColumnsWidthAnnotation:    "30",
 		ColumnsEllipsisAnnotation: string(EllipsisMiddle),

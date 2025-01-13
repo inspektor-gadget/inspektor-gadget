@@ -46,7 +46,7 @@ type traceDNSEvent struct {
 	PktType   string `json:"pkt_type"`
 	RcodeRaw  uint16 `json:"rcode_raw"`
 	Rcode     string `json:"rcode"`
-	Latency   uint64 `json:"latency_ns"`
+	Latency   uint64 `json:"latency_ns_raw"`
 	QrRaw     bool   `json:"qr_raw"`
 	Qr        string `json:"qr"`
 	Name      string `json:"name"`

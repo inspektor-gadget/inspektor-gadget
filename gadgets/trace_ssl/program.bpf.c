@@ -51,7 +51,7 @@ struct event {
 	struct gadget_process proc;
 
 	enum operation operation_raw;
-	u64 latency_ns;
+	gadget_duration latency_ns_raw;
 	u32 len;
 	gadget_errno error_raw;
 	u8 buf[MAX_BUF_SIZE];
@@ -160,7 +160,7 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	gadget_process_populate(&event->proc);
 	event->operation_raw = op;
 	event->timestamp_raw = ts;
-	event->latency_ns = ts - ssl_data->start_time;
+	event->latency_ns_raw = ts - ssl_data->start_time;
 	event->len = len;
 	event->error_raw = -PT_REGS_RC(ctx);
 
@@ -244,7 +244,7 @@ int trace_uretprobe_libssl_SSL_do_handshake(struct pt_regs *ctx)
 	gadget_process_populate(&event->proc);
 	event->operation_raw = libssl_SSL_do_handshake;
 	event->timestamp_raw = ts;
-	event->latency_ns = ts - ssl_data->start_time;
+	event->latency_ns_raw = ts - ssl_data->start_time;
 	event->len = 0;
 	event->error_raw = -PT_REGS_RC(ctx);
 
@@ -317,7 +317,7 @@ static __always_inline int probe_crypto_exit(struct pt_regs *ctx,
 	gadget_process_populate(&event->proc);
 	event->operation_raw = op;
 	event->timestamp_raw = ts;
-	event->latency_ns = ts - crypto_data->start_time;
+	event->latency_ns_raw = ts - crypto_data->start_time;
 	event->len = 0;
 	event->error_raw = -PT_REGS_RC(ctx);
 
