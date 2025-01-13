@@ -35,12 +35,12 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type event execsnoopWithLongPaths ./bpf/execsnoop.bpf.c -- -DWITH_LONG_PATHS -I./bpf/
 
-// needs to be kept in sync with execsnoopEvent from execsnoop_bpfel.go without the Args field
 type execsnoopEventAbbrev struct {
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32
 	Tid         uint32
+	Ptid        uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -62,6 +62,7 @@ type execsnoopWithLongPathsEventAbbrev struct {
 	Timestamp   uint64
 	Pid         uint32
 	Tid         uint32
+	Ptid        uint32
 	Ppid        uint32
 	Uid         uint32
 	Gid         uint32
@@ -223,6 +224,7 @@ func (t *Tracer) run() {
 			Pid:           bpfEvent.Pid,
 			Tid:           bpfEvent.Tid,
 			Ppid:          bpfEvent.Ppid,
+			Ptid:          bpfEvent.Ptid,
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
 			LoginUid:      bpfEvent.Loginuid,

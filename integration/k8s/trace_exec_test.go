@@ -96,6 +96,7 @@ func TestTraceExec(t *testing.T) {
 				e.Pid = 0
 				e.Tid = 0
 				e.Ppid = 0
+				e.Ptid = 0
 				e.LoginUid = 0
 				e.SessionId = 0
 				e.Retval = 0
@@ -168,6 +169,7 @@ func TestTraceExecHost(t *testing.T) {
 				e.Pid = 0
 				e.Tid = 0
 				e.Ppid = 0
+				e.Ptid = 0
 				e.LoginUid = 0
 				e.SessionId = 0
 				e.Retval = 0

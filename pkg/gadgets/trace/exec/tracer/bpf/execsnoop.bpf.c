@@ -110,6 +110,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 		event->sessionid = BPF_CORE_READ(task, sessionid);
 
 	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
+	event->ptid = (pid_t)BPF_CORE_READ(task, real_parent, pid);
 	event->args_count = 0;
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
