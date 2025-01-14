@@ -45,6 +45,7 @@ const (
 	signalTargetAnnotation    = "formatters.signal.target"
 	errnoTargetAnnotation     = "formatters.errno.target"
 	bytesTargetAnnotation     = "formatters.bytes.target"
+	durationTargetAnnotation  = "formatters.duration.target"
 )
 
 type formattersOperator struct{}
@@ -169,6 +170,19 @@ func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) 
 		addrF.PutString(entry, addrStr)
 		return addrStr, nil
 	}, nil
+}
+
+func formatDuration(d time.Duration) string {
+	switch {
+	case d < time.Microsecond:
+		return fmt.Sprintf("%dns", d.Nanoseconds())
+	case d < time.Millisecond:
+		return fmt.Sprintf("%.2fµs", float64(d)/float64(time.Microsecond))
+	case d < time.Second:
+		return fmt.Sprintf("%.2fms", float64(d)/float64(time.Millisecond))
+	default:
+		return d.String()
+	}
 }
 
 // careful: order and priority matter both!
@@ -359,6 +373,45 @@ var replacers = []replacer{
 
 					humanReadable := humanize.Bytes(bytesValue)
 					bytesField.PutString(data, humanReadable)
+				}
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
+	{
+		name:      "duration",
+		selectors: []string{"type:" + ebpftypes.DurationTypeName},
+		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.duration", in, durationTargetAnnotation)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := []datasource.FieldOption{
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.TemplateAnnotation: "duration",
+				}),
+				datasource.WithSameParentAs(in),
+			}
+
+			durationField, err := ds.AddField(outName, api.Kind_String, opts...)
+			if err != nil {
+				return nil, err
+			}
+
+			in.SetHidden(true, false)
+
+			return func(data datasource.Data) error {
+				switch in.Type() {
+				case api.Kind_Uint64:
+					durationValue, err := in.Uint64(data)
+					if err != nil {
+						return err
+					}
+
+					humanReadable := formatDuration(time.Duration(durationValue))
+					durationField.PutString(data, humanReadable)
 				}
 				return nil
 			}, nil

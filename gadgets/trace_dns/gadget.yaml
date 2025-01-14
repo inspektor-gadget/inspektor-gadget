@@ -40,7 +40,7 @@ datasources:
       id:
         annotations:
           columns.hidden: "true"
-      latency_ns:
+      latency_ns_raw:
         annotations:
           columns.hidden: "true"
           columns.width: "8"
