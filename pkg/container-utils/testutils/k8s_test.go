@@ -39,16 +39,16 @@ func TestCreatePodYaml(t *testing.T) {
 			expected: []string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
+  - name: "foo"
+    image: "foo-image"
 `},
 			podName:   "foo",
 			imageName: "foo-image",
@@ -62,22 +62,22 @@ spec:
 			expected: []string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
-    command: MyCmd
+  - name: "foo"
+    image: "foo-image"
+    command: ["/bin/sh", "-c"]
 `},
 			podName:   "foo",
 			imageName: "foo-image",
 			namespace: "ns",
-			cmd:       "MyCmd",
+			cmd:       `["/bin/sh", "-c"]`,
 			args:      "",
 			limits:    nil,
 		},
@@ -86,24 +86,24 @@ spec:
 			expected: []string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
-    command: MyCmd
+  - name: "foo"
+    image: "foo-image"
+    command: ["/bin/sh", "-c"]
     args:
-    - arg arg2
+    - "arg arg2"
 `},
 			podName:   "foo",
 			imageName: "foo-image",
 			namespace: "ns",
-			cmd:       "MyCmd",
+			cmd:       `["/bin/sh", "-c"]`,
 			args:      "arg arg2",
 			limits:    nil,
 		},
@@ -113,16 +113,16 @@ spec:
 				`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
+  - name: "foo"
+    image: "foo-image"
     resources:
       limits:
         cpu: "1"
@@ -131,16 +131,16 @@ spec:
 				`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
+  - name: "foo"
+    image: "foo-image"
     resources:
       limits:
         memory: "2Gi"
@@ -163,19 +163,19 @@ spec:
 				`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
-    command: MyCmd
+  - name: "foo"
+    image: "foo-image"
+    command: ["/bin/sh", "-c"]
     args:
-    - arg arg2
+    - "arg arg2"
     resources:
       limits:
         cpu: "1"
@@ -184,19 +184,19 @@ spec:
 				`apiVersion: v1
 kind: Pod
 metadata:
-  name: foo
-  namespace: ns
+  name: "foo"
+  namespace: "ns"
   labels:
-    run: foo
+    run: "foo"
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: foo
-    image: foo-image
-    command: MyCmd
+  - name: "foo"
+    image: "foo-image"
+    command: ["/bin/sh", "-c"]
     args:
-    - arg arg2
+    - "arg arg2"
     resources:
       limits:
         memory: "2Gi"
@@ -206,7 +206,7 @@ spec:
 			podName:   "foo",
 			imageName: "foo-image",
 			namespace: "ns",
-			cmd:       "MyCmd",
+			cmd:       `["/bin/sh", "-c"]`,
 			args:      "arg arg2",
 			limits: map[string]string{
 				"cpu":    "1",

@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -57,7 +58,50 @@ func TestTraceExec(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-exec"
-	containerImage := "docker.io/library/busybox:latest"
+	containerImage := "docker.io/library/gcc:latest"
+
+	execProgram := `
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+
+int main(int argc, char *argv[], char **envp) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <program_to_execute>\n", argv[0]);
+        exit(1);
+    }
+
+    char *method = getenv("METHOD");
+    if (method == NULL) {
+        fprintf(stderr, "Environment variable METHOD not set.\n");
+        exit(1);
+    }
+
+    if (strcmp(method, "execve") == 0) {
+        execve(argv[1], argv+1, envp);
+        perror("execve");
+    } else if (strcmp(method, "execveat") == 0) {
+        int fd = open(".", O_RDONLY | O_DIRECTORY);
+        if (fd == -1) {
+            perror("open");
+            exit(1);
+        }
+
+        execveat(fd, argv[1], argv+1, envp, 0);
+        perror("execveat");
+    } else {
+        fprintf(stderr, "Invalid value for METHOD environment variable.\n");
+    }
+    exit(1);
+}
+`
+	progBase64 := base64.StdEncoding.EncodeToString([]byte(execProgram))
 
 	var ns string
 	containerOpts := []containers.ContainerOption{
@@ -70,12 +114,17 @@ func TestTraceExec(t *testing.T) {
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
-	sleepArgs := []string{"/bin/sleep", "1"}
-	innerCmd := fmt.Sprintf("cd tmp ; while true ; do %s; done", strings.Join(sleepArgs, " "))
-	// copies /bin/sh to /usr/bin/sh to check that the upper_layer is true when executing /usr/bin/sh
-	cmd := fmt.Sprintf("cp /bin/sh /usr/bin/sh ; setuidgid 1000:1111 /usr/bin/sh -c '%s'", innerCmd)
-	shArgs := []string{"/bin/sh", "-c", cmd}
-	innerShArgs := []string{"/usr/bin/sh", "-c", innerCmd}
+	buildCmd := fmt.Sprintf("echo %s | base64 -d > exec.c && gcc -Wall -o /bin/exec-syscall exec.c", progBase64)
+	sleep1Args := []string{"/usr/bin/sleep", "0.4"}
+	sleep2Args := []string{"/usr/bin/sleep", "0.6"}
+	innerCmd := fmt.Sprintf(
+		"cd tmp ; while true ; do METHOD=execve exec-syscall %s; METHOD=execveat exec-syscall %s; done",
+		strings.Join(sleep1Args, " "),
+		strings.Join(sleep2Args, " "),
+	)
+	// copies /usr/bin/sh to /usr/bin/sh2 to check that the upper_layer is true when executing /usr/bin/sh2
+	cmd := fmt.Sprintf("%s && cp /usr/bin/sh /usr/bin/sh2 && nsenter --setuid 1000 --setgid 1111 /usr/bin/sh2 -c '%s'", buildCmd, innerCmd)
+	innerShArgs := []string{"/usr/bin/sh2", "-c", innerCmd}
 
 	testContainer := containerFactory.NewContainer(containerName, cmd, containerOpts...)
 
@@ -104,33 +153,15 @@ func TestTraceExec(t *testing.T) {
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntries := []*traceExecEvent{
-					// outer sh
-					{
-						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:       utils.BuildProc("sh", 0, 0),
-						Cwd:        "/",
-						Args:       strings.Join(shArgs, " "),
-						UpperLayer: false,
-						Exepath:    "/bin/sh",
-						File:       "/bin/sh",
-						DevMajor:   utils.NormalizedInt,
-						DevMinor:   utils.NormalizedInt,
-						Inode:      utils.NormalizedInt,
-
-						// Check the existence of the following fields
-						Timestamp: utils.NormalizedStr,
-						Loginuid:  utils.NormalizedInt,
-						Sessionid: utils.NormalizedInt,
-					},
 					// inner sh
 					{
 						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:       utils.BuildProc("sh", 1000, 1111),
+						Proc:       utils.BuildProc("sh2", 1000, 1111),
 						Cwd:        "/",
 						Args:       strings.Join(innerShArgs, " "),
 						UpperLayer: true,
-						Exepath:    "/usr/bin/sh",
-						File:       "/usr/bin/sh",
+						Exepath:    "/usr/bin/sh2",
+						File:       "/usr/bin/sh2",
 						DevMajor:   utils.NormalizedInt,
 						DevMinor:   utils.NormalizedInt,
 						Inode:      utils.NormalizedInt,
@@ -140,16 +171,34 @@ func TestTraceExec(t *testing.T) {
 						Loginuid:  utils.NormalizedInt,
 						Sessionid: utils.NormalizedInt,
 					},
-					// sleep
+					// sleeps
 					{
 						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
 						Proc:        utils.BuildProc("sleep", 1000, 1111),
 						Cwd:         "/tmp",
-						Args:        strings.Join(sleepArgs, " "),
+						Args:        strings.Join(sleep1Args, " "),
 						UpperLayer:  false,
 						PupperLayer: true,
-						Exepath:     "/bin/sleep",
-						File:        "/bin/sleep",
+						Exepath:     "/usr/bin/sleep",
+						File:        "/usr/bin/sleep",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
+
+						// Check the existence of the following fields
+						Timestamp: utils.NormalizedStr,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+					},
+					{
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:        utils.BuildProc("sleep", 1000, 1111),
+						Cwd:         "/tmp",
+						Args:        strings.Join(sleep2Args, " "),
+						UpperLayer:  false,
+						PupperLayer: true,
+						Exepath:     "/usr/bin/sleep",
+						File:        "/usr/bin/sleep",
 						DevMajor:    utils.NormalizedInt,
 						DevMinor:    utils.NormalizedInt,
 						Inode:       utils.NormalizedInt,
