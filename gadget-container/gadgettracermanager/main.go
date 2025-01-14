@@ -42,6 +42,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	k8sconfigmapstore "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store/k8s-configmap-store"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
 	// This is a blank include that actually imports all gadgets
@@ -344,6 +345,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Parsing FallbackPodInformer %q: %v", fallbackPodInformerStr, err)
 		}
+
+		if err := oci.Lock(context.Background()); err != nil {
+			log.Fatalf("locking OCI storage: %s", err)
+		}
+		defer oci.Unlock()
 
 		lis, err := net.Listen("unix", socketfile)
 		if err != nil {

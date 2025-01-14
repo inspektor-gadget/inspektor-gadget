@@ -100,9 +100,9 @@ func TestAuditSeccomp(t *testing.T) {
 
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=10"))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=10"))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
