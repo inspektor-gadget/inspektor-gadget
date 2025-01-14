@@ -91,7 +91,7 @@ func isMapOfMaps(typ ebpf.MapType) bool {
 	return typ == ebpf.ArrayOfMaps || typ == ebpf.HashOfMaps
 }
 
-func isMapTypeSupported(typ ebpf.MapType) error {
+func isMapTypeSupportedForAccess(typ ebpf.MapType) error {
 	// We do not permit operation on map unknown to us.
 	// A newer kernel can introduce a new type of map taking an FD as a value,
 	// this way user could use this new map to leak FD in guest WASM.
@@ -124,9 +124,8 @@ func (i *wasmOperatorInstance) newMap(ctx context.Context, m wapi.Module, stack 
 	valueSize := wapi.DecodeU32(stack[3])
 	maxEntries := wapi.DecodeU32(stack[4])
 
-	err := isMapTypeSupported(mapType)
-	if err != nil {
-		i.logger.Warnf("newMap: %v", err)
+	if !isMapTypeKnown(mapType) {
+		i.logger.Warnf("newMap: unknown map type %v", mapType)
 		stack[0] = 0
 		return
 	}
@@ -189,9 +188,9 @@ func (i *wasmOperatorInstance) getMap(ctx context.Context, m wapi.Module, stack 
 		return
 	}
 
-	err = isMapTypeSupported(ebpfMap.Type())
-	if err != nil {
-		i.logger.Warnf("getMap: %v", err)
+	mapType := ebpfMap.Type()
+	if !isMapTypeKnown(mapType) {
+		i.logger.Warnf("getMap: unknown map type %v", mapType)
 		stack[0] = 0
 		return
 	}
@@ -217,6 +216,14 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
+	mapType := ebpfMap.Type()
+	err := isMapTypeSupportedForAccess(mapType)
+	if err != nil {
+		i.logger.Warnf("mapLookup: %v", err)
+		stack[0] = 1
+		return
+	}
+
 	key, err := bufFromStack(m, keyPtr)
 	if err != nil {
 		i.logger.Warnf("mapLookup: getting a buf for key pointer: %v", err)
@@ -231,7 +238,7 @@ func (i *wasmOperatorInstance) mapLookup(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	if isMapOfMaps(ebpfMap.Type()) {
+	if isMapOfMaps(mapType) {
 		mapID := ebpf.MapID(binary.NativeEndian.Uint32(value))
 
 		innerMap, err := ebpf.NewMapFromID(mapID)
@@ -281,6 +288,14 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
+	mapType := ebpfMap.Type()
+	err := isMapTypeSupportedForAccess(mapType)
+	if err != nil {
+		i.logger.Warnf("mapUpdate: %v", err)
+		stack[0] = 1
+		return
+	}
+
 	key, err := bufFromStack(m, keyPtr)
 	if err != nil {
 		i.logger.Warnf("mapUpdate: getting a buf for key pointer: %v", err)
@@ -295,7 +310,7 @@ func (i *wasmOperatorInstance) mapUpdate(ctx context.Context, m wapi.Module, sta
 		return
 	}
 
-	if isMapOfMaps(ebpfMap.Type()) {
+	if isMapOfMaps(mapType) {
 		// We hide the FD behind the handle, this way users can interact with
 		// *OfMaps maps but without handling the FD themselves.
 		// So, for mapUpdate() users give the map handle and we translate it to the
@@ -333,6 +348,13 @@ func (i *wasmOperatorInstance) mapDelete(ctx context.Context, m wapi.Module, sta
 
 	ebpfMap, ok := getHandle[*ebpf.Map](i, mapHandle)
 	if !ok {
+		stack[0] = 1
+		return
+	}
+
+	err := isMapTypeSupportedForAccess(ebpfMap.Type())
+	if err != nil {
+		i.logger.Warnf("mapDelete: %v", err)
 		stack[0] = 1
 		return
 	}
