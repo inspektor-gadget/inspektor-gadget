@@ -83,6 +83,28 @@ datasources:
         annotations:
           description: Source endpoint
           template: l4endpoint
+      ttl_values  :
+        annotations:
+          columns.hidden: "true"
+          description : List of TTL values in Answer Headers
+      is_compressed :
+        annotations:
+          columns.hidden: "true"
+          description : Packet is compressed (contains pointer label) or not
+      TC  :
+        annotations:
+          columns.hidden: "true"
+          description : Truncated Flag
+      RA  :
+        annotations:
+          columns.hidden: "true"
+          description : Recursion Available Flag
+      RD    :
+        annotations:
+          columns.hidden: "true"
+          description : Recursion Desired Flag
+
+
 params:
   ebpf:
     paths:

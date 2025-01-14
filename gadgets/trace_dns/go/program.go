@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"encoding/binary"
 
 	"golang.org/x/net/dns/dnsmessage"
 
@@ -197,6 +198,36 @@ func gadgetInit() int {
 		return 1
 	}
 
+	ttlValuesF, err := ds.AddField("ttl_values", api.Kind_String)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	isCompressedF, err := ds.AddField("is_compressed", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	TruncatedF, err := ds.AddField("TC", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	RecursionAvailableF, err := ds.AddField("RA", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	RecursionDesiredF, err := ds.AddField("RD", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		// Get all fields sent by ebpf
 		payloadLen, err := lenF.Uint32(data)
@@ -204,6 +235,7 @@ func gadgetInit() int {
 			api.Warnf("failed to get data_len: %s", err)
 			return
 		}
+
 		dnsOff, err := dnsOffF.Uint16(data)
 		if err != nil {
 			api.Warnf("failed to get dns_off: %s", err)
@@ -238,16 +270,71 @@ func gadgetInit() int {
 			qrF.SetString(data, "Q")
 		}
 
+		numQuestions := int(len(msg.Questions))
+
+		offset := int(dnsOff) + 12
+
+		compressionFound := false
+
+		for i := 1; i <= numQuestions && !compressionFound; i++ {
+			endOfName := false
+			for !endOfName {
+				payload = payload[offset:]
+				labelLen := uint8(payload[0])
+				offset = 1
+				if labelLen	& 0xC0 == 0xC0 {
+					compressionFound = true
+					endOfName = true
+				} else if labelLen == 0 {
+					endOfName = true
+				} else {
+					offset += int(labelLen)
+				}
+			}
+			offset += 4
+		}
+
+		numAnswers := int(len(msg.Answers))
+
+		if !compressionFound {
+			for i := 1; i <= numAnswers && !compressionFound; i++ {
+				endOfName := false
+				for !endOfName {
+					payload = payload[offset:]
+					labelLen := uint8(payload[0])
+					offset += 1
+					if labelLen&0xC0 == 0xC0 {
+						compressionFound = true
+						endOfName = true
+					} else if labelLen == 0 {
+						endOfName = true
+					} else {
+						offset += int(labelLen)
+					}
+				}
+				offset += 8
+				dataLen := binary.LittleEndian.Uint16(payload[offset:])
+				offset += 2 + int(dataLen)
+			}
+		}
+
+		isCompressedF.SetBool(data, compressionFound)
+		RecursionAvailableF.SetBool(data, msg.Header.RecursionAvailable)
+		RecursionDesiredF.SetBool(data, msg.Header.RecursionDesired)
+		TruncatedF.SetBool(data, msg.Header.Truncated)
+
 		if len(msg.Questions) > 0 {
 			question := msg.Questions[0]
 			qtypeRawF.SetUint16(data, uint16(question.Type))
 			qtypeF.SetString(data, Type(question.Type).String())
 			nameF.SetString(data, question.Name.String())
 		}
-
-		numAnswersF.SetInt32(data, int32(len(msg.Answers)))
+		
+		numAnswersF.SetInt32(data, int32(numAnswers))
 
 		var addresses []string
+
+		var ttlValues []string
 
 		for _, answer := range msg.Answers {
 			var str string
@@ -259,10 +346,13 @@ func gadgetInit() int {
 				ipv6 := answer.Body.(*dnsmessage.AAAAResource)
 				str = net.IP(ipv6.AAAA[:]).String()
 			}
+			ttlValues = append(ttlValues, fmt.Sprintf("%d", answer.Header.TTL))
 			if str != "" {
 				addresses = append(addresses, str)
 			}
 		}
+
+		ttlValuesF.SetString(data, strings.Join(ttlValues, ","))
 
 		addressesF.SetString(data, strings.Join(addresses, ","))
 	}, 0)
