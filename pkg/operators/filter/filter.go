@@ -85,8 +85,7 @@ func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 		ffns: map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
 	}
 
-	filters := strings.Split(filterCfg, ",")
-	for _, filter := range filters {
+	for _, filter := range strings.Fields(filterCfg) {
 		if filter == "" {
 			continue
 		}
@@ -165,6 +164,12 @@ func getCompareFunc[T constraints.Ordered](op comparisonType) func(a, b T) bool 
 }
 
 func extractFilter(filter string) (dsName string, fieldName string, op comparisonType, negate bool, value string, err error) {
+
+	if strings.Contains(filter, ":") {
+		return "", "", comparisonTypeUnknown, false, "",
+			fmt.Errorf("invalid filter format: use == instead of : ")
+	}
+
 	// State machine to get filter
 	var opString string
 
