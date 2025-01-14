@@ -134,6 +134,10 @@ func (cache *userGroupCache) Stop() {
 	cache.useCountMutex.Lock()
 	defer cache.useCountMutex.Unlock()
 
+	if cache.useCount == 0 {
+		return
+	}
+
 	// We are the last user, stop everything
 	if cache.useCount == 1 {
 		cache.Close()
@@ -238,11 +242,19 @@ func updateEntries(file *os.File, resourceCache cachedmap.CachedMap[uint32, stri
 }
 
 func (cache *userGroupCache) GetUsername(uid uint32) string {
+	//if cache.userCache == nil {
+	//	return ""
+	//}
+
 	name, _ := cache.userCache.Get(uid)
 	return name
 }
 
 func (cache *userGroupCache) GetGroupname(gid uint32) string {
+	if cache.userCache == nil {
+		return ""
+	}
+
 	name, _ := cache.groupCache.Get(gid)
 	return name
 }

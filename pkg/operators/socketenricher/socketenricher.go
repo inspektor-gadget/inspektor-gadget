@@ -190,6 +190,10 @@ func (i *SocketEnricherInstance) Start(gadgetCtx operators.GadgetContext) error 
 }
 
 func (i *SocketEnricherInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (i *SocketEnricherInstance) Close(gadgetCtx operators.GadgetContext) error {
 	return i.PostGadgetRun()
 }
 

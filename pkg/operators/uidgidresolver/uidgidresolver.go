@@ -208,6 +208,13 @@ func (m *UidGidResolverInstance) enrich(ev any) {
 }
 
 func (m *UidGidResolverInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	// We need to start the cache here because it's too late to start it in
+	// Start() as other operators could be started before and generate events
+	// that need the cache
+	if err := m.uidGidCache.Start(); err != nil {
+		return err
+	}
+
 	for ds, fieldAccPairs := range m.fieldsUid {
 		for _, fieldAccPair := range fieldAccPairs {
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -242,10 +249,7 @@ func (m *UidGidResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 		}
 	}
 
-	// We need to start the cache here because it's too late to start it in
-	// Start() as other operators could be started before and generate events
-	// that need the cache
-	return m.uidGidCache.Start()
+	return nil
 }
 
 func (m *UidGidResolverInstance) Start(gadgetCtx operators.GadgetContext) error {
@@ -253,6 +257,10 @@ func (m *UidGidResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 }
 
 func (m *UidGidResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
+func (m *UidGidResolverInstance) Close(gadgetCtx operators.GadgetContext) error {
 	m.uidGidCache.Stop()
 	return nil
 }
