@@ -68,7 +68,7 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
 
-	__u64 delta;
+	gadget_duration delta_raw;
 	enum flags_set flags_raw;
 	gadget_errno error_raw;
 	char fs[FS_NAME_LEN];
@@ -133,7 +133,7 @@ static int probe_exit(void *ctx, int ret)
 
 	gadget_process_populate(&eventp->proc);
 	eventp->timestamp_raw = bpf_ktime_get_boot_ns();
-	eventp->delta = bpf_ktime_get_ns() - argp->ts;
+	eventp->delta_raw = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags_raw = argp->flags;
 	eventp->error_raw = -ret;
 	eventp->op_raw = argp->op;

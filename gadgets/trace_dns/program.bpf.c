@@ -85,7 +85,8 @@ struct event_t {
 	char exepath[MAX_STRING_SIZE];
 
 	enum pkt_type_t pkt_type_raw;
-	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
+	gadget_duration
+		latency_ns_raw; // Set only if the packet is a response and pkt_type is 0 (Host).
 
 	__u16 dns_off; // DNS offset in the packet
 	__u32 data_len;
@@ -109,7 +110,8 @@ struct event_header_t {
 	char exepath[MAX_STRING_SIZE];
 
 	enum pkt_type_t pkt_type_raw;
-	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
+	gadget_duration
+		latency_ns_raw; // Set only if the packet is a response and pkt_type is 0 (Host).
 
 	__u16 dns_off; // DNS offset in the packet
 	__u32 data_len;
@@ -280,7 +282,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 		return 0; // it never happens
 
 	// As an optimization, only clear the fields that can be skipped below.
-	event->latency_ns = 0;
+	event->latency_ns_raw = 0;
 	event->proc = empty_proc;
 	if (paths) {
 		event->cwd[0] = '\0';
@@ -373,7 +375,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 			if (query_ts != NULL) {
 				// query ts should always be less than the event ts, but check anyway to be safe.
 				if (*query_ts < event->timestamp_raw) {
-					event->latency_ns =
+					event->latency_ns_raw =
 						event->timestamp_raw -
 						*query_ts;
 				}
