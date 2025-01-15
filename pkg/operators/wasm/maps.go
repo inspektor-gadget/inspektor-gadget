@@ -80,7 +80,7 @@ func (i *wasmOperatorInstance) addMapFuncs(env wazero.HostModuleBuilder) {
 
 func isMapTypeKnown(typ ebpf.MapType) bool {
 	// Keep in sync with with wasmapi/go/map.go.
-	return typ <= ebpf.TaskStorage
+	return typ <= ebpf.Arena
 }
 
 func isMapTypeFDArray(typ ebpf.MapType) bool {
