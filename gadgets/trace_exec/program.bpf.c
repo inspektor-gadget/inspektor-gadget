@@ -38,6 +38,7 @@ struct event {
 	gadget_errno error_raw;
 	int args_count;
 	bool upper_layer;
+	bool fupper_layer;
 	bool pupper_layer;
 	unsigned int args_size;
 	char cwd[MAX_STRING_SIZE];
@@ -79,6 +80,13 @@ struct {
 	__type(key, pid_t);
 	__type(value, struct event);
 } execs SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, pid_t);
+	__type(value, __u8);
+} security_bprm_hit_map SEC(".maps");
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
@@ -198,12 +206,12 @@ static __always_inline bool has_upper_layer(struct inode *inode)
 SEC("tracepoint/sched/sched_process_exec")
 int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 {
-	u32 execs_lookup_key = ctx->old_pid;
+	u32 pre_sched_pid = ctx->old_pid;
 	struct event *event;
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct task_struct *parent = BPF_CORE_READ(task, real_parent);
 
-	event = bpf_map_lookup_elem(&execs, &execs_lookup_key);
+	event = bpf_map_lookup_elem(&execs, &pre_sched_pid);
 	if (!event)
 		return 0;
 
@@ -229,7 +237,8 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	if (len <= sizeof(*event))
 		gadget_output_buf(ctx, &events, event, len);
 
-	bpf_map_delete_elem(&execs, &execs_lookup_key);
+	bpf_map_delete_elem(&execs, &pre_sched_pid);
+	bpf_map_delete_elem(&security_bprm_hit_map, &pre_sched_pid);
 
 	return 0;
 }
@@ -266,6 +275,7 @@ static __always_inline int exit_execve(void *ctx, int retval)
 		gadget_output_buf(ctx, &events, event, len);
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
+	bpf_map_delete_elem(&security_bprm_hit_map, &pid);
 	return 0;
 }
 
@@ -286,14 +296,10 @@ int ig_execveat_x(struct syscall_trace_exit *ctx)
 SEC("kprobe/security_bprm_check")
 int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 {
-	if (!paths)
-		return 0;
-
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
 	char *file;
 	dev_t dev_no;
-	unsigned long inode_no;
 	struct path f_path;
 
 	event = bpf_map_lookup_elem(&execs, &pid);
@@ -302,18 +308,32 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 
 	// security_bprm_check is called repeatedly following the shebang
 	// Only get the first call.
-	if (event->file[0] != '\0')
+	__u8 *exists = bpf_map_lookup_elem(&security_bprm_hit_map, &pid);
+	if (exists) {
 		return 0;
+	}
 
-	f_path = BPF_CORE_READ(bprm, file, f_path);
-	file = get_path_str(&f_path);
-	struct inode *inode = BPF_CORE_READ(f_path.dentry, d_inode);
-	dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
-	inode_no = BPF_CORE_READ(inode, i_ino);
-	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
-	event->dev_major = MAJOR(dev_no);
-	event->dev_minor = MINOR(dev_no);
-	event->inode = BPF_CORE_READ(inode, i_ino);
+	__u8 hit = 1;
+	if (bpf_map_update_elem(&security_bprm_hit_map, &pid, &hit,
+				BPF_NOEXIST)) {
+		return 0;
+	}
+
+	struct inode *inode = BPF_CORE_READ(bprm, file, f_inode);
+	if (inode)
+		event->fupper_layer = has_upper_layer(inode);
+
+	if (paths) {
+		f_path = BPF_CORE_READ(bprm, file, f_path);
+		file = get_path_str(&f_path);
+		bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
+
+		dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
+		event->dev_major = MAJOR(dev_no);
+		event->dev_minor = MINOR(dev_no);
+		event->inode = BPF_CORE_READ(inode, i_ino);
+	}
+
 	return 0;
 }
 

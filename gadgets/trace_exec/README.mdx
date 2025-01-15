@@ -146,8 +146,6 @@ Finally, clean the system:
  correctly (ret=0). For example, if the executable does not have the "execute"
  permission, the execution will fail and the upper layer field will not be
  defined.
-- In case of a shell script, the upper layer field will refer to the location
- of the shell program (e.g. `/bin/sh`) and not the script file.
 - The file path might not be set when the execution fails (ret!=0), depending
  on the error.
 - The exepath is set to the current process and not the new process when the

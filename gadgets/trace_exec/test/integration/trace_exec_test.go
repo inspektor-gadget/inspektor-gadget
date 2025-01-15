@@ -42,6 +42,7 @@ type traceExecEvent struct {
 	Error       string `json:"error"`
 	UpperLayer  bool   `json:"upper_layer"`
 	PupperLayer bool   `json:"pupper_layer"`
+	FupperLayer bool   `json:"fupper_layer"`
 	Exepath     string `json:"exepath"`
 	File        string `json:"file"`
 	Cwd         string `json:"cwd"`
@@ -115,15 +116,18 @@ int main(int argc, char *argv[], char **envp) {
 	}
 
 	buildCmd := fmt.Sprintf("echo %s | base64 -d > exec.c && gcc -Wall -o /bin/exec-syscall exec.c", progBase64)
+	prepareScriptsCmd := "printf '#!/bin/sh\nls' > /bin/with_shebeng.sh ; echo ls > /dev/script.sh ; echo ls > /bin/script.sh ; chmod +x /dev/script.sh /bin/script.sh /bin/with_shebeng.sh ; "
 	sleep1Args := []string{"/usr/bin/sleep", "0.4"}
 	sleep2Args := []string{"/usr/bin/sleep", "0.6"}
+	execScriptsCmd := "/dev/script.sh ; /bin/script.sh ; /bin/with_shebeng.sh"
 	innerCmd := fmt.Sprintf(
-		"cd tmp ; while true ; do METHOD=execve exec-syscall %s; METHOD=execveat exec-syscall %s; done",
+		"cd tmp ; while true ; do METHOD=execve exec-syscall %s; METHOD=execveat exec-syscall %s; %s; done",
 		strings.Join(sleep1Args, " "),
 		strings.Join(sleep2Args, " "),
+		execScriptsCmd,
 	)
 	// copies /usr/bin/sh to /usr/bin/sh2 to check that the upper_layer is true when executing /usr/bin/sh2
-	cmd := fmt.Sprintf("%s && cp /usr/bin/sh /usr/bin/sh2 && nsenter --setuid 1000 --setgid 1111 /usr/bin/sh2 -c '%s'", buildCmd, innerCmd)
+	cmd := fmt.Sprintf("%s %s && cp /usr/bin/sh /usr/bin/sh2 && nsenter --setuid 1000 --setgid 1111 /usr/bin/sh2 -c '%s'", prepareScriptsCmd, buildCmd, innerCmd)
 	innerShArgs := []string{"/usr/bin/sh2", "-c", innerCmd}
 
 	testContainer := containerFactory.NewContainer(containerName, cmd, containerOpts...)
@@ -149,22 +153,85 @@ int main(int argc, char *argv[], char **envp) {
 	}
 
 	runnerOpts = append(runnerOpts,
-		igrunner.WithFlags("--paths"),
+		igrunner.WithFlags("--paths", "--ignore-failed=false"),
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntries := []*traceExecEvent{
+					// inner script.sh
+					{
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:        utils.BuildProc("sh2", 1000, 1111),
+						Cwd:         "/tmp",
+						Args:        "/dev/script.sh",
+						PupperLayer: false,
+						UpperLayer:  false,
+						FupperLayer: false,
+						Exepath:     "/usr/bin/sh2",
+						File:        "/dev/script.sh",
+						Error:       "ENOEXEC",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
+
+						// Check the existence of the following fields
+						Timestamp: utils.NormalizedStr,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+					},
+					{
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:        utils.BuildProc("sh2", 1000, 1111),
+						Cwd:         "/tmp",
+						Args:        "/bin/script.sh",
+						PupperLayer: false,
+						UpperLayer:  false,
+						FupperLayer: true,
+						Exepath:     "/usr/bin/sh2",
+						File:        "/usr/bin/script.sh",
+						Error:       "ENOEXEC",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
+
+						// Check the existence of the following fields
+						Timestamp: utils.NormalizedStr,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+					},
+					{
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:        utils.BuildProc("with_shebeng.sh", 1000, 1111),
+						Cwd:         "/tmp",
+						Args:        "/bin/with_shebeng.sh",
+						PupperLayer: true,
+						UpperLayer:  false,
+						FupperLayer: true,
+						Exepath:     "/usr/bin/dash",
+						File:        "/usr/bin/with_shebeng.sh",
+						Error:       "",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
+
+						// Check the existence of the following fields
+						Timestamp: utils.NormalizedStr,
+						Loginuid:  utils.NormalizedInt,
+						Sessionid: utils.NormalizedInt,
+					},
 					// inner sh
 					{
-						CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:       utils.BuildProc("sh2", 1000, 1111),
-						Cwd:        "/",
-						Args:       strings.Join(innerShArgs, " "),
-						UpperLayer: true,
-						Exepath:    "/usr/bin/sh2",
-						File:       "/usr/bin/sh2",
-						DevMajor:   utils.NormalizedInt,
-						DevMinor:   utils.NormalizedInt,
-						Inode:      utils.NormalizedInt,
+						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:        utils.BuildProc("sh2", 1000, 1111),
+						Cwd:         "/",
+						Args:        strings.Join(innerShArgs, " "),
+						PupperLayer: false,
+						UpperLayer:  true,
+						FupperLayer: true,
+						Exepath:     "/usr/bin/sh2",
+						File:        "/usr/bin/sh2",
+						DevMajor:    utils.NormalizedInt,
+						DevMinor:    utils.NormalizedInt,
+						Inode:       utils.NormalizedInt,
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -177,8 +244,9 @@ int main(int argc, char *argv[], char **envp) {
 						Proc:        utils.BuildProc("sleep", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        strings.Join(sleep1Args, " "),
-						UpperLayer:  false,
 						PupperLayer: true,
+						UpperLayer:  false,
+						FupperLayer: false,
 						Exepath:     "/usr/bin/sleep",
 						File:        "/usr/bin/sleep",
 						DevMajor:    utils.NormalizedInt,
@@ -195,8 +263,9 @@ int main(int argc, char *argv[], char **envp) {
 						Proc:        utils.BuildProc("sleep", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        strings.Join(sleep2Args, " "),
-						UpperLayer:  false,
 						PupperLayer: true,
+						UpperLayer:  false,
+						FupperLayer: false,
 						Exepath:     "/usr/bin/sleep",
 						File:        "/usr/bin/sleep",
 						DevMajor:    utils.NormalizedInt,
