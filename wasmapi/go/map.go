@@ -56,7 +56,7 @@ const (
 type MapType uint32
 
 // Taken from:
-// https://github.com/cilium/ebpf/blob/061e86d8f5e9/types.go#L15-L98
+// https://github.com/cilium/ebpf/blob/6d6c5e3225732525434b0c192c97950488a4051b/types.go#L13-L105
 const (
 	UnspecifiedMap MapType = iota
 	Hash
@@ -88,6 +88,10 @@ const (
 	RingBuf
 	InodeStorage
 	TaskStorage
+	BloomFilter
+	UserRingbuf
+	CgroupStorage
+	Arena
 )
 
 type MapSpec struct {
