@@ -17,6 +17,7 @@ package wasm_test
 import (
 	"context"
 	"fmt"
+	"syscall"
 	"testing"
 	"time"
 
@@ -554,7 +555,7 @@ func TestMap(t *testing.T) {
 	require.NoError(t, err, "running gadget")
 }
 
-func TestMapOfMap(t *testing.T) {
+func TestPerf(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -562,12 +563,12 @@ func TestMapOfMap(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	t.Cleanup(cancel)
 
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/mapofmap.tar")
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/perf.tar")
 	require.NoError(t, err, "creating oci store")
 
 	gadgetCtx := gadgetcontext.New(
 		ctx,
-		"mapofmap:latest",
+		"perf:latest",
 		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
 		gadgetcontext.WithOrasReadonlyTarget(ociStore),
 	)
@@ -577,14 +578,29 @@ func TestMapOfMap(t *testing.T) {
 	require.NoError(t, err, "runtime init")
 	t.Cleanup(func() { runtime.Close() })
 
+	stop := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <- stop:
+				return
+			default:
+				fd , err := syscall.Creat("/tmp/test-perf-array", 0)
+				require.NoError(t, err, "opening file to generate gadget events")
+				syscall.Close(fd)
+			}
+		}
+	} ()
+
 	params := map[string]string{
 		"operator.oci.verify-image": "false",
 	}
 	err = runtime.RunGadget(gadgetCtx, nil, params)
+	stop <- true
 	require.NoError(t, err, "running gadget")
 }
 
-func TestSyscall(t *testing.T) {
+func TestArray(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -592,12 +608,12 @@ func TestSyscall(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	t.Cleanup(cancel)
 
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/syscall.tar")
+	ociStore, err := orasoci.NewFromTar(ctx, "testdata/array.tar")
 	require.NoError(t, err, "creating oci store")
 
 	gadgetCtx := gadgetcontext.New(
 		ctx,
-		"syscall:latest",
+		"array:latest",
 		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
 		gadgetcontext.WithOrasReadonlyTarget(ociStore),
 	)
