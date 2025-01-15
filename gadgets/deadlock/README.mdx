@@ -54,4 +54,5 @@ hungry_montalcini                                    39046 4       [51, 208], [8
 
 - This gadget detects "potential" deadlocks and not just actual deadlocks as a deadlock that didn't happen during the trace could happen in the future.
 A deadlock occurring depends on various factors such as thread scheduling and order of mutex acquisitions/releases, and hence it makes sense to report mutex lock order inversions as potentially unsafe resource management.
+- This gadget will not work for shared or recursive mutexes.
 - Tracing with `--host` will slow down the gadget due to too many events.
