@@ -294,6 +294,7 @@ func buildCommandFromGadget(
 		    columnName:<value      - matches, if the content of columnName is less than the value
 		    columnName:~value      - matches, if the content of columnName matches the regular expression 'value'
 					     see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+          This flag can be specified multiple times to combine multiple filters e.g. -F column1:value1 -F column2:value2
 		`,
 				)
 			}

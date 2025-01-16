@@ -14,7 +14,7 @@ as provided by other operators like [LocalManager](./localmanager.md) and
 
 ## Instance Parameters
 
-### `filter`
+### filter
 
 This parameter allows you to filter events based on specific field values
 provided by the gadget. This is particularly useful for narrowing down the
@@ -22,7 +22,6 @@ output to entries that meet certain criteria.
 
 The filter syntax supports the following operations:
 
-```bash
 - `field==value`: Matches if the content of `field` equals exactly `value`.
 - `field!=value`: Matches if the content of `field` does not equal exactly `value`.
 - `field>=value`: Matches if the content of `field` is greater than or equal to `value`.
@@ -30,6 +29,9 @@ The filter syntax supports the following operations:
 - `field<=value`: Matches if the content of `field` is less than or equal to `value`.
 - `field<value`: Matches if the content of `field` is less than `value`.
 - `field~value`: Matches if the content of `field` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
-```
 
 Fully qualified name: `operator.filter.filter`
+
+### multiple filters
+
+You can specify multiple filters by separating them with a comma. The filter `field1==value1,field2==value2` will match only events where `field1` equals `value1` and `field2` equals `value2`.
