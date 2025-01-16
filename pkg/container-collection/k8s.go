@@ -234,10 +234,12 @@ func getContainerRuntimeSocketPath(clientset *kubernetes.Clientset, nodeName str
 	if err != nil {
 		return "", fmt.Errorf("getting /configz: %w", err)
 	}
-	socketPath, found := strings.CutPrefix(kubeletConfig.ContainerRuntimeEndpoint, "unix://")
-	if !found {
-		return "", fmt.Errorf("socket path does not start with unix://")
+
+	socketPath := strings.TrimPrefix(kubeletConfig.ContainerRuntimeEndpoint, "unix://")
+	if socketPath == "" {
+		return "", fmt.Errorf("container runtime socket path is empty")
 	}
+
 	log.Infof("using the detected container runtime socket path from Kubelet's config: %s", socketPath)
 	return socketPath, nil
 }
