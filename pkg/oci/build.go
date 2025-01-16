@@ -79,7 +79,18 @@ type BuildGadgetImageOpts struct {
 // the "name:tag" format is used to name and tag the created image. If it's empty the image is not
 // named.
 func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image string) (*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
+	var desc *GadgetImageDesc
+	err := retry("BuildGadgetImage", func() error {
+		var err error
+		desc, err = buildGadgetImage(ctx, opts, image)
+		return err
+	})
+
+	return desc, err
+}
+
+func buildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image string) (*GadgetImageDesc, error) {
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
@@ -120,6 +131,10 @@ func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 		if ref, ok := targetImage.(reference.Tagged); ok {
 			imageDesc.Tag = ref.Tag()
 		}
+	}
+
+	if err := ociStore.saveIndexWithLock(); err != nil {
+		return nil, err
 	}
 
 	if err := fixGeneratedFilesOwner(opts); err != nil {
