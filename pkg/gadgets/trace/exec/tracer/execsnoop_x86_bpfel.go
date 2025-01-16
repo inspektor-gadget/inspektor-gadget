@@ -78,6 +78,8 @@ type execsnoopSpecs struct {
 type execsnoopProgramSpecs struct {
 	IgExecveE         *ebpf.ProgramSpec `ebpf:"ig_execve_e"`
 	IgExecveX         *ebpf.ProgramSpec `ebpf:"ig_execve_x"`
+	IgExecveatE       *ebpf.ProgramSpec `ebpf:"ig_execveat_e"`
+	IgExecveatX       *ebpf.ProgramSpec `ebpf:"ig_execveat_x"`
 	IgSchedExec       *ebpf.ProgramSpec `ebpf:"ig_sched_exec"`
 	SecurityBprmCheck *ebpf.ProgramSpec `ebpf:"security_bprm_check"`
 }
@@ -148,6 +150,8 @@ type execsnoopVariables struct {
 type execsnoopPrograms struct {
 	IgExecveE         *ebpf.Program `ebpf:"ig_execve_e"`
 	IgExecveX         *ebpf.Program `ebpf:"ig_execve_x"`
+	IgExecveatE       *ebpf.Program `ebpf:"ig_execveat_e"`
+	IgExecveatX       *ebpf.Program `ebpf:"ig_execveat_x"`
 	IgSchedExec       *ebpf.Program `ebpf:"ig_sched_exec"`
 	SecurityBprmCheck *ebpf.Program `ebpf:"security_bprm_check"`
 }
@@ -156,6 +160,8 @@ func (p *execsnoopPrograms) Close() error {
 	return _ExecsnoopClose(
 		p.IgExecveE,
 		p.IgExecveX,
+		p.IgExecveatE,
+		p.IgExecveatX,
 		p.IgSchedExec,
 		p.SecurityBprmCheck,
 	)

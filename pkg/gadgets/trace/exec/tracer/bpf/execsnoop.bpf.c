@@ -58,8 +58,7 @@ static __always_inline bool valid_uid(uid_t uid)
 	return uid != INVALID_UID;
 }
 
-SEC("tracepoint/syscalls/sys_enter_execve")
-int ig_execve_e(struct syscall_trace_enter *ctx)
+static __always_inline int enter_execve(const char *pathname, const char **args)
 {
 	u64 id;
 	char *cwd;
@@ -68,7 +67,6 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	struct fs_struct *fs;
 	struct task_struct *task;
 	unsigned int ret;
-	const char **args = (const char **)(ctx->args[1]);
 	const char *argp;
 	int i;
 	u64 mntns_id;
@@ -120,8 +118,7 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	bpf_probe_read_kernel_str(event->cwd, MAX_STRING_SIZE, cwd);
 #endif
 
-	ret = bpf_probe_read_user_str(event->args, ARGSIZE,
-				      (const char *)ctx->args[0]);
+	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
 	if (ret <= ARGSIZE) {
 		event->args_size += ret;
 	} else {
@@ -156,6 +153,22 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	/* pointer to max_args+1 isn't null, asume we have more arguments */
 	event->args_count++;
 	return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_execve")
+int ig_execve_e(struct syscall_trace_enter *ctx)
+{
+	const char *pathname = (const char *)ctx->args[0];
+	const char **args = (const char **)(ctx->args[1]);
+	return enter_execve(pathname, args);
+}
+
+SEC("tracepoint/syscalls/sys_enter_execveat")
+int ig_execveat_e(struct syscall_trace_enter *ctx)
+{
+	const char *pathname = (const char *)ctx->args[1];
+	const char **args = (const char **)(ctx->args[2]);
+	return enter_execve(pathname, args);
 }
 
 static __always_inline bool has_upper_layer(struct inode *inode)
@@ -225,10 +238,7 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	return 0;
 }
 
-// We use syscalls/sys_exit_execve only to trace failed execve
-// This program is needed regardless of ignore_failed
-SEC("tracepoint/syscalls/sys_exit_execve")
-int ig_execve_x(struct syscall_trace_exit *ctx)
+static __always_inline int exit_execve(void *ctx, int retval)
 {
 	u32 pid = (u32)bpf_get_current_pid_tgid();
 	struct event *event;
@@ -245,7 +255,7 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 	if (ignore_failed)
 		goto cleanup;
 
-	event->retval = ctx->ret;
+	event->retval = retval;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
 	if (parent != NULL)
@@ -259,6 +269,22 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
 	return 0;
+}
+
+// We use syscalls/sys_exit_execve only to trace failed execve
+// This program is needed regardless of ignore_failed
+SEC("tracepoint/syscalls/sys_exit_execve")
+int ig_execve_x(struct syscall_trace_exit *ctx)
+{
+	int retval = ctx->ret;
+	return exit_execve(ctx, ctx->ret);
+}
+
+SEC("tracepoint/syscalls/sys_exit_execveat")
+int ig_execveat_x(struct syscall_trace_exit *ctx)
+{
+	int retval = ctx->ret;
+	return exit_execve(ctx, ctx->ret);
 }
 
 SEC("kprobe/security_bprm_check")

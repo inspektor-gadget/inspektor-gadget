@@ -149,7 +149,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 
 	done := make(chan bool)
 	defer func() {
-		done <- true
+		close(done)
 	}()
 
 	// Build a simple operator that subscribes to all events and forwards them

@@ -101,6 +101,7 @@ func (m *Manager) RunGadget(instance *api.GadgetInstance) {
 		eventBufferOffs: 0,
 		cancel:          cancel,
 		clients:         map[*GadgetInstanceClient]struct{}{},
+		ready:           make(chan struct{}),
 	}
 	m.mu.Lock()
 	m.gadgetInstances[gi.id] = gi

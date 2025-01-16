@@ -93,8 +93,10 @@ type Tracer struct {
 
 	objs          execsnoopObjects
 	enterLink     link.Link
+	enterAtLink   link.Link
 	schedExecLink link.Link
 	exitLink      link.Link
+	exitAtLink    link.Link
 	securityLink  link.Link
 	reader        *perf.Reader
 }
@@ -126,8 +128,10 @@ func (t *Tracer) Stop() {
 
 func (t *Tracer) close() {
 	t.enterLink = gadgets.CloseLink(t.enterLink)
+	t.enterAtLink = gadgets.CloseLink(t.enterAtLink)
 	t.schedExecLink = gadgets.CloseLink(t.schedExecLink)
 	t.exitLink = gadgets.CloseLink(t.exitLink)
+	t.exitAtLink = gadgets.CloseLink(t.exitAtLink)
 	t.securityLink = gadgets.CloseLink(t.securityLink)
 
 	if t.reader != nil {
@@ -162,6 +166,10 @@ func (t *Tracer) install() error {
 	if err != nil {
 		return fmt.Errorf("attaching enter tracepoint: %w", err)
 	}
+	t.enterAtLink, err = link.Tracepoint("syscalls", "sys_enter_execveat", t.objs.IgExecveatE, nil)
+	if err != nil {
+		return fmt.Errorf("attaching enter tracepoint: %w", err)
+	}
 
 	t.schedExecLink, err = link.Tracepoint("sched", "sched_process_exec", t.objs.IgSchedExec, nil)
 	if err != nil {
@@ -169,6 +177,10 @@ func (t *Tracer) install() error {
 	}
 
 	t.exitLink, err = link.Tracepoint("syscalls", "sys_exit_execve", t.objs.IgExecveX, nil)
+	if err != nil {
+		return fmt.Errorf("attaching exit tracepoint: %w", err)
+	}
+	t.exitAtLink, err = link.Tracepoint("syscalls", "sys_exit_execveat", t.objs.IgExecveatX, nil)
 	if err != nil {
 		return fmt.Errorf("attaching exit tracepoint: %w", err)
 	}
