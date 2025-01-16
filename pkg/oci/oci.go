@@ -33,7 +33,6 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/distribution/reference"
@@ -96,15 +95,6 @@ const (
 	localhost = "localhost"
 )
 
-// getLocalOciStore returns a single local oci store. oci.Store is concurrently safe only
-// against its own instance inside the same go program
-var getLocalOciStore = sync.OnceValues(func() (*oci.Store, error) {
-	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
-		return nil, err
-	}
-	return oci.New(defaultOciStore)
-})
-
 // GadgetImageDesc is the description of a gadget image.
 type GadgetImageDesc struct {
 	Repository string `column:"repository"`
@@ -126,12 +116,32 @@ func getTimeFromAnnotations(annotations map[string]string) string {
 
 // PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
 func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
+	var desc *GadgetImageDesc
+	err := retry("PullGadgetImage", func() error {
+		var err error
+		desc, err = pullGadgetImage(ctx, image, authOpts)
+		return err
+	})
+
+	return desc, err
+}
+
+func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
-	return pullGadgetImageToStore(ctx, ociStore, image, authOpts)
+	desc, err := pullGadgetImageToStore(ctx, ociStore.Store, image, authOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ociStore.saveIndexWithLock(); err != nil {
+		return nil, err
+	}
+
+	return desc, nil
 }
 
 // pullGadgetImageToStore pulls the gadget image into the given store and returns its descriptor.
@@ -201,7 +211,7 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 
 // PushGadgetImage pushes the gadget image and returns its descriptor.
 func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
@@ -233,6 +243,17 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // TagGadgetImage tags the src image with the dst image.
 func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
+	var desc *GadgetImageDesc
+	err := retry("TagGadgetImage", func() error {
+		var err error
+		desc, err = tagGadgetImage(ctx, srcImage, dstImage)
+		return err
+	})
+
+	return desc, err
+}
+
+func tagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
 	src, err := normalizeImageName(srcImage)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing src image: %w", err)
@@ -242,7 +263,7 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 		return nil, fmt.Errorf("normalizing dst image: %w", err)
 	}
 
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
@@ -252,7 +273,14 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 		// Error message not that helpful
 		return nil, fmt.Errorf("resolving src: %w", err)
 	}
-	ociStore.Tag(context.TODO(), targetDescriptor, dst.String())
+
+	if err := ociStore.Tag(context.TODO(), targetDescriptor, dst.String()); err != nil {
+		return nil, fmt.Errorf("tagging image: %w", err)
+	}
+
+	if err := ociStore.saveIndexWithLock(); err != nil {
+		return nil, err
+	}
 
 	imageDesc := &GadgetImageDesc{
 		Repository: dst.Name(),
@@ -296,7 +324,7 @@ func sortIndex(indexPath string) (*ocispec.Index, error) {
 }
 
 func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) error {
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
 	}
@@ -353,7 +381,7 @@ func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
 		return nil, fmt.Errorf("loading src bundle: %w", err)
 	}
 
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
@@ -482,12 +510,12 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 
 // GetGadgetImages gets all the gadget images.
 func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
-	images, err := getGadgetImages(ctx, ociStore)
+	images, err := getGadgetImages(ctx, ociStore.Store)
 	if err != nil {
 		return nil, fmt.Errorf("listing all tags: %w", err)
 	}
@@ -500,7 +528,7 @@ func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 }
 
 func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
@@ -511,7 +539,7 @@ func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, er
 	}
 
 	fullName := targetImage.String()
-	desc, err := getGadgetImageDescriptor(ctx, ociStore, fullName)
+	desc, err := getGadgetImageDescriptor(ctx, ociStore.Store, fullName)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget image descriptor: %w", err)
 	}
@@ -521,7 +549,13 @@ func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, er
 
 // DeleteGadgetImage removes the given image.
 func DeleteGadgetImage(ctx context.Context, image string) error {
-	ociStore, err := getLocalOciStore()
+	return retry("DeleteGadgetImage", func() error {
+		return deleteGadgetImage(ctx, image)
+	})
+}
+
+func deleteGadgetImage(ctx context.Context, image string) error {
+	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
 	}
@@ -537,7 +571,7 @@ func DeleteGadgetImage(ctx context.Context, image string) error {
 		return fmt.Errorf("resolving image: %w", err)
 	}
 
-	images, err := getGadgetImages(ctx, ociStore)
+	images, err := getGadgetImages(ctx, ociStore.Store)
 	if err != nil {
 		return fmt.Errorf("listing images: %w", err)
 	}
@@ -555,15 +589,23 @@ func DeleteGadgetImage(ctx context.Context, image string) error {
 			// Where foo and bar are different names referencing the same image, as
 			// the digest shows.
 			// In this case, we just untag the image name given by the user.
-			return ociStore.Untag(ctx, fullName)
+			if err := ociStore.Untag(ctx, fullName); err != nil {
+				return err
+			}
+
+			return ociStore.saveIndexWithLock()
 		}
 	}
 
-	err = ociStore.Delete(ctx, descriptor)
-	if err != nil {
+	if err = ociStore.Delete(ctx, descriptor); err != nil {
 		return err
 	}
 
+	if err := ociStore.saveIndexWithLock(); err != nil {
+		return err
+	}
+
+	// TODO: GC() could race with other processes calling it a the same time.
 	return ociStore.GC(ctx)
 }
 
@@ -976,12 +1018,18 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 
 // EnsureImage ensures the image is present in the local store
 func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullPolicy string) error {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("getting local oci store: %w", err)
-	}
+	return retry("EnsureImage", func() error {
+		imageStore, err := newLocalOciStore()
+		if err != nil {
+			return fmt.Errorf("getting local oci store: %w", err)
+		}
 
-	return ensureImage(ctx, imageStore, image, imgOpts, pullPolicy)
+		if err := ensureImage(ctx, imageStore, image, imgOpts, pullPolicy); err != nil {
+			return err
+		}
+
+		return imageStore.saveIndexWithLock()
+	})
 }
 
 func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
@@ -1018,7 +1066,7 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
 	if target == nil {
 		var err error
-		target, err = getLocalOciStore()
+		target, err = newLocalOciStore()
 		if err != nil {
 			return nil, fmt.Errorf("getting local oci store: %w", err)
 		}
@@ -1044,7 +1092,7 @@ func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*o
 func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	if target == nil {
 		var err error
-		target, err = getLocalOciStore()
+		target, err = newLocalOciStore()
 		if err != nil {
 			return nil, fmt.Errorf("getting local oci store: %w", err)
 		}
