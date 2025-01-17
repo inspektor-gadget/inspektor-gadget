@@ -474,6 +474,7 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 			image, err := getGadgetImageDescriptor(ctx, store, fullTag)
 			if err != nil {
 				log.Debugf("getting gadget image descriptor for %s: %v", fullTag, err)
+				continue
 			}
 
 			images = append(images, image)
