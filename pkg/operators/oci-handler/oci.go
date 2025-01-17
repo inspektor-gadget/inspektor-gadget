@@ -245,15 +245,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	// If the target wasn't explicitly set, use the local store. In this case we
 	// need to be sure the image is available.
 	if target == nil {
-		var err error
-		target, err = oci.GetLocalOciStore()
-		if err != nil {
-			return fmt.Errorf("getting local oci store: %w", err)
-		}
-
 		// Make sure the image is available, either through pulling or by just accessing a local copy
 		// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
-		err = oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(),
+		err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(),
 			imgOpts, o.ociParams.Get(pullParam).AsString())
 		if err != nil {
 			return fmt.Errorf("ensuring image: %w", err)

@@ -77,7 +77,7 @@ func TestMyGadget(t *testing.T) {
     // - $GADGET_REPOSITORY
     // - $GADGET_TAG
     "mygadget",
-    igrunner.WithFlags("--runtimes=docker", "--timeout=5"),
+    igrunner.WithFlags("--runtimes=docker", "--timeout=10"),
     igrunner.WithValidateOutput(
       func(t *testing.T, output string) {
         expectedEntry := &mygadgetEvent{

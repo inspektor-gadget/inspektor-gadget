@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"os"
@@ -34,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	filestore "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store/file-store"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
 )
@@ -170,6 +172,11 @@ All these options should be set at the same time to enable TLS connection`,
 		} else if !strings.HasPrefix(socketPath, "unix") {
 			log.Warnf("no TLS configuration provided, communication between daemon and CLI will not be encrypted")
 		}
+
+		if err := oci.Lock(context.Background()); err != nil {
+			return fmt.Errorf("locking OCI storage: %w", err)
+		}
+		defer oci.Unlock()
 
 		mgr, err := instancemanager.New(runtime)
 		if err != nil {
