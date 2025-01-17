@@ -166,15 +166,17 @@ func TestFilterRuleExtractor(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	testCaseData := struct {
-		stringValue  string
-		int64Value   int64
-		float64Value float64
-		boolValue    bool
+		stringValue        string
+		stringEscapedValue string
+		int64Value         int64
+		float64Value       float64
+		boolValue          bool
 	}{
-		stringValue:  "abc",
-		int64Value:   123,
-		float64Value: 456.0,
-		boolValue:    true,
+		stringValue:        "abc",
+		stringEscapedValue: `a,\/`, // test escaping special characters: comma, backslash, forward slash
+		int64Value:         123,
+		float64Value:       456.0,
+		boolValue:          true,
 	}
 	type testCase struct {
 		name         string
@@ -242,6 +244,11 @@ func TestFilter(t *testing.T) {
 			name:         "string regex invalid",
 			filterString: "stringValue~???a..",
 			error:        true,
+		},
+		{
+			name:         "string escaped match positive",
+			filterString: `stringValueEscaped==a\,\\\/`,
+			match:        true,
 		},
 
 		{
@@ -406,11 +413,23 @@ func TestFilter(t *testing.T) {
 			filterString: "boolValue!=true",
 			match:        false,
 		},
+
+		{
+			name:         "multiple filters",
+			filterString: "stringValue==abc,int64Value==123,float64Value==456.0,boolValue==true",
+			match:        true,
+		},
+		{
+			name:         "multiple filters negative",
+			filterString: "stringValue==abc,int64Value==123,float64Value==456.0,boolValue==false",
+			match:        false,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var ds datasource.DataSource
 			var stringField datasource.FieldAccessor
+			var stringEscapedField datasource.FieldAccessor
 			var int64Field datasource.FieldAccessor
 			var float64Field datasource.FieldAccessor
 			var boolField datasource.FieldAccessor
@@ -427,6 +446,8 @@ func TestFilter(t *testing.T) {
 					require.NoError(t, err)
 					stringField, err = ds.AddField("stringValue", api.Kind_String)
 					require.NoError(t, err)
+					stringEscapedField, err = ds.AddField("stringValueEscaped", api.Kind_String)
+					require.NoError(t, err)
 					int64Field, err = ds.AddField("int64Value", api.Kind_Int64)
 					require.NoError(t, err)
 					float64Field, err = ds.AddField("float64Value", api.Kind_Float64)
@@ -440,6 +461,8 @@ func TestFilter(t *testing.T) {
 					require.NoError(t, err)
 					err = stringField.PutString(data, testCaseData.stringValue)
 					require.NoError(t, err)
+					err = stringEscapedField.PutString(data, testCaseData.stringEscapedValue)
+					require.NoError(t, err)
 					err = int64Field.PutInt64(data, testCaseData.int64Value)
 					require.NoError(t, err)
 					err = float64Field.PutFloat64(data, testCaseData.float64Value)
@@ -452,7 +475,6 @@ func TestFilter(t *testing.T) {
 				},
 				func(gadgetCtx operators.GadgetContext) error {
 					err := ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-						// t.Logf("received %+v", data)
 						rows++
 						return nil
 					}, Priority+1)
