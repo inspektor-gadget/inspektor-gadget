@@ -52,7 +52,7 @@ type containerRingReader struct {
 type tracelooper struct {
 	mapOfPerfBuffers api.Map
 
-	// key:   containerID
+	// key:   cgroupID
 	// value: *containerRingReader
 	readers sync.Map
 }
@@ -101,7 +101,7 @@ type syscallEventContinued struct {
 	param              string
 }
 
-func (t *tracelooper) attach(containerID uint64, mntnsID uint64) error {
+func (t *tracelooper) attach(cgroupID uint64, mntnsID uint64) error {
 	perfBufferName := fmt.Sprintf("perf_buffer_%d", mntnsID)
 
 	// 1. Create inner Map as perf buffer.
@@ -133,7 +133,7 @@ func (t *tracelooper) attach(containerID uint64, mntnsID uint64) error {
 		return fmt.Errorf("adding perf buffer to map with mntnsID %d: %w", mntnsID, err)
 	}
 
-	t.readers.Store(containerID, &containerRingReader{
+	t.readers.Store(cgroupID, &containerRingReader{
 		innerBuffer: innerBuffer,
 		perfReader:  perfReader,
 		mntnsID:     mntnsID,
@@ -560,40 +560,78 @@ func gadgetStart() int {
 		return 1
 	}
 
-	containers := api.GetContainers()
-	nbContainers, err := containers.Length()
+// 	containers := api.GetContainers()
+// 	nbContainers, err := containers.Length()
+// 	if err != nil {
+// 		api.Errorf("getting numbers of running containers: %v", err)
+// 		return 1
+// 	}
+//
+// 	for i := range nbContainers {
+// 		handle, err := containers.Get(uint32(i))
+// 		if err != nil {
+// 			api.Errorf("getting container %d from containers: %v", i, err)
+// 			return 1
+// 		}
+//
+// 		container := api.Container(handle)
+//
+// 		cgroupID, err := container.GetCgroupID()
+// 		if err != nil {
+// 			api.Errorf("getting container cgroup ID: %v", err)
+// 			return 1
+// 		}
+//
+// 		mntnsID, err := container.GetMntNsID()
+// 		if err != nil {
+// 			api.Errorf("getting container mount namespace ID: %v", err)
+// 			return 1
+// 		}
+//
+// 		err = t.attach(cgroupID, mntnsID)
+// 		if err != nil {
+// 			api.Errorf("attaching container %v: %v", cgroupID, err)
+// 			return 1
+// 		}
+// 	}
+
+	ds, err := api.GetDataSource("containers")
 	if err != nil {
-		api.Errorf("getting numbers of running containers: %v", err)
+		api.Errorf("Failed to get data source: %v", err)
 		return 1
 	}
 
-	for i := range nbContainers {
-		handle, err := containers.Get(uint32(i))
-		if err != nil {
-			api.Errorf("getting container %d from containers: %v", i, err)
-			return 1
-		}
-
-		container := api.Container(handle)
-
-		containerID, err := container.GetCgroupID()
-		if err != nil {
-			api.Errorf("getting container cgroup ID: %v", err)
-			return 1
-		}
-
-		mntnsID, err := container.GetMntNsID()
-		if err != nil {
-			api.Errorf("getting container mount namespace ID: %v", err)
-			return 1
-		}
-
-		err = t.attach(containerID, mntnsID)
-		if err != nil {
-			api.Errorf("attaching container %v: %v", containerID, err)
-			return 1
-		}
+	cgroupIDField, err := ds.GetField("cgroup_id")
+	if err != nil {
+		api.Errorf("Failed to get field: %v", err)
+		return 1
 	}
+
+	mntnsIDField, err := ds.GetField("mntns_id")
+	if err != nil {
+		api.Errorf("Failed to get field: %v", err)
+		return 1
+	}
+
+	ds.Subscribe(func(ds api.DataSource, data api.Data) {
+		cgroupID, err := cgroupIDField.Uint64(data)
+		if err != nil {
+			return
+		}
+
+		mntnsID, err := mntnsIDField.Uint64(data)
+		if err != nil {
+			return
+		}
+
+		api.Infof("attaching %v and %v", cgroupID, mntnsID)
+
+		err = t.attach(cgroupID, mntnsID)
+		if err != nil {
+			api.Errorf("attaching container %v: %v", cgroupID, err)
+			return
+		}
+	}, 0)
 
 	return 0
 }

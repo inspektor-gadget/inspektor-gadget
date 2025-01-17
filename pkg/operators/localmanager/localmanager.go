@@ -319,6 +319,10 @@ type localManagerTrace struct {
 	gadgetCtx          operators.GadgetContext
 
 	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
+
+	containerDs      datasource.DataSource
+	cgroupIDField datasource.FieldAccessor
+	mntnsIDField     datasource.FieldAccessor
 }
 
 func (l *localManagerTrace) Name() string {
@@ -427,6 +431,16 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 		for _, container := range containers {
 			attachContainerFunc(container)
+
+			ev, err := l.containerDs.NewPacketSingle()
+			if err != nil {
+				return err
+			}
+			log.Infof("Added %v and %v", container.CgroupID, container.Mntns)
+			l.cgroupIDField.PutUint64(ev, container.CgroupID)
+			l.mntnsIDField.PutUint64(ev, container.Mntns)
+
+			l.containerDs.EmitAndRelease(ev)
 		}
 	}
 
@@ -499,6 +513,22 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 		return nil, err
 	}
 
+
+	containersDs, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "containers")
+	if err != nil {
+		return nil, fmt.Errorf("creating datasource: %w", err)
+	}
+
+	cgroupIDField, err := containersDs.AddField("cgroup_id", api.Kind_String)
+	if err != nil {
+			return nil, fmt.Errorf("adding field: %w", err)
+	}
+
+	mntnsIDField, err := containersDs.AddField("mntns_id", api.Kind_String)
+	if err != nil {
+		return nil, fmt.Errorf("adding field: %w", err)
+	}
+
 	// Wrapper is used to have ParamDescs() with the new signature
 	traceInstance := &localManagerTraceWrapper{
 		localManagerTrace: localManagerTrace{
@@ -508,6 +538,9 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 			params:             params,
 			gadgetCtx:          gadgetCtx,
 			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
+			containerDs:        containersDs,
+			cgroupIDField:   cgroupIDField,
+			mntnsIDField:       mntnsIDField,
 		},
 	}
 
