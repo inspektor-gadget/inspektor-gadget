@@ -36,6 +36,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -478,31 +479,31 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 	// This unblocks whoever is accessing the pidfile
 	defer n.pidFileDirNotify.ResponseAllow(data)
 
-	// Coherence check: the pid file should be a small regular file
-	var stat unix.Stat_t
-	err = unix.Fstat(int(dataFile.Fd()), &stat)
-	if err != nil {
-		log.Errorf("fanotify: could not stat received fd: %s", err)
-		return nil
-	}
-	if stat.Mode&unix.S_IFMT != unix.S_IFREG {
-		log.Errorf("fanotify: received fd is not a regular file: expected %d, got %d",
-			unix.S_IFREG, stat.Mode&unix.S_IFMT)
-		return nil
-	}
-	if stat.Size > pidFileMaxSize {
-		log.Errorf("fanotify: received fd refers to a large file: %d bytes",
-			stat.Size)
-		return nil
-	}
-
-	path, err := data.GetPath()
+	pathFromProcfs, err := data.GetPath()
 	if err != nil {
 		log.Errorf("fanotify: could not get path for pid file")
 		return nil
 	}
-	path = filepath.Join(host.HostRoot, path)
 
+	// Coherence check: the pid file should be a small regular file
+	var stat unix.Stat_t
+	err = unix.Fstat(int(dataFile.Fd()), &stat)
+	if err != nil {
+		log.Errorf("fanotify: could not stat received fd (%q): %s", pathFromProcfs, err)
+		return nil
+	}
+	if stat.Mode&unix.S_IFMT != unix.S_IFREG {
+		log.Debugf("fanotify: received fd (%q) is not a regular file: expected %d, got %d",
+			pathFromProcfs, unix.S_IFREG, stat.Mode&unix.S_IFMT)
+		return nil
+	}
+	if stat.Size > pidFileMaxSize {
+		log.Debugf("fanotify: received fd (%q) refers to a large file: %d bytes",
+			pathFromProcfs, stat.Size)
+		return nil
+	}
+
+	path := filepath.Join(host.HostRoot, pathFromProcfs)
 	n.pendingMu.Lock()
 	var pc *pendingContainer
 	for pidFile := range n.pendingContainers {
@@ -528,51 +529,51 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 
 	pidFileContent, err := io.ReadAll(io.LimitReader(dataFile, pidFileMaxSize))
 	if err != nil {
-		log.Errorf("fanotify: error reading pid file: %s", err)
+		log.Errorf("fanotify: error reading pid file (%q): %s", pathFromProcfs, err)
 		return nil
 	}
 	if len(pidFileContent) == 0 {
-		log.Errorf("fanotify: empty pid file")
+		log.Errorf("fanotify: empty pid file (%q)", pathFromProcfs)
 		return nil
 	}
 	containerPID, err := strconv.Atoi(string(pidFileContent))
 	if err != nil {
-		log.Errorf("fanotify: pid file cannot be parsed: %s", err)
+		log.Errorf("fanotify: pid file (%q) cannot be parsed: %s", pathFromProcfs, err)
 		return nil
 	}
 
 	if containerPID > math.MaxUint32 {
-		log.Errorf("fanotify: Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
+		log.Errorf("fanotify: Container PID (%d) from pid file (%q) exceeds math.MaxUint32 (%d)", containerPID, pathFromProcfs, math.MaxUint32)
 		return nil
 	}
 
 	// Coherence check: mntns changed
 	newMntNs, err := containerutils.GetMntNs(containerPID)
 	if err != nil {
-		log.Errorf("fanotify: checking mnt namespace of pid %d: %s", containerPID, err)
+		log.Errorf("fanotify: checking mnt namespace of pid %d (%q): %s", containerPID, pathFromProcfs, err)
 		return nil
 	}
 	if pc.mntnsId == newMntNs {
-		log.Errorf("fanotify: new container does not have a new mnt namespace: pid %d mntns %d", containerPID, newMntNs)
+		log.Errorf("fanotify: new container does not have a new mnt namespace: pid %d (%q) mntns %d", containerPID, pathFromProcfs, newMntNs)
 		return nil
 	}
 
 	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
 	if err != nil {
-		log.Errorf("fanotify: could not open config.json: %s", err)
+		log.Errorf("fanotify: could not open config.json (%q): %s", pc.configJSONPath, err)
 		return nil
 	}
 	defer bundleConfigJSONFile.Close()
 
 	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
 	if err != nil {
-		log.Errorf("fanotify: could not read config.json: %s", err)
+		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
 		return nil
 	}
 	containerConfig := &ocispec.Spec{}
 	err = json.Unmarshal(bundleConfigJSON, containerConfig)
 	if err != nil {
-		log.Errorf("fanotify: could not unmarshal config.json: %s", err)
+		log.Errorf("fanotify: could not unmarshal config.json (%q): %s", pc.configJSONPath, err)
 		return nil
 	}
 
@@ -688,12 +689,14 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		// errors. Not all files are guaranteed to exist depending on the
 		// container runtime.
 		err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
-		if err != nil {
-			log.Debugf("fanotify: marking %s: %v", ignoreFilePath, err)
-		} else {
+		if err == nil {
 			removeMarks = append(removeMarks, func() {
 				_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 			})
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			// Don't log if the error is "NotExist": this is normal
+			// depending on the container runtime.
+			log.Debugf("fanotify: marking %s: %v", ignoreFilePath, err)
 		}
 	}
 
@@ -894,18 +897,31 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		return nil
 	}
 
+	pathFromProcfs, err := data.GetPath()
+	if err != nil {
+		log.Errorf("fanotify: could not get path for runtime pid=%d", data.Pid)
+		return nil
+	}
+	basename := filepath.Base(pathFromProcfs)
+	if basename != "conmon" && basename != "runc" && basename != "crun" {
+		// When runc re-executes itself with memfd, basename is empty ("/")
+		// Ignore this event
+		return nil
+	}
+
 	// Skip empty record
 	// This can happen when the ebpf code didn't find the exec args
+	// This happens when using execveat instead of execve
 	if record.MntnsId == 0 {
-		log.Debugf("fanotify: skip event with mntns=0")
+		log.Debugf("fanotify: skip event from %q (pid %d) without args (mntns=0)", pathFromProcfs, data.Pid)
 		return nil
 	}
 	if record.Pid == 0 {
-		log.Debugf("fanotify: skip event with pid=0")
+		log.Debugf("fanotify: skip event from %q (pid %d) without args (pid=0)", pathFromProcfs, data.Pid)
 		return nil
 	}
 	if record.ArgsSize == 0 {
-		log.Debugf("fanotify: skip event without args")
+		log.Debugf("fanotify: skip event from %q (pid %d) without args", pathFromProcfs, data.Pid)
 		return nil
 	}
 
@@ -919,17 +935,22 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		}
 	}
 	if len(cmdlineArr) == 0 {
-		log.Debugf("fanotify: cannot get cmdline for pid %d", record.Pid)
+		log.Debugf("fanotify: cannot get cmdline for %q (pid %d)", pathFromProcfs, record.Pid)
+		return nil
+	}
+	if cmdlineArr[0] == "/proc/self/exe" {
+		// runc re-executes itself: "/proc/self/exe init"
+		// Ignore this event
 		return nil
 	}
 	if len(cmdlineArr) > 0 {
 		calleeComm = filepath.Base(cmdlineArr[0])
 	}
 
-	log.Debugf("got event with mntns=%d pid=%d caller=%q callee=%q args=%v",
+	log.Debugf("fanotify: got event with mntns=%d pid=%d caller=%q callee=%q path=%v args=%v",
 		record.MntnsId, record.Pid,
 		callerComm, calleeComm,
-		cmdlineArr)
+		pathFromProcfs, cmdlineArr)
 
 	// runc is executing itself with unix.Exec(), so fanotify receives two
 	// FAN_OPEN_EXEC_PERM events:
