@@ -73,6 +73,7 @@ func (f *filterOperator) InstanceParams() api.Params {
     field<value      - matches, if the content of field is less than the value
     field~value      - matches, if the content of field matches the regular expression 'value'
                  see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+  Multiple filters can be combined using a comma: field1==value1,field2==value2
         `,
 		Alias: "F",
 	}}
