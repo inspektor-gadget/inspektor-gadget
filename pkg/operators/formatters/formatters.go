@@ -537,6 +537,10 @@ func (f *formattersOperatorInstance) Stop(gadgetCtx operators.GadgetContext) err
 	return nil
 }
 
+func (f *formattersOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func init() {
 	operators.RegisterDataOperator(&formattersOperator{})
 }

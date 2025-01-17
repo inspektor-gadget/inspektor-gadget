@@ -350,6 +350,10 @@ func (m *KubeIPResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (m *KubeIPResolverInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func init() {
 	operators.Register(&KubeIPResolver{})
 	operators.RegisterDataOperator(&KubeIPResolver{})
