@@ -1,0 +1,23 @@
+# Trace DNS requests that are not successful (rcode!=Success) and are responses (qr==R) in default namespace.
+# Gadgets used:
+# - trace_dns (https://www.inspektor-gadget.io/docs/latest/gadgets/trace_dns)
+apiVersion: 1
+kind: instance-spec
+image: trace_dns:latest
+name: failed-dns-requests-default
+paramValues:
+  # The following parameter is used to trace DNS requests in the default namespace
+  # See: https://www.inspektor-gadget.io/docs/latest/spec/operators/kubemanager
+  operator.KubeManager.namespace: default
+  # The following parameter is used to filter the DNS requests that are:
+  #   1. Not successful (rcode!=Success)
+  #   2. Responses only (qr==R)
+  # See: https://www.inspektor-gadget.io/docs/latest/spec/operators/filter
+  operator.filter.filter: rcode!=Success,qr==R
+  # The following parameter is used to display the following fields in the output:
+  #   1. Name of the pod
+  #   2. Source endpoint of the DNS request
+  #   3. Destination endpoint of the DNS request
+  #   4. Name in the DNS request
+  #   5. Response code of the DNS request
+  operator.cli.fields: k8s.podname,src,dst,name,rcode
