@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -48,6 +49,8 @@ type mapIter struct {
 
 	interval time.Duration
 	count    int
+
+	flushOnStop bool
 }
 
 func (i *ebpfInstance) populateMap(t btf.Type, varName string) error {
@@ -145,8 +148,46 @@ func (i *ebpfInstance) evaluateMapParams(paramValues api.ParamValues) error {
 func (i *ebpfInstance) runMapIterators() error {
 	for _, iter := range i.mapIters {
 		iterMap, ok := i.collection.Maps[iter.mapName]
+
 		if !ok {
 			return fmt.Errorf("map %q not found", iter.mapName)
+		}
+
+		// Check init values and apply them to the map
+		annotations := iter.ds.Annotations()
+		for k, keyValue := range annotations {
+			if r1, found := strings.CutPrefix(k, "ebpf.map.init."); found {
+				if r2, found := strings.CutSuffix(r1, ".key"); found {
+					i.logger.Debugf("writing inital value to map")
+					valueValue := annotations["ebpf.map.init."+r2+".value"]
+					mapKey := make([]byte, iterMap.KeySize())
+					mapValue := make([]byte, iterMap.ValueSize())
+					if len(keyValue) > 0 {
+						keyBytes, err := hex.DecodeString(keyValue)
+						if err != nil {
+							return fmt.Errorf("decoding init key %s for map %q from hex: %w", iter.ds.Name(), r2, err)
+						}
+						if len(mapKey) != len(keyBytes) {
+							return fmt.Errorf("decoding init key %s for map %q from hex: expected len of %d, got %d", iter.ds.Name(), r2, len(mapKey), len(keyBytes))
+						}
+						copy(mapKey, keyBytes)
+					}
+					if len(valueValue) > 0 {
+						valBytes, err := hex.DecodeString(valueValue)
+						if err != nil {
+							return fmt.Errorf("decoding init value %s for map %q from hex: %w", iter.ds.Name(), r2, err)
+						}
+						if len(mapValue) != len(valBytes) {
+							return fmt.Errorf("decoding init value %s for map %q from hex: expected len of %d, got %d", iter.ds.Name(), r2, len(mapValue), len(valBytes))
+						}
+						copy(mapValue, valBytes)
+					}
+					err := iterMap.Update(mapKey, mapValue, ebpf.UpdateNoExist)
+					if err != nil {
+						i.logger.Warnf("error updating map %q with initial value: %w", iter.ds.Name(), err)
+					}
+				}
+			}
 		}
 		fetch := func() {
 			p, err := iter.ds.NewPacketArray()
@@ -204,18 +245,26 @@ func (i *ebpfInstance) runMapIterators() error {
 		i.wg.Add(1)
 		go func() {
 			defer i.wg.Done()
-			if iter.interval == 0 {
-				// Only a single time; is this really useful?
+			if iter.interval == 0 && iter.count == 1 {
+				// Only a single time if interval is zero and count is 1
 				fetch()
 				return
 			}
 			ctr := 0
-			ticker := time.NewTicker(iter.interval)
+
+			tickerChan := make(<-chan time.Time)
+			if iter.interval > 0 {
+				tickerChan = time.NewTicker(iter.interval).C
+			}
 			for {
 				select {
 				case <-i.done:
+					if iter.flushOnStop {
+						i.logger.Debugf("flushing map")
+						fetch()
+					}
 					return
-				case <-ticker.C:
+				case <-tickerChan:
 					fetch()
 					ctr++
 					if iter.count > 0 && ctr >= iter.count {
