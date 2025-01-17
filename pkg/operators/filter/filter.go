@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"golang.org/x/exp/constraints"
 
@@ -86,7 +85,7 @@ func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 		ffns: map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
 	}
 
-	filters := strings.Split(filterCfg, ",")
+	filters := api.SplitStringWithEscape(filterCfg, ',')
 	for _, filter := range filters {
 		if filter == "" {
 			continue

@@ -35,3 +35,4 @@ Fully qualified name: `operator.filter.filter`
 ### multiple filters
 
 You can specify multiple filters by separating them with a comma. The filter `field1==value1,field2==value2` will match only events where `field1` equals `value1` and `field2` equals `value2`.
+Also, you can use backslash (`\`) to escape comma in the value.
