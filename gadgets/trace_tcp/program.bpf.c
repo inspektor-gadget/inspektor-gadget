@@ -42,6 +42,12 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	return 0;
 }
 
+SEC("tracepoint/syscalls/sys_enter_connect")
+int sys_connect_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_connect_e(ctx);
+}
+
 // kprobe for TCP close events
 
 SEC("kprobe/tcp_close")
@@ -51,6 +57,18 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	return 0;
 }
 
+SEC("tracepoint/syscalls/sys_enter_close")
+int sys_close_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_close_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_close")
+int sys_close_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_close_x(ctx);
+}
+
 // kprobe for TCP accept events
 
 SEC("kretprobe/inet_csk_accept")
@@ -58,6 +76,30 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 {
 	handle_tcp_accept(ctx, sk);
 	return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_accept")
+int sys_accept_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_accept_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_enter_accept4")
+int sys_accept4_e(struct syscall_trace_enter *ctx)
+{
+	return handle_sys_accept_e(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_accept")
+int sys_accept_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_accept_x(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_accept4")
+int sys_accept4_x(struct syscall_trace_exit *ctx)
+{
+	return handle_sys_accept_x(ctx);
 }
 
 char LICENSE[] SEC("license") = "GPL";
