@@ -11,6 +11,7 @@ TEST_ARTIFACTS = \
 	map \
 	mapofmap \
 	syscall \
+	array \
 	#
 
 all: $(TEST_ARTIFACTS)
