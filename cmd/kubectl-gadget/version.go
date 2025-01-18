@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -58,7 +59,7 @@ var versionCmd = &cobra.Command{
 		// Get server version information
 		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
 		if err != nil {
-			return fmt.Errorf("getting running Inspektor Gadget instances: %w", err)
+			fmt.Fprintf(os.Stderr, "Error: getting running Inspektor Gadget instances: %s\n", err)
 		}
 
 		if len(gadgetNamespaces) == 1 {
