@@ -52,6 +52,28 @@ const (
 	AttachmentDirectionEgress
 )
 
+// createFqQdisc creates an fq qdisc on the given interface.
+func createFqQdisc(tcnl *tc.Tc, iface *net.Interface) (*tc.Object, error) {
+	// Install Fq Qdisc on interface
+	qdisc := &tc.Object{
+		Msg: tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(iface.Index),
+			Handle:  tccore.BuildHandle(tc.HandleRoot, 0),
+			Parent:  tc.HandleRoot, // Root qdisc for egress shaping
+		},
+		Attribute: tc.Attribute{
+			Kind: "fq",
+		},
+	}
+
+	if err := tcnl.Qdisc().Add(qdisc); err != nil {
+		return nil, fmt.Errorf("adding fq qdisc to %s: %w", iface.Name, err)
+	}
+
+	return qdisc, nil
+}
+
 // createClsActQdisc creates a clsact qdisc on the given interface.
 func createClsActQdisc(tcnl *tc.Tc, iface *net.Interface) (*tc.Object, error) {
 	// Install Qdisc on interface
