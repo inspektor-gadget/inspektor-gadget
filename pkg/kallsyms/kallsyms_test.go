@@ -80,3 +80,30 @@ func TestRealKAllSyms(t *testing.T) {
 	// Since we use RequireRoot, it should not happen.
 	require.NotEqual(t, 0, addr, "bpf_prog_fops has a zero address")
 }
+
+// BenchmarkKernelSymbolAddressJITParsing searches for the symbol while
+// reading the kallsyms file
+func BenchmarkKernelSymbolAddressJITParsing(b *testing.B) {
+	utilstest.RequireRoot(b)
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		exists := SymbolExists("security_bprm_check")
+		require.Equal(b, true, exists, "exists")
+	}
+}
+
+// BenchmarkKernelSymbolAddressPreLoading loads the full kallsyms before
+// looking up the symbol
+func BenchmarkKernelSymbolAddressPreLoading(b *testing.B) {
+	utilstest.RequireRoot(b)
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		k, err := NewKAllSyms()
+		require.NoError(b, err)
+		require.NotNil(b, k)
+		exists := k.SymbolExists("security_bprm_check")
+		require.Equal(b, true, exists)
+	}
+}
