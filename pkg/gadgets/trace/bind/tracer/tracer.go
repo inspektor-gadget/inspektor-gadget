@@ -31,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type bind_event bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/
@@ -236,23 +237,6 @@ func (t *Tracer) run() {
 
 		bpfEvent := (*bindsnoopBindEvent)(unsafe.Pointer(&record.RawSample[0]))
 
-		interfaceString := ""
-		interfaceNum := int(bpfEvent.BoundDevIf)
-		if interfaceNum != 0 {
-			// It does exist a net link which index is 0.
-			// But eBPF bindsnoop code often gives 0 as interface number:
-			// https://github.com/iovisor/bcc/blob/63618552f81a2631990eff59fd7460802c58c30b/tools/bindsnoop_example.txt#L16
-			// So, we only use this function if interface number is different than 0.
-			interf, err := netlink.LinkByIndex(interfaceNum)
-			if err != nil {
-				msg := fmt.Sprintf("Cannot get net interface for %d : %s", interfaceNum, err)
-				t.eventCallback(types.Base(eventtypes.Err(msg)))
-				return
-			}
-
-			interfaceString = interf.Attrs().Name
-		}
-
 		addr := gadgets.IPStringFromBytes(bpfEvent.Addr, int(bpfEvent.Ver))
 
 		event := types.Event{
@@ -265,7 +249,6 @@ func (t *Tracer) run() {
 			Addr:          addr,
 			Port:          bpfEvent.Port,
 			Options:       optionsToString(bpfEvent.Opts),
-			Interface:     interfaceString,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
 			Uid:           bpfEvent.Uid,
@@ -275,6 +258,44 @@ func (t *Tracer) run() {
 		if t.enricher != nil {
 			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
+
+		interfaceString := ""
+
+		interfaceNum := int(bpfEvent.BoundDevIf)
+		if interfaceNum != 0 {
+			// It does exist a net link which index is 0.
+			// But eBPF bindsnoop code often gives 0 as interface number:
+			// https://github.com/iovisor/bcc/blob/63618552f81a2631990eff59fd7460802c58c30b/tools/bindsnoop_example.txt#L16
+			// So, we only use this function if interface number is different than 0.
+
+			var interf netlink.Link
+			pid := int(event.Pid)
+
+			// Current limitations:
+			// - Short-lived processed might have terminated already, so we cannot enter
+			//   its netns.
+			// - 'pid' is from the top-level pid namespace, which might differ from IG's
+			//   /host/proc/ on some setups such as Minikube with the docker driver.
+
+			err := nsenter.NetnsEnter(pid, func() error {
+				interf, err = netlink.LinkByIndex(interfaceNum)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				msg := fmt.Sprintf("Cannot find interface name for index : %d (PID : %d) : %s", interfaceNum, pid, err)
+				t.eventCallback(types.Base(eventtypes.Err(msg)))
+				continue
+			}
+
+			if interf != nil {
+				interfaceString = interf.Attrs().Name
+			}
+
+		}
+		event.Interface = interfaceString
 
 		t.eventCallback(&event)
 	}
