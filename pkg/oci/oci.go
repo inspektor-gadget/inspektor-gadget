@@ -468,7 +468,7 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 		for _, fullTag := range tags {
 			image, err := getGadgetImageDescriptor(ctx, store, fullTag)
 			if err != nil {
-				log.Debugf("getting gadget image descriptor for %s: %v", fullTag, err)
+				log.Warnf("getting gadget image descriptor for %s: %v", fullTag, err)
 				continue
 			}
 
