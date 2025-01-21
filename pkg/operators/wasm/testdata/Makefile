@@ -11,6 +11,7 @@ TEST_ARTIFACTS = \
 	map \
 	mapofmap \
 	syscall \
+	perf \
 	#
 
 all: $(TEST_ARTIFACTS)
