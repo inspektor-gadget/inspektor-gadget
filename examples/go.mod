@@ -177,7 +177,5 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace k8s.io/component-base => k8s.io/component-base v0.0.0-20240417101527-62c04b35eff6
-
 // use current code of inspektor-gadget
 replace github.com/inspektor-gadget/inspektor-gadget => ../
