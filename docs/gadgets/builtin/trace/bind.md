@@ -5,6 +5,13 @@ description: >
   Trace the kernel functions performing socket binding.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_bind](../../trace_bind.mdx)
+image-based one.
+
+:::
+
 ![Screencast of the trace bind gadget](bind.gif)
 
 The trace bind gadget is used to stream socket binding syscalls.

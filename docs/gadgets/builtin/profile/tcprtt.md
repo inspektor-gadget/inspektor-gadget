@@ -5,6 +5,13 @@ description: >
   Analyze TCP connections through an Round-Trip Time (RTT) distribution
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [profile_tcprtt](../../profile_tcprtt.mdx)
+image-based one.
+
+:::
+
 The profile tcprtt gadget generates a histogram distribution of the TCP
 connections' Round-Trip Time (RTT). The RTT values used to create the histogram
 are collected from [the smoothed

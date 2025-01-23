@@ -5,6 +5,13 @@ description: >
     Trace TCP retransmissions.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_tcpretrans](../../trace_tcpretrans.mdx)
+image-based one.
+
+:::
+
 The trace tcpretrans gadget traces TCP retransmissions by the kernel.
 
 ### On Kubernetes

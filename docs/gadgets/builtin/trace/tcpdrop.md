@@ -5,6 +5,13 @@ description: >
     Trace TCP kernel-dropped packets/segments.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_tcpdrop](../../trace_tcpdrop.mdx)
+image-based one.
+
+:::
+
 The trace tcpdrop gadget traces TCP packets dropped by the kernel.
 
 ### On Kubernetes

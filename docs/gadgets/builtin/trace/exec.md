@@ -5,6 +5,13 @@ description: >
   Trace new processes.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_exec](../../trace_exec.mdx)
+image-based one.
+
+:::
+
 ![Screencast of the trace exec gadget](exec.gif)
 
 The trace exec gadget streams new processes creation events.

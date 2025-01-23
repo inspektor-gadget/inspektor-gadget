@@ -5,6 +5,13 @@ description: >
   Gather information about TCP and UDP sockets.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [snapshot_socket](../../snapshot_socket.mdx)
+image-based one.
+
+:::
+
 The snapshot socket gadget gathers information about TCP and UDP sockets.
 
 ### On Kubernetes

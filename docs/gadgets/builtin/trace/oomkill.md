@@ -5,6 +5,13 @@ description: >
   Trace when OOM killer is triggered and kills a process.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_oomkill](../../trace_oomkill.mdx)
+image-based one.
+
+:::
+
 The trace oomkill gadget is used to monitor when out-of-memory killer kills a process.
 
 ### On Kubernetes

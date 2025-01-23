@@ -5,6 +5,13 @@ description: >
   Periodically report TCP activity.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [top_tcp](../../top_tcp.mdx)
+image-based one.
+
+:::
+
 The top tcp gadget is used to visualize active TCP connections.
 
 ### On Kubernetes

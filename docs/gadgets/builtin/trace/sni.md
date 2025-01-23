@@ -5,6 +5,13 @@ description: >
   Trace Server Name Indication (SNI) from TLS requests.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_sni](../../trace_sni.mdx)
+image-based one.
+
+:::
+
 The trace sni gadget is used to trace the [Server Name Indication (SNI)](https://en.wikipedia.org/wiki/Server_Name_Indication) requests sent as part of TLS handshakes.
 
 ### On Kubernetes
