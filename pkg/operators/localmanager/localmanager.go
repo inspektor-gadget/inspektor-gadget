@@ -319,10 +319,34 @@ type localManagerTrace struct {
 	gadgetCtx          operators.GadgetContext
 
 	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
+
+	containersDs   datasource.DataSource
+	eventTypeField datasource.FieldAccessor
+	cgroupIDField  datasource.FieldAccessor
+	mountNsIDField datasource.FieldAccessor
 }
 
 func (l *localManagerTrace) Name() string {
 	return OperatorName
+}
+
+func (l *localManagerTrace) emitContainersDatasourceEvent(eventType containercollection.EventType, container *containercollection.Container) error {
+	ev, err := l.containersDs.NewPacketSingle()
+	if err != nil {
+		return fmt.Errorf("creating new containers datasource packet: %w", err)
+	}
+
+	l.eventTypeField.PutString(ev, eventType.String())
+	l.cgroupIDField.PutUint64(ev, container.CgroupID)
+	l.mountNsIDField.PutUint64(ev, container.Mntns)
+
+	err = l.containersDs.EmitAndRelease(ev)
+	if err != nil {
+		log.Errorf("%v", err)
+		return fmt.Errorf("emitting containers datasource event: %w", err)
+	}
+
+	return nil
 }
 
 func (l *localManagerTrace) PreGadgetRun() error {
@@ -416,6 +440,15 @@ func (l *localManagerTrace) PreGadgetRun() error {
 						attachContainerFunc(event.Container)
 					case containercollection.EventTypeRemoveContainer:
 						detachContainerFunc(event.Container)
+					default:
+						log.Errorf("unknown event type, expected either %s or %s, got %s", containercollection.EventTypeAddContainer, containercollection.EventTypeRemoveContainer, event.Type)
+						return
+					}
+
+					err := l.emitContainersDatasourceEvent(event.Type, event.Container)
+					if err != nil {
+						log.Errorf("emitting containers datasource event: %v", err)
+						return
 					}
 				},
 			)
@@ -427,6 +460,12 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 		for _, container := range containers {
 			attachContainerFunc(container)
+
+			// TODO: Make this work.
+			err := l.emitContainersDatasourceEvent(containercollection.EventTypeAddContainer, container)
+			if err != nil {
+				return fmt.Errorf("emitting containers datasource event: %v", err)
+			}
 		}
 	}
 
@@ -497,6 +536,26 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 		return nil, err
 	}
 
+	containersDs, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "containers")
+	if err != nil {
+		return nil, fmt.Errorf("creating datasource: %w", err)
+	}
+
+	eventTypeField, err := containersDs.AddField("event_type", api.Kind_String)
+	if err != nil {
+		return nil, fmt.Errorf("adding field event_type: %w", err)
+	}
+
+	cgroupIDField, err := containersDs.AddField("cgroup_id", api.Kind_Uint64)
+	if err != nil {
+		return nil, fmt.Errorf("adding field cgroup_id: %w", err)
+	}
+
+	mountNsIDField, err := containersDs.AddField("mntns_id", api.Kind_Uint64)
+	if err != nil {
+		return nil, fmt.Errorf("adding field mntns_id: %w", err)
+	}
+
 	// Wrapper is used to have ParamDescs() with the new signature
 	traceInstance := &localManagerTraceWrapper{
 		localManagerTrace: localManagerTrace{
@@ -506,6 +565,11 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 			params:             params,
 			gadgetCtx:          gadgetCtx,
 			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
+
+			containersDs:   containersDs,
+			eventTypeField: eventTypeField,
+			cgroupIDField:  cgroupIDField,
+			mountNsIDField: mountNsIDField,
 		},
 	}
 
