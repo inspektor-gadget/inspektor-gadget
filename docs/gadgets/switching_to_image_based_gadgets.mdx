@@ -1,0 +1,303 @@
+---
+title: Swithing to image-based Gadgets
+sidebar_position: 1
+---
+
+This guide covers how to switch from built-in Gadgets to image-based Gadgets.
+
+### CLI Users
+
+Image-based Gadgets are executed with the [`run`](../reference/run) command:
+
+```bash
+$ ig run gadget_name
+$ kubectl gadget run gadget_name
+```
+
+For each built-in Gadget we have a corresponding image-based Gadget:
+
+```bash
+$ ig trace open # built-in
+$ ig run trace_open # image-based
+
+$ ig snapshot process # built-in
+$ ig run snapshot_process # image-based
+```
+
+Usually the name is the concatenation of the gadget category and the gadget
+name: `trace exec` corresponds to `trace_exec`, `top file` corresponds to
+`top_file` and so on.
+
+This section describes the biggest differences between that kind of gadgets.
+
+#### Columns Output
+
+We tuned the output of different Gadgets to be more user friendly, we changed
+the size of some columns and show or hide some of them by default. For instance,
+this is the output for the trace open gadget:
+
+Built-in:
+
+```bash
+$ sudo ig trace open
+RUNTIME.CONTAINERNAME   PID        TID        COMM        FD ERR PATH
+determined_kapitsa      42364      42364      cat         0  2   /lib/x86_64/x86_64/libm…
+determined_kapitsa      42364      42364      cat         0  2   /lib/x86_64/libm.so.6
+determined_kapitsa      42364      42364      cat         0  2   /lib/x86_64/libm.so.6
+determined_kapitsa      42364      42364      cat         3  0   /lib/libm.so.6
+determined_kapitsa      42364      42364      cat         3  0   /lib/libresolv.so.2
+determined_kapitsa      42364      42364      cat         3  0   /lib/libc.so.6
+determined_kapitsa      42364      42364      cat         0  2   /tmp/foo
+```
+
+Image-based:
+
+```bash
+$ sudo ig run trace_open
+RUNTIME.CONTAIN… COMM           PID      TID  FD FNAME                    MODE     ERROR
+determined_kapit cat          42364    42364   0 /lib/x86_64/x86_64/libm… -------… ENOENT
+determined_kapit cat          42364    42364   0 /lib/x86_64/libm.so.6    -------… ENOENT
+determined_kapit cat          42364    42364   0 /lib/x86_64/libm.so.6    -------… ENOENT
+determined_kapit cat          42364    42364   3 /lib/libm.so.6           -------…
+determined_kapit cat          42364    42364   3 /lib/libresolv.so.2      -------…
+determined_kapit cat          42364    42364   3 /lib/libc.so.6           -------…
+determined_kapit cat          42364    42364   0 /tmp/foo                 -------… ENOENT
+```
+
+#### Json (and Yaml) Output
+
+The output for both kind of Gadgets is very similar. Let's analyse the output of
+`trace open` to compare the differences:
+
+Built-in:
+
+```bash
+$ ig trace open -o jsonpretty
+{
+  "runtime": {
+    "runtimeName": "docker",
+    "containerId": "b092854647ae52c4582204be7978052c2bb5ea8bd572e99f630d04b04ed4c9e1",
+    "containerName": "determined_kapitsa",
+    "containerPid": 37591,
+    "containerImageName": "busybox",
+    "containerImageDigest": "sha256:2919d0172f7524b2d8df9e50066a682669e6d170ac0f6a49676d54358fe970b5",
+    "containerStartedAt": 1737640953449803500
+  },
+  "k8s": {
+    "owner": {}
+  },
+  "timestamp": 1737641591294238200,
+  "type": "normal",
+  "mountnsid": 4026534388,
+  "pid": 39733,
+  "tid": 39733,
+  "gid": 0,
+  "comm": "cat",
+  "err": 2,
+  "flags": [
+    "O_RDONLY"
+  ],
+  "mode": "----------",
+  "path": "/tmp/foo"
+}
+```
+
+Image-based:
+
+```bash
+$ ig run trace_open -o jsonpretty
+{
+  "error": "ENOENT",
+  "error_raw": 2,
+  "fd": 0,
+  "flags": "O_RDONLY",
+  "flags_raw": 0,
+  "fname": "/tmp/foo",
+  "k8s": {
+    "containerName": "",
+    "hostnetwork": false,
+    "namespace": "",
+    "node": "",
+    "owner": {
+      "kind": "",
+      "name": ""
+    },
+    "podLabels": "",
+    "podName": ""
+  },
+  "mode": "----------",
+  "mode_raw": 0,
+  "proc": {
+    "comm": "cat",
+    "creds": {
+      "gid": 0,
+      "group": "root",
+      "uid": 0,
+      "user": "root"
+    },
+    "mntns_id": 4026534388,
+    "parent": {
+      "comm": "sh",
+      "pid": 37591
+    },
+    "pid": 39733,
+    "tid": 39733
+  },
+  "runtime": {
+    "containerId": "b092854647ae52c4582204be7978052c2bb5ea8bd572e99f630d04b04ed4c9e1",
+    "containerImageDigest": "sha256:2919d0172f7524b2d8df9e50066a682669e6d170ac0f6a49676d54358fe970b5",
+    "containerImageName": "busybox",
+    "containerName": "determined_kapitsa",
+    "containerPid": 37591,
+    "containerStartedAt": 1737640953449803500,
+    "runtimeName": "docker"
+  },
+  "timestamp": "2025-01-23T09:13:11.294236963-05:00",
+  "timestamp_raw": 1737641591294237000
+}
+```
+
+- **proccess information**: The image-based one has all the process related
+information such as command name (comm), process identifier (pid), thread
+identifier (tid), user identifier (uid), group identifier (gid), parent process
+(pcomm) and mount namespace inode id (mntns_id) consolidated on the "proc" node.
+- **enriched fields**: The image-based gadgets contains both the raw version and
+the enriched (human friendly version) of fields like timestamp, mode, flags etc.
+- **fields renamed**: The name of some fields were changed, for instance in this
+case the path of the file being open is now called fname instead of path.
+
+#### Filtering events in user space with `--filter`
+
+The syntax is a bit different for both cases.
+
+Built-in:
+
+```bash
+A filter can match any column using the following syntax
+  columnName:value       - matches, if the content of columnName equals exactly value
+  columnName:!value      - matches, if the content of columnName does not equal exactly value
+  columnName:>=value     - matches, if the content of columnName is greater than or equal to the value
+  columnName:>value      - matches, if the content of columnName is greater than the value
+  columnName:<=value     - matches, if the content of columnName is less than or equal to the value
+  columnName:<value      - matches, if the content of columnName is less than the value
+  columnName:~value      - matches, if the content of columnName matches the regular expression 'value'
+                            see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+This flag can be specified multiple times to combine multiple filters e.g. -F column1:value1 -F column2:value2
+```
+
+```bash
+# built-in
+$ sudo ig trace open -F 'path:/tmp/foo'
+
+# image-based
+# In this case the field was also renamed
+$ sudo ig run trace_open -F 'fname==/tmp/foo'
+```
+
+[Image-based](../reference/run.mdx#filtering-in-user-space):
+
+```
+A filter can match any field using the following syntax:
+  field==value     - matches, if the content of field equals exactly value
+  field!=value     - matches, if the content of field does not equal exactly value
+  field>=value     - matches, if the content of field is greater than or equal to the value
+  field>value      - matches, if the content of field is greater than the value
+  field<=value     - matches, if the content of field is less than or equal to the value
+  field<value      - matches, if the content of field is less than the value
+  field~value      - matches, if the content of field matches the regular expression 'value'
+               see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+Multiple filters can be combined using a comma: field1==value1,field2==value2
+```
+
+#### Showing or hidding columns
+
+In the built-in gadgets, the `-o columns=foo,bar` syntax was available for
+selecting which columns are shown. In the image-based gadgets this is done with
+the [--fields](../reference/run.mdx#selecting-specific-fields) flag:
+
+```bash
+# built-in
+$ sudo ig trace open -o columns=comm,path
+COMM             PATH
+...
+cat              /lib/libm.so.6
+cat              /lib/libresolv.so.2
+cat              /lib/libc.so.6
+cat              /tmp/foo
+
+# image-based
+$ sudo ig run trace_open --fields proc.comm,fname
+COMM             FNAME
+...
+cat              /lib/libm.so.6
+cat              /lib/libresolv.so.2
+cat              /lib/libc.so.6
+cat              /tmp/foo
+```
+
+#### Pulling Gadget Images
+
+Image-based Gadgets aren't shipped with the `ig` binary, they are instead stored
+as OCI artifacts on OCI registries. It means they need to be pulled from
+the internet when running them for the first time. If you're running in an
+environment where it's not possible to reach the internet while running the
+gadgets, you have the following options:
+
+##### Use your own OCI registry
+
+Mirror the Gadget images to your own OCI registry.
+
+```bash
+$ sudo ig image pull trace_open:v0.36.0
+$ sudo ig image tag trace_open:v0.36.0 myoci_registry/trace_open:v0.36.0
+$ sudo ig image push myoci_registry/trace_open:v0.36.0
+```
+
+Then, run the image from a machine with access to your OCI registry
+
+```bash
+$ sudo ig run myoci_registry/trace_open:v0.36.0
+```
+
+##### Use the image export and import functionality
+
+Download a local copy of the images on a machine with internet access:
+
+```bash
+$ sudo ig image pull trace_open:v0.36.0
+$ sudo ig image pull trace_exec:v0.36.0
+# ...
+
+# export the images to a file
+$ sudo ig image export trace_open:v0.36.0 trace_exec:v0.36.0 > myimages.tar
+```
+
+Then, transfer `myimages.tar` to the machine where you want to run the Gadgets,
+import and run them:
+
+```bash
+$ sudo ig image import myimages.tar
+$ sudo ig run trace_open:v0.36.0
+```
+
+#### New Features
+
+This is a raw list of features that are only available with the image-based
+gadgets. Please check the individual documentation for each one of them to get
+more information.
+
+- [**Headless mode**](../reference/headless): Run Gadgets on background.
+- [**Gadget Instance Manifests**](../reference/manifests): Run a Gadget from a
+  file containing its configuration.
+- [**Metrics**](../reference/export-metrics): Export metrics to Prometheus and
+  OpenTelemetry.
+- **Uniform filtering**: Filtering by common fields like command name, pid, tid,
+  etc. in the kernel directly.
+- [**Creating your own Gadgets**](../gadget-devel/): You can now create your own
+  Gadgets without requiring any changes on the project.
+
+### Golang API Users
+
+The main difference for the users of the Golang API is that image-based Gadgets
+don't provide a Golang package, instead a generic runner needs to be used to run
+them. Check the [Golang API](../api/golang) to learn more about it.

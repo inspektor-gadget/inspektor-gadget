@@ -42,14 +42,13 @@ directory and third-party Gadgets).
 
 See the [Gadget documentation](./gadgets/) for more information.
 
-:::warning For versions prior to v0.31.0
+:::warning
 
 Prior to v0.31.0, Inspektor Gadget only shipped gadgets embedded in its
-executable file. As of v0.31.0 these ***built-in*** Gadgets are still available
-and work as before, but their use is discouraged as they will be deprecated at
-some point. We encourage users to use ***image-based*** Gadgets going forward,
-as they provide more features and decouple the eBPF programs from the Inspektor
-Gadget release process.
+executable file. These built-in Gadgets are now deprecated and will be removed
+in v0.42.0 (July 2025). We encourage users to use [image-based](./gadgets/)
+Gadgets going forward, as they provide more features and decouple the eBPF
+programs from the Inspektor Gadget release process.
 
 :::
 
