@@ -35,3 +35,7 @@ params:
       key: connect-only
       defaultValue: "false"
       description: Show only connect events
+    failure_only:
+      key: failure-only
+      defaultValue: "false"
+      description: Don't show successful events

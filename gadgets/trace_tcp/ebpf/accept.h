@@ -28,8 +28,12 @@ static __always_inline int handle_sys_accept_x(struct syscall_trace_exit *ctx)
 	skpp = bpf_map_lookup_elem(&tcp_tid_sock, &tid);
 	if (!skpp)
 		return 0;
-	sk = *skpp;
 
+	// User does not want to see successful events
+	if (failure_only && ctx->ret >= 0)
+		goto end;
+
+	sk = *skpp;
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 
 	fill_tuple(&t, sk, family);

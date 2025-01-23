@@ -102,8 +102,10 @@ __u8 ip_v6_zero[16] = {
 };
 
 const volatile bool connect_only = false;
+const volatile bool failure_only = false;
 
 GADGET_PARAM(connect_only);
+GADGET_PARAM(failure_only);
 
 /* Define here, because there are conflicts with include files */
 #define AF_INET 2
