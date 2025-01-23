@@ -1,0 +1,19 @@
+name: mygadget
+description: Example gadget
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
+annotations:
+  enable-containers-datasource: true
+datasources:
+  open:
+    fields:
+      pid:
+        annotations:
+          columns.hidden: "true"
+      tid:
+        annotations:
+          columns.hidden: "true"
+      comm:
+        annotations:
+          columns.hidden: "true"
