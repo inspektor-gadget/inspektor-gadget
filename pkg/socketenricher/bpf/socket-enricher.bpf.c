@@ -49,6 +49,13 @@ static __always_inline void insert_current_socket(struct sock *sock)
 	};
 	prepare_socket_key(&socket_key, sock);
 
+	// insert_current_socket is called for each udp packed emitted. To improve
+	// performance, don't add a socket if it is already in the map.
+	struct sockets_value *already_exists =
+		bpf_map_lookup_elem(&gadget_sockets, &socket_key);
+	if (already_exists && already_exists->deletion_timestamp == 0)
+		return;
+
 	if (bpf_map_update_elem(&ig_tmp_sockets_value, &zero,
 				&empty_sockets_value, BPF_ANY))
 		return;
