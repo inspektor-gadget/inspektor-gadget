@@ -23,11 +23,6 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 )
 
-func resetState() {
-	symbolsMap = map[string]uint64{}
-	triedGetAddr = map[string]error{}
-}
-
 func TestCustomKAllSyms(t *testing.T) {
 	kAllSymsStr := strings.Join([]string{
 		"0000000000000000 A fixed_percpu_data",
