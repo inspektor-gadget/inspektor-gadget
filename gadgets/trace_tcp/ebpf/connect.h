@@ -119,16 +119,17 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	if (!ei)
 		return; /* missed entry */
 
+	err = BPF_CORE_READ(sk, sk_err);
+
+	// User does not want to see successful events
+	if (failure_only && err == 0)
+		goto end;
+
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		goto end;
 
-	// Explicitly capture error states
-	if (state == TCP_CLOSE) {
-		err = BPF_CORE_READ(sk, sk_err);
-		if (err == 0)
-			err = ETIMEDOUT; // Mark as timeout if no specific error
-	}
+	err = BPF_CORE_READ(sk, sk_err);
 
 	fill_event(event, &tuple, &ei->proc, err, connect);
 	event->fd = ei->fd;

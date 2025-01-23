@@ -16,6 +16,11 @@ static __always_inline void handle_tcp_close(struct pt_regs *ctx,
 	struct event *event;
 	u16 family;
 
+	// Close events don't have errors.
+	// User does not want to see successful events.
+	if (failure_only)
+		return;
+
 	if (filter_event(sk, close))
 		return;
 
