@@ -5,6 +5,13 @@ description: >
   Trace open, read, write and fsync operations slower than a threshold.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_fsslower](../../trace_fsslower.mdx)
+image-based one.
+
+:::
+
 ![Screencast of the trace fsslower gadget](fsslower.gif)
 
 The trace fsslower gadget streams file operations (open, read, write and

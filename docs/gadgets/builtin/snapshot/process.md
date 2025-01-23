@@ -5,6 +5,13 @@ description: >
   Gather information about running processes.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [snapshot_process](../../snapshot_process.mdx)
+image-based one.
+
+:::
+
 ![Screencast of snapshot process compared to calling kubectl exec ps](process.gif)
 
 The snapshot process gadget gathers information about running processes.

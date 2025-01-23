@@ -5,6 +5,13 @@ description: >
   Trace DNS queries and responses.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_dns](../../trace_dns.mdx)
+image-based one.
+
+:::
+
 ![Screencast of the trace dns gadget](dns.gif)
 
 The trace dns gadget prints information about DNS queries and responses sent

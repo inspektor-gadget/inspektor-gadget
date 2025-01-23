@@ -5,6 +5,13 @@ description: >
   Trace security capability checks.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_capabilities](../../trace_capabilities.mdx)
+image-based one.
+
+:::
+
 ![Screencast of the trace capabilities gadget](capabilities.gif)
 
 The trace capabilities gadget allows us to see what capability security checks

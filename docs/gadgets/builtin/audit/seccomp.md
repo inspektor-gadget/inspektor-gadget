@@ -5,6 +5,13 @@ description: >
   Trace syscalls that seccomp sent to the audit log.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [audit_seccomp](../../audit_seccomp.mdx)
+image-based one.
+
+:::
+
 The audit seccomp gadget provides a stream of events with syscalls that had
 their seccomp filters generating an audit log. An audit log can be generated in
 one of these two conditions:

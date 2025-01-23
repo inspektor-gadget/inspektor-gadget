@@ -5,6 +5,13 @@ description: >
   Trace open system calls.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_open](../../trace_open.mdx)
+image-based one.
+
+:::
+
 The trace open gadget streams events related to files opened inside pods.
 
 ### On Kubernetes

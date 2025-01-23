@@ -5,6 +5,13 @@ description: >
   Trace tcp connect, accept and close.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_tcp](../../trace_tcp.mdx)
+image-based one.
+
+:::
+
 The trace tcp gadget can be used to monitor tcp connections, as it shows
 connect, accept and close events related to TCP connections.
 

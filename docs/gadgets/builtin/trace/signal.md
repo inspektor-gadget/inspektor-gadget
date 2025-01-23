@@ -5,6 +5,13 @@ description: >
   Trace signals received by processes.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_signal](../../trace_signal.mdx)
+image-based one.
+
+:::
+
 The trace signal gadget is used to trace system signals received by the
 pods.
 
