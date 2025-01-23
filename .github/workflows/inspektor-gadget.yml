@@ -77,11 +77,11 @@ jobs:
     - name: Check website build
       if: steps.filter.outputs.docs == 'true'
       run: |
-        cd $RUNNER_TEMP
+        cd "$RUNNER_TEMP"
         git clone https://github.com/inspektor-gadget/website/
         cd website
         mkdir -p external-docs/
-        ln -s $GITHUB_WORKSPACE external-docs/inspektor-gadget.git_mainlatest
+        ln -s "$GITHUB_WORKSPACE" external-docs/inspektor-gadget.git_mainlatest
         make
 
   actionlint:
@@ -136,7 +136,7 @@ jobs:
       # Fetch project source with GitHub Actions Checkout.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # Run the "semgrep ci" command on the command line of the docker image.
-      - run: cd $GITHUB_WORKSPACE && semgrep ci --config $GITHUB_WORKSPACE/.semgrep_rules.yaml
+      - run: cd "$GITHUB_WORKSPACE" && semgrep ci --config "$GITHUB_WORKSPACE/.semgrep_rules.yaml"
 
 
   ebpf-objects-checks:
@@ -156,8 +156,10 @@ jobs:
             exit 1
           fi
       - name: Detect changes for ebpf objects
+        env:
+          EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
         run: |
-          make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ebpf-objects
+          make ebpf-objects
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
             >&2 echo "$changes"
@@ -218,6 +220,9 @@ jobs:
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
         git checkout
 
@@ -230,23 +235,20 @@ jobs:
         fi
 
         client=${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
-
-        CONTAINER_REPO=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
-        IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
-        make $client
+        make "$client"
 
         # We need to append .exe to windows binaries...
         dot_exe=$(test ${{ matrix.os }} = 'windows' && echo '.exe' || echo '')
 
         # Prepare assets for release and actions artifacts
         platform='${{ matrix.os }}-${{ matrix.arch }}'
-        mkdir $platform
+        mkdir "$platform"
         cp "${client}${dot_exe}" "${platform}/${{ matrix.client }}${dot_exe}"
-        cp LICENSE $platform/
+        cp LICENSE "$platform/"
         tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${client}.tar.gz -C $platform \
+          -czf "${client}.tar.gz" -C "$platform" \
           ${{ matrix.client }}${dot_exe} LICENSE
-        rm -rf $platform
+        rm -rf "$platform"
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       uses: github/codeql-action/analyze@b6a472f63d85b9c78a3ac5e89422239fc15e9b3c # v3.28.1
       with:
@@ -288,7 +290,7 @@ jobs:
           ./tools/getbtfhub.sh
           ./tools/getbpftool.sh
           make btfgen BPFTOOL=/tmp/bpftool \
-              ARCH=${{ matrix.platform }} BTFHUB_ARCHIVE=$HOME/btfhub-archive/ -j$(nproc)
+              ARCH=${{ matrix.platform }} BTFHUB_ARCHIVE="$HOME/btfhub-archive/" -j$(nproc)
 
   build-ig:
     name: ig
@@ -327,13 +329,15 @@ jobs:
         # - hash of all bpf objects
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - name: Build ig-linux-${{ matrix.platform }}
+      env:
+        EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
       run: |
         if [ "${{ matrix.platform }}" = 'arm64' ]; then
           sudo apt-get update
           sudo apt-get install qemu-user-static
         fi
 
-        make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ig-linux-${{ matrix.platform }}
+        make ig-linux-${{ matrix.platform }}
 
         # Prepare assets for release and actions artifacts
         mkdir ${{ matrix.platform }}
@@ -525,6 +529,9 @@ jobs:
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: gadget-container-images-attach-sbom
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        DIGEST: ${{ steps.publish-gadget-container-images.outputs.digest }}
       run: |
         # We need to get the image digest from the manifest.
         # Otherwise, we will attach the SBOM to the manifest and the SBOM will
@@ -532,18 +539,20 @@ jobs:
         # and attaches only the images, not the existing manifests.
         # This way, we are sure the new manifest will point to the images which
         # have SBOM attached.
-        manifest=$(oras manifest fetch ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-gadget-container-images.outputs.digest }})
-        image_digest=$(echo $manifest | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
+        manifest=$(oras manifest fetch "${CONTAINER_REPO}@${DIGEST}")
+        image_digest=$(echo "$manifest" | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
         image_digest=$(echo "$image_digest" | tr -d '"')
 
-        sbom_digest=$(oras attach ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${image_digest} /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
+        sbom_digest=$(oras attach "${CONTAINER_REPO}@${image_digest}" /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
 
         echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
     - name: Save gadget ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
+      env:
+        DIGEST: ${{ steps.publish-gadget-container-images.outputs.digest }}
       run: |
-          echo "${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "${{ matrix.platform }}=$DIGEST" >> $GITHUB_OUTPUT
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
@@ -670,6 +679,9 @@ jobs:
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: ig-container-images-attach-sbom
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        DIGEST: ${{ steps.publish-ig-container-images.outputs.digest }}
       run: |
         # We need to get the image digest from the manifest.
         # Otherwise, we will attach the SBOM to the manifest and the SBOM will
@@ -677,18 +689,20 @@ jobs:
         # and attaches only the images, not the existing manifests.
         # This way, we are sure the new manifest will point to the images which
         # have SBOM attached.
-        manifest=$(oras manifest fetch ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-ig-container-images.outputs.digest }})
+        manifest=$(oras manifest fetch "${CONTAINER_REPO}@${DIGEST}")
         image_digest=$(echo $manifest | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
         image_digest=$(echo "$image_digest" | tr -d '"')
 
-        sbom_digest=$(oras attach ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${image_digest} /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
+        sbom_digest=$(oras attach "${CONTAINER_REPO}@${image_digest}" /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
 
         echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
     - name: Save ig ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-ig-container-images
       if: github.event_name != 'pull_request'
+      env:
+        DIGEST: ${{ steps.publish-ig-container-images.outputs.digest }}
       run: |
-          echo "${{ matrix.platform }}=${{ steps.publish-ig-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "${{ matrix.platform }}=$DIGEST" >> $GITHUB_OUTPUT
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
@@ -757,8 +771,15 @@ jobs:
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Publish the manifest list
         id: publish-manifest-list
+        env:
+          CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+          IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.digest-amd64 }}
+          DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
+          SBOM_DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }}
+          SBOM_DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
         run: |
-          IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
@@ -766,18 +787,18 @@ jobs:
           IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
 
           docker buildx imagetools create \
-              -t $IMAGE_TAG \
+              -t "$IMAGE_REF" \
               --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
               --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
               --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
               --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-amd64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
+              "${CONTAINER_REPO}@${DIGEST_AMD64}" \
+              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
+              "${CONTAINER_REPO}@${DIGEST_ARM64}" \
+              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}"
 
-          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_TAG | jq -r)
+          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_REF | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
@@ -818,8 +839,15 @@ jobs:
           container-image: ${{ github.repository_owner }}/ig
       - name: Publish the manifest list
         id: publish-manifest-list
+        env:
+          CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+          IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.digest-amd64 }}
+          DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.digest-arm64 }}
+          SBOM_DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }}
+          SBOM_DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }}
         run: |
-          IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
@@ -827,18 +855,18 @@ jobs:
           IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image only includes the ig binary, a standalone tool to run the gadgets."
 
           docker buildx imagetools create \
-            -t $IMAGE_TAG \
-            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-amd64 }} \
-            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }} \
-            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.digest-arm64 }} \
-            ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }} \
+            -t "$IMAGE_REF" \
+              "${CONTAINER_REPO}@${DIGEST_AMD64}" \
+              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
+              "${CONTAINER_REPO}@${DIGEST_ARM64}" \
+              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}" \
             --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
             --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
             --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
             --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
             --annotation index:org.opencontainers.image.title="$IMAGE_TITLE"
 
-          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_TAG | jq -r)
+          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' "$IMAGE_REF" | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
@@ -926,9 +954,12 @@ jobs:
         platforms: ${{ matrix.image.platform }}
     - name: Save ${{ matrix.image.name }} image tag output
       id: image-tag
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        DIGEST: ${{ steps.build-image.outputs.digest }}
       run: |
-        if [ -n "${{ steps.build-image.outputs.digest }}" ]; then
-          image="${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.build-image.outputs.digest }}"
+        if [ -n "$DIGEST" ]; then
+          image="${CONTAINER_REPO}@${DIGEST}"
         else
           if [ ${{ matrix.image.name }} == "dnstester" ]; then
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
@@ -1002,13 +1033,13 @@ jobs:
       run: |
         cd examples
         for dir in $(dirname $(find builtin-gadgets -name README.md)); do
-          go build ./$dir;
+          go build "./$dir";
         done
     - name: Build gadgets example binaries
       run: |
         cd examples
         for dir in $(dirname $(find gadgets -name main.go)); do
-          go build ./$dir;
+          go build "./$dir";
         done
 
   test-unit:
@@ -1043,10 +1074,14 @@ jobs:
         cache: true
       id: go
     - name: Show repository setup
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+        REPOSITORY: ${{ github.repository }}
       run: |
-        echo "github.event_name: ${{ github.event_name }}"
-        echo "github.event.pull_request.head.repo.full_name: ${{ github.event.pull_request.head.repo.full_name }}"
-        echo "github.repository: ${{ github.repository }}"
+        echo "github.event_name: $EVENT_NAME"
+        echo "github.event.pull_request.head.repo.full_name: $EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME"
+        echo "github.repository: $REPOSITORY"
     - name: Run benchmarks
       run: go test -exec sudo -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/... | tee output.txt
     #- name: Download previous benchmark data
@@ -1106,12 +1141,14 @@ jobs:
     # chart version needs to be semver compliant so we remove the leading 'v'
     - name: Set Chart Version for release
       if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
-        TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         echo "CHART_VERSION=${TAG#v}" >> $GITHUB_ENV
     - name: Lint Helm charts
+      env:
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
-        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make -C charts lint
     - name: Detect changes for deploy.yaml
       run: |
@@ -1122,8 +1159,9 @@ jobs:
           exit 1
         fi
     - name: Package Helm charts
+      env:
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
-        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         make -C charts package
     - name: Upload Helm charts
       uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
@@ -1161,7 +1199,7 @@ jobs:
             # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
             # by default check if there is an ELF file with the .BTF section at
             # /boot/vmlinux-$KERNEL.
-            sudo objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
+            sudo objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf "/boot/vmlinux-$KERNEL"
             rm *.btf
             echo "vmlinux downloaded at /boot/vmlinux-$KERNEL"
           else
@@ -1185,8 +1223,10 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
     - name: Run component tests
+      env:
+        EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
       run: |
-        make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} component-tests
+        make component-tests
 
   check-secrets:
     name: Check repo secrets
@@ -1316,11 +1356,12 @@ jobs:
           runtime: ${{ matrix.runtime }}
       - name: Run integration for container runtime ${{ matrix.runtime }}
         id: integration-tests
+        env:
+          DNSTESTER_IMAGE: ${{ needs.build-helper-images.outputs.dnstester_image }}
         run: |
           set -o pipefail
           make -C integration/k8s \
             CONTAINER_RUNTIME=${{ matrix.runtime }} \
-            DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
             -o build test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
@@ -1375,11 +1416,11 @@ jobs:
         run: |
           cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
       - name: Build gadgets
+        env:
+          BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         run: |
-          export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
-          export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
-          export BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
-
           make build-gadgets -o install/ig
 
           # Check that metadata files are updated
@@ -1392,10 +1433,9 @@ jobs:
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         run: |
-          export GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
-          export GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
-
           make -C gadgets/ sign -o push
 
   gadgets-unittest:
@@ -1424,13 +1464,13 @@ jobs:
       - name: Gadgets tests
         id: gadgets-tests
         shell: bash
+        env:
+          GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+          GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+          IG_VERIFY_IMAGE: ${{ needs.check-secrets.outputs.cosign }}
         run: |
             set -o pipefail
-            make \
-            GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
-            GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-            IG_VERIFY_IMAGE=${{ needs.check-secrets.outputs.cosign }} \
-            -C gadgets/ test-unit -o build |& tee gadgets-tests.log & wait $!
+            make -C gadgets/ test-unit -o build |& tee gadgets-tests.log & wait $!
       - name: Prepare and publish test reports
         if: always()
         continue-on-error: true
@@ -1564,12 +1604,14 @@ jobs:
     - name: Gadgets tests
       id: gadgets-tests
       shell: bash
+      env:
+        GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+        VERIFY_IMAGE: ${{ needs.check-secrets.outputs.cosign }}
       run: |
           set -o pipefail
           make \
-          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
-          GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
-          IG_FLAGS="--verify-image=${{ needs.check-secrets.outputs.cosign }}" \
+          IG_FLAGS="--verify-image=$VERIFY_IMAGE" \
           IG_RUNTIME=${{ matrix.runtime }} \
           -C gadgets/ test-local -o build |& tee gadgets-tests.log & wait $!
     - name: Prepare and publish test reports
@@ -1620,10 +1662,13 @@ jobs:
         name: gadget-container-image-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
     - name: Prepare minikube by loading gadget-container-image-linux-amd64.tar
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
         # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
         docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
-        minikube image load ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        minikube image load "${CONTAINER_REPO}:${IMAGE_TAG}"
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
       with:
@@ -1632,13 +1677,17 @@ jobs:
     - name: Gadgets tests
       id: gadgets-tests
       shell: bash
+      env:
+        GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+        VERIFY_GADGETS: ${{ needs.check-secrets.outputs.cosign }}
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
         set -o pipefail
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        ./kubectl-gadget deploy --verify-gadgets=${{ needs.check-secrets.outputs.cosign }} --image-pull-policy=Never --debug --experimental --image=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        ./kubectl-gadget deploy --verify-gadgets="$VERIFY_GADGETS" --image-pull-policy=Never --debug --experimental --image="${CONTAINER_REPO}:${IMAGE_TAG}"
         make \
-        GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
-        GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
         KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
         IG_RUNTIME=kubernetes \
         -C gadgets/ test-k8s -o build |& tee gadgets-tests.log & wait $!
@@ -1688,11 +1737,12 @@ jobs:
           mv ig ig-linux-amd64
       - name: Run integration for container runtime ${{ matrix.runtime }}
         id: integration-tests
+        env:
+          DNSTESTER_IMAGE: ${{ needs.build-helper-images.outputs.dnstester_image }}
         run: |
           set -o pipefail
           make -C integration/ig/non-k8s \
             CONTAINER_RUNTIME=${{ matrix.runtime }} \
-            DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
             -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
@@ -1766,7 +1816,7 @@ jobs:
         # GitHub Action.
         az extension add --name aks-preview
 
-        az aks create -l eastus2 -g ${AZURE_AKS_RESOURCE_GROUP} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
+        az aks create -l eastus2 -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${{ env.CLUSTER_NAME }} -s "$node_size" --os-sku ${{ matrix.os-sku }} --no-ssh-key
     - uses: azure/aks-set-context@feeca6405be94202afcb1c395616ff29b1811b9f # v4.0.2
       name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
       with:
@@ -1795,7 +1845,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        az aks delete -g ${AZURE_AKS_RESOURCE_GROUP} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
+        az aks delete -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${{ env.CLUSTER_NAME }} --no-wait --yes
 
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
@@ -1895,10 +1945,10 @@ jobs:
     - name: Install eksctl
       run: |
         ARCH=$(dpkg-architecture -qDEB_HOST_ARCH)
-        PLATFORM=$(uname -s)_$ARCH
-        curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
-        curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
-        tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
+        PLATFORM="$(uname -s)_$ARCH"
+        curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_${PLATFORM}.tar.gz"
+        curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep "$PLATFORM" | sha256sum --check
+        tar -xzf "eksctl_${PLATFORM}.tar.gz" -C /tmp && rm "eksctl_${PLATFORM}.tar.gz"
         sudo mv /tmp/eksctl /usr/local/bin
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
@@ -2069,10 +2119,13 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Prepare minikube by loading gadget-container-image-linux-amd64.tar
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
         # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
         docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
-        minikube image load ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        minikube image load "${CONTAINER_REPO}:${IMAGE_TAG}"
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
@@ -2150,14 +2203,16 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Build release YAML
+      env:
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        REF_NAME: ${{ github.ref_name }}
       run: |
-        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
 
         # Use echo of cat to avoid printing a new line between files.
-        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${{ github.ref_name }}.yaml
+        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > "inspektor-gadget-${REF_NAME}.yaml"
 
-        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
+        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${REF_NAME}.yaml"
     - name: Create Draft Release
       id: create_release
       uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
@@ -2174,6 +2229,8 @@ jobs:
         cache: true
       id: go
     - name: Build ig distributions packages
+      env:
+        REF_NAME: ${{ github.ref_name }}
       run: |
         go install github.com/goreleaser/nfpm/v2/cmd/nfpm@d33a9233bb7acf04621b78114114476196d7977 # v2.38.0
 
@@ -2182,18 +2239,18 @@ jobs:
           cp .nfpm_template.yaml nfpm.yaml
 
           mkdir archive_output
-          tar zxvf $ig_archive -C archive_output
+          tar zxvf "$ig_archive" -C archive_output
           export path=$(find archive_output -name 'ig')
 
           # Fill the template file with corresponding information.
-          export arch=$(echo $ig_archive | cut -d'-' -f3)
-          perl -pi -e 's/IG_ARCH/$ENV{arch}/; s/IG_VERSION/${{ github.ref_name }}/; s/IG_PATH/$ENV{path}/' nfpm.yaml
+          export arch=$(echo "$ig_archive" | cut -d'-' -f3)
+          perl -pi -e 's/IG_ARCH/$ENV{arch}/; s/IG_VERSION/$ENV{REF_NAME}/; s/IG_PATH/$ENV{path}/' nfpm.yaml
 
           # Build the packages
           for distro in apk deb rpm archlinux; do
-            package=$(nfpm package -p $distro | grep 'created package' | cut -d':' -f2)
+            package=$(nfpm package -p "$distro" | grep 'created package' | cut -d':' -f2)
 
-            mv $package ig_packages
+            mv "$package" ig_packages
           done
 
           rm -r archive_output
@@ -2201,14 +2258,18 @@ jobs:
         done
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
+      env:
+        REF_NAME: ${{ github.ref_name }}
       run: |
         for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz; do
-          mv $i $(dirname $i)/$(basename $i .tar.gz)-${{ github.ref_name }}.tar.gz
+          mv $i $(dirname $i)/$(basename $i .tar.gz)-$REF_NAME.tar.gz
         done
     - name: Compute checksums for all artifacts
       shell: bash
+      env:
+        REF_NAME: ${{ github.ref_name }}
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml ig_packages/*; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/*; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
@@ -2216,6 +2277,8 @@ jobs:
       uses: CycloneDX/gh-gomod-generate-sbom@efc74245d6802c8cefd925620515442756c70d8f # v2.0.0
     - name: Compute SBOM for all binary artifacts
       shell: bash
+      env:
+        REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir sbom
 
@@ -2223,11 +2286,11 @@ jobs:
           temp_dir=$(mktemp -d)
           tar zxvf $i -C $temp_dir
 
-          exe=$(find $temp_dir -type f -executable)
+          exe=$(find "$temp_dir" -type f -executable)
 
-          cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version ${{ github.ref_name }} $exe
+          cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version "$REF_NAME" $exe
 
-          rm -fr $temp_dir
+          rm -fr "$temp_dir"
         done
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
