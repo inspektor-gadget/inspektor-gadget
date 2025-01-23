@@ -109,11 +109,6 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
-	kernelSymbols, err := kallsyms.NewKAllSyms()
-	if err != nil {
-		return fmt.Errorf("loading kernel symbols: %w", err)
-	}
-
 	// blk_account_io_start and blk_account_io_done were moved in:
 	// 450b7879e345 ("block: move blk_account_io_{start,done} to blk-mq.c")
 	// which was included in kernel 5.17.
@@ -130,7 +125,7 @@ func (t *Tracer) install() error {
 		// which was included in kernel 5.16.
 		// So let's be future proof and check if these symbols do not exist.
 		blkAccountIoStartFunction := "__blk_account_io_start"
-		if !kernelSymbols.SymbolExists(blkAccountIoStartFunction) {
+		if !kallsyms.SymbolExists(blkAccountIoStartFunction) {
 			blkAccountIoStartFunction = "blk_account_io_start"
 		}
 
@@ -151,7 +146,7 @@ func (t *Tracer) install() error {
 	})
 	if err != nil {
 		blkAccountIoDoneFunction := "__blk_account_io_done"
-		if !kernelSymbols.SymbolExists(blkAccountIoDoneFunction) {
+		if !kallsyms.SymbolExists(blkAccountIoDoneFunction) {
 			blkAccountIoDoneFunction = "blk_account_io_done"
 		}
 
