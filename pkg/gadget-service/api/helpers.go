@@ -94,3 +94,29 @@ func (pv ParamValues) ExtractPrefixedValues(prefix string) ParamValues {
 	}
 	return res
 }
+
+func SplitStringWithEscape(s string, sep rune) []string {
+	var result []string
+	var part string
+	var escape bool
+	for _, c := range s {
+		if escape {
+			escape = false
+			part += string(c)
+			continue
+		}
+		switch c {
+		case '\\':
+			escape = true
+		case sep:
+			result = append(result, part)
+			part = ""
+		default:
+			part += string(c)
+		}
+	}
+	if part != "" {
+		result = append(result, part)
+	}
+	return result
+}
