@@ -55,6 +55,12 @@ type (
 	EnricherFunc func(any) error
 )
 
+const (
+	PrioritySource      = 100
+	PrioritySink        = 1000
+	PriorityPostprocess = 500
+)
+
 // MapPrefix is used to avoid clash with maps and other eBPF objects when added
 // to gadget context.
 const MapPrefix string = "map/"
