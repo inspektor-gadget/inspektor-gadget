@@ -105,3 +105,19 @@ Show data from both the host and containers
 Fully qualified name: `operator.LocalManager.host`
 
 Default: `false`
+
+## Containers datasource
+
+This operator creates the `containers` datasource which publishes event about containers being created or deleted.
+It is only activated if the gadget has the following annotations:
+
+```yaml
+annotations:
+  enable-containers-datasource: true
+```
+
+So far, the event published contains the following fields:
+- `event_type`: Either "CREATED" or "DELETED".
+- `name`: The container name.
+- `mntns_id`: The container mount namespace ID.
+- `cgroup_id`: The container cgroup ID.
