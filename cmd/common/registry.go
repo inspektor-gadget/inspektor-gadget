@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -169,6 +170,13 @@ func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
 	return outputFormatsHelp
 }
 
+const deprecationMessage = `
+This built-in Gadget is deprecated and will be removed on v0.42.0 (July 2025).
+Please check https://inspektor-gadget.io/docs/latest/gadgets/ to get more details on
+how to switch to image-based Gadgets.
+
+`
+
 func buildCommandFromGadget(
 	gadgetDesc gadgets.GadgetDesc,
 	runtime runtime.Runtime,
@@ -205,6 +213,11 @@ func buildCommandFromGadget(
 	// TODO: Combine remote operator params with locally available ones
 	//  Example use case: setting default namespace for kubernetes
 
+	var isDeprecated bool
+	if deprecated, ok := gadgetDesc.(gadgets.GadgetDeprecatedI); ok {
+		isDeprecated = deprecated.IsDeprecated()
+	}
+
 	cmd := &cobra.Command{
 		Use:          gadgetDesc.Name(),
 		Short:        gadgetDesc.Description(),
@@ -221,6 +234,10 @@ func buildCommandFromGadget(
 		DisableFlagParsing: true,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if isDeprecated {
+				fmt.Fprint(os.Stderr, deprecationMessage)
+			}
+
 			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
 				return fmt.Errorf("initializing runtime: %w", err)

@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package tracer is deprecated.
+//
+// Deprecated: Switch to image-based gadgets instead. Check
+// https://github.com/inspektor-gadget/inspektor-gadget/tree/main/examples/gadgets
 package tracer
 
 import (
@@ -38,7 +42,9 @@ const (
 	ParamFilterRemoteAddressV6 = "raddrv6"
 )
 
-type GadgetDesc struct{}
+type GadgetDesc struct {
+	gadgets.GadgetDeprecated
+}
 
 func (g *GadgetDesc) Name() string {
 	return "tcprtt"
