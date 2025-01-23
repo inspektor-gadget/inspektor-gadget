@@ -20,6 +20,9 @@ issues:
     - text: "ST1003:"
       linters:
         - stylecheck
+    - text: "Switch to image-based gadgets instead"
+      linters:
+        - staticcheck
 
 linters:
   disable-all: true

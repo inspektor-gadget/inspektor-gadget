@@ -159,6 +159,10 @@ type InitCloseGadget interface {
 
 type Gadget any
 
+type GadgetDeprecatedI interface {
+	IsDeprecated() bool
+}
+
 // GadgetInstantiate is the same interface as Gadget but adds one call to instantiate an actual
 // tracer
 type GadgetInstantiate interface {
