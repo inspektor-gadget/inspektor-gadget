@@ -19,69 +19,61 @@ import (
 	"fmt"
 	"os"
 
-	// Operators provide functionality like enrichment and filtering.
-	// Check the operators documentation to learn more: <TODO>
+	// The runtime is the piece that will run our gadget.
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+
+	// Import the operators we need:
+	// - ocihandler: to handle OCI images
+	// - ebpf: handle ebpf programs
+	// - simple: building block for our operator
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-
-	// The oci-handler is responsible for handling OCI images
-	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
-
-	// The ebpf operator handles all eBPF objects: loading eBPF programs,
-	// attaching them, reading maps, etc.
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
-
-	// The simple operator is a wrapper to make it easier to implement operators
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 
 	// Datasources provide access to the data produced by gadgets and operators.
+	// Import also the json formatter to format the data as json.
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
-
-	// The json formatter is used to format the data as json.
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 
 	// The gadget context is the glue that connects all components together.
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
-
-	// The runtime is the piece that will run our gadget.
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
 
 func do() error {
 	// First of all, we need to define a (simple) operator that we'll use to subscribe
-	// to events. Check the operator documentation to learn more about them.
-	// TODO: documentation
-	// Our operator should be the last of the chain to print information after
-	// all operators have been run.
+	// to events. We use a high priority to make sure that our operator is the last
+	// to run and print the information after all operators have been run.
 	const opPriority = 50000
-	myOperator := simple.New("myHandler", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-		// Subscribe to all datasources and print their output as json the terminal
-		// Check the datasources documentation for more information
-		// TODO: link to documentation
-		for _, d := range gadgetCtx.GetDataSources() {
-			jsonFormatter, _ := igjson.New(d,
-				// Show all fields
-				igjson.WithShowAll(true),
+	myOperator := simple.New("myOperator",
+		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			// Subscribe to all datasources and print their output as json the terminal
+			for _, d := range gadgetCtx.GetDataSources() {
+				jsonFormatter, _ := igjson.New(d,
+					// Show all fields
+					igjson.WithShowAll(true),
 
-				// Print json in a pretty format
-				igjson.WithPretty(true, "  "),
-			)
+					// Print json in a pretty format
+					igjson.WithPretty(true, "  "),
+				)
 
-			d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
-				jsonOutput := jsonFormatter.Marshal(data)
-				fmt.Printf("%s\n", jsonOutput)
-				return nil
-			}, opPriority)
-		}
-		return nil
-	}))
+				d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
+					jsonOutput := jsonFormatter.Marshal(data)
+					fmt.Printf("%s\n", jsonOutput)
+					return nil
+				}, opPriority)
+			}
+			return nil
+		}),
+	)
 
 	// Then, we create a gadget context instance. This is the glue that connects
 	// all operators together.
-	// Check the documentation for the gadget context here.
-	// TODO: link to documentation
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
+		// This is the image that contains the gadget we want to run.
 		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		// List of operators that will be run with the gadget
 		gadgetcontext.WithDataOperators(
 			ocihandler.OciHandler, // pass singleton instance of the oci-handler
 			myOperator,
@@ -90,22 +82,14 @@ func do() error {
 
 	// After that, we need a runtime, that's the piece that will run our gadget.
 	// In this case, we use the local runtime to run the gadget in the local host.
-	// Check the runtime documentation here.
 	runtime := local.New()
 	if err := runtime.Init(nil); err != nil {
 		return fmt.Errorf("runtime init: %w", err)
 	}
 	defer runtime.Close()
 
-	// Before running the gadget, let's set some parameters.
-	// TODO: link to documentation with the parameters supported by this gadget
-	params := map[string]string{
-		// Filter only events from the root user
-		"operator.oci.ebpf.uid": "0",
-	}
-
 	// Finally, let's run our gadget
-	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
+	if err := runtime.RunGadget(gadgetCtx, nil, nil); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
 
