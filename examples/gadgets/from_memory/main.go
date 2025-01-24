@@ -15,55 +15,68 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/quay/claircore/pkg/tarfs"
+	orasoci "oras.land/oras-go/v2/content/oci"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
-	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
 
+//go:embed trace_open.tar
+var traceOpenBytes []byte
+
 func do() error {
-	// Define an operator that will be executed on the data received from the server.
-	// In this example we implement our own operator, but it's also possible to use existing operators
-	// like the cli operator.
+	ctx := context.Background()
+
+	// Create an FS from the tarball bytes
+	fs, err := tarfs.New(bytes.NewReader(traceOpenBytes))
+	if err != nil {
+		return err
+	}
+
+	// Create the oras target from the FS
+	target, err := orasoci.NewFromFS(ctx, fs)
+	if err != nil {
+		return fmt.Errorf("getting oci store from bytes: %w", err)
+	}
+
 	const opPriority = 50000
-	myOperator := simple.New("myHandler", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-		for _, d := range gadgetCtx.GetDataSources() {
-			jsonFormatter, _ := igjson.New(d)
-
-			d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
-				jsonOutput := jsonFormatter.Marshal(data)
-				fmt.Printf("%s\n", jsonOutput)
-				return nil
-			}, opPriority)
-		}
-		return nil
-	}))
-
-	// Used to close the connection in a clean way
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
-	defer stop()
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
-		gadgetcontext.WithDataOperators(myOperator),
+	myOperator := simple.New("myOperator",
+		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			for _, d := range gadgetCtx.GetDataSources() {
+				jsonFormatter, _ := igjson.New(d, igjson.WithShowAll(true), igjson.WithPretty(true, "  "))
+				d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
+					jsonOutput := jsonFormatter.Marshal(data)
+					fmt.Printf("%s\n", jsonOutput)
+					return nil
+				}, opPriority)
+			}
+			return nil
+		}),
 	)
 
-	runtime := grpcruntime.New()
-	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
-	runtimeGlobalParams.Get(grpcruntime.ParamRemoteAddress).Set("tcp://127.0.0.1:8888")
-	// Unix sockets are also supported:
-	//runtimeGlobalParams.Get(grpcruntime.ParamRemoteAddress).Set("unix:///var/run/ig/ig.socket")
+	gadgetCtx := gadgetcontext.New(
+		context.Background(),
+		// The name of the gadget to run is needed as a tarball can contain multiple images.
+		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
+		gadgetcontext.WithOrasReadonlyTarget(target),
+	)
 
-	if err := runtime.Init(runtimeGlobalParams); err != nil {
+	runtime := local.New()
+	if err := runtime.Init(nil); err != nil {
 		return fmt.Errorf("runtime init: %w", err)
 	}
 	defer runtime.Close()
