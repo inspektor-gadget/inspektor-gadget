@@ -196,6 +196,24 @@ func gadgetInit() int {
 		api.Warnf("failed to add field: %s", err)
 		return 1
 	}
+	
+	TruncatedF, err := ds.AddField("tc", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	RecursionAvailableF, err := ds.AddField("ra", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
+
+	RecursionDesiredF, err := ds.AddField("rd", api.Kind_Bool)
+	if err != nil {
+		api.Warnf("failed to add field: %s", err)
+		return 1
+	}
 
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		// Get all fields sent by ebpf
@@ -238,6 +256,12 @@ func gadgetInit() int {
 			qrF.SetString(data, "Q")
 		}
 
+		TruncatedF.SetBool(data, msg.Header.Truncated)
+		
+		RecursionAvailableF.SetBool(data, msg.Header.RecursionAvailable)
+		
+		RecursionDesiredF.SetBool(data, msg.Header.RecursionDesired)
+		
 		if len(msg.Questions) > 0 {
 			question := msg.Questions[0]
 			qtypeRawF.SetUint16(data, uint16(question.Type))

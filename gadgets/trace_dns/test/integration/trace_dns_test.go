@@ -40,17 +40,20 @@ type traceDNSEvent struct {
 	Dst utils.L4Endpoint `json:"dst"`
 
 	// Raw fields are comming from wasm, test them too
-	ID        string `json:"id"`
-	Qtype     string `json:"qtype"`
-	QtypeRaw  uint16 `json:"qtype_raw"`
-	PktType   string `json:"pkt_type"`
-	RcodeRaw  uint16 `json:"rcode_raw"`
-	Rcode     string `json:"rcode"`
-	Latency   uint64 `json:"latency_ns_raw"`
-	QrRaw     bool   `json:"qr_raw"`
-	Qr        string `json:"qr"`
-	Name      string `json:"name"`
-	Addresses string `json:"addresses"`
+	ID                 string `json:"id"`
+	Qtype              string `json:"qtype"`
+	QtypeRaw           uint16 `json:"qtype_raw"`
+	PktType            string `json:"pkt_type"`
+	RcodeRaw           uint16 `json:"rcode_raw"`
+	Rcode              string `json:"rcode"`
+	Latency            uint64 `json:"latency_ns_raw"`
+	QrRaw              bool   `json:"qr_raw"`
+	Qr                 string `json:"qr"`
+	Name               string `json:"name"`
+	Addresses          string `json:"addresses"`
+	Truncated          bool   `json:"tc"`
+	RecursionDesired   bool   `json:"rd"`
+	RecursionAvailable bool   `json:"ra"`
 }
 
 func TestTraceDNS(t *testing.T) {
@@ -152,10 +155,13 @@ func TestTraceDNS(t *testing.T) {
 					PktType:  "OUTGOING",
 
 					// Check the existence of the following fields
-					NetNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					ID:        utils.NormalizedStr,
-					Latency:   0,
+					NetNsID:            utils.NormalizedInt,
+					Timestamp:          utils.NormalizedStr,
+					ID:                 utils.NormalizedStr,
+					Latency:            0,
+					Truncated:          false,
+					RecursionDesired:   true,
+					RecursionAvailable: false,
 				},
 				// A response from server
 				{
@@ -185,10 +191,13 @@ func TestTraceDNS(t *testing.T) {
 					Addresses: "127.0.0.1",
 
 					// Check the existence of the following fields
-					NetNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					ID:        utils.NormalizedStr,
-					Latency:   utils.NormalizedInt,
+					NetNsID:            utils.NormalizedInt,
+					Timestamp:          utils.NormalizedStr,
+					ID:                 utils.NormalizedStr,
+					Latency:            utils.NormalizedInt,
+					Truncated:          false,
+					RecursionDesired:   true,
+					RecursionAvailable: false,
 				},
 				// AAAA query from client
 				{
@@ -217,10 +226,13 @@ func TestTraceDNS(t *testing.T) {
 					PktType:  "OUTGOING",
 
 					// Check the existence of the following fields
-					NetNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					ID:        utils.NormalizedStr,
-					Latency:   0,
+					NetNsID:            utils.NormalizedInt,
+					Timestamp:          utils.NormalizedStr,
+					ID:                 utils.NormalizedStr,
+					Latency:            0,
+					Truncated:          false,
+					RecursionDesired:   true,
+					RecursionAvailable: false,
 				},
 				// AAAA response from server
 				{
@@ -250,10 +262,13 @@ func TestTraceDNS(t *testing.T) {
 					Addresses: "::1",
 
 					// Check the existence of the following fields
-					NetNsID:   utils.NormalizedInt,
-					Timestamp: utils.NormalizedStr,
-					ID:        utils.NormalizedStr,
-					Latency:   utils.NormalizedInt,
+					NetNsID:            utils.NormalizedInt,
+					Timestamp:          utils.NormalizedStr,
+					ID:                 utils.NormalizedStr,
+					Latency:            utils.NormalizedInt,
+					Truncated:          false,
+					RecursionDesired:   true,
+					RecursionAvailable: false,
 				},
 			}
 
