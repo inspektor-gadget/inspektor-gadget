@@ -43,6 +43,20 @@ const (
 // Invalid string: Too big (4GB) and offset too big (64MB)
 const invalidStrPtr uint64 = uint64(1024 * 1024 << 32)
 
+// Keep in sync with pkg/operators/wasm/syscalls.go.
+type syscallParam struct {
+	name  [32]byte
+	flags uint32
+}
+
+// Keep in sync with pkg/operators/wasm/syscalls.go.
+type syscallDeclaration struct {
+	name     [32]byte
+	nrParams uint8
+	_        [3]byte
+	params   [6]syscallParam
+}
+
 //go:wasmimport env gadgetLog
 func gadgetLog(level uint32, str uint64)
 
@@ -119,7 +133,7 @@ func mapDelete(m uint32, keyptr uint64) uint32
 func mapRelease(m uint32) uint32
 
 //go:wasmimport env getSyscallDeclaration
-func getSyscallDeclaration(name uint64) uint32
+func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
 func stringToBufPtr(s string) uint64 {
 	unsafePtr := unsafe.Pointer(unsafe.StringData(s))
@@ -303,7 +317,12 @@ func gadgetInit() int {
 	assertNonZero(mapDelete(0, invalidStrPtr), "mapDelete: bad handle")
 
 	/* SyscallDeclaration */
-	assertZero(getSyscallDeclaration(invalidStrPtr), "getSyscallDeclaration: bad syscall name pointer")
+	syscallDeclarationSize := unsafe.Sizeof(syscallDeclaration{})
+	syscallDeclarationPtr := bytesToBufPtr(make([]byte, syscallDeclarationSize))
+	invalidSyscallDeclarationPtr := bytesToBufPtr(make([]byte, syscallDeclarationSize / 2))
+	assertZero(getSyscallDeclaration(stringToBufPtr("execve"), syscallDeclarationPtr), "getSyscallDeclaration: good")
+	assertNonZero(getSyscallDeclaration(invalidStrPtr, syscallDeclarationPtr), "getSyscallDeclaration: bad syscall name pointer")
+	assertNonZero(getSyscallDeclaration(stringToBufPtr("execve"), invalidSyscallDeclarationPtr), "getSyscallDeclaration: bad syscall decl pointer")
 
 	return 0
 }
