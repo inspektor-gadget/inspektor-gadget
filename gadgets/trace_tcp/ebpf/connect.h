@@ -101,6 +101,7 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	struct extended_info *ei;
 	__u16 family;
 	int err = 0;
+	int err = 0;
 
 	// It would be nice if we can add a handler for TCP_SYN_SENT instead
 	// of using kprobes on tcp_v4_connect and tcp_v6_connect
@@ -129,7 +130,12 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	if (!event)
 		goto end;
 
-	err = BPF_CORE_READ(sk, sk_err);
+	// Explicitly capture error states
+	if (state == TCP_CLOSE) {
+		err = BPF_CORE_READ(sk, sk_err);
+		if (err == 0)
+			err = ETIMEDOUT; // Mark as timeout if no specific error
+	}
 
 	fill_event(event, &tuple, &ei->proc, err, connect);
 	event->fd = ei->fd;

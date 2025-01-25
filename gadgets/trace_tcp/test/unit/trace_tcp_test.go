@@ -61,7 +61,7 @@ func TestTraceTcpGadget(t *testing.T) {
 		"captures_close": {
 			ipAddr:        "127.0.0.1",
 			port:          9070,
-			async:         true, // We only get a close when the connect succeeded or the socket is async. Here we know that the connect should error out
+			async:         true, // We only get a close when the connect succeded or the socket is async. Here we know that the connect should error out
 			expectedErrno: syscall.ECONNREFUSED,
 			runnerConfig:  &utilstest.RunnerConfig{},
 			generateEvent: generateConnectEvent,
@@ -201,7 +201,7 @@ func TestTraceTcpGadget(t *testing.T) {
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
-							Addr:    "0.0.0.0",
+							Addr:    utils.NormalizedId,
 							Version: 4,
 							Port:    utils.NormalizedInt,
 							Proto:   "TCP",
@@ -335,6 +335,7 @@ func rawDial(ipv4 [4]byte, port int, async bool, fdPtr *int) error {
 }
 
 func generateConnectionInterruptionEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int, _ *int) {
+	// Start the connection attempt
 	err := rawDialWithInterruption(ipAddr, port, async, fdPtr)
 	if err != nil && !errors.Is(err, expectedErrno) {
 		t.Logf("Failed to dial with interruption: %v", err)
@@ -381,19 +382,19 @@ func rawDialWithInterruption(ipAddr string, port int, async bool, fdPtr *int) er
 		return fmt.Errorf("Failed to set flags: %w", err)
 	}
 
-	// Initiate the connect to a non-routable IP
+	// Initiate the connect
 	err = unix.Connect(fd, addr)
 	if err != nil && !errors.Is(err, syscall.EINPROGRESS) {
 		return err
 	}
 
-	// Wait for connection timeout
+	// Wait a short time for the connection attempt
 	_, err = unix.Poll([]unix.PollFd{{Fd: int32(fd), Events: unix.POLLOUT}}, int((2 * time.Second).Nanoseconds()))
 	if err != nil {
 		return fmt.Errorf("Failed to poll: %w", err)
 	}
 
-	// Check the error
+	// Check for connection error
 	sockErr, err := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_ERROR)
 	if err != nil {
 		return fmt.Errorf("Failed to getsockopt: %w", err)
