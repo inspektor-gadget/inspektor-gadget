@@ -107,8 +107,9 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	// But when the state is set to TCP_SYN_SENT we may not have
 	// the correct source port yet
 	// https://elixir.bootlin.com/linux/v6.11.8/source/net/ipv4/tcp_ipv4.c#L301
-	if (state != TCP_ESTABLISHED && state != TCP_CLOSE && state != TCP_SYN_SENT)
-        return;
+	if (state != TCP_ESTABLISHED && state != TCP_CLOSE &&
+	    state != TCP_SYN_SENT)
+		return;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (!fill_tuple(&tuple, sk, family))
@@ -123,11 +124,11 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 		goto end;
 
 	// Explicitly capture error states
-    if (state == TCP_CLOSE) {
-        err = BPF_CORE_READ(sk, sk_err);
-        if (err == 0)
-            err = ETIMEDOUT;  // Mark as timeout if no specific error
-    }
+	if (state == TCP_CLOSE) {
+		err = BPF_CORE_READ(sk, sk_err);
+		if (err == 0)
+			err = ETIMEDOUT; // Mark as timeout if no specific error
+	}
 
 	fill_event(event, &tuple, &ei->proc, err, connect);
 	event->fd = ei->fd;
