@@ -711,6 +711,47 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
+  analyse-ig-binary-size:
+    name: IG binary size analysis
+    runs-on: ubuntu-latest
+    needs:
+      - build-ig
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+        id: go
+      - name: Install go-size-analyzer
+        run: |
+          go install github.com/Zxilly/go-size-analyzer/cmd/gsa@e47aa2561e70b937f2be7441b2eeca984ff60e8b # v1.7.6
+      - name: Get ig-linux-${{matrix.platform}}.tar.gz from artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: ig-linux-${{matrix.platform}}-tar-gz
+          path: /home/runner/work/inspektor-gadget/
+      - name: Unpack ig-linux-${{matrix.platform}}.tar.gz
+        run: |
+          tar zxvf /home/runner/work/inspektor-gadget/ig-linux-${{matrix.platform}}.tar.gz
+          gsa ./ig -f "json" --compact | tee out.json
+          jq '[.packages | to_entries[] | {package: .key, size: .value.size, type: .value.type}] | sort_by(.size) | reverse' out.json | tee ig-packages.json
+        shell: bash
+      - name: Generate Markdown Table
+        uses: buildingcash/json-to-markdown-table-action@b442169239ef35f1dc4e5c8c3d47686c081a7e65  #v1.1.0
+        id: table
+        with:
+          json_file_path: ig-packages.json
+      - name: Add Markdown Table
+        env:
+          TABLE_OUTPUT: ${{ steps.table.outputs.table }}
+        run: |
+          echo '### Package Size Summary' >> $GITHUB_STEP_SUMMARY
+          echo "$TABLE_OUTPUT" >> $GITHUB_STEP_SUMMARY
+
   scan-gadget-container-images:
     name: Scan gadget img
     # level: 2
