@@ -7,6 +7,7 @@
 #include <bpf/bpf_endian.h>
 
 #include "tcptop.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 /* Taken from kernel include/linux/socket.h. */
