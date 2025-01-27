@@ -8,6 +8,7 @@
 #include "biotop.h"
 #include <gadget/maps.bpf.h>
 #include <gadget/core_fixes.bpf.h>
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 struct {

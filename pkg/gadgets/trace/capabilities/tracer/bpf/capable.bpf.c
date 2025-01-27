@@ -10,6 +10,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include "capable.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 // include/linux/security.h
