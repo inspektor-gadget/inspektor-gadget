@@ -525,7 +525,7 @@ jobs:
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # v1.2.1
+      uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: gadget-container-images-attach-sbom
@@ -675,7 +675,7 @@ jobs:
           EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
-      uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # v1.2.1
+      uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
     - name: Attach SBOM to container image
       if: github.event_name != 'pull_request'
       id: ig-container-images-attach-sbom
