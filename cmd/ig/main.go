@@ -16,6 +16,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -72,6 +74,8 @@ func main() {
 		common.NewVersionCmd(),
 	)
 
+	rootCmd.PersistentFlags().String("pprof-addr", "", "Starts a pprof server for profiling at the given address (e.g., 'localhost:6060'), leave empty to disable (default).")
+
 	// evaluate flags early; this will make sure that flags for host are evaluated before
 	// calling host.Init()
 	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
@@ -106,6 +110,14 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
 
+	pprofAddr, _ := rootCmd.PersistentFlags().GetString("pprof-addr")
+	if pprofAddr != "" {
+		go func() {
+			if err := http.ListenAndServe(pprofAddr, nil); err != nil {
+				log.Fatalf("starting pprof server: %v", err)
+			}
+		}()
+	}
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
