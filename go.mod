@@ -6,6 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.17.1
 	github.com/containerd/containerd v1.7.25
+	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
 	github.com/containers/common v0.61.1
 	github.com/containers/image/v5 v5.33.1
@@ -17,11 +18,15 @@ require (
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
+	github.com/dustin/go-humanize v1.0.1
+	github.com/expr-lang/expr v1.16.9
 	github.com/florianl/go-tc v0.4.4
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/giantswarm/crd-docs-generator v0.11.2
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
+	github.com/gopacket/gopacket v1.3.1
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v27.5.1+incompatible
 	github.com/onsi/ginkgo v1.16.5
@@ -32,17 +37,25 @@ require (
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
 	github.com/shopspring/decimal v1.4.0
+	github.com/sigstore/sigstore v1.8.12
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
+	github.com/tetratelabs/wazero v1.8.2
 	github.com/tklauser/numcpus v0.9.0
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.5
 	go.opentelemetry.io/otel v1.34.0
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.10.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.34.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.56.0
+	go.opentelemetry.io/otel/log v0.10.0
 	go.opentelemetry.io/otel/metric v1.34.0
+	go.opentelemetry.io/otel/sdk v1.34.0
+	go.opentelemetry.io/otel/sdk/log v0.10.0
 	go.opentelemetry.io/otel/sdk/metric v1.34.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/sync v0.10.0
@@ -61,26 +74,10 @@ require (
 	k8s.io/code-generator v0.32.1
 	k8s.io/cri-api v0.32.1
 	k8s.io/kubelet v0.32.1
-	oras.land/oras-go/v2 v2.4.0
+	oras.land/oras-go/v2 v2.5.0
 	sigs.k8s.io/controller-runtime v0.20.0
 	sigs.k8s.io/security-profiles-operator v0.8.4
 	sigs.k8s.io/yaml v1.4.0
-)
-
-require (
-	github.com/containerd/errdefs v1.0.0
-	github.com/dustin/go-humanize v1.0.1
-	github.com/expr-lang/expr v1.16.9
-	github.com/fsnotify/fsnotify v1.8.0
-	github.com/gopacket/gopacket v1.3.1
-	github.com/sigstore/sigstore v1.8.12
-	github.com/spf13/pflag v1.0.5
-	github.com/tetratelabs/wazero v1.8.2
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.10.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.34.0
-	go.opentelemetry.io/otel/log v0.10.0
-	go.opentelemetry.io/otel/sdk v1.34.0
-	go.opentelemetry.io/otel/sdk/log v0.10.0
 )
 
 require (
@@ -231,7 +228,3 @@ require (
 // gopacket/gopacket with:
 // - https://github.com/gopacket/gopacket/pull/101
 replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8
-
-replace k8s.io/component-base => k8s.io/component-base v0.0.0-20240417101527-62c04b35eff6
-
-replace oras.land/oras-go/v2 => oras.land/oras-go/v2 v2.0.0-20240123101058-64fedf45bfd3
