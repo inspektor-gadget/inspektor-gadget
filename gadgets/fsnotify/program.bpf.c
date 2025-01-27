@@ -10,6 +10,7 @@
 #include <gadget/buffer.h>
 #include <gadget/filesystem.h>
 #include <gadget/macros.h>
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 #include <gadget/core_fixes.bpf.h>
