@@ -10,6 +10,7 @@
 
 #include <gadget/maps.bpf.h>
 #include "tcpconnect.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 const volatile int filter_ports[MAX_PORTS];

@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 #endif /* __TARGET_ARCH_arm64 */
 
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 #ifdef WITH_LONG_PATHS
 #include <gadget/filesystem.h>

@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 #include "bindsnoop.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 #define MAX_ENTRIES 10240
