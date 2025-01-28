@@ -118,9 +118,9 @@ func (t *Tracer) run() {
 				return
 			}
 
-			msg := fmt.Sprintf("Error reading perf ring buffer: %s", err)
-			t.eventCallback(types.Base(eventtypes.Err(msg)))
-			return
+			msg := fmt.Sprintf("reading perf ring buffer: %s", err)
+			t.eventCallback(types.Base(eventtypes.Warn(msg)))
+			continue
 		}
 
 		bpfEvent := (*oomkillDataT)(unsafe.Pointer(&record.RawSample[0]))
