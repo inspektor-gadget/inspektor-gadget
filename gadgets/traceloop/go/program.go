@@ -143,13 +143,6 @@ func (t *tracelooper) attach(cgroupID uint64, mntnsID uint64) error {
 }
 
 func (t *tracelooper) detach(reader *containerRingReader) error {
-	// We call this from gadgetStop() where the map was already closed, let's
-	// comment
-// 	err := t.mapOfPerfBuffers.Delete(reader.mntnsID)
-// 	if err != nil {
-// 		return fmt.Errorf("removing perf buffer from map with mntnsID %d: %v", reader.mntnsID, err)
-// 	}
-
 	err := reader.innerBuffer.Close()
 	if err != nil {
 		return fmt.Errorf("closing map %s: %v", fmt.Sprintf("perf_buffer_%d", reader.mntnsID), err)
@@ -571,24 +564,109 @@ func gadgetStart() int {
 
 		container := api.Container(handle)
 
-		cgroupID, err := container.GetCgroupID()
+		_, err = container.GetCgroupID()
 		if err != nil {
 			api.Errorf("getting container cgroup ID: %v", err)
 			return 1
 		}
 
-		mntnsID, err := container.GetMntNsID()
+		_, err = container.GetMntNsID()
 		if err != nil {
 			api.Errorf("getting container mount namespace ID: %v", err)
 			return 1
 		}
 
-		err = t.attach(cgroupID, mntnsID)
-		if err != nil {
-			api.Errorf("attaching container %v: %v", cgroupID, err)
-			return 1
-		}
+// 		err = t.attach(cgroupID, mntnsID)
+// 		if err != nil {
+// 			api.Errorf("attaching container %v: %v", cgroupID, err)
+// 			return 1
+// 		}
 	}
+
+	ds, err := api.GetDataSource("containers")
+	if err != nil {
+		api.Errorf("Failed to get data source: %v", err)
+		return 1
+	}
+
+	eventTypeField, err := ds.GetField("event_type")
+	if err != nil {
+		api.Errorf("Failed to get field: %v", err)
+		return 1
+	}
+
+	cgroupIDField, err := ds.GetField("cgroup_id")
+	if err != nil {
+		api.Errorf("Failed to get field: %v", err)
+		return 1
+	}
+
+	mntnsIDField, err := ds.GetField("mntns_id")
+	if err != nil {
+		api.Errorf("Failed to get field: %v", err)
+		return 1
+	}
+
+	ds.Subscribe(func(ds api.DataSource, data api.Data) {
+		eventType, err := eventTypeField.String(data)
+		if err != nil {
+			api.Errorf("getting event_type from corresponding field: %v", err)
+			return
+		}
+
+		if eventType != "CREATED" && eventType != "DELETED" {
+			api.Errorf("wrong event_type, expected ...")
+			return
+		}
+
+		cgroupID, err := cgroupIDField.Uint64(data)
+		if err != nil {
+			api.Errorf("getting cgroup_id from corresponding field: %v", err)
+			return
+		}
+
+		mntnsID, err := mntnsIDField.Uint64(data)
+		if err != nil {
+			api.Errorf("getting mntns_id from corresponding field: %v", err)
+			return
+		}
+
+		switch eventType {
+		case "CREATED":
+			err := t.attach(cgroupID, mntnsID)
+			if err != nil {
+				api.Errorf("attaching container %v: %v", cgroupID, err)
+				return
+			}
+		case "DELETED":
+			value, ok := t.readers.LoadAndDelete(cgroupID)
+			if !ok {
+				api.Errorf("unknown container ...")
+				return
+			}
+
+			reader, ok := value.(*containerRingReader)
+			if !ok {
+				api.Errorf("bad type ...")
+				return
+			}
+
+			err := t.detach(reader)
+			if err != nil {
+				api.Errorf("detaching container %v: %v", cgroupID, err)
+				return
+			}
+
+			err = t.mapOfPerfBuffers.Delete(reader.mntnsID)
+			if err != nil {
+				api.Errorf("removing perf buffer from map with mntnsID %d: %v", reader.mntnsID, err)
+				return
+			}
+		default:
+			api.Errorf("wrong event_type, expected ...")
+			return
+		}
+	}, 0)
 
 	return 0
 }
