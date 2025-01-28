@@ -52,7 +52,7 @@ type containerRingReader struct {
 type tracelooper struct {
 	mapOfPerfBuffers api.Map
 
-	// key:   containerID
+	// key:   cgroupID
 	// value: *containerRingReader
 	readers sync.Map
 }
@@ -101,7 +101,7 @@ type syscallEventContinued struct {
 	param              string
 }
 
-func (t *tracelooper) attach(containerID uint64, mntnsID uint64) error {
+func (t *tracelooper) attach(cgroupID uint64, mntnsID uint64) error {
 	perfBufferName := fmt.Sprintf("perf_buffer_%d", mntnsID)
 
 	// 1. Create inner Map as perf buffer.
@@ -133,7 +133,7 @@ func (t *tracelooper) attach(containerID uint64, mntnsID uint64) error {
 		return fmt.Errorf("adding perf buffer to map with mntnsID %d: %w", mntnsID, err)
 	}
 
-	t.readers.Store(containerID, &containerRingReader{
+	t.readers.Store(cgroupID, &containerRingReader{
 		innerBuffer: innerBuffer,
 		perfReader:  perfReader,
 		mntnsID:     mntnsID,
@@ -544,11 +544,6 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 	return events, nil
 }
 
-//export gadgetInit()
-func gadgetInit() error {
-	return nil
-}
-
 //export gadgetStart
 func gadgetStart() int {
 	var err error
@@ -576,7 +571,7 @@ func gadgetStart() int {
 
 		container := api.Container(handle)
 
-		containerID, err := container.GetCgroupID()
+		cgroupID, err := container.GetCgroupID()
 		if err != nil {
 			api.Errorf("getting container cgroup ID: %v", err)
 			return 1
@@ -588,9 +583,9 @@ func gadgetStart() int {
 			return 1
 		}
 
-		err = t.attach(containerID, mntnsID)
+		err = t.attach(cgroupID, mntnsID)
 		if err != nil {
-			api.Errorf("attaching container %v: %v", containerID, err)
+			api.Errorf("attaching container %v: %v", cgroupID, err)
 			return 1
 		}
 	}
