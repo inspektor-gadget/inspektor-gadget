@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -130,7 +131,11 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 	for {
 		rec, err := t.ringbufReader.Read()
 		if err != nil {
-			return err
+			if errors.Is(err, ringbuf.ErrClosed) {
+				return err
+			}
+			gadgetCtx.Logger().Warnf("error reading ringbuf event: %v", err)
+			continue
 		}
 		pSingle, err := t.ds.NewPacketSingle()
 		if err != nil {
@@ -170,7 +175,11 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 	for {
 		rec, err := t.perfReader.Read()
 		if err != nil {
-			return err
+			if errors.Is(err, perf.ErrClosed) {
+				return nil
+			}
+			gadgetCtx.Logger().Warnf("error reading perf event: %v", err)
+			continue
 		}
 		pSingle, err := t.ds.NewPacketSingle()
 		if err != nil {
