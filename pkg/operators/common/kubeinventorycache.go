@@ -48,7 +48,8 @@ type SlimPod struct {
 }
 
 type SlimPodSpec struct {
-	HostNetwork bool `json:"hostNetwork"`
+	HostNetwork bool   `json:"hostNetwork"`
+	NodeName    string `json:"nodeName"`
 }
 
 type SlimPodStatus struct {
@@ -68,6 +69,7 @@ func NewSlimPod(p *v1.Pod) *SlimPod {
 		},
 		Spec: SlimPodSpec{
 			HostNetwork: p.Spec.HostNetwork,
+			NodeName:    p.Spec.NodeName,
 		},
 		Status: SlimPodStatus{
 			HostIP: p.Status.HostIP,
@@ -172,6 +174,7 @@ func transformObject(obj any) (any, error) {
 			},
 			Spec: v1.PodSpec{
 				HostNetwork: t.Spec.HostNetwork,
+				NodeName:    t.Spec.NodeName,
 			},
 		}
 		return p, nil
