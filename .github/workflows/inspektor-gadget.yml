@@ -752,6 +752,56 @@ jobs:
           echo '### Package Size Summary' >> $GITHUB_STEP_SUMMARY
           echo "$TABLE_OUTPUT" >> $GITHUB_STEP_SUMMARY
 
+  analyze-ig-memory:
+    name: IG memory analysis with pprof
+    runs-on: ubuntu-latest
+    needs: 
+      - build-ig 
+      - build-and-push-gadgets
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: '1.23.4'
+          cache: true
+        id: go
+      - name: Get ig-linux-amd64.tar.gz from artifact.
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: ig-linux-amd64-tar-gz
+          path: /home/runner/work/inspektor-gadget/
+      - name: Unpack ig-linux-amd64.tar.gz & Analyze memory
+        run: |
+          tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+          sudo ./ig run trace_dns:latest --pprof-addr=localhost:6060 &
+          sleep 10
+          curl http://localhost:6060/debug/pprof/heap | tee heap.out
+          go tool pprof -top -inuse_space ./ig heap.out | tee inuse_space.txt
+          go tool pprof -top -alloc_space ./ig heap.out | tee alloc_space.txt
+      - name: Add Markdown Table
+        run: |
+          # The inuse_space.txt contains the following header:
+          #       File: ig
+          #       Type: inuse_space
+          #       Time: Jan 22, 2025 at 1:49pm (UTC)
+          #       Showing nodes accounting for 50626.69kB, 100% of 50626.69kB total
+          #             flat  flat%   sum%        cum   cum%
+          # And alloc_space.txt this one:
+          #       File: ig
+          #       Type: alloc_space
+          #       Time: Jan 22, 2025 at 1:49pm (UTC)
+          #       Showing nodes accounting for 12345.67kB, 100% of 12345.67kB total
+          #             flat  flat%   sum%        cum   cum%
+          # awk will filter it out.
+          declare -A files=([inuse_space.txt]='Inuse Space' [alloc_space.txt]='Alloc Space')
+          for file in "${!files[@]}"; do
+            echo "### Memory Usage Summary (${files[$file]})"| tee -a $GITHUB_STEP_SUMMARY
+            echo '| Flat Memory | Flat% | Sum% | Cumulative Memory | Cumulative% | Function |' | tee -a $GITHUB_STEP_SUMMARY
+            echo '|-------------|-------|------|--------------------|-------------|----------|' | tee -a $GITHUB_STEP_SUMMARY
+            awk 'NR > 6 { printf "| %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6 }' $file | tee -a $GITHUB_STEP_SUMMARY
+            echo '' | tee -a $GITHUB_STEP_SUMMARY
+          done
+          
   scan-gadget-container-images:
     name: Scan gadget img
     # level: 2
