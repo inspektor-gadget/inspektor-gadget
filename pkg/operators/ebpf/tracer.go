@@ -181,6 +181,14 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 			gadgetCtx.Logger().Warnf("error reading perf event: %v", err)
 			continue
 		}
+		if rec.LostSamples > 0 {
+			gadgetCtx.Logger().Warnf("reading perf ring buffer: lost %d samples", rec.LostSamples)
+			t.ds.ReportLostData(rec.LostSamples)
+			// if we lose samples, we don't get the raw sample,
+			// so we shouldn't emit anything
+			continue
+		}
+
 		pSingle, err := t.ds.NewPacketSingle()
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error creating new packet: %v", err)
@@ -213,9 +221,6 @@ func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) 
 		err = t.ds.EmitAndRelease(pSingle)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
-		}
-		if rec.LostSamples > 0 {
-			t.ds.ReportLostData(rec.LostSamples)
 		}
 	}
 }
