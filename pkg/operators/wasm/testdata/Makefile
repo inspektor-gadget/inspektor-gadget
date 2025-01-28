@@ -12,6 +12,7 @@ TEST_ARTIFACTS = \
 	mapofmap \
 	syscall \
 	perf \
+	array \
 	#
 
 all: $(TEST_ARTIFACTS)
