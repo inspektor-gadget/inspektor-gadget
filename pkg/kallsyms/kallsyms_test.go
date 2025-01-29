@@ -15,6 +15,7 @@
 package kallsyms
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -23,7 +24,7 @@ import (
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 )
 
-func TestCustomKAllSyms(t *testing.T) {
+func TestCustomKAllSymsInstructionPointer(t *testing.T) {
 	kAllSymsStr := strings.Join([]string{
 		"0000000000000000 A fixed_percpu_data",
 		"ffffffffb4231f40 D bpf_prog_fops",
@@ -33,10 +34,6 @@ func TestCustomKAllSyms(t *testing.T) {
 	kAllSymsReader := strings.NewReader(kAllSymsStr)
 	kAllSyms, err := NewKAllSymsFromReader(kAllSymsReader)
 	require.Nil(t, err, "NewKAllSymsFromReader failed: %v", err)
-	require.True(t, kAllSyms.SymbolExists("bpf_prog_fops"),
-		"SymbolExists should have found bpf_prog_fops")
-	require.False(t, kAllSyms.SymbolExists("abcde_bad_name"),
-		"SymbolExists should not have found abcde_bad_name")
 
 	lookupByInstructionPointerTests := []struct {
 		instructionPointer uint64
@@ -57,23 +54,148 @@ func TestCustomKAllSyms(t *testing.T) {
 	}
 }
 
-func TestRealKAllSyms(t *testing.T) {
+func TestCustomKAllSymsParsing(t *testing.T) {
+	kAllSymsStr := strings.Join([]string{
+		"0000000000000000 A fixed_percpu_data",
+		"ffffffffb4231f40 D bpf_prog_fops",
+		"ffffffffb43723e0 d socket_file_ops",
+		"ffffffff906e97e0 T security_bprm_check",
+		"ffffffffc1b26010 T veth_init	[veth]",
+		"ffffffffc1cb5010 T netem_module_init	[sch_netem]",
+		"",
+	}, "\n")
+
+	tests := []struct {
+		symbol     string
+		expectErr  bool
+		expectAddr uint64
+		expectKmod string
+	}{
+		{
+			symbol:     "bpf_prog_fops",
+			expectErr:  false,
+			expectAddr: 0xffffffffb4231f40,
+			expectKmod: "",
+		},
+		{
+			symbol:     "socket_file_ops",
+			expectErr:  false,
+			expectAddr: 0xffffffffb43723e0,
+			expectKmod: "",
+		},
+		{
+			symbol:     "veth_init",
+			expectErr:  false,
+			expectAddr: 0xffffffffc1b26010,
+			expectKmod: "veth",
+		},
+		{
+			symbol:     "netem_module_init",
+			expectErr:  false,
+			expectAddr: 0xffffffffc1cb5010,
+			expectKmod: "sch_netem",
+		},
+		{
+			symbol:     "abcde_bad_name",
+			expectErr:  true,
+			expectAddr: 0,
+			expectKmod: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.symbol, func(t *testing.T) {
+			r := strings.NewReader(kAllSymsStr)
+			addr, kmod, err := kernelSymbolAddressFromReader(r, test.symbol)
+
+			if test.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, test.expectAddr, addr, "addr")
+			require.Equal(t, test.expectKmod, kmod, "kmod")
+		})
+	}
+}
+
+func TestRealKAllSymsParsing(t *testing.T) {
+	path := "/proc/kallsyms"
 	utilstest.RequireRoot(t)
-	utilstest.RequireFileContains(t, "/proc/kallsyms", "bpf_prog_fops")
-	utilstest.RequireFileContains(t, "/proc/kallsyms", "socket_file_ops")
+	utilstest.RequireFileContains(t, path, "bpf_prog_fops")
+	utilstest.RequireFileContains(t, path, "socket_file_ops")
 
-	kAllSyms, err := NewKAllSyms()
-	require.Nil(t, err, "NewKAllSyms failed: %v", err)
-	require.True(t, kAllSyms.SymbolExists("bpf_prog_fops"),
-		"SymbolExists should have found bpf_prog_fops")
-	require.False(t, kAllSyms.SymbolExists("abcde_bad_name"),
-		"SymbolExists should not have found abcde_bad_name")
+	type testT struct {
+		name           string
+		symbol         string
+		expectedKmod   string
+		expectedExists bool
+	}
 
-	addr, ok := kAllSyms.symbolsMap["bpf_prog_fops"]
-	require.True(t, ok, "bpf_prog_fops not found in symbolsMap")
-	// /proc/kallsyms contains the address 0 without CAP_SYSLOG.
-	// Since we use RequireRoot, it should not happen.
-	require.NotEqual(t, 0, addr, "bpf_prog_fops has a zero address")
+	tests := []testT{
+		{
+			name:           "simple_symbol1",
+			symbol:         "bpf_prog_fops",
+			expectedKmod:   "",
+			expectedExists: true,
+		},
+		{
+			name:           "simple_symbol2",
+			symbol:         "socket_file_ops",
+			expectedKmod:   "",
+			expectedExists: true,
+		},
+		{
+			name:           "symbol_from_veth_kmod",
+			symbol:         "veth_init",
+			expectedKmod:   "veth",
+			expectedExists: true,
+		},
+		{
+			name:           "symbol_from_netem_kmod",
+			symbol:         "netem_module_init",
+			expectedKmod:   "sch_netem",
+			expectedExists: true,
+		},
+		{
+			name:           "symbol_from_overlay_kmod",
+			symbol:         "ovl_inode_init",
+			expectedKmod:   "overlay",
+			expectedExists: true,
+		},
+		{
+			name:           "nonexistent_symbol",
+			symbol:         "abcde_bad_name",
+			expectedKmod:   "",
+			expectedExists: false,
+		},
+	}
+
+	kallsymsBytes, err := os.ReadFile(path)
+	require.Nil(t, err, "Failed to read %q: %s", path, err)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.expectedExists &&
+				test.expectedKmod != "" &&
+				!strings.Contains(string(kallsymsBytes), test.expectedKmod) {
+				t.Skipf("Test requires kernel module %q", test.expectedKmod)
+			}
+
+			require.Equal(t, test.expectedExists, SymbolExists(test.symbol), "exists")
+			addr, kmod, err := KernelSymbolAddress(test.symbol)
+			if test.expectedExists {
+				require.NoError(t, err)
+				require.NotEqual(t, uint64(0), addr, "addr")
+				require.Equal(t, test.expectedKmod, kmod, "kmod")
+			} else {
+				require.Error(t, err)
+				require.Equal(t, uint64(0), addr, "addr")
+				require.Equal(t, "", kmod, "kmod")
+			}
+		})
+	}
 }
 
 // BenchmarkKernelSymbolAddressJITParsing searches for the symbol while
