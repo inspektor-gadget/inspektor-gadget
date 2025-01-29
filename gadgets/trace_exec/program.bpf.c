@@ -116,8 +116,17 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	task = (struct task_struct *)bpf_get_current_task();
-	event->loginuid = BPF_CORE_READ(task, loginuid.val);
-	event->sessionid = BPF_CORE_READ(task, sessionid);
+
+	// loginuid is only available when CONFIG_AUDIT is set
+	if (bpf_core_field_exists(task->loginuid))
+		event->loginuid = BPF_CORE_READ(task, loginuid.val);
+	else
+		event->loginuid = 4294967295; // -1 or "no user id"
+
+	// sessionid is only available when CONFIG_AUDIT is set
+	if (bpf_core_field_exists(task->sessionid))
+		event->sessionid = BPF_CORE_READ(task, sessionid);
+
 	event->args_count = 0;
 	event->args_size = 0;
 
