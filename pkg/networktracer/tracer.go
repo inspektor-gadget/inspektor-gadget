@@ -326,9 +326,9 @@ func (t *Tracer[Event]) listen(
 				return
 			}
 
-			msg := fmt.Sprintf("Error reading perf ring buffer: %s", err)
-			t.eventHandler(baseEvent(types.Err(msg)))
-			return
+			msg := fmt.Sprintf("reading perf ring buffer: %s", err)
+			t.eventHandler(baseEvent(types.Warn(msg)))
+			continue
 		}
 
 		if record.LostSamples != 0 {
