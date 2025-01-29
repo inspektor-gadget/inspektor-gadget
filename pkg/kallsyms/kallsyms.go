@@ -135,11 +135,6 @@ func (k *KAllSyms) LookupByInstructionPointer(ip uint64) string {
 }
 
 // SymbolExists returns true if the given symbol exists in the kernel.
-func (k *KAllSyms) SymbolExists(symbol string) bool {
-	_, ok := k.symbolsMap[symbol]
-	return ok
-}
-
 func SymbolExists(symbol string) bool {
 	_, _, err := KernelSymbolAddress(symbol)
 	return err == nil

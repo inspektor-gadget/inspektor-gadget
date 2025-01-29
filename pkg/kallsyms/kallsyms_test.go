@@ -220,7 +220,7 @@ func BenchmarkKernelSymbolAddressPreLoading(b *testing.B) {
 		k, err := NewKAllSyms()
 		require.NoError(b, err)
 		require.NotNil(b, k)
-		exists := k.SymbolExists("security_bprm_check")
+		_, exists := k.symbolsMap["security_bprm_check"]
 		require.Equal(b, true, exists)
 	}
 }
