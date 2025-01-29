@@ -26,11 +26,9 @@ type symbolResolver interface {
 	resolve(symbol string) (uint64, error)
 }
 
-// kAllSymsResolver is a symbolResolver that resolves kernel symbols using a KAllSyms.
-// It isn't safe for concurrent use.
-type kAllSymsResolver struct {
-	kAllSyms *KAllSyms
-}
+// kAllSymsResolver is a symbolResolver that resolves kernel symbols using
+// /proc/kallsyms.
+type kAllSymsResolver struct{}
 
 // newKAllSymsResolver returns a new kAllSymsResolver.
 func newKAllSymsResolver() *kAllSymsResolver {
@@ -39,25 +37,11 @@ func newKAllSymsResolver() *kAllSymsResolver {
 
 // Resolve resolves a kernel symbol using the KAllSyms.
 func (r *kAllSymsResolver) resolve(symbol string) (uint64, error) {
-	if r.kAllSyms == nil {
-		if err := r.init(); err != nil {
-			return 0, fmt.Errorf("initializing kallsyms: %w", err)
-		}
-	}
-	addr, ok := r.kAllSyms.symbolsMap[symbol]
-	if !ok {
+	addr, _, err := KernelSymbolAddress(symbol)
+	if err != nil {
 		return 0, fmt.Errorf("symbol %q was not found in kallsyms", symbol)
 	}
 	return addr, nil
-}
-
-func (r *kAllSymsResolver) init() error {
-	kAllSyms, err := NewKAllSyms()
-	if err != nil {
-		return err
-	}
-	r.kAllSyms = kAllSyms
-	return nil
 }
 
 // ebpfResolver is a symbolResolver that resolves kernel symbols using eBPF.

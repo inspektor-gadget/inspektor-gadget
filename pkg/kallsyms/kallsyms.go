@@ -17,6 +17,8 @@ package kallsyms
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,6 +30,8 @@ import (
 
 	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
 )
+
+var ErrAmbiguousKsym = errors.New("multiple kernel symbols with the same name")
 
 type KAllSyms struct {
 	// symbols is a slice of kernel symbols. Order is preserved.
@@ -43,6 +47,10 @@ type kernelSymbol struct {
 }
 
 // NewKAllSyms reads /proc/kallsyms and returns a KAllSyms.
+//
+// It is meant to be used when all the symbols need to be permanently loaded.
+// It comes with a big resource penalty. For looking up only a few symbols, it
+// is more efficient to use SymbolExists or KernelSymbolAddress.
 func NewKAllSyms() (*KAllSyms, error) {
 	file, err := os.Open("/proc/kallsyms")
 	if err != nil {
@@ -127,9 +135,97 @@ func (k *KAllSyms) LookupByInstructionPointer(ip uint64) string {
 }
 
 // SymbolExists returns true if the given symbol exists in the kernel.
-func (k *KAllSyms) SymbolExists(symbol string) bool {
-	_, ok := k.symbolsMap[symbol]
-	return ok
+func SymbolExists(symbol string) bool {
+	_, _, err := KernelSymbolAddress(symbol)
+	return err == nil
+}
+
+// KernelSymbolAddress looks up a symbol from /proc/kallsyms.
+//
+// symbol: the symbol to lookup
+//
+// Returns the address of the symbol and its module if any
+func KernelSymbolAddress(symbol string) (uint64, string, error) {
+	file, err := os.Open("/proc/kallsyms")
+	if err != nil {
+		return 0, "", err
+	}
+	defer file.Close()
+
+	return kernelSymbolAddressFromReader(file, symbol)
+}
+
+// kernelSymbolAddressFromReader looks up a symbol from the reader.
+//
+// reader: source; it should be in the same file format as /proc/kallsyms
+// symbol: the symbol to lookup
+//
+// Returns the address of the symbol and its module if any
+func kernelSymbolAddressFromReader(r io.Reader, symbol string) (uint64, string, error) {
+	var (
+		count int
+		addr  uint64
+		mod   string
+		err   error
+	)
+
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		// Lines looks like:
+		// ffffffff906e97e0 T security_bprm_check
+		// ffffffffc1cb5010 T netem_module_init    [sch_netem]
+
+		line := scanner.Bytes()
+		typeIdx := bytes.IndexByte(line, byte(' '))
+		if typeIdx == -1 || typeIdx+1 >= len(line) {
+			return 0, "", fmt.Errorf("parsing line %q: no type", line)
+		}
+		nameIdx := bytes.IndexByte(line[typeIdx+1:], byte(' '))
+		if nameIdx == -1 || typeIdx+1+nameIdx+1 >= len(line) {
+			return 0, "", fmt.Errorf("parsing line %q: no symbol", line)
+		}
+		modIdx := bytes.IndexByte(line[typeIdx+1+nameIdx+1:], byte('\t'))
+		var nameBytes []byte
+		if modIdx == -1 {
+			// no module
+			nameBytes = line[typeIdx+1+nameIdx+1:]
+		} else {
+			// module found
+			nameBytes = line[typeIdx+1+nameIdx+1 : typeIdx+1+nameIdx+1+modIdx]
+		}
+		if !bytes.Equal([]byte(symbol), nameBytes) {
+			continue
+		}
+
+		addr, err = strconv.ParseUint(string(line[:typeIdx]), 16, 64)
+		if err != nil {
+			return 0, "", fmt.Errorf("parsing line %q: invalid address: %w", line, err)
+		}
+		if modIdx != -1 {
+			mod = string(line[typeIdx+1+nameIdx+1+modIdx+1:])
+			mod = strings.Trim(mod, "[]")
+		}
+		count++
+		if count > 1 {
+			break
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		return 0, "", fmt.Errorf("reading kallsyms: %w", err)
+	}
+
+	switch count {
+	case 0:
+		return 0, "", os.ErrNotExist
+	case 1:
+		return addr, mod, nil
+	default:
+		// Multiple addresses for a symbol have been found. Like libbpf
+		// and cilium/ebpf, reject referring to ambiguous symbols.
+		return 0, "", fmt.Errorf("symbol %s: duplicate found at address 0x%x: %w",
+			symbol, addr, ErrAmbiguousKsym)
+	}
 }
 
 var (
