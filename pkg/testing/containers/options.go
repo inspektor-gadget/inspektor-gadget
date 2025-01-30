@@ -54,6 +54,12 @@ func WithContainerNamespace(namespace string) ContainerOption {
 	}
 }
 
+func WithUseExistingNamespace() ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithUseExistingNamespace())
+	}
+}
+
 func WithPrivileged() ContainerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithPrivileged())

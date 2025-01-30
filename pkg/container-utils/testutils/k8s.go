@@ -74,12 +74,15 @@ func (c *K8sContainer) Start(t *testing.T) {
 		waitCommand = waitUntilPodReadyOrOOMKilledCommand(t, c.options.namespace, c.name)
 	}
 
-	igtesting.RunTestSteps([]igtesting.TestStep{
-		createTestNamespaceCommand(c.options.namespace),
+	testSteps := []igtesting.TestStep{
 		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
 		sleepForSecondsCommand(2),
 		waitCommand,
-	}, t)
+	}
+	if !c.options.useExistingNamespace {
+		testSteps = append([]igtesting.TestStep{createTestNamespaceCommand(c.options.namespace)}, testSteps...)
+	}
+	igtesting.RunTestSteps(testSteps, t)
 
 	c.id = getContainerID(t, c.name, c.options.namespace)
 	c.ip = getPodIP(t, c.name, c.options.namespace)
@@ -87,10 +90,13 @@ func (c *K8sContainer) Start(t *testing.T) {
 }
 
 func (c *K8sContainer) Stop(t *testing.T) {
-	igtesting.RunTestSteps([]igtesting.TestStep{
+	testSteps := []igtesting.TestStep{
 		deletePodCommand(t, c.name, c.options.namespace),
-		deleteTestNamespaceCommand(t, c.options.namespace),
-	}, t)
+	}
+	if !c.options.useExistingNamespace {
+		testSteps = append(testSteps, igtesting.TestStep(deleteTestNamespaceCommand(t, c.options.namespace)))
+	}
+	igtesting.RunTestSteps(testSteps, t)
 
 	c.started = false
 }
@@ -199,6 +205,13 @@ done
 	}
 }
 
+func CreateK8sNamespace(t *testing.T, namespace string) {
+	igtesting.RunTestSteps([]igtesting.TestStep{createTestNamespaceCommand(namespace)}, t)
+	t.Cleanup(func() {
+		deleteK8sNamespace(t, namespace)
+	})
+}
+
 // deleteTestNamespaceCommand returns a Command which deletes a namespace whom
 // name is given as parameter.
 func deleteTestNamespaceCommand(t *testing.T, namespace string) *command.Command {
@@ -207,6 +220,10 @@ func deleteTestNamespaceCommand(t *testing.T, namespace string) *command.Command
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl delete ns %s", namespace)),
 		ValidateOutput: match.EqualString(t, fmt.Sprintf("namespace \"%s\" deleted\n", namespace)),
 	}
+}
+
+func deleteK8sNamespace(t *testing.T, namespace string) {
+	igtesting.RunTestSteps([]igtesting.TestStep{(deleteTestNamespaceCommand(t, namespace))}, t)
 }
 
 // waitUntilPodReadyCommand returns a Command which waits until pod with the specified name in
