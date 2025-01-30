@@ -234,10 +234,20 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 		full_fname_len = 1;
 	}
 
+	__u64 event_size;
+	const size_t base_event_size = sizeof(struct event);
+	const size_t path_adjustment = PATH_MAX - full_fname_len;
+
+	// Ensure we don't underflow when calculating the adjusted size
+	if (full_fname_len <= PATH_MAX) {
+		event_size = base_event_size - path_adjustment;
+	} else {
+		event_size = base_event_size;
+	}
+
 	/* emit event */
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
-			      sizeof(struct event) -
-				      (PATH_MAX - full_fname_len));
+			      event_size);
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
 	return 0;
