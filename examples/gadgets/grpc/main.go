@@ -18,25 +18,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
-	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 func do() error {
-	// Define our simple operator
 	const opPriority = 50000
-
-	myOperator := simple.New("myHandler", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+	myOperator := simple.New("myOperator", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
 		for _, d := range gadgetCtx.GetDataSources() {
-			jsonFormatter, _ := igjson.New(d, igjson.WithShowAll(true))
+			jsonFormatter, _ := igjson.New(d)
 
 			d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
 				jsonOutput := jsonFormatter.Marshal(data)
@@ -47,40 +44,28 @@ func do() error {
 		return nil
 	}))
 
-	// Create the local manager operator
-	localManagerOp := localmanager.LocalManagerOperator
-	localManagerParams := localManagerOp.GlobalParamDescs().ToParams()
-	localManagerParams.Get(localmanager.Runtimes).Set("docker")
-	if err := localManagerOp.Init(localManagerParams); err != nil {
-		return fmt.Errorf("init local manager: %w", err)
-	}
-	defer localManagerOp.Close()
+	// Used to close the connection in a clean way
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	defer stop()
 
-	// Create the gadget context (passing the localmanager operator created above)
 	gadgetCtx := gadgetcontext.New(
-		context.Background(),
+		ctx,
 		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator, localManagerOp),
+		gadgetcontext.WithDataOperators(myOperator),
 	)
 
-	// Create the runtime
-	runtime := local.New()
-	if err := runtime.Init(nil); err != nil {
+	runtime := grpcruntime.New()
+	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+	runtimeGlobalParams.Get(grpcruntime.ParamRemoteAddress).Set("tcp://127.0.0.1:8888")
+	// Unix sockets are also supported:
+	//runtimeGlobalParams.Get(grpcruntime.ParamRemoteAddress).Set("unix:///var/run/ig/ig.socket")
+
+	if err := runtime.Init(runtimeGlobalParams); err != nil {
 		return fmt.Errorf("runtime init: %w", err)
 	}
 	defer runtime.Close()
 
-	// Set some parameters for the gadget and the operator
-	params := map[string]string{
-		// Filter only events from the root user
-		"operator.oci.ebpf.uid": "0",
-
-		// Filter events by container name
-		"operator.LocalManager.containername": "mycontainer",
-	}
-
-	// Run the gadget
-	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
+	if err := runtime.RunGadget(gadgetCtx, nil, nil); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
 

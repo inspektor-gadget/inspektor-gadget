@@ -20,39 +20,51 @@ import (
 	"os"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
 
 func do() error {
-	const opPriority = 50000
-	myOperator := simple.New("myHandler", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-		for _, d := range gadgetCtx.GetDataSources() {
-			// Access some specific fields
-			pidF := d.GetField("pid")
-			commF := d.GetField("comm")
-			fnameF := d.GetField("fname")
+	ctx := context.Background()
 
+	const opPriority = 50000
+	myOperator := simple.New("myOperator", simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+		for _, d := range gadgetCtx.GetDataSources() {
+			jsonFormatter, _ := igjson.New(d, igjson.WithShowAll(true), igjson.WithPretty(true, "  "))
 			d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
-				// Error handling is omitted for brevity
-				pid, _ := pidF.Uint32(data)
-				comm, _ := commF.String(data)
-				fname, _ := fnameF.String(data)
-				fmt.Printf("command %s (%d) opened %s\n", comm, pid, fname)
+				jsonOutput := jsonFormatter.Marshal(data)
+				fmt.Printf("%s\n", jsonOutput)
 				return nil
 			}, opPriority)
 		}
 		return nil
 	}))
 
+	// Configure the local manager operator
+	localManagerOp := localmanager.LocalManagerOperator
+	localManagerParams := localManagerOp.GlobalParamDescs().ToParams()
+	localManagerParams.Get(localmanager.Runtimes).Set("docker")
+	if err := localManagerOp.Init(localManagerParams); err != nil {
+		return fmt.Errorf("init local manager: %w", err)
+	}
+	defer localManagerOp.Close()
+
 	gadgetCtx := gadgetcontext.New(
-		context.Background(),
+		ctx,
 		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
+		gadgetcontext.WithDataOperators(
+			ocihandler.OciHandler,
+			localManagerOp,
+			formatters.FormattersOperator,
+			myOperator,
+		),
 	)
 
 	runtime := local.New()
@@ -61,7 +73,11 @@ func do() error {
 	}
 	defer runtime.Close()
 
-	if err := runtime.RunGadget(gadgetCtx, nil, nil); err != nil {
+	params := map[string]string{
+		// Filter events by container name
+		"operator.LocalManager.containername": "mycontainer",
+	}
+	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
 

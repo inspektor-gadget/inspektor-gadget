@@ -15,50 +15,52 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"os"
 
 	orasoci "oras.land/oras-go/v2/content/oci"
 
-	"github.com/quay/claircore/pkg/tarfs"
-
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
-	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
-
-// embed the tarball containing the gadget image. It was created with
-// $ sudo ig image export trace_open:latest trace_open.tar
-
-//go:embed trace_open.tar
-var traceOpenBytes []byte
 
 func do() error {
 	ctx := context.Background()
 
-	// Create an FS from the tarball bytes
-	fs, err := tarfs.New(bytes.NewReader(traceOpenBytes))
+	// Create the OCI store from a tarball.
+	ociStore, err := orasoci.NewFromTar(ctx, "trace_open.tar")
 	if err != nil {
-		return err
+		return fmt.Errorf("getting oci store from tarball: %w", err)
 	}
 
-	// Create the oras target from the FS
-	target, err := orasoci.NewFromFS(ctx, fs)
-	if err != nil {
-		return fmt.Errorf("getting oci store from bytes: %w", err)
-	}
+	const opPriority = 50000
+	myOperator := simple.New("myOperator",
+		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
+			for _, d := range gadgetCtx.GetDataSources() {
+				jsonFormatter, _ := igjson.New(d, igjson.WithShowAll(true), igjson.WithPretty(true, "  "))
+				d.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
+					jsonOutput := jsonFormatter.Marshal(data)
+					fmt.Printf("%s\n", jsonOutput)
+					return nil
+				}, opPriority)
+			}
+			return nil
+		}),
+	)
 
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
 		// The name of the gadget to run is needed as a tarball can contain multiple images.
 		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, clioperator.CLIOperator),
-		gadgetcontext.WithOrasReadonlyTarget(target),
+		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
 	)
 
 	runtime := local.New()
@@ -67,10 +69,7 @@ func do() error {
 	}
 	defer runtime.Close()
 
-	params := map[string]string{
-		"operator.cli.output": "columns",
-	}
-	if err := runtime.RunGadget(gadgetCtx, nil, params); err != nil {
+	if err := runtime.RunGadget(gadgetCtx, nil, nil); err != nil {
 		return fmt.Errorf("running gadget: %w", err)
 	}
 
