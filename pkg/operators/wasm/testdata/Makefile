@@ -12,6 +12,7 @@ TEST_ARTIFACTS = \
 	mapofmap \
 	syscall \
 	perf \
+	kallsyms \
 	#
 
 all: $(TEST_ARTIFACTS)
