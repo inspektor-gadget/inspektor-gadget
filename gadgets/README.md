@@ -9,10 +9,8 @@ documentation to get more details:
 
 Almost all [built-in](../pkg/gadgets/) gadgets have been converted, however
 we're still missing few of them:
-- [Advisors](https://github.com/inspektor-gadget/inspektor-gadget/issues/3003)
+- [seccomp profile advise](https://github.com/inspektor-gadget/inspektor-gadget/issues/3890)
+- [network policy advisor](https://github.com/inspektor-gadget/inspektor-gadget/issues/3891)
 - [traceloop](https://github.com/inspektor-gadget/inspektor-gadget/issues/2822)
 - [profile CPU](https://github.com/inspektor-gadget/inspektor-gadget/issues/3001)
-- [top block-io](https://github.com/inspektor-gadget/inspektor-gadget/issues/2989)
 - [top ebpf](https://github.com/inspektor-gadget/inspektor-gadget/issues/3443)
-- [profile tcprtt](https://github.com/inspektor-gadget/inspektor-gadget/issues/3002)
-- [trace fsslower](https://github.com/inspektor-gadget/inspektor-gadget/issues/2994)

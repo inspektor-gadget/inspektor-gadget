@@ -5,6 +5,13 @@ description: >
   Periodically report read/write activity by file.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [top_file](../../top_file.mdx)
+image-based one.
+
+:::
+
 The top file gadget is used to visualize reads and writes by file, with container details.
 
 ### On Kubernetes

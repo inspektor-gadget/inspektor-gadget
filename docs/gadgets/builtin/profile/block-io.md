@@ -5,6 +5,13 @@ description: >
   Analyze block I/O performance through a latency distribution.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [profile_blockio](../../profile_blockio.mdx)
+image-based one.
+
+:::
+
 The profile block-io gadget gathers information about the usage of the
 block device I/O (disk I/O), generating a histogram distribution of I/O
 latency (time), when the gadget is stopped.

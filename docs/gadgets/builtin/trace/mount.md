@@ -5,6 +5,13 @@ description: >
   Trace mount and umount system calls.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_mount](../../trace_mount.mdx)
+image-based one.
+
+:::
+
 The trace mount gadget is used to monitor `mount` and `umount` syscalls.
 In this guide, we will learn how to use it by running a small Kubernetes cluster inside `minikube`.
 

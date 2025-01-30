@@ -5,6 +5,13 @@ description: >
   Trace connect system calls.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [trace_tcp](../../trace_tcp.mdx)
+image-based one.
+
+:::
+
 The trace tcpconnect gadget traces TCP connect calls.
 
 ### On Kubernetes

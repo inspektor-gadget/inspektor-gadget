@@ -5,6 +5,13 @@ description: >
   Periodically report block device I/O activity.
 ---
 
+:::warning
+
+This Gadget is deprecated, please use the [top_blockio](../../top_blockio.mdx)
+image-based one.
+
+:::
+
 The top block-io gadget is used to visualize the containers generating
 the most block device input/output.
 
