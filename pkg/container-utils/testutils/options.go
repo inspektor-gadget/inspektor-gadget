@@ -28,20 +28,21 @@ const (
 type Option func(*containerOptions)
 
 type containerOptions struct {
-	ctx              context.Context
-	expectStartError bool
-	image            string
-	imageTag         string
-	mounts           []string
-	seccompProfile   string
-	namespace        string
-	wait             bool
-	waitOrOomKilled  bool
-	logs             bool
-	removal          bool
-	portBindings     nat.PortMap
-	privileged       bool
-	limits           map[string]string
+	ctx                  context.Context
+	expectStartError     bool
+	image                string
+	imageTag             string
+	mounts               []string
+	seccompProfile       string
+	namespace            string
+	useExistingNamespace bool
+	wait                 bool
+	waitOrOomKilled      bool
+	logs                 bool
+	removal              bool
+	portBindings         nat.PortMap
+	privileged           bool
+	limits               map[string]string
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -50,12 +51,13 @@ type containerOptions struct {
 
 func defaultContainerOptions() *containerOptions {
 	return &containerOptions{
-		ctx:      context.TODO(),
-		image:    DefaultContainerImage,
-		imageTag: DefaultContainerImageTag,
-		logs:     true,
-		wait:     true,
-		removal:  true,
+		ctx:                  context.TODO(),
+		image:                DefaultContainerImage,
+		imageTag:             DefaultContainerImageTag,
+		logs:                 true,
+		wait:                 true,
+		removal:              true,
+		useExistingNamespace: false,
 	}
 }
 
@@ -99,6 +101,12 @@ func WithSeccompProfile(profile string) Option {
 func WithNamespace(namespace string) Option {
 	return func(opts *containerOptions) {
 		opts.namespace = namespace
+	}
+}
+
+func WithUseExistingNamespace() Option {
+	return func(opts *containerOptions) {
+		opts.useExistingNamespace = true
 	}
 }
 
