@@ -65,8 +65,8 @@ func TestGetSyscallNameByNumber(t *testing.T) {
 			expectedOk:   true,
 		},
 		{
-			description:  "invalid name",
-			number:       0,
+			description:  "non-existent syscall",
+			number:       9999,
 			expectedName: "",
 			expectedOk:   false,
 		},
