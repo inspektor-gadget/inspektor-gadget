@@ -1,0 +1,17 @@
+# Trace the execution of all processes that have been modified in container in all namespaces.
+# Gadgets used:
+# - trace_exec (https://www.inspektor-gadget.io/docs/latest/gadgets/trace_exec)
+apiVersion: 1
+kind: instance-spec
+image: trace_exec:latest
+name: modified-files-all
+paramValues:
+  # The following parameter is used to trace the execution of all processes in all namespaces
+  # See: https://www.inspektor-gadget.io/docs/latest/spec/operators/kubemanager
+  operator.KubeManager.all-namespaces: true
+  # The following parameter is used to filter the processes that have been modified in container images
+  # See: https://www.inspektor-gadget.io/docs/latest/spec/operators/filter
+  operator.filter.filter: upper_layer==true
+  # The following parameter is used to display events as JSON in a pretty format
+  # See: https://www.inspektor-gadget.io/docs/latest/spec/operators/cli
+  operator.cli.output: jsonpretty
