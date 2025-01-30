@@ -19,7 +19,7 @@ import (
 )
 
 //export gadgetStart
-func gadgetStart() int {
+func gadgetStart() (ret int) {
 	type map_test_struct struct {
 		a int32
 		b int32
@@ -36,6 +36,14 @@ func gadgetStart() int {
 		api.Errorf("%s map must exist", mapOfMapName)
 		return 1
 	}
+
+	defer func() {
+		err = api.ReleaseHandle(mapOfMap)
+		if err != nil {
+			api.Errorf("releasing handle for map got with GetMap(): %w", err)
+			ret = 1
+		}
+	}()
 
 	hashMapName := "test_hash"
 	hashMap, err := api.NewMap(api.MapSpec{
@@ -63,6 +71,14 @@ func gadgetStart() int {
 		return 1
 	}
 
+	defer func() {
+		err = api.ReleaseHandle(innerMap)
+		if err != nil {
+			api.Errorf("releasing handle for map got with mapOfMap.Lookup(): %w", err)
+			ret = 1
+		}
+	}()
+
 	if uint32(innerMap) == 0 {
 		api.Errorf("expected handle to be different than 0")
 		return 1
@@ -85,7 +101,7 @@ func gadgetStart() int {
 		return 1
 	}
 
-	return 0
+	return
 }
 
 func main() {}

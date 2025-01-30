@@ -32,7 +32,7 @@ func gadgetInit() int {
 }
 
 //export gadgetStart
-func gadgetStart() int {
+func gadgetStart() (ret int) {
 	type map_test_struct struct {
 		a int32
 		b int32
@@ -51,6 +51,14 @@ func gadgetStart() int {
 		api.Errorf("%s map exists", mapName)
 		return 1
 	}
+
+	defer func() {
+		err = api.ReleaseHandle(m)
+		if err != nil {
+			api.Errorf("releasing handle for map got with GetMap(): %w", err)
+			ret = 1
+		}
+	}()
 
 	err = m.Put(key, expectedVal)
 	if err != nil {
@@ -176,8 +184,7 @@ func gadgetStart() int {
 		api.Errorf("map %s has one max entry, trying to put two", mapSpec.Name)
 		return 1
 	}
-
-	return 0
+	return
 }
 
 func main() {}

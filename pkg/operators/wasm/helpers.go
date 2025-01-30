@@ -93,3 +93,11 @@ func (i *wasmOperatorInstance) writeToGuestMemory(ctx context.Context, buf []byt
 
 	return uint64(len(buf))<<32 | uint64(res[0]), nil
 }
+
+func isDataArrayHandle(handle uint32) bool {
+	return handle&dataArrayHandleFlag != 0
+}
+
+func getIndexFromDataArrayHandle(dataHandle uint32) int {
+	return int(dataHandle &^ dataArrayHandleFlag >> 16)
+}

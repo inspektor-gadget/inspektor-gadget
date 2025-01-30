@@ -239,7 +239,7 @@ Return value:
 
 #### `dataArrayAppend(d uint32, data uint32)`
 
-Append data to the array.
+Append data to the array. As a side-effect, the data handle is released and it shouldn't be used after this call.
 
 Parameters:
 - `d` (u32): DataArray handle
@@ -275,7 +275,7 @@ Get the element at the given index.
 
 Parameters:
 - `d` (u32): DataArray handle
-- `index` (u32): Data index
+- `index` (u32): Data index. Max index is 32767
 
 Return value:
 - (u32): Data handle on success, 0 on error
@@ -392,6 +392,7 @@ Return value:
 #### `getMap(name string) uint32`
 
 Get a handle to an existing eBPF map.
+It is required to release the handle through `releaseHandle(uint32)`
 
 Parameters:
 - `name` (string): Map's name
@@ -444,6 +445,18 @@ The map handle is released and can no longer be used.
 
 Parameters:
 - `m` (u32): Map handle (as returned by `newMap()`)
+
+Return value:
+- 0 in case of success, 1 otherwise.
+
+### Handles
+
+#### `releaseHandle(h uint32) uint32`
+
+Releases the handle
+
+Parameters:
+- `h` (u32): handle
 
 Return value:
 - 0 in case of success, 1 otherwise.

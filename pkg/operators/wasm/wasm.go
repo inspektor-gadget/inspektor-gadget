@@ -45,6 +45,9 @@ const (
 	// Current version of this API. This is used to check that the wasm module
 	// uses the same version.
 	apiVersion = 1
+
+	// Indicates the handle encodes a member of a data array as index << 16 | arrayHandle
+	dataArrayHandleFlag = uint32(1 << 31)
 )
 
 type wasmOperator struct{}
@@ -222,6 +225,7 @@ func (i *wasmOperatorInstance) init(
 	i.addParamsFuncs(env)
 	i.addConfigFuncs(env)
 	i.addMapFuncs(env)
+	i.addHandleFuncs(env)
 	i.addSyscallsDeclarationsFuncs(env)
 	i.addPerfFuncs(env)
 

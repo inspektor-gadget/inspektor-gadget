@@ -394,6 +394,7 @@ func (i *wasmOperatorInstance) dataSourceEmitAndRelease(ctx context.Context, m w
 		stack[0] = 1
 		return
 	}
+	i.delHandle(packetHandle)
 	if err := ds.EmitAndRelease(packet); err != nil {
 		i.logger.Warnf("failed to emit and release packet: %v", err)
 		stack[0] = 1
@@ -422,6 +423,7 @@ func (i *wasmOperatorInstance) dataSourceRelease(ctx context.Context, m wapi.Mod
 		stack[0] = 1
 		return
 	}
+	i.delHandle(packetHandle)
 	ds.Release(packet)
 	stack[0] = 0
 }
@@ -482,7 +484,7 @@ func (i *wasmOperatorInstance) dataArrayNew(ctx context.Context, m wapi.Module, 
 	stack[0] = wapi.EncodeU32(i.addHandle(data))
 }
 
-// dataArrayAppend appends Data to the array
+// dataArrayAppend appends Data to the array. As a side-effect, the data handle is released and it shouldn't be used after this call.
 // Params:
 // - stack[0]: DataArray handle
 // - stack[1]: Data handle
@@ -506,6 +508,7 @@ func (i *wasmOperatorInstance) dataArrayAppend(ctx context.Context, m wapi.Modul
 	}
 
 	dataArray.Append(data)
+	i.delHandle(dataHandle)
 	stack[0] = 0
 }
 
@@ -530,7 +533,7 @@ func (i *wasmOperatorInstance) dataArrayRelease(ctx context.Context, m wapi.Modu
 		stack[0] = 1
 		return
 	}
-
+	i.delHandle(dataHandle)
 	dataArray.Release(data)
 	stack[0] = 0
 }
@@ -552,14 +555,15 @@ func (i *wasmOperatorInstance) dataArrayLen(ctx context.Context, m wapi.Module, 
 	stack[0] = wapi.EncodeI32(int32(dataArray.Len()))
 }
 
-// dataArrayGet returns the element at the given index
+// dataArrayGet returns the element at the given index.
 // Params:
 // - stack[0]: DataArray handle
-// - stack[1]: Data index
+// - stack[1]: Data index, maximum 32767
 // Return value:
 // - Data handle on success, 0 on error
 func (i *wasmOperatorInstance) dataArrayGet(ctx context.Context, m wapi.Module, stack []uint64) {
 	dataArrayHandle := wapi.DecodeU32(stack[0])
+	index := wapi.DecodeI32(stack[1])
 
 	dataArray, ok := getHandle[datasource.DataArray](i, dataArrayHandle)
 	if !ok {
@@ -567,6 +571,22 @@ func (i *wasmOperatorInstance) dataArrayGet(ctx context.Context, m wapi.Module, 
 		return
 	}
 
-	data := dataArray.Get(int(wapi.DecodeI32(stack[1])))
-	stack[0] = wapi.EncodeU32(i.addHandle(data))
+	if index < 0 || int(index) >= dataArray.Len() {
+		i.logger.Warnf("Index %d out of bounds for array with length %d", index, dataArray.Len())
+		stack[0] = 0
+		return
+	}
+
+	// We have 16 bits free in the upper 32 bits. The 32nd bit is indicating that this
+	// Datasourcehandle is multiplexing an index, So we have 15 bits left for the index itself.
+	// Index range from 0 to 2^15 - 1
+	const maxIndex = 32768 - 1
+	if index > maxIndex {
+		i.logger.Warnf("Index %d is too large. Max %d", index, maxIndex)
+		stack[0] = 0
+		return
+	}
+
+	handle := dataArrayHandleFlag | uint32(index)<<16 | dataArrayHandle
+	stack[0] = wapi.EncodeU32(handle)
 }
