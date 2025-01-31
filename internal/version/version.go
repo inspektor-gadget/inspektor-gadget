@@ -17,6 +17,8 @@
 package version
 
 import (
+	"fmt"
+	"runtime"
 	"github.com/blang/semver"
 )
 
@@ -32,4 +34,18 @@ func init() {
 
 func Version() semver.Version {
 	return parsedVersion
+}
+
+func GetMajorMinorVersion() (string, string) {
+    return fmt.Sprintf("%d", parsedVersion.Major), 
+           fmt.Sprintf("%d", parsedVersion.Minor)
+}
+
+func GetVersionDetails() map[string]string {
+    return map[string]string{
+        "gitVersion": version,
+        "goVersion": runtime.Version(),
+        "compiler":  runtime.Compiler,
+        "platform":  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+    }
 }
