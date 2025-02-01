@@ -45,6 +45,9 @@ var (
 	statsSock io.Closer
 	method    = MethodNone
 )
+var (
+    enableStatsFn = ebpf.EnableStats  // Makes testing easier
+)
 
 // EnableBPFStats enables collection of bpf program stats. It tries to use BPF_ENABLE_STATS first
 // (which requires Linux >= 5.8). If that fails, it will fall back to trying to
@@ -53,30 +56,30 @@ var (
 // it will keep track of the number of calls and only stop stat collection, when
 // DisableBPFStats() has been called the same number of times.
 func EnableBPFStats() error {
-	mutex.Lock()
-	defer mutex.Unlock()
+    mutex.Lock()
+    defer mutex.Unlock()
 
-	if refCnt != 0 {
-		return nil
-	}
+    if refCnt != 0 {
+        refCnt++  // Fix: Increment refcount on subsequent calls
+        return nil
+    }
 
-	// Actually enable
-	s, err := ebpf.EnableStats(unix.BPF_STATS_RUN_TIME)
-	if err != nil {
-		// Use fallback method
-		err = os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("1"), 0o644)
-		if err != nil {
-			return fmt.Errorf("enabling stat collection: %w", err)
-		}
-		method = MethodSysctl
-	} else {
-		statsSock = s
-		method = MethodBPFFunc
-	}
+    // Actually enable
+    s, err := enableStatsFn(unix.BPF_STATS_RUN_TIME)
+    if err != nil {
+        // Use fallback method
+        err = os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("1"), 0o644)
+        if err != nil {
+            return fmt.Errorf("enabling stat collection: %w", err)
+        }
+        method = MethodSysctl
+    } else {
+        statsSock = s
+        method = MethodBPFFunc
+    }
 
-	refCnt++
-
-	return nil
+    refCnt++
+    return nil
 }
 
 // DisableBPFStats disables collection of bpf program stats if no consumer
