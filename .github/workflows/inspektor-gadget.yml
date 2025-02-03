@@ -68,21 +68,18 @@ jobs:
         filters: |
           docs:
             - 'docs/**'
-    - name: Setup Hugo
+    - name: Setup Node
       if: steps.filter.outputs.docs == 'true'
-      uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f # v3.0.0
+      uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
       with:
-        hugo-version: '0.89.0'
-        extended: true
+        node-version: 18
     - name: Check website build
       if: steps.filter.outputs.docs == 'true'
       run: |
         cd "$RUNNER_TEMP"
         git clone https://github.com/inspektor-gadget/website/
         cd website
-        mkdir -p external-docs/
-        ln -s "$GITHUB_WORKSPACE" external-docs/inspektor-gadget.git_mainlatest
-        make
+        IG_DOCS=$GITHUB_WORKSPACE/inspektor-gadget/docs make docs && npm install && npm run build
 
   actionlint:
     name: Lint GitHub Actions workflows
