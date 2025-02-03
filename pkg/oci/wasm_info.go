@@ -73,16 +73,16 @@ func getWasmInfo(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 	}
 
 	if apiVersionFunc, ok := module.ExportedFunctions()["gadgetAPIVersion"]; ok {
-        if fn, ok := apiVersionFunc.GoFunction().(api.Function); ok {
-            results, err := fn.Call(ctx)
-            if err != nil {
-                return nil, fmt.Errorf("calling gadgetAPIVersion: %w", err)
-            }
-            if len(results) > 0 {
-                info.APIVersion = int(results[0])
-            }
-        }
-    }
+		if fn, ok := apiVersionFunc.GoFunction().(api.Function); ok {
+			results, err := fn.Call(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("calling gadgetAPIVersion: %w", err)
+			}
+			if len(results) > 0 {
+				info.APIVersion = int(results[0])
+			}
+		}
+	}
 
 	for _, imp := range module.ImportedFunctions() {
 		if strings.Contains(imp.Name(), "inspektor-gadget/wasmapi/go") {

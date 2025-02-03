@@ -83,16 +83,16 @@ func NewInspectCmd() *cobra.Command {
 					})
 
 					if image.WasmInfo != nil {
-                        cols.MustSetExtractor("wasmInfo", func(i *oci.GadgetImageDesc) any {
+						cols.MustSetExtractor("wasmInfo", func(i *oci.GadgetImageDesc) any {
 
 							if i.WasmInfo == nil {
 								return "Not a WASM gadget"
 							}
-							return fmt.Sprintf("API v%d, Upcalls: %s", 
+							return fmt.Sprintf("API v%d, Upcalls: %s",
 								i.WasmInfo.APIVersion,
 								strings.Join(i.WasmInfo.Upcalls, ", "))
 						})
-                    }
+					}
 				}
 
 				formatter := textcolumns.NewFormatter(cols.GetColumnMap(), textcolumns.WithShouldTruncate(isTerm))
