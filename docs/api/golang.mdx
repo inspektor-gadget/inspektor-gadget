@@ -59,7 +59,7 @@ Let's start with the minimal code required to run a Gadget. This example shows
 how to run the [`trace_open`]( ../gadgets/trace_open.mdx) gadget and print the
 events it captures to the terminal in json format.
 
-import SimpleTraceOpen from '!!raw-loader!./_gadgets/trace_open/main.go';
+import SimpleTraceOpen from '!!raw-loader!./_golang/trace_open/main.go';
 
 <CodeBlock language="go">{SimpleTraceOpen}</CodeBlock>
 
@@ -131,7 +131,7 @@ $ sudo ig image pull trace_open:latest
 $ sudo ig image export trace_open:latest trace_open.tar
 ```
 
-import FromFile from '!!raw-loader!./_gadgets/from_file/main.go';
+import FromFile from '!!raw-loader!./_golang/from_file/main.go';
 
 <CodeBlock language="go">{FromFile}</CodeBlock>
 
@@ -143,7 +143,7 @@ The example above required you to ship the tarball file together with your
 application binary. But you might want to ship the gadget embedded in your
 binary, so let's explore how that can be done by using `//go:embed`.
 
-import FromMemory from '!!raw-loader!./_gadgets/from_memory/main.go';
+import FromMemory from '!!raw-loader!./_golang/from_memory/main.go';
 
 <CodeBlock language="go">{FromMemory}</CodeBlock>
 
@@ -163,7 +163,7 @@ functionality of your application:
 Parameters for each operator are passed as a map of strings using the
 fully qualified name of the parameter as the key.
 
-import Operators from '!!raw-loader!./_gadgets/operators/main.go';
+import Operators from '!!raw-loader!./_golang/operators/main.go';
 
 <CodeBlock language="go">{Operators}</CodeBlock>
 
@@ -243,7 +243,7 @@ Gadget to json. However, if you're only interested in getting specific fields,
 it can be more performant to access them directly using a Field Accessor instead
 of performing a full json marshaling and unmarshaling.
 
-import Datasource from '!!raw-loader!./_gadgets/datasource/main.go';
+import Datasource from '!!raw-loader!./_golang/datasource/main.go';
 
 <CodeBlock language="go">{Datasource}</CodeBlock>
 
@@ -276,7 +276,7 @@ example shows how to control a remote `ig` instance by using the gRPC runtime.
 In this case, the Gadget image is pulled by the remote instance, hence the
 client doesn't need to contact the OCI registry directly.
 
-import GRPC from '!!raw-loader!./_gadgets/grpc/main.go';
+import GRPC from '!!raw-loader!./_golang/grpc/main.go';
 
 <CodeBlock language="go">{GRPC}</CodeBlock>
 
