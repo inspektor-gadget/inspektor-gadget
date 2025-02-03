@@ -2339,9 +2339,7 @@ jobs:
 
           # Build the packages
           for distro in apk deb rpm archlinux; do
-            package=$(nfpm package -p "$distro" | grep 'created package' | cut -d':' -f2)
-
-            mv "$package" ig_packages
+            nfpm package -p "$distro" -t ig_packages
           done
 
           rm -r archive_output
