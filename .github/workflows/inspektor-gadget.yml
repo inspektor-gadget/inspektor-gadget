@@ -2136,7 +2136,7 @@ jobs:
           gcloud container clusters create ${{ env.CLUSTER_NAME }} --project ${{ secrets.GKE_PROJECT }} \
             --region ${{ matrix.flavor.region }} --machine-type ${{ matrix.flavor.machine_type }} --num-nodes 1 --disk-size 50 $extra_args
       - name: Set GKE cluster ${{ env.CLUSTER_NAME }} context
-        uses: google-github-actions/get-gke-credentials@9025e8f90f2d8e0c3dafc3128cc705a26d992a6a # v2.3.0
+        uses: google-github-actions/get-gke-credentials@7a108e64ed8546fe38316b4086e91da13f4785e1 # v2.3.1
         with:
           cluster_name: ${{ env.CLUSTER_NAME }}
           location: ${{ matrix.flavor.region }}
