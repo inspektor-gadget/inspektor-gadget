@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
- 
+
 package columns
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ type mockMatcher struct {
 
 func (m mockMatcher) HasTag(tag string) bool {
 	for _, t := range m.tags {
-		if t == tag {
+		if strings.ToLower(t) == tag {
 			return true
 		}
 	}
@@ -43,13 +44,41 @@ func (m mockMatcher) HasNoTags() bool {
 	return len(m.tags) == 0
 }
 
+func TestCaseSensitivity(t *testing.T) {
+	filters := []ColumnFilter{
+		WithTag("Example"),
+		WithTags([]string{"Test", "EXAMPLE"}),
+		WithoutTag("IGNORE"),
+		WithoutTags([]string{"IGNORE", "AVOID"}),
+	}
+
+	testCases := []struct {
+		description string
+		matcher     ColumnMatcher
+		expected    []bool
+	}{
+		{"matching_lowercase", mockMatcher{tags: []string{"example", "test"}}, []bool{true, true, true, true}},
+		{"matching_uppercase", mockMatcher{tags: []string{"EXAMPLE", "TEST"}}, []bool{true, true, true, true}},
+		{"non_matching_mixed", mockMatcher{tags: []string{"examplE", "TesT"}}, []bool{true, true, true, true}},
+		{"contains_ignored_tag", mockMatcher{tags: []string{"ignore"}}, []bool{false, false, false, false}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			for i, filter := range filters {
+				require.Equal(t, tc.expected[i], filter(tc.matcher))
+			}
+		})
+	}
+}
+
 func TestOr(t *testing.T) {
 	t.Run("match_any", func(t *testing.T) {
 		filter := Or(
 			WithTag("a"),
 			WithTag("b"),
 		)
-		
+
 		testCases := []struct {
 			name     string
 			matcher  ColumnMatcher
