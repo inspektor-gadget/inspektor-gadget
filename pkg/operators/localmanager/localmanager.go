@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/containerd/containerd/pkg/cri/constants"
@@ -305,6 +306,12 @@ func (l *localManager) Instantiate(gadgetContext operators.GadgetContext, gadget
 	return traceInstance, nil
 }
 
+type containerSubscriptionInfo struct {
+	eventType string
+	cGroupID  uint64
+	mountNsID uint64
+}
+
 type localManagerTrace struct {
 	manager         *localManager
 	mountnsmap      *ebpf.Map
@@ -324,6 +331,10 @@ type localManagerTrace struct {
 	eventTypeField datasource.FieldAccessor
 	cgroupIDField  datasource.FieldAccessor
 	mountNsIDField datasource.FieldAccessor
+
+	running        bool
+	sync.Mutex     // needed for running and containerInfos
+	containerInfos []*containerSubscriptionInfo
 }
 
 func (l *localManagerTrace) Name() string {
@@ -331,21 +342,35 @@ func (l *localManagerTrace) Name() string {
 }
 
 func (l *localManagerTrace) emitContainersDatasourceEvent(eventType containercollection.EventType, container *containercollection.Container) error {
+	l.Lock()
+	if !l.running {
+		// add to buffer that is drained on Start()
+		l.containerInfos = append(l.containerInfos, &containerSubscriptionInfo{
+			eventType: eventType.String(),
+			cGroupID:  container.CgroupID,
+			mountNsID: container.Mntns,
+		})
+		l.Unlock()
+		return nil
+	}
+	l.Unlock()
+	return l._emitContainerDatasourceEvent(eventType.String(), container.CgroupID, container.Mntns)
+}
+
+func (l *localManagerTrace) _emitContainerDatasourceEvent(eventType string, cGroupID uint64, mountNsID uint64) error {
 	ev, err := l.containersDs.NewPacketSingle()
 	if err != nil {
 		return fmt.Errorf("creating new containers datasource packet: %w", err)
 	}
 
-	l.eventTypeField.PutString(ev, eventType.String())
-	l.cgroupIDField.PutUint64(ev, container.CgroupID)
-	l.mountNsIDField.PutUint64(ev, container.Mntns)
+	l.eventTypeField.PutString(ev, eventType)
+	l.cgroupIDField.PutUint64(ev, cGroupID)
+	l.mountNsIDField.PutUint64(ev, mountNsID)
 
 	err = l.containersDs.EmitAndRelease(ev)
 	if err != nil {
-		log.Errorf("%v", err)
 		return fmt.Errorf("emitting containers datasource event: %w", err)
 	}
-
 	return nil
 }
 
@@ -460,13 +485,23 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 		for _, container := range containers {
 			attachContainerFunc(container)
-
-			// TODO: Make this work.
-			err := l.emitContainersDatasourceEvent(containercollection.EventTypeAddContainer, container)
-			if err != nil {
-				return fmt.Errorf("emitting containers datasource event: %v", err)
-			}
 		}
+
+		l.Lock()
+		// need to cache oldContainerInfos here to make sure everything added already due to the subscription will
+		// be at the end of the buffer array
+		oldContainersInfos := l.containerInfos
+		l.containerInfos = make([]*containerSubscriptionInfo, 0, len(containers)+len(oldContainersInfos))
+		add := containercollection.EventTypeAddContainer
+		for _, container := range containers {
+			l.containerInfos = append(l.containerInfos, &containerSubscriptionInfo{
+				eventType: add.String(),
+				cGroupID:  container.CgroupID,
+				mountNsID: container.Mntns,
+			})
+		}
+		l.containerInfos = append(l.containerInfos, oldContainersInfos...)
+		l.Unlock()
 	}
 
 	return nil
@@ -536,26 +571,6 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 		return nil, err
 	}
 
-	containersDs, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "containers")
-	if err != nil {
-		return nil, fmt.Errorf("creating datasource: %w", err)
-	}
-
-	eventTypeField, err := containersDs.AddField("event_type", api.Kind_String)
-	if err != nil {
-		return nil, fmt.Errorf("adding field event_type: %w", err)
-	}
-
-	cgroupIDField, err := containersDs.AddField("cgroup_id", api.Kind_Uint64)
-	if err != nil {
-		return nil, fmt.Errorf("adding field cgroup_id: %w", err)
-	}
-
-	mountNsIDField, err := containersDs.AddField("mntns_id", api.Kind_Uint64)
-	if err != nil {
-		return nil, fmt.Errorf("adding field mntns_id: %w", err)
-	}
-
 	// Wrapper is used to have ParamDescs() with the new signature
 	traceInstance := &localManagerTraceWrapper{
 		localManagerTrace: localManagerTrace{
@@ -565,11 +580,6 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 			params:             params,
 			gadgetCtx:          gadgetCtx,
 			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
-
-			containersDs:   containersDs,
-			eventTypeField: eventTypeField,
-			cgroupIDField:  cgroupIDField,
-			mountNsIDField: mountNsIDField,
 		},
 	}
 
@@ -602,6 +612,32 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 	if !activate {
 		return nil, nil
 	}
+
+	// TODO: only add on request?
+	containersDs, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "containers")
+	if err != nil {
+		return nil, fmt.Errorf("creating datasource: %w", err)
+	}
+
+	eventTypeField, err := containersDs.AddField("event_type", api.Kind_String)
+	if err != nil {
+		return nil, fmt.Errorf("adding field event_type: %w", err)
+	}
+
+	cgroupIDField, err := containersDs.AddField("cgroup_id", api.Kind_Uint64)
+	if err != nil {
+		return nil, fmt.Errorf("adding field cgroup_id: %w", err)
+	}
+
+	mountNsIDField, err := containersDs.AddField("mntns_id", api.Kind_Uint64)
+	if err != nil {
+		return nil, fmt.Errorf("adding field mntns_id: %w", err)
+	}
+
+	traceInstance.localManagerTrace.containersDs = containersDs
+	traceInstance.localManagerTrace.eventTypeField = eventTypeField
+	traceInstance.localManagerTrace.cgroupIDField = cgroupIDField
+	traceInstance.localManagerTrace.mountNsIDField = mountNsIDField
 
 	return traceInstance, nil
 }
@@ -682,6 +718,22 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 }
 
 func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) error {
+	// Locking here makes sure the order of the event is correct, as it will stall the emit function above
+	// TODO: we might need to buffer containerInfos somehow, though
+	l.Lock()
+	defer l.Unlock()
+	l.running = true
+
+	// Burst container infos from buffer
+	var err error
+	for _, c := range l.containerInfos {
+		err = l._emitContainerDatasourceEvent(c.eventType, c.cGroupID, c.mountNsID)
+		if err != nil {
+			return fmt.Errorf("draining container cache: %w", err)
+		}
+	}
+	l.containerInfos = nil // free memory
+
 	return nil
 }
 
