@@ -16,6 +16,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -56,6 +57,11 @@ type traceDNSEvent struct {
 	RecursionAvailable bool   `json:"ra"`
 }
 
+const (
+	DefaultServerImage = "ghcr.io/inspektor-gadget/dnstester:latest"
+	DefaultClientImage = "docker.io/library/busybox:latest"
+)
+
 func TestTraceDNS(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
@@ -68,9 +74,16 @@ func TestTraceDNS(t *testing.T) {
 	require.NoError(t, err, "new container factory")
 	serverContainerName := "test-trace-dns-server"
 	clientContainerName := "test-trace-dns-client"
-	// TODO: this should be configurable
-	serverImage := "ghcr.io/inspektor-gadget/dnstester:latest"
-	clientImage := "docker.io/library/busybox:latest"
+
+	serverImage := os.Getenv("SERVER_IMAGE")
+	if serverImage == "" {
+		serverImage = DefaultServerImage
+	}
+
+	clientImage := os.Getenv("CLIENT_IMAGE")
+	if clientImage == "" {
+		clientImage = DefaultClientImage
+	}
 
 	// TODO: The current logic creates the namespace when running the pod, hence
 	// we need a namespace for each pod
