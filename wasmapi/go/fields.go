@@ -23,6 +23,9 @@ import (
 //go:wasmimport env fieldGet
 func fieldGet(field uint32, data uint32, kind uint32) uint64
 
+//go:wasmimport env fieldGetToBuffer
+func fieldGetToBuffer(field uint32, data uint32, kind uint32, dst uint64) uint32
+
 //go:wasmimport env fieldSet
 func fieldSet(field uint32, data uint32, kind uint32, value uint64) uint32
 
@@ -177,11 +180,18 @@ func (f Field) SetString(data Data, str string) error {
 	return nil
 }
 
+// Bytes get the bytes of a field of any type into a newly allocated slice.
 func (f Field) Bytes(data Data) ([]byte, error) {
 	buf := bufPtr(fieldGet(uint32(f), uint32(data), uint32(Kind_Bytes)))
 	ret := buf.bytes()
 	buf.free()
 	return ret, nil
+}
+
+// BytesToSlice get the bytes of a field of type string or []byte into an
+// existing slice. It returns the number of bytes copied.
+func (f Field) BytesToSlice(data Data, dst []byte) uint32 {
+	return fieldGetToBuffer(uint32(f), uint32(data), uint32(Kind_Bytes), uint64(bytesToBufPtr(dst)))
 }
 
 func (f Field) SetBytes(data Data, buf []byte) error {
