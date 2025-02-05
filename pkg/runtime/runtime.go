@@ -36,6 +36,7 @@ const (
 
 type GadgetContext interface {
 	ID() string
+	Name() string
 	Parser() parser.Parser
 	GadgetDesc() gadgets.GadgetDesc
 	Context() context.Context
