@@ -33,6 +33,7 @@ import (
 
 type GadgetContext interface {
 	ID() string
+	Name() string
 	Context() context.Context
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
