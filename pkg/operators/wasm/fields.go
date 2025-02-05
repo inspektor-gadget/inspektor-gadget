@@ -34,6 +34,16 @@ func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 		[]wapi.ValueType{wapi.ValueTypeI64}, // Value
 	)
 
+	exportFunction(env, "fieldGetToBuffer", i.fieldGetToBuffer,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // Accessor
+			wapi.ValueTypeI32, // Data
+			wapi.ValueTypeI32, // Kind
+			wapi.ValueTypeI64, // Dest buffer
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // N bytes
+	)
+
 	exportFunction(env, "fieldSet", i.fieldSet,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // Accessor
@@ -173,6 +183,73 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 
 	if err != nil {
 		i.logger.Warnf("fieldGet for field %q failed: %v", field.Name(), err)
+		stack[0] = 0
+		return
+	}
+
+	stack[0] = val
+}
+
+// fieldGetToBuffer returns the field's value.
+// Params:
+// - stack[0]: Field handle
+// - stack[1]: Data handle
+// - stack[2]: Kind
+// - stack[3]: Destination buffer
+// Return value:
+// - Uint32 the number of bytes copied
+func (i *wasmOperatorInstance) fieldGetToBuffer(ctx context.Context, m wapi.Module, stack []uint64) {
+	fieldHandle := wapi.DecodeU32(stack[0])
+	dataHandle := wapi.DecodeU32(stack[1])
+	fieldKind := api.Kind(wapi.DecodeU32(stack[2]))
+	fieldDst := stack[3]
+
+	field, ok := getHandle[datasource.FieldAccessor](i, fieldHandle)
+	if !ok {
+		stack[0] = 0
+		return
+	}
+	data, ok := i.getDataFromDatasourceHandle(dataHandle)
+	if !ok {
+		stack[0] = 0
+		return
+	}
+
+	handleBytes := func(buf []byte) uint64 {
+		if getLength(fieldDst) < uint32(len(buf)) {
+			i.logger.Warnf("fieldGet: writing %d bytes to guest memory buffer of %d bytes", len(buf), getLength(fieldDst))
+			return 0
+		}
+		if !i.mod.Memory().Write(getAddress(fieldDst), buf) {
+			i.logger.Warnf("fieldGet: writing bytes to guest memory: out of memory write")
+			return 0
+		}
+
+		return uint64(len(buf))
+	}
+
+	var val uint64
+	var err error
+
+	switch fieldKind {
+	case api.Kind_String:
+		str, err := field.String(data)
+		if err == nil {
+			val = handleBytes([]byte(str))
+		}
+	case api.Kind_Bytes:
+		bytes, err := field.Bytes(data)
+		if err == nil {
+			val = handleBytes(bytes)
+		}
+	default:
+		i.logger.Warnf("unknown field kind: %d", stack[2])
+		stack[0] = 0
+		return
+	}
+
+	if err != nil {
+		i.logger.Warnf("fieldGetToBuffer for field %q failed: %v", field.Name(), err)
 		stack[0] = 0
 		return
 	}
