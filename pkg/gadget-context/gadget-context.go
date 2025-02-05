@@ -47,6 +47,7 @@ type GadgetContext struct {
 	ctx                      context.Context
 	cancel                   context.CancelFunc
 	id                       string
+	name                     string
 	gadget                   gadgets.GadgetDesc
 	gadgetParams             *params.Params
 	args                     []string
@@ -135,6 +136,10 @@ func New(
 
 func (c *GadgetContext) ID() string {
 	return c.id
+}
+
+func (c *GadgetContext) Name() string {
+	return c.name
 }
 
 func (c *GadgetContext) Context() context.Context {
