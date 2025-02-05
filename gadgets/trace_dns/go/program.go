@@ -111,6 +111,8 @@ func (r RCode) String() string {
 	return fmt.Sprintf("%d", r)
 }
 
+var payload []byte
+
 //export gadgetInit
 func gadgetInit() int {
 	ds, err := api.GetDataSource("dns")
@@ -196,7 +198,7 @@ func gadgetInit() int {
 		api.Warnf("failed to add field: %s", err)
 		return 1
 	}
-	
+
 	TruncatedF, err := ds.AddField("tc", api.Kind_Bool)
 	if err != nil {
 		api.Warnf("failed to add field: %s", err)
@@ -214,6 +216,8 @@ func gadgetInit() int {
 		api.Warnf("failed to add field: %s", err)
 		return 1
 	}
+
+	payload = make([]byte, 65536) // UDP packets cannot be larger
 
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		// Get all fields sent by ebpf
@@ -233,14 +237,14 @@ func gadgetInit() int {
 			return
 		}
 
-		payload, err := dataF.Bytes(data)
-		if err != nil {
-			api.Warnf("failed to get data: %s", err)
+		n := dataF.BytesToSlice(data, payload)
+		if n == 0 {
+			api.Warnf("failed to get data")
 			return
 		}
 
 		msg := dnsmessage.Message{}
-		if err := msg.Unpack(payload[dnsOff:]); err != nil {
+		if err := msg.Unpack(payload[dnsOff:n]); err != nil {
 			api.Warnf("failed to unpack dns message: %s", err)
 			return
 		}
@@ -257,11 +261,11 @@ func gadgetInit() int {
 		}
 
 		TruncatedF.SetBool(data, msg.Header.Truncated)
-		
+
 		RecursionAvailableF.SetBool(data, msg.Header.RecursionAvailable)
-		
+
 		RecursionDesiredF.SetBool(data, msg.Header.RecursionDesired)
-		
+
 		if len(msg.Questions) > 0 {
 			question := msg.Questions[0]
 			qtypeRawF.SetUint16(data, uint16(question.Type))
