@@ -17,7 +17,10 @@
 
 #define ARGSIZE 256
 #define TOTAL_MAX_ARGS 20
+
+// Keep in sync with fullMaxArgsArr in program.go
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
+
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)

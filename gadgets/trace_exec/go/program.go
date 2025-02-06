@@ -20,6 +20,11 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
+// Keep in sync with FULL_MAX_ARGS_ARR in program.bpf.c
+const fullMaxArgsArr = 256 * 20
+
+var payload []byte
+
 //export gadgetInit
 func gadgetInit() int {
 	ds, err := api.GetDataSource("exec")
@@ -46,10 +51,20 @@ func gadgetInit() int {
 		return 1
 	}
 
+	payload = make([]byte, fullMaxArgsArr)
+
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		// Get all fields sent by ebpf
-		payload, _ := argsF.Bytes(data)
+		n := argsF.BytesToSlice(data, payload)
+		if n == 0 {
+			api.Warnf("failed to get args")
+			return
+		}
+
 		argsSize, _ := argsSize.Uint32(data)
+		if argsSize > n {
+			argsSize = n
+		}
 		argsCount, _ := argsCount.Int32(data)
 
 		args := []string{}
