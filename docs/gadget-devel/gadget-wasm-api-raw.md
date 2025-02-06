@@ -284,7 +284,7 @@ Return value:
 
 #### `fieldGet(u32 field, u32 data, u32 kind) u64`
 
-Get the value of a field.
+Get the value of a field into a newly allocated buffer.
 
 Parameters:
 - `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
@@ -304,6 +304,18 @@ Return value:
   reference implementation, you don't have to call free.
   - The function returns 0 in case of errors (ambiguous with scalar types like u32).
   TODO: Find a way to report errors!
+
+#### `fieldGetToBuffer(u32 field, u32 data, u32 kind, u64 dst) u32`
+
+Get the value of a field of type String or Bytes into an existing buffer.
+
+Parameters:
+- `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
+- `data` (u32): Data handle
+- `kind` (u32): Kind of access: How to read the field.
+
+Return value:
+- Value of the field: the number of bytes copied or 0 in case of errors.
 
 #### `fieldSet(u32 field, u32 data, u32 kind, u64 value)`
 
