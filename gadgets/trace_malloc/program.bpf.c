@@ -5,10 +5,12 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+#include <gadget/types.h>
 #include <gadget/buffer.h>
 #include <gadget/common.h>
 #include <gadget/filter.h>
 #include <gadget/macros.h>
+#include <gadget/user_stack_map.h>
 
 #define MAX_ENTRIES 10240
 
@@ -30,6 +32,8 @@ enum memop {
 struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
+
+	struct gadget_user_stack ustack_raw;
 
 	enum memop operation_raw;
 	__u64 addr;
@@ -71,6 +75,9 @@ int trace_sched_process_exit(void *ctx)
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(malloc, events, event);
 
+const volatile bool print_ustack = false;
+GADGET_PARAM(print_ustack);
+
 static __always_inline int gen_alloc_enter(size_t size)
 {
 	u32 tid;
@@ -111,6 +118,9 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->size = size;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
+	if (print_ustack)
+		gadget_get_user_stack(ctx, &event->ustack_raw);
+
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
@@ -133,6 +143,9 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 	event->addr = addr;
 	event->size = 0;
 	event->timestamp_raw = bpf_ktime_get_ns();
+
+	if (print_ustack)
+		gadget_get_user_stack(ctx, &event->ustack_raw);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
