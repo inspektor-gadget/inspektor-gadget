@@ -55,7 +55,7 @@ func (l *limiterOperator) InstanceParams() api.Params {
 			Title: "Max Entries",
 			Description: "The maximum number of entries for each batch of data. " +
 				"If using multiple array data sources, prefix the value with 'datasourcename:' and separate with ','. " +
-				"If no data source is specified, the value will be applied to all array data sources." +
+				"If no data source is specified, the value will be applied to all array data sources. " +
 				"Use -1 to disable the limiter.",
 			DefaultValue: "-1",
 			TypeHint:     api.TypeString,
@@ -64,66 +64,35 @@ func (l *limiterOperator) InstanceParams() api.Params {
 }
 
 func (l *limiterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	// When getting the GadgetInfo, InstantiateDataOperator is called with an
-	// empty instanceParamValues. In such cases, we don't need to validate the
-	// ParamMaxEntries parameter, but just return an instance if there is, at
-	// least, one array data source; otherwise return nil (disabling the
-	// operator).
-	maxEntries, ok := instanceParamValues[ParamMaxEntries]
-	if !ok {
-		for _, ds := range gadgetCtx.GetDataSources() {
-			if ds.Type() == datasource.TypeArray {
-				return &limiterOperatorInstance{}, nil
-			}
+	found := false
+	for _, ds := range gadgetCtx.GetDataSources() {
+		if ds.Type() == datasource.TypeArray {
+			found = true
+			break
 		}
+	}
+	if !found {
+		gadgetCtx.Logger().Debug("limiter: no array data sources found. Don't instantiate")
 		return nil, nil
 	}
 
-	// If ParamMaxEntries is set, it must be valid.
-	valuesPerDs, err := apihelpers.GetIntValuesPerDataSource(maxEntries)
+	maxEntries, ok := instanceParamValues[ParamMaxEntries]
+	if !ok {
+		return nil, fmt.Errorf("missing %s", ParamMaxEntries)
+	}
+
+	limitsPerDs, err := apihelpers.GetIntValuesPerDataSource(maxEntries)
 	if err != nil {
 		return nil, fmt.Errorf("parsing %s (%q): %w", ParamMaxEntries, maxEntries, err)
 	}
-	if len(valuesPerDs) == 0 {
-		return nil, fmt.Errorf("missing value for %s", ParamMaxEntries)
+	if len(limitsPerDs) == 0 {
+		return nil, fmt.Errorf("invalid value for %s: %s", ParamMaxEntries, maxEntries)
 	}
 
-	maxEntriesPerDs := make(map[datasource.DataSource]int)
-	for _, ds := range gadgetCtx.GetDataSources() {
-		var maxEntries int
-		if val, ok := valuesPerDs[""]; ok {
-			if ds.Type() != datasource.TypeArray {
-				continue
-			}
-			// Disable for all data sources
-			if val == -1 {
-				return nil, nil
-			}
-			maxEntries = val
-		} else if val, ok := valuesPerDs[ds.Name()]; ok {
-			if ds.Type() != datasource.TypeArray {
-				return nil, fmt.Errorf("%s can only be used on array data sources", ParamMaxEntries)
-			}
-			// Disable for this specific data source
-			if val == -1 {
-				continue
-			}
-			maxEntries = val
-		}
-
-		if maxEntries < -1 {
-			return nil, fmt.Errorf("invalid value for %s: %d", ParamMaxEntries, maxEntries)
-		}
-		maxEntriesPerDs[ds] = maxEntries
-	}
-
-	if len(maxEntriesPerDs) == 0 {
-		gadgetCtx.Logger().Infof("limiter: no array data sources need to be limited. Skipping operator")
-		return nil, nil
-	}
-
+	// Other operators could modify the data sources after this point (e.g., combiner),
+	// so subscribe in the pre-start phase where all them are already registered.
 	return &limiterOperatorInstance{
-		maxEntries: maxEntriesPerDs,
+		limitsPerDs: limitsPerDs,
 	}, nil
 }
 
@@ -132,7 +101,7 @@ func (l *limiterOperator) Priority() int {
 }
 
 type limiterOperatorInstance struct {
-	maxEntries map[datasource.DataSource]int
+	limitsPerDs map[string]int
 }
 
 func (l *limiterOperatorInstance) Name() string {
@@ -140,7 +109,35 @@ func (l *limiterOperatorInstance) Name() string {
 }
 
 func (l *limiterOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	for ds, maxEntries := range l.maxEntries {
+	if val, ok := l.limitsPerDs[""]; ok && val == -1 {
+		gadgetCtx.Logger().Debug("limiter: disabled for all data sources")
+		return nil
+	}
+
+	for _, ds := range gadgetCtx.GetDataSources() {
+		var maxEntries int
+		if val, ok := l.limitsPerDs[""]; ok {
+			if ds.Type() != datasource.TypeArray {
+				continue
+			}
+			maxEntries = val
+		} else if val, ok := l.limitsPerDs[ds.Name()]; ok {
+			if ds.Type() != datasource.TypeArray {
+				return fmt.Errorf("%s can only be used on array data sources", ParamMaxEntries)
+			}
+			if val == -1 {
+				gadgetCtx.Logger().Debugf("limiter: disabled for data source %q", ds.Name())
+				continue
+			}
+			maxEntries = val
+		}
+
+		if maxEntries < -1 {
+			return fmt.Errorf("invalid value of %s for data source %q: %d", ParamMaxEntries, ds.Name(), maxEntries)
+		}
+
+		gadgetCtx.Logger().Debugf("limiter: data source %q max-entries %d", ds.Name(), maxEntries)
+
 		ds.SubscribeArray(func(ds datasource.DataSource, data datasource.DataArray) error {
 			if data.Len() <= maxEntries {
 				return nil
