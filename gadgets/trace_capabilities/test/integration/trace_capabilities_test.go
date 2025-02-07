@@ -15,7 +15,9 @@
 package tests
 
 import (
+	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +45,7 @@ type traceCapabilitiesEvent struct {
 	Insetid       uint32 `json:"insetid"`
 	Syscall       string `json:"syscall"`
 	Kstack        string `json:"kstack"`
+	Ustack        string `json:"ustack"`
 	Capable       bool   `json:"capable"`
 }
 
@@ -53,7 +56,30 @@ func TestTraceCapabilities(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-capabilities"
-	containerImage := "docker.io/library/busybox:latest"
+	containerImage := "docker.io/library/gcc:latest"
+
+	execProgram := `
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+__attribute__((noinline)) void level3() {
+    chroot("/");
+}
+__attribute__((noinline)) void level2() {
+    level3();
+}
+__attribute__((noinline)) void level1() {
+    level2();
+}
+
+int main() {
+    level1();
+    sleep(4);
+    return 0;
+}
+`
+	progBase64 := base64.StdEncoding.EncodeToString([]byte(execProgram))
 
 	var ns string
 	containerOpts := []containers.ContainerOption{
@@ -65,9 +91,11 @@ func TestTraceCapabilities(t *testing.T) {
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
+	buildCmd := fmt.Sprintf("echo %s | base64 -d > chroot.c && gcc -Wall -static -o /bin/mychroot chroot.c", progBase64)
+	innerCmd := "while true; do /bin/mychroot ; nice -n -20 echo; sleep 0.1; done"
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do nice -n -20 echo; sleep 0.1; done",
+		fmt.Sprintf("%s ; %s", buildCmd, innerCmd),
 		containerOpts...,
 	)
 
@@ -80,11 +108,12 @@ func TestTraceCapabilities(t *testing.T) {
 	var testingOpts []igtesting.Option
 	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
 
+	ustackFlag := "--print-ustack=true"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime)))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), ustackFlag))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns)))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), ustackFlag))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
@@ -94,11 +123,29 @@ func TestTraceCapabilities(t *testing.T) {
 			expectedEntries := []*traceCapabilitiesEvent{
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					Proc:       utils.BuildProc("mychroot", 0, 0),
+					Cap:        "CAP_SYS_CHROOT",
+					Syscall:    "SYS_CHROOT",
+					Audit:      1,
+					Capable:    false,    // container runtime dependent. See normalize function.
+					Ustack:     "level2", // normalize() just checks for the presence of this string
+
+					// Check the existence of the following fields
+					Timestamp:     utils.NormalizedStr,
+					Kstack:        utils.NormalizedStr,
+					Insetid:       0,
+					CapEffective:  utils.NormalizedStr,
+					CurrentUserNs: 0,
+					TargetUserNs:  0,
+				},
+				{
+					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("nice", 0, 0),
 					Cap:        "CAP_SYS_NICE",
 					Syscall:    "SYS_SETPRIORITY",
 					Audit:      1,
 					Capable:    false,
+					Ustack:     "",
 
 					// Check the existence of the following fields
 					Timestamp:     utils.NormalizedStr,
@@ -116,6 +163,27 @@ func TestTraceCapabilities(t *testing.T) {
 				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.Kstack)
 				utils.NormalizeString(&e.CapEffective)
+
+				if e.Proc.Comm == "mychroot" {
+					if strings.Contains(e.Ustack, "level2") {
+						e.Ustack = "level2"
+					}
+
+					// The default capabilities vary between container runtimes:
+					// - cri-o:
+					//   https://github.com/cri-o/cri-o/blob/v1.32.1/install.md?plain=1#L538-L548
+					// - docker:
+					//   https://github.com/moby/moby/blob/v27.5.1/oci/caps/defaults.go#L17
+					// - containerd:
+					//   https://github.com/containerd/containerd/blob/v2.0.2/pkg/oci/spec.go#L131
+					//
+					// Docker and containerd gives CAP_SYS_CHROOT but not
+					// CRI-O. So we can't predict whether the workload will be
+					// able to chroot.
+					e.Capable = false
+				} else {
+					e.Ustack = ""
+				}
 
 				// Manually normalize fields that might contain 0
 				e.CurrentUserNs = 0
