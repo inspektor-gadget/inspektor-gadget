@@ -47,6 +47,7 @@ $ git push origin v0.x.0
 < Relevant changes >
 
 ### General Improvements
+### Security Improvements
 ### Bug Fixes
 ### Documentation Improvements
 ### Testing and Continue Integration
