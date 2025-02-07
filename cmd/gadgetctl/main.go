@@ -104,6 +104,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
+	rootCmd.AddCommand(common.NewRunMetaGadgetCommand(runtime))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

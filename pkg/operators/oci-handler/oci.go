@@ -46,6 +46,7 @@ const (
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
 	allowedGadgets          = "allowed-gadgets"
+	metadataParam           = "metadata"
 )
 
 type ociHandler struct {
@@ -146,6 +147,12 @@ func (o *ociHandler) InstanceParams() api.Params {
 				"  'datasource.field:annotation=value' to add an annotation to the field of a datasource\n",
 			TypeHint: api.TypeStringSlice,
 		},
+		{
+			Key:         metadataParam,
+			Title:       "metadata",
+			Description: "DON'T USE THIS! This is for internal use only",
+			TypeHint:    api.TypeString,
+		},
 	}
 }
 
@@ -201,7 +208,86 @@ func (o *OciHandlerInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.
 	return o.extraParams
 }
 
+func (o *OciHandlerInstance) initConfig(gadgetCtx operators.GadgetContext, metadata []byte) error {
+	log := gadgetCtx.Logger()
+
+	// Store metadata for serialization
+	gadgetCtx.SetMetadata(metadata)
+
+	viper := viper.New()
+	viper.SetConfigType("yaml")
+	err := viper.ReadConfig(bytes.NewReader(metadata))
+	if err != nil {
+		return fmt.Errorf("unmarshalling metadata: %w", err)
+	}
+
+	for _, ann := range o.ociParams.Get(annotate).AsStringSlice() {
+		if len(ann) == 0 {
+			continue
+		}
+		annInfo := strings.SplitN(ann, ":", 2)
+		if len(annInfo) != 2 {
+			return fmt.Errorf("invalid annotation %q", ann)
+		}
+
+		annotation := strings.SplitN(annInfo[1], "=", 2)
+		if len(annotation) != 2 {
+			return fmt.Errorf("invalid annotation %q", ann)
+		}
+
+		subject := strings.SplitN(annInfo[0], ".", 2)
+		switch len(subject) {
+		case 1:
+			// data source
+			tmpConfig := map[string]any{
+				"datasources": map[string]any{
+					annInfo[0]: map[string]any{
+						"annotations": map[string]any{
+							annotation[0]: annotation[1],
+						},
+					},
+				},
+			}
+			viper.Set("a", "b")
+			err = viper.MergeConfigMap(tmpConfig)
+			if err != nil {
+				return fmt.Errorf("adding annotation %q: %w", ann, err)
+			}
+			log.Debugf("ds annotation %q added", ann)
+		case 2:
+			// field
+			tmpConfig := map[string]any{
+				"datasources": map[string]any{
+					subject[0]: map[string]any{
+						"fields": map[string]any{
+							subject[1]: map[string]any{
+								"annotations": map[string]any{
+									annotation[0]: annotation[1],
+								},
+							},
+						},
+					},
+				},
+			}
+			err = viper.MergeConfigMap(tmpConfig)
+			if err != nil {
+				return fmt.Errorf("adding annotation %q: %w", ann, err)
+			}
+			log.Debugf("field annotation %q added", ann)
+		}
+	}
+
+	gadgetCtx.SetVar("config", viper)
+	return nil
+}
+
 func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
+	if metadataParam := o.ociParams.Get(metadataParam); metadataParam != nil {
+		if metadataParam.AsString() != "" {
+			return o.initConfig(gadgetCtx, []byte(metadataParam.AsString()))
+		}
+	}
+
 	if len(gadgetCtx.ImageName()) == 0 {
 		return fmt.Errorf("imageName empty")
 	}
@@ -272,73 +358,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 	r.Close()
 
-	// Store metadata for serialization
-	gadgetCtx.SetMetadata(metadata)
-
-	viper := viper.New()
-	viper.SetConfigType("yaml")
-	err = viper.ReadConfig(bytes.NewReader(metadata))
-	if err != nil {
-		return fmt.Errorf("unmarshalling metadata: %w", err)
+	if err := o.initConfig(gadgetCtx, metadata); err != nil {
+		return fmt.Errorf("initializing config: %w", err)
 	}
-
-	for _, ann := range o.ociParams.Get(annotate).AsStringSlice() {
-		if len(ann) == 0 {
-			continue
-		}
-		annInfo := strings.SplitN(ann, ":", 2)
-		if len(annInfo) != 2 {
-			return fmt.Errorf("invalid annotation %q", ann)
-		}
-
-		annotation := strings.SplitN(annInfo[1], "=", 2)
-		if len(annotation) != 2 {
-			return fmt.Errorf("invalid annotation %q", ann)
-		}
-
-		subject := strings.SplitN(annInfo[0], ".", 2)
-		switch len(subject) {
-		case 1:
-			// data source
-			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					annInfo[0]: map[string]any{
-						"annotations": map[string]any{
-							annotation[0]: annotation[1],
-						},
-					},
-				},
-			}
-			viper.Set("a", "b")
-			err = viper.MergeConfigMap(tmpConfig)
-			if err != nil {
-				return fmt.Errorf("adding annotation %q: %w", ann, err)
-			}
-			log.Debugf("ds annotation %q added", ann)
-		case 2:
-			// field
-			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					subject[0]: map[string]any{
-						"fields": map[string]any{
-							subject[1]: map[string]any{
-								"annotations": map[string]any{
-									annotation[0]: annotation[1],
-								},
-							},
-						},
-					},
-				},
-			}
-			err = viper.MergeConfigMap(tmpConfig)
-			if err != nil {
-				return fmt.Errorf("adding annotation %q: %w", ann, err)
-			}
-			log.Debugf("field annotation %q added", ann)
-		}
-	}
-
-	gadgetCtx.SetVar("config", viper)
 
 	for _, layer := range manifest.Layers {
 		log.Debugf("layer > %+v", layer)
