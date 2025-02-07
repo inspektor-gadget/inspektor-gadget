@@ -39,8 +39,8 @@ var graphs map[uint32]*digraph.DiGraph
 // The detectedCycles map stores the set of detected cycles for each PID.
 var detectedCycles map[uint32]map[string]struct{}
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	pidInfo = make(map[uint32]ProcInfo)
 	graphs = make(map[uint32]*digraph.DiGraph)
 	detectedCycles = make(map[uint32]map[string]struct{})

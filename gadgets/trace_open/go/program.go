@@ -65,8 +65,8 @@ func decodeFlags(flags int32) []string {
 	return flagsStr
 }
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	ds, err := api.GetDataSource("open")
 	if err != nil {
 		api.Errorf("failed to get datasource: %s", err)

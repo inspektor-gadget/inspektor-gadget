@@ -22,13 +22,13 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	return 0
 }
 
-//export gadgetStart
-func gadgetStart() int {
+//go:wasmexport gadgetStart
+func gadgetStart() int32 {
 	type event struct {
 		a      uint32
 		b      uint32

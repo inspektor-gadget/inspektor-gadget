@@ -182,8 +182,8 @@ func assertEqual[T uint64 | uint32 | int32](v1, v2 T, msg string) {
 	}
 }
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	// Disable GC to avoid it cleaning up the memory we're using
 	debug.SetGCPercent(-1)
 
@@ -336,8 +336,8 @@ func gadgetInit() int {
 	return 0
 }
 
-//export gadgetStart
-func gadgetStart() int {
+//go:wasmexport gadgetStart
+func gadgetStart() int32 {
 	type map_test_struct struct {
 		a int32
 		b int32

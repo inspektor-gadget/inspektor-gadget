@@ -21,20 +21,20 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	api.Info("init: hello from wasm")
 	return 0
 }
 
-//export gadgetStart
-func gadgetStart() int {
+//go:wasmexport gadgetStart
+func gadgetStart() int32 {
 	api.Info("start: hello from wasm")
 	return 0
 }
 
-//export gadgetStop
-func gadgetStop() int {
+//go:wasmexport gadgetStop
+func gadgetStop() int32 {
 	api.Info("stop: hello from wasm")
 	return 0
 }
@@ -98,8 +98,8 @@ by `***`) the user name part. This can be done by using a regular expression.
 Let's add it to the `gadgetInit` function like this:
 
 ```go
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	api.Info("init: hello from wasm")
 
 	// Get the "open" datasource (name used in the GADGET_TRACER macro)
@@ -175,8 +175,8 @@ add a field that contains a human readable representation of the event.
 The `gadgetInit` functions now looks like:
 
 ```go
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	api.Info("init: hello from wasm")
 
 	// Get the "open" datasource (name used in the GADGET_TRACER macro)
