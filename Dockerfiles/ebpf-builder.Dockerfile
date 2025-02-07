@@ -1,7 +1,7 @@
 ARG CLANG_LLVM_VERSION=18
 ARG BPFTOOL_VERSION=v7.3.0
 ARG LIBBPF_VERSION=v1.3.0
-ARG TINYGO_VERSION=0.34.0
+ARG TINYGO_VERSION=0.35.0
 
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
@@ -50,9 +50,9 @@ RUN \
 	ARCH=$(dpkg --print-architecture) && \
 	wget --quiet https://github.com/tinygo-org/tinygo/releases/download/v${TINYGO_VERSION}/tinygo_${TINYGO_VERSION}_${ARCH}.deb -O $DEB && \
 	if [ "${ARCH}" = 'amd64' ] ; then \
-		SHA='fdfa65973b7e17545ceef12a2b361f51989d7459eb8111833b197352915c2092abc540daa944b0fa07f99fad45917517ff285ad6e1e2e96cb622458d7c058934'; \
+		SHA='ca33e87d1716ba58890d6cd6e8dd33c685427724c53e64fc4237bcf3101747a35d5059718e88dce9095608585898a4a85d36206daf7e290af5bcf9c2a9230ab3'; \
 	elif [ "${ARCH}" = 'arm64' ] ; then \
-		SHA='1ef5653014eb44302b698205f93f9fe212a5c35fb88547e2756c167c858aac154b70c1ac01a69f9b65d085742dd8547df52ca91035c3ecd0f13b6e9d514509bc'; \
+		SHA='d6cebaf444bed7a1a8d39c04e58d2138418776b75b87110c02299baa1d59c2cb4c835f685c0829eead6fc4b89bffe1ede922db408755c30e57c460d31ed54491'; \
 	else \
 		echo "${ARCH} is not supported" 2>&1 ; \
 		exit 1; \

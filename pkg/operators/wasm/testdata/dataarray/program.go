@@ -16,8 +16,8 @@ package main
 
 import api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	ds, err := api.GetDataSource("myds")
 	if err != nil {
 		api.Warnf("failed to get datasource: %v", err)

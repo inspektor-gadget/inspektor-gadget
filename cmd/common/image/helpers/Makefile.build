@@ -25,8 +25,9 @@ wasm:
 	# No wasm file found. Nothing to do.
 else ifeq (go,$(patsubst %.go,go,$(WASM)))
 wasm: $(WASM)
+	# -buildmode=c-shared to build the wasm as a reactor module. See https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi
 	cd $(dir $(WASM)) && \
-	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasi --no-debug $(notdir $(WASM))
+	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasip1 --no-debug -buildmode=c-shared $(notdir $(WASM))
 else ifeq (wasm,$(patsubst %.wasm,wasm,$(WASM)))
 wasm:
 	# Wasm file already compiled. Nothing to do.

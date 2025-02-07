@@ -25,8 +25,8 @@ const (
 	openTreeSyscallID = uint16(428)
 )
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	syscallID := unknownSyscallID
 	syscallName, err := api.GetSyscallName(syscallID)
 	if err != nil {

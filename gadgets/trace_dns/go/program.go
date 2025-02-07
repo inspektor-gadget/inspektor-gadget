@@ -113,8 +113,8 @@ func (r RCode) String() string {
 
 var payload []byte
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	ds, err := api.GetDataSource("dns")
 	if err != nil {
 		api.Warnf("failed to get datasource: %s", err)

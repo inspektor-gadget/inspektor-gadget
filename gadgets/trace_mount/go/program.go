@@ -33,8 +33,8 @@ func getCallStr(op int32, source string, target string, fs string, flags string,
 	return ""
 }
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	ds, err := api.GetDataSource("mount")
 	if err != nil {
 		api.Warnf("failed to get datasource: %s", err)

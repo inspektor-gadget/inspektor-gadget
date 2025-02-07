@@ -14,7 +14,7 @@
 
 package api
 
-//export gadgetAPIVersion
+//go:wasmexport gadgetAPIVersion
 func gadgetAPIVersion() uint64 {
 	return 1
 }

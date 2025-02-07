@@ -22,8 +22,8 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	err := api.SetConfig("foo.bar.zas", "myvalue")
 	if err != nil {
 		api.Errorf("SetAnnotation failed: %v", err)

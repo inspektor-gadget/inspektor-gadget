@@ -244,13 +244,12 @@ func (i *wasmOperatorInstance) init(
 	}
 
 	wasmProgram, err := io.ReadAll(reader)
+	reader.Close()
 	if err != nil {
-		reader.Close()
 		return fmt.Errorf("reading wasm program: %w", err)
 	}
-	reader.Close()
 
-	config := wazero.NewModuleConfig()
+	config := wazero.NewModuleConfig().WithStartFunctions("_initialize")
 	mod, err := i.rt.InstantiateWithConfig(ctx, wasmProgram, config)
 	if err != nil {
 		return fmt.Errorf("instantiating wasm: %w", err)

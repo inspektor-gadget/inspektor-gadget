@@ -18,8 +18,8 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetInit
-func gadgetInit() int {
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
 	exists := api.KallsymsSymbolExists("abcde_this_symbol_does_not_exists")
 	if exists {
 		api.Errorf("KallsymsSymbolExists wrongly found symbol")
