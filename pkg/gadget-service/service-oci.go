@@ -136,9 +136,19 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		return fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetRunProtocol, ociRequest.Version)
 	}
 
+	// Create payload buffer
+	outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
+
 	// Create a new logger that logs to gRPC and falls back to the standard logger when it failed to send the message
 	logger := logger.NewFromGenericLogger(&Logger{
-		send:           runGadget.Send,
+		send: func(event *api.GadgetEvent) error {
+			select {
+			case outputBuffer <- event:
+			default:
+				return fmt.Errorf("output buffer full")
+			}
+			return nil
+		},
 		level:          logger.Level(ociRequest.LogLevel),
 		fallbackLogger: s.logger,
 	})
@@ -156,9 +166,6 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	svc := simple.New("svc",
 		simple.WithPriority(50000),
 		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-			// Create payload buffer
-			outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
-
 			log := gadgetCtx.Logger()
 
 			go func() {
