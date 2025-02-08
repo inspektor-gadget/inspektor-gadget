@@ -16,8 +16,10 @@ datasources:
           description: flags from fanotify_init
       fa_mask:
         annotations:
-          columns.hex: "true"
           description: Mask describing fanotify event (FAN_ACCESS, FAN_MODIFY, etc.)
+      fa_mask_raw:
+        annotations:
+          columns.hidden: "true"
       fa_pid:
         annotations:
           columns.hidden: "true"
@@ -54,8 +56,10 @@ datasources:
           description: inode of the directory containing the file accessed by inotify
       i_mask:
         annotations:
-          columns.hex: "true"
           description: Mask describing inotify event (IN_ACCESS, IN_MODIFY, etc.)
+      i_mask_raw:
+        annotations:
+          columns.hidden: "true"
       i_wd:
         annotations:
           columns.hidden: "true"

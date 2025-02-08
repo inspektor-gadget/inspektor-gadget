@@ -40,6 +40,58 @@ struct process {
 	char pcomm[TASK_COMM_LEN];
 };
 
+enum i_mask_set : u32 {
+	IN_ACCESS = 0x00000001,
+	IN_MODIFY = 0x00000002,
+	IN_ATTRIB = 0x00000004,
+	IN_CLOSE_WRITE = 0x00000008,
+	IN_CLOSE_NOWRITE = 0x00000010,
+	IN_OPEN = 0x00000020,
+	IN_MOVED_FROM = 0x00000040,
+	IN_MOVED_TO = 0x00000080,
+	IN_CREATE = 0x00000100,
+	IN_DELETE = 0x00000200,
+	IN_DELETE_SELF = 0x00000400,
+	IN_MOVE_SELF = 0x00000800,
+	IN_UNMOUNT = 0x00002000,
+	IN_Q_OVERFLOW = 0x00004000,
+	IN_IGNORED = 0x00008000,
+	IN_CLOSE = (IN_CLOSE_WRITE | IN_CLOSE_NOWRITE),
+	IN_MOVE = (IN_MOVED_FROM | IN_MOVED_TO),
+	IN_ONLYDIR = 0x01000000,
+	IN_DONT_FOLLOW = 0x02000000,
+	IN_EXCL_UNLINK = 0x04000000,
+	IN_MASK_CREATE = 0x10000000,
+	IN_MASK_ADD = 0x20000000,
+	IN_ISDIR = 0x40000000,
+	IN_ONESHOT = 0x80000000,
+
+};
+
+enum fa_mask_set : u32 {
+	FAN_ACCESS = 0x00000001,
+	FAN_MODIFY = 0x00000002,
+	FAN_ATTRIB = 0x00000004,
+	FAN_CLOSE_WRITE = 0x00000008,
+	FAN_CLOSE_NOWRITE = 0x00000010,
+	FAN_OPEN = 0x00000020,
+	FAN_MOVED_FROM = 0x00000040,
+	FAN_MOVED_TO = 0x00000080,
+	FAN_CREATE = 0x00000100,
+	FAN_DELETE = 0x00000200,
+	FAN_DELETE_SELF = 0x00000400,
+	FAN_MOVE_SELF = 0x00000800,
+	FAN_OPEN_EXEC = 0x00001000,
+	FAN_Q_OVERFLOW = 0x00004000,
+	FAN_FS_ERROR = 0x00008000,
+	FAN_OPEN_PERM = 0x00010000,
+	FAN_ACCESS_PERM = 0x00020000,
+	FAN_OPEN_EXEC_PERM = 0x00040000,
+	FAN_EVENT_ON_CHILD = 0x08000000,
+	FAN_RENAME = 0x10000000,
+	FAN_ONDIR = 0x40000000,
+};
+
 struct enriched_event {
 	enum type type;
 
@@ -150,9 +202,8 @@ struct gadget_event {
 	// https://github.com/torvalds/linux/blob/v6.6/include/uapi/linux/inotify.h#L29-L46
 	// https://github.com/torvalds/linux/blob/v6.6/include/uapi/linux/fanotify.h#L8-L33
 	//
-	// TODO: Print masks as string
-	__u32 fa_mask;
-	__u32 i_mask;
+	enum fa_mask_set fa_mask_raw;
+	enum i_mask_set i_mask_raw;
 
 	enum fanotify_event_type fa_type_raw;
 	__u32 fa_pid;
@@ -364,6 +415,7 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	struct fanotify_perm_event *fpe;
 	short unsigned int state;
 	__u32 fa_type;
+	__u32 fa_mask;
 	struct gadget_event *gadget_event;
 	struct enriched_event *ee;
 
@@ -413,7 +465,8 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	bpf_probe_read_kernel_str(gadget_event->name, PATH_MAX,
 				  get_path_str(&fpe->path));
 
-	gadget_event->fa_mask = BPF_CORE_READ(fae, mask);
+	fa_mask = BPF_CORE_READ(fae, mask);
+	gadget_event->fa_mask_raw = (enum fa_mask_set)fa_mask;
 	gadget_event->fa_pid = BPF_CORE_READ(fae, pid, numbers[0].nr);
 	gadget_event->fa_flags = BPF_CORE_READ(group, fanotify_data.flags);
 	gadget_event->fa_f_flags = BPF_CORE_READ(group, fanotify_data.f_flags);
@@ -529,13 +582,13 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 		gadget_event->prio = ee->prio;
 
 		gadget_event->fa_type_raw = ee->fa_type;
-		gadget_event->fa_mask = ee->fa_mask;
+		gadget_event->fa_mask_raw = (enum fa_mask_set)ee->fa_mask;
 		gadget_event->fa_pid = ee->fa_pid;
 		gadget_event->fa_flags = ee->fa_flags;
 		gadget_event->fa_f_flags = ee->fa_f_flags;
 
 		gadget_event->i_wd = ee->i_wd;
-		gadget_event->i_mask = ee->i_mask;
+		gadget_event->i_mask_raw = (enum i_mask_set)ee->i_mask;
 		gadget_event->i_cookie = ee->i_cookie;
 		gadget_event->i_ino = ee->i_ino;
 		gadget_event->i_ino_dir = ee->i_ino_dir;
