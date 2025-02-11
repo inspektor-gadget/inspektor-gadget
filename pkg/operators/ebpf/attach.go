@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@ package ebpfoperator
 import (
 	"fmt"
 	"net"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
@@ -32,6 +35,7 @@ const (
 	iterPrefix      = "iter/"
 	fentryPrefix    = "fentry/"
 	fexitPrefix     = "fexit/"
+	perfEventPrefix = "perf_event/"
 	tpBtfPrefix     = "tp_btf/"
 	uprobePrefix    = "uprobe/"
 	uretprobePrefix = "uretprobe/"
@@ -145,6 +149,91 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return link.AttachLSM(link.LSMOptions{
 			Program: prog,
 		})
+	case ebpf.PerfEvent:
+		perfType := uint32(unix.PERF_TYPE_SOFTWARE)
+		perfConfig := uint64(unix.PERF_COUNT_SW_CPU_CLOCK)
+		perfSampleType := uint64(unix.PERF_SAMPLE_RAW)
+		frequency := uint64(0)
+		name, ok := strings.CutPrefix(p.SectionName, perfEventPrefix)
+		// allow overriding parameters; TODO: discuss and add more? there's A LOT of options to cover
+		if ok {
+			if tmp := i.config.GetString("programs." + name + ".perf.type"); tmp != "" {
+				switch tmp {
+				case "software":
+					perfType = unix.PERF_TYPE_SOFTWARE
+				default:
+					// Try to get raw value // TODO: should we support it in this way as well?
+					val, err := strconv.ParseUint(tmp, 10, 32)
+					if err != nil {
+						return nil, fmt.Errorf("unknown perf type %q for program %q", tmp, name)
+					}
+					perfType = uint32(val)
+				}
+			}
+			if tmp := i.config.GetString("programs." + name + ".perf.config"); tmp != "" {
+				switch tmp {
+				case "count_sw_cpu_clock":
+					perfConfig = unix.PERF_COUNT_SW_CPU_CLOCK
+				default:
+					// Try to get raw value // TODO: should we support it in this way as well?
+					val, err := strconv.ParseUint(tmp, 10, 64)
+					if err != nil {
+						return nil, fmt.Errorf("unknown perf config %q for program %q", tmp, name)
+					}
+					perfConfig = val
+				}
+			}
+			if tmp := i.config.GetString("programs." + name + ".perf.sampleType"); tmp != "" {
+				switch tmp {
+				case "sample_raw":
+					perfSampleType = unix.PERF_SAMPLE_RAW
+				default:
+					// Try to get raw value // TODO: should we support it in this way as well?
+					val, err := strconv.ParseUint(tmp, 10, 64)
+					if err != nil {
+						return nil, fmt.Errorf("unknown perf config %q for program %q", tmp, name)
+					}
+					perfSampleType = val
+				}
+			}
+			if tmpFrequency := i.config.GetString("programs." + name + ".sampler.frequency"); tmpFrequency != "" {
+				var err error
+				frequency, err = strconv.ParseUint(tmpFrequency, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("parsing frequency %q for program %q: %w", tmpFrequency, name, err)
+				}
+			}
+		}
+		for cpu := 0; cpu < runtime.NumCPU(); cpu++ {
+			fd, err := unix.PerfEventOpen(
+				&unix.PerfEventAttr{
+					Type:        perfType,
+					Config:      perfConfig,
+					Sample_type: perfSampleType,
+					Sample:      frequency,
+					Bits:        1 << 10,
+				},
+				-1,
+				cpu,
+				-1,
+				unix.PERF_FLAG_FD_CLOEXEC,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("opening perf event: %w", err)
+			}
+			i.perfFds = append(i.perfFds, fd)
+
+			// Attach program to perf event.
+			if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_SET_BPF, prog.FD()); err != nil {
+				return nil, fmt.Errorf("attaching eBPF program to perf fd: %w", err)
+			}
+
+			// Start perf event.
+			if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
+				return nil, fmt.Errorf("enabling perf fd: %w", err)
+			}
+		}
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
