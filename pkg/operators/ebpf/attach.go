@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@ package ebpfoperator
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
@@ -145,6 +147,37 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return link.AttachLSM(link.LSMOptions{
 			Program: prog,
 		})
+	case ebpf.PerfEvent:
+		for cpu := 0; cpu < runtime.NumCPU(); cpu++ {
+			fd, err := unix.PerfEventOpen(
+				&unix.PerfEventAttr{
+					Type:        unix.PERF_TYPE_SOFTWARE,
+					Config:      unix.PERF_COUNT_SW_CPU_CLOCK,
+					Sample_type: unix.PERF_SAMPLE_RAW,
+					Sample:      49,
+					Bits:        1 << 10,
+				},
+				-1,
+				cpu,
+				-1,
+				unix.PERF_FLAG_FD_CLOEXEC,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("opening perf event: %w", err)
+			}
+			i.perfFds = append(i.perfFds, fd)
+
+			// Attach program to perf event.
+			if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_SET_BPF, prog.FD()); err != nil {
+				return nil, fmt.Errorf("attaching eBPF program to perf fd: %w", err)
+			}
+
+			// Start perf event.
+			if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
+				return nil, fmt.Errorf("enabling perf fd: %w", err)
+			}
+		}
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
