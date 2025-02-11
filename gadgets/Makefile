@@ -26,6 +26,7 @@ GADGETS = \
 	fdpass \
 	fsnotify \
 	profile_blockio \
+	profile_cpu \
 	profile_qdisc_latency \
 	profile_tcprtt \
 	trace_bind \
