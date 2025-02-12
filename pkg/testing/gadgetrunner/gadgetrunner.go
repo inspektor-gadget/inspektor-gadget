@@ -172,14 +172,14 @@ func (g *GadgetRunner[T]) RunGadget() {
 	}
 	g.DataOperator = append(g.DataOperator, simple.New("gadget", gadgetOperatorOpts...))
 
-	dataOperatorOps := []gadgetcontext.Option{
+	gadgetContextOps := []gadgetcontext.Option{
 		gadgetcontext.WithDataOperators(g.DataOperator...),
 	}
 	if g.timeout != 0 {
-		dataOperatorOps = append(dataOperatorOps, gadgetcontext.WithTimeout(g.timeout))
+		gadgetContextOps = append(gadgetContextOps, gadgetcontext.WithTimeout(g.timeout))
 	}
 
-	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, dataOperatorOps...)
+	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, gadgetContextOps...)
 	runtime := local.New()
 	err := runtime.Init(nil)
 	require.NoError(g.testCtx, err, "runtime initialization error")
