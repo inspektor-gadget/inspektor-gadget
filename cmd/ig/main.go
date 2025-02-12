@@ -46,6 +46,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/env"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/eventgenerator"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"

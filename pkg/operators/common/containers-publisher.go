@@ -36,6 +36,7 @@ type ContainersPublisher struct {
 	mountNsIDField            datasource.FieldAccessor
 	nameField                 datasource.FieldAccessor
 	containerConfigField      datasource.FieldAccessor
+	pidField                  datasource.FieldAccessor
 	containersSubscriptionKey string
 }
 
@@ -79,6 +80,11 @@ func NewContainersPublisher(gadgetCtx operators.GadgetContext, collection *conta
 		return nil, fmt.Errorf("adding field container_config: %w", err)
 	}
 
+	publisher.pidField, err = publisher.containersDs.AddField("pid", api.Kind_Uint32)
+	if err != nil {
+		return nil, fmt.Errorf("adding field pid: %w", err)
+	}
+
 	publisher.collection = collection
 
 	return publisher, nil
@@ -101,6 +107,7 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 	}
 
 	publisher.containerConfigField.PutString(ev, container.OciConfig)
+	publisher.pidField.PutUint32(ev, container.ContainerPid())
 
 	err = publisher.containersDs.EmitAndRelease(ev)
 	if err != nil {
