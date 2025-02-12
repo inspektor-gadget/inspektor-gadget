@@ -33,6 +33,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
@@ -177,6 +178,12 @@ func (g *GadgetRunner[T]) RunGadget() {
 	}
 	if g.timeout != 0 {
 		gadgetContextOps = append(gadgetContextOps, gadgetcontext.WithTimeout(g.timeout))
+	}
+
+	if strings.ToLower(os.Getenv("IG_DEBUG_LOGS")) == "true" {
+		l := logger.DefaultLogger()
+		l.SetLevel(logger.DebugLevel)
+		gadgetContextOps = append(gadgetContextOps, gadgetcontext.WithLogger(l))
 	}
 
 	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, gadgetContextOps...)
