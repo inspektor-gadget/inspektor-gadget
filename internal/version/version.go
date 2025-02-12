@@ -33,3 +33,7 @@ func init() {
 func Version() semver.Version {
 	return parsedVersion
 }
+
+func VersionString() string {
+	return version
+}
