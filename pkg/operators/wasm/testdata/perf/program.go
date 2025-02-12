@@ -15,8 +15,6 @@
 package main
 
 import (
-	"errors"
-	"os"
 	"unsafe"
 
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
@@ -62,19 +60,12 @@ func gadgetStart() int32 {
 		return 1
 	}
 
-	maxRetries := 3
-	var buf []byte
-	for i := 0; i <= maxRetries; i++ {
-		buf, err = perfReader.Read()
-		// if met epoll wait i/o timeout, retry
-		if !errors.Is(err, os.ErrDeadlineExceeded) {
-			break
-		}
-	}
+	buf, err := perfReader.Read()
 	if err != nil {
 		api.Errorf("reading perf record")
 		return 1
 	}
+
 	if buf == nil {
 		api.Errorf("buffer should not be nil")
 		return 1
