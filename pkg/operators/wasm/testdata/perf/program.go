@@ -54,6 +54,11 @@ func gadgetStart() int32 {
 		return 1
 	}
 
+	for range 10 {
+		// Let's generate some events by calling indirectly the write() syscall.
+		api.Infof("testing perf array")
+	}
+
 	err = perfReader.Pause()
 	if err != nil {
 		api.Errorf("pausing perf reader")

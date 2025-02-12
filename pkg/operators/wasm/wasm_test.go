@@ -17,7 +17,6 @@ package wasm_test
 import (
 	"context"
 	"fmt"
-	"syscall"
 	"testing"
 	"time"
 
@@ -638,26 +637,10 @@ func TestPerf(t *testing.T) {
 	require.NoError(t, err, "runtime init")
 	t.Cleanup(func() { runtime.Close() })
 
-	stop := make(chan bool)
-	go func() {
-		for {
-			select {
-			case <-stop:
-				return
-			default:
-				// Generate events to fill the perf buffer.
-				fd, err := syscall.Creat("/tmp/test-perf-array", 0)
-				require.NoError(t, err, "opening file to generate gadget events")
-				syscall.Close(fd)
-			}
-		}
-	}()
-
 	params := map[string]string{
 		"operator.oci.verify-image": "false",
 	}
 	err = runtime.RunGadget(gadgetCtx, nil, params)
-	stop <- true
 	require.NoError(t, err, "running gadget")
 }
 
