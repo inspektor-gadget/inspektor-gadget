@@ -21,14 +21,18 @@ import (
 	"io"
 	"strings"
 
+	"github.com/blang/semver"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -46,6 +50,10 @@ const (
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
 	allowedGadgets          = "allowed-gadgets"
+)
+
+const (
+	builderVersionAnnotation = "io.inspektor-gadget.builder.version"
 )
 
 type ociHandler struct {
@@ -201,6 +209,32 @@ func (o *OciHandlerInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.
 	return o.extraParams
 }
 
+func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
+	currentVersion := version.Version()
+
+	// Do not print any warning if this is a prerelease to avoid annoying developers
+	if len(currentVersion.Pre) > 0 {
+		return
+	}
+
+	builderVersionAnn := manifest.Annotations[builderVersionAnnotation]
+	if builderVersionAnn == "" {
+		logger.Warnf("Builder version not found in the gadget image. Gadget could be incompatible")
+		return
+	}
+
+	builderVersion, err := semver.ParseTolerant(builderVersionAnn)
+	if err != nil {
+		logger.Warnf("parsing builder version: %s", err)
+		return
+	}
+
+	if !builderVersion.EQ(currentVersion) {
+		logger.Warnf("This gadget was built with ig %s and it's being run with v%s. Gadget could be incompatible",
+			builderVersionAnn, currentVersion)
+	}
+}
+
 func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	if len(gadgetCtx.ImageName()) == 0 {
 		return fmt.Errorf("imageName empty")
@@ -260,6 +294,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 
 	log := gadgetCtx.Logger()
+	checkBuilderVersion(manifest, log)
 
 	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, manifest.Config)
 	if err != nil {
