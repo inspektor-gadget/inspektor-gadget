@@ -112,7 +112,7 @@ var (
 	dsSubcriptions    = map[uint64]subscription{}
 )
 
-//export dataSourceCallback
+//go:wasmexport dataSourceCallback
 func dataSourceCallback(cbID uint64, ds uint32, data uint32) {
 	sub, ok := dsSubcriptions[cbID]
 	if !ok {

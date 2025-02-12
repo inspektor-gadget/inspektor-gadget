@@ -18,8 +18,8 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetPreStart
-func gadgetPreStart() int {
+//go:wasmexport gadgetPreStart
+func gadgetPreStart() int32 {
 	// Linux 5.16 renamed fsnotify_add_event to fsnotify_insert_event
 	// https://github.com/torvalds/linux/commit/1ad03c3a326a86e259389592117252c851873395
 	if api.KallsymsSymbolExists("fsnotify_insert_event") {

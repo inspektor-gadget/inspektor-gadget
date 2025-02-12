@@ -18,8 +18,8 @@ import (
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-//export gadgetStart
-func gadgetStart() (ret int) {
+//go:wasmexport gadgetStart
+func gadgetStart() (ret int32) {
 	type map_test_struct struct {
 		a int32
 		b int32
