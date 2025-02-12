@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -34,7 +36,12 @@ type VersionInfo struct {
 
 // Version contains detailed version information
 type Version struct {
-	Version string `json:"version"`
+    Major         string `json:"major"`
+    Minor         string `json:"minor"`
+    GitVersion    string `json:"gitVersion"`
+    GoVersion     string `json:"goVersion"`
+    Compiler      string `json:"compiler"`
+    Platform      string `json:"platform"`
 }
 
 var outputFormat string
@@ -50,11 +57,19 @@ var versionCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Initialize version info structure
+		major, minor := version.GetMajorMinorVersion()
+        versionDetails := version.GetVersionDetails()
+
 		versionInfo := &VersionInfo{
-			ClientVersion: &Version{
-				Version: version.Version().String(),
-			},
-		}
+            ClientVersion: &Version{
+                Major:      major,
+                Minor:      minor,
+                GitVersion: fmt.Sprintf("v%s", strings.TrimPrefix(versionDetails["gitVersion"], "v")),
+                GoVersion:  versionDetails["goVersion"],
+                Compiler:   versionDetails["compiler"],
+                Platform:   versionDetails["platform"],
+            },
+        }
 
 		// Get server version information
 		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
@@ -66,12 +81,27 @@ var versionCmd = &cobra.Command{
 			// Exactly one running gadget instance found, use it
 			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
 			info, err := grpcRuntime.InitDeployInfo()
+
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
 			} else {
-				versionInfo.ServerVersion = &Version{
-					Version: info.ServerVersion,
-				}
+				serverVersionStr := strings.TrimPrefix(info.ServerVersion, "v")
+                versionParts := strings.Split(serverVersionStr, ".")
+                serverMajor := "0"
+                serverMinor := "0"
+                if len(versionParts) >= 2 {
+                    serverMajor = versionParts[0]
+                    serverMinor = versionParts[1]
+                }
+
+                versionInfo.ServerVersion = &Version{
+                    Major:      serverMajor,
+                    Minor:      serverMinor,
+                    GitVersion: fmt.Sprintf("v%s", serverVersionStr),
+                    GoVersion:  runtime.Version(),
+                    Compiler:   runtime.Compiler,
+                    Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+                }
 			}
 		} else if len(gadgetNamespaces) > 1 {
 			fmt.Fprintf(os.Stderr, "Error: multiple Inspektor Gadget instances found in namespaces: %s\n", gadgetNamespaces)
@@ -86,9 +116,9 @@ var versionCmd = &cobra.Command{
 			}
 			fmt.Println(string(output))
 		case "":
-			fmt.Printf("Client version: v%s\n", versionInfo.ClientVersion.Version)
-			if versionInfo.ServerVersion != nil && versionInfo.ServerVersion.Version != "" {
-				fmt.Printf("Server version: v%s\n", versionInfo.ServerVersion.Version)
+			fmt.Printf("Client version: %s\n", versionInfo.ClientVersion.GitVersion)
+			if versionInfo.ServerVersion != nil && versionInfo.ServerVersion.GitVersion != "" {
+				fmt.Printf("Server version: %s\n", versionInfo.ServerVersion.GitVersion)
 			} else {
 				fmt.Println("Server version: not available")
 			}
