@@ -14,7 +14,8 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-static __always_inline int trace_enter(struct syscall_trace_enter *ctx)
+SEC("tracepoint/syscalls/sys_enter_write")
+int test_write_e(struct syscall_trace_enter *ctx)
 {
 	struct event event = { .a = 42, .b = 42, .c = 43 };
 
@@ -22,20 +23,6 @@ static __always_inline int trace_enter(struct syscall_trace_enter *ctx)
 			      sizeof(event));
 
 	return 0;
-}
-
-#ifndef __TARGET_ARCH_arm64
-SEC("tracepoint/syscalls/sys_enter_open")
-int test_open_e(struct syscall_trace_enter *ctx)
-{
-	return trace_enter(ctx);
-}
-#endif /* !__TARGET_ARCH_arm64 */
-
-SEC("tracepoint/syscalls/sys_enter_openat")
-int test_openat_e(struct syscall_trace_enter *ctx)
-{
-	return trace_enter(ctx);
 }
 
 char LICENSE[] SEC("license") = "GPL";
