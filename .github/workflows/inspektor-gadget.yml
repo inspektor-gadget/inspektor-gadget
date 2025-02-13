@@ -1131,6 +1131,8 @@ jobs:
         done
 
   test-unit:
+    needs:
+      - build-ig
     name: Unit tests
     # level: 0
     runs-on: ubuntu-latest
@@ -1142,6 +1144,15 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
+    - name: Get ig-linux-amd64.tar.gz from artifact
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      with:
+        name: ig-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/
+    - name: Unpack ig-linux-amd64.tar.gz
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+        sudo mv ig /usr/local/bin/ig
     - name: Unit tests
       run: |
         sudo make test
