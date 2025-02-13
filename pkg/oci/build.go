@@ -33,6 +33,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
@@ -48,6 +49,10 @@ const (
 	wasmObjectMediaType = "application/vnd.gadget.wasm.program.v1+binary"
 	btfgenMediaType     = "application/vnd.gadget.btfgen.v1+binary"
 	metadataMediaType   = "application/vnd.gadget.config.v1+yaml"
+)
+
+const (
+	builderVersionAnnotation = "io.inspektor-gadget.builder.version"
 )
 
 type ObjectPath struct {
@@ -181,6 +186,7 @@ func annotationsFromMetadata(metadataBytes []byte) (map[string]string, error) {
 		ocispec.AnnotationURL:           metadata.HomepageURL,
 		ocispec.AnnotationDocumentation: metadata.DocumentationURL,
 		ocispec.AnnotationSource:        metadata.SourceURL,
+		builderVersionAnnotation:        version.VersionString(),
 	}
 
 	for k, v := range metadata.Annotations {
