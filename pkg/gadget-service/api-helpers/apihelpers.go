@@ -71,6 +71,16 @@ func ToParamDescs(p api.Params) params.ParamDescs {
 	return res
 }
 
+// NormalizeWithDefaults sets the default value for parameters that are not set
+func NormalizeWithDefaults(p api.Params, v api.ParamValues) error {
+	for _, param := range p {
+		if _, ok := v[param.Key]; !ok {
+			v[param.Key] = param.DefaultValue
+		}
+	}
+	return nil
+}
+
 func Validate(p api.Params, v api.ParamValues) error {
 	for _, param := range p {
 		if v[param.Key] == "" {

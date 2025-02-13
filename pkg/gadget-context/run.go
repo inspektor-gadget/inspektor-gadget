@@ -49,7 +49,13 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
-		err := apihelpers.Validate(globalParams, opParamValues)
+		// Ensure all params are present
+		err := apihelpers.NormalizeWithDefaults(instanceParams, opParamValues)
+		if err != nil {
+			return nil, fmt.Errorf("normalizing instance params for operator %q: %w", op.Name(), err)
+		}
+
+		err = apihelpers.Validate(globalParams, opParamValues)
 		if err != nil {
 			return nil, fmt.Errorf("validating global params for operator %q: %w", op.Name(), err)
 		}
