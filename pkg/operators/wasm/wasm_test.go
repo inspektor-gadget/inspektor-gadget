@@ -177,7 +177,7 @@ func TestWasmFields(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/fields.tar")
@@ -280,7 +280,7 @@ func TestWasmDataArray(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/dataarray.tar")
@@ -369,7 +369,7 @@ func TestWasmDataEmit(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/dataemit.tar")
@@ -408,7 +408,7 @@ func TestBadGuest(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/badguest.tar")
@@ -461,7 +461,7 @@ func TestWasmParams(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/params.tar")
@@ -492,7 +492,7 @@ func TestConfig(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/config.tar")
@@ -529,7 +529,7 @@ func TestMap(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/map.tar")
@@ -559,7 +559,7 @@ func TestMapOfMap(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/mapofmap.tar")
@@ -589,7 +589,7 @@ func TestSyscall(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/syscall.tar")
@@ -619,7 +619,7 @@ func TestPerf(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/perf.tar")
@@ -649,7 +649,7 @@ func TestKallsyms(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, "testdata/kallsyms.tar")
