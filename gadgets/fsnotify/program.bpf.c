@@ -12,6 +12,7 @@
 #include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
+#include <gadget/core_fixes.bpf.h>
 
 #define PATH_MAX 4096
 #define TASK_COMM_LEN 16
@@ -238,6 +239,39 @@ static __always_inline void process_init(struct process *p, __u64 pid_tgid,
 	}
 }
 
+// Linux < v6.10
+struct fsnotify_group___with_prio_int {
+	unsigned int priority;
+};
+
+// Linux >= 6.10
+// https://github.com/torvalds/linux/commit/477cf917dd02853ba78a73cdeb6548889e5f8cd7
+enum fsnotify_group_prio___new {
+	FSNOTIFY_PRIO_NORMAL = 0, /* normal notifiers, no permissions */
+	FSNOTIFY_PRIO_CONTENT, /* fanotify permission events */
+	FSNOTIFY_PRIO_PRE_CONTENT, /* fanotify pre-content events */
+	__FSNOTIFY_PRIO_NUM
+};
+struct fsnotify_group___with_prio_enum {
+	enum fsnotify_group_prio___new priority;
+};
+
+static __always_inline __u32 get_priority(struct fsnotify_group *group)
+{
+	if (bpf_core_type_matches(struct fsnotify_group___with_prio_int)) {
+		struct fsnotify_group___with_prio_int *g =
+			(struct fsnotify_group___with_prio_int *)group;
+		return BPF_CORE_READ(g, priority);
+	}
+	if (bpf_core_type_matches(struct fsnotify_group___with_prio_enum)) {
+		struct fsnotify_group___with_prio_enum *g =
+			(struct fsnotify_group___with_prio_enum *)group;
+		return BPF_CORE_READ(g, priority);
+	}
+	bpf_core_unreachable();
+	return 0;
+}
+
 // Probes for the tracees
 
 SEC("kprobe/inotify_handle_inode_event")
@@ -340,7 +374,7 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 	ee->tracee_uid_raw = (u32)uid_gid;
 	ee->tracee_gid_raw = (u32)(uid_gid >> 32);
 
-	ee->prio = BPF_CORE_READ(group, priority);
+	ee->prio = get_priority(group);
 
 	if (value) {
 		ee->type = value->type;
@@ -447,7 +481,7 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 
 	gadget_event->type_raw = fa_resp;
 	gadget_event->fa_type_raw = fa_type;
-	gadget_event->prio = BPF_CORE_READ(group, priority);
+	gadget_event->prio = get_priority(group);
 
 	gadget_event->timestamp_raw = bpf_ktime_get_boot_ns();
 
@@ -515,16 +549,11 @@ static __always_inline void
 prepare_ee_for_fa_perm(struct enriched_event *ee, struct fsnotify_event *event,
 		       struct gadget_event *gadget_event)
 {
-	u64 pid_tgid;
 	struct fanotify_event *fae;
-	struct fanotify_perm_event *fpe;
-	short unsigned int state;
 	__u32 fa_type;
 
 	if (inotify_only)
 		return;
-
-	pid_tgid = bpf_get_current_pid_tgid();
 
 	if (ee->type != fanotify)
 		return;
@@ -533,8 +562,6 @@ prepare_ee_for_fa_perm(struct enriched_event *ee, struct fsnotify_event *event,
 	fa_type = BPF_CORE_READ_BITFIELD_PROBED(fae, type);
 	if (fa_type != FANOTIFY_EVENT_TYPE_PATH_PERM)
 		return;
-
-	fpe = container_of(fae, struct fanotify_perm_event, fae);
 
 	ee->tracer = gadget_event->tracer;
 	ee->tracer_mntns_id = gadget_event->tracer_mntns_id;
