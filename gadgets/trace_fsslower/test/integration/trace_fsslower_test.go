@@ -16,6 +16,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -45,11 +46,11 @@ func TestTraceFSSlower(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
-	// TODO: Take into consideration aro and others
 	fsType := "ext4"
-	//if *k8sDistro == K8sDistroARO || *k8sDistro == K8sDistroEKSAmazonLinux {
-	//	fsType = "xfs"
-	//}
+	k8sDistro := os.Getenv("KUBERNETES_DISTRIBUTION")
+	if k8sDistro == gadgettesting.K8sDistroARO || k8sDistro == gadgettesting.K8sDistroEKSAmazonLinux {
+		fsType = "xfs"
+	}
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")

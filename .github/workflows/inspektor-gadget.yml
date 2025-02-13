@@ -1722,88 +1722,6 @@ jobs:
         test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
         test-summary-suffix: "test-gadgets-local-${{ matrix.runtime }}"
 
-  test-gadgets-k8s:
-    name: Test gadgets K8s
-    #level 3
-    needs:
-      - build-ig
-      - build-gadget-container-images
-      - build-helper-images
-      - build-and-push-gadgets
-      - check-secrets
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [docker, containerd, cri-o]
-    steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-    - name: Setup go
-      uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Setup minikube
-      uses: ./.github/actions/setup-minikube
-      with:
-        runtime: ${{ matrix.runtime }}
-        multi-node: true
-    - name: Get gadget-container-image-linux-amd64.tar from artifact.
-      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
-      with:
-        name: gadget-container-image-linux-amd64.tar
-        path: /home/runner/work/inspektor-gadget/
-    - name: Prepare minikube by loading gadget-container-image-linux-amd64.tar
-      env:
-        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-      run: |
-        # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
-        docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
-        minikube image load "${CONTAINER_REPO}:${IMAGE_TAG}"
-    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
-      with:
-        name: kubectl-gadget-linux-amd64-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/
-    - name: Gadgets tests
-      id: gadgets-tests
-      shell: bash
-      env:
-        GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
-        GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
-        VERIFY_GADGETS: ${{ needs.check-secrets.outputs.cosign }}
-        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-      run: |
-        set -o pipefail
-        tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        ./kubectl-gadget deploy --verify-gadgets="$VERIFY_GADGETS" --image-pull-policy=Never --debug --experimental --image="${CONTAINER_REPO}:${IMAGE_TAG}"
-        make \
-        KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
-        IG_RUNTIME=kubernetes \
-        -C gadgets/ test-k8s -o build |& tee gadgets-tests.log & wait $!
-    - name: Undeploy Inspektor Gadget
-      id: undeploy-ig
-      if: always()
-      shell: bash
-      run: ./kubectl-gadget undeploy
-    - name: Prepare and publish test reports
-      if: always()
-      continue-on-error: true
-      uses: ./.github/actions/prepare-and-publish-test-reports
-      with:
-        test-log-file: gadgets-tests.log
-        test-step-conclusion: ${{ steps.gadgets-tests.conclusion }}
-        test-summary-suffix: "test-gadgets-k8s-${{ matrix.runtime }}"
-
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
     # level: 3
@@ -2250,7 +2168,6 @@ jobs:
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
       - test-gadgets-local
-      - test-gadgets-k8s
     runs-on: ubuntu-latest
     # Skip this job when running on a fork or a PR from a fork.
     if: always() && (
