@@ -1,1 +1,26 @@
-../../gadgets/trace_open/README.mdx
+# trace_open
+
+## Description
+The `trace_open` gadget monitors and logs which processes open specific files. It helps security teams, DevOps engineers, and system administrators track file access in real time.
+
+## Use Cases
+### 🔹 **Security Monitoring**
+- Detect unauthorized access to critical system files (e.g., `/etc/shadow`, `/var/log/auth.log`).
+- Identify potential data exfiltration attempts.
+
+### 🔹 **Malware Detection**
+- Catch cryptojacking scripts dropping malicious binaries into directories.
+- Detect ransomware attempting to encrypt user files.
+
+### 🔹 **Compliance Auditing**
+- Ensure sensitive files are accessed only by authorized applications.
+- Help organizations meet security compliance requirements (e.g., **GDPR, HIPAA, PCI DSS**).
+
+### 🔹 **Debugging & Troubleshooting**
+- Debug application errors caused by missing or restricted files.
+- Investigate unexpected file access patterns.
+
+## Examples
+To run the `trace_open` gadget and monitor file access:
+```bash
+kubectl gadget trace open
