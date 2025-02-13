@@ -33,6 +33,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
@@ -172,14 +173,20 @@ func (g *GadgetRunner[T]) RunGadget() {
 	}
 	g.DataOperator = append(g.DataOperator, simple.New("gadget", gadgetOperatorOpts...))
 
-	dataOperatorOps := []gadgetcontext.Option{
+	gadgetContextOps := []gadgetcontext.Option{
 		gadgetcontext.WithDataOperators(g.DataOperator...),
 	}
 	if g.timeout != 0 {
-		dataOperatorOps = append(dataOperatorOps, gadgetcontext.WithTimeout(g.timeout))
+		gadgetContextOps = append(gadgetContextOps, gadgetcontext.WithTimeout(g.timeout))
 	}
 
-	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, dataOperatorOps...)
+	if strings.ToLower(os.Getenv("IG_DEBUG_LOGS")) == "true" {
+		l := logger.DefaultLogger()
+		l.SetLevel(logger.DebugLevel)
+		gadgetContextOps = append(gadgetContextOps, gadgetcontext.WithLogger(l))
+	}
+
+	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, gadgetContextOps...)
 	runtime := local.New()
 	err := runtime.Init(nil)
 	require.NoError(g.testCtx, err, "runtime initialization error")
