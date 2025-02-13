@@ -3,7 +3,7 @@ module examples
 go 1.23.0
 
 require (
-	github.com/cilium/ebpf v0.17.2
+	github.com/cilium/ebpf v0.17.3
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.0
 	k8s.io/api v0.32.1
