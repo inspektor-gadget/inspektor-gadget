@@ -225,7 +225,8 @@ func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
 
 	builderVersion, err := semver.ParseTolerant(builderVersionAnn)
 	if err != nil {
-		logger.Warnf("parsing builder version: %s", err)
+		// it could happen on development versions
+		logger.Debugf("parsing builder version: %s", err)
 		return
 	}
 
