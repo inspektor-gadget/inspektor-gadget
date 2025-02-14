@@ -157,7 +157,7 @@ func NewDataSource(name string, typ DataSourceType) (DataSource, error) {
 	return DataSource(ret), nil
 }
 
-func (ds DataSource) suscribe(cb any, priority uint32, typ subscriptionType) error {
+func (ds DataSource) subscribe(cb any, priority uint32, typ subscriptionType) error {
 	dsSubscriptionCtr++
 	dsSubcriptions[dsSubscriptionCtr] = subscription{typ: typ, cb: cb}
 	ret := dataSourceSubscribe(uint32(ds), uint32(typ), priority, dsSubscriptionCtr)
@@ -168,15 +168,15 @@ func (ds DataSource) suscribe(cb any, priority uint32, typ subscriptionType) err
 }
 
 func (ds DataSource) Subscribe(cb DataFunc, priority uint32) error {
-	return ds.suscribe(cb, priority, subscriptionTypeData)
+	return ds.subscribe(cb, priority, subscriptionTypeData)
 }
 
 func (ds DataSource) SubscribeArray(cb ArrayFunc, priority uint32) error {
-	return ds.suscribe(cb, priority, subscriptionTypeArray)
+	return ds.subscribe(cb, priority, subscriptionTypeArray)
 }
 
 func (ds DataSource) SubscribePacket(cb PacketFunc, priority uint32) error {
-	return ds.suscribe(cb, priority, subscriptionTypePacket)
+	return ds.subscribe(cb, priority, subscriptionTypePacket)
 }
 
 func (ds DataSource) NewPacketSingle() (PacketSingle, error) {

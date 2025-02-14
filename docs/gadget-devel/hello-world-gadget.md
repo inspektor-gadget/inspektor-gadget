@@ -11,7 +11,7 @@ with the key concepts by implementing a simplified version of the "trace open" (
 
 If you want to create a new repository for your gadget, you can use the [gadget-template
 repository](https://github.com/inspektor-gadget/gadget-template). This is a
-[GitHub tempate repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+[GitHub template repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
 
 You can also look for examples in gadgets published on Artifact Hub:
 
@@ -408,7 +408,7 @@ host, however it doesn't allow to filter events by a given container, user, etc.
 Inspektor Gadget provides a set of helpers files and functions to make this
 process easy.
 
-Inlcude the `filter.h` file:
+Include the `filter.h` file:
 
 ```c
 // Inspektor Gadget filtering helpers

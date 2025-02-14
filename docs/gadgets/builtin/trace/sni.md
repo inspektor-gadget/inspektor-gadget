@@ -73,7 +73,7 @@ $ sudo ig trace sni -r docker -c test-trace-sni
 RUNTIME.CONTAINERNAME                  PID        TID        COMM             NAME
 ```
 
-Run a containers that establishs a TLS connection with a remote endpoint:
+Run a containers that establishes a TLS connection with a remote endpoint:
 
 ```bash
 $ docker run -it --rm --name test-trace-sni busybox /bin/sh -c "wget https://example.com"

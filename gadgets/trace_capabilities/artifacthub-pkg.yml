@@ -5,7 +5,7 @@ category: monitoring-logging
 displayName: "trace capabilities"
 createdAt: "2025-02-03T11:23:41Z"
 digest: "2025-02-03T11:23:41Z"
-description: "trace security capabilitiy checks"
+description: "trace security capability checks"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
 homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_capabilities"
@@ -13,8 +13,8 @@ containersImages:
     - name: gadget
       image: "ghcr.io/inspektor-gadget/gadget/trace_capabilities:latest"
       platforms:
-        - linux/amd64
-        - linux/arm64
+          - linux/amd64
+          - linux/arm64
 keywords:
     - gadget
 links:

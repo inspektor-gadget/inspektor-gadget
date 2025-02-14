@@ -24,7 +24,7 @@ eBPF maps instead and let IG create a data source (TODO link to data source) fro
 exported to for example Prometheus.
 
 | Source     | Application                                                                             | Performance |
-|------------|-----------------------------------------------------------------------------------------|-------------|
+| ---------- | --------------------------------------------------------------------------------------- | ----------- |
 | user-space | easy development when using event sources (GADGET_TRACE()); event sources can be reused | slower      |
 | eBPF maps  | using dedicated maps for metrics, especially suited for high throughput scenarios       | fast        |
 
@@ -84,7 +84,7 @@ datasources:
   events:
     annotations:
       metrics.implicit-counter.name: eventctr
-      matrics.implicit-counter.description: number of events
+      metrics.implicit-counter.description: number of events
 ...
 ```
 

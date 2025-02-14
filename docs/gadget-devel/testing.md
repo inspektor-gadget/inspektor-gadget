@@ -6,7 +6,7 @@ description: 'Testing a Gadget'
 
 :::warning
 
-This document is slighty outdated, please check the [existing
+This document is slightly outdated, please check the [existing
 gadgets](https://github.com/inspektor-gadget/inspektor-gadget/tree/%IG_BRANCH%/gadgets)
 to learn how they implement the tests.
 

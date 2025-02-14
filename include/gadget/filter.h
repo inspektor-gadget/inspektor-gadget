@@ -81,7 +81,7 @@ gadget_should_discard_data(gadget_mntns_id mntns_id, gadget_pid pid,
 // gadget_should_discard_data_current returns true if the gadget should drop
 // this event. This function uses the current task mount namespace, pid, tid,
 // uid, and gid to determine if the event should be dropped. This function is
-// implemented in a way that it returns as soon as possible to avoid unnecesary
+// implemented in a way that it returns as soon as possible to avoid unnecessary
 // operations, hence there is some code duplication with the
 // gadget_should_discard_data function.
 static __always_inline bool gadget_should_discard_data_current()

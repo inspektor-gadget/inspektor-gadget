@@ -40,7 +40,7 @@ $ kubectl run -it mypod --image ubuntu -- /bin/sh -c "apt-get update && apt-get 
 ```
 
 We can see how the `top file` terminal shows the files that are read and
-written by the pod. For instace, apt-get is reading a lot of files in
+written by the pod. For instance, apt-get is reading a lot of files in
 when updating the packages list and installing packages.
 
 ```bash
