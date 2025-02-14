@@ -244,8 +244,13 @@ cross-kubectl-gadget-container:
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) --build-arg GOPROXY=$(GOPROXY) .
 
 # tests
+.PHONY: generate-testdata
+generate-testdata: 
+	$(MAKE) -C ./pkg/operators/ebpf/testdata
+	$(MAKE) -C ./pkg/operators/wasm/testdata
+
 .PHONY: test
-test:
+test: generate-testdata
 	# skip gadgets tests
 	go test -exec sudo -v $$(go list ./... | grep -v 'github.com/inspektor-gadget/inspektor-gadget/gadgets')
 
