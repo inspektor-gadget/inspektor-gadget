@@ -613,7 +613,7 @@ func deleteGadgetImage(ctx context.Context, image string) error {
 // If no valid domain is found, the default domain is used. Repository name
 // needs to be already validated before.
 // Inspired on https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L126
-// TODO: Ideally we should use the upstream function but docker.io is harcoded there
+// TODO: Ideally we should use the upstream function but docker.io is hardcoded there
 // https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L31
 func splitIGDomain(name string) (domain, remainder string) {
 	i := strings.IndexRune(name, '/')

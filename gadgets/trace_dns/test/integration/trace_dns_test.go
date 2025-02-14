@@ -40,7 +40,7 @@ type traceDNSEvent struct {
 	Src utils.L4Endpoint `json:"src"`
 	Dst utils.L4Endpoint `json:"dst"`
 
-	// Raw fields are comming from wasm, test them too
+	// Raw fields are coming from wasm, test them too
 	ID                 string `json:"id"`
 	Qtype              string `json:"qtype"`
 	QtypeRaw           uint16 `json:"qtype_raw"`

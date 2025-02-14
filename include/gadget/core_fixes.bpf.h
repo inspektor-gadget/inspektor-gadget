@@ -26,7 +26,7 @@
  *     with invalid `call 0xbad2310` instruction (195896080 == 0xbad2310 reads
  *     "bad relo" if you squint hard enough).
  *
- * cilium/ebpf uses the same stategy with the same value (0xbad2310).
+ * cilium/ebpf uses the same strategy with the same value (0xbad2310).
  *
  *     const badRelo = asm.BuiltinFunc(0xbad2310)
  *

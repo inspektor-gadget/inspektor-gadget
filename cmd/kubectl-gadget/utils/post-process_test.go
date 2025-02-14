@@ -138,7 +138,7 @@ mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
 	}
 }
 
-// Test that the first line is not skiped
+// Test that the first line is not skipped
 func TestSkipFirstLineFalse(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
 	postProcess := NewPostProcess(&PostProcessConfig{

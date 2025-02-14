@@ -202,7 +202,7 @@ func (s *stubMeter) RegisterCallback(callback metric.Callback, instruments ...me
 	return &stubRegistration{}, nil
 }
 
-// Collect all registered intruments. Only for testing purposes, not part of otel API.
+// Collect all registered instruments. Only for testing purposes, not part of otel API.
 func (s *stubMeter) Collect(ctx context.Context) error {
 	obs := &stubObserver{}
 

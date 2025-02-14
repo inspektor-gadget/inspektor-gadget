@@ -71,7 +71,7 @@ In order to implement more powerful things, the Wasm module should be able to
 have some interaction with the host system. This will allow the gadget to
 collect more information.
 
-Note: We need to investigate the security implications of this suppport.
+Note: We need to investigate the security implications of this support.
 
 - Read and write files
   - Collect information from the host like logs

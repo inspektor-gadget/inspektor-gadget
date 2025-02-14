@@ -38,7 +38,7 @@ func gadgetStart() int32 {
 
 	_, err = api.GetParamValue("non-existing-param")
 	if err == nil {
-		api.Errorf("looking for non-existing-param succeded")
+		api.Errorf("looking for non-existing-param succeeded")
 		return 1
 	}
 

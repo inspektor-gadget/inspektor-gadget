@@ -18,7 +18,7 @@
 //
 // This is done both for builtin gadgets and containerized gadgets. In the case
 // of containerized gadgets, the dispatcher program is installed before
-// knowning the actual gadget program. Once it knows the actual gadget program,
+// knowing the actual gadget program. Once it knows the actual gadget program,
 // the tail call map is updated.
 //
 // In the case of builtin gadgets, the Run() method can be called to fetch and

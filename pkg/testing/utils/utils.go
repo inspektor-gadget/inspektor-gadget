@@ -52,7 +52,7 @@ func WithContainerID(containerID string) CommonDataOption {
 	}
 }
 
-// WithK8sNamespace sets the Namepsace to facilitate the tests
+// WithK8sNamespace sets the Namespace to facilitate the tests
 func WithK8sNamespace(namespace string) CommonDataOption {
 	return func(commonData *eventtypes.CommonData) {
 		commonData.K8s.Namespace = namespace
