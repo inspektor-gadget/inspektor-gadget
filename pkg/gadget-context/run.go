@@ -45,7 +45,6 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		opParamPrefix := fmt.Sprintf("operator.%s", op.Name())
 
 		// Get and fill params
-		globalParams := op.GlobalParams().AddPrefix(opParamPrefix)
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
@@ -53,11 +52,6 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		err := apihelpers.NormalizeWithDefaults(instanceParams, opParamValues)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing instance params for operator %q: %w", op.Name(), err)
-		}
-
-		err = apihelpers.Validate(globalParams, opParamValues)
-		if err != nil {
-			return nil, fmt.Errorf("validating global params for operator %q: %w", op.Name(), err)
 		}
 
 		err = apihelpers.Validate(instanceParams, opParamValues)
