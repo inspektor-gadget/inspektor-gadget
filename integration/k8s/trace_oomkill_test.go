@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestTraceOOMKill(t *testing.T) {
+func TestBuiltinTraceOOMKill(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-oomkill")
 

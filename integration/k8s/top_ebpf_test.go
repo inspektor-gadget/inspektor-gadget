@@ -62,7 +62,7 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 	}
 }
 
-func TestTopEbpf(t *testing.T) {
+func TestBuiltinTopEbpf(t *testing.T) {
 	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
 		t.Skip("Skip running top ebpf gadget on AKS Ubuntu amd64: see issue #931")
 	}

@@ -51,7 +51,7 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, expectedEntry *t
 	}
 }
 
-func TestTopBlockIO(t *testing.T) {
+func TestBuiltinTopBlockIO(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
 		t.Skip("Skip running top block-io gadget on ARO: see issue #589")
 	}

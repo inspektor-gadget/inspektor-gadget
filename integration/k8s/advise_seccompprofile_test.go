@@ -21,7 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestAdviseSeccompProfile(t *testing.T) {
+func TestBuiltinAdviseSeccompProfile(t *testing.T) {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		t.Skip("Skip running test with test component different than kubectl-gadget")
 	}

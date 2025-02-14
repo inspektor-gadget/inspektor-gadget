@@ -25,7 +25,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceNetwork(t *testing.T) {
+func TestBuiltinTraceNetwork(t *testing.T) {
 	if containerRuntime == ContainerRuntimeCRIO {
 		t.Skipf("Skip running trace network test for %q runtime. See issue #2358", containerRuntime)
 	}

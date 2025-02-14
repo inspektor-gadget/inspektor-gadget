@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestSnapshotSocket(t *testing.T) {
+func TestBuiltinSnapshotSocket(t *testing.T) {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		t.Skip("Skip running test with test component different than kubectl-gadget")
 	}

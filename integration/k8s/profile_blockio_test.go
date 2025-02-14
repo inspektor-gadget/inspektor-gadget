@@ -24,7 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestProfileBlockIO(t *testing.T) {
+func TestBuiltinProfileBlockIO(t *testing.T) {
 	t.Parallel()
 
 	var extraArgs string
