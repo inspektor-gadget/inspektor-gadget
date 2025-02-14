@@ -119,17 +119,17 @@ func createAndServeManifest(t *testing.T, manifest string) (string, error) {
 		Handler: mux,
 	}
 
-	listner, err := net.Listen("tcp", server.Addr)
+	listener, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		return "", fmt.Errorf("listening on random port: %w", err)
 	}
 
-	go server.Serve(listner)
+	go server.Serve(listener)
 	t.Cleanup(func() {
 		server.Close()
 	})
 
-	return "http://" + listner.Addr().String() + "/manifest", nil
+	return "http://" + listener.Addr().String() + "/manifest", nil
 }
 
 func TestRunWithSpec(t *testing.T) {

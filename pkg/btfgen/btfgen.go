@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package btfgen provides a way to load BTF information generated with btfgen. Files to be
-// incluided into the binary have to be generated with BTFGen (make btfgen on the root) before
+// included into the binary have to be generated with BTFGen (make btfgen on the root) before
 // compiling the binary.
 package btfgen
 

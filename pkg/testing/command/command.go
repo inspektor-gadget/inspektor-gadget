@@ -137,7 +137,7 @@ func (c *Command) Stop(t *testing.T) {
 }
 
 // kill kills a command by sending SIGKILL because we want to stop the process
-// immediatly and avoid that the signal is trapped.
+// immediately and avoid that the signal is trapped.
 func (c *Command) kill() error {
 	const sig syscall.Signal = syscall.SIGKILL
 
