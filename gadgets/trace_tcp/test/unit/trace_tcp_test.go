@@ -61,7 +61,7 @@ func TestTraceTcpGadget(t *testing.T) {
 		"captures_close": {
 			ipAddr:        "127.0.0.1",
 			port:          9070,
-			async:         true, // We only get a close when the connect succeded or the socket is async. Here we know that the connect should error out
+			async:         true, // We only get a close when the connect succeeded or the socket is async. Here we know that the connect should error out
 			expectedErrno: syscall.ECONNREFUSED,
 			runnerConfig:  &utilstest.RunnerConfig{},
 			generateEvent: generateConnectEvent,

@@ -129,14 +129,12 @@ static __always_inline void handle_tcp_set_state(struct pt_regs *ctx,
 	event = gadget_reserve_buf(&events, sizeof(*event));
 	if (!event)
 		goto end;
-
+  
 	// Explicitly capture error states
 	if (state == TCP_CLOSE) {
 		err = BPF_CORE_READ(sk, sk_err);
 		if (err == 0)
-			err = ETIMEDOUT; // Mark as timeout if no specific error
-	}
-
+			err = ETIMEDOUT; // Mark as timeout if no specific erroe
 	fill_event(event, &tuple, &ei->proc, err, connect);
 	event->fd = ei->fd;
 
