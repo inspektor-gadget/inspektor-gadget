@@ -171,7 +171,7 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 	if (!argp)
 		return 0;
 
-	/* pointer to max_args+1 isn't null, asume we have more arguments */
+	/* pointer to max_args+1 isn't null, assume we have more arguments */
 	event->args_count++;
 	return 0;
 }

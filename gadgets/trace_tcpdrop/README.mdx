@@ -144,14 +144,14 @@ The following table shows the list of drop reasons for Linux 6.2.
 | [SKB_DROP_REASON_XFRM_POLICY](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_XFRM_POLICY&type=code) | xfrm policy check failed |
 | [SKB_DROP_REASON_IP_NOPROTO](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_IP_NOPROTO&type=code) | no support for IP protocol |
 | [SKB_DROP_REASON_SOCKET_RCVBUFF](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_SOCKET_RCVBUFF&type=code) | socket receive buff is full |
-| [SKB_DROP_REASON_PROTO_MEM](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_PROTO_MEM&type=code) | proto memory limition, such as udp packet drop out of udp_memory_allocated. |
+| [SKB_DROP_REASON_PROTO_MEM](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_PROTO_MEM&type=code) | proto memory limitation, such as udp packet drop out of udp_memory_allocated. |
 | [SKB_DROP_REASON_TCP_MD5NOTFOUND](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_MD5NOTFOUND&type=code) | no MD5 hash and one expected, corresponding to LINUX_MIB_TCPMD5NOTFOUND |
 | [SKB_DROP_REASON_TCP_MD5UNEXPECTED](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_MD5UNEXPECTED&type=code) | MD5 hash and we're not expecting one, corresponding to LINUX_MIB_TCPMD5UNEXPECTED |
 | [SKB_DROP_REASON_TCP_MD5FAILURE](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_MD5FAILURE&type=code) | MD5 hash and its wrong, corresponding to LINUX_MIB_TCPMD5FAILURE |
 | [SKB_DROP_REASON_SOCKET_BACKLOG](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_SOCKET_BACKLOG&type=code) | failed to add skb to socket backlog ( see LINUX_MIB_TCPBACKLOGDROP) |
 | [SKB_DROP_REASON_TCP_FLAGS](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_FLAGS&type=code) | TCP flags invalid |
 | [SKB_DROP_REASON_TCP_ZEROWINDOW](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_ZEROWINDOW&type=code) | TCP receive window size is zero, see LINUX_MIB_TCPZEROWINDOWDROP |
-| [SKB_DROP_REASON_TCP_OLD_DATA](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_OLD_DATA&type=code) | the TCP data reveived is already received before (spurious retrans may happened), see LINUX_MIB_DELAYEDACKLOST |
+| [SKB_DROP_REASON_TCP_OLD_DATA](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_OLD_DATA&type=code) | the TCP data received is already received before (spurious retrans may happened), see LINUX_MIB_DELAYEDACKLOST |
 | [SKB_DROP_REASON_TCP_OVERWINDOW](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_OVERWINDOW&type=code) | the TCP data is out of window, the seq of the first byte exceed the right edges of receive window |
 | [SKB_DROP_REASON_TCP_OFOMERGE](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_OFOMERGE&type=code) | the data of skb is already in the ofo queue, corresponding to LINUX_MIB_TCPOFOMERGE |
 | [SKB_DROP_REASON_TCP_RFC7323_PAWS](https://github.com/search?q=repo%3Atorvalds%2Flinux%20SKB_DROP_REASON_TCP_RFC7323_PAWS&type=code) | PAWS check, corresponding to LINUX_MIB_PAWSESTABREJECTED |

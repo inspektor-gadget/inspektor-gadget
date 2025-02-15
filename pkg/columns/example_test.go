@@ -61,7 +61,7 @@ func Example() {
 
 	out.WriteString("\n")
 
-	// Now only get security personell
+	// Now only get security personnel
 	securityOnly, err := filter.FilterEntries[Employee](cmap, Employees, []string{"department:Security"})
 	if err != nil {
 		panic(err)

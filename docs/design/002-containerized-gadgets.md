@@ -241,7 +241,7 @@ initially comes from Bumblebee.
 As a consequence, BPF programs written in this way will not be loadable by generic bpf loaders but
 only by Inspektor Gadget.
 
-TODO: Revisit this appproach and check if there is a way to remove the limitation of being loaded by
+TODO: Revisit this approach and check if there is a way to remove the limitation of being loaded by
 other projects.
 
 #### `HashMap` with `stats_` Prefix (a.k.a toppers)
@@ -327,35 +327,35 @@ Symbols:
 - 📅: desired feature, we should plan it
 
 | ebpf program type     | Support | Difficulty |
-|-----------------------|---------|------------|
-| socket_filter         |   👷    |            |
+| --------------------- | ------- | ---------- |
+| socket_filter         | 👷       |            |
 | sk_reuseport/migrate  |         |            |
 | sk_reuseport          |         |            |
-| kprobe/               |   ✅    |            |
+| kprobe/               | ✅       |            |
 | uprobe/               |         |            |
-| kretprobe/            |   ✅    |            |
+| kretprobe/            | ✅       |            |
 | uretprobe/            |         |            |
 | tc                    |         |            |
 | classifier            |         |            |
 | action                |         |            |
-| tracepoint/           |   ✅    |            |
+| tracepoint/           | ✅       |            |
 | tp/                   |         |            |
 | raw_tracepoint/       |         |            |
 | raw_tp/               |         |            |
 | raw_tracepoint.w/     |         |            |
 | raw_tp.w/             |         |            |
 | tp_btf/               |         |            |
-| fentry/               |   📅    |            |
+| fentry/               | 📅       |            |
 | fmod_ret/             |         |            |
-| fexit/                |   📅    |            |
+| fexit/                | 📅       |            |
 | fentry.s/             |         |            |
 | fmod_ret.s/           |         |            |
 | fexit.s/              |         |            |
 | freplace/             |         |            |
 | lsm/                  |         |            |
 | lsm.s/                |         |            |
-| iter/                 |   📅    |            |
-| iter.s/               |   📅    |            |
+| iter/                 | 📅       |            |
+| iter.s/               | 📅       |            |
 | syscall               |         |            |
 | xdp_devmap/           |         |            |
 | xdp_cpumap/           |         |            |

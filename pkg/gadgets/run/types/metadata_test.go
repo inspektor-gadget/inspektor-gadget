@@ -162,7 +162,7 @@ func TestPopulate(t *testing.T) {
 				DataSources: map[string]*metadatav1.DataSource{},
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
-						// Set desc and some attributes to be sure they aren't overwritte
+						// Set desc and some attributes to be sure they aren't overwritten
 						"param": {
 							Key:          "my-param-key",
 							Description:  "This is my awesome parameter",

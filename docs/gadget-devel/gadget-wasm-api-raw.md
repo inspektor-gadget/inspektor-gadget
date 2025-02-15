@@ -130,7 +130,7 @@ Parameters:
 - `cb` (u64): Opaque ID that is passed back to `dataSourceCallback` to identify the subscription.
 
 Return value:
-- 0 on sucess, 1 in case of error.
+- 0 on success, 1 in case of error.
 
 #### `dataSourceGetField(u32 ds, string name) u32`
 

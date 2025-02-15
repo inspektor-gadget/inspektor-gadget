@@ -422,7 +422,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			// }
 
 			jsonFormatter, err := json.New(ds,
-				// TODO: compatiblity for now: add all; remove me later on and use the commented version above
+				// TODO: compatibility for now: add all; remove me later on and use the commented version above
 				json.WithShowAll(true),
 				json.WithPretty(mode == ModeJSONPretty, "  "),
 				json.WithArray(ds.Type() == datasource.TypeArray),

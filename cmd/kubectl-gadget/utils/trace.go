@@ -573,7 +573,7 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 				traceName := trace.ObjectMeta.Name
 
 				// We also remove it from the maps to avoid returning a deleted trace
-				// and timeing out.
+				// and timing out.
 				delete(satisfiedTraces, traceName)
 				delete(erroredTraces, traceName)
 

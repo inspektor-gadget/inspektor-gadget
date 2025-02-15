@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -52,7 +54,7 @@ func WithContainerID(containerID string) CommonDataOption {
 	}
 }
 
-// WithK8sNamespace sets the Namepsace to facilitate the tests
+// WithK8sNamespace sets the Namespace to facilitate the tests
 func WithK8sNamespace(namespace string) CommonDataOption {
 	return func(commonData *eventtypes.CommonData) {
 		commonData.K8s.Namespace = namespace
@@ -213,6 +215,21 @@ func GetContainerRuntime(t *testing.T) string {
 	parts := strings.Split(ret, ":")
 	require.GreaterOrEqual(t, len(parts), 1, "unexpected container runtime version")
 	return parts[0]
+}
+
+// GetInode extracts the inode of a given path
+func GetInode(path string) (uint64, error) {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("attempting to stat path %s: %w", path, err)
+	}
+
+	// Extract the inode value from the system information
+	sysInfo := fileInfo.Sys()
+	if stat, ok := sysInfo.(*syscall.Stat_t); ok {
+		return uint64(stat.Ino), nil
+	}
+	return 0, fmt.Errorf("encountering issues when asserting system info as *syscall.Stat_t for path: %s", path)
 }
 
 // GenerateTestNamespaceName returns a string which can be used as unique
