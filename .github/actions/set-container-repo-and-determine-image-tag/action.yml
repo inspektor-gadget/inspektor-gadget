@@ -33,13 +33,11 @@ runs:
       run: |
         if [ -z '${{ inputs.registry }}' ]; then
           echo 'inputs.registry should not be empty! Set it before calling this action' 1>&2
-
           exit 1
         fi
 
         if [ -z '${{ inputs.container-image }}' ]; then
           echo 'inputs.container-image should not be empty! Set it before calling this action' 1>&2
-
           exit 1
         fi
 
@@ -49,13 +47,11 @@ runs:
       id: craft-image-tag
       shell: bash
       run: |
-        # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
-        # this because it is not possible to have slash in image tag.
+        # Replace slashes with hyphens in the branch name, as image tags cannot contain slashes.
         image_tag=${GITHUB_REF_NAME//\//-}
         if [ "$image_tag" = "main" ]; then
             image_tag="latest"
         fi
-
         echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT
     - name: Output gadgets repository
       id: gadget-repository
@@ -66,21 +62,15 @@ runs:
           exit 1
         fi
 
+        # Always use the provided registry for the gadget repository.
         gadget_repository=${{ inputs.registry }}/${{ github.repository_owner }}/gadget
-        if [ ${{ github.event_name }} == 'pull_request' ]; then
-          gadget_repository=ttl.sh/${{ github.sha }}
-        fi
-
         echo "gadget-repository=${gadget_repository}" >> $GITHUB_OUTPUT
     - name: Output gadgets image tag
       id: gadget-tag
       shell: bash
       run: |
-        # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
-        # this because it is not possible to have slash in image tag.
         gadget_tag=${GITHUB_REF_NAME//\//-}
         if [ "$gadget_tag" = "main" ]; then
             gadget_tag="latest"
         fi
-
         echo "gadget-tag=${gadget_tag}" >> $GITHUB_OUTPUT
