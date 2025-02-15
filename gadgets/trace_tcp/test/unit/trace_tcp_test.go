@@ -187,6 +187,39 @@ func TestTraceTcpGadget(t *testing.T) {
 				return nil
 			},
 		},
+		"captures_connection_interruption": {
+			ipAddr:        "1.2.3.4", // Non-routable IP address
+			port:          80,
+			async:         true,
+			expectedErrno: syscall.ETIMEDOUT,
+			runnerConfig:  &utilstest.RunnerConfig{},
+			generateEvent: generateConnectionInterruptionEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
+				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					return &ExpectedTraceTcpEvent{
+						Proc:    info.Proc,
+						Type:    "connect",
+						NetNsId: int(info.NetworkNsID),
+						Src: utils.L4Endpoint{
+							Addr:    utils.NormalizedId,
+							Version: 4,
+							Port:    utils.NormalizedInt,
+							Proto:   "TCP",
+						},
+						Dst: utils.L4Endpoint{
+							Addr:    "1.2.3.4",
+							Version: 4,
+							Port:    80,
+							Proto:   "TCP",
+						},
+						Error:    "ETIMEDOUT",
+						Fd:       fd,
+						AcceptFd: -1,
+					}
+				})(t, info, fd, events)
+				return nil
+			},
+		},
 	}
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -298,6 +331,77 @@ func rawDial(ipv4 [4]byte, port int, async bool, fdPtr *int) error {
 	if sockErr != 0 {
 		return syscall.Errno(sockErr)
 	}
+	return nil
+}
+
+func generateConnectionInterruptionEvent(t *testing.T, ipAddr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int, _ *int) {
+	err := rawDialWithInterruption(ipAddr, port, async, fdPtr)
+	if err != nil && !errors.Is(err, expectedErrno) {
+		t.Logf("Failed to dial with interruption: %v", err)
+		return
+	}
+}
+
+func rawDialWithInterruption(ipAddr string, port int, async bool, fdPtr *int) error {
+	ip := net.ParseIP(ipAddr)
+	if ip == nil {
+		return fmt.Errorf("Invalid IP address: %s", ipAddr)
+	}
+	ipv4 := ip.To4()
+	if ipv4 == nil {
+		return fmt.Errorf("Invalid IPv4 address: %s", ipAddr)
+	}
+
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to create socket: %w", err)
+	}
+	defer unix.Close(fd)
+	if fdPtr != nil {
+		*fdPtr = fd
+	}
+
+	addr := &unix.SockaddrInet4{
+		Port: port,
+		Addr: [4]byte(ipv4),
+	}
+
+	if !async {
+		return unix.Connect(fd, addr)
+	}
+
+	// Set the socket to non-blocking
+	flags, err := unix.FcntlInt(uintptr(fd), syscall.F_GETFL, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to get flags: %w", err)
+	}
+	flags |= syscall.O_NONBLOCK
+	_, err = unix.FcntlInt(uintptr(fd), syscall.F_SETFL, flags)
+	if err != nil {
+		return fmt.Errorf("Failed to set flags: %w", err)
+	}
+
+	// Initiate the connect
+	err = unix.Connect(fd, addr)
+	if err != nil && !errors.Is(err, syscall.EINPROGRESS) {
+		return err
+	}
+
+	// Wait a short time for the connection attempt
+	_, err = unix.Poll([]unix.PollFd{{Fd: int32(fd), Events: unix.POLLOUT}}, int((2 * time.Second).Nanoseconds()))
+	if err != nil {
+		return fmt.Errorf("Failed to poll: %w", err)
+	}
+
+	// Check for connection error
+	sockErr, err := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_ERROR)
+	if err != nil {
+		return fmt.Errorf("Failed to getsockopt: %w", err)
+	}
+	if sockErr != 0 {
+		return syscall.Errno(sockErr)
+	}
+
 	return nil
 }
 
