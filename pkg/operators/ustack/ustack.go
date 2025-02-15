@@ -23,6 +23,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -33,10 +34,12 @@ import (
 const (
 	Name     = "ustack"
 	Priority = 100
-)
 
-const (
+	// Annotations
 	userStackTargetNameAnnotation = "ebpf.formatter.ustack"
+
+	// Params
+	goReSymParam = "goresym"
 )
 
 type Operator struct{}
@@ -53,12 +56,25 @@ func (o *Operator) GlobalParams() api.Params {
 	return nil
 }
 
+func (o *Operator) ParamDescs() params.ParamDescs {
+	return params.ParamDescs{
+		{
+			Key:          goReSymParam,
+			Description:  "Symbol tables for stripped Go executables in GoReSym json format",
+			DefaultValue: "",
+		},
+	}
+}
+
 func (o *Operator) InstanceParams() api.Params {
-	return nil
+	return apihelpers.ParamDescsToParams(o.ParamDescs())
 }
 
 func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	s, err := symbolizer.NewSymbolizer()
+	opts := symbolizer.SymbolizerOptions{
+		GoReSymSpec: instanceParamValues[goReSymParam],
+	}
+	s, err := symbolizer.NewSymbolizer(opts)
 	if err != nil {
 		return nil, err
 	}
