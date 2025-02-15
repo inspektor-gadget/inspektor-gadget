@@ -201,7 +201,7 @@ func TestTraceTcpGadget(t *testing.T) {
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
-							Addr:    utils.NormalizedId,
+							Addr:    utils.NormalizedIP,
 							Version: 4,
 							Port:    utils.NormalizedInt,
 							Proto:   "TCP",
