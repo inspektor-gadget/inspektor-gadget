@@ -41,6 +41,11 @@ struct {
 
 static const struct sockets_value empty_sockets_value = {};
 
+struct socket_enricher_foo {
+	char foo[8];
+};
+const volatile struct socket_enricher_foo empty_socket_enricher_foo __attribute__((unused)) = {};
+
 static __always_inline void insert_current_socket(struct sock *sock)
 {
 	int zero = 0;

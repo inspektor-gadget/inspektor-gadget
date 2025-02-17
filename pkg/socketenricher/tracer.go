@@ -15,11 +15,13 @@
 package socketenricher
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	log "github.com/sirupsen/logrus"
 
@@ -47,12 +49,18 @@ type SocketEnricher struct {
 	objsIter socketsiterObjects
 	links    []link.Link
 
+	btfSpec *btf.Spec
+
 	closeOnce sync.Once
 	done      chan bool
 }
 
 func (se *SocketEnricher) SocketsMap() *ebpf.Map {
 	return se.objs.GadgetSockets
+}
+
+func (se *SocketEnricher) BTFSpec() *btf.Spec {
+	return se.btfSpec
 }
 
 func NewSocketEnricher() (*SocketEnricher, error) {
@@ -90,6 +98,13 @@ func (se *SocketEnricher) start() error {
 		disableBPFIterators = true
 		log.Warnf("Socket enricher: skip loading iterators: %v", err)
 	}
+
+	reader := bytes.NewReader(_SocketenricherBytes)
+	btfSpec, err := btf.LoadSpecFromReader(reader)
+	if err != nil {
+		return fmt.Errorf("loading socketenricher btf: %w", err)
+	}
+	se.btfSpec = btfSpec
 
 	spec, err := loadSocketenricher()
 	if err != nil {

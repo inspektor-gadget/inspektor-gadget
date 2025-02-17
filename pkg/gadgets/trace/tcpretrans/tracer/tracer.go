@@ -23,6 +23,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 
@@ -72,7 +73,7 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
+func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map, _ *btf.Spec) {
 	t.socketEnricherMap = m
 }
 

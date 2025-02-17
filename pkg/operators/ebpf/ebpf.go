@@ -599,13 +599,13 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return err
 		}
 	}
-
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
 		if !ok {
 			continue
 		}
 		i.logger.Debugf("got var %q: %+v", v.name, res)
+		fmt.Printf("got var %q: %+v\n", v.name, res)
 		switch t := res.(type) {
 		case *ebpf.Map:
 			if t == nil {
@@ -645,6 +645,35 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 		opts.Programs.KernelTypes = btfSpec
 	}
+
+	var seBTFSpec *btf.Spec
+	btfSpecRes, ok := gadgetCtx.GetVar("gadget_sockets.btfspec")
+	if !ok {
+		fmt.Printf("gadget_sockets.btfspec not found\n")
+	} else {
+		seBTFSpec, ok = btfSpecRes.(*btf.Spec)
+		if !ok {
+			return fmt.Errorf("invalid BTF spec: expected btf.Spec, got %T", btfSpecRes)
+		}
+	}
+
+	if seBTFSpec != nil {
+		fmt.Printf("ebpf operator: found seBTFSpec :-)\n%+v\n", seBTFSpec)
+		for _, name := range []string{"task_struct", "socket_enricher_foo"} {
+			t, e := seBTFSpec.AnyTypeByName(name)
+			fmt.Printf("ebpf operator: seBTFSpec.AnyTypeByName(%s) = %+v, %+v\n", name, t, e)
+		}
+		//iter := seBTFSpec.Iterate()
+		//for iter.Next() {
+		//	fmt.Printf("ebpf operator: seBTFSpec.Iterate() = %+v\n", iter.Type)
+		//}
+		opts.Programs.KernelModuleTypes = map[string]*btf.Spec{
+			"ig": seBTFSpec,
+		}
+	} else {
+		fmt.Printf("ebpf operator: seBTFSpec not found :-(\n")
+	}
+	fmt.Printf("ebpf operator: NewCollectionWithOptions with %+v\n", opts)
 	collection, err := ebpf.NewCollectionWithOptions(i.collectionSpec, opts)
 	if err != nil {
 		var verifierErr *ebpf.VerifierError
