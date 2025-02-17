@@ -98,10 +98,11 @@ func (o *ociHandler) GlobalParams() api.Params {
 			TypeHint:    api.TypeStringSlice,
 		},
 		{
-			Key:         disallowPulling,
-			Title:       "Disallow pulling",
-			Description: "Disallow pulling gadgets from registries",
-			TypeHint:    api.TypeBool,
+			Key:          disallowPulling,
+			Title:        "Disallow pulling",
+			Description:  "Disallow pulling gadgets from registries",
+			DefaultValue: "false",
+			TypeHint:     api.TypeBool,
 		},
 		{
 			Key:          authfileParam,
