@@ -166,7 +166,7 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				}
 			}
 
-			if i.stackIdMap == nil {
+			if i.collectionSpec.Maps[KernelStackMapName] == nil {
 				return errors.New("kernel stack map is not initialized but used. " +
 					"if you are using `gadget_kernel_stack` as event field, " +
 					"try to include <gadget/kernel_stack_map.h>")
