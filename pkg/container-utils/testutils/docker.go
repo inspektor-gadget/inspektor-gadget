@@ -98,9 +98,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	}
 
 	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
-		Image: d.options.image,
-		Cmd:   []string{"/bin/sh", "-c", d.cmd},
-		Tty:   false,
+		Image:      d.options.image,
+		Entrypoint: []string{"/bin/sh", "-c", d.cmd},
+		Tty:        false,
 	}, hostConfig, nil, nil, d.name)
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)

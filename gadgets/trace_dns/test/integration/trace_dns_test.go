@@ -63,7 +63,21 @@ const (
 	DefaultClientImage = "docker.io/library/busybox:latest"
 )
 
-func TestTraceDNS(t *testing.T) {
+type testCase struct {
+	name     string
+	protocol string
+
+	serverImage string
+	serverCmd   string
+
+	clientImage       string
+	clientUID         uint32
+	clientGID         uint32
+	clientExpectedCmd string
+	clientCmds        func(string, uint32, uint32) []string
+}
+
+func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting.Option) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
@@ -73,25 +87,15 @@ func TestTraceDNS(t *testing.T) {
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	serverContainerName := "test-trace-dns-server"
-	clientContainerName := "test-trace-dns-client"
-
-	serverImage := os.Getenv("SERVER_IMAGE")
-	if serverImage == "" {
-		serverImage = DefaultServerImage
-	}
-
-	clientImage := os.Getenv("CLIENT_IMAGE")
-	if clientImage == "" {
-		clientImage = DefaultClientImage
-	}
+	serverContainerName := fmt.Sprintf("%s-server", tc.name)
+	clientContainerName := fmt.Sprintf("%s-client", tc.name)
 
 	var nsTest string
-	serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(serverImage)}
-	clientContainerOpts := []containers.ContainerOption{containers.WithContainerImage(clientImage)}
+	serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.serverImage)}
+	clientContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.clientImage)}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		nsTest = utils.GenerateTestNamespaceName(t, "test-trace-dns")
+		nsTest = utils.GenerateTestNamespaceName(t, tc.name)
 		testutils.CreateK8sNamespace(t, nsTest)
 
 		clientContainerOpts = append(clientContainerOpts, containers.WithContainerNamespace(nsTest))
@@ -100,17 +104,14 @@ func TestTraceDNS(t *testing.T) {
 		serverContainerOpts = append(serverContainerOpts, containers.WithUseExistingNamespace())
 	}
 
-	serverContainer := containerFactory.NewContainer(serverContainerName, "/dnstester", serverContainerOpts...)
+	serverContainer := containerFactory.NewContainer(serverContainerName, tc.serverCmd, serverContainerOpts...)
 	serverContainer.Start(t)
 	t.Cleanup(func() {
 		serverContainer.Stop(t)
 	})
 
 	serverIP := serverContainer.IP()
-	nslookupCmds := []string{
-		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a fake.test.com. %s", serverIP),
-		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=aaaa fake.test.com. %s", serverIP),
-	}
+	nslookupCmds := tc.clientCmds(serverIP, tc.clientUID, tc.clientGID)
 
 	clientContainer := containerFactory.NewContainer(
 		clientContainerName,
@@ -126,15 +127,17 @@ func TestTraceDNS(t *testing.T) {
 
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(clientImage), utils.WithContainerID(clientContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{utils.WithContainerID(clientContainer.ID())}
 
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
+		// TODO: skip validation of ContainerImageName because of https://github.com/inspektor-gadget/inspektor-gadget/issues/4104
+		commonDataOpts = append(commonDataOpts, utils.WithContainerImageName(utils.NormalizedStr))
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
 	case utils.KubectlGadgetTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", nsTest), "--timeout=5"))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(nsTest)))
-		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(nsTest))
+		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(nsTest), utils.WithContainerImageName(tc.clientImage))
 	}
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
@@ -145,19 +148,19 @@ func TestTraceDNS(t *testing.T) {
 				// A query from client
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
-					Proc:       utils.BuildProc("nslookup", 1000, 1111),
+					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
 					QrRaw:    false,
@@ -180,19 +183,19 @@ func TestTraceDNS(t *testing.T) {
 				// A response from server
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
-					Proc:       utils.BuildProc("nslookup", 1000, 1111),
+					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
 					},
 					QrRaw:     true,
@@ -216,19 +219,19 @@ func TestTraceDNS(t *testing.T) {
 				// AAAA query from client
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
-					Proc:       utils.BuildProc("nslookup", 1000, 1111),
+					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
 					QrRaw:    false,
@@ -251,19 +254,19 @@ func TestTraceDNS(t *testing.T) {
 				// AAAA response from server
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
-					Proc:       utils.BuildProc("nslookup", 1000, 1111),
+					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,
 						Version: 4,
 						Port:    53,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    clientIP,
 						Version: 4,
 						Port:    utils.NormalizedInt,
-						Proto:   "UDP",
+						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
 					},
 					QrRaw:     true,
@@ -302,13 +305,82 @@ func TestTraceDNS(t *testing.T) {
 				if e.Src.Addr == serverIP {
 					utils.NormalizeInt(&e.Dst.Port)
 				}
+
+				if utils.CurrentTestComponent == utils.IgLocalTestComponent {
+					utils.NormalizeString(&e.CommonData.Runtime.ContainerImageName)
+				}
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries...)
 		},
 	))
 
-	traceDNSCmd := igrunner.New("trace_dns", runnerOpts...)
+	return igrunner.New("trace_dns", runnerOpts...), testingOpts
+}
 
+func TestTraceDNS(t *testing.T) {
+	t.Parallel()
+
+	serverImage := os.Getenv("TEST_DNS_SERVER_IMAGE")
+	if serverImage == "" {
+		serverImage = DefaultServerImage
+	}
+
+	clientImage := os.Getenv("TEST_DNS_CLIENT_IMAGE")
+	if clientImage == "" {
+		clientImage = DefaultClientImage
+	}
+
+	tc := testCase{
+		name:     "test-trace-dns",
+		protocol: "udp",
+
+		serverImage: serverImage,
+		serverCmd:   "/dnstester",
+
+		clientImage:       clientImage,
+		clientUID:         1000,
+		clientGID:         1111,
+		clientExpectedCmd: "nslookup",
+		clientCmds: func(serverIP string, uid, gid uint32) []string {
+			return []string{
+				fmt.Sprintf("setuidgid %d:%d nslookup -type=a fake.test.com. %s", uid, gid, serverIP),
+				fmt.Sprintf("setuidgid %d:%d nslookup -type=aaaa fake.test.com. %s", uid, gid, serverIP),
+			}
+		},
+	}
+
+	traceDNSCmd, testingOpts := newTraceDNSStep(t, tc)
+	igtesting.RunTestSteps([]igtesting.TestStep{traceDNSCmd}, t, testingOpts...)
+}
+
+func TestTraceDNSTCP(t *testing.T) {
+	t.Parallel()
+
+	serverImage := os.Getenv("TEST_DNS_SERVER_IMAGE")
+	if serverImage == "" {
+		serverImage = DefaultServerImage
+	}
+
+	tc := testCase{
+		name:     "test-trace-dns-tcp",
+		protocol: "tcp",
+
+		serverImage: serverImage,
+		serverCmd:   "/dnstester -tcp",
+
+		clientImage:       serverImage, // Use the same image for the client
+		clientUID:         0,
+		clientGID:         0,
+		clientExpectedCmd: "isc-net-0000", // one of the thread of dig
+		clientCmds: func(serverIP string, _, _ uint32) []string {
+			return []string{
+				fmt.Sprintf("dig @%s +tcp -t A fake.test.com.", serverIP),
+				fmt.Sprintf("dig @%s +tcp -t AAAA fake.test.com.", serverIP),
+			}
+		},
+	}
+
+	traceDNSCmd, testingOpts := newTraceDNSStep(t, tc)
 	igtesting.RunTestSteps([]igtesting.TestStep{traceDNSCmd}, t, testingOpts...)
 }

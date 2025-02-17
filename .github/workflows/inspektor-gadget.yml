@@ -1707,6 +1707,7 @@ jobs:
         GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
         GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         VERIFY_IMAGE: ${{ needs.check-secrets.outputs.cosign }}
+        DNSTESTER_IMAGE: ${{ needs.build-helper-images.outputs.dnstester_image }}
       run: |
           set -o pipefail
           make \

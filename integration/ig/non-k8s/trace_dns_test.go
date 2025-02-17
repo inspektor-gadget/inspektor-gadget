@@ -27,10 +27,6 @@ import (
 )
 
 func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
-	// dnsTesterImage (image dnstester) has the following symlink:
-	// /usr/bin/nslookup -> /bin/busybox
-	exepath := "/bin/busybox"
-
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("./ig trace dns --paths -o json --runtimes=%s -c %s", *runtime, cn),
@@ -50,8 +46,8 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Cwd:        "/",
 					Pcomm:      "sh",
-					Exepath:    exepath,
-					Comm:       "nslookup",
+					Exepath:    "/usr/bin/nslookup",
+					Comm:       "isc-net-0000", // one of the threads of the nslookup
 					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
@@ -72,8 +68,8 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Cwd:        "/",
 					Pcomm:      "sh",
-					Exepath:    exepath,
-					Comm:       "nslookup",
+					Exepath:    "/usr/bin/nslookup",
+					Comm:       "isc-net-0000", // one of the threads of the nslookup
 					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
 					DNSName:    "fake.test.com.",
@@ -98,8 +94,8 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Cwd:        "/",
 					Pcomm:      "sh",
-					Exepath:    exepath,
-					Comm:       "nslookup",
+					Exepath:    "/usr/bin/nslookup",
+					Comm:       "isc-net-0000", // one of the threads of the nslookup
 					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
@@ -120,8 +116,8 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Cwd:        "/",
 					Pcomm:      "sh",
-					Exepath:    exepath,
-					Comm:       "nslookup",
+					Exepath:    "/usr/bin/nslookup",
+					Comm:       "isc-net-0000", // one of the threads of the nslookup
 					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
 					DNSName:    "fake.test.com.",
@@ -171,8 +167,8 @@ func newTraceDnsSteps(cn string, dnsServerArgs string) []TestStep {
 
 	dnsCmds := []string{
 		fmt.Sprintf("/dnstester %s & sleep 2", dnsServerArgs), // wait to ensure dns server is running
-		"nslookup -type=a fake.test.com. 127.0.0.1",
-		"nslookup -type=aaaa fake.test.com. 127.0.0.1",
+		"/usr/bin/nslookup -type=a fake.test.com. 127.0.0.1",
+		"/usr/bin/nslookup -type=aaaa fake.test.com. 127.0.0.1",
 		"sleep 2", // give time to the tracer to capture events before the container is done
 	}
 

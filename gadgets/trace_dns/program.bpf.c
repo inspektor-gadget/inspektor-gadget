@@ -262,20 +262,50 @@ int ig_trace_dns(struct __sk_buff *skb)
 		return 0;
 	}
 
+	// Since we have the same offset for source and destination ports for both TCP and UDP,
+	// we can use the same code to extract them.
+	// - offsetof(struct udphdr, source) == offsetof(struct tcphdr, source)
+	// - offsetof(struct udphdr, dest) == offsetof(struct tcphdr, dest)
 	switch (proto) {
 	case IPPROTO_UDP:
+	case IPPROTO_TCP:
 		sport = load_half(skb,
 				  l4_off + offsetof(struct udphdr, source));
 		dport = load_half(skb, l4_off + offsetof(struct udphdr, dest));
-		dns_off = l4_off + sizeof(struct udphdr);
 		break;
-	// TODO: support TCP
 	default:
 		return 0;
 	}
 
 	if (!is_dns_port(sport) && !is_dns_port(dport))
 		return 0;
+
+	// Calculate the DNS offset in the packet
+	switch (proto) {
+	case IPPROTO_UDP:
+		dns_off = l4_off + sizeof(struct udphdr);
+		break;
+	case IPPROTO_TCP:
+		// This is best effort, since we don't reassemble TCP segments.
+		struct tcphdr tcph;
+		if (bpf_skb_load_bytes(skb, l4_off, &tcph, sizeof tcph))
+			return 0;
+
+		// The data offset field in the header is specified in 32-bit words. We
+		// have to multiply this value by 4 to get the TCP header length in bytes.
+		__u8 tcp_header_len = tcph.doff * 4;
+
+		// Skip if we don't have any data to avoid handling control segments
+		dns_off = l4_off + tcp_header_len;
+		if (skb->len <= dns_off)
+			return 0;
+
+		// DNS is after the TCP header and the 2 bytes of the length of the DNS packet
+		dns_off += 2;
+		break;
+	default:
+		return 0;
+	}
 
 	event = bpf_map_lookup_elem(&tmp_events, &zero);
 	if (!event)
