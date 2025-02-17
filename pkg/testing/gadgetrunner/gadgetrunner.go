@@ -167,7 +167,7 @@ func (g *GadgetRunner[T]) RunGadget() {
 		gadgetOperatorOpts = append(gadgetOperatorOpts, simple.OnStart(g.onGadgetRun))
 	}
 
-	g.DataOperator = []operators.DataOperator{ocihandler.OciHandler}
+	g.DataOperator = append(g.DataOperator, ocihandler.OciHandler)
 	for _, dataOperator := range operators.GetDataOperators() {
 		g.DataOperator = append(g.DataOperator, dataOperator)
 	}
