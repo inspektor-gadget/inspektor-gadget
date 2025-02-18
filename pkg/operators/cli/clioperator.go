@@ -45,6 +45,8 @@ const (
 	ModeJSONPretty = "jsonpretty"
 	ModeColumns    = "columns"
 	ModeYAML       = "yaml"
+	ModeNone       = "none"
+	ModeRaw        = "raw"
 
 	DefaultOutputMode = ModeColumns
 
@@ -60,7 +62,7 @@ const (
 	AnnotationDefaultOutputMode = "cli.default-output-mode"
 )
 
-var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeYAML}
+var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
 
 type cliOperator struct{}
 
@@ -339,6 +341,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				}
 				return nil
 			}, Priority)
+		case ModeNone:
+			// Do nothing.
 		case ModeColumns:
 			p, err := ds.Parser()
 			if err != nil {
