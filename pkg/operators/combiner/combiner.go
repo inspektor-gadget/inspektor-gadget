@@ -313,4 +313,8 @@ func (o *combinerOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error
 	return nil
 }
 
+func (o *combinerOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var CombinerOperator = &combinerOperator{}

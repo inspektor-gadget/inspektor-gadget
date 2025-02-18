@@ -472,4 +472,8 @@ func (o *cliOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (o *cliOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var CLIOperator = &cliOperator{}
