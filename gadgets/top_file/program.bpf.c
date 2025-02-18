@@ -15,8 +15,6 @@
 
 #include "stat.h"
 
-#define PATH_MAX 4096
-
 enum op {
 	READ,
 	WRITE,
@@ -40,7 +38,7 @@ struct file_stat {
 	gadget_bytes rbytes_raw;
 	__u64 writes;
 	gadget_bytes wbytes_raw;
-	char file[PATH_MAX];
+	char file[GADGET_PATH_MAX];
 	enum type t_raw;
 };
 
@@ -66,7 +64,7 @@ static void get_file_path(struct file *file, __u8 *buf, size_t size)
 	struct path f_path = BPF_CORE_READ(file, f_path);
 	// Extract the full path string
 	char *c_path = get_path_str(&f_path);
-	bpf_probe_read_kernel_str(buf, PATH_MAX, c_path);
+	bpf_probe_read_kernel_str(buf, GADGET_PATH_MAX, c_path);
 }
 
 static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,

@@ -22,8 +22,8 @@ type mountsnoopEvent struct {
 	Ret       int32
 	Comm      [16]uint8
 	Fs        [8]uint8
-	Src       [4096]uint8
-	Dest      [4096]uint8
+	Src       [512]uint8
+	Dest      [512]uint8
 	Data      [512]uint8
 	Op        mountsnoopOp
 }

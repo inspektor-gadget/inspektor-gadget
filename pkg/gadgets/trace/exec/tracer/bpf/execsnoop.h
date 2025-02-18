@@ -31,9 +31,9 @@ struct event {
 	__u8 comm[TASK_COMM_LEN];
 	__u8 pcomm[TASK_COMM_LEN];
 #ifdef WITH_LONG_PATHS
-	__u8 cwd[MAX_STRING_SIZE];
-	__u8 exepath[MAX_STRING_SIZE];
-	__u8 file[MAX_STRING_SIZE];
+	__u8 cwd[GADGET_PATH_MAX];
+	__u8 exepath[GADGET_PATH_MAX];
+	__u8 file[GADGET_PATH_MAX];
 #endif
 	__u8 args[FULL_MAX_ARGS_ARR];
 };

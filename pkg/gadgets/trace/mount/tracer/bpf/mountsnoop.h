@@ -5,7 +5,7 @@
 #define TASK_COMM_LEN 16
 #define FS_NAME_LEN 8
 #define DATA_LEN 512
-#define PATH_MAX 4096
+#define GADGET_PATH_MAX 512
 
 enum op {
 	MOUNT,
@@ -32,8 +32,8 @@ struct event {
 	int ret;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 fs[FS_NAME_LEN];
-	__u8 src[PATH_MAX];
-	__u8 dest[PATH_MAX];
+	__u8 src[GADGET_PATH_MAX];
+	__u8 dest[GADGET_PATH_MAX];
 	__u8 data[DATA_LEN];
 	enum op op;
 };

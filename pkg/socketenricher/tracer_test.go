@@ -103,8 +103,8 @@ func TestSocketEnricherBind(t *testing.T) {
 		}
 		return
 	}
-	stringToSlice4096 := func(s string) (ret [4096]int8) {
-		for i := 0; i < 4096; i++ {
+	stringToSlice512 := func(s string) (ret [512]int8) {
+		for i := 0; i < 512; i++ {
 			if i >= len(s) {
 				break
 			}
@@ -130,8 +130,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice4096(cwd),
-						Exepath: stringToSlice4096(exepath),
+						Cwd:     stringToSlice512(cwd),
+						Exepath: stringToSlice512(exepath),
 					},
 				}
 			},
@@ -152,8 +152,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice4096(cwd),
-						Exepath: stringToSlice4096(exepath),
+						Cwd:     stringToSlice512(cwd),
+						Exepath: stringToSlice512(exepath),
 					},
 				}
 			},
@@ -180,8 +180,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice4096(cwd),
-						Exepath:  stringToSlice4096(exepath),
+						Cwd:      stringToSlice512(cwd),
+						Exepath:  stringToSlice512(exepath),
 					},
 				}
 			},
@@ -202,8 +202,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice4096(cwd),
-						Exepath: stringToSlice4096(exepath),
+						Cwd:     stringToSlice512(cwd),
+						Exepath: stringToSlice512(exepath),
 					},
 				}
 			},
@@ -224,8 +224,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice4096(cwd),
-						Exepath: stringToSlice4096(exepath),
+						Cwd:     stringToSlice512(cwd),
+						Exepath: stringToSlice512(exepath),
 					},
 				}
 			},
@@ -252,8 +252,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice4096(cwd),
-						Exepath:  stringToSlice4096(exepath),
+						Cwd:      stringToSlice512(cwd),
+						Exepath:  stringToSlice512(exepath),
 					},
 				}
 			},
@@ -276,8 +276,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						UidGid:  uint64(1111)<<32 + uint64(1000),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice4096(cwd),
-						Exepath: stringToSlice4096(exepath),
+						Cwd:     stringToSlice512(cwd),
+						Exepath: stringToSlice512(exepath),
 					},
 				}
 			},

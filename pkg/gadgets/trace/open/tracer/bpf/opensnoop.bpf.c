@@ -236,10 +236,10 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	__u64 event_size;
 	const size_t base_event_size = sizeof(struct event);
-	const size_t path_adjustment = PATH_MAX - full_fname_len;
+	const size_t path_adjustment = GADGET_PATH_MAX - full_fname_len;
 
 	// Ensure we don't underflow when calculating the adjusted size
-	if (full_fname_len <= PATH_MAX) {
+	if (full_fname_len <= GADGET_PATH_MAX) {
 		event_size = base_event_size - path_adjustment;
 	} else {
 		event_size = base_event_size;

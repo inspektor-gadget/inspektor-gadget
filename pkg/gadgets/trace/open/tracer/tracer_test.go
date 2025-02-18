@@ -91,13 +91,22 @@ func generateRelativePathForAbsolutePath(t *testing.T, fileName string) string {
 }
 
 func generateLongDirPath(t *testing.T) string {
-	size := 64
+	pathNumber := 54
 	str := "abcdefgh"
-	slice := make([]string, size)
-	for i := 0; i < size; i++ {
+	slice := make([]string, pathNumber)
+	for i := 0; i < pathNumber; i++ {
 		slice[i] = str
 	}
-	return path.Join("/tmp", path.Join(slice...))
+
+	// len("/tmp) + size * len("/" + str) = 4 + 54 * (1 + 8) = 490
+	longPath := path.Join("/tmp", path.Join(slice...))
+
+	// include/gadget/filesystem.h
+	// #define GADGET_PATH_MAX    512
+	if len(longPath) >= 512 {
+		t.Fatalf("Generated long path is too long: %d", len(longPath))
+	}
+	return longPath
 }
 
 func TestOpenTracer(t *testing.T) {

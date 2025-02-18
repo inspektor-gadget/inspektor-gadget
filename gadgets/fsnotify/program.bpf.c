@@ -14,7 +14,6 @@
 #include <gadget/types.h>
 #include <gadget/core_fixes.bpf.h>
 
-#define PATH_MAX 4096
 #define TASK_COMM_LEN 16
 
 enum type {
@@ -125,7 +124,7 @@ struct enriched_event {
 	__u32 i_ino;
 	__u32 i_ino_dir;
 
-	__u8 name[PATH_MAX];
+	__u8 name[GADGET_PATH_MAX];
 };
 static const struct enriched_event empty_enriched_event = {};
 
@@ -217,7 +216,7 @@ struct gadget_event {
 	__u32 i_ino;
 	__u32 i_ino_dir;
 
-	char name[PATH_MAX];
+	char name[GADGET_PATH_MAX];
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -395,8 +394,8 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 			if (name_len < 0)
 				name_len = 0;
 			name_len++; // ine->name_len does not include the NULL at the end
-			if (name_len > PATH_MAX)
-				name_len = PATH_MAX;
+			if (name_len > GADGET_PATH_MAX)
+				name_len = GADGET_PATH_MAX;
 			bpf_probe_read_kernel_str(&ee->name, name_len,
 						  &ine->name[0]);
 			break;
@@ -423,7 +422,8 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 					     ->path;
 
 			if (p)
-				bpf_probe_read_kernel_str(ee->name, PATH_MAX,
+				bpf_probe_read_kernel_str(ee->name,
+							  GADGET_PATH_MAX,
 							  get_path_str(p));
 
 			break;
@@ -496,7 +496,7 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 	gadget_event->tracee_uid_raw = (u32)uid_gid;
 	gadget_event->tracee_gid_raw = (u32)(uid_gid >> 32);
 
-	bpf_probe_read_kernel_str(gadget_event->name, PATH_MAX,
+	bpf_probe_read_kernel_str(gadget_event->name, GADGET_PATH_MAX,
 				  get_path_str(&fpe->path));
 
 	fa_mask = BPF_CORE_READ(fae, mask);
@@ -620,7 +620,7 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 		gadget_event->i_ino = ee->i_ino;
 		gadget_event->i_ino_dir = ee->i_ino_dir;
 
-		bpf_probe_read_kernel_str(gadget_event->name, PATH_MAX,
+		bpf_probe_read_kernel_str(gadget_event->name, GADGET_PATH_MAX,
 					  ee->name);
 
 		prepare_ee_for_fa_perm(ee, event, gadget_event);

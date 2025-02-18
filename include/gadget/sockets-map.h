@@ -44,7 +44,7 @@
 #define SE_NEXTHDR_DEST 60 /* Destination options header. */
 
 #define SE_TASK_COMM_LEN 16
-#define SE_PATH_MAX 4096
+#define SE_PATH_MAX 512
 
 struct sockets_key {
 	__u32 netns;

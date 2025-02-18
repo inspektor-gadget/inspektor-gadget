@@ -22,7 +22,7 @@
 #include <gadget/sockets-map.h>
 
 // Don't include <gadget/filesystem.h> in networking gadgets
-#define MAX_STRING_SIZE 4096
+#define GADGET_PATH_MAX 512
 
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
@@ -81,8 +81,8 @@ struct event_t {
 	struct gadget_l4endpoint_t dst;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
-	char cwd[MAX_STRING_SIZE];
-	char exepath[MAX_STRING_SIZE];
+	char cwd[GADGET_PATH_MAX];
+	char exepath[GADGET_PATH_MAX];
 
 	enum pkt_type_t pkt_type_raw;
 	gadget_duration
@@ -106,8 +106,8 @@ struct event_header_t {
 	struct gadget_l4endpoint_t dst;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
-	char cwd[MAX_STRING_SIZE];
-	char exepath[MAX_STRING_SIZE];
+	char cwd[GADGET_PATH_MAX];
+	char exepath[GADGET_PATH_MAX];
 
 	enum pkt_type_t pkt_type_raw;
 	gadget_duration
