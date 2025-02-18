@@ -48,16 +48,28 @@ datasources:
         annotations:
           description: if the process has the requested capability
           columns.width: 10
+      ustack_raw:
+        annotations:
+          columns.hidden: true
+      ustack:
+        annotations:
+          description: User stack
+          columns.hidden: true
+          columns.width: 20
 params:
   ebpf:
     audit_only:
       key: audit-only
       defaultValue: "false"
       description: Only show audit checks
-    print_stack:
-      key: print-stack
+    print_kstack:
+      key: print-kstack
       defaultValue: "true"
-      description: controls whether the gadget will send kernel stack to userspace
+      description: Show kernel stack traces
+    print_ustack:
+      key: print-ustack
+      defaultValue: "false"
+      description: Show user stack traces
     unique:
       key: unique
       defaultValue: "false"

@@ -333,11 +333,19 @@ struct event {
 
 ### `gadget_kernel_stack`
 
-Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stack-maps](#kernel-stack-maps)).
+Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stack-traces](#kernel-stack-traces)).
 
 #### Annotations
 
 - `ebpf.formatter.kstack`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
+
+### `gadget_user_stack`
+
+Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack_raw)` (see [user-stack-traces](#user-stack-traces)).
+
+#### Annotations
+
+- `ebpf.formatter.ustack`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
 
 ### `gadget_uid` and `gadget_gid`
 
@@ -530,10 +538,12 @@ int ig_execve_x(struct syscall_trace_exit *ctx)
 }
 ```
 
-## Kernel stack maps
+## Stack maps
 
-To make use of kernel stack maps, gadgets must include
-[gadget/kernel_stack_map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/43d7b29f43d6ced34004ed20a7508c25cf6a5fb9/include/gadget/kernel_stack_map.h).
+### Kernel stack traces
+
+To make use of kernel stack traces, gadgets must include
+[gadget/kernel_stack_map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/kernel_stack_map.h).
 
 ```C
 #include <gadget/kernel_stack_map.h>
@@ -542,13 +552,13 @@ To make use of kernel stack maps, gadgets must include
 This will define the following struct:
 
 ```C
-#define PERF_MAX_STACK_DEPTH 127
-#define MAX_ENTRIES	10000
+#define KERNEL_MAX_STACK_DEPTH 127
+#define KERNEL_STACK_MAP_MAX_ENTRIES 10000
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
-	__uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, MAX_ENTRIES);
+	__uint(value_size, KERNEL_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, KERNEL_STACK_MAP_MAX_ENTRIES);
 } ig_kstack SEC(".maps");
 ```
 
@@ -574,6 +584,54 @@ if (kernel_stack_id >= 0) {
 } else {
 	// gadget_get_kernel_stack() failed
 }
+```
+
+### User stack traces
+
+To make use of user stack traces, gadgets must include
+[gadget/user_stack_map.h](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/include/gadget/user_stack_map.h).
+
+```C
+#include <gadget/user_stack_map.h>
+```
+
+This will define the following struct:
+
+```C
+#define USER_MAX_STACK_DEPTH 127
+#define USER_STACK_MAP_MAX_ENTRIES 10000
+struct {
+	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
+	__uint(key_size, sizeof(u32));
+	__uint(value_size, USER_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, USER_STACK_MAP_MAX_ENTRIES);
+} ig_ustack SEC(".maps");
+```
+
+Then, add a field in the event structure with the type of `gadget_user_stack`,
+designated for storing the stack id along with identifiers for the executable
+so that the stack can be symbolised in userspace.
+`gadget_get_user_stack(ctx, &event->ustack_raw)` could be used  to populate
+this field, this helper function will store the kernel stack into
+`ig_ustack` and fill the field passed as parameter. When ustack_raw is left
+initialized to zero, ig will ignore the stack trace.
+
+```C
+struct event {
+	gadget_user_stack kstack;
+	/* other fields */
+};
+
+const volatile bool print_ustack = false;
+GADGET_PARAM(print_ustack);
+
+struct event *event;
+event = gadget_reserve_buf(&events, sizeof(struct cap_event));
+if (!event)
+	return 0;
+
+if (print_ustack)
+	gadget_get_user_stack(ctx, &event->ustack_raw);
 ```
 
 ## Common information
