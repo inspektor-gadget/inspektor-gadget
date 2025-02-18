@@ -287,54 +287,73 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			continue
 		}
 		annInfo := strings.SplitN(ann, ":", 2)
-		if len(annInfo) != 2 {
+		switch len(annInfo) {
+		default:
 			return fmt.Errorf("invalid annotation %q", ann)
-		}
-
-		annotation := strings.SplitN(annInfo[1], "=", 2)
-		if len(annotation) != 2 {
-			return fmt.Errorf("invalid annotation %q", ann)
-		}
-
-		subject := strings.SplitN(annInfo[0], ".", 2)
-		switch len(subject) {
 		case 1:
-			// data source
+			// Global annotation
+			annotation := strings.SplitN(annInfo[0], "=", 2)
+			if len(annotation) != 2 {
+				return fmt.Errorf("invalid annotation %q", ann)
+			}
+
 			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					annInfo[0]: map[string]any{
-						"annotations": map[string]any{
-							annotation[0]: annotation[1],
-						},
-					},
+				"annotations": map[string]any{
+					annotation[0]: annotation[1],
 				},
 			}
-			viper.Set("a", "b")
 			err = viper.MergeConfigMap(tmpConfig)
 			if err != nil {
 				return fmt.Errorf("adding annotation %q: %w", ann, err)
 			}
-			log.Debugf("ds annotation %q added", ann)
+			log.Debugf("global annotation %q added", ann)
 		case 2:
-			// field
-			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					subject[0]: map[string]any{
-						"fields": map[string]any{
-							subject[1]: map[string]any{
-								"annotations": map[string]any{
-									annotation[0]: annotation[1],
+			// Field or data source annotation
+			annotation := strings.SplitN(annInfo[1], "=", 2)
+			if len(annotation) != 2 {
+				return fmt.Errorf("invalid annotation %q", ann)
+			}
+
+			subject := strings.SplitN(annInfo[0], ".", 2)
+			switch len(subject) {
+			case 1:
+				// data source
+				tmpConfig := map[string]any{
+					"datasources": map[string]any{
+						annInfo[0]: map[string]any{
+							"annotations": map[string]any{
+								annotation[0]: annotation[1],
+							},
+						},
+					},
+				}
+				viper.Set("a", "b")
+				err = viper.MergeConfigMap(tmpConfig)
+				if err != nil {
+					return fmt.Errorf("adding annotation %q: %w", ann, err)
+				}
+				log.Debugf("ds annotation %q added", ann)
+			case 2:
+				// field
+				tmpConfig := map[string]any{
+					"datasources": map[string]any{
+						subject[0]: map[string]any{
+							"fields": map[string]any{
+								subject[1]: map[string]any{
+									"annotations": map[string]any{
+										annotation[0]: annotation[1],
+									},
 								},
 							},
 						},
 					},
-				},
+				}
+				err = viper.MergeConfigMap(tmpConfig)
+				if err != nil {
+					return fmt.Errorf("adding annotation %q: %w", ann, err)
+				}
+				log.Debugf("field annotation %q added", ann)
 			}
-			err = viper.MergeConfigMap(tmpConfig)
-			if err != nil {
-				return fmt.Errorf("adding annotation %q: %w", ann, err)
-			}
-			log.Debugf("field annotation %q added", ann)
 		}
 	}
 
