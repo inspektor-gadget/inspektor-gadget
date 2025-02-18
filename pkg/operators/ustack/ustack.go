@@ -167,8 +167,12 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				pidnsLevel0, _ := pidnsLevel0Field[0].Uint32(data)
 				pidLevel1, _ := pidLevel1Field[0].Uint32(data)
 				pidnsLevel1, _ := pidnsLevel1Field[0].Uint32(data)
-				if pidLevel0 == 0 || pidnsLevel0 == 0 || pidLevel1 == 0 || pidnsLevel1 == 0 {
-					logger.Warn("invalid pid or pidns")
+				if pidLevel0 == 0 {
+					logger.Warn("user stack with invalid pid")
+					return nil
+				}
+				if pidnsLevel0 == 0 {
+					logger.Warn("user stack with invalid pidns")
 					return nil
 				}
 				pidNumbers := []symbolizer.PidNumbers{
@@ -176,10 +180,12 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						Pid:     pidLevel0,
 						PidNsId: pidnsLevel0,
 					},
-					{
+				}
+				if pidLevel1 != 0 && pidnsLevel1 != 0 {
+					pidNumbers = append(pidNumbers, symbolizer.PidNumbers{
 						Pid:     pidLevel1,
 						PidNsId: pidnsLevel1,
-					},
+					})
 				}
 				containerPid := uint32(0)
 				if containerPidField != nil {
