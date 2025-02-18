@@ -12,7 +12,7 @@
 #define MAX_ENTRIES 10240
 #define FS_NAME_LEN 8
 #define DATA_LEN 512
-#define PATH_MAX 4096
+#define PATH_MAX 512
 
 enum op {
 	MOUNT,
