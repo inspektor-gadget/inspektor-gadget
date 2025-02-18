@@ -17,6 +17,7 @@ package ebpfoperator
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"oras.land/oras-go/v2"
 )
@@ -71,72 +73,52 @@ func (m *mockGadget) RegisterDataSource(datasource.Type, string) (datasource.Dat
 }
 
 func (m *mockGadget) SetMetadata([]byte) {}
-
-type mockLogger struct{}
-
-func (m *mockLogger) Debugf(format string, args ...interface{}) {}
-
-func (m *mockLogger) Infof(format string, args ...interface{}) {}
-
-func (m *mockLogger) Warnf(format string, args ...interface{}) {}
-
-func (m *mockLogger) Errorf(format string, args ...interface{}) {}
-
-func (m *mockLogger) Fatalf(format string, args ...interface{}) {}
-
-func (m *mockLogger) Debug(args ...interface{}) {}
-
-func (m *mockLogger) Info(args ...interface{}) {}
-
-func (m *mockLogger) Warn(args ...interface{}) {}
-
-func (m *mockLogger) Error(args ...interface{}) {}
-
-func (m *mockLogger) Fatal(args ...interface{}) {}
-
-func (m *mockLogger) SetLevel(level logger.Level) {}
-
-func (m *mockLogger) Level() logger.Level { return 0 }
-
-func (m *mockLogger) GetLevel() logger.Level { return 0 }
-
-func (m *mockLogger) Trace(args ...interface{}) {}
-
-func (m *mockLogger) Tracef(format string, args ...interface{}) {}
-
-func (m *mockLogger) Panic(args ...interface{}) {}
-
-func (m *mockLogger) Panicf(format string, args ...interface{}) {}
-
-func (m *mockLogger) Log(severity logger.Level, args ...interface{}) {}
-
-func (m *mockLogger) Logf(severity logger.Level, format string, args ...interface{}) {}
-
 func TestPopulateVar(t *testing.T) {
 	tests := []struct {
-		name      string
-		inputType btf.Type
-		varName   string
-		expectErr error
+		name        string
+		inputType   btf.Type
+		varName     string
+		expectErr   error
+		expectedVar *ebpfVar
 	}{
-		/*
-			{
-				name: "Success case",
-				inputType: &btf.Var{
-					Name: "testVar",
-					Type: &btf.Const{
-						Type: &btf.Volatile{
-							Type: &btf.Int{
-								Name: "hello", Size: 4,
-							},
+		{
+			name: "returns error when not a btf.var",
+			inputType: &btf.Var{
+				Name: "int32",
+				Type: &btf.Const{
+					Type: &btf.Volatile{
+						Type: &btf.Int{
+							Name: "int32", Size: 4,
 						},
 					},
 				},
-				varName:   "valid_var",
-				expectErr: false,
-			},*/
+			},
+			varName:   "valid_var",
+			expectErr: nil,
+			expectedVar: &ebpfVar{
+				tags: []string{"int32"},
+			},
+		},
 		{
-			name: "Success case",
+			name: "returns float32",
+			inputType: &btf.Var{
+				Name: "float32",
+				Type: &btf.Const{
+					Type: &btf.Volatile{
+						Type: &btf.Float{
+							Name: "float32", Size: 4,
+						},
+					},
+				},
+			},
+			varName:   "valid_var",
+			expectErr: nil,
+			expectedVar: &ebpfVar{
+				tags: []string{"float32"},
+			},
+		},
+		{
+			name: "return int but empty",
 			inputType: &btf.Var{
 				Type: &btf.Const{
 					Type: &btf.Volatile{
@@ -146,6 +128,9 @@ func TestPopulateVar(t *testing.T) {
 			},
 			varName:   "valid_var",
 			expectErr: nil,
+			expectedVar: &ebpfVar{
+				tags: []string{},
+			},
 		},
 		{
 			name:      "Failure - Not a btf.Var",
@@ -175,12 +160,18 @@ func TestPopulateVar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			logger := logrus.New()
+			logger.Out = io.Discard
 			instance := &ebpfInstance{
 				vars:      make(map[string]*ebpfVar),
 				gadgetCtx: &mockGadget{},
-				logger:    &mockLogger{},
+				logger:    logger,
 			}
 			err := instance.populateVar(tt.inputType, tt.varName)
+
+			if res, ok := instance.vars[tt.varName]; ok {
+				assert.Equal(t, tt.expectedVar.tags, res.tags)
+			}
 			assert.Equal(t, err, tt.expectErr)
 		})
 	}
