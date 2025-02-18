@@ -33,8 +33,12 @@ ARG TINYGO_VERSION
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script
 # xz-utils is needed by btfgen makefile
 RUN apt-get update \
-	&& apt-get install -y libc-dev lsb-release wget software-properties-common gnupg xz-utils \
+	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils \
 	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
+
+# Hack to install software-properties-common separately because of dpkg errors
+RUN apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common|| sudo dpkg --configure -a && apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common
+
 # Install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \
