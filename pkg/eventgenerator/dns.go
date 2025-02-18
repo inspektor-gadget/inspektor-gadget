@@ -23,7 +23,6 @@ import (
 
 	"github.com/miekg/dns"
 
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
@@ -41,7 +40,7 @@ func NewDNSGenerator() Generator {
 
 type dnsGenerator struct{}
 
-func (d dnsGenerator) Generate(container containercollection.Container, params map[string]string) error {
+func (d dnsGenerator) Generate(containerPid int, params map[string]string) error {
 	domain, ok := params[ParamDomain]
 	if !ok || domain == "" {
 		return fmt.Errorf("domain parameter is required")
@@ -52,7 +51,7 @@ func (d dnsGenerator) Generate(container containercollection.Container, params m
 	}
 	ns, ok := params[ParamNameserver]
 	if !ok || ns == "" {
-		servers, _ := nameserverFromResolvConf(int(container.Runtime.ContainerPID))
+		servers, _ := nameserverFromResolvConf(containerPid)
 		if len(servers) == 0 {
 			return fmt.Errorf("no nameservers found in container resolv.conf")
 		}
@@ -76,11 +75,16 @@ func (d dnsGenerator) Generate(container containercollection.Container, params m
 		return nil
 	}
 
-	return nsenter.NetnsEnter(int(container.Runtime.ContainerPID), cb)
+	// TODO: Add support for interval and iterations
+	return nsenter.NetnsEnter(containerPid, cb)
 }
 
 func (d dnsGenerator) Cleanup() error {
 	return nil
+}
+
+func (d dnsGenerator) Name() string {
+	return DNSGeneratorType
 }
 
 func nameserverFromResolvConf(containerPid int) ([]string, error) {

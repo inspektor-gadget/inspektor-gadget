@@ -14,10 +14,9 @@
 
 package eventgenerator
 
-import containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-
 // Generator is an interface for generating events
 type Generator interface {
-	Generate(container containercollection.Container, params map[string]string) error
+	Name() string
+	Generate(int, map[string]string) error
 	Cleanup() error
 }

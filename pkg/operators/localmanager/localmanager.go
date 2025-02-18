@@ -323,6 +323,7 @@ type localManagerTrace struct {
 
 	containersDs   datasource.DataSource
 	eventTypeField datasource.FieldAccessor
+	pidField       datasource.FieldAccessor
 	cgroupIDField  datasource.FieldAccessor
 	mountNsIDField datasource.FieldAccessor
 	nameField      datasource.FieldAccessor
@@ -339,6 +340,7 @@ func (l *localManagerTrace) emitContainersDatasourceEvent(eventType containercol
 	}
 
 	l.eventTypeField.PutString(ev, eventType.String())
+	l.pidField.PutUint32(ev, container.ContainerPid())
 	l.cgroupIDField.PutUint64(ev, container.CgroupID)
 	l.mountNsIDField.PutUint64(ev, container.Mntns)
 	l.nameField.PutString(ev, container.Runtime.ContainerName)
@@ -540,6 +542,7 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 
 	var containersDs datasource.DataSource
 	var eventTypeField datasource.FieldAccessor
+	var pidField datasource.FieldAccessor
 	var cgroupIDField datasource.FieldAccessor
 	var mountNsIDField datasource.FieldAccessor
 	var nameField datasource.FieldAccessor
@@ -554,6 +557,11 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 		eventTypeField, err = containersDs.AddField("event_type", api.Kind_String)
 		if err != nil {
 			return nil, fmt.Errorf("adding field event_type: %w", err)
+		}
+
+		pidField, err = containersDs.AddField("pid", api.Kind_Uint32)
+		if err != nil {
+			return nil, fmt.Errorf("adding field pid: %w", err)
 		}
 
 		cgroupIDField, err = containersDs.AddField("cgroup_id", api.Kind_Uint64)
@@ -584,6 +592,7 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 
 			containersDs:   containersDs,
 			eventTypeField: eventTypeField,
+			pidField:       pidField,
 			cgroupIDField:  cgroupIDField,
 			mountNsIDField: mountNsIDField,
 			nameField:      nameField,

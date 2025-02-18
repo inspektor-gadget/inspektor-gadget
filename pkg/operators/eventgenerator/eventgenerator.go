@@ -18,13 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/eventgenerator"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -71,32 +69,34 @@ func (e *eventGeneratorOperator) InstanceParams() api.Params {
 			TypeHint:       api.TypeString,
 			PossibleValues: []string{eventgenerator.DNSGeneratorType},
 		},
+		// TODO: Add support for multiple iterations
 		{
 			Key:          ParamIterations,
 			Description:  "Number of iterations to run the generator",
 			TypeHint:     api.TypeInt,
 			DefaultValue: "-1",
 		},
+		// TODO: Add support for interval
 		{
 			Key:         ParamParams,
 			Description: "Comma-separated list of key-value pairs for a generator e.g domain:example.com,query-type:A",
 			TypeHint:    api.TypeString,
 		},
-		{
-			Key:         ParamTargetPod,
-			Description: "Target pod for the event generator",
-			TypeHint:    api.TypeString,
-		},
-		{
-			Key:         ParamTargetNamespace,
-			Description: "Target namespace for the event generator",
-			TypeHint:    api.TypeString,
-		},
-		{
-			Key:         ParamTargetContainer,
-			Description: "Target container for the event generator",
-			TypeHint:    api.TypeString,
-		},
+		// The containers data source will emit events only for containers
+		// matching the flags from local-manager/kube-manager (containername, namespace, etc.)
+		// {
+		//  Key:         ParamTargetPod,
+		//  Description: "Target pod for the event generator",
+		//  TypeHint:    api.TypeString,
+		// }, {
+		//  Key:         ParamTargetNamespace,
+		//  Description: "Target namespace for the event generator",
+		//  TypeHint:    api.TypeString,
+		// }, {
+		//  Key:         ParamTargetContainer,
+		//  Description: "Target container for the event generator",
+		//  TypeHint:    api.TypeString,
+		// },
 	}
 }
 
@@ -136,25 +136,10 @@ func (e *eventGeneratorOperatorInstance) Name() string {
 }
 
 func (e *eventGeneratorOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
-	//iter, err := strconv.Atoi(e.params[ParamIterations])
-	//if err != nil {
-	//	return fmt.Errorf("parsing iterations: %w", err)
-	//}
+	return nil
+}
 
-	cc := &containercollection.ContainerCollection{}
-	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithContainerFanotifyEbpf(),
-		containercollection.WithMultipleContainerRuntimesEnrichment(
-			[]*containerutilsTypes.RuntimeConfig{
-				{Name: types.RuntimeNameDocker},
-				{Name: types.RuntimeNameContainerd},
-			}),
-	}
-	if err := cc.Initialize(opts...); err != nil {
-		return fmt.Errorf("initializing container collection: %w", err)
-	}
-	defer cc.Close()
-
+func (e *eventGeneratorOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	gparam := make(map[string]string)
 	for _, p := range strings.Split(e.params[ParamParams], ",") {
 		if p != "" {
@@ -166,21 +151,55 @@ func (e *eventGeneratorOperatorInstance) Start(gadgetCtx operators.GadgetContext
 		}
 	}
 
-	container, ok := e.params[ParamTargetContainer]
-	if !ok {
-		return fmt.Errorf("target container is required")
-	}
-	cs := &containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: container,
-		},
-	}
-	cc.ContainerRangeWithSelector(cs, func(c *containercollection.Container) {
-		err := e.generator.Generate(*c, gparam)
-		if err != nil {
-			gadgetCtx.Logger().Warnf("failed to generate event: %v", err)
+	// TODO: Validate gparams before registering the data source
+	// e.generator.ValidateParams(gparam)
+
+	found := false
+	for _, ds := range gadgetCtx.GetDataSources() {
+		if ds.Name() != "containers" {
+			continue
 		}
-	})
+		found = true
+		gadgetCtx.Logger().Debugf("event-generator: Subscribing to %s data source", ds.Name())
+
+		eventField := ds.GetField("event_type")
+		pidField := ds.GetField("pid")
+
+		// Subscription to the containers data source must happen in PreStart
+		// because the data source will start emitting events on the Start call
+		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			event, err := eventField.String(data)
+			if err != nil {
+				return fmt.Errorf("failed to get event type: %w", err)
+			}
+
+			switch event {
+			case "CREATED":
+				pid, err := pidField.Uint32(data)
+				if err != nil {
+					return fmt.Errorf("failed to get containerPid: %w", err)
+				}
+
+				gadgetCtx.Logger().Debugf("event-generator: Starting %s generator for containerPid %d with params %v",
+					e.generator.Name(), pid, gparam)
+
+				err = e.generator.Generate(int(pid), gparam)
+				if err != nil {
+					gadgetCtx.Logger().Warnf("failed to generate event: %v", err)
+				}
+			case "DELETED":
+				gadgetCtx.Logger().Debugf("event-generator: Stopping %s generator", e.generator.Name())
+				e.generator.Cleanup()
+			default:
+				return fmt.Errorf("unknown event type %q", event)
+			}
+
+			return nil
+		}, priority)
+	}
+	if !found {
+		return fmt.Errorf("event-generator: containers data source not found")
+	}
 
 	return nil
 }

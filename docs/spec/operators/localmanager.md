@@ -117,7 +117,9 @@ annotations:
 ```
 
 So far, the event published contains the following fields:
+
 - `event_type`: Either "CREATED" or "DELETED".
+- `pid`: The process ID of the first process in the container.
 - `name`: The container name.
 - `mntns_id`: The container mount namespace ID.
 - `cgroup_id`: The container cgroup ID.
