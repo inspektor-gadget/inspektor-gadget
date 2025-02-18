@@ -267,9 +267,14 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return err
 	}
 
+	programs := []*ebpf.ProgramSpec{}
+	for _, p := range spec.Programs {
+		programs = append(programs, p)
+	}
+
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			KernelTypes: btfgen.GetBTFSpec(programs...),
 		},
 	}
 

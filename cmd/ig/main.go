@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"fmt"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 
 	log "github.com/sirupsen/logrus"

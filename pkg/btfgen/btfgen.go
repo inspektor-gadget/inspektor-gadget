@@ -39,22 +39,23 @@ import (
 // kernel exposes BTF information, it returns it. If the BTF for this kernel is not found, it returns nil.
 func GetBTFSpec(programs ...*ebpf.ProgramSpec) *btf.Spec {
 	// If the kernel exposes BTF; nothing to do
-	var filter *btf.TypeFilter
+	var opts *btf.SpecOptions
 	if len(programs) > 0 {
-		filter = &btf.TypeFilter{
-			Names: map[string]bool{},
+		opts = &btf.SpecOptions{
+			TypeNames: map[string]struct{}{},
 		}
 		for _, p := range programs {
 			iter := p.Instructions.Iterate()
 			for iter.Next() {
 				if relo := btf.CORERelocationMetadata(iter.Ins); relo != nil {
 					//fmt.Printf("relo %s\n", relo.String())
-					filter.Names[relo.TypeName()] = true
+					opts.TypeNames[relo.TypeName()] = struct{}{}
 				}
 			}
 		}
 	}
-	s, err := btf.LoadKernelSpecWithFilter(filter)
+	//opts = nil
+	s, err := btf.LoadKernelSpecWithOptions(opts)
 	if err == nil {
 		return s
 	}
@@ -87,7 +88,7 @@ func GetBTFSpec(programs ...*ebpf.ProgramSpec) *btf.Spec {
 		return nil
 	}
 
-	s, err = btf.LoadSpecFromReader(bytes.NewReader(file), filter)
+	s, err = btf.LoadSpecFromReaderWithOptions(bytes.NewReader(file), opts)
 	if err != nil {
 		log.Warnf("Failed to initialize BTF: loading BTF spec: %w", err)
 		return nil

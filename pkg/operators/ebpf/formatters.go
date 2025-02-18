@@ -64,7 +64,16 @@ func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 
 }
 
 func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) error {
-	btfSpec, err := btf.LoadKernelSpec()
+	opts := &btf.SpecOptions{
+		TypeNames: map[string]struct{}{},
+	}
+	if len(i.enums) > 0 {
+		for _, en := range i.enums {
+			opts.TypeNames[en.Enum.Name] = struct{}{}
+		}
+	}
+
+	btfSpec, err := btf.LoadKernelSpecWithOptions(opts)
 	if err != nil {
 		i.logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
 	}

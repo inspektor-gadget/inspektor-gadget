@@ -79,9 +79,14 @@ func (se *SocketEnricher) start() error {
 		log.Warnf("updating socket_file_ops address with ksyms: %v\nEither you cannot access /proc/kallsyms or this file does not contain socket_file_ops", err)
 	}
 
+	programs := []*ebpf.ProgramSpec{}
+	for _, p := range specIter.Programs {
+		programs = append(programs, p)
+	}
+
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			KernelTypes: btfgen.GetBTFSpec(programs...),
 		},
 	}
 

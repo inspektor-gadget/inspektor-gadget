@@ -121,9 +121,14 @@ func (t *Tracer) install() error {
 		return err
 	}
 
+	programs := []*ebpf.ProgramSpec{}
+	for _, p := range spec.Programs {
+		programs = append(programs, p)
+	}
+
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			KernelTypes: btfgen.GetBTFSpec(programs...),
 		},
 	}
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
