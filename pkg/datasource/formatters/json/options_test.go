@@ -15,7 +15,6 @@
 package json
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,7 +67,7 @@ func TestWithFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			actual := WithFields(test.fields)
 			actual(test.formatter)
-			fmt.Println(test.formatter.useDefault)
+			assert.Equal(t, test.expected.useDefault, test.formatter.useDefault)
 		})
 	}
 }
