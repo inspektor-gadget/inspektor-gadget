@@ -22,13 +22,13 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
+func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues, verbose bool) (*api.GadgetInfo, error) {
 	err := gadgetCtx.PrepareGadgetInfo(paramValues)
 	if err != nil {
 		return nil, fmt.Errorf("initializing and preparing operators: %w", err)
 	}
 
-	return gadgetCtx.SerializeGadgetInfo()
+	return gadgetCtx.SerializeGadgetInfo(verbose)
 }
 
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {

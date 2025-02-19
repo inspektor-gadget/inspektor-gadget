@@ -92,7 +92,7 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		gadgetcontext.WithAsRemoteCall(true),
 	)
 
-	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)
+	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues, req.Verbose)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
@@ -203,7 +203,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 			seq := uint32(0)
 			var seqLock sync.Mutex
 
-			gi, err := gadgetCtx.SerializeGadgetInfo()
+			gi, err := gadgetCtx.SerializeGadgetInfo(false)
 			if err != nil {
 				return fmt.Errorf("serializing gadget info: %w", err)
 			}

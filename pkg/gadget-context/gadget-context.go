@@ -68,6 +68,7 @@ type GadgetContext struct {
 	dataOperators    []operators.DataOperator
 	vars             map[string]any
 	params           []*api.Param
+	extraInfo        map[string]string
 	prepareCallbacks []func()
 	loaded           bool
 	imageName        string
@@ -107,6 +108,7 @@ func NewBuiltIn(
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
+		extraInfo:   make(map[string]string),
 	}
 }
 
@@ -125,6 +127,7 @@ func New(
 		imageName:   imageName,
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
+		extraInfo:   make(map[string]string),
 		// dataOperators: operators.GetDataOperators(),
 	}
 	for _, option := range options {
@@ -282,7 +285,7 @@ func (c *GadgetContext) SetMetadata(m []byte) {
 	c.metadata = m
 }
 
-func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
+func (c *GadgetContext) SerializeGadgetInfo(verbose bool) (*api.GadgetInfo, error) {
 	gi := &api.GadgetInfo{
 		Name:      "",
 		Id:        c.id,
@@ -306,6 +309,10 @@ func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 		gi.DataSources = append(gi.DataSources, di)
 	}
 
+	if verbose {
+		gi.ExtraInfo = c.extraInfo
+	}
+
 	return gi, nil
 }
 
@@ -319,6 +326,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 
 	c.id = info.Id
 	c.metadata = info.Metadata
+	c.extraInfo = info.ExtraInfo
 	c.dataSources = make(map[string]datasource.DataSource)
 	for _, inds := range info.DataSources {
 		ds, err := datasource.NewFromAPI(inds)

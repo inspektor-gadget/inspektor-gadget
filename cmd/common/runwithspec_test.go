@@ -66,7 +66,7 @@ func (r *testRuntime) Close() error {
 	return nil
 }
 
-func (r *testRuntime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error) {
+func (r *testRuntime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues, verbose bool) (*api.GadgetInfo, error) {
 	panic("unimplemented")
 }
 

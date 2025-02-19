@@ -31,7 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
+func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues, verbose bool) (*api.GadgetInfo, error) {
 	if runtimeParams == nil {
 		runtimeParams = r.ParamDescs().ToParams()
 	}
@@ -47,6 +47,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		ParamValues: paramValues,
 		ImageName:   gadgetCtx.ImageName(),
 		Version:     api.VersionGadgetInfo,
+		Verbose:     verbose,
 	}
 
 	// specify that ImageName will contain a gadget instance ID
@@ -64,7 +65,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		return nil, fmt.Errorf("initializing local operators: %w", err)
 	}
 
-	return gadgetCtx.SerializeGadgetInfo()
+	return gadgetCtx.SerializeGadgetInfo(verbose)
 }
 
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {

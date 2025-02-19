@@ -221,7 +221,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
 		// Fetch gadget information; TODO: this can potentially be cached
-		info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+		info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap, false)
 		if err != nil {
 			return fmt.Errorf("fetching gadget information: %w", err)
 		}

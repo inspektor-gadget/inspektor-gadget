@@ -55,7 +55,7 @@ type GadgetContext interface {
 	GetAllDataSources() map[string]datasource.DataSource
 	SetVar(string, any)
 	GetVar(string) (any, bool)
-	SerializeGadgetInfo() (*api.GadgetInfo, error)
+	SerializeGadgetInfo(bool) (*api.GadgetInfo, error)
 	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool) error
 	Params() []*api.Param
 	SetMetadata([]byte)
@@ -117,8 +117,8 @@ type Runtime interface {
 	ParamDescs() params.ParamDescs
 
 	// GetGadgetInfo returns information about the gadget and used operators; this info potentially comes
-	// from a cache
-	GetGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error)
+	// from a cache. Verbose controls whether the gadget info should include extra information about the gadget
+	GetGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues, verbose bool) (*api.GadgetInfo, error)
 
 	RunBuiltInGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
 	RunGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
