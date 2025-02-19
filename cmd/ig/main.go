@@ -105,7 +105,7 @@ func main() {
 	operators.RegisterDataOperator(ocihandler.OciHandler)
 
 	rootCmd.AddCommand(newDaemonCommand(runtime))
-	rootCmd.AddCommand(image.NewImageCmd())
+	rootCmd.AddCommand(image.NewImageCmd(runtime))
 	rootCmd.AddCommand(common.NewLoginCmd())
 	rootCmd.AddCommand(common.NewLogoutCmd())
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
