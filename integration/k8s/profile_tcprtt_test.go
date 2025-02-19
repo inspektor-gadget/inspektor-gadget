@@ -24,7 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestProfileTCPRTT(t *testing.T) {
+func TestBuiltinProfileTCPRTT(t *testing.T) {
 	t.Parallel()
 
 	serverPodName := "nginx-pod"

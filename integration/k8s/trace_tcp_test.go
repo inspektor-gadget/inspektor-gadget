@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceTCP(t *testing.T) {
+func TestBuiltinTraceTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-tcp")
 

@@ -25,7 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestPrometheus(t *testing.T) {
+func TestBuiltinPrometheus(t *testing.T) {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		t.Skip("Skip running test with test component different than kubectl-gadget")
 	}

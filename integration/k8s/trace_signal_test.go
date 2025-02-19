@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceSignal(t *testing.T) {
+func TestBuiltinTraceSignal(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-signal")
 

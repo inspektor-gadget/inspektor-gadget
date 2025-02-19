@@ -16,6 +16,7 @@ package testing
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/cilium/ebpf/rlimit"
@@ -23,7 +24,29 @@ import (
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
+
+const (
+	K8sDistroAKSAzureLinux  = "aks-AzureLinux"
+	K8sDistroAKSUbuntu      = "aks-Ubuntu"
+	K8sDistroARO            = "aro"
+	K8sDistroMinikubeGH     = "minikube-github"
+	K8sDistroEKSAmazonLinux = "eks-AmazonLinux"
+	K8sDistroGKECOS         = "gke-COS_containerd"
+)
+
+func SkipK8sDistros(t testing.TB, distros ...string) {
+	t.Helper()
+
+	k8sDistro := os.Getenv("KUBERNETES_DISTRIBUTION")
+
+	for _, distro := range distros {
+		if k8sDistro == distro {
+			t.Skipf("Skipping test on Kubernetes distribution %s", distro)
+		}
+	}
+}
 
 func RequireEnvironmentVariables(t testing.TB) {
 	if os.Getenv("IG_PATH") == "" {
@@ -42,16 +65,32 @@ func RemoveMemlock(t testing.TB) {
 	require.NoError(t, err, "Failed to remove memlock rlimit: %s", err)
 }
 
+// MinimumKernelVersion skips the test if the current kernel version is less
+// than minKernelVersion. When used in Kubernetes, it gets the kernel version
+// from a random node in the cluster.
 func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
 	t.Helper()
-	currVersion, err := kernel.GetKernelVersion()
-	require.NoError(t, err, "Failed to get kernel version: %s", err)
+
+	var err error
+	var currVersion *kernel.VersionInfo
+
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+		cmd := exec.Command("kubectl", "get", "nodes", "-o", "jsonpath={.items[0].status.nodeInfo.kernelVersion}")
+		output, err := cmd.Output()
+		require.NoError(t, err, "Failed to get kernel version: %s", err)
+		currVersion, err = kernel.ParseRelease(string(output))
+		require.NoError(t, err, "Failed to parse kernel version: %s", err)
+	} else {
+		currVersion, err = kernel.GetKernelVersion()
+		require.NoError(t, err, "Failed to get kernel version: %s", err)
+	}
 
 	minVersion, err := kernel.ParseRelease(minKernelVersion)
 	require.NoError(t, err, "Failed to parse minKernelVersion: %s", err)
 
 	if kernel.CompareKernelVersion(*currVersion, *minVersion) < 0 {
-		t.Skipf("Skipping test because kernel version %s is less than %s", currVersion, minKernelVersion)
+		t.Skipf("Skipping test because kernel version %s is less than %s",
+			currVersion, minKernelVersion)
 	}
 }
 

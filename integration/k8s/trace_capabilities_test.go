@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestTraceCapabilities(t *testing.T) {
+func TestBuiltinTraceCapabilities(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
 		t.Skip("Skip running trace capabilities on ARO: See https://github.com/inspektor-gadget/inspektor-gadget/issues/985 for more details")
 	}

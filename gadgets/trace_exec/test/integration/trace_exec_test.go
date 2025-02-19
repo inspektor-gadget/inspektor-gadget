@@ -56,6 +56,9 @@ func TestTraceExec(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
+	// see https://github.com/inspektor-gadget/inspektor-gadget/issues/4094
+	gadgettesting.SkipK8sDistros(t, gadgettesting.K8sDistroGKECOS)
+
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-exec"

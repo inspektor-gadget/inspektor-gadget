@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
@@ -43,15 +42,10 @@ type topBlockioEntry struct {
 }
 
 func TestTopBlockio(t *testing.T) {
-	version, err := kernel.GetKernelVersion()
-	require.Nil(t, err, "Failed to get kernel version: %s", err)
-	v6_5 := kernel.VersionInfo{Kernel: 6, Major: 5, Minor: 0}
-	if kernel.CompareKernelVersion(*version, v6_5) < 0 {
-		t.Skip("Skip running top_blockio on kernel versions lower than 6.5")
-	}
-
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
+
+	gadgettesting.MinimumKernelVersion(t, "6.5")
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")

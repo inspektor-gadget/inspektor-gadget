@@ -51,6 +51,12 @@ runs:
     - name: Integration tests
       id: integration-tests
       shell: bash
+      env:
+        KUBERNETES_DISTRIBUTION: ${{ inputs.kubernetes_distribution }}
+        KUBERNETES_ARCHITECTURE: ${{ inputs.kubernetes_architecture }}
+        DNSTESTER_IMAGE: ${{ inputs.dnstester_image }}
+        GADGET_REPOSITORY: ${{ inputs.gadget_repository }}
+        GADGET_TAG: ${{ inputs.gadget_tag }}
       run: |
         cleanup() {
             echo "IntegrationTestsJob: Workflow run is being cancelled: $1 was received"
@@ -82,12 +88,9 @@ runs:
         echo "IntegrationTestsJob: Start"
         set -o pipefail
         make \
-          KUBERNETES_DISTRIBUTION=${{ inputs.kubernetes_distribution }} \
-          KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
-          DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
-          GADGET_REPOSITORY=${{ inputs.gadget_repository }} \
-          GADGET_TAG=${{ inputs.gadget_tag }} \
-          -o kubectl-gadget integration-tests |& tee integration.log & wait $!
+          IG_PATH=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
+          IG_RUNTIME=kubernetes \
+          -o kubectl-gadget integration-tests integration-test-gadgets |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Undeploy Inspektor Gadget
       id: undeploy-ig

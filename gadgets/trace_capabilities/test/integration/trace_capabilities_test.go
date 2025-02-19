@@ -53,6 +53,10 @@ func TestTraceCapabilities(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
+	// see https://github.com/inspektor-gadget/inspektor-gadget/issues/4093
+	gadgettesting.SkipK8sDistros(t, gadgettesting.K8sDistroAKSAzureLinux,
+		gadgettesting.K8sDistroAKSUbuntu, gadgettesting.K8sDistroEKSAmazonLinux)
+
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-capabilities"

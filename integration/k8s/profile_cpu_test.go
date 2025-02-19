@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestProfileCpu(t *testing.T) {
+func TestBuiltinProfileCpu(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-cpu-profile")
 

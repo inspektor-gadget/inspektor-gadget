@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestTraceBind(t *testing.T) {
+func TestBuiltinTraceBind(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-bind")
 
