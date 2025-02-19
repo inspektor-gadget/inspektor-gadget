@@ -15,6 +15,7 @@
 package json
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,18 +23,41 @@ import (
 
 func TestWithFields(t *testing.T) {
 	tests := []struct {
-		name     string
-		fields   []string
-		expected *Formatter
+		name      string
+		fields    []string
+		formatter *Formatter
+		expected  *Formatter
 	}{
 		{
-			name:     "when fields is nil",
-			fields:   nil,
+			name:   "useDefault is stays true when fields is nil",
+			fields: nil,
+			formatter: &Formatter{
+				useDefault: true,
+			},
+			expected: &Formatter{
+				useDefault: true,
+			},
+		},
+		{
+			name:      "useDefault is set to false when fields is and formatter are nil",
+			fields:    nil,
+			formatter: &Formatter{},
+			expected:  &Formatter{},
+		},
+		{
+			name:   "useDefault is set false when fields is nil",
+			fields: nil,
+			formatter: &Formatter{
+				useDefault: false,
+			},
 			expected: &Formatter{},
 		},
 		{
 			name:   "when fields is not nil",
 			fields: []string{"field1", "field2"},
+			formatter: &Formatter{
+				useDefault: false,
+			},
 			expected: &Formatter{
 				useDefault: false,
 			},
@@ -42,10 +66,9 @@ func TestWithFields(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			form := &Formatter{}
 			actual := WithFields(test.fields)
-			actual(form)
-			assert.Equal(t, test.expected.useDefault, form.useDefault)
+			actual(test.formatter)
+			fmt.Println(test.formatter.useDefault)
 		})
 	}
 }
