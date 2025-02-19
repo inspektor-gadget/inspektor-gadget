@@ -140,8 +140,22 @@ func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInsta
 	}
 }
 
-func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
-	_, err := c.initAndPrepareOperators(paramValues)
+func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues, verbose bool) error {
+	dataOperatorInstances, err := c.initAndPrepareOperators(paramValues)
+
+	// Iterate over all operators to get their extra info
+	if verbose {
+		for _, opInst := range dataOperatorInstances {
+			if extra, ok := opInst.(operators.DataOperatorExtraInfo); ok {
+				opInfo, err := extra.ExtraInfo(c)
+				if err != nil {
+					return fmt.Errorf("getting extra info for operator %q: %w", opInst.Name(), err)
+				}
+				c.extraInfo[opInst.Name()] = opInfo
+			}
+		}
+	}
+
 	return err
 }
 

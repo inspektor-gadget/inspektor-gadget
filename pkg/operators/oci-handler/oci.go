@@ -17,6 +17,7 @@ package ocihandler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -210,6 +211,29 @@ func (o *OciHandlerInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.
 	return o.extraParams
 }
 
+func (o *OciHandlerInstance) ExtraInfo(gadgetCtx operators.GadgetContext) (string, error) {
+	extraInfo := make(map[string]string, len(o.imageOperatorInstances)+1)
+
+	for _, opInst := range o.imageOperatorInstances {
+		if extra, ok := opInst.(operators.DataOperatorExtraInfo); ok {
+			opInfo, err := extra.ExtraInfo(o.gadgetCtx)
+			if err != nil {
+				return "", fmt.Errorf("getting extra info for image operator %q: %w", opInst.Name(), err)
+			}
+			extraInfo[opInst.Name()] = opInfo
+		}
+	}
+
+	extraInfo[o.Name()] = strings.Join(o.layers, ", ")
+
+	// Serialize map[string]string to JSON
+	b, err := json.Marshal(extraInfo)
+	if err != nil {
+		return "", fmt.Errorf("serializing extra info: %w", err)
+	}
+	return string(b), nil
+}
+
 func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
 	currentVersion := version.Version()
 
@@ -379,6 +403,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	for _, layer := range manifest.Layers {
 		log.Debugf("layer > %+v", layer)
+		o.layers = append(o.layers, strings.TrimPrefix(layer.MediaType, "application/"))
+
 		op, ok := operators.GetImageOperatorForMediaType(layer.MediaType)
 		if !ok {
 			continue
@@ -474,6 +500,9 @@ type OciHandlerInstance struct {
 	extraParams            api.Params
 	paramValues            api.ParamValues
 	ociParams              *params.Params
+
+	// ExtraInfo
+	layers []string
 }
 
 func (o *OciHandlerInstance) Name() string {

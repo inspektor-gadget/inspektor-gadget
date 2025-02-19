@@ -145,6 +145,11 @@ type DataOperatorExtraParams interface {
 	ExtraParams(gadgetCtx GadgetContext) api.Params
 }
 
+type DataOperatorExtraInfo interface {
+	// ExtraInfo can return extra information about the gadget
+	ExtraInfo(gadgetCtx GadgetContext) (string, error)
+}
+
 type PreStart interface {
 	PreStart(gadgetCtx GadgetContext) error
 }

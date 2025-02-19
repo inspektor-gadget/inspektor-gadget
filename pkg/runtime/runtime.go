@@ -65,7 +65,7 @@ type GadgetContext interface {
 	IsRemoteCall() bool
 
 	Run(paramValues api.ParamValues) error
-	PrepareGadgetInfo(paramValues api.ParamValues) error
+	PrepareGadgetInfo(paramValues api.ParamValues, verbose bool) error
 }
 
 // GadgetResult contains the (optional) payload and error of a gadget run for a node

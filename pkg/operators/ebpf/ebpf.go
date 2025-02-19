@@ -421,6 +421,22 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 	return res
 }
 
+func (i *ebpfInstance) ExtraInfo(gadgetCtx operators.GadgetContext) (string, error) {
+	gadgetCtx.Logger().Debugf("%s: Inspecting gadget", i.Name())
+
+	programs := make([]string, 0, len(i.collectionSpec.Programs))
+	for _, p := range i.collectionSpec.Programs {
+		programs = append(programs, p.Type.String()+"/"+p.Name)
+	}
+
+	maps := make([]string, 0, len(i.collectionSpec.Maps))
+	for name, m := range i.collectionSpec.Maps {
+		maps = append(maps, m.Type.String()+"/"+name)
+	}
+
+	return fmt.Sprintf("Programs: %s\nMaps: %s", strings.Join(programs, ", "), strings.Join(maps, ", ")), nil
+}
+
 func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
 	for ds, formatters := range i.formatters {
 		for _, formatter := range formatters {

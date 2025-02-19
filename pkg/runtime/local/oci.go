@@ -23,7 +23,7 @@ import (
 )
 
 func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues, verbose bool) (*api.GadgetInfo, error) {
-	err := gadgetCtx.PrepareGadgetInfo(paramValues)
+	err := gadgetCtx.PrepareGadgetInfo(paramValues, verbose)
 	if err != nil {
 		return nil, fmt.Errorf("initializing and preparing operators: %w", err)
 	}
