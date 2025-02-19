@@ -117,7 +117,7 @@ func (o *ociHandler) GlobalParams() api.Params {
 		p = append(p, &api.Param{
 			Key:         pullSecret,
 			Title:       "Pull secret",
-			Description: "Secret to use when pulling the gadget image",
+			Description: "Kubernetes secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
 		})
 	}
