@@ -1,0 +1,7 @@
+name: bpf stats
+description: TODO
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/TODO
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/TODO
+annotations:
+  operator.ebpf.emitstats: true
