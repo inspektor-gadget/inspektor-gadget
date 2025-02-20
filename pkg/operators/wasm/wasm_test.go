@@ -86,6 +86,7 @@ func TestWasm(t *testing.T) {
 		{"map", false},
 		{"mapofmap", false},
 		{"badguest", false},
+		{"baderrptr", true},
 		{"syscall", false},
 		{"perf", false},
 		{"kallsyms", false},

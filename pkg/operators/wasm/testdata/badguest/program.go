@@ -103,7 +103,7 @@ func dataArrayLen(d uint32) uint32
 func dataArrayGet(d uint32, index uint32) uint32
 
 //go:wasmimport env fieldGetScalar
-func fieldGetScalar(acc uint32, data uint32, kind uint32) uint64
+func fieldGetScalar(acc uint32, data uint32, kind uint32, errPtr uint32) uint64
 
 //go:wasmimport env fieldSet
 func fieldSet(acc uint32, data uint32, kind uint32, value uint64) uint32
@@ -300,10 +300,25 @@ func gadgetInit() int32 {
 	assertNonZero(fieldSet(fieldHandle, fieldHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: bad data handle")
 	assertNonZero(fieldSet(dataHandle, dataHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: bad field handle")
 
-	assertEqual(uint32(fieldGetScalar(fieldHandle, dataHandle, uint32(api.Kind_Uint32))), 1234, "fieldGetScalar: ok")
-	fieldGetScalar(fieldHandle, dataHandle, 1005)
-	fieldGetScalar(fieldHandle, fieldHandle, uint32(api.Kind_Uint32))
-	fieldGetScalar(dataHandle, dataHandle, uint32(api.Kind_Uint32))
+	var err uint32
+	errPtr := uint32(uintptr(unsafe.Pointer(&err)))
+	var ret uint64
+
+	ret = fieldGetScalar(fieldHandle, dataHandle, uint32(api.Kind_Uint32), errPtr)
+	assertEqual(uint32(ret), 1234, "fieldGetScalar: ok")
+	assertZero(err, "fieldGetScalar: ok")
+
+	fieldGetScalar(fieldHandle, dataHandle, 1005, errPtr)
+	assertEqual(err, 1, "fieldGetScalar: bad kind")
+
+	fieldGetScalar(fieldHandle, fieldHandle, uint32(api.Kind_Uint32), errPtr)
+	assertEqual(err, 1, "fieldGetScalar: bad data handle")
+
+	fieldGetScalar(dataHandle, dataHandle, uint32(api.Kind_Uint32), errPtr)
+	assertEqual(err, 1, "fieldGetScalar: bad field handle")
+
+	// a zero err ptr shouldn't cause any crash
+	fieldGetScalar(fieldHandle, dataHandle, 1005, 0)
 
 	/* Params */
 	paramBuf := bytesToBufPtr(make([]byte, 512))

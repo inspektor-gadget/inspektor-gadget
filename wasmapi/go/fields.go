@@ -18,12 +18,12 @@ import (
 	"errors"
 	"math"
 	"runtime"
-	_ "unsafe"
+	"unsafe"
 )
 
 //go:wasmimport env fieldGetScalar
 //go:linkname fieldGetScalar fieldGetScalar
-func fieldGetScalar(field uint32, data uint32, kind uint32) uint64
+func fieldGetScalar(field uint32, data uint32, kind uint32, errPtr uint32) uint64
 
 //go:wasmimport env fieldGetBuffer
 //go:linkname fieldGetBuffer fieldGetBuffer
@@ -37,10 +37,18 @@ func fieldSet(field uint32, data uint32, kind uint32, value uint64) uint32
 //go:linkname fieldAddTag fieldAddTag
 func fieldAddTag(field uint32, tag uint64) uint32
 
-var errSetField = errors.New("error setting field")
+var (
+	errSetField = errors.New("error setting field")
+	errGetField = errors.New("error getting field")
+)
 
 func (f Field) getScalar(data Data, kind FieldKind) (uint64, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(kind))
+	var err uint32
+	errPtr := uintptr(unsafe.Pointer(&err))
+	val := fieldGetScalar(uint32(f), uint32(data), uint32(kind), uint32(errPtr))
+	if err != 0 {
+		return 0, errGetField
+	}
 	return val, nil
 }
 

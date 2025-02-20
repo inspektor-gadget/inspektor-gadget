@@ -16,6 +16,7 @@ package wasm
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -79,6 +80,19 @@ func exportFunction(
 	env.NewFunctionBuilder().
 		WithGoModuleFunction(wapi.GoModuleFunc(fn), params, results).
 		Export(name)
+}
+
+func (i *wasmOperatorInstance) writeErrToGuest(ctx context.Context, err uint32, addr uint32) {
+	if addr == 0 {
+		return
+	}
+
+	buf := make([]byte, 4)
+	binary.NativeEndian.PutUint32(buf, err)
+	if !i.mod.Memory().Write(addr, buf) {
+		i.logger.Errorf("writing error bytes to guest memory: out of memory write")
+		i.mod.CloseWithExitCode(ctx, 1)
+	}
 }
 
 func (i *wasmOperatorInstance) writeToDstBuffer(src []byte, dstBuf uint64) error {
