@@ -247,6 +247,7 @@ SEC("kretprobe/cap_capable")
 int BPF_KRETPROBE(ig_trace_cap_x)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u32 tid = pid_tgid;
 	struct args_t *ap;
 	struct cap_event *event;
 
@@ -280,7 +281,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	}
 
 	struct syscall_context *sc_ctx;
-	sc_ctx = bpf_map_lookup_elem(&current_syscall, &event->proc.pid);
+	sc_ctx = bpf_map_lookup_elem(&current_syscall, &tid);
 	if (sc_ctx) {
 		event->syscall_raw = sc_ctx->nr;
 	} else {
