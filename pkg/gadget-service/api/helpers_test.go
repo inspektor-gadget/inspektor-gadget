@@ -19,7 +19,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -153,7 +152,6 @@ func TestParseSocketAddress(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res, path, err := ParseSocketAddress(test.addr)
-			fmt.Println(res, err, path)
 			assert.Equal(t, test.expectedError, err)
 			assert.Equal(t, test.socketType, res)
 			assert.Equal(t, test.socketPath, path)
