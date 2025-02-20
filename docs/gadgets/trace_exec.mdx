@@ -1,1 +1,24 @@
-../../gadgets/trace_exec/README.mdx
+## `trace_exec` - Monitor Process Executions  
+
+### **Description**  
+The `trace_exec` gadget allows users to track process executions inside Kubernetes containers.  
+It helps in **security monitoring**, **debugging**, and **auditing** by capturing information about command executions.  
+
+### **Use Cases**  
+
+1️⃣ **Security Monitoring:**  
+   - Detects new or unexpected processes running inside a container.  
+   - Helps in identifying unauthorized activity, including malware execution.  
+
+2️⃣ **Modification Detection:**  
+   - Uses the `Upper_Layer` field to check if an executable was modified inside a container.  
+   - If `Upper_Layer=TRUE`, it means the binary was **not** from the original container image, which could indicate tampering.  
+
+3️⃣ **Compliance Auditing:**  
+   - Tracks which commands were executed and by which users/processes.  
+
+### **Example Usage**  
+Run the following command to trace process executions inside a pod:  
+
+```bash
+kubectl gadget trace exec -n <namespace> -p <pod-name>
