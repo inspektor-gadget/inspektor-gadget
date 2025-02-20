@@ -55,8 +55,8 @@ func gadgetInit() int32 {
 
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
 		// Get all fields sent by ebpf
-		n := argsF.BytesToSlice(data, payload)
-		if n == 0 {
+		n, err := argsF.Bytes(data, payload)
+		if err != nil || n == 0 {
 			api.Warnf("failed to get args")
 			return
 		}

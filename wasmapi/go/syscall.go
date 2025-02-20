@@ -18,17 +18,21 @@ import (
 	"fmt"
 	"runtime"
 	"unsafe"
+	_ "unsafe"
 )
 
 //go:wasmimport env getSyscallName
-func getSyscallName(id uint32) uint64
+//go:linkname getSyscallName getSyscallName
+func getSyscallName(id uint32, dst uint64) uint32
 
 //go:wasmimport env getSyscallDeclaration
+//go:linkname getSyscallDeclaration getSyscallDeclaration
 func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
 // Keep in sync with pkg/operators/wasm/syscalls.go.
 const (
-	isPointerFlag = 1 << iota
+	isPointerFlag    = 1 << iota
+	maxSyscallLength = 64
 )
 
 // Keep in sync with pkg/operators/wasm/syscalls.go.
@@ -56,15 +60,13 @@ type SyscallDeclaration struct {
 }
 
 func GetSyscallName(id uint16) (string, error) {
-	ptr := bufPtr(getSyscallName(uint32(id)))
-	if ptr == 0 {
+	dst := make([]byte, maxSyscallLength)
+
+	ret := getSyscallName(uint32(id), uint64(bytesToBufPtr(dst)))
+	if ret == 1 {
 		return "", fmt.Errorf("getting syscall name for syscall id %d", id)
 	}
-
-	str := ptr.string()
-	ptr.free()
-
-	return str, nil
+	return fromCString(dst), nil
 }
 
 func GetSyscallDeclaration(name string) (SyscallDeclaration, error) {

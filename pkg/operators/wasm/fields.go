@@ -25,7 +25,7 @@ import (
 )
 
 func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
-	exportFunction(env, "fieldGet", i.fieldGet,
+	exportFunction(env, "fieldGetScalar", i.fieldGetScalar,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // Accessor
 			wapi.ValueTypeI32, // Data
@@ -34,14 +34,14 @@ func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 		[]wapi.ValueType{wapi.ValueTypeI64}, // Value
 	)
 
-	exportFunction(env, "fieldGetToBuffer", i.fieldGetToBuffer,
+	exportFunction(env, "fieldGetBuffer", i.fieldGetBuffer,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // Accessor
 			wapi.ValueTypeI32, // Data
 			wapi.ValueTypeI32, // Kind
 			wapi.ValueTypeI64, // Dest buffer
 		},
-		[]wapi.ValueType{wapi.ValueTypeI32}, // N bytes
+		[]wapi.ValueType{wapi.ValueTypeI32}, // N bytes or Error
 	)
 
 	exportFunction(env, "fieldSet", i.fieldSet,
@@ -78,17 +78,16 @@ func (i *wasmOperatorInstance) getDataFromDatasourceHandle(dataHandle uint32) (d
 	return data, data != nil
 }
 
-// fieldGet returns the field's value.
+// fieldGetScalar returns the field's value for scalar fields.
 // Params:
 // - stack[0]: Field handle
 // - stack[1]: Data handle
 // - stack[2]: Kind
 // Return value:
-// - Uint64 representation of the value of the field, depending on the type
-// requested, or a pointer, 0 on error.
+// - Field's value, 0 on error
 // TODO: error handling is still TBD as there not a way to differentiate between
 // a field with value 0 and an error.
-func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stack []uint64) {
+func (i *wasmOperatorInstance) fieldGetScalar(ctx context.Context, m wapi.Module, stack []uint64) {
 	fieldHandle := wapi.DecodeU32(stack[0])
 	dataHandle := wapi.DecodeU32(stack[1])
 	fieldKind := api.Kind(wapi.DecodeU32(stack[2]))
@@ -102,16 +101,6 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 	if !ok {
 		stack[0] = 0
 		return
-	}
-
-	handleBytes := func(buf []byte) uint64 {
-		val, err := i.writeToGuestMemory(ctx, buf)
-		if err != nil {
-			i.logger.Warnf("fieldGet: writing bytes to guest memory: %v", err)
-			return 0
-		}
-
-		return val
 	}
 
 	var val uint64
@@ -163,18 +152,10 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 		val = uint64(ret)
 	case api.Kind_Float64:
 		val, err = field.Uint64(data)
-	// These are a bit special as they don't fit in the return value, so we have to
-	// allocate an array in the guest memory and return a pointer to it.
-	case api.Kind_String:
-		str, err := field.String(data)
-		if err == nil {
-			val = handleBytes([]byte(str))
-		}
-	case api.Kind_Bytes:
-		bytes, err := field.Bytes(data)
-		if err == nil {
-			val = handleBytes(bytes)
-		}
+	case api.Kind_String, api.Kind_Bytes:
+		i.logger.Warnf("fieldGetScalar: field kind %q not supported, use fieldGetBuffer instead()", fieldKind)
+		stack[0] = 0
+		return
 	default:
 		i.logger.Warnf("unknown field kind: %d", stack[2])
 		stack[0] = 0
@@ -182,7 +163,7 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 	}
 
 	if err != nil {
-		i.logger.Warnf("fieldGet for field %q failed: %v", field.Name(), err)
+		i.logger.Warnf("fieldGetScalar for field %q failed: %v", field.Name(), err)
 		stack[0] = 0
 		return
 	}
@@ -190,71 +171,45 @@ func (i *wasmOperatorInstance) fieldGet(ctx context.Context, m wapi.Module, stac
 	stack[0] = val
 }
 
-// fieldGetToBuffer returns the field's value.
+// fieldGetBuffer returns the field's value for string and bytes fields.
 // Params:
 // - stack[0]: Field handle
 // - stack[1]: Data handle
 // - stack[2]: Kind
 // - stack[3]: Destination buffer
 // Return value:
-// - Uint32 the number of bytes copied
-func (i *wasmOperatorInstance) fieldGetToBuffer(ctx context.Context, m wapi.Module, stack []uint64) {
+// - The number of bytes copied or -1 in case of error
+func (i *wasmOperatorInstance) fieldGetBuffer(ctx context.Context, m wapi.Module, stack []uint64) {
 	fieldHandle := wapi.DecodeU32(stack[0])
 	dataHandle := wapi.DecodeU32(stack[1])
 	fieldKind := api.Kind(wapi.DecodeU32(stack[2]))
-	fieldDst := stack[3]
+	dst := stack[3]
 
 	field, ok := getHandle[datasource.FieldAccessor](i, fieldHandle)
 	if !ok {
-		stack[0] = 0
+		stack[0] = wapi.EncodeI32(-1)
 		return
 	}
 	data, ok := i.getDataFromDatasourceHandle(dataHandle)
 	if !ok {
-		stack[0] = 0
+		stack[0] = wapi.EncodeI32(-1)
 		return
 	}
-
-	handleBytes := func(buf []byte) uint64 {
-		if getLength(fieldDst) < uint32(len(buf)) {
-			i.logger.Warnf("fieldGet: writing %d bytes to guest memory buffer of %d bytes", len(buf), getLength(fieldDst))
-			return 0
-		}
-		if !i.mod.Memory().Write(getAddress(fieldDst), buf) {
-			i.logger.Warnf("fieldGet: writing bytes to guest memory: out of memory write")
-			return 0
-		}
-
-		return uint64(len(buf))
-	}
-
-	var val uint64
-	var err error
 
 	switch fieldKind {
-	case api.Kind_String:
-		str, err := field.String(data)
-		if err == nil {
-			val = handleBytes([]byte(str))
+	case api.Kind_String, api.Kind_Bytes:
+		bytes := field.Get(data)
+		if err := i.writeToDstBuffer(bytes, dst); err != nil {
+			i.logger.Warnf("fieldGetBuffer: %v", err)
+			stack[0] = wapi.EncodeI32(-1)
+			return
 		}
-	case api.Kind_Bytes:
-		bytes, err := field.Bytes(data)
-		if err == nil {
-			val = handleBytes(bytes)
-		}
+
+		stack[0] = uint64(len(bytes))
 	default:
 		i.logger.Warnf("unknown field kind: %d", stack[2])
-		stack[0] = 0
-		return
+		stack[0] = wapi.EncodeI32(-1)
 	}
-
-	if err != nil {
-		i.logger.Warnf("fieldGetToBuffer for field %q failed: %v", field.Name(), err)
-		stack[0] = 0
-		return
-	}
-
-	stack[0] = val
 }
 
 // fieldSet sets the field's value

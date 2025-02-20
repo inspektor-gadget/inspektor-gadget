@@ -107,9 +107,6 @@ type wasmOperatorInstance struct {
 
 	logger logger.Logger
 
-	// malloc function exported by the guest
-	guestMalloc wapi.Function
-
 	dataSourceCallback wapi.Function
 
 	// Golang objects are exposed to the wasm module by using a handleID
@@ -272,12 +269,6 @@ func (i *wasmOperatorInstance) init(
 
 	if ret[0] != apiVersion {
 		return fmt.Errorf("unsupported gadget API version: %d, expected: %d", ret[0], apiVersion)
-	}
-
-	// We need to call malloc on the guest to pass strings
-	i.guestMalloc = mod.ExportedFunction("malloc")
-	if i.guestMalloc == nil {
-		return errors.New("wasm module doesn't export malloc")
 	}
 
 	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")

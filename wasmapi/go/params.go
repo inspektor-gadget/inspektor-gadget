@@ -16,19 +16,21 @@ package api
 
 import (
 	"errors"
+	_ "unsafe"
 )
 
 //go:wasmimport env getParamValue
-func getParamValue(key uint64) uint64
+//go:linkname getParamValue getParamValue
+func getParamValue(key uint64, dst uint64) uint32
 
-func GetParamValue(key string) (string, error) {
+func GetParamValue(key string, maxSize uint64) (string, error) {
+	dst := make([]byte, maxSize)
+
 	k := uint64(stringToBufPtr(key))
-	val := bufPtr(getParamValue(k))
-	if val == 0 {
+	ret := getParamValue(k, uint64(bytesToBufPtr(dst)))
+	if ret == 1 {
 		return "", errors.New("error getting param value")
 	}
 
-	ret := val.string()
-	val.free()
-	return ret, nil
+	return fromCString(dst), nil
 }

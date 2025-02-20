@@ -102,14 +102,14 @@ func dataArrayLen(d uint32) uint32
 //go:wasmimport env dataArrayGet
 func dataArrayGet(d uint32, index uint32) uint32
 
-//go:wasmimport env fieldGet
-func fieldGet(acc uint32, data uint32, kind uint32) uint64
+//go:wasmimport env fieldGetScalar
+func fieldGetScalar(acc uint32, data uint32, kind uint32) uint64
 
 //go:wasmimport env fieldSet
 func fieldSet(acc uint32, data uint32, kind uint32, value uint64) uint32
 
 //go:wasmimport env getParamValue
-func getParamValue(key uint64) uint64
+func getParamValue(key uint64, dst uint64) uint32
 
 //go:wasmimport env setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
@@ -300,14 +300,15 @@ func gadgetInit() int32 {
 	assertNonZero(fieldSet(fieldHandle, fieldHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: bad data handle")
 	assertNonZero(fieldSet(dataHandle, dataHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: bad field handle")
 
-	assertEqual(uint32(fieldGet(fieldHandle, dataHandle, uint32(api.Kind_Uint32))), 1234, "fieldGet: ok")
-	fieldGet(fieldHandle, dataHandle, 1005)
-	fieldGet(fieldHandle, fieldHandle, uint32(api.Kind_Uint32))
-	fieldGet(dataHandle, dataHandle, uint32(api.Kind_Uint32))
+	assertEqual(uint32(fieldGetScalar(fieldHandle, dataHandle, uint32(api.Kind_Uint32))), 1234, "fieldGetScalar: ok")
+	fieldGetScalar(fieldHandle, dataHandle, 1005)
+	fieldGetScalar(fieldHandle, fieldHandle, uint32(api.Kind_Uint32))
+	fieldGetScalar(dataHandle, dataHandle, uint32(api.Kind_Uint32))
 
 	/* Params */
-	assertZero(getParamValue(stringToBufPtr("non-existing-param")), "getParamValue: not-found")
-	assertZero(getParamValue(invalidStrPtr), "getParamValue: invalid key ptr")
+	paramBuf := bytesToBufPtr(make([]byte, 512))
+	assertNonZero(getParamValue(stringToBufPtr("non-existing-param"), paramBuf), "getParamValue: not-found")
+	assertNonZero(getParamValue(invalidStrPtr, paramBuf), "getParamValue: invalid key ptr")
 
 	/* Config */
 	assertZero(setConfig(stringToBufPtr("key"), stringToBufPtr("value"), uint32(api.Kind_String)), "setConfig: ok")

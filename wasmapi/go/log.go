@@ -17,9 +17,11 @@ package api
 import (
 	"fmt"
 	"runtime"
+	_ "unsafe"
 )
 
 //go:wasmimport env gadgetLog
+//go:linkname gadgetLog gadgetLog
 func gadgetLog(level uint32, str uint64)
 
 type logLevel uint32

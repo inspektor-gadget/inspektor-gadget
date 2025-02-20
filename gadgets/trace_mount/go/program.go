@@ -93,12 +93,12 @@ func gadgetInit() int32 {
 	}
 
 	ds.Subscribe(func(source api.DataSource, data api.Data) {
-		flags, _ := flagsField.String(data)
+		flags, _ := flagsField.String(data, 512)
 		opRaw, _ := opRawField.Int32(data)
-		src, _ := srcField.String(data)
-		dest, _ := destField.String(data)
-		fs, _ := fsField.String(data)
-		dataStr, _ := dataField.String(data)
+		src, _ := srcField.String(data, 4096)
+		dest, _ := destField.String(data, 4096)
+		fs, _ := fsField.String(data, 4096)
+		dataStr, _ := dataField.String(data, 512)
 		errorRaw, _ := errorRawField.Uint32(data)
 
 		callField.SetString(data, getCallStr(opRaw, src, dest, fs, flags, dataStr, errorRaw))
