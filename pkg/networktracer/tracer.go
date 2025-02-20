@@ -43,6 +43,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
 
@@ -70,11 +71,12 @@ type attachment struct {
 }
 
 type Tracer[Event any] struct {
-	socketEnricherMap *ebpf.Map
-	dispatcherMap     *ebpf.Map
-	collection        *ebpf.Collection
-	prog              *ebpf.Program
-	perfRd            *perf.Reader
+	socketEnricherMap     *ebpf.Map
+	socketEnricherBTFSpec *btf.Spec
+	dispatcherMap         *ebpf.Map
+	collection            *ebpf.Collection
+	prog                  *ebpf.Program
+	perfRd                *perf.Reader
 
 	// key: network namespace inode number
 	// value: Tracelet
@@ -156,8 +158,9 @@ func NewTracer[Event any]() (_ *Tracer[Event], err error) {
 	return t, nil
 }
 
-func (t *Tracer[Event]) SetSocketEnricherMap(m *ebpf.Map) {
+func (t *Tracer[Event]) SetSocketEnricherMap(m *ebpf.Map, s *btf.Spec) {
 	t.socketEnricherMap = m
+	t.socketEnricherBTFSpec = s
 }
 
 func (t *Tracer[Event]) Run(
@@ -220,8 +223,10 @@ func (t *Tracer[Event]) Run(
 		mapReplacements := map[string]*ebpf.Map{}
 		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
 		opts.MapReplacements = mapReplacements
+		opts.Programs.KernelModuleTypes = map[string]*btf.Spec{"ig": t.socketEnricherBTFSpec}
 	}
 
+	fmt.Printf("NewCollection: %+v\n", opts)
 	t.collection, err = ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
 		return fmt.Errorf("creating BPF collection: %w", err)

@@ -14,6 +14,8 @@ import (
 
 type socketenricherBufT struct{ Buf [32768]uint8 }
 
+type socketenricherSocketEnricherFoo struct{ Foo [8]int8 }
+
 type socketenricherSocketsKey struct {
 	Netns  uint32
 	Family uint16
@@ -106,7 +108,8 @@ type socketenricherMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketenricherVariableSpecs struct {
-	DisableBpfIterators *ebpf.VariableSpec `ebpf:"disable_bpf_iterators"`
+	DisableBpfIterators    *ebpf.VariableSpec `ebpf:"disable_bpf_iterators"`
+	EmptySocketEnricherFoo *ebpf.VariableSpec `ebpf:"empty_socket_enricher_foo"`
 }
 
 // socketenricherObjects contains all objects after they have been loaded into the kernel.
@@ -148,7 +151,8 @@ func (m *socketenricherMaps) Close() error {
 //
 // It can be passed to loadSocketenricherObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketenricherVariables struct {
-	DisableBpfIterators *ebpf.Variable `ebpf:"disable_bpf_iterators"`
+	DisableBpfIterators    *ebpf.Variable `ebpf:"disable_bpf_iterators"`
+	EmptySocketEnricherFoo *ebpf.Variable `ebpf:"empty_socket_enricher_foo"`
 }
 
 // socketenricherPrograms contains all programs after they have been loaded into the kernel.
