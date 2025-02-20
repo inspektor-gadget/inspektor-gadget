@@ -18,22 +18,27 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"unsafe"
+	_ "unsafe"
 )
 
 //go:wasmimport env newPerfReader
+//go:linkname newPerfReader newPerfReader
 func newPerfReader(mapHandle uint32, size uint32, isOverwritable uint32) uint32
 
 //go:wasmimport env perfReaderPause
+//go:linkname perfReaderPause perfReaderPause
 func perfReaderPause(perfMapHandle uint32) uint32
 
 //go:wasmimport env perfReaderResume
+//go:linkname perfReaderResume perfReaderResume
 func perfReaderResume(perfMapHandle uint32) uint32
 
 //go:wasmimport env perfReaderRead
-func perfReaderRead(perfMapHandle uint32, addrBufPtr uint32) uint32
+//go:linkname perfReaderRead perfReaderRead
+func perfReaderRead(perfMapHandle uint32, dst uint64) uint32
 
 //go:wasmimport env perfReaderClose
+//go:linkname perfReaderClose perfReaderClose
 func perfReaderClose(perfMapHandle uint32) uint32
 
 type PerfReader uint32
@@ -70,21 +75,17 @@ func (p PerfReader) Resume() error {
 	return nil
 }
 
-func (p PerfReader) Read() ([]byte, error) {
-	var buf bufPtr
-
-	ret := perfReaderRead(uint32(p), uint32(uintptr(unsafe.Pointer(&buf))))
+func (p PerfReader) Read(dst []byte) error {
+	ret := perfReaderRead(uint32(p), uint64(bytesToBufPtr(dst)))
 	switch ret {
 	case 0:
-		bytes := buf.bytes()
-		buf.free()
-		return bytes, nil
+		return nil
 	case 1:
-		return nil, errors.New("reading perf reader record")
+		return errors.New("reading perf reader record")
 	case 2:
-		return nil, os.ErrDeadlineExceeded
+		return os.ErrDeadlineExceeded
 	default:
-		return nil, fmt.Errorf("bad return value: expected 0, 1 or 2, got %d", ret)
+		return fmt.Errorf("bad return value: expected 0, 1 or 2, got %d", ret)
 	}
 }
 

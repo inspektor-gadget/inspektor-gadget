@@ -16,9 +16,11 @@ package api
 
 import (
 	"runtime"
+	_ "unsafe"
 )
 
 //go:wasmimport env kallsymsSymbolExists
+//go:linkname kallsymsSymbolExists kallsymsSymbolExists
 func kallsymsSymbolExists(symbol uint64) uint32
 
 func KallsymsSymbolExists(symbol string) bool {

@@ -28,8 +28,11 @@ import (
 
 func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModuleBuilder) {
 	exportFunction(env, "getSyscallName", i.getSyscallName,
-		[]wapi.ValueType{wapi.ValueTypeI32}, // Syscall ID
-		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall Name
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // Syscall ID
+			wapi.ValueTypeI64, // Buffer to save syscall name
+		},
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
 
 	exportFunction(env, "getSyscallDeclaration", i.getSyscallDeclaration,
@@ -43,21 +46,23 @@ func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModul
 
 // getSyscallName returns the syscall name corresponding to the given ID.
 // Params:
-// - stack[0]
+// - stack[0]: syscall ID
+// - stack[1]: buffer where the syscall name will be written
 // Return value:
-// - Syscall name on success, 0 on error
+// - 0 on success, 1 on error
 func (i *wasmOperatorInstance) getSyscallName(ctx context.Context, m wapi.Module, stack []uint64) {
 	syscallID := uint16(stack[0])
+	dstBuf := stack[1]
+
 	syscallName := syscallhelpers.SyscallGetName(syscallID)
 
-	bufPtr, err := i.writeToGuestMemory(ctx, []byte(syscallName))
-	if err != nil {
-		i.logger.Warnf("getSyscallName: allocating guest memory for %s: %v", syscallName, err)
-		stack[0] = 0
+	if err := i.writeToDstBuffer([]byte(syscallName), dstBuf); err != nil {
+		i.logger.Warnf("getSyscallName: writing to guest memory for %s: %v", syscallName, err)
+		stack[0] = 1
 		return
 	}
 
-	stack[0] = bufPtr
+	stack[0] = 0
 }
 
 // Keep in sync with wasmapi/go/syscall.go.

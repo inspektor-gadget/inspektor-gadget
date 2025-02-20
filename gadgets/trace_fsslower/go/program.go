@@ -75,7 +75,7 @@ var fsConfMap = map[string]fsConf{
 
 //go:wasmexport gadgetPreStart
 func gadgetPreStart() int32 {
-	value, err := api.GetParamValue("filesystem")
+	value, err := api.GetParamValue("filesystem", 32)
 	if err != nil {
 		api.Errorf("failed to get param value: %s", err)
 		return 1
