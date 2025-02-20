@@ -272,7 +272,7 @@ Return value:
 
 ### Fields
 
-#### `fieldGetScalar(u32 field, u32 data, u32 kind) u64`
+#### `fieldGetScalar(u32 field, u32 data, u32 kind, errPtr uint32) u64`
 
 Get the value of a scalar field.
 
@@ -280,10 +280,11 @@ Parameters:
 - `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
 - `data` (u32): Data handle
 - `kind` (u32): Kind of access: How to read the field.
+- `errPtr` (u32): A pointer to an uint32 variable where the error will be
+  stored. If it's 0, then the error is not reported.
 
 Return value:
-- Value of the field: The value of the field or 0 in case of errors
-  - TODO: 0 is ambiguous, find a way to report errors!
+- Value of the field
 
 #### `fieldGetBuffer(u32 field, u32 data, u32 kind, u64 dst) i32`
 

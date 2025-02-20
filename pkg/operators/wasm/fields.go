@@ -30,6 +30,7 @@ func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 			wapi.ValueTypeI32, // Accessor
 			wapi.ValueTypeI32, // Data
 			wapi.ValueTypeI32, // Kind
+			wapi.ValueTypeI32, // Error Pointer
 		},
 		[]wapi.ValueType{wapi.ValueTypeI64}, // Value
 	)
@@ -83,23 +84,23 @@ func (i *wasmOperatorInstance) getDataFromDatasourceHandle(dataHandle uint32) (d
 // - stack[0]: Field handle
 // - stack[1]: Data handle
 // - stack[2]: Kind
+// - stack[3]: Error Pointer. It's set to 1 if an error happened.
 // Return value:
-// - Field's value, 0 on error
-// TODO: error handling is still TBD as there not a way to differentiate between
-// a field with value 0 and an error.
+// - Field's value
 func (i *wasmOperatorInstance) fieldGetScalar(ctx context.Context, m wapi.Module, stack []uint64) {
 	fieldHandle := wapi.DecodeU32(stack[0])
 	dataHandle := wapi.DecodeU32(stack[1])
 	fieldKind := api.Kind(wapi.DecodeU32(stack[2]))
+	errPtr := wapi.DecodeU32(stack[3])
 
 	field, ok := getHandle[datasource.FieldAccessor](i, fieldHandle)
 	if !ok {
-		stack[0] = 0
+		i.writeErrToGuest(ctx, 1, errPtr)
 		return
 	}
 	data, ok := i.getDataFromDatasourceHandle(dataHandle)
 	if !ok {
-		stack[0] = 0
+		i.writeErrToGuest(ctx, 1, errPtr)
 		return
 	}
 
@@ -154,17 +155,17 @@ func (i *wasmOperatorInstance) fieldGetScalar(ctx context.Context, m wapi.Module
 		val, err = field.Uint64(data)
 	case api.Kind_String, api.Kind_Bytes:
 		i.logger.Warnf("fieldGetScalar: field kind %q not supported, use fieldGetBuffer instead()", fieldKind)
-		stack[0] = 0
+		i.writeErrToGuest(ctx, 1, errPtr)
 		return
 	default:
 		i.logger.Warnf("unknown field kind: %d", stack[2])
-		stack[0] = 0
+		i.writeErrToGuest(ctx, 1, errPtr)
 		return
 	}
 
 	if err != nil {
 		i.logger.Warnf("fieldGetScalar for field %q failed: %v", field.Name(), err)
-		stack[0] = 0
+		i.writeErrToGuest(ctx, 1, errPtr)
 		return
 	}
 
