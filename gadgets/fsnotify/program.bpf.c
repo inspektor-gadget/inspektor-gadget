@@ -14,7 +14,7 @@
 #include <gadget/types.h>
 #include <gadget/core_fixes.bpf.h>
 
-#define PATH_MAX 4096
+#define PATH_MAX 512
 #define TASK_COMM_LEN 16
 
 enum type {

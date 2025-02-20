@@ -11,7 +11,7 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 
-#define PATH_MAX 4096
+#define PATH_MAX 512
 
 struct event {
 	gadget_timestamp timestamp_raw;

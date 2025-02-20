@@ -28,7 +28,7 @@ type filetopFileStat struct {
 	Pid        uint32
 	Tid        uint32
 	MntnsId    uint64
-	Filename   [4096]uint8
+	Filename   [512]uint8
 	Comm       [16]uint8
 	Type       int8
 	_          [7]byte

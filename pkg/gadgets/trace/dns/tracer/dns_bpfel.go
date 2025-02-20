@@ -59,8 +59,8 @@ type dnsSocketsValue struct {
 	Ptask             [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
-	Cwd               [4096]int8
-	Exepath           [4096]int8
+	Cwd               [512]int8
+	Exepath           [512]int8
 	Ppid              uint32
 	Ipv6only          int8
 	_                 [3]byte

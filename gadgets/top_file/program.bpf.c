@@ -15,7 +15,7 @@
 
 #include "stat.h"
 
-#define PATH_MAX 4096
+#define PATH_MAX 512
 
 enum op {
 	READ,

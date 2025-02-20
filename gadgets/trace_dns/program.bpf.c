@@ -22,7 +22,7 @@
 #include <gadget/sockets-map.h>
 
 // Don't include <gadget/filesystem.h> in networking gadgets
-#define MAX_STRING_SIZE 4096
+#define MAX_STRING_SIZE 512
 
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");

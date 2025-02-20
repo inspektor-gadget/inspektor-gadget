@@ -2,7 +2,7 @@
 #define GADGET_DNS_COMMON_H
 
 #define TASK_COMM_LEN 16
-#define MAX_STRING_SIZE 4096
+#define MAX_STRING_SIZE 512
 
 struct event_t {
 	// Keep netns at the top: networktracer depends on it
