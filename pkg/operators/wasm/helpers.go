@@ -81,17 +81,14 @@ func exportFunction(
 		Export(name)
 }
 
-func (i *wasmOperatorInstance) writeToGuestMemory(ctx context.Context, buf []byte) (uint64, error) {
-	res, err := i.guestMalloc.Call(ctx, uint64(len(buf)))
-	if err != nil {
-		return 0, fmt.Errorf("malloc failed: %w", err)
+func (i *wasmOperatorInstance) writeToDstBuffer(src []byte, dstBuf uint64) error {
+	if getLength(dstBuf) < uint32(len(src)) {
+		return fmt.Errorf("writing %d bytes to guest memory buffer of %d bytes: not enough memory", len(src), getLength(dstBuf))
 	}
-
-	if !i.mod.Memory().Write(uint32(res[0]), buf) {
-		return 0, fmt.Errorf("out of memory write")
+	if !i.mod.Memory().Write(getAddress(dstBuf), src) {
+		return fmt.Errorf("writing bytes to guest memory: out of memory write")
 	}
-
-	return uint64(len(buf))<<32 | uint64(res[0]), nil
+	return nil
 }
 
 func isDataArrayHandle(handle uint32) bool {

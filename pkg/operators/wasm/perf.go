@@ -53,7 +53,7 @@ func (i *wasmOperatorInstance) addPerfFuncs(env wazero.HostModuleBuilder) {
 	exportFunction(env, "perfReaderRead", i.perfReaderRead,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // PerfReader
-			wapi.ValueTypeI32, // Buf pointer address
+			wapi.ValueTypeI64, // Buf pointer address
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
@@ -163,7 +163,7 @@ func (i *wasmOperatorInstance) perfReaderResume(ctx context.Context, m wapi.Modu
 // - 0 on success, 1 on error, 2 on deadline exceeded
 func (i *wasmOperatorInstance) perfReaderRead(ctx context.Context, m wapi.Module, stack []uint64) {
 	perfReaderHandle := wapi.DecodeU32(stack[0])
-	addrBufPtr := wapi.DecodeU32(stack[1])
+	addrBufPtr := stack[1]
 
 	perfReader, ok := getHandle[*perf.Reader](i, perfReaderHandle)
 	if !ok {
@@ -181,15 +181,8 @@ func (i *wasmOperatorInstance) perfReaderRead(ctx context.Context, m wapi.Module
 		return
 	}
 
-	bufPtr, err := i.writeToGuestMemory(ctx, record.RawSample)
-	if err != nil {
+	if err := i.writeToDstBuffer([]byte(record.RawSample), addrBufPtr); err != nil {
 		i.logger.Warnf("perfReaderRead: writing record raw bytes to guest memory: %v", err)
-		stack[0] = 1
-		return
-	}
-
-	if !m.Memory().WriteUint64Le(addrBufPtr, bufPtr) {
-		i.logger.Warnf("perfReaderRead: writing %x at %x", bufPtr, addrBufPtr)
 		stack[0] = 1
 		return
 	}

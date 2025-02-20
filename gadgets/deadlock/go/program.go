@@ -189,7 +189,7 @@ func gadgetInit() int32 {
 
 			// Record process information for the PID
 			if _, exists := pidInfo[pid]; !exists {
-				comm, err := commF.String(datum)
+				comm, err := commF.String(datum, 16)
 				if err != nil {
 					api.Warnf("failed to get comm: %s", err)
 					continue

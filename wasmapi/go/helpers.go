@@ -14,30 +14,17 @@
 
 package api
 
-// TODO: is it possible to make it work without cgo?
-
-// #include <stdlib.h>
-import "C"
-
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"slices"
-	"strings"
 	"unsafe"
 )
 
 // bufPtr encodes the pointer and length of a buffer as a uint64
 // The pointer is stored in the lower 32 bits and the length in the upper 32 bits
 type bufPtr uint64
-
-func (b bufPtr) free() {
-	if b == 0 {
-		return
-	}
-	C.free(unsafe.Pointer(uintptr(b & 0xFFFFFFFF)))
-}
 
 // stringToBufPtr returns a bufPtr that encodes the pointer and length of the
 // input string. Callers must guarantee that the passed string is kept alive
@@ -87,18 +74,6 @@ func anyToBufPtr(a any) (bufPtr, error) {
 func bytesToBufPtr(b []byte) bufPtr {
 	unsafePtr := unsafe.Pointer(unsafe.SliceData(b))
 	return bufPtr(uint64(len(b))<<32 | uint64(uintptr(unsafePtr)))
-}
-
-// string returns a copy of the string stored in the buffer.
-// The caller must call free() on the buffer when done.
-func (b bufPtr) string() string {
-	if b == 0 {
-		return ""
-	}
-	// create a string that users the pointer as storage
-	orig := unsafe.String((*byte)(unsafe.Pointer(uintptr(b&0xFFFFFFFF))), int(b>>32))
-	// clone it
-	return strings.Clone(orig)
 }
 
 // bytes returns a copy of the bytes stored in the buffer.

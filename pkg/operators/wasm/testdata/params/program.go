@@ -24,7 +24,7 @@ import (
 
 //go:wasmexport gadgetStart
 func gadgetStart() int32 {
-	val, err := api.GetParamValue("param-key")
+	val, err := api.GetParamValue("param-key", 32)
 	if err != nil {
 		api.Errorf("failed to get param: %v", err)
 		return 1
@@ -36,7 +36,7 @@ func gadgetStart() int32 {
 		return 1
 	}
 
-	_, err = api.GetParamValue("non-existing-param")
+	_, err = api.GetParamValue("non-existing-param", 32)
 	if err == nil {
 		api.Errorf("looking for non-existing-param succeeded")
 		return 1

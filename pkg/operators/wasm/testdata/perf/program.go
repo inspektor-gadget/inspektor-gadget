@@ -27,6 +27,8 @@ func gadgetInit() int32 {
 
 //go:wasmexport gadgetStart
 func gadgetStart() int32 {
+	sample := make([]byte, 4096)
+
 	type event struct {
 		a      uint32
 		b      uint32
@@ -48,8 +50,7 @@ func gadgetStart() int32 {
 	}
 	defer perfReader.Close()
 
-	_, err = perfReader.Read()
-	if err == nil {
+	if err = perfReader.Read(sample); err == nil {
 		api.Errorf("perf over writable reader must be paused before reading")
 		return 1
 	}
@@ -65,19 +66,13 @@ func gadgetStart() int32 {
 		return 1
 	}
 
-	buf, err := perfReader.Read()
-	if err != nil {
+	if err := perfReader.Read(sample); err != nil {
 		api.Errorf("reading perf record")
 		return 1
 	}
 
-	if buf == nil {
-		api.Errorf("buffer should not be nil")
-		return 1
-	}
-
 	expectedEvent := event{a: 42, b: 42, c: 43}
-	ev := *(*event)(unsafe.Pointer(&buf[0]))
+	ev := *(*event)(unsafe.Pointer(&sample[0]))
 	if ev != expectedEvent {
 		api.Errorf("record read mismatch: expected %v, got %v", expectedEvent, ev)
 		return 1
