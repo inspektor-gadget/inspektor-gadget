@@ -154,7 +154,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, void *); // struct fsnotify_event *event
 	__type(value, struct enriched_event);
-	__uint(max_entries, 10240);
+	__uint(max_entries, 1024);
 } enriched_fsnotify_events SEC(".maps");
 
 const volatile u64 tracer_group = 0;
