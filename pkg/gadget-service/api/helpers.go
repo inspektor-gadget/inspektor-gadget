@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@ package api
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type (
@@ -119,4 +123,171 @@ func SplitStringWithEscape(s string, sep rune) []string {
 		result = append(result, part)
 	}
 	return result
+}
+
+func (pv ParamValues) Unmarshal(target any) {
+}
+
+// Validate will validate constraints and set default values; it will return a new validated instance of ParamValues
+// only containing values for the params given.
+func (pv ParamValues) Validate(params Params) (ParamValues, error) {
+	var err error
+	values := make(ParamValues, len(pv))
+	for _, param := range params {
+		v := pv[param.Key]
+
+		// if empty, set to default
+		if v == "" {
+			v = param.DefaultValue
+		}
+
+		values[param.Key] = v
+
+		// Verify valid value if PossibleValues is set
+		if len(param.PossibleValues) > 0 {
+			if !slices.Contains(param.PossibleValues, v) {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be one of %v", param.Key, param.PossibleValues))
+				continue
+			}
+		}
+
+		switch param.TypeHint {
+		case TypeBool:
+			_, err = strconv.ParseBool(v)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a boolean", param.Key))
+				continue
+			}
+		case TypeInt:
+			_, err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be an integer", param.Key))
+				continue
+			}
+		case TypeDuration:
+			_, err = time.ParseDuration(v)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a duration", param.Key))
+				continue
+			}
+		case TypeInt8:
+			_, err = strconv.ParseInt(v, 10, 8)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be an 8-bit integer", param.Key))
+				continue
+			}
+		case TypeInt16:
+			_, err = strconv.ParseInt(v, 10, 16)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a 16-bit integer", param.Key))
+				continue
+			}
+		case TypeInt32:
+			_, err = strconv.ParseInt(v, 10, 32)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a 32-bit integer", param.Key))
+				continue
+			}
+		case TypeInt64:
+			_, err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a 64-bit integer", param.Key))
+				continue
+			}
+		case TypeUint8:
+			_, err = strconv.ParseUint(v, 10, 8)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be an 8-bit integer", param.Key))
+				continue
+			}
+		case TypeUint16:
+			_, err = strconv.ParseUint(v, 10, 16)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a 16-bit integer", param.Key))
+				continue
+			}
+		case TypeUint32:
+			_, err = strconv.ParseUint(v, 10, 32)
+			if err != nil {
+				err = errors.Join(err, fmt.Errorf("expected value for %q to be a 32-bit integer", param.Key))
+				continue
+			}
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func (pv ParamValues) String(key string) string {
+	return pv[key]
+}
+
+func (pv ParamValues) Int(key string) int {
+	v, _ := strconv.Atoi(pv[key])
+	return v
+}
+
+func (pv ParamValues) Int64(key string) int64 {
+	v, _ := strconv.ParseInt(pv[key], 10, 64)
+	return v
+}
+
+func (pv ParamValues) Int32(key string) int32 {
+	v, _ := strconv.ParseInt(pv[key], 10, 32)
+	return int32(v)
+}
+
+func (pv ParamValues) Int16(key string) int16 {
+	v, _ := strconv.ParseInt(pv[key], 10, 16)
+	return int16(v)
+}
+
+func (pv ParamValues) Int8(key string) int8 {
+	v, _ := strconv.ParseInt(pv[key], 10, 8)
+	return int8(v)
+}
+
+func (pv ParamValues) Uint64(key string) uint64 {
+	v, _ := strconv.ParseUint(pv[key], 10, 64)
+	return v
+}
+
+func (pv ParamValues) Uint32(key string) uint32 {
+	v, _ := strconv.ParseUint(pv[key], 10, 32)
+	return uint32(v)
+}
+
+func (pv ParamValues) Uint16(key string) uint16 {
+	v, _ := strconv.ParseUint(pv[key], 10, 16)
+	return uint16(v)
+}
+
+func (pv ParamValues) Uint8(key string) uint8 {
+	v, _ := strconv.ParseUint(pv[key], 10, 8)
+	return uint8(v)
+}
+
+func (pv ParamValues) Bool(key string) bool {
+	return pv[key] == "true"
+}
+
+func (pv ParamValues) Float32(key string) float32 {
+	v, _ := strconv.ParseFloat(pv[key], 32)
+	return float32(v)
+}
+
+func (pv ParamValues) Float64(key string) float64 {
+	v, _ := strconv.ParseFloat(pv[key], 64)
+	return v
+}
+
+func (pv ParamValues) Duration(key string) time.Duration {
+	v, _ := time.ParseDuration(pv[key])
+	return v
+}
+
+func (pv ParamValues) StringSlice(key string) []string {
+	return SplitStringWithEscape(key, ',')
 }
