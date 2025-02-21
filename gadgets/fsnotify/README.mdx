@@ -27,6 +27,7 @@ Running the gadget:
         ```
     </TabItem>
 </Tabs>
+
 ## Flags
 
 ### `--fanotify-only`
@@ -111,6 +112,9 @@ ig           containerd-shim  fa_resp    FANOTIFY_EVENT_TYPE_PATH_PERM   allow  
 ig           containerd-shim  fanotify   FANOTIFY_EVENT_TYPE_PATH_PERM   na            /usr/bin/runc
 ig           containerd-shim  fa_resp    FANOTIFY_EVENT_TYPE_PATH_PERM   allow         /usr/bin/runc
 ```
+## Use Case
+
+This gadget enables visibility into filesystem access even when processes accessing the filesystem are running on a different container. You can use this gadget to monitor file integrity.
 
 ## Architecture
 
