@@ -24,6 +24,7 @@ GADGETS = \
 	fdpass \
 	fsnotify \
 	profile_blockio \
+	profile_qdisc_latency \
 	profile_tcprtt \
 	trace_bind \
 	trace_capabilities \
@@ -167,6 +168,7 @@ test-unit: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
+	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
 	go test -v -exec 'sudo -E' ./$*/$(INTEGRATION_TEST_DIR)/...
 
 .PHONY:
@@ -176,6 +178,7 @@ test-integration: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
+	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
 	go test -v -exec 'sudo -E' ./.../$(INTEGRATION_TEST_DIR)/...
 
 .PHONY:

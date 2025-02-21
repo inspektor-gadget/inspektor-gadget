@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 )
 
-func TestSnapshotProcess(t *testing.T) {
+func TestBuiltinSnapshotProcess(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-snapshot-process")
 

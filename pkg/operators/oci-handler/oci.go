@@ -98,10 +98,11 @@ func (o *ociHandler) GlobalParams() api.Params {
 			TypeHint:    api.TypeStringSlice,
 		},
 		{
-			Key:         disallowPulling,
-			Title:       "Disallow pulling",
-			Description: "Disallow pulling gadgets from registries",
-			TypeHint:    api.TypeBool,
+			Key:          disallowPulling,
+			Title:        "Disallow pulling",
+			Description:  "Disallow pulling gadgets from registries",
+			DefaultValue: "false",
+			TypeHint:     api.TypeBool,
 		},
 		{
 			Key:          authfileParam,
@@ -116,7 +117,7 @@ func (o *ociHandler) GlobalParams() api.Params {
 		p = append(p, &api.Param{
 			Key:         pullSecret,
 			Title:       "Pull secret",
-			Description: "Secret to use when pulling the gadget image",
+			Description: "Kubernetes secret to use when pulling the gadget image",
 			TypeHint:    api.TypeString,
 		})
 	}
@@ -225,7 +226,8 @@ func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
 
 	builderVersion, err := semver.ParseTolerant(builderVersionAnn)
 	if err != nil {
-		logger.Warnf("parsing builder version: %s", err)
+		// it could happen on development versions
+		logger.Debugf("parsing builder version: %s", err)
 		return
 	}
 

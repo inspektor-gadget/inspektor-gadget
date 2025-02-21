@@ -62,11 +62,6 @@ const (
 	ParamIface       = "iface"
 	ParamTraceKernel = "trace-pipe"
 
-	// Keep in sync with `include/gadget/kernel_stack_map.h`
-	KernelStackMapName       = "ig_kstack"
-	KernelStackMapMaxEntries = 10000
-	PerfMaxStackDepth        = 127
-
 	kernelTypesVar = "kernelTypes"
 )
 
@@ -184,7 +179,8 @@ type ebpfInstance struct {
 	enums      []*enum
 	formatters map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 
-	stackIdMap *ebpf.Map
+	kernelStackMap *ebpf.Map
+	userStackMap   *ebpf.Map
 
 	gadgetCtx operators.GadgetContext
 	done      chan struct{}
@@ -287,21 +283,6 @@ func (i *ebpfInstance) analyze() error {
 	err := i.fillParamDefaults()
 	if err != nil {
 		i.logger.Debugf("error extracting default values for params: %v", err)
-	}
-
-	// create map for kernel stack, before initializing converters
-	if _, ok := i.collectionSpec.Maps[KernelStackMapName]; ok {
-		stackIdMapSpec := ebpf.MapSpec{
-			Name:       KernelStackMapName,
-			Type:       ebpf.StackTrace,
-			KeySize:    4,
-			ValueSize:  8 * PerfMaxStackDepth,
-			MaxEntries: KernelStackMapMaxEntries,
-		}
-		i.stackIdMap, err = ebpf.NewMap(&stackIdMapSpec)
-		if err != nil {
-			return fmt.Errorf("creating stack id map: %w", err)
-		}
 	}
 
 	// Iterate over programs
@@ -572,11 +553,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	mapReplacements := make(map[string]*ebpf.Map)
 
-	// create map for kernel stack
-	if i.stackIdMap != nil {
-		mapReplacements[KernelStackMapName] = i.stackIdMap
-	}
-
 	// Set gadget params
 	for name, p := range i.params {
 		if !p.fromEbpf {
@@ -678,6 +654,13 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	for name, m := range i.collection.Maps {
 		gadgetCtx.SetVar(operators.MapPrefix+name, m)
+
+		if name == ebpftypes.KernelStackMapName {
+			i.kernelStackMap = m
+		}
+		if name == ebpftypes.UserStackMapName {
+			i.userStackMap = m
+		}
 	}
 
 	for _, tracer := range i.tracers {

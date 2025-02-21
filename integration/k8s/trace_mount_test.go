@@ -26,7 +26,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceMount(t *testing.T) {
+func TestBuiltinTraceMount(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-mount")
 

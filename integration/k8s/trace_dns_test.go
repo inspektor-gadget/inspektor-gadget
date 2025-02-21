@@ -237,7 +237,7 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 	return traceDNSCmd
 }
 
-func TestTraceDns(t *testing.T) {
+func TestBuiltinTraceDns(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
@@ -248,7 +248,7 @@ func TestTraceDns(t *testing.T) {
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
 
-func TestTraceDnsUncompress(t *testing.T) {
+func TestBuiltinTraceDnsUncompress(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-dns-uncompress")
 

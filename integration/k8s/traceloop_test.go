@@ -21,7 +21,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestTraceloop(t *testing.T) {
+func TestBuiltinTraceloop(t *testing.T) {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		t.Skip("Skip running test with test component different than kubectl-gadget")
 	}

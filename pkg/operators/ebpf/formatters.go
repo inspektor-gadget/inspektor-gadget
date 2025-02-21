@@ -91,7 +91,7 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 
 			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "enum", in, enumTargetNameAnnotation)
 			if err != nil {
-				i.logger.Warnf("Failed to get target name for enum field %q: %v", in.Name(), err)
+				i.logger.Warnf("getting target name for enum field %q: %v", in.Name(), err)
 				continue
 			}
 
@@ -166,7 +166,7 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				}
 			}
 
-			if i.stackIdMap == nil {
+			if i.collectionSpec.Maps[ebpftypes.KernelStackMapName] == nil {
 				return errors.New("kernel stack map is not initialized but used. " +
 					"if you are using `gadget_kernel_stack` as event field, " +
 					"try to include <gadget/kernel_stack_map.h>")
@@ -174,7 +174,7 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 
 			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "kstack", in, kernelStackTargetNameAnnotation)
 			if err != nil {
-				i.logger.Warnf("Failed to get target name for enum field %q: %v", in.Name(), err)
+				i.logger.Warnf("getting target name for kstack field %q: %v", in.Name(), err)
 				continue
 			}
 			out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
@@ -185,8 +185,8 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				inBytes := in.Get(data)
 				stackId := ds.ByteOrder().Uint32(inBytes)
 
-				stack := [PerfMaxStackDepth]uint64{}
-				err = i.stackIdMap.Lookup(stackId, &stack)
+				stack := [ebpftypes.KernelPerfMaxStackDepth]uint64{}
+				err = i.kernelStackMap.Lookup(stackId, &stack)
 				if err != nil {
 					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
 					out.Set(data, []byte{})

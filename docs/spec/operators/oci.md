@@ -23,7 +23,9 @@ Default: `/var/lib/ig/config.json`
 
 ### `pull-secret`
 
-Secret to use when pulling the gadget image
+[Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/)
+to use when pulling the gadget image. The Kubernetes namespace for the Secret
+is not configurable and is hardcoded to "gadget".
 
 Fully qualified name: `operator.oci.pull-secret`
 

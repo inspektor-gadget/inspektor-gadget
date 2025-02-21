@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceOpen(t *testing.T) {
+func TestBuiltinTraceOpen(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-open")
 

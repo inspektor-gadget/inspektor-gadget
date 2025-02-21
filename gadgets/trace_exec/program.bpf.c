@@ -79,14 +79,14 @@ static const struct event empty_event = {};
 // - tracepoint/syscalls/sys_exit_execve is always called
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 10240);
+	__uint(max_entries, 1024);
 	__type(key, pid_t);
 	__type(value, struct event);
 } execs SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 10240);
+	__uint(max_entries, 1024);
 	__type(key, pid_t);
 	__type(value, __u8);
 } security_bprm_hit_map SEC(".maps");

@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceFsslower(t *testing.T) {
+func TestBuiltinTraceFsslower(t *testing.T) {
 	// TODO: does it work in all cases?
 	fsType := "ext4"
 	if *k8sDistro == K8sDistroARO || *k8sDistro == K8sDistroEKSAmazonLinux {

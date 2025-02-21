@@ -24,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceSni(t *testing.T) {
+func TestBuiltinTraceSni(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-sni")
 

@@ -47,7 +47,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool, expectedEntry *toptc
 	}
 }
 
-func TestTopTCP(t *testing.T) {
+func TestBuiltinTopTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
 

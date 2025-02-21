@@ -46,7 +46,7 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool, expectedEntry *topf
 	}
 }
 
-func TestTopFile(t *testing.T) {
+func TestBuiltinTopFile(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-file")
 

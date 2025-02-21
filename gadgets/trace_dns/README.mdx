@@ -215,3 +215,8 @@ Finally, clean the system:
         ```
     </TabItem>
 </Tabs>
+
+
+## Limitations
+
+DNS over TCP support is limited since it doesn't support TCP stream reassembly. This means that the gadget will not be able to trace DNS requests that are sent over multiple TCP packets.

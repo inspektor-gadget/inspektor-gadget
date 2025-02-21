@@ -25,7 +25,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceExec(t *testing.T) {
+func TestBuiltinTraceExec(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-exec")
 

@@ -25,7 +25,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestAdviseNetworkpolicy(t *testing.T) {
+func TestBuiltinAdviseNetworkpolicy(t *testing.T) {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		t.Skip("Skip running test with test component different than kubectl-gadget")
 	}

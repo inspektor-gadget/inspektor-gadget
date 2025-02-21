@@ -14,9 +14,10 @@
 #include <gadget/buffer.h>
 #include <gadget/common.h>
 #include <gadget/filter.h>
-#include <gadget/kernel_stack_map.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+#include <gadget/kernel_stack_map.h>
+#include <gadget/user_stack_map.h>
 
 // include/linux/security.h
 #define CAP_OPT_NOAUDIT (1UL << 1)
@@ -88,6 +89,7 @@ struct cap_event {
 	int insetid;
 	gadget_syscall syscall_raw;
 	gadget_kernel_stack kstack_raw;
+	struct gadget_user_stack ustack_raw;
 };
 
 #define MAX_ENTRIES 10240
@@ -162,8 +164,11 @@ struct {
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(capabilities, events, cap_event);
 
-const volatile bool print_stack = true;
-GADGET_PARAM(print_stack);
+const volatile bool print_kstack = true;
+GADGET_PARAM(print_kstack);
+
+const volatile bool print_ustack = false;
+GADGET_PARAM(print_ustack);
 
 SEC("kprobe/cap_capable")
 int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
@@ -261,6 +266,9 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	// ret=0 means the process has the requested capability, otherwise ret=-EPERM
 	event->capable = PT_REGS_RC(ctx) == 0;
 	event->kstack_raw = gadget_get_kernel_stack(ctx);
+	if (print_ustack)
+		gadget_get_user_stack(ctx, &event->ustack_raw);
+
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
 	if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 1, 0)) {
