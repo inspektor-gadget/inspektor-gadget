@@ -60,7 +60,7 @@ func TestTraceCapabilities(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-capabilities"
-	containerImage := "docker.io/library/gcc:latest"
+	containerImage := gadgettesting.GccImage
 
 	execProgram := `
 #include <stdio.h>
