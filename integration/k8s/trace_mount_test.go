@@ -37,12 +37,12 @@ func TestBuiltinTraceMount(t *testing.T) {
 		extraArgs = fmt.Sprintf("--runtimes=%s", containerRuntime)
 		expectedEvent = BuildBaseEvent(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEvent = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEvent = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 	}
 
 	traceMountCmd := &Command{

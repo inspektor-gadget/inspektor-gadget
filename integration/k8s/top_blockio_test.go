@@ -85,12 +85,12 @@ func TestBuiltinTopBlockIO(t *testing.T) {
 		extraArgs = fmt.Sprintf("--runtimes=%s -m %d", containerRuntime, maxRows)
 		expectedEntry.CommonData = BuildCommonData(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 	}
 
 	commandsPreTest := []TestStep{

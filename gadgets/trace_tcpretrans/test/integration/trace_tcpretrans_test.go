@@ -53,7 +53,7 @@ func TestTraceTCPretrans(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-tcpretrans"
-	containerImage := "docker.io/wbitt/network-multitool:latest"
+	containerImage := gadgettesting.NetworkMultitoolImage
 
 	var ns string
 	// run the container with privileged mode to be able to use tc command

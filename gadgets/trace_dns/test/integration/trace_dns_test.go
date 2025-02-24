@@ -60,7 +60,7 @@ type traceDNSEvent struct {
 
 const (
 	DefaultServerImage = "ghcr.io/inspektor-gadget/dnstester:latest"
-	DefaultClientImage = "docker.io/library/busybox:latest"
+	DefaultClientImage = gadgettesting.BusyBoxImage
 )
 
 type testCase struct {

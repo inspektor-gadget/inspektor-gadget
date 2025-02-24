@@ -34,12 +34,12 @@ func TestBuiltinProfileCpu(t *testing.T) {
 	case IgTestComponent:
 		expectedEntry.CommonData = BuildCommonData(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 		extraArgs = fmt.Sprintf("--runtimes=%s", containerRuntime)
 	case InspektorGadgetTestComponent:
-		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 		extraArgs = fmt.Sprintf("-n %s -p test-pod", ns)
 	}
 

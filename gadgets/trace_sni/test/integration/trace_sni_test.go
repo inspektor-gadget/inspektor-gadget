@@ -49,7 +49,7 @@ func TestTraceSNI(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-sni"
-	containerImage := "docker.io/library/busybox:latest"
+	containerImage := gadgettesting.BusyBoxImage
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}

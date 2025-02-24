@@ -38,7 +38,7 @@ func TestBuiltinTraceNetwork(t *testing.T) {
 
 	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "docker.io/library/nginx:latest", ns, "", ""),
+		PodCommand("nginx-pod", "ghcr.io/inspektor-gadget/ci/nginx:latest", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
@@ -94,7 +94,7 @@ func TestBuiltinTraceNetwork(t *testing.T) {
 								},
 							},
 							Runtime: eventtypes.BasicRuntimeMetadata{
-								ContainerImageName: "docker.io/library/nginx:latest",
+								ContainerImageName: "ghcr.io/inspektor-gadget/ci/nginx:latest",
 							},
 						},
 					},
@@ -113,7 +113,7 @@ func TestBuiltinTraceNetwork(t *testing.T) {
 			case IgTestComponent:
 				expectedEntries[0].Event = BuildBaseEvent(ns,
 					WithRuntimeMetadata(containerRuntime),
-					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 					WithPodLabels("test-pod", ns, isCrioRuntime),
 				)
 
@@ -121,7 +121,7 @@ func TestBuiltinTraceNetwork(t *testing.T) {
 				expectedEntries[1].Runtime.ContainerName = "nginx-pod"
 				expectedEntries[1].Runtime.RuntimeName = eventtypes.String2RuntimeName(containerRuntime)
 			case InspektorGadgetTestComponent:
-				expectedEntries[0].Event = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+				expectedEntries[0].Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 				expectedEntries[0].PodIP = testPodIP
 				expectedEntries[0].PodLabels = map[string]string{"run": "test-pod"}
 				expectedEntries[0].DstEndpoint.Namespace = ns

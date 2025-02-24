@@ -50,7 +50,7 @@ func TestTraceTCP(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-tcp"
-	containerImage := "docker.io/library/nginx:latest"
+	containerImage := gadgettesting.NginxImage
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
