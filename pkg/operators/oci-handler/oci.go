@@ -387,7 +387,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		log.Debugf("found image op %q", op.Name())
 		opInst, err := op.InstantiateImageOperator(gadgetCtx, target, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
 		if err != nil {
-			log.Errorf("instantiating operator %q: %v", op.Name(), err)
+			return fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
 		}
 		if opInst == nil {
 			log.Debugf("> skipped %s", op.Name())
