@@ -1411,7 +1411,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install Cosign
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
       - name: Check if public key is up-to-date.
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
@@ -1509,7 +1509,7 @@ jobs:
           sudo mv ig /usr/bin/ig
       - name: Install Cosign
         if: needs.check-secrets.outputs.cosign == 'true'
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
       - name: Verify eBPF builder image
         if: needs.check-secrets.outputs.cosign == 'true'
         run: |
@@ -2309,7 +2309,7 @@ jobs:
         done
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
-      uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+      uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
     - name: Sign checksums file
       if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
