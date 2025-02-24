@@ -1,0 +1,13 @@
+{
+   "ignorePatterns" : [],
+   "replacementPatterns" : [
+      {
+         "pattern" : "%IG_BRANCH%",
+         "replacement" : "main"
+      },
+      {
+         "pattern" : "%IG_TAG%",
+         "replacement" : "latest"
+      }
+   ]
+}
