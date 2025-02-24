@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -37,7 +38,7 @@ const (
 )
 
 type SocketEnricherInterface interface {
-	SetSocketEnricherMap(*ebpf.Map)
+	SetSocketEnricherMap(*ebpf.Map, *btf.Spec)
 }
 
 type SocketEnricher struct {
@@ -134,7 +135,8 @@ func (i *SocketEnricherInstance) PreGadgetRun() error {
 
 	i.manager.refCount++
 
-	setter.SetSocketEnricherMap(i.manager.socketEnricher.SocketsMap())
+	setter.SetSocketEnricherMap(i.manager.socketEnricher.SocketsMap(),
+		i.manager.socketEnricher.BTFSpec())
 
 	return nil
 }
@@ -193,9 +195,10 @@ func (i *SocketEnricherInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return i.PostGadgetRun()
 }
 
-func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map) {
-	i.gadgetCtx.Logger().Debugf("setting sockets map")
+func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map, s *btf.Spec) {
+	fmt.Printf("setting sockets map: %v %v\n", m, s)
 	i.gadgetCtx.SetVar(tracer.SocketsMapName, m)
+	i.gadgetCtx.SetVar(tracer.SocketsMapName+".btfspec", s)
 }
 
 func init() {

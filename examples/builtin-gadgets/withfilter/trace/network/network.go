@@ -102,7 +102,7 @@ func run() error {
 	}
 	defer socketEnricher.Close()
 
-	networkTracer.SetSocketEnricherMap(socketEnricher.SocketsMap())
+	networkTracer.SetSocketEnricherMap(socketEnricher.SocketsMap(), socketEnricher.BTFSpec())
 
 	networkTracer.SetEventHandler(func(event *tracernetworktypes.Event) {
 		if event.Type != types.NORMAL {

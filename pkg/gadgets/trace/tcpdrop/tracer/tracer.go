@@ -73,7 +73,7 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map) {
+func (t *Tracer) SetSocketEnricherMap(m *ebpf.Map, _ *btf.Spec) {
 	t.socketEnricherMap = m
 }
 

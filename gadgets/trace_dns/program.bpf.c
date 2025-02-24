@@ -14,9 +14,23 @@
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
+#include <bpf/bpf_core_read.h>
 
 #include <gadget/macros.h>
 #include <gadget/types.h>
+
+struct socket_enricher_foo {
+	char foo[1];
+};
+struct socket_enricher_foo___siz2 {
+	char foo[2];
+};
+struct socket_enricher_foo___siz4 {
+	char foo[4];
+};
+struct socket_enricher_foo___siz8 {
+	char foo[8];
+};
 
 #define GADGET_TYPE_NETWORKING
 #include <gadget/sockets-map.h>
@@ -197,6 +211,21 @@ int ig_trace_dns(struct __sk_buff *skb)
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
 	int i;
+
+    if (bpf_core_type_exists(struct socket_enricher_foo)) {
+        bpf_printk("type exists: socket_enricher_foo");
+        bpf_printk("sizeof(socket_enricher_foo) = %d", bpf_core_field_size(struct socket_enricher_foo, foo));
+    }
+
+    if (bpf_core_type_matches(struct socket_enricher_foo___siz2)) {
+        bpf_printk("type match: socket_enricher_foo___siz2");
+    }
+    if (bpf_core_type_matches(struct socket_enricher_foo___siz4)) {
+        bpf_printk("type match: socket_enricher_foo___siz4");
+    }
+    if (bpf_core_type_matches(struct socket_enricher_foo___siz8)) {
+        bpf_printk("type match: socket_enricher_foo___siz8");
+    }
 
 	// Do a first pass only to extract the port and drop the packet if it's not DNS
 	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
