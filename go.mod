@@ -25,7 +25,7 @@ require (
 	github.com/giantswarm/crd-docs-generator v0.11.2
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gofrs/flock v0.12.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/gopacket/gopacket v1.3.1
 	github.com/kr/pretty v0.3.1
