@@ -5,6 +5,7 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include "fsslower.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 #define MAX_ENTRIES 8192
