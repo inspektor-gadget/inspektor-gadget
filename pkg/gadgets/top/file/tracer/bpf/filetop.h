@@ -2,7 +2,7 @@
 #ifndef __FILETOP_H
 #define __FILETOP_H
 
-#define PATH_MAX 4096
+#define GADGET_PATH_MAX 512
 #define TASK_COMM_LEN 16
 
 enum op {
@@ -25,7 +25,7 @@ struct file_stat {
 	__u32 pid;
 	__u32 tid;
 	__u64 mntns_id;
-	__u8 filename[PATH_MAX];
+	__u8 filename[GADGET_PATH_MAX];
 	__u8 comm[TASK_COMM_LEN];
 	char type_;
 };

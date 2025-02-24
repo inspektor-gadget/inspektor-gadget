@@ -11,8 +11,6 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 
-#define PATH_MAX 4096
-
 struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
@@ -20,7 +18,7 @@ struct event {
 	u64 socket_ino;
 	u32 sockfd;
 	u32 fd;
-	char file[PATH_MAX];
+	char file[GADGET_PATH_MAX];
 };
 
 // Context between tracepoints enter/exit sendmsg

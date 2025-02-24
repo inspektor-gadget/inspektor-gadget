@@ -33,9 +33,9 @@ type execsnoopWithLongPathsEvent struct {
 	ArgsSize    uint32
 	Comm        [16]uint8
 	Pcomm       [16]uint8
-	Cwd         [4096]uint8
-	Exepath     [4096]uint8
-	File        [4096]uint8
+	Cwd         [512]uint8
+	Exepath     [512]uint8
+	File        [512]uint8
 	Args        [5120]uint8
 }
 

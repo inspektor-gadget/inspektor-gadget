@@ -4,7 +4,7 @@
 
 #define TASK_COMM_LEN 16
 #define NAME_MAX 255
-#define PATH_MAX 4096
+#define GADGET_PATH_MAX 512
 #define INVALID_UID ((uid_t) - 1)
 
 struct start_t {
@@ -29,7 +29,7 @@ struct event {
 	__u8 comm[TASK_COMM_LEN];
 	__u8 fname[NAME_MAX];
 	// Keep full_fname as the last field for optimization
-	__u8 full_fname[PATH_MAX];
+	__u8 full_fname[GADGET_PATH_MAX];
 };
 
 struct prefix_key {

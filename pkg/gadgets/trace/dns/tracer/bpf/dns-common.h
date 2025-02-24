@@ -2,7 +2,7 @@
 #define GADGET_DNS_COMMON_H
 
 #define TASK_COMM_LEN 16
-#define MAX_STRING_SIZE 4096
+#define GADGET_PATH_MAX 512
 
 struct event_t {
 	// Keep netns at the top: networktracer depends on it
@@ -38,8 +38,8 @@ struct event_t {
 	__u64 latency_ns; // Set only if the packet is a response and pkt_type is 0 (Host).
 
 #ifdef WITH_LONG_PATHS
-	__u8 cwd[MAX_STRING_SIZE];
-	__u8 exepath[MAX_STRING_SIZE];
+	__u8 cwd[GADGET_PATH_MAX];
+	__u8 exepath[GADGET_PATH_MAX];
 #endif
 };
 

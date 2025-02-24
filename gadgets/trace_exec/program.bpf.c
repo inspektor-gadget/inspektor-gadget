@@ -44,12 +44,12 @@ struct event {
 	bool fupper_layer;
 	bool pupper_layer;
 	unsigned int args_size;
-	char cwd[MAX_STRING_SIZE];
-	char file[MAX_STRING_SIZE];
+	char cwd[GADGET_PATH_MAX];
+	char file[GADGET_PATH_MAX];
 	unsigned int dev_major;
 	unsigned int dev_minor;
 	unsigned long inode;
-	char exepath[MAX_STRING_SIZE];
+	char exepath[GADGET_PATH_MAX];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
@@ -136,7 +136,7 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 	if (paths) {
 		struct fs_struct *fs = BPF_CORE_READ(task, fs);
 		char *cwd = get_path_str(&fs->pwd);
-		bpf_probe_read_kernel_str(event->cwd, MAX_STRING_SIZE, cwd);
+		bpf_probe_read_kernel_str(event->cwd, sizeof(event->cwd), cwd);
 	}
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
@@ -241,8 +241,8 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	if (paths) {
 		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 		char *exepath = get_path_str(&exe_file->f_path);
-		bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE,
-					  exepath);
+		bpf_probe_read_kernel_str(event->exepath,
+					  sizeof(event->exepath), exepath);
 	}
 
 	size_t len = EVENT_SIZE(event);
@@ -278,8 +278,8 @@ static __always_inline int exit_execve(void *ctx, int retval)
 			(struct task_struct *)bpf_get_current_task();
 		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 		char *exepath = get_path_str(&exe_file->f_path);
-		bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE,
-					  exepath);
+		bpf_probe_read_kernel_str(event->exepath,
+					  sizeof(event->exepath), exepath);
 	}
 
 	size_t len = EVENT_SIZE(event);
@@ -338,7 +338,8 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	if (paths) {
 		f_path = BPF_CORE_READ(bprm, file, f_path);
 		file = get_path_str(&f_path);
-		bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
+		bpf_probe_read_kernel_str(event->file, sizeof(event->file),
+					  file);
 
 		dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
 		event->dev_major = MAJOR(dev_no);

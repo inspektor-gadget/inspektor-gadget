@@ -8,11 +8,11 @@
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+#include <gadget/filesystem.h>
 
 #define MAX_ENTRIES 10240
 #define FS_NAME_LEN 8
 #define DATA_LEN 512
-#define PATH_MAX 4096
 
 enum op {
 	MOUNT,
@@ -72,8 +72,8 @@ struct event {
 	enum flags_set flags_raw;
 	gadget_errno error_raw;
 	char fs[FS_NAME_LEN];
-	char src[PATH_MAX];
-	char dest[PATH_MAX];
+	char src[GADGET_PATH_MAX];
+	char dest[GADGET_PATH_MAX];
 	char data[DATA_LEN];
 	enum op op_raw;
 };

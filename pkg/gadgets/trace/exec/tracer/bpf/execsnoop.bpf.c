@@ -112,7 +112,7 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 #ifdef WITH_LONG_PATHS
 	fs = BPF_CORE_READ(task, fs);
 	cwd = get_path_str(&fs->pwd);
-	bpf_probe_read_kernel_str(event->cwd, MAX_STRING_SIZE, cwd);
+	bpf_probe_read_kernel_str(event->cwd, GADGET_PATH_MAX, cwd);
 #endif
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
@@ -222,7 +222,7 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 #ifdef WITH_LONG_PATHS
 	exe_file = BPF_CORE_READ(task, mm, exe_file);
 	exepath = get_path_str(&exe_file->f_path);
-	bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE, exepath);
+	bpf_probe_read_kernel_str(event->exepath, GADGET_PATH_MAX, exepath);
 #endif
 
 	size_t len = EVENT_SIZE(event);
@@ -266,7 +266,7 @@ static __always_inline int exit_execve(void *ctx, int retval)
 #ifdef WITH_LONG_PATHS
 	exe_file = BPF_CORE_READ(task, mm, exe_file);
 	exepath = get_path_str(&exe_file->f_path);
-	bpf_probe_read_kernel_str(event->exepath, MAX_STRING_SIZE, exepath);
+	bpf_probe_read_kernel_str(event->exepath, GADGET_PATH_MAX, exepath);
 #endif
 
 	size_t len = EVENT_SIZE(event);
@@ -314,7 +314,7 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 
 	f_path = BPF_CORE_READ(bprm, file, f_path);
 	file = get_path_str(&f_path);
-	bpf_probe_read_kernel_str(event->file, MAX_STRING_SIZE, file);
+	bpf_probe_read_kernel_str(event->file, GADGET_PATH_MAX, file);
 #endif
 
 	return 0;
