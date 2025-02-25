@@ -461,7 +461,7 @@ Return value:
 
 Get the syscall name for this syscall ID. In case the syscall is unknown, this
 function resolves it as "syscall_ID" with ID displayed as hexadecimal like
-  strace.
+strace.
 
 Parameters:
 - `id` (u32): Syscall ID
@@ -469,6 +469,16 @@ Parameters:
 
 Return value:
 - (u32) 0 in case of success, 1 otherwise.
+
+#### `getSyscallID(name uint64) uint64`
+
+Get the syscall ID for this sycall name.
+
+Parameters:
+- `name` (u64): Syscall name.
+
+Return value:
+- (u64) the syscall ID if the name corresponds to a syscall, math.MaxUint64 otherwise.
 
 #### `getSyscallDeclaration(name uint64, pointer uint64) uint32`
 
