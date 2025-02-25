@@ -25,40 +25,41 @@ func (i *wasmOperatorInstance) addParamsFuncs(env wazero.HostModuleBuilder) {
 	exportFunction(env, "getParamValue", i.getParamValue,
 		[]wapi.ValueType{
 			wapi.ValueTypeI64, // ParamKey
+			wapi.ValueTypeI64, // Buffer to save param value
 		},
-		[]wapi.ValueType{wapi.ValueTypeI64}, // Value
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
 	)
 }
 
 // getParamValue returns the value of a param.
 // Params:
 // - stack[0] parameter key
+// - stack[1] buffer where the param value will be written
 // Return value:
-// - Uint64 with the param's value, 0 on error
+// - 0 on success, 1 on error
 func (i *wasmOperatorInstance) getParamValue(ctx context.Context, m wapi.Module, stack []uint64) {
 	paramKeyPtr := stack[0]
+	dst := stack[1]
 
 	paramKey, err := stringFromStack(m, paramKeyPtr)
 	if err != nil {
 		i.logger.Warnf("getParamValue: reading string from stack: %v", err)
-		stack[0] = 0
+		stack[0] = 1
 		return
 	}
 
 	val, ok := i.paramValues[paramKey]
 	if !ok {
 		i.logger.Warnf("getParamValue: param %q not found", paramKey)
-		stack[0] = 0
+		stack[0] = 1
 		return
 	}
 
-	buf := []byte(val)
-	ret, err := i.writeToGuestMemory(ctx, buf)
-	if err != nil {
+	if err = i.writeToDstBuffer([]byte(val), dst); err != nil {
 		i.logger.Warnf("getParamValue: writing to guest memory: %v", err)
-		stack[0] = 0
+		stack[0] = 1
 		return
 	}
 
-	stack[0] = ret
+	stack[0] = 0
 }

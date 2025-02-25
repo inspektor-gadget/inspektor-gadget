@@ -18,54 +18,71 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	_ "unsafe"
 )
 
 //go:wasmimport env newDataSource
+//go:linkname newDataSource newDataSource
 func newDataSource(name uint64, typ uint32) uint32
 
 //go:wasmimport env getDataSource
+//go:linkname getDataSource getDataSource
 func getDataSource(name uint64) uint32
 
 //go:wasmimport env dataSourceSubscribe
+//go:linkname dataSourceSubscribe dataSourceSubscribe
 func dataSourceSubscribe(ds uint32, typ uint32, prio uint32, cb uint64) uint32
 
 //go:wasmimport env dataSourceGetField
+//go:linkname dataSourceGetField dataSourceGetField
 func dataSourceGetField(ds uint32, name uint64) uint32
 
 //go:wasmimport env dataSourceAddField
+//go:linkname dataSourceAddField dataSourceAddField
 func dataSourceAddField(ds uint32, name uint64, kind uint32) uint32
 
 //go:wasmimport env dataSourceNewPacketSingle
+//go:linkname dataSourceNewPacketSingle dataSourceNewPacketSingle
 func dataSourceNewPacketSingle(ds uint32) uint32
 
 //go:wasmimport env dataSourceNewPacketArray
+//go:linkname dataSourceNewPacketArray dataSourceNewPacketArray
 func dataSourceNewPacketArray(ds uint32) uint32
 
 //go:wasmimport env dataSourceEmitAndRelease
+//go:linkname dataSourceEmitAndRelease dataSourceEmitAndRelease
 func dataSourceEmitAndRelease(ds uint32, packet uint32) uint32
 
 //go:wasmimport env dataSourceRelease
+//go:linkname dataSourceRelease dataSourceRelease
 func dataSourceRelease(ds uint32, packet uint32) uint32
 
 //go:wasmimport env dataSourceUnreference
+//go:linkname dataSourceUnreference dataSourceUnreference
 func dataSourceUnreference(ds uint32) uint32
 
 //go:wasmimport env dataSourceIsReferenced
+//go:linkname dataSourceIsReferenced dataSourceIsReferenced
 func dataSourceIsReferenced(ds uint32) uint32
 
 //go:wasmimport env dataArrayNew
+//go:linkname dataArrayNew dataArrayNew
 func dataArrayNew(d uint32) uint32
 
 //go:wasmimport env dataArrayAppend
+//go:linkname dataArrayAppend dataArrayAppend
 func dataArrayAppend(d uint32, data uint32) uint32
 
 //go:wasmimport env dataArrayRelease
+//go:linkname dataArrayRelease dataArrayRelease
 func dataArrayRelease(d uint32, data uint32) uint32
 
 //go:wasmimport env dataArrayLen
+//go:linkname dataArrayLen dataArrayLen
 func dataArrayLen(d uint32) uint32
 
 //go:wasmimport env dataArrayGet
+//go:linkname dataArrayGet dataArrayGet
 func dataArrayGet(d uint32, index uint32) uint32
 
 type (

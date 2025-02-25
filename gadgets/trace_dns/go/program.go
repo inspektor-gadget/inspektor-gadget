@@ -237,9 +237,14 @@ func gadgetInit() int32 {
 			return
 		}
 
-		n := dataF.BytesToSlice(data, payload)
+		n, err := dataF.Bytes(data, payload)
+		if err != nil {
+			api.Warnf("failed to get data: %s", err)
+			return
+		}
+
 		if n == 0 {
-			api.Warnf("failed to get data")
+			api.Warnf("empty data")
 			return
 		}
 

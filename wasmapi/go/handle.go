@@ -16,9 +16,11 @@ package api
 
 import (
 	"errors"
+	_ "unsafe"
 )
 
 //go:wasmimport env releaseHandle
+//go:linkname releaseHandle releaseHandle
 func releaseHandle(handle uint32) uint32
 
 func ReleaseHandle[T ~uint32](handle T) error {

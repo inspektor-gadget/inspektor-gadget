@@ -17,9 +17,11 @@ package api
 import (
 	"fmt"
 	"runtime"
+	_ "unsafe"
 )
 
 //go:wasmimport env setConfig
+//go:linkname setConfig setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
 
 func SetConfig(key string, val any) error {

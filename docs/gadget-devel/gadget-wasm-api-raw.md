@@ -15,9 +15,8 @@ Data types passed to the API are encoded using 64 bits. Scalar types like
 integers, booleans and floats are casted directly to 64 bit integers and passed
 using the stack.
 
-Strings and byte arrays are stored in the wasm module's memory as `bufPtr`. A 64
-bit integer is used to represent a pointer to them, the higher 32 bits contains
-the length and the lower 32 the memory address.
+Strings and byte arrays are represented by a 64 bits integer. The higher 32 bits
+contains the length and the lower 32 the memory address.
 
 ## Wasm Module Exported Functions
 
@@ -53,15 +52,6 @@ things. This function is optional.
 ### `gadgetPostStop`
 
 This function is called after the the gadget is stopped. This function is optional.
-
-#### `malloc`
-
-The gadget should expose a `malloc` function that allocates memory on the heap
-of the wasm module. This is needed by the host to allocate memory to pass
-strings and byte arrays around. This function is automatically exported when
-using tinygo https://github.com/tinygo-org/tinygo/issues/2788.
-
-TODO: We'll check this requirement later on.
 
 #### `dataSourceCallback`
 
@@ -282,9 +272,9 @@ Return value:
 
 ### Fields
 
-#### `fieldGet(u32 field, u32 data, u32 kind) u64`
+#### `fieldGetScalar(u32 field, u32 data, u32 kind) u64`
 
-Get the value of a field into a newly allocated buffer.
+Get the value of a scalar field.
 
 Parameters:
 - `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
@@ -292,20 +282,10 @@ Parameters:
 - `kind` (u32): Kind of access: How to read the field.
 
 Return value:
-- Value of the field:
-  - If the returned value is of type String or Bytes, it will
-  be allocated inside the wasm guest memory by calling the function malloc. The
-  Wasm module must either provide its own implementation of malloc or be
-  compiled against a library which provides it such as libc. It is the
-  responsibility of the caller to free the allocation.
-  - The reference Wasm guest Go library
-  "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
-  automatically frees the memory as appropriate so if your Wasm module uses that
-  reference implementation, you don't have to call free.
-  - The function returns 0 in case of errors (ambiguous with scalar types like u32).
-  TODO: Find a way to report errors!
+- Value of the field: The value of the field or 0 in case of errors
+  - TODO: 0 is ambiguous, find a way to report errors!
 
-#### `fieldGetToBuffer(u32 field, u32 data, u32 kind, u64 dst) u32`
+#### `fieldGetBuffer(u32 field, u32 data, u32 kind, u64 dst) i32`
 
 Get the value of a field of type String or Bytes into an existing buffer.
 
@@ -313,9 +293,10 @@ Parameters:
 - `field` (u32): Field handle (as returned by `dataSourceGetField` or `dataSourceAddField`)
 - `data` (u32): Data handle
 - `kind` (u32): Kind of access: How to read the field.
+- `dst` (u64): A pointer to a buffer where the value will be stored.
 
 Return value:
-- Value of the field: the number of bytes copied or 0 in case of errors.
+- Value of the field: the number of bytes copied or -1 in case of errors.
 
 #### `fieldSet(u32 field, u32 data, u32 kind, u64 value)`
 
@@ -361,15 +342,16 @@ params:
      ...
 ```
 
-#### `getParamValue(key string) string`
+#### `getParamValue(key string, dst uint64) uint32`
 
 Return the value of a parameter.
 
 Parameters:
 - `key` (string): Key of the parameter.
+- `dst` (u64): A pointer to a buffer where the value will be stored.
 
 Return value:
-- The value of the parameter.
+- 0 in case of success, 1 otherwise.
 
 ### Config
 
@@ -475,15 +457,18 @@ Return value:
 
 ### Syscalls
 
-#### `getSyscallName(id uint32) uint64`
+#### `getSyscallName(id uint32, dst uint64) uint32`
 
-Get the syscall name for this syscall ID.
+Get the syscall name for this syscall ID. In case the syscall is unknown, this
+function resolves it as "syscall_ID" with ID displayed as hexadecimal like
+  strace.
 
 Parameters:
 - `id` (u32): Syscall ID
+- `dst` (u64): A pointer to a buffer where the name will be stored.
 
 Return value:
-- (u64) A string containing the name of the syscall, in case the syscall is unknown, it returns "syscall_ID" with ID displayed as hexadecimal like strace.
+- (u32) 0 in case of success, 1 otherwise.
 
 #### `getSyscallDeclaration(name uint64, pointer uint64) uint32`
 
@@ -539,13 +524,13 @@ Parameters:
 Return value:
 - (u32) 0 on success, 1 on error.
 
-#### `func perfReaderRead(perfMapHandle uint32, addrBufPtr uint32) uint32`
+#### `func perfReaderRead(perfMapHandle uint32, dst uint64) uint32`
 
 Read the perf buffer.
 
 Parameters:
 - `perfMapHandle` (u32): Handle to a perf buffer.
-- `addrBufPtr` (u32): Address to a bufptr where the record will be written. The bufptr will be allocated by the function and must be freed by the caller.
+- `dst` (u64): A pointer to a buffer where the data will be stored.
 
 Return value:
 - (u32) 0 on success, 1 on error, 2 on deadline exceeded.
