@@ -13,6 +13,17 @@ This gadget requires Linux Kernel Version 6.5+.
 
 Note: If you have an encrypted disk some block IO operations will not be shown, since device mappers are in between these operations to operate transparently. See https://docs.kernel.org/admin-guide/device-mapper/dm-crypt.html
 
+## Use Case
+
+An application might consistently engage in disk read/write operations, such as extensive logging. By using Inspektor Gadget, you can identify in real time which containers generate more block I/O.
+
+For example, suppose a container is writing excessive logs to disk, leading to slow performance. With the `top_blockio` gadget, you can monitor disk activity and pinpoint the container causing high disk usage.
+
+### Example Scenario
+1. A Kubernetes pod is running a logging service that continuously writes data to a file.
+2. Using `top_blockio`, you detect that this container is performing an unusually high number of write operations.
+3. You use the output to optimize logging settings, reducing disk overhead.
+
 ## Getting started
 
 Running the gadget:
