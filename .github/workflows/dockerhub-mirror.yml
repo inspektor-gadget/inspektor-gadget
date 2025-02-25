@@ -1,8 +1,12 @@
+# This workflow mirrors few container images we use on the CI from Dockerhub to
+# ghcr.io to avoid pull rate limit issues. Images are mirrored to
+# ghcr.io/inspektor-gadget/ci/<image-name>.
+#
 # based on https://github.com/rblaine95/dockerhub-mirror/
 name: Mirror Dockerhub
 env:
   REGISTRY: ghcr.io
-  CONTAINER_REPO: ${{ github.repository }}
+  CONTAINER_REPO: ${{ github.repository_owner }}
   GO_VERSION: 1.23.4
 on:
   workflow_dispatch:
