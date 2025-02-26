@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -181,6 +183,19 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 		pid := containerData.Pid
 		if pid > math.MaxUint32 {
 			log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
+			continue
+		}
+
+		// Check if process exists. Better check now rather than fail later in the enrichment pipeline.
+		containerPidPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid))
+		_, err = os.Stat(containerPidPath)
+		if os.IsNotExist(err) {
+			log.Warnf("Skip pod %s/%s container %q (ID: %s, image: %s): PID %d doesn't exist",
+				pod.GetNamespace(), pod.GetName(),
+				containerData.Runtime.RuntimeName,
+				containerData.Runtime.ContainerID,
+				containerData.Runtime.ContainerImageName,
+				pid)
 			continue
 		}
 
