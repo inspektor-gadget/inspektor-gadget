@@ -18,12 +18,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"math"
 	"sync"
 
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
 
 	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModuleBuilder) {
@@ -33,6 +35,11 @@ func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModul
 			wapi.ValueTypeI64, // Buffer to save syscall name
 		},
 		[]wapi.ValueType{wapi.ValueTypeI32}, // Error
+	)
+
+	exportFunction(env, "getSyscallID", i.getSyscallID,
+		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall Name
+		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall ID
 	)
 
 	exportFunction(env, "getSyscallDeclaration", i.getSyscallDeclaration,
@@ -63,6 +70,31 @@ func (i *wasmOperatorInstance) getSyscallName(ctx context.Context, m wapi.Module
 	}
 
 	stack[0] = 0
+}
+
+// getSyscalID returns the syscall ID corresponding to the given name.
+// Params:
+// - stack[0]
+// Return value:
+// - Syscall ID on success, math.MaxUint64 on error
+func (i *wasmOperatorInstance) getSyscallID(ctx context.Context, m wapi.Module, stack []uint64) {
+	syscallNamePtr := stack[0]
+
+	syscallName, err := stringFromStack(m, syscallNamePtr)
+	if err != nil {
+		i.logger.Warnf("getSyscallID: reading string from stack: %v", err)
+		stack[0] = math.MaxUint64
+		return
+	}
+
+	id, ok := syscalls.GetSyscallNumberByName(syscallName)
+	if !ok {
+		i.logger.Warnf("getSyscallID: no syscall %s", syscallName)
+		stack[0] = math.MaxUint64
+		return
+	}
+
+	stack[0] = uint64(id)
 }
 
 // Keep in sync with wasmapi/go/syscall.go.

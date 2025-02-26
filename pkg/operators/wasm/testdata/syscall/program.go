@@ -55,7 +55,25 @@ func gadgetInit() int32 {
 		return 1
 	}
 
+	syscallName = "open_tree"
+	id, err := api.GetSyscallID(syscallName)
+	if err != nil {
+		api.Errorf("%v", err)
+		return 1
+	}
+
+	if uint16(id) != openTreeSyscallID {
+		api.Errorf("mismatch for syscall %q: expected %d, got %d", syscallName, openTreeSyscallID, id)
+		return 1
+	}
+
 	syscallName = "foobar"
+	id, err = api.GetSyscallID(syscallName)
+	if err == nil {
+		api.Errorf("expected no syscall ID for syscall %q, got %v", syscallName, id)
+		return 1
+	}
+
 	declaration, err := api.GetSyscallDeclaration(syscallName)
 	if err == nil {
 		api.Errorf("expected no declaration for syscall %q, got %v", syscallName, declaration)
