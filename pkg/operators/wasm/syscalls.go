@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"math"
 	"sync"
 
 	"github.com/tetratelabs/wazero"
@@ -39,7 +38,7 @@ func (i *wasmOperatorInstance) addSyscallsDeclarationsFuncs(env wazero.HostModul
 
 	exportFunction(env, "getSyscallID", i.getSyscallID,
 		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall Name
-		[]wapi.ValueType{wapi.ValueTypeI64}, // Syscall ID
+		[]wapi.ValueType{wapi.ValueTypeI32}, // Syscall ID
 	)
 
 	exportFunction(env, "getSyscallDeclaration", i.getSyscallDeclaration,
@@ -76,21 +75,21 @@ func (i *wasmOperatorInstance) getSyscallName(ctx context.Context, m wapi.Module
 // Params:
 // - stack[0]
 // Return value:
-// - Syscall ID on success, math.MaxUint64 on error
+// - Syscall ID on success, -1 on error
 func (i *wasmOperatorInstance) getSyscallID(ctx context.Context, m wapi.Module, stack []uint64) {
 	syscallNamePtr := stack[0]
 
 	syscallName, err := stringFromStack(m, syscallNamePtr)
 	if err != nil {
 		i.logger.Warnf("getSyscallID: reading string from stack: %v", err)
-		stack[0] = math.MaxUint64
+		stack[0] = wapi.EncodeI32(-1)
 		return
 	}
 
 	id, ok := syscalls.GetSyscallNumberByName(syscallName)
 	if !ok {
 		i.logger.Warnf("getSyscallID: no syscall %s", syscallName)
-		stack[0] = math.MaxUint64
+		stack[0] = wapi.EncodeI32(-1)
 		return
 	}
 
