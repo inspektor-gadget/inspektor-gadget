@@ -34,7 +34,12 @@ const __u64 USE_ARG_INDEX_AS_PARAM_LENGTH_MASK = 0xfULL;
 const __u8 SYSCALL_EVENT_TYPE_ENTER = 0;
 const __u8 SYSCALL_EVENT_TYPE_EXIT = 1;
 
+const __u8 SYSCALL_EVENT_NORMAL = 1;
+const __u8 SYSCALL_EVENT_CONT = 2;
+
 struct syscall_event_t {
+	__u8 event_type;
+
 	/* __u64 ret stored in args[0] */
 	__u64 args[SYSCALL_ARGS];
 	__u64 monotonic_timestamp;
@@ -47,9 +52,13 @@ struct syscall_event_t {
 	/* how many syscall_event_cont_t messages to expect after */
 	__u8 cont_nr;
 	__u8 typ;
+
+	__u8 padding[56];
 };
 
 struct syscall_event_cont_t {
+	__u8 event_type;
+
 	__u8 param[PARAM_LEN];
 	__u64 monotonic_timestamp;
 	__u64 length;
@@ -58,8 +67,8 @@ struct syscall_event_cont_t {
 };
 
 _Static_assert(
-	sizeof(struct syscall_event_cont_t) != sizeof(struct syscall_event_t),
-	"syscall_event_t and syscall_event_cont_t must not have the same size as size is used to differentiate between them while reading from perf buffers");
+	sizeof(struct syscall_event_cont_t) == sizeof(struct syscall_event_t),
+	"syscall_event_t and syscall_event_cont_t must have the same size as API does not permit having different sizes");
 
 struct syscall_def_t {
 	__u64 args_len[SYSCALL_ARGS];
@@ -207,7 +216,7 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	 * Initialize struct to empty to be sure all fields (even padding) are zeroed:
 	 * https://github.com/iovisor/bcc/issues/2623#issuecomment-560214481
 	 */
-	struct syscall_event_t sc = {};
+	struct syscall_event_t sc = { .event_type = SYSCALL_EVENT_NORMAL };
 	struct task_struct *task;
 	u64 nr = ctx->args[1];
 	struct pt_regs *args;
@@ -316,7 +325,9 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			continue;
 
 		bool null_terminated = false;
-		struct syscall_event_cont_t sc_cont = {};
+		struct syscall_event_cont_t sc_cont = {
+			.event_type = SYSCALL_EVENT_CONT
+		};
 
 		sc_cont.monotonic_timestamp = monotonic_ts;
 		sc_cont.index = i;
@@ -457,6 +468,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 		goto end;
 
 	struct syscall_event_t sc = {
+		.event_type = SYSCALL_EVENT_NORMAL,
 		.boot_timestamp = bpf_ktime_get_boot_ns(),
 		.cpu = bpf_get_smp_processor_id(),
 		.pid = pid >> 32,
@@ -494,6 +506,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 
 		bool null_terminated = false;
 		struct syscall_event_cont_t sc_cont = {
+			.event_type = SYSCALL_EVENT_CONT,
 			.monotonic_timestamp = remembered->monotonic_timestamp,
 			.index = i,
 			.failed = false,
