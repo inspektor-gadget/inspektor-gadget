@@ -41,6 +41,9 @@ const (
 	syscallEventTypeExit  uint8 = 1
 
 	syscallArgs uint8 = 6
+
+	syscallEventTypeNormal uint8 = 1
+	syscallEventTypeCont   uint8 = 2
 )
 
 var syscallDefs = map[string][6]uint64{
@@ -90,15 +93,17 @@ type tracelooper struct {
 var t tracelooper
 
 type traceloopSyscallEventContT struct {
+	EventType          uint8
 	Param              [128]uint8
 	MonotonicTimestamp uint64
 	Length             uint64
 	Index              uint8
 	Failed             uint8
-	_                  [6]byte
+	_                  [5]byte
 }
 
 type traceloopSyscallEventT struct {
+	EventType          uint8
 	Args               [6]uint64
 	MonotonicTimestamp uint64
 	BootTimestamp      uint64
@@ -108,7 +113,7 @@ type traceloopSyscallEventT struct {
 	Comm               [16]uint8
 	ContNr             uint8
 	Typ                uint8
-	_                  [6]byte
+	_                  [61]byte
 }
 
 type syscallEvent struct {
@@ -281,7 +286,9 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 	syscallContinuedEventsMap := make(map[uint64][]*syscallEventContinued)
 	syscallEnterEventsMap := make(map[uint64][]*syscallEvent)
 	syscallExitEventsMap := make(map[uint64][]*syscallEvent)
+	var sysEventCont *traceloopSyscallEventContT
 	events := make([]*tracelooptypes.Event, 0)
+	var sysEvent *traceloopSyscallEventT
 
 	err := reader.perfReader.Pause()
 	if err != nil {
@@ -289,8 +296,9 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 	}
 
 	records := make([][]byte, 0)
+	sysEventSize := alignSize(unsafe.Sizeof(*sysEvent))
 	for {
-		record := make([]byte, 4096)
+		record := make([]byte, sysEventSize)
 		if err := reader.perfReader.Read(record); err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				break
@@ -307,14 +315,10 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 	}
 
 	for _, record := range records {
-		size := len(record)
+		sysEvent = (*traceloopSyscallEventT)(unsafe.Pointer(&record[0]))
 
-		var sysEvent *traceloopSyscallEventT
-		var sysEventCont *traceloopSyscallEventContT
-
-		switch uintptr(size) {
-		case alignSize(unsafe.Sizeof(*sysEvent)):
-			sysEvent = (*traceloopSyscallEventT)(unsafe.Pointer(&record[0]))
+		switch sysEvent.EventType {
+		case syscallEventTypeNormal:
 
 			event := &syscallEvent{
 				bootTimestamp:      sysEvent.BootTimestamp,
@@ -349,7 +353,7 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 			}
 
 			(*typeMap)[event.monotonicTimestamp] = append((*typeMap)[event.monotonicTimestamp], event)
-		case alignSize(unsafe.Sizeof(*sysEventCont)):
+		case syscallEventTypeCont:
 			sysEventCont = (*traceloopSyscallEventContT)(unsafe.Pointer(&record[0]))
 
 			event := &syscallEventContinued{
@@ -371,7 +375,7 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 
 			syscallContinuedEventsMap[event.monotonicTimestamp] = append(syscallContinuedEventsMap[event.monotonicTimestamp], event)
 		default:
-			api.Debugf("size %d does not correspond to any expected element, which are %d and %d; received data are: %v", size, alignSize(unsafe.Sizeof(*sysEvent)), alignSize(unsafe.Sizeof(*sysEventCont)), record)
+			api.Debugf("unknown event type: got %d, expected %d or %d", sysEvent.EventType, syscallEventTypeEnter, syscallEventTypeCont)
 		}
 	}
 
@@ -556,7 +560,7 @@ func (t *tracelooper) read(reader *containerRingReader) ([]*tracelooptypes.Event
 func gadgetInit() int32 {
 	var sysEventCont *traceloopSyscallEventContT
 	var sysEvent *traceloopSyscallEventT
-
+	var err error
 	sysEventSize := alignSize(unsafe.Sizeof(*sysEvent))
 	sysEventContSize := alignSize(unsafe.Sizeof(*sysEventCont))
 
