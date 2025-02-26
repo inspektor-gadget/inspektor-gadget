@@ -266,6 +266,13 @@ const (
 	subscriptionTypePacket subscriptionType = 3
 )
 
+func (i *wasmOperatorInstance) callDsCallbackWithLock(ctx context.Context, cbID uint64, dsHandle uint64, dataHandle uint64) error {
+	i.dataSourceCallbackLock.Lock()
+	_, err := i.dataSourceCallback.Call(ctx, cbID, dsHandle, dataHandle)
+	i.dataSourceCallbackLock.Unlock()
+	return err
+}
+
 // dataSourceSubscribe subscribes to the datasource.
 // Params:
 // - stack[0]: DataSource handle
@@ -297,21 +304,21 @@ func (i *wasmOperatorInstance) dataSourceSubscribe(ctx context.Context, m wapi.M
 	case subscriptionTypeData:
 		err = ds.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
 			tmpData := i.addHandle(data)
-			_, err := i.dataSourceCallback.Call(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
+			i.callDsCallbackWithLock(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
 			i.delHandle(tmpData)
 			return err
 		}, int(prio))
 	case subscriptionTypeArray:
 		err = ds.SubscribeArray(func(source datasource.DataSource, data datasource.DataArray) error {
 			tmpData := i.addHandle(data)
-			_, err := i.dataSourceCallback.Call(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
+			i.callDsCallbackWithLock(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
 			i.delHandle(tmpData)
 			return err
 		}, int(prio))
 	case subscriptionTypePacket:
 		err = ds.SubscribePacket(func(source datasource.DataSource, data datasource.Packet) error {
 			tmpData := i.addHandle(data)
-			_, err := i.dataSourceCallback.Call(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
+			i.callDsCallbackWithLock(ctx, cbID, stack[0], wapi.EncodeU32(tmpData))
 			i.delHandle(tmpData)
 			return err
 		}, int(prio))

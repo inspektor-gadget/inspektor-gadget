@@ -26,6 +26,7 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -319,10 +320,37 @@ type localManagerTrace struct {
 	gadgetCtx          operators.GadgetContext
 
 	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
+
+	containersDs              datasource.DataSource
+	eventTypeField            datasource.FieldAccessor
+	cgroupIDField             datasource.FieldAccessor
+	mountNsIDField            datasource.FieldAccessor
+	nameField                 datasource.FieldAccessor
+	containersSubscriptionKey string
 }
 
 func (l *localManagerTrace) Name() string {
 	return OperatorName
+}
+
+func (l *localManagerTrace) emitContainersDatasourceEvent(eventType containercollection.EventType, container *containercollection.Container) error {
+	ev, err := l.containersDs.NewPacketSingle()
+	if err != nil {
+		return fmt.Errorf("creating new containers datasource packet: %w", err)
+	}
+
+	l.eventTypeField.PutString(ev, eventType.String())
+	l.cgroupIDField.PutUint64(ev, container.CgroupID)
+	l.mountNsIDField.PutUint64(ev, container.Mntns)
+	l.nameField.PutString(ev, container.Runtime.ContainerName)
+
+	err = l.containersDs.EmitAndRelease(ev)
+	if err != nil {
+		log.Errorf("%v", err)
+		return fmt.Errorf("emitting containers datasource event: %w", err)
+	}
+
+	return nil
 }
 
 func (l *localManagerTrace) PreGadgetRun() error {
@@ -416,6 +444,9 @@ func (l *localManagerTrace) PreGadgetRun() error {
 						attachContainerFunc(event.Container)
 					case containercollection.EventTypeRemoveContainer:
 						detachContainerFunc(event.Container)
+					default:
+						log.Errorf("unknown event type, expected either %s or %s, got %s", containercollection.EventTypeAddContainer, containercollection.EventTypeRemoveContainer, event.Type)
+						return
 					}
 				},
 			)
@@ -454,6 +485,9 @@ func (l *localManagerTrace) PostGadgetRun() error {
 				l.attacher.DetachContainer(l.manager.fakeContainer)
 			}
 		}
+	}
+	if l.containersSubscriptionKey != "" {
+		l.manager.igManager.Unsubscribe(l.containersSubscriptionKey)
 	}
 	return nil
 }
@@ -497,6 +531,51 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 		return nil, err
 	}
 
+	cfg, ok := gadgetCtx.GetVar("config")
+	if !ok {
+		return nil, fmt.Errorf("missing configuration")
+	}
+	v, ok := cfg.(*viper.Viper)
+	if !ok {
+		return nil, fmt.Errorf("invalid configuration format")
+	}
+
+	enableContainersDs := v.GetBool("annotations.enable-containers-datasource")
+
+	var containersDs datasource.DataSource
+	var eventTypeField datasource.FieldAccessor
+	var cgroupIDField datasource.FieldAccessor
+	var mountNsIDField datasource.FieldAccessor
+	var nameField datasource.FieldAccessor
+
+	if enableContainersDs {
+		containersDs, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "containers")
+		if err != nil {
+			return nil, fmt.Errorf("creating datasource: %w", err)
+		}
+		containersDs.AddAnnotation("cli.default-output-mode", "none")
+
+		eventTypeField, err = containersDs.AddField("event_type", api.Kind_String)
+		if err != nil {
+			return nil, fmt.Errorf("adding field event_type: %w", err)
+		}
+
+		cgroupIDField, err = containersDs.AddField("cgroup_id", api.Kind_Uint64)
+		if err != nil {
+			return nil, fmt.Errorf("adding field cgroup_id: %w", err)
+		}
+
+		mountNsIDField, err = containersDs.AddField("mntns_id", api.Kind_Uint64)
+		if err != nil {
+			return nil, fmt.Errorf("adding field mntns_id: %w", err)
+		}
+
+		nameField, err = containersDs.AddField("name", api.Kind_String)
+		if err != nil {
+			return nil, fmt.Errorf("adding field name: %w", err)
+		}
+	}
+
 	// Wrapper is used to have ParamDescs() with the new signature
 	traceInstance := &localManagerTraceWrapper{
 		localManagerTrace: localManagerTrace{
@@ -506,6 +585,12 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 			params:             params,
 			gadgetCtx:          gadgetCtx,
 			eventWrappers:      make(map[datasource.DataSource]*compat.EventWrapperBase),
+
+			containersDs:   containersDs,
+			eventTypeField: eventTypeField,
+			cgroupIDField:  cgroupIDField,
+			mountNsIDField: mountNsIDField,
+			nameField:      nameField,
 		},
 	}
 
@@ -618,6 +703,46 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 }
 
 func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) error {
+	host := l.params.Get(Host).AsBool()
+	var containers []*containercollection.Container
+
+	if l.containersDs == nil {
+		return nil
+	}
+
+	if l.manager.igManager != nil {
+		containerSelector := containercollection.ContainerSelector{
+			Runtime: containercollection.RuntimeSelector{
+				ContainerName: l.params.Get(ContainerName).AsString(),
+			},
+		}
+
+		l.containersSubscriptionKey = uuid.New().String()
+
+		log.Debugf("add datasource containers subscription to igManager")
+		containers = l.manager.igManager.Subscribe(
+			l.containersSubscriptionKey,
+			containerSelector,
+			func(event containercollection.PubSubEvent) {
+				err := l.emitContainersDatasourceEvent(event.Type, event.Container)
+				if err != nil {
+					log.Errorf("emitting containers datasource event: %v", err)
+				}
+			},
+		)
+	}
+
+	if host {
+		containers = append(containers, l.manager.fakeContainer)
+	}
+
+	for _, container := range containers {
+		err := l.emitContainersDatasourceEvent(containercollection.EventTypeAddContainer, container)
+		if err != nil {
+			return fmt.Errorf("emitting containers datasource event: %w", err)
+		}
+	}
+
 	return nil
 }
 

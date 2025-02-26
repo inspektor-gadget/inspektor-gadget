@@ -47,6 +47,7 @@ GADGETS = \
 	top_tcp \
 	snapshot_process \
 	snapshot_socket \
+	ci/datasource-containers \
 	ci/inner_fields \
 	ci/sched_cls_drop \
 	#

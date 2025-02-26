@@ -107,7 +107,10 @@ type wasmOperatorInstance struct {
 
 	logger logger.Logger
 
-	dataSourceCallback wapi.Function
+	// This mutex ensures dataSourceCallback() is never called in parallel, see:
+	// https://github.com/tetratelabs/wazero/blob/610c202ec48f3a7c729f2bf11707330127ab3689/api/wasm.go#L378-L381
+	dataSourceCallbackLock sync.Mutex
+	dataSourceCallback     wapi.Function
 
 	// Golang objects are exposed to the wasm module by using a handleID
 	handleMap       map[uint32]any
