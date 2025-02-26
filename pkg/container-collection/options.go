@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -207,21 +208,32 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 		}
 		for _, container := range containers {
 			if container.Runtime.State != runtimeclient.StateRunning {
-				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID)
+				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s, image: %s): not running",
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID,
+					container.Runtime.ContainerImageName)
 				continue
 			}
 
 			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ContainerID)
 			if err != nil {
-				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID, err)
+				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s, image: %s): couldn't find container: %s",
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID,
+					container.Runtime.ContainerImageName, err)
 				continue
 			}
 
 			pid := containerDetails.Pid
 			if pid > math.MaxUint32 {
 				log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
+				continue
+			}
+
+			// Check if process exists. Better check now rather than fail later in the enrichment pipeline.
+			containerPidPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid))
+			_, err = os.Stat(containerPidPath)
+			if os.IsNotExist(err) {
+				log.Warnf("Runtime enricher (%s): Skip container %q (ID: %s, image: %s): PID %d doesn't exist",
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID, container.Runtime.ContainerImageName, pid)
 				continue
 			}
 
