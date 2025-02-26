@@ -1,0 +1,24 @@
+name: Links check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  check-link:
+    name: Links check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check that there are not broken links
+      uses: gaurav-nelson/github-action-markdown-link-check@1b916f2cf6c36510a6059943104e3c42ce6c16bc # v1.0.16
+      with:
+        config-file: .github/workflows/mlc_config.json
+        use-quiet-mode: 'yes'
+        # check if a web page has been deleted or moved, so we can update our documentation accordingly
+        check-modified-files-only: 'no'
+        base-branch: 'main'

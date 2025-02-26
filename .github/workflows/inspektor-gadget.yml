@@ -53,15 +53,13 @@ jobs:
       run: |
         make manifests generate generate-documentation
         git diff --exit-code HEAD --
-    - name: Replace tag constant
-      run: |
-        # Replace tag and branch constants to be able to check links
-        find docs/ -type f -exec sed -i 's/%IG_BRANCH%/main/g' {} +
-        find docs/ -type f -exec sed -i 's/%IG_TAG%/latest/g' {} +
     - name: Check that there are not broken links
-      uses: gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368 # v1
+      uses: gaurav-nelson/github-action-markdown-link-check@1b916f2cf6c36510a6059943104e3c42ce6c16bc # v1.0.16
       with:
+        config-file: .github/workflows/mlc_config.json
         use-quiet-mode: 'yes'
+        check-modified-files-only: 'yes'
+        base-branch: 'main'
     - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
       id: filter
       with:
