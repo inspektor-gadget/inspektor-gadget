@@ -14,7 +14,7 @@ require (
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.12.9 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -61,9 +61,9 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
+	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-containerregistry v0.20.2 // indirect
+	github.com/google/go-containerregistry v0.20.3 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -79,7 +79,7 @@ require (
 	github.com/letsencrypt/boulder v0.0.0-20240620165639-de9c06129bec // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/moby/term v0.5.0 // indirect
+	github.com/moby/term v0.5.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
@@ -128,10 +128,10 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.34.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.33.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.56.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
@@ -147,7 +147,7 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
+	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
@@ -163,14 +163,14 @@ require (
 	k8s.io/component-base v0.32.2 // indirect
 	k8s.io/cri-api v0.32.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
+	k8s.io/kube-openapi v0.0.0-20241212222426-2c72e554b1e7 // indirect
 	k8s.io/kubelet v0.32.2 // indirect
-	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
+	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 	oras.land/oras-go/v2 v2.5.0 // indirect
-	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
+	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/kustomize/api v0.18.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.18.1 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
