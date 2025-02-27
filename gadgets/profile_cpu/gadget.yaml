@@ -1,0 +1,13 @@
+name: profile cpu
+description: The profile cpu gadget takes samples of the stack traces.
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_cpu
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cpu
+programs:
+  profiler:
+    perf:
+      type: software
+      config: count_sw_cpu_clock
+      sampleType: sample_raw
+    sampler:
+      frequency: 49

@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.37.0
+name: "profile cpu"
+category: monitoring-logging
+displayName: "profile cpu"
+createdAt: "2025-02-27T08:19:41Z"
+digest: "2025-02-27T08:19:41Z"
+description: "Profile block I/O operations"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/profile_cpu/"
+containersImages:
+  - name: gadget
+    image: "ghcr.io/inspektor-gadget/gadget/profile_cpu:latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+keywords:
+  - gadget
+links:
+  - name: source
+    url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cpu"
+install: |
+  # Run
+  ```bash
+  sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpu:latest
+  ```
+provider:
+  name: Inspektor Gadget

@@ -47,8 +47,28 @@ You can find the list of iterator types supported by Linux with:
 
 #### Fentry / Fexit
 
-The section name must use the `fentry/<function_name` or `fexit/<function_name>`. As in kprobes,
+The section name must use the `fentry/<function_name>` or `fexit/<function_name>`. As in kprobes,
 `<function_name>` is the kernel function that the kprobe will be attached to.
+
+### PerfEvents
+
+The section name must be `perf_event/<name>`, where `<name>` is used to apply parameters to the
+program using the `gadget.yaml` file.
+
+Currently, we only support the following settings (`<name>` is `myPerfEvent` in this case):
+
+```yaml
+programs:
+  myPerfEvent:
+    perf:
+      type: software
+      config: count_sw_cpu_clock
+      sampleType: sample_raw
+    sampler:
+      frequency: 49
+```
+
+The perf settings can be replaced by numeric values, but the sampler is hardcoded for now.
 
 ### Raw Tracepoints
 
