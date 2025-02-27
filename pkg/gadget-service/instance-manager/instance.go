@@ -205,6 +205,8 @@ func (p *GadgetInstance) Run(
 		gadgetcontext.WithLogger(logger),
 		gadgetcontext.WithDataOperators(ops...),
 		gadgetcontext.WithAsRemoteCall(true),
+		gadgetcontext.WithName(p.name),
+		gadgetcontext.WithID(p.id),
 	)
 
 	runtimeParams := runtime.ParamDescs().ToParams()
