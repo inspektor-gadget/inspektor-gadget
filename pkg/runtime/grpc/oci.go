@@ -128,10 +128,8 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	defer cancel()
 
 	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
-	defer cancelDial()
 
-	conn, err := r.dialContext(dialCtx, target, timeout)
+	conn, err := r.dialContext(target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}
