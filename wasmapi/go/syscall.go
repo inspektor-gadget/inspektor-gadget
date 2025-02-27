@@ -16,7 +16,6 @@ package api
 
 import (
 	"fmt"
-	"math"
 	"runtime"
 	"unsafe"
 	_ "unsafe"
@@ -28,7 +27,7 @@ func getSyscallName(id uint32, dst uint64) uint32
 
 //go:wasmimport env getSyscallID
 //go:linkname getSyscallID getSyscallID
-func getSyscallID(name uint64) uint64
+func getSyscallID(name uint64) int32
 
 //go:wasmimport env getSyscallDeclaration
 //go:linkname getSyscallDeclaration getSyscallDeclaration
@@ -74,9 +73,9 @@ func GetSyscallName(id uint16) (string, error) {
 	return fromCString(dst), nil
 }
 
-func GetSyscallID(name string) (uint64, error) {
+func GetSyscallID(name string) (int32, error) {
 	id := getSyscallID(uint64(stringToBufPtr(name)))
-	if id == math.MaxUint64 {
+	if id == -1 {
 		return 0, fmt.Errorf("getting syscall ID for syscall %s", name)
 	}
 
