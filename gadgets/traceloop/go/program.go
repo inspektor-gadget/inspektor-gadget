@@ -704,16 +704,86 @@ func gadgetStart() int {
 
 //export gadgetStop
 func gadgetStop() int {
+	datasource, err := api.NewDataSource("traceloop", api.DataSourceTypeSingle)
+	if err != nil {
+		api.Errorf("creating datasource: %v", err)
+		return 1
+	}
+
+	fieldsInfo := []struct {
+		name string
+		kind api.FieldKind
+	}{
+		{
+			name: "mntns_id",
+			kind:  api.Kind_Uint64,
+		},
+		{
+			name: "cpu",
+			kind:  api.Kind_Uint16,
+		},
+		{
+			name: "pid",
+			kind:  api.Kind_Uint32,
+		},
+		{
+			name: "comm",
+			kind:  api.Kind_String,
+		},
+		{
+			name: "syscall",
+			kind:  api.Kind_String,
+		},
+		// TODO: Parameters []SyscallParam `json:"parameters,omitempty" column:"params,width:40"`
+		{
+			name: "ret",
+			kind:  api.Kind_String,
+		},
+	}
+	fields := make(map[string]api.Field)
+	for _, fieldInfo := range fieldsInfo {
+		name := fieldInfo.name
+		field, err := datasource.AddField(name, fieldInfo.kind)
+		if err != nil {
+			api.Errorf("adding %s field: %v", name, err)
+			return 1
+		}
+
+		fields[name] = field
+	}
+
+	err = fields["mntns_id"].AddTag("type:gadget_mntns_id")
+	if err != nil {
+		api.Errorf("adding tag to mntns_id field: %v", err)
+		return 1
+	}
+
 	t.readers.Range(func(_, value any) bool {
 		reader := value.(*containerRingReader)
 
 		events, err := t.read(reader)
 		if err != nil {
 			api.Errorf("reading container: %v", err)
+			return true
 		}
 
 		for _, event := range events {
-			api.Infof("%v", event)
+			packet, err := datasource.NewPacketSingle()
+			if err != nil {
+				api.Errorf("creating datasource packet: %v", err)
+				continue
+			}
+
+			api.Debugf("event: %v", event)
+
+			fields["mntns_id"].SetUint64(api.Data(packet), event.WithMountNsID.MountNsID)
+			fields["cpu"].SetUint16(api.Data(packet), event.CPU)
+			fields["pid"].SetUint32(api.Data(packet), event.Pid)
+			fields["comm"].SetString(api.Data(packet), event.Comm)
+			fields["syscall"].SetString(api.Data(packet), event.Syscall)
+			fields["ret"].SetString(api.Data(packet), event.Retval)
+
+			datasource.EmitAndRelease(api.Packet(packet))
 		}
 
 		return true
