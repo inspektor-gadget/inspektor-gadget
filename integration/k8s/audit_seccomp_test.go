@@ -185,7 +185,7 @@ EOF
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &seccompauditTypes.Event{
-					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime)),
 					Syscall: "unshare",
 					Code:    "kill_thread",
 					Comm:    "unshare",

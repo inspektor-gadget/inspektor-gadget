@@ -32,7 +32,7 @@ func TestRunInsecure(t *testing.T) {
 
 	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("registry", "docker.io/library/registry:2", ns, "", ""),
+		PodCommand("registry", "ghcr.io/inspektor-gadget/ci/registry:2", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "registry"),
 	}
 

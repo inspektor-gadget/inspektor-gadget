@@ -79,7 +79,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 						RuntimeName:        types.String2RuntimeName(containerRuntime),
 						ContainerName:      runtimeContainerName,
-						ContainerImageName: "docker.io/library/busybox:latest",
+						ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 					},
 				},
 			}
@@ -151,7 +151,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
-							ContainerImageName: "docker.io/library/busybox:latest",
+							ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 						},
 					},
 				},

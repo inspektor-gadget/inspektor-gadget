@@ -62,7 +62,7 @@ func TestTraceExec(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-exec"
-	containerImage := "docker.io/library/gcc:latest"
+	containerImage := gadgettesting.GccImage
 
 	execProgram := `
 #define _GNU_SOURCE

@@ -31,7 +31,7 @@ import (
 
 const (
 	containerNamePrefix = "test-container"
-	containerImageName  = "docker.io/library/alpine:latest"
+	containerImageName  = "ghcr.io/inspektor-gadget/ci/busybox:latest"
 	numContainers       = 2
 )
 

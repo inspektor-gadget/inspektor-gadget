@@ -35,12 +35,12 @@ func TestBuiltinTraceOOMKill(t *testing.T) {
 		extraArgs = fmt.Sprintf("--runtimes=%s", containerRuntime)
 		expectedEntry.Event = BuildBaseEvent(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 		expectedEntry.K8s.ContainerName = "test-pod"
 	}
 
