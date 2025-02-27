@@ -12,10 +12,3 @@ datasources:
     annotations:
       cli.supported-output-modes: advise
       cli.default-output-mode: advise
-params:
-  wasm:
-    container:
-      key: container
-      defaultValue: ""
-      description: Name of the container to generate a profile for
-      title: Container name
