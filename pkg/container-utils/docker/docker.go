@@ -22,7 +22,6 @@ import (
 	"time"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -87,7 +86,7 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 	}, nil
 }
 
-func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.Container, error) {
+func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Summary, error) {
 	opts := container.ListOptions{
 		// We need to request for all containers (also non-running) because
 		// when we are enriching a container that is being created, it is
@@ -108,7 +107,7 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.
 	// considered as normal containers and EnrichByNetNs will incorrectly think
 	// that they are using a given network namespace. See issue
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
-	noPauseContainers := []dockertypes.Container{}
+	noPauseContainers := []container.Summary{}
 	for _, c := range containers {
 		if c.Labels["io.kubernetes.docker.type"] == "podsandbox" {
 			continue
@@ -240,7 +239,7 @@ func (c *DockerClient) Close() error {
 // The digest is usually only available if the image was either pulled from a registry, or if the image was pushed to a registry, which is when the manifest is generated and its digest calculated.
 // Note: This function only works for already running containers and not for containers that are being created.
 func (c *DockerClient) getContainerImageDigest(imageId string) string {
-	imageInspect, _, err := c.client.ImageInspectWithRaw(context.Background(), imageId)
+	imageInspect, err := c.client.ImageInspect(context.Background(), imageId)
 	if err != nil {
 		log.Warnf("Failed to get image digest for image %s: %s", imageId, err)
 		return ""
@@ -277,7 +276,7 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 	return
 }
 
-func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
+func DockerContainerToContainerData(container *container.Summary) *runtimeclient.ContainerData {
 	imageDigest := ""
 	return buildContainerData(
 		container.ID,
