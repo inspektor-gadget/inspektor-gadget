@@ -618,20 +618,21 @@ initialized to zero, ig will ignore the stack trace.
 
 ```C
 struct event {
-	gadget_user_stack kstack;
+	struct gadget_user_stack ustack_raw;
 	/* other fields */
 };
 
 const volatile bool print_ustack = false;
 GADGET_PARAM(print_ustack);
 
-struct event *event;
-event = gadget_reserve_buf(&events, sizeof(struct cap_event));
-if (!event)
-	return 0;
+...
+	struct event *event;
+	event = gadget_reserve_buf(&events, sizeof(struct event));
+	if (!event)
+		return 0;
 
-if (print_ustack)
-	gadget_get_user_stack(ctx, &event->ustack_raw);
+	if (print_ustack)
+		gadget_get_user_stack(ctx, &event->ustack_raw);
 ```
 
 ## Common information
