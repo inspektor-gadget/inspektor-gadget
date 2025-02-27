@@ -18,12 +18,12 @@ import (
 	"errors"
 	"math"
 	"runtime"
-	_ "unsafe"
+	"unsafe"
 )
 
 //go:wasmimport env fieldGetScalar
 //go:linkname fieldGetScalar fieldGetScalar
-func fieldGetScalar(field uint32, data uint32, kind uint32) uint64
+func fieldGetScalar(field uint32, data uint32, kind uint32, errPtr uint32) uint64
 
 //go:wasmimport env fieldGetBuffer
 //go:linkname fieldGetBuffer fieldGetBuffer
@@ -37,136 +37,117 @@ func fieldSet(field uint32, data uint32, kind uint32, value uint64) uint32
 //go:linkname fieldAddTag fieldAddTag
 func fieldAddTag(field uint32, tag uint64) uint32
 
-var errSetField = errors.New("error setting field")
+var (
+	errSetField = errors.New("error setting field")
+	errGetField = errors.New("error getting field")
+)
+
+func (f Field) getScalar(data Data, kind FieldKind) (uint64, error) {
+	var err uint32
+	errPtr := uintptr(unsafe.Pointer(&err))
+	val := fieldGetScalar(uint32(f), uint32(data), uint32(kind), uint32(errPtr))
+	if err != 0 {
+		return 0, errGetField
+	}
+	return val, nil
+}
+
+func (f Field) set(data Data, kind FieldKind, value uint64) error {
+	ret := fieldSet(uint32(f), uint32(data), uint32(kind), value)
+	if ret != 0 {
+		return errSetField
+	}
+	return nil
+}
 
 func (f Field) Int8(data Data) (int8, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Int8))
-	return int8(val), nil
+	val, err := f.getScalar(data, Kind_Int8)
+	return int8(val), err
 }
 
 func (f Field) SetInt8(data Data, value int8) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Int8), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Int8, uint64(value))
 }
 
 func (f Field) Int16(data Data) (int16, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Int16))
-	return int16(val), nil
+	val, err := f.getScalar(data, Kind_Int16)
+	return int16(val), err
 }
 
 func (f Field) SetInt16(data Data, value int16) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Int16), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Int16, uint64(value))
 }
 
 func (f Field) Int32(data Data) (int32, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Int32))
-	return int32(val), nil
+	val, err := f.getScalar(data, Kind_Int32)
+	return int32(val), err
 }
 
 func (f Field) SetInt32(data Data, value int32) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Int32), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Int32, uint64(value))
 }
 
 func (f Field) Int64(data Data) (int64, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Int64))
-	return int64(val), nil
+	val, err := f.getScalar(data, Kind_Int64)
+	return int64(val), err
 }
 
 func (f Field) SetInt64(data Data, value int64) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Int64), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Int64, uint64(value))
 }
 
 func (f Field) Uint8(data Data) (uint8, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Uint8))
-	return uint8(val), nil
+	val, err := f.getScalar(data, Kind_Uint8)
+	return uint8(val), err
 }
 
 func (f Field) SetUint8(data Data, value uint8) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Uint8), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Uint8, uint64(value))
 }
 
 func (f Field) Uint16(data Data) (uint16, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Uint16))
-	return uint16(val), nil
+	val, err := f.getScalar(data, Kind_Uint16)
+	return uint16(val), err
 }
 
 func (f Field) SetUint16(data Data, value uint16) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Uint16), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Uint16, uint64(value))
 }
 
 func (f Field) Uint32(data Data) (uint32, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Uint32))
-	return uint32(val), nil
+	val, err := f.getScalar(data, Kind_Uint32)
+	return uint32(val), err
 }
 
 func (f Field) SetUint32(data Data, value uint32) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Uint32), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Uint32, uint64(value))
 }
 
 func (f Field) Uint64(data Data) (uint64, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Uint64))
-	return uint64(val), nil
+	val, err := f.getScalar(data, Kind_Uint64)
+	return uint64(val), err
 }
 
 func (f Field) SetUint64(data Data, value uint64) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Uint64), uint64(value))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Uint64, uint64(value))
 }
 
 func (f Field) Float32(data Data) (float32, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Float32))
-	return math.Float32frombits(uint32(val)), nil
+	val, err := f.getScalar(data, Kind_Float32)
+	return math.Float32frombits(uint32(val)), err
 }
 
 func (f Field) SetFloat32(data Data, value float32) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Float32), uint64(math.Float32bits(value)))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Float32, uint64(math.Float32bits(value)))
 }
 
 func (f Field) Float64(data Data) (float64, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Float64))
-	return math.Float64frombits(uint64(val)), nil
+	val, err := f.getScalar(data, Kind_Float64)
+	return math.Float64frombits(uint64(val)), err
 }
 
 func (f Field) SetFloat64(data Data, value float64) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Float64), uint64(math.Float64bits(value)))
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Float64, uint64(math.Float64bits(value)))
 }
 
 func (f Field) String(data Data, maxSize uint32) (string, error) {
@@ -179,12 +160,9 @@ func (f Field) String(data Data, maxSize uint32) (string, error) {
 }
 
 func (f Field) SetString(data Data, str string) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_String), uint64(stringToBufPtr(str)))
+	err := f.set(data, Kind_String, uint64(stringToBufPtr(str)))
 	runtime.KeepAlive(str)
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return err
 }
 
 // Bytes get the bytes of a field of type string or []byte into an
@@ -198,17 +176,14 @@ func (f Field) Bytes(data Data, dst []byte) (uint32, error) {
 }
 
 func (f Field) SetBytes(data Data, buf []byte) error {
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Bytes), uint64(bytesToBufPtr(buf)))
+	err := f.set(data, Kind_Bytes, uint64(bytesToBufPtr(buf)))
 	runtime.KeepAlive(buf)
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return err
 }
 
 func (f Field) Bool(data Data) (bool, error) {
-	val := fieldGetScalar(uint32(f), uint32(data), uint32(Kind_Bool))
-	return val == 1, nil
+	val, err := f.getScalar(data, Kind_Bool)
+	return val == 1, err
 }
 
 func (f Field) SetBool(data Data, b bool) error {
@@ -216,11 +191,7 @@ func (f Field) SetBool(data Data, b bool) error {
 	if b {
 		value = 1
 	}
-	ret := fieldSet(uint32(f), uint32(data), uint32(Kind_Bool), value)
-	if ret != 0 {
-		return errSetField
-	}
-	return nil
+	return f.set(data, Kind_Bool, uint64(value))
 }
 
 func (f Field) AddTag(tag string) error {
