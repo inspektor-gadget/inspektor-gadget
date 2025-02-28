@@ -40,8 +40,8 @@ const (
 	subscriptionTypePacket subscriptionType = 3
 )
 
-// Invalid string: Too big (4GB) and offset too big (64MB)
-const invalidStrPtr uint64 = uint64(1024 * 1024 << 32)
+// Invalid string: Too big (17 MB, we only provide 16MB to WASM programs)
+const invalidStrPtr uint64 = uint64(1024 * 1024 * 17 << 32)
 
 // Keep in sync with pkg/operators/wasm/syscalls.go.
 type syscallParam struct {
