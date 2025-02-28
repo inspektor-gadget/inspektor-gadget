@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,12 +82,16 @@ func AsFloat64(f FieldAccessor) (func(Data) float64, error) {
 // and b) it is too costly when done in here. Instead, on error, the default values will be returned.
 func GetKeyValueFunc[S ~string, T any](
 	f FieldAccessor,
+	nameOverride string,
 	int64Fn func(int64) T,
 	float64Fn func(float64) T,
 	stringFn func(string) T,
 ) (func(Data) (S, T), error) {
 	emptyVal := *new(T)
 	name := f.Name()
+	if nameOverride != "" {
+		name = nameOverride
+	}
 	switch f.Type() {
 	default:
 		return nil, fmt.Errorf("unsupported field type for key: %s", f.Type())
