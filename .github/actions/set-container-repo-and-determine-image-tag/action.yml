@@ -52,7 +52,13 @@ runs:
         # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
         # this because it is not possible to have slash in image tag.
         image_tag=${GITHUB_REF_NAME//\//-}
+        image_event=${GITHUB_EVENT_NAME}
+        
         if [ "$image_tag" = "main" ]; then
+            image_tag="main"
+        fi
+
+        if [ "$image_event" = "release" ]; then
             image_tag="latest"
         fi
 
@@ -79,7 +85,13 @@ runs:
         # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
         # this because it is not possible to have slash in image tag.
         gadget_tag=${GITHUB_REF_NAME//\//-}
+        gadget_event=${GITHUB_EVENT_NAME}
+        
         if [ "$gadget_tag" = "main" ]; then
+            gadget_tag="main"
+        fi
+
+        if [ "$gadget_event" = "release" ]; then
             gadget_tag="latest"
         fi
 
