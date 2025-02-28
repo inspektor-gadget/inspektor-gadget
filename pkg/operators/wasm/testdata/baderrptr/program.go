@@ -29,3 +29,5 @@ func gadgetInit() int32 {
 	fieldGetScalar(55, 55, uint32(api.Kind_Uint32), invalidPtr)
 	panic("This should never be reached")
 }
+
+func main() {}

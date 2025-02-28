@@ -54,7 +54,7 @@ The building process is controlled by the `build.yaml` file. The following param
 - `metadata`: File containing metadata about the gadget. It defaults to `gadget.yaml`.
 - `wasm`: Wasm module. It is unset by default. This field supports two kind of files:
     - `*.wasm`: prebuilt Wasm module
-    - `*.go`: automatically built with tinygo
+    - `*.go`: automatically built
 - `cflags`: The C flags used to compile the eBPF program. It is unset by default.
 
 By default, the build command looks for `build.yaml` in PATH. It can be changed with the `--file` flag:
