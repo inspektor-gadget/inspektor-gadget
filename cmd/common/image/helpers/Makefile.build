@@ -1,7 +1,6 @@
 # This makefile is used by the build command, don't execute it manually
 
 CLANG ?= clang
-TINYGO ?= tinygo
 LLVM_STRIP ?= llvm-strip
 BASECFLAGS = -target bpf -Wall -g -O2
 CFLAGS ?=
@@ -27,7 +26,7 @@ else ifeq (go,$(patsubst %.go,go,$(WASM)))
 wasm: $(WASM)
 	# -buildmode=c-shared to build the wasm as a reactor module. See https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi
 	cd $(dir $(WASM)) && \
-	$(TINYGO) build -o $(OUTPUTDIR)/program.wasm -target=wasip1 --no-debug -buildmode=c-shared $(notdir $(WASM))
+	CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm go build -o $(OUTPUTDIR)/program.wasm -buildmode=c-shared -ldflags "-w -s" $(notdir $(WASM))
 else ifeq (wasm,$(patsubst %.wasm,wasm,$(WASM)))
 wasm:
 	# Wasm file already compiled. Nothing to do.
