@@ -116,7 +116,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: installer
-        image: busybox:latest
+        image: ghcr.io/inspektor-gadget/ci/busybox:latest
         securityContext:
           # needed to mount host volumes
           seLinuxOptions:
@@ -172,7 +172,7 @@ spec:
   terminationGracePeriodSeconds: 0
   containers:
   - name: test-pod
-    image: busybox
+    image: ghcr.io/inspektor-gadget/ci/busybox:latest
     command: ["sh"]
     args: ["-c", "while true; do unshare -i; sleep 1; done"]
 EOF
@@ -185,7 +185,7 @@ EOF
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &seccompauditTypes.Event{
-					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime)),
 					Syscall: "unshare",
 					Code:    "kill_thread",
 					Comm:    "unshare",

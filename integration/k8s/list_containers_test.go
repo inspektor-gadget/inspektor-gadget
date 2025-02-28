@@ -55,7 +55,7 @@ func newListContainerTestStep(
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 						RuntimeName:        types.String2RuntimeName(runtime),
 						ContainerName:      runtimeContainerName,
-						ContainerImageName: "docker.io/library/busybox:latest",
+						ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 					},
 				},
 			}
@@ -113,7 +113,7 @@ func TestListContainers(t *testing.T) {
 
 	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		PodCommand(cn, "ghcr.io/inspektor-gadget/ci/busybox:latest", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
 	}
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -187,7 +187,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
-							ContainerImageName: "docker.io/library/busybox:latest",
+							ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 						},
 					},
 				},
@@ -245,7 +245,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		PodCommand(pod, "busybox", ns, `["sleep", "inf"]`, ""),
+		PodCommand(pod, "ghcr.io/inspektor-gadget/ci/busybox:latest", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -283,7 +283,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
-							ContainerImageName: "docker.io/library/busybox:latest",
+							ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 						},
 					},
 				},
@@ -339,7 +339,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 	commands := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand(pod, "busybox", ns, `["sleep", "inf"]`, ""),
+		PodCommand(pod, "ghcr.io/inspektor-gadget/ci/busybox:latest", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, pod),
 		watchContainersCmd,
 		&Command{
@@ -382,7 +382,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 							RuntimeName:        types.String2RuntimeName(containerRuntime),
 							ContainerName:      cn,
-							ContainerImageName: "docker.io/library/busybox:latest",
+							ContainerImageName: "ghcr.io/inspektor-gadget/ci/busybox:latest",
 						},
 					},
 				},
@@ -453,7 +453,7 @@ spec:
   terminationGracePeriodSeconds: 0
   containers:
   - name: %s
-    image: busybox
+    image: ghcr.io/inspektor-gadget/ci/busybox:latest
     command: ["sleep", "inf"]
 `, po, ns, po, cn)
 

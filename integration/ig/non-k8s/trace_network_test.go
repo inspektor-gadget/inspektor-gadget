@@ -103,7 +103,7 @@ func TestTraceNetwork(t *testing.T) {
 	testSteps := []TestStep{
 		traceNetworkCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		containerFactory.NewContainer(cn, "nginx && curl 127.0.0.1", containers.WithContainerImage("docker.io/library/nginx")),
+		containerFactory.NewContainer(cn, "nginx && curl 127.0.0.1", containers.WithContainerImage("ghcr.io/inspektor-gadget/ci/nginx:latest")),
 	}
 
 	RunTestSteps(testSteps, t)

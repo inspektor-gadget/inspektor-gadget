@@ -43,7 +43,7 @@ func TestRunSchedCLS(t *testing.T) {
 
 	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "docker.io/library/nginx:latest", ns, "", ""),
+		PodCommand("nginx-pod", "ghcr.io/inspektor-gadget/ci/nginx:latest", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 	RunTestSteps(commandsPreTest, t)
@@ -60,7 +60,7 @@ func TestRunSchedCLS(t *testing.T) {
 		runSchedCLSCmd,
 		// Wait until program is attached. TODO: How to avoid hardcoding a delay here?
 		SleepForSecondsCommand(5),
-		JobCommand("wget", "busybox", ns, "sh", "-c", fmt.Sprintf("wget -T 5 %s || true", nginxIP)),
+		JobCommand("wget", "ghcr.io/inspektor-gadget/ci/busybox:latest", ns, "sh", "-c", fmt.Sprintf("wget -T 5 %s || true", nginxIP)),
 		WaitUntilJobCompleteCommand(ns, "wget"),
 		&Command{
 			Name: "ValidateOutput",

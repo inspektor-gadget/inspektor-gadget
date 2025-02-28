@@ -49,7 +49,7 @@ func TestTraceOomKill(t *testing.T) {
 
 	containerFactory := &containers.K8sManager{}
 	containerName := "test-trace-oomkill"
-	containerImage := "docker.io/library/busybox:latest"
+	containerImage := gadgettesting.BusyBoxImage
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}

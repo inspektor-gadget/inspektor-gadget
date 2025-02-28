@@ -63,12 +63,12 @@ func newTraceDnsCmd(t *testing.T, ns string, dnsServerArgs string) *Command {
 		nslookupCmds = append(nslookupCmds, fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a nodomain.fake.test.com. %s", dnsServer))
 		expectedEvent = BuildBaseEvent(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEvent = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEvent = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 	}
 
 	// Start the busybox pod so that we can get the IP address of the pod.

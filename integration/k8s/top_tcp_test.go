@@ -53,7 +53,7 @@ func TestBuiltinTopTCP(t *testing.T) {
 
 	commandsPreTest := []TestStep{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "ghcr.io/inspektor-gadget/ci/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 	}
 	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -89,12 +89,12 @@ func TestBuiltinTopTCP(t *testing.T) {
 		extraArgs = fmt.Sprintf("-m %d --runtimes=%s", maxRows, containerRuntime)
 		expectedEntry.CommonData = BuildCommonData(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-m 100 -n %s", ns)
-		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime))
+		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
 		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 	}
