@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -268,7 +268,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				continue
 			}
 
-			kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, otellog.Int64Value, otellog.Float64Value, otellog.StringValue)
+			kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, name, otellog.Int64Value, otellog.Float64Value, otellog.StringValue)
 			if err != nil {
 				return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.Name(), err)
 			}
