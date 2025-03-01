@@ -81,7 +81,7 @@ static __always_inline void trace_stop(struct sk_buff *skb)
 		slot = log2l(delta);
 	if (slot >= PROFILER_MAX_SLOTS)
 		slot = PROFILER_MAX_SLOTS - 1;
-	bpf_trace_printk("delta: %lld, slot: %llu", delta, slot);
+	bpf_printk("delta: %lld, slot: %llu", delta, slot);
 
 	__sync_fetch_and_add(&histp->latency[slot], 1);
 
