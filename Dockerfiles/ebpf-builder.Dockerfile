@@ -35,7 +35,13 @@ ARG TINYGO_VERSION
 RUN apt-get update \
 	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils \
 	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
+<<<<<<< HEAD
 RUN apt install -y software-properties-common
+=======
+
+# Hack to install software-properties-common separately because of dpkg errors
+RUN apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common|| sudo dpkg --configure -a && apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common || sudo dpkg --configure -a && apt install -y -f software-properties-common
+>>>>>>> 636ef410 (fixes histogram slots)
 
 # Install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
