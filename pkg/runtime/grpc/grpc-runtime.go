@@ -381,7 +381,7 @@ func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *para
 	log.Debugf("using target %q (%q)", target.addressOrPod, target.node)
 
 	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	conn, err := r.dialContext(ctx, target, timeout)
+	conn, err := r.dialContext(target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
@@ -392,7 +392,7 @@ func (r *Runtime) getConnFromTarget(ctx context.Context, runtimeParams *params.P
 	log.Debugf("using target %q (%q)", target.addressOrPod, target.node)
 
 	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	conn, err := r.dialContext(ctx, target, timeout)
+	conn, err := r.dialContext(target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
@@ -443,13 +443,8 @@ func (r *Runtime) runBuiltInGadgetOnTargets(
 	return results, results.Err()
 }
 
-func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{
-		//nolint:staticcheck
-		grpc.WithBlock(),
-		//nolint:staticcheck
-		grpc.WithReturnConnectionError(),
-	}
+func (r *Runtime) dialContext(target target, timeout time.Duration) (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{}
 
 	tlsKey := r.globalParams.Get(ParamTLSKey).String()
 	tlsCert := r.globalParams.Get(ParamTLSCert).String()
@@ -516,14 +511,9 @@ All these options should be set at the same time to enable TLS connection`,
 			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
-	} else {
-		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
-		defer cancel()
-		dialCtx = newCtx
 	}
-
 	//nolint:staticcheck
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("dns:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
@@ -538,10 +528,8 @@ func (r *Runtime) runBuiltInGadget(gadgetCtx runtime.GadgetContext, target targe
 	defer cancel()
 
 	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
-	defer cancelDial()
 
-	conn, err := r.dialContext(dialCtx, target, timeout)
+	conn, err := r.dialContext(target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}
