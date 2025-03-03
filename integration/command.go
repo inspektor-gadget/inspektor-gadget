@@ -581,7 +581,7 @@ func BusyboxPodRepeatCommand(namespace, cmd string) *Command {
 
 // BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
 func BusyboxPodCommand(namespace, cmd string) *Command {
-	return PodCommand("test-pod", "busybox", namespace, `["/bin/sh", "-c"]`, cmd)
+	return PodCommand("test-pod", "ghcr.io/inspektor-gadget/ci/busybox:latest", namespace, `["/bin/sh", "-c"]`, cmd)
 }
 
 // GenerateTestNamespaceName returns a string which can be used as unique

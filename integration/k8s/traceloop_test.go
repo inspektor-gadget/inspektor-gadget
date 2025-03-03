@@ -42,7 +42,7 @@ func TestBuiltinTraceloop(t *testing.T) {
 		},
 		&Command{
 			Name: "RunTraceloopTestPod",
-			Cmd:  fmt.Sprintf("kubectl run --restart=Never -n %s --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'", ns),
+			Cmd:  fmt.Sprintf("kubectl run --restart=Never -n %s --image=ghcr.io/inspektor-gadget/ci/busybox:latest multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'", ns),
 		},
 		&Command{
 			Name: "WaitForTraceloopTestPod",

@@ -52,12 +52,12 @@ func TestBuiltinTraceTcpconnect(t *testing.T) {
 		extraArgs = fmt.Sprintf("--runtimes=%s", containerRuntime)
 		expectedEntry.Event = BuildBaseEvent(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime))
+		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
 		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 	}
@@ -84,7 +84,7 @@ func TestBuiltinTraceTcpconnect(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		traceTcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig or kubectl-gdaget has started
-		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "ghcr.io/inspektor-gadget/ci/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -122,12 +122,12 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		extraArgs = fmt.Sprintf("--runtimes=%s", containerRuntime)
 		expectedEntry.Event = BuildBaseEvent(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
-		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime))
+		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
 		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
 	}
@@ -158,7 +158,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		traceTcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig or kubectl-gadget has started
 		// TODO: can't use setuidgid because it's not available on the nginx image
-		PodCommand("test-pod", "docker.io/library/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		PodCommand("test-pod", "ghcr.io/inspektor-gadget/ci/nginx:latest", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

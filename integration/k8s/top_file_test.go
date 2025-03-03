@@ -70,12 +70,12 @@ func TestBuiltinTopFile(t *testing.T) {
 		extraArgs = fmt.Sprintf("--sort -writes,-wbytes -m %d --runtimes=%s", maxRows, containerRuntime)
 		expectedEntry.CommonData = BuildCommonData(ns,
 			WithRuntimeMetadata(containerRuntime),
-			WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime),
 			WithPodLabels("test-pod", ns, isCrioRuntime),
 		)
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("--sort \"-writes\" -n %s", ns)
-		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime))
+		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/busybox:latest", isDockerRuntime))
 	}
 
 	commandsPreTest := []TestStep{

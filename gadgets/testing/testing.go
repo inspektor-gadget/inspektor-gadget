@@ -36,6 +36,13 @@ const (
 	K8sDistroGKECOS         = "gke-COS_containerd"
 )
 
+const (
+	BusyBoxImage          = "ghcr.io/inspektor-gadget/ci/busybox:latest"
+	NginxImage            = "ghcr.io/inspektor-gadget/ci/nginx:latest"
+	GccImage              = "ghcr.io/inspektor-gadget/ci/gcc:latest"
+	NetworkMultitoolImage = "ghcr.io/inspektor-gadget/ci/network-multitool:latest"
+)
+
 func SkipK8sDistros(t testing.TB, distros ...string) {
 	t.Helper()
 

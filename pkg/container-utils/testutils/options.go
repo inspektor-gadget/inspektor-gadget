@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	DefaultContainerImage    = "docker.io/library/busybox"
+	DefaultContainerImage    = "ghcr.io/inspektor-gadget/ci/busybox"
 	DefaultContainerImageTag = "latest"
 )
 
