@@ -294,6 +294,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("getting manifest: %w", err)
 	}
+	o.layers = manifest.Layers
 
 	log := gadgetCtx.Logger()
 	checkBuilderVersion(manifest, log)
@@ -464,6 +465,19 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	for _, layer := range o.layers {
+		op, ok := operators.GetImageOperatorForMediaType(layer.MediaType)
+		if !ok {
+			continue
+		}
+		if closer, ok := op.(io.Closer); ok {
+			err := closer.Close()
+			if err != nil {
+				o.gadgetCtx.Logger().Errorf("closing operator %q: %v", op.Name(), err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -474,6 +488,7 @@ type OciHandlerInstance struct {
 	extraParams            api.Params
 	paramValues            api.ParamValues
 	ociParams              *params.Params
+	layers                 []v1.Descriptor
 }
 
 func (o *OciHandlerInstance) Name() string {
