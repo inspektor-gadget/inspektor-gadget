@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.37.0
+version: 0.38.0
 name: "trace fsslower"
 category: monitoring-logging
 displayName: "trace fsslower"
-createdAt: "2025-02-03T11:23:41Z"
-digest: "2025-02-03T11:23:41Z"
+createdAt: "2025-03-03T14:38:04Z"
+digest: "2025-03-03T14:38:04Z"
 description: "Trace open, read, write and fsync operations slower than a threshold"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

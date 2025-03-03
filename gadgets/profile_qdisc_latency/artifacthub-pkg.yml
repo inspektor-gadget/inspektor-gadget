@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.37.0
+version: 0.38.0
 name: "profile qdisc latency"
 category: monitoring-logging
 displayName: "profile qdisc latency"
-createdAt: "2025-02-13T00:00:00Z"
-digest: "2025-02-13T00:00:00Z"
+createdAt: "2025-03-03T14:38:04Z"
+digest: "2025-03-03T14:38:04Z"
 description: "profile network scheduler latency"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
