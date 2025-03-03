@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -320,7 +320,7 @@ type metricsCollector struct {
 }
 
 func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
-	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
+	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, "", attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
 	if err != nil {
 		return err
 	}
