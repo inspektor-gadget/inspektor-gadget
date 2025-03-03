@@ -48,9 +48,25 @@ const (
 
 	// Indicates the handle encodes a member of a data array as index << 16 | arrayHandle
 	dataArrayHandleFlag = uint32(1 << 31)
+
+	// cache path for the wasm compilation
+	cacheDir = "/var/run/ig/wasm-cache"
 )
 
-type wasmOperator struct{}
+type wasmOperator struct {
+	cache wazero.CompilationCache
+}
+
+func newWasmOperator() *wasmOperator {
+	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
+	if err != nil {
+		logger.DefaultLogger().Debugf("failed to create wasm compilation cache: %v", err)
+		return &wasmOperator{}
+	}
+	return &wasmOperator{
+		cache: cache,
+	}
+}
 
 func (w *wasmOperator) Name() string {
 	return "wasm"
@@ -76,7 +92,7 @@ func (w *wasmOperator) InstantiateImageOperator(
 		createdMap:  map[uint32]struct{}{},
 	}
 
-	if err := instance.init(gadgetCtx, target, desc); err != nil {
+	if err := instance.init(gadgetCtx, target, desc, w.cache); err != nil {
 		instance.close(gadgetCtx)
 		return nil, fmt.Errorf("initializing wasm: %w", err)
 	}
@@ -212,11 +228,13 @@ func (i *wasmOperatorInstance) init(
 	gadgetCtx operators.GadgetContext,
 	target oras.ReadOnlyTarget,
 	desc ocispec.Descriptor,
+	cache wazero.CompilationCache,
 ) error {
 	ctx := gadgetCtx.Context()
 	rtConfig := wazero.NewRuntimeConfig().
 		WithCloseOnContextDone(true).
-		WithMemoryLimitPages(256) // 16MB (64KB per page)
+		WithMemoryLimitPages(256). // 16MB (64KB per page)
+		WithCompilationCache(cache)
 	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
 
 	igModuleBuilder := i.rt.NewHostModuleBuilder("ig")
@@ -354,5 +372,5 @@ func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
 }
 
 func init() {
-	operators.RegisterOperatorForMediaType(wasmObjectMediaType, &wasmOperator{})
+	operators.RegisterOperatorForMediaType(wasmObjectMediaType, newWasmOperator())
 }
