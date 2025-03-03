@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.37.0
+version: 0.38.0
 name: "top tcp"
 category: monitoring-logging
 displayName: "top tcp"
-createdAt: "2025-02-03T11:23:41Z"
-digest: "2025-02-03T11:23:41Z"
+createdAt: "2025-03-03T14:38:04Z"
+digest: "2025-03-03T14:38:04Z"
 description: Periodically report tcp send receive activity by connection
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
