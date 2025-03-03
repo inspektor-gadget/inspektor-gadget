@@ -2177,8 +2177,8 @@ jobs:
     - name: Get all reports
       uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
       with:
-        name: "test-reports"
-    - name: Store test reports
+        patterns: "test-reports-*-*"
+    - name: Store test report
       shell: bash {0}
       run: ./tools/store-test-reports.sh
       env:

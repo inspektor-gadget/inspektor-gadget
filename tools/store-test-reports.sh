@@ -35,7 +35,7 @@ function store-reports {
     mkdir -p data
     echo '{}' > data/workflows.json
   fi
-  for i in ../test-report_*_*.json; do
+  for i in ../test-reports-*-*/test-report_*_*.json; do
       job_key=$(basename $i .json | sed 's/test-report_//')
       jq --slurpfile obj $i \
       --arg job_key ${job_key} \
