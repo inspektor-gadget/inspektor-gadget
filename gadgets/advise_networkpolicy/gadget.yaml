@@ -1,0 +1,10 @@
+name: advise networkpolicy
+description: Network policies according to the K8s traffic
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/advise_networkpolicy
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/advise_networkpolicy
+datasources:
+  networkpolicy:
+    annotations:
+      kubenameresolver.enable: true
+      cli.supported-output-modes: json
