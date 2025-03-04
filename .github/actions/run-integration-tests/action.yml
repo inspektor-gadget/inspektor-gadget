@@ -85,12 +85,17 @@ runs:
         trap 'cleanup SIGTERM' SIGTERM
 
         # https://mywiki.wooledge.org/SignalTrap#When_is_the_signal_handled.3F
-        echo "IntegrationTestsJob: Start"
+        echo "BuiltinIntegrationTestsJob: Start"
         set -o pipefail
         make \
-          IG_PATH=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
+          integration-tests -o kubectl-gadget |& tee integration.log & wait $!
+        echo "BuiltinIntegrationTestsJob: Done"
+
+        echo "IntegrationTestsJob: Start"
+        make \
+          KUBECTL_GADGET=/home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget \
           IG_RUNTIME=kubernetes \
-          -o kubectl-gadget integration-tests integration-test-gadgets |& tee integration.log & wait $!
+          -C gadgets/ test-k8s -o build |& tee -a integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Undeploy Inspektor Gadget
       id: undeploy-ig
