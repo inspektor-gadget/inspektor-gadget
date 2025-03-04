@@ -125,8 +125,17 @@ func TestTopTcp(t *testing.T) {
 					Tid:     utils.NormalizedInt,
 				}
 
+				if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+					expectedEntry.Src.K8s = utils.K8s{
+						Kind: "raw",
+					}
+					expectedEntry.Dst.K8s = expectedEntry.Src.K8s
+				}
+
 				normalize := func(e *topTcpEntry) {
 					utils.NormalizeCommonData(&e.CommonData)
+					utils.NormalizeEndpoint(&e.Src)
+					utils.NormalizeEndpoint(&e.Dst)
 					utils.NormalizeInt(&e.MntNsID)
 					utils.NormalizeInt(&e.Pid)
 					utils.NormalizeInt(&e.Tid)

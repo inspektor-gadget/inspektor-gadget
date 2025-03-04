@@ -125,6 +125,17 @@ func NormalizeCommonData(e *eventtypes.CommonData) {
 	}
 }
 
+func NormalizeEndpoint(e *L4Endpoint) {
+	// Information about the endpoint is not enriched when running ig, since it needs
+	// to connect to the kubeapiserver to get this information.
+	if CurrentTestComponent != KubectlGadgetTestComponent {
+		e.K8s.Kind = ""
+		e.K8s.Name = ""
+		e.K8s.Namespace = ""
+		e.K8s.Labels = ""
+	}
+}
+
 func BuildProc(comm string, uid, gid uint32) Process {
 	return Process{
 		Comm:    comm,

@@ -165,8 +165,19 @@ func TestTraceTCP(t *testing.T) {
 				},
 			}
 
+			if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+				for _, expectedEntry := range expectedEntries {
+					expectedEntry.Src.K8s = utils.K8s{
+						Kind: "raw",
+					}
+					expectedEntry.Dst.K8s = expectedEntry.Src.K8s
+				}
+			}
+
 			normalize := func(e *traceTCPEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
+				utils.NormalizeEndpoint(&e.Src)
+				utils.NormalizeEndpoint(&e.Dst)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeInt(&e.NetNsID)
