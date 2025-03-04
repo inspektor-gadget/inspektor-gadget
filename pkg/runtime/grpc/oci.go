@@ -47,6 +47,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		ParamValues: paramValues,
 		ImageName:   gadgetCtx.ImageName(),
 		Version:     api.VersionGadgetInfo,
+		ExtraInfo:   gadgetCtx.ExtraInfo(),
 	}
 
 	// specify that ImageName will contain a gadget instance ID

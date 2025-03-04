@@ -249,6 +249,9 @@ message GetGadgetInfoRequest {
   uint32 version = 3;
 
   uint32 flags = 4;
+
+  // can be used to include more info for debugging (e.g., in ig image inspect)
+  bool extraInfo = 5;
 }
 
 message GetGadgetInfoResponse {
