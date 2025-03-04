@@ -31,6 +31,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 
 	"golang.org/x/term"
+
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
 func NewInspectCmd() *cobra.Command {
@@ -48,6 +51,20 @@ func NewInspectCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("inspecting image: %w", err)
 			}
+
+			ops := make([]operators.DataOperator, 0)
+			// empty for now, we'll progressively add operators
+
+			gadgetCtx := gadgetcontext.New(
+				context.Background(),
+				image.String(),
+				gadgetcontext.WithDataOperators(ops...),
+				gadgetcontext.WithUseInstance(false),
+				gadgetcontext.IncludeExtraInfo(true),
+			)
+			fmt.Println(gadgetCtx.ExtraInfo())
+
+			// use this gadgetctx to get the gadget info from runtime.GetGadgetInfo
 
 			switch outputMode {
 			case utils.OutputModeJSON:
