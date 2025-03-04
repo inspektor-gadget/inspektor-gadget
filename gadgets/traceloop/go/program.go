@@ -599,7 +599,10 @@ func gadgetInit() int32 {
 			name: "syscall",
 			kind:  api.Kind_String,
 		},
-		// TODO: Parameters []SyscallParam `json:"parameters,omitempty" column:"params,width:40"`
+		{
+			name: "parameters",
+			kind:  api.Kind_String,
+		},
 		{
 			name: "ret",
 			kind:  api.Kind_String,
@@ -770,6 +773,7 @@ func gadgetStop() int32 {
 			fields["pid"].SetUint32(api.Data(packet), event.Pid)
 			fields["comm"].SetString(api.Data(packet), event.Comm)
 			fields["syscall"].SetString(api.Data(packet), event.Syscall)
+			fields["parameters"].SetString(api.Data(packet), tracelooptypes.ToString(event.Parameters))
 			fields["ret"].SetString(api.Data(packet), event.Retval)
 
 			dsOutput.EmitAndRelease(api.Packet(packet))
