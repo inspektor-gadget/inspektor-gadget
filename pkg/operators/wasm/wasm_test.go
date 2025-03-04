@@ -29,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
@@ -465,4 +466,14 @@ func TestConfig(t *testing.T) {
 	require.True(t, ok, "invalid configuration format")
 
 	require.Equal(t, "myvalue", v.GetString("foo.bar.zas"))
+}
+
+func TestFiltering(t *testing.T) {
+	gadgetCtx := createGadgetCtx(t, "filtering")
+
+	mntNsMap := utilstest.CreateMntNsFilterMap(t, 777)
+	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mntNsMap)
+
+	err := runGadget(t, gadgetCtx, nil)
+	require.NoError(t, err, "running gadget")
 }
