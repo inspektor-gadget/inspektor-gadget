@@ -6,6 +6,7 @@ TEST_ARTIFACTS = \
 	dataarray \
 	dataemit \
 	badguest \
+	baderrptr \
 	params \
 	config \
 	map \

@@ -37,6 +37,73 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
 
+func runGadget(t *testing.T, gadgetCtx *gadgetcontext.GadgetContext, params map[string]string) error {
+	runtime := local.New()
+	err := runtime.Init(nil)
+	if err != nil {
+		return err
+	}
+	t.Cleanup(func() { runtime.Close() })
+
+	if params == nil {
+		params = map[string]string{}
+	}
+
+	params["operator.oci.verify-image"] = "false"
+	return runtime.RunGadget(gadgetCtx, nil, params)
+}
+
+func createGadgetCtx(t *testing.T, name string, ops ...operators.DataOperator) *gadgetcontext.GadgetContext {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	t.Cleanup(cancel)
+
+	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("testdata/%s.tar", name))
+	require.NoError(t, err, "creating oci store")
+
+	dataOps := []operators.DataOperator{ocihandler.OciHandler}
+	dataOps = append(dataOps, ops...)
+	gadgetCtx := gadgetcontext.New(
+		ctx,
+		fmt.Sprintf("%s:latest", name),
+		gadgetcontext.WithDataOperators(dataOps...),
+		gadgetcontext.WithOrasReadonlyTarget(ociStore),
+	)
+
+	return gadgetCtx
+}
+
+func TestWasm(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		errExpected bool
+	}{
+		{"map", false},
+		{"mapofmap", false},
+		{"badguest", false},
+		{"baderrptr", true},
+		{"syscall", false},
+		{"perf", false},
+		{"kallsyms", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gadgetCtx := createGadgetCtx(t, test.name)
+			err := runGadget(t, gadgetCtx, nil)
+			if test.errExpected {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestWasmFields(t *testing.T) {
 	utilstest.RequireRoot(t)
 
@@ -177,18 +244,7 @@ func TestWasmFields(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/fields.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"fields:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
+	gadgetCtx := createGadgetCtx(t, "fields", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "myds")
@@ -207,15 +263,7 @@ func TestWasmFields(t *testing.T) {
 	},
 	)
 
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
+	err = runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 
 	require.Equal(t, counter, 1)
@@ -280,18 +328,7 @@ func TestWasmDataArray(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/dataarray.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"dataarray:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
+	gadgetCtx := createGadgetCtx(t, "dataarray", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "myds")
@@ -300,15 +337,7 @@ func TestWasmDataArray(t *testing.T) {
 	_, err = ds.AddField("foo", api.Kind_Uint32)
 	require.NoError(t, err)
 
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
+	err = runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 
 	require.Equal(t, counter, 1)
@@ -369,18 +398,7 @@ func TestWasmDataEmit(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/dataemit.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"dataemit:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
+	gadgetCtx := createGadgetCtx(t, "dataemit", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "old_ds")
@@ -389,48 +407,10 @@ func TestWasmDataEmit(t *testing.T) {
 	_, err = ds.AddField("foo", api.Kind_Uint32)
 	require.NoError(t, err)
 
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
+	err = runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 
 	require.Equal(t, counter, 1) // as only 1 of the two packets emitted by the `old_ds` will be passed on to the `new_ds`
-}
-
-func TestBadGuest(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/badguest.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"badguest:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
 }
 
 func TestWasmParams(t *testing.T) {
@@ -461,29 +441,12 @@ func TestWasmParams(t *testing.T) {
 		}),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/params.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"params:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
+	gadgetCtx := createGadgetCtx(t, "params", myOperator)
 	params := map[string]string{
-		"operator.oci.verify-image":   "false",
 		"operator.oci.wasm.param-key": "param-value",
 	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
+
+	err := runGadget(t, gadgetCtx, params)
 	require.NoError(t, err, "running gadget")
 }
 
@@ -492,28 +455,8 @@ func TestConfig(t *testing.T) {
 
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/config.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"config:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
+	gadgetCtx := createGadgetCtx(t, "config")
+	err := runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 
 	cfg, ok := gadgetCtx.GetVar("config")
@@ -522,154 +465,4 @@ func TestConfig(t *testing.T) {
 	require.True(t, ok, "invalid configuration format")
 
 	require.Equal(t, "myvalue", v.GetString("foo.bar.zas"))
-}
-
-func TestMap(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/map.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"map:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
-}
-
-func TestMapOfMap(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/mapofmap.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"mapofmap:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
-}
-
-func TestSyscall(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/syscall.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"syscall:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
-}
-
-func TestPerf(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/perf.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"perf:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
-}
-
-func TestKallsyms(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	t.Parallel()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	t.Cleanup(cancel)
-
-	ociStore, err := orasoci.NewFromTar(ctx, "testdata/kallsyms.tar")
-	require.NoError(t, err, "creating oci store")
-
-	gadgetCtx := gadgetcontext.New(
-		ctx,
-		"kallsyms:latest",
-		gadgetcontext.WithDataOperators(ocihandler.OciHandler),
-		gadgetcontext.WithOrasReadonlyTarget(ociStore),
-	)
-
-	runtime := local.New()
-	err = runtime.Init(nil)
-	require.NoError(t, err, "runtime init")
-	t.Cleanup(func() { runtime.Close() })
-
-	params := map[string]string{
-		"operator.oci.verify-image": "false",
-	}
-	err = runtime.RunGadget(gadgetCtx, nil, params)
-	require.NoError(t, err, "running gadget")
 }
