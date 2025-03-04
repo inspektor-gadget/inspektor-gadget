@@ -170,7 +170,10 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	srtt = BPF_CORE_READ(ts, srtt_us) >> 3;
 	if (targ_ms)
 		srtt /= 1000U;
-	slot = log2l(srtt);
+	if (srtt > 0)
+		slot = log2l(srtt) + 1;
+	else
+		slot = log2l(srtt);
 	if (slot >= PROFILER_MAX_SLOTS)
 		slot = PROFILER_MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->latency[slot], 1);
