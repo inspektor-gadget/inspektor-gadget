@@ -48,25 +48,29 @@ type TraceloopInfo struct {
 	ContainerID   string `json:"containerID,omitempty" column:"containerID,minWidth:12,ellipsis:none"`
 }
 
+func ToString(parameters []SyscallParam) string {
+	var sb strings.Builder
+
+	for idx, p := range parameters {
+		value := p.Value
+		if p.Content != nil {
+			value = *p.Content
+		}
+		sb.WriteString(fmt.Sprintf("%s=%s", p.Name, value))
+
+		if idx < len(parameters)-1 {
+			sb.WriteString(", ")
+		}
+	}
+
+	return sb.String()
+}
+
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
 	cols.SetExtractor("params", func(event *Event) any {
-		var sb strings.Builder
-
-		for idx, p := range event.Parameters {
-			value := p.Value
-			if p.Content != nil {
-				value = *p.Content
-			}
-			sb.WriteString(fmt.Sprintf("%s=%s", p.Name, value))
-
-			if idx < len(event.Parameters)-1 {
-				sb.WriteString(", ")
-			}
-		}
-
-		return sb.String()
+		return ToString(event.Parameters)
 	})
 
 	// We hide these fields to gain some places for the parameters.
