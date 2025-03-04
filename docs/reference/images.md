@@ -284,24 +284,71 @@ $ sudo ig image inspect -h
 Inspect the local gadget image
 
 Usage:
-  ig image inspect [flags]
+  ig image inspect IMAGE [flags]
 
 Flags:
   -h, --help            help for inspect
-  -o, --output string   Output mode, possible values are, columns, json, jsonpretty (default "columns")
+  -o, --output string   Output mode: json, jsonpretty, yaml, or custom (default "jsonpretty")
+  --extra-info string   In custom mode, specify particular info required
 ```
 
 ```bash
-$ sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_exec
-Successfully pulled ghcr.io/inspektor-gadget/gadget/trace_exec:latest@sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d
-$ sudo image inspect ghcr.io/inspektor-gadget/gadget/trace_exec
-REPOSITORY                                TAG                                       DIGEST       CREATED
-ghcr.io/inspektor-gadget/gadget/trace_ex… latest                                    a9e26ab904c3 about an hour ago
-$ sudo image inspect -o jsonpretty ghcr.io/inspektor-gadget/gadget/trace_exec
+# Pull an image to inspect
+$ sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_tcp
+Successfully pulled ghcr.io/inspektor-gadget/gadget/trace_tcp:latest@sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d
+
+# Inspect the image with default output (jsonpretty)
+$ sudo ig image inspect ghcr.io/inspektor-gadget/gadget/trace_tcp
 {
-  "Repository": "ghcr.io/inspektor-gadget/gadget/trace_exec",
-  "Tag": "latest",
-  "Digest": "sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d",
-  "Created": "2024-09-02T10:49:44Z"
+  "ebpf.maps": {
+    "content": "[{\"Name\":\"gadget_heap\",\"Type\":\"PerCPUArray\"},{\"Name\":\"gadget_mntns_filter_map\",\"Type\":\"Hash\"},{\"Name\":\"tuplepid\",\"Type\":\"Hash\"},{\"Name\":\"sockets\",\"Type\":\"Hash\"},{\"Name\":\"events\",\"Type\":\"RingBuf\"}]",
+    "contentType": "application/json"
+  },
+  "ebpf.sections": {
+    "content": "[\"\",\".strtab\",\".text\",\"kprobe/tcp_v4_connect\",\".relkprobe/tcp_v4_connect\",\"kretprobe/tcp_v4_connect\",\".relkretprobe/tcp_v4_connect\",\"kprobe/tcp_v6_connect\",\".relkprobe/tcp_v6_connect\",\"kretprobe/tcp_v6_connect\",\".relkretprobe/tcp_v6_connect\",\"kprobe/tcp_close\",\".relkprobe/tcp_close\",\"kprobe/tcp_set_state\",\".relkprobe/tcp_set_state\",\"kretprobe/inet_csk_accept\",\".relkretprobe/inet_csk_accept\",\".rodata\",\".bss\",\"license\",\".maps\",\".BTF\",\".rel.BTF\",\".BTF.ext\",\".rel.BTF.ext\",\".llvm_addrsig\",\".symtab\"]",
+    "contentType": "application/json"
+  },
+  ...
 }
+
+# List possible extra-info
+$ sudo ig image inspect fsnotify:main |jq keys
+WARN[0001] image signature verification is disabled due to using corresponding option 
+[
+  "ebpf.maps",
+  "ebpf.programs",
+  "ebpf.sections",
+  "ebpf.variables",
+  "wasm.gadgetAPIVersion",
+  "wasm.upcalls"
+]
+
+# Retrieve specific info using custom output
+$ sudo ig image inspect -o custom --extra-info=ebpf.sections ghcr.io/inspektor-gadget/gadget/trace_tcp
+["",".strtab",".text","kprobe/tcp_v4_connect",".relkprobe/tcp_v4_connect","kretprobe/tcp_v4_connect",".relkretprobe/tcp_v4_connect","kprobe/tcp_v6_connect",".relkprobe/tcp_v6_connect","kretprobe/tcp_v6_connect",".relkretprobe/tcp_v6_connect","kprobe/tcp_close",".relkprobe/tcp_close","kprobe/tcp_set_state",".relkprobe/tcp_set_state","kretprobe/inet_csk_accept",".relkretprobe/inet_csk_accept",".rodata",".bss","license",".maps",".BTF",".rel.BTF",".BTF.ext",".rel.BTF.ext",".llvm_addrsig",".symtab"]
+
+# Listing programs
+$ sudo ig image inspect -o custom fsnotify --extra-info ebpf.programs|jq -r '.[].Section'
+WARN[0001] image signature verification is disabled due to using corresponding option 
+kprobe/fanotify_handle_event
+kprobe/fsnotify_remove_first_event
+kretprobe/fsnotify_remove_first_event
+kprobe/inotify_handle_inode_event
+kretprobe/fanotify_handle_event
+kprobe/fsnotify_insert_event
+kprobe/fsnotify_destroy_event
+kretprobe/inotify_handle_inode_event
+
+# Printing the source of a program
+$ sudo ig image inspect -o custom fsnotify:latest --extra-info ebpf.programs|jq -r '.[] | select(.Section=="kprobe/fsnotify_remove_first_event") | .Source'
+WARN[0001] image signature verification is disabled due to using corresponding option 
+ig_fa_pick_e:
+	  ; int BPF_KPROBE(ig_fa_pick_e, struct fsnotify_group *group)
+	 0: LdXMemDW dst: r6 src: r1 off: 112 imm: 0
+	 1: StXMemDW dst: rfp src: r6 off: -8 imm: 0
+	  ; pid_tgid = bpf_get_current_pid_tgid();
+	 2: Call FnGetCurrentPidTgid
+...
+	25: MovImm dst: r0 imm: 0
+	26: Exit
 ```

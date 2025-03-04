@@ -158,6 +158,18 @@ message GadgetInfo {
   bytes metadata = 6;
   repeated Param params = 7;
   string id = 8;
+  ExtraInfo extraInfo = 9;
+}
+
+message ExtraInfo {
+  // key can be "wasm.upcalls", "ebpf.sections", etc
+  map<string, GadgetInspectAddendum> data = 1;
+}
+
+message GadgetInspectAddendum {
+  // contentType could be application/json, text/plain, text/mermaid, text/markdown...
+  string contentType = 1;
+  bytes content = 2;
 }
 
 message DataSource {
@@ -249,6 +261,9 @@ message GetGadgetInfoRequest {
   uint32 version = 3;
 
   uint32 flags = 4;
+
+  // can be used to include more info for debugging (e.g., in ig image inspect)
+  bool requestExtraInfo = 5;
 }
 
 message GetGadgetInfoResponse {

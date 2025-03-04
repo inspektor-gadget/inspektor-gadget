@@ -307,6 +307,15 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// add extra info to gadgetcontext if requested
+	if gadgetCtx.ExtraInfo() {
+		err = i.addExtraInfo(gadgetCtx)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	err = i.analyze()
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)

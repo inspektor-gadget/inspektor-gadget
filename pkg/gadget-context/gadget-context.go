@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,7 +62,8 @@ type GadgetContext struct {
 	timeout                  time.Duration
 
 	// useInstance, if set, will try to work with existing gadget instances on the server
-	useInstance bool
+	useInstance      bool
+	requestExtraInfo bool
 
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
@@ -104,6 +106,7 @@ func NewBuiltIn(
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
 		timeout:                  timeout,
+		requestExtraInfo:         false,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
@@ -135,6 +138,10 @@ func New(
 
 func (c *GadgetContext) ID() string {
 	return c.id
+}
+
+func (c *GadgetContext) ExtraInfo() bool {
+	return c.requestExtraInfo
 }
 
 func (c *GadgetContext) Context() context.Context {
@@ -282,7 +289,7 @@ func (c *GadgetContext) SetMetadata(m []byte) {
 	c.metadata = m
 }
 
-func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
+func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
 	gi := &api.GadgetInfo{
 		Name:      "",
 		Id:        c.id,
@@ -306,10 +313,24 @@ func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 		gi.DataSources = append(gi.DataSources, di)
 	}
 
+	if c.ExtraInfo() && extraInfo {
+		gi.ExtraInfo = &api.ExtraInfo{
+			Data: make(map[string]*api.GadgetInspectAddendum),
+		}
+
+		for k, v := range c.GetVars() {
+			if !strings.HasPrefix(k, "extraInfo.") {
+				continue
+			}
+			for k, v := range v.(*api.ExtraInfo).Data {
+				gi.ExtraInfo.Data[strings.TrimPrefix(k, "extraInfo.")] = v
+			}
+		}
+	}
 	return gi, nil
 }
 
-func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool) error {
+func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error {
 	c.lock.Lock()
 	if c.loaded {
 		// TODO: verify that info matches what we previously loaded
@@ -371,6 +392,20 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		}()
 	}
 
+	if c.ExtraInfo() && extraInfo != nil {
+		for k, v := range extraInfo.Data {
+			// k is in the form of "wasm.upcalls", "ebpf.sections", etc.
+			prefix := strings.Split(k, ".")[0]
+			ei, ok := c.GetVar("extraInfo." + prefix)
+			if !ok {
+				ei = &api.ExtraInfo{
+					Data: make(map[string]*api.GadgetInspectAddendum),
+				}
+				c.SetVar("extraInfo."+prefix, ei)
+			}
+			ei.(*api.ExtraInfo).Data[k] = v
+		}
+	}
 	return nil
 }
 

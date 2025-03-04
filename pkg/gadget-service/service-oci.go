@@ -90,6 +90,7 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		req.ImageName,
 		gadgetcontext.WithDataOperators(ops...),
 		gadgetcontext.WithAsRemoteCall(true),
+		gadgetcontext.IncludeExtraInfo(req.RequestExtraInfo),
 	)
 
 	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)
@@ -203,7 +204,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 			seq := uint32(0)
 			var seqLock sync.Mutex
 
-			gi, err := gadgetCtx.SerializeGadgetInfo()
+			gi, err := gadgetCtx.SerializeGadgetInfo(false)
 			if err != nil {
 				return fmt.Errorf("serializing gadget info: %w", err)
 			}
