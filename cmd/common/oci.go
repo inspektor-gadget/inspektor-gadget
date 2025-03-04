@@ -37,6 +37,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/combiner"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/generate_networkpolicy"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
@@ -173,7 +174,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			ops = append(ops, op)
 		}
-		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
+		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator, generate_networkpolicy.GNPOperator)
 		initializedOperators = true
 
 		imageName := actualArgs[0]
@@ -292,7 +293,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			ops = append(ops, op)
 		}
-		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator)
+		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator, generate_networkpolicy.GNPOperator)
 
 		timeoutDuration := time.Duration(timeoutSeconds) * time.Second
 
