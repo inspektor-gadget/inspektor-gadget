@@ -7,6 +7,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include "oomkill.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 // we need this to make sure the compiler doesn't remove our struct
