@@ -149,6 +149,10 @@ type PreStart interface {
 	PreStart(gadgetCtx GadgetContext) error
 }
 
+type PreStop interface {
+	PreStop(gadgetCtx GadgetContext) error
+}
+
 type PostStop interface {
 	PostStop(gadgetCtx GadgetContext) error
 }
