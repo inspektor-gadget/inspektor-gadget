@@ -333,7 +333,10 @@ func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 						v := fmt.Sprintf("s/%s/%s:%d", svc.Namespace, svc.Name, p)
 						a.column.Set(data, []byte(v))
 					}
+					continue
 				}
+
+				a.subK8sKind.Set(data, []byte("raw"))
 			}
 			return errs
 		}, Priority)
