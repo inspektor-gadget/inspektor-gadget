@@ -110,12 +110,18 @@ func TestTopTcp(t *testing.T) {
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
+						K8s: utils.K8s{
+							Kind: "raw",
+						},
 					},
 					Dst: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
 						Version: 4,
 						Port:    utils.NormalizedInt,
 						Proto:   "TCP",
+						K8s: utils.K8s{
+							Kind: "raw",
+						},
 					},
 					Comm: "curl",
 
