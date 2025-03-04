@@ -20,6 +20,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -156,6 +157,24 @@ type event struct {
 	syscall    string
 	parameters []syscallParam
 	retval     string
+}
+
+func toString(parameters []syscallParam) string {
+	var sb strings.Builder
+
+	for idx, p := range parameters {
+		value := p.value
+		if p.content != nil {
+			value = *p.content
+		}
+		sb.WriteString(fmt.Sprintf("%s=%s", p.name, value))
+
+		if idx < len(parameters)-1 {
+			sb.WriteString(", ")
+		}
+	}
+
+	return sb.String()
 }
 
 func (t *tracelooper) attach(cgroupID uint64, mntnsID uint64) error {
@@ -614,7 +633,10 @@ func gadgetInit() int32 {
 			name: "syscall",
 			kind:  api.Kind_String,
 		},
-		// TODO: Parameters []SyscallParam `json:"parameters,omitempty" column:"params,width:40"`
+		{
+			name: "parameters",
+			kind:  api.Kind_String,
+		},
 		{
 			name: "ret",
 			kind:  api.Kind_String,
@@ -787,6 +809,7 @@ func gadgetStop() int32 {
 			fields["pid"].SetUint32(api.Data(packet), event.pid)
 			fields["comm"].SetString(api.Data(packet), event.comm)
 			fields["syscall"].SetString(api.Data(packet), event.syscall)
+			fields["parameters"].SetString(api.Data(packet), toString(event.parameters))
 			fields["ret"].SetString(api.Data(packet), event.retval)
 
 			dsOutput.EmitAndRelease(api.Packet(packet))
