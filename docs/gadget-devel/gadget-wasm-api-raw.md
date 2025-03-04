@@ -569,3 +569,17 @@ Parameters:
 
 Return value:
 - (u32) 1 if the symbol exists, 0 otherwise.
+
+
+### Filtering
+
+#### `shouldDiscardMntnsID(mntnsID uint64) uint32`
+
+Check if a mount namespace ID should be discarded. It must only be used in
+`gadgetStart` or after.
+
+Parameters:
+- `mntnsID` (u64): Mount namespace ID
+
+Return value:
+- (u32) 1 if the mount namespace ID should be discarded, 0 otherwise.

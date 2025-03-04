@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/ebpf"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
@@ -31,6 +32,7 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
@@ -144,6 +146,8 @@ type wasmOperatorInstance struct {
 	createdMapMutex sync.RWMutex
 
 	syscallsDeclarations map[string]syscallhelpers.SyscallDeclaration
+
+	mntNsIDMap *ebpf.Map
 }
 
 func (i *wasmOperatorInstance) Name() string {
@@ -249,6 +253,7 @@ func (i *wasmOperatorInstance) init(
 	i.addSyscallsDeclarationsFuncs(igModuleBuilder)
 	i.addPerfFuncs(igModuleBuilder)
 	i.addKallsymsFuncs(igModuleBuilder)
+	i.addFilterFuncs(igModuleBuilder)
 
 	if _, err := igModuleBuilder.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
@@ -331,6 +336,14 @@ func (i *wasmOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error
 }
 
 func (i *wasmOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
+	// TODO: We use the mntns map to filter events by mount namespace. Ideally
+	// this shouldn't rely on the map (as it requires a syscall), but on
+	// information stored on the container collection, however it's hidden under
+	// a lot of layers and getting it here is complicated.
+	if mntnsVar, ok := gadgetCtx.GetVar(gadgets.MntNsFilterMapName); ok {
+		i.mntNsIDMap, _ = mntnsVar.(*ebpf.Map)
+	}
+
 	return i.callGuestFunction(i.ctx, "gadgetStart")
 }
 
