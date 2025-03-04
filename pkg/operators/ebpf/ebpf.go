@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
+	"golang.org/x/sys/unix"
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
@@ -172,7 +173,8 @@ type ebpfInstance struct {
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
 
-	links []link.Link
+	links   []link.Link
+	perfFds []int
 
 	containers map[string]*containercollection.Container
 
@@ -756,6 +758,19 @@ func (i *ebpfInstance) Close() {
 	}
 	for _, uprobeTracer := range i.uprobeTracers {
 		uprobeTracer.Close()
+	}
+
+	for _, fd := range i.perfFds {
+		// Disable perf event.
+		err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
+		if err != nil {
+			i.logger.Errorf("disabling perf fd: %v", err)
+		}
+
+		err = unix.Close(fd)
+		if err != nil {
+			i.logger.Errorf("closing perf fd: %v", err)
+		}
 	}
 }
 
