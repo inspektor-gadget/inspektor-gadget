@@ -25,15 +25,25 @@ import (
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 	"golang.org/x/term"
+
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func NewInspectCmd() *cobra.Command {
+func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	var outputMode string
 
 	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON, utils.OutputModeJSONPretty}
@@ -49,6 +59,59 @@ func NewInspectCmd() *cobra.Command {
 				return fmt.Errorf("inspecting image: %w", err)
 			}
 
+			runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+			runtimeParams := runtime.ParamDescs().ToParams()
+			ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+
+			// Add operator global flags
+			opGlobalParams := make(map[string]*params.Params)
+			for _, op := range operators.GetDataOperators() {
+				opGlobalParams[op.Name()] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
+			}
+
+			var info *api.GadgetInfo
+			err = runtime.Init(runtimeGlobalParams)
+			if err != nil {
+				return fmt.Errorf("initializing runtime: %w", err)
+			}
+			defer runtime.Close()
+
+			// set global operator flags from the config file
+			for o, p := range opGlobalParams {
+				err = common.SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
+				if err != nil {
+					return fmt.Errorf("setting operator %s flags: %w", o, err)
+				}
+			}
+
+			ops := make([]operators.DataOperator, 0)
+			for _, op := range operators.GetDataOperators() {
+				// Initialize operator
+				err := op.Init(opGlobalParams[op.Name()])
+				if err != nil {
+					continue
+				}
+				ops = append(ops, op)
+			}
+
+			gadgetCtx := gadgetcontext.New(
+				context.Background(),
+				image.String(),
+				gadgetcontext.WithDataOperators(ops...),
+				gadgetcontext.WithUseInstance(false),
+				gadgetcontext.IncludeExtraInfo(true),
+			)
+
+			paramValueMap := make(map[string]string)
+			ociParams.CopyToMap(paramValueMap, "operator.oci.")
+
+			info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+			if err != nil {
+				return fmt.Errorf("getting gadget info: %w", err)
+			}
+			fmt.Println("Info:  \nSections", info.ExtraEbpfInfo.Sections, "\nMaps", info.ExtraEbpfInfo.Maps, "\nPrograms", info.ExtraEbpfInfo.Programs)
+
+			// Print the image information based on the output mode (TODO)
 			switch outputMode {
 			case utils.OutputModeJSON:
 				bytes, err := json.Marshal(image)

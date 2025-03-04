@@ -19,6 +19,7 @@ package ebpfoperator
 import (
 	"bufio"
 	"bytes"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"io"
@@ -305,6 +306,15 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// add extra info to gadgetcontext if requested
+	if gadgetCtx.ExtraInfo() {
+		err = i.addExtraInfo(gadgetCtx)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	err = i.analyze()
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)
@@ -320,6 +330,45 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("initializing formatters: %w", err)
 	}
 
+	return nil
+}
+
+func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
+	ef, err := elf.NewFile(bytes.NewReader(i.program))
+	if err != nil {
+		return fmt.Errorf("parsing elf file: %w", err)
+	}
+	var sections []string
+	var maps []*api.Map
+	var programs []*api.Program
+
+	// Add sections
+	for _, sec := range ef.Sections {
+		sections = append(sections, sec.Name)
+	}
+	// Add maps
+	for name, m := range i.collectionSpec.Maps {
+		if name == ".rodata" || name == ".bss" {
+			continue
+		}
+		maps = append(maps, &api.Map{
+			Name: name,
+			Type: m.Type.String(),
+		})
+	}
+	// Add programs
+	for _, p := range i.collectionSpec.Programs {
+		programs = append(programs, &api.Program{
+			Section:  p.SectionName,
+			Bytecode: []byte(fmt.Sprintf("%v", p.Instructions.String())),
+		})
+	}
+
+	gadgetCtx.SetVar("extraInfo.ebpf", &api.ExtraEbpfInfo{
+		Sections: sections,
+		Maps:     maps,
+		Programs: programs,
+	})
 	return nil
 }
 

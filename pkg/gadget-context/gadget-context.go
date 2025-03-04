@@ -62,6 +62,7 @@ type GadgetContext struct {
 
 	// useInstance, if set, will try to work with existing gadget instances on the server
 	useInstance bool
+	extraInfo   bool
 
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
@@ -104,6 +105,7 @@ func NewBuiltIn(
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
 		timeout:                  timeout,
+		extraInfo:                false,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
@@ -135,6 +137,10 @@ func New(
 
 func (c *GadgetContext) ID() string {
 	return c.id
+}
+
+func (c *GadgetContext) ExtraInfo() bool {
+	return c.extraInfo
 }
 
 func (c *GadgetContext) Context() context.Context {
@@ -282,7 +288,7 @@ func (c *GadgetContext) SetMetadata(m []byte) {
 	c.metadata = m
 }
 
-func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
+func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
 	gi := &api.GadgetInfo{
 		Name:      "",
 		Id:        c.id,
@@ -306,10 +312,19 @@ func (c *GadgetContext) SerializeGadgetInfo() (*api.GadgetInfo, error) {
 		gi.DataSources = append(gi.DataSources, di)
 	}
 
+	if c.ExtraInfo() && extraInfo {
+		ei, _ := c.GetVar("extraInfo.ebpf")
+		ebpfInfo := ei.(*api.ExtraEbpfInfo)
+		gi.ExtraEbpfInfo = &api.ExtraEbpfInfo{
+			Sections: ebpfInfo.Sections,
+			Maps:     ebpfInfo.Maps,
+			Programs: ebpfInfo.Programs,
+		}
+	}
 	return gi, nil
 }
 
-func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool) error {
+func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraEbpfInfo) error {
 	c.lock.Lock()
 	if c.loaded {
 		// TODO: verify that info matches what we previously loaded
@@ -369,6 +384,16 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 			WaitForTimeoutOrDone(c)
 			c.stop(localOperators)
 		}()
+	}
+
+	if c.ExtraInfo() && extraInfo != nil {
+
+		ei := &api.ExtraEbpfInfo{
+			Sections: extraInfo.Sections,
+			Maps:     extraInfo.Maps,
+			Programs: extraInfo.Programs,
+		}
+		c.SetVar("extraInfo.ebpf", ei)
 	}
 
 	return nil
