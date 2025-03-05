@@ -18,6 +18,7 @@ package ustack
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cilium/ebpf"
 
@@ -27,7 +28,6 @@ import (
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
 )
 
 const (
@@ -36,7 +36,11 @@ const (
 )
 
 const (
+	// Annotations
 	userStackTargetNameAnnotation = "ebpf.formatter.ustack"
+
+	// Params
+	symbolizersParam = "symbolizers"
 )
 
 type Operator struct{}
@@ -54,18 +58,43 @@ func (o *Operator) GlobalParams() api.Params {
 }
 
 func (o *Operator) InstanceParams() api.Params {
-	return nil
+	return api.Params{&api.Param{
+		Key:          symbolizersParam,
+		Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab"`,
+		DefaultValue: "auto",
+	}}
 }
 
 func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	s, err := symbolizer.NewSymbolizer()
-	if err != nil {
-		return nil, err
+	instance := &OperatorInstance{
+		subscriptions: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
 	}
 
-	instance := &OperatorInstance{
-		symbolizer:    s,
-		subscriptions: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
+	opts := symbolizer.SymbolizerOptions{}
+	symbolizers := instanceParamValues[symbolizersParam]
+	switch symbolizers {
+	case "none":
+		opts.UseSymtab = false
+	case "auto":
+		opts.UseSymtab = true
+	default:
+		list := strings.Split(symbolizers, ",")
+		for _, s := range list {
+			switch s {
+			case "symtab":
+				opts.UseSymtab = true
+			default:
+				return nil, fmt.Errorf("invalid symbolizer: %s", s)
+			}
+		}
+	}
+
+	var err error
+	if symbolizers != "none" {
+		instance.symbolizer, err = symbolizer.NewSymbolizer(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = instance.init(gadgetCtx)
 	if err != nil {
@@ -146,15 +175,15 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				continue
 			}
 
-			targetName, err := annotations.GetTargetNameFromAnnotation(logger, "ustack", in, userStackTargetNameAnnotation)
-			if err != nil {
-				logger.Warnf("getting target name for ustack field %q: %v", in.Name(), err)
-				continue
-			}
-			out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
+			addressesField, err := in.AddSubField("addresses", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
 			if err != nil {
 				return err
 			}
+			symbolsField, err := in.AddSubField("symbols", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
+			if err != nil {
+				return err
+			}
+
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
 				inode, _ := inodeField[0].Uint64(data)
 				// If user stacks are disabled
@@ -209,32 +238,38 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 					return nil
 				}
 
+				addressesString := ""
 				addrs := make([]uint64, 0, len(stack))
-				for _, addr := range stack {
+				for i, addr := range stack {
 					if addr == 0 {
 						break
 					}
 					addrs = append(addrs, addr)
+					addressesString += fmt.Sprintf("[%d]0x%016x; ", i, addr)
 				}
-				task := symbolizer.Task{
-					Name:         fmt.Sprintf("%s/%s", containerName, comm),
-					PidNumbers:   pidNumbers,
-					ContainerPid: containerPid,
-					Ino:          inode,
-					MtimeSec:     int64(mtimeSec),
-					MtimeNsec:    mtimeNsec,
-				}
-				symbols, err := o.symbolizer.Resolve(task, addrs)
-				if err != nil {
-					logger.Warnf("symbolizer: %s", err)
-					return nil
-				}
+				addressesField.PutString(data, addressesString)
 
-				outString := ""
-				for i, symbol := range symbols {
-					outString += fmt.Sprintf("[%d]%s; ", i, symbol)
+				if o.symbolizer != nil {
+					task := symbolizer.Task{
+						Name:         fmt.Sprintf("%s/%s", containerName, comm),
+						PidNumbers:   pidNumbers,
+						ContainerPid: containerPid,
+						Ino:          inode,
+						MtimeSec:     int64(mtimeSec),
+						MtimeNsec:    mtimeNsec,
+					}
+					symbols, err := o.symbolizer.Resolve(task, addrs)
+					if err != nil {
+						logger.Warnf("symbolizer: %s", err)
+						return nil
+					}
+
+					outString := ""
+					for i, symbol := range symbols {
+						outString += fmt.Sprintf("[%d]%s; ", i, symbol)
+					}
+					symbolsField.PutString(data, outString)
 				}
-				out.PutString(data, outString)
 				return nil
 			}
 			o.subscriptions[ds] = append(o.subscriptions[ds], converter)
@@ -248,7 +283,9 @@ func (o *OperatorInstance) Name() string {
 }
 
 func (o *OperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	o.symbolizer.Close()
+	if o.symbolizer != nil {
+		o.symbolizer.Close()
+	}
 	return nil
 }
 
