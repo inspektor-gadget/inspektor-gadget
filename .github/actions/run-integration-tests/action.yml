@@ -16,7 +16,7 @@ inputs:
     required: true
   dnstester_image:
     description: 'The image used for the dnstester.'
-    default: 'ghcr.io/inspektor-gadget/dnstester:latest'
+    default: 'ghcr.io/inspektor-gadget/dnstester:main'
   gadget_repository:
     description: 'Repository where gadget images are stored.'
     required: true

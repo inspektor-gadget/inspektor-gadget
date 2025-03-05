@@ -59,7 +59,7 @@ type traceDNSEvent struct {
 }
 
 const (
-	DefaultServerImage = "ghcr.io/inspektor-gadget/dnstester:latest"
+	DefaultServerImage = "ghcr.io/inspektor-gadget/dnstester:main"
 	DefaultClientImage = gadgettesting.BusyBoxImage
 )
 

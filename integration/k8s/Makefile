@@ -1,9 +1,9 @@
-# Test commands in this Makefile only covers ig. 
+# Test commands in this Makefile only covers ig.
 # Kubectl-gadget test commands are covered in ../../Makefile.
 
 include $(shell pwd)/../../minikube.mk
 
-DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 GOPROXY ?= $(shell go env GOPROXY)
 
 # make does not allow implicit rules (with '%') to be phony so let's use

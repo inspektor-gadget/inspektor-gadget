@@ -72,7 +72,7 @@ func do() error {
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
 		// This is the image that contains the gadget we want to run.
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_open:main",
 		// List of operators that will be run with the gadget
 		gadgetcontext.WithDataOperators(
 			ocihandler.OciHandler, // pass singleton instance of the oci-handler

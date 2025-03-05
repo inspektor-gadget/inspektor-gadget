@@ -58,7 +58,7 @@ func do() error {
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
 		// The name of the gadget to run is needed as a tarball can contain multiple images.
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_open:main",
 		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator),
 		gadgetcontext.WithOrasReadonlyTarget(ociStore),
 	)

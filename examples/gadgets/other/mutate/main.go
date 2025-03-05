@@ -65,7 +65,7 @@ func do() error {
 
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_open:main",
 		gadgetcontext.WithDataOperators(ocihandler.OciHandler, myOperator, clioperator.CLIOperator),
 	)
 

@@ -46,7 +46,7 @@ import (
 var helpersFS embed.FS
 
 // It can be overridden at build time
-var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
+var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:main"
 
 const (
 	DEFAULT_EBPF_SOURCE = "program.bpf.c"
@@ -305,8 +305,8 @@ func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage st
 	f := filters.NewArgs()
 	f.Add("reference", builderImage)
 
-	// For :latest we always want to have the newest image that is available upstream
-	if !strings.HasSuffix(builderImage, ":latest") {
+	// For :main we always want to have the newest image that is available upstream
+	if !strings.HasSuffix(builderImage, ":main") {
 		images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
 		if err != nil {
 			return fmt.Errorf("listing images: %w", err)
