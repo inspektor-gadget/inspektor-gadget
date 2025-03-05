@@ -293,6 +293,8 @@ func (i *wasmOperatorInstance) fieldSet(ctx context.Context, m wapi.Module, stac
 		stack[0] = 1
 		return
 	}
+
+	stack[0] = 0
 }
 
 // fieldAddTag adds a tag to the field
