@@ -334,7 +334,10 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *wasmOperatorInstance) PostStop(gadgetCtx operators.GadgetContext) error {
-	return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
+	// TODO: reenable it when
+	// https://github.com/inspektor-gadget/inspektor-gadget/pull/3778 is merged
+	// return i.callGuestFunction(gadgetCtx.Context(), "gadgetPostStop")
+	return nil
 }
 
 func (i *wasmOperatorInstance) close(gadgetCtx operators.GadgetContext) error {
