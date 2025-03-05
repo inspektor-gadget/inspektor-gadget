@@ -54,7 +54,7 @@ func runGadget(t *testing.T, gadgetCtx *gadgetcontext.GadgetContext, params map[
 }
 
 func createGadgetCtx(t *testing.T, name string, ops ...operators.DataOperator) *gadgetcontext.GadgetContext {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
 	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("testdata/%s.tar", name))

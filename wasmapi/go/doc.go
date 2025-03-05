@@ -16,9 +16,5 @@
 Package api contains the reference implementation of the wasm API for Inspektor
 Gadget. It's designed to be used by gadgets and not by any other internal
 component of Inspektor Gadget.
-
-This package requires TinyGo to ensure that stacks are not dynamically moved
-between unsafe.StringData and calls to wasm host functions. It doesn't work with
-the official Golang compiler.
 */
 package api
