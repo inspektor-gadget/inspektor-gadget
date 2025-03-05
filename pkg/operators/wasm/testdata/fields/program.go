@@ -15,6 +15,8 @@
 package main
 
 import (
+	"fmt"
+
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
@@ -76,29 +78,33 @@ func gadgetInit() int32 {
 		for _, f := range fields {
 			switch f.typ {
 			case api.Kind_Int8:
-				f.acc.SetInt8(data, f.val.(int8))
+				err = f.acc.SetInt8(data, f.val.(int8))
 			case api.Kind_Int16:
-				f.acc.SetInt16(data, f.val.(int16))
+				err = f.acc.SetInt16(data, f.val.(int16))
 			case api.Kind_Int32:
-				f.acc.SetInt32(data, f.val.(int32))
+				err = f.acc.SetInt32(data, f.val.(int32))
 			case api.Kind_Int64:
-				f.acc.SetInt64(data, f.val.(int64))
+				err = f.acc.SetInt64(data, f.val.(int64))
 			case api.Kind_Uint8:
-				f.acc.SetUint8(data, f.val.(uint8))
+				err = f.acc.SetUint8(data, f.val.(uint8))
 			case api.Kind_Uint16:
-				f.acc.SetUint16(data, f.val.(uint16))
+				err = f.acc.SetUint16(data, f.val.(uint16))
 			case api.Kind_Uint32:
-				f.acc.SetUint32(data, f.val.(uint32))
+				err = f.acc.SetUint32(data, f.val.(uint32))
 			case api.Kind_Uint64:
-				f.acc.SetUint64(data, f.val.(uint64))
+				err = f.acc.SetUint64(data, f.val.(uint64))
 			case api.Kind_Float32:
-				f.acc.SetFloat32(data, f.val.(float32))
+				err = f.acc.SetFloat32(data, f.val.(float32))
 			case api.Kind_Float64:
-				f.acc.SetFloat64(data, f.val.(float64))
+				err = f.acc.SetFloat64(data, f.val.(float64))
 			case api.Kind_String:
-				f.acc.SetString(data, f.val.(string))
+				err = f.acc.SetString(data, f.val.(string))
 			case api.Kind_Bytes:
-				f.acc.SetBytes(data, f.val.([]byte))
+				err = f.acc.SetBytes(data, f.val.([]byte))
+			}
+
+			if err != nil {
+				panic(fmt.Sprintf("failed to set field: %v", err))
 			}
 		}
 	}, 0)

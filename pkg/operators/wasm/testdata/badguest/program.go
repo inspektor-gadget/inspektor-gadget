@@ -294,7 +294,7 @@ func gadgetInit() int32 {
 	dataHandle := dataSourceNewPacketSingle(dsSingleHandle)
 	assertNonZero(dataHandle, "dataSourceNewPacketSingle: creating new")
 
-	assertNonZero(fieldSet(fieldHandle, dataHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: ok")
+	assertZero(fieldSet(fieldHandle, dataHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: ok")
 	assertNonZero(fieldSet(fieldHandle, dataHandle, uint32(api.Kind_Uint64), 1234), "fieldSet: bad kind")
 	assertNonZero(fieldSet(fieldHandle, dataHandle, 1005, 1234), "fieldSet: bad kind")
 	assertNonZero(fieldSet(fieldHandle, fieldHandle, uint32(api.Kind_Uint32), 1234), "fieldSet: bad data handle")
