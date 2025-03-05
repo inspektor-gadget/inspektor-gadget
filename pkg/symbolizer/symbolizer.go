@@ -41,7 +41,13 @@ const (
 	pruneTickerTime     = time.Minute
 )
 
+type SymbolizerOptions struct {
+	UseSymtab bool
+}
+
 type Symbolizer struct {
+	options SymbolizerOptions
+
 	lock             sync.RWMutex
 	symbolTables     map[exeKey]*symbolTable
 	symbolCountTotal int
@@ -80,7 +86,7 @@ func (k exeKey) String() string {
 	return fmt.Sprintf("ino=%d mtime=%d.%d", k.ino, k.mtimeSec, k.mtimeNsec)
 }
 
-func NewSymbolizer() (*Symbolizer, error) {
+func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 	pid1PidNsInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", host.HostProcFs))
 	if err != nil {
 		return nil, err
@@ -91,6 +97,7 @@ func NewSymbolizer() (*Symbolizer, error) {
 	}
 
 	s := &Symbolizer{
+		options:         opts,
 		symbolTables:    make(map[exeKey]*symbolTable),
 		hostProcFsPidNs: uint32(pid1PidNsStat.Ino),
 		pruneTickerTime: pruneTickerTime,
@@ -181,6 +188,13 @@ type Task struct {
 }
 
 func (s *Symbolizer) Resolve(task Task, addresses []uint64) ([]string, error) {
+	if s.options.UseSymtab {
+		return s.resolveWithSymtab(task, addresses)
+	}
+	return make([]string, len(addresses)), nil
+}
+
+func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string, error) {
 	res := make([]string, len(addresses))
 
 	if len(addresses) == 0 {
