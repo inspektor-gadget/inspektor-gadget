@@ -75,7 +75,7 @@ func do() error {
 
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
-		"ghcr.io/inspektor-gadget/gadget/trace_dns:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_dns:main",
 		gadgetcontext.WithDataOperators(
 			ocihandler.OciHandler,
 			localManagerOp,

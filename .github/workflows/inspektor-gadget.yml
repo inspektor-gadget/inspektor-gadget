@@ -6,8 +6,8 @@ env:
   # controller-gen with go >1.21 panics, but we can't update controller-gen itself
   GO_VERSION_DOC_CHECK: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
-  DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
-  DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
+  DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:main
+  DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:main
   # With the recent update of docker/build-push-action to v6, this action
   # started creating docker build summary files (i.e. .dockerbuild).
   # Sadly, these files create troubles when trying to download artifact in the
@@ -768,7 +768,7 @@ jobs:
       - name: Unpack ig-linux-amd64.tar.gz & Analyze memory
         run: |
           tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
-          sudo ./ig run trace_dns:latest --pprof-addr=localhost:6060 &
+          sudo ./ig run trace_dns:main --pprof-addr=localhost:6060 &
           sleep 10
           curl http://localhost:6060/debug/pprof/heap | tee heap.out
           go tool pprof -top -inuse_space ./ig heap.out | tee inuse_space.txt

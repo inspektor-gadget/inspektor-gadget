@@ -50,7 +50,7 @@ func do() error {
 
 	gadgetCtx := gadgetcontext.New(
 		ctx,
-		"ghcr.io/inspektor-gadget/gadget/trace_open:latest",
+		"ghcr.io/inspektor-gadget/gadget/trace_open:main",
 		gadgetcontext.WithDataOperators(myOperator),
 	)
 

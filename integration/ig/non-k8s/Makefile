@@ -1,4 +1,4 @@
-DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 CONTAINER_RUNTIME ?= docker
 
 # build

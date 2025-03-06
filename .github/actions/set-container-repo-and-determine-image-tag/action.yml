@@ -1,6 +1,6 @@
 name: "Output the container repository and image tag to be used"
 description: "Container repository is inputs.registry/inputs.container-image.
-  Image tag is latest if branch is main, otherwise it is the tag or branch name with slashes replaced by hyphens."
+  Image tag is the tag or branch name with slashes replaced by hyphens."
 
 inputs:
   registry:
@@ -52,10 +52,6 @@ runs:
         # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
         # this because it is not possible to have slash in image tag.
         image_tag=${GITHUB_REF_NAME//\//-}
-        if [ "$image_tag" = "main" ]; then
-            image_tag="latest"
-        fi
-
         echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT
     - name: Output gadgets repository
       id: gadget-repository
@@ -79,8 +75,4 @@ runs:
         # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
         # this because it is not possible to have slash in image tag.
         gadget_tag=${GITHUB_REF_NAME//\//-}
-        if [ "$gadget_tag" = "main" ]; then
-            gadget_tag="latest"
-        fi
-
         echo "gadget-tag=${gadget_tag}" >> $GITHUB_OUTPUT

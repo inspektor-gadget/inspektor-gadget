@@ -29,9 +29,9 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_IMAGE ?= golangci/golangci-lint:v1.63.4@sha256:7f4c8ee8a63d56caa41c099cf658f68b192b615e0f30e94b8864e81a3ceafb53
 
-EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
+EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:main
 
-DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 
 PLATFORMS ?= "linux/amd64,linux/arm64"
 
@@ -245,7 +245,7 @@ cross-kubectl-gadget-container:
 
 # tests
 .PHONY: generate-testdata
-generate-testdata: 
+generate-testdata:
 	$(MAKE) -C ./pkg/operators/ebpf/testdata
 	$(MAKE) -C ./pkg/operators/wasm/testdata
 

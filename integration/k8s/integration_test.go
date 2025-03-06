@@ -51,7 +51,7 @@ var (
 
 var (
 	integrationTest = flag.Bool("integration", false, "run integration tests")
-	dnsTesterImage  = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
+	dnsTesterImage  = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:main", "dnstester container image")
 	testComponent   = flag.String("test-component", "", "run tests for specific component")
 	k8sArch         = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
 )
