@@ -7,7 +7,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=v0.0.0
 ENV VERSION=${VERSION}
-ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:latest
+ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:main
 ENV EBPF_BUILDER=${EBPF_BUILDER}
 ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
