@@ -21,12 +21,17 @@ datasources:
         annotations:
           description: size of malloc operations
           columns.width: 20
-      ustack_raw:
-        annotations:
-          columns.hidden: true
       ustack:
         annotations:
-          description: User stack
+          columns.hidden: true
+      ustack.addresses:
+        annotations:
+          description: User stack's addresses
+          columns.hidden: true
+          columns.width: 20
+      ustack.symbols:
+        annotations:
+          description: User stack's symbols
           columns.hidden: true
           columns.width: 20
 params:
