@@ -22,8 +22,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: alpine:latest
-            repo: docker.io/library
           - image: busybox:latest
             repo: docker.io/library
           - image: gcc:latest
