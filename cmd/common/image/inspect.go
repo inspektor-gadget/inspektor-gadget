@@ -33,10 +33,12 @@ import (
 	"golang.org/x/term"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func NewInspectCmd() *cobra.Command {
+func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	var outputMode string
 
 	outputModes := []string{utils.OutputModeColumns, utils.OutputModeJSON, utils.OutputModeJSONPretty}
@@ -52,20 +54,28 @@ func NewInspectCmd() *cobra.Command {
 				return fmt.Errorf("inspecting image: %w", err)
 			}
 
-			ops := make([]operators.DataOperator, 0)
-			// empty for now, we'll progressively add operators
-
+			// add the required operators (TODO)
 			gadgetCtx := gadgetcontext.New(
 				context.Background(),
 				image.String(),
-				gadgetcontext.WithDataOperators(ops...),
+				// gadgetcontext.WithDataOperators(ops...),
 				gadgetcontext.WithUseInstance(false),
 				gadgetcontext.IncludeExtraInfo(true),
 			)
-			fmt.Println(gadgetCtx.ExtraInfo())
 
 			// use this gadgetctx to get the gadget info from runtime.GetGadgetInfo
+			runtimeParams := runtime.ParamDescs().ToParams()
+			ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+			paramValueMap := make(map[string]string)
+			ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
+			info, err := runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+			if err != nil {
+				return fmt.Errorf("getting gadget info: %w", err)
+			}
+			fmt.Println("Info:  ", info.ExtraEbpfInfo)
+
+			// Print the image information based on the output mode (TODO)
 			switch outputMode {
 			case utils.OutputModeJSON:
 				bytes, err := json.Marshal(image)

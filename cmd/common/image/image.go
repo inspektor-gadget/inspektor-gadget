@@ -15,10 +15,11 @@
 package image
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/spf13/cobra"
 )
 
-func NewImageCmd() *cobra.Command {
+func NewImageCmd(runtime runtime.Runtime) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "image",
 		Short: "Manage gadget images",
@@ -31,7 +32,7 @@ func NewImageCmd() *cobra.Command {
 	cmd.AddCommand(NewPullCmd())
 	cmd.AddCommand(NewTagCmd())
 	cmd.AddCommand(NewListCmd())
-	cmd.AddCommand(NewInspectCmd())
+	cmd.AddCommand(NewInspectCmd(runtime))
 	cmd.AddCommand(NewRemoveCmd())
 
 	return cmd
