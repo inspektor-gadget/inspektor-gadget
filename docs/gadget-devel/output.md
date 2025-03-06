@@ -31,3 +31,84 @@ The fields to be displayed in the output when using the `columns`, `json`,
   field called `text` which will carry the rendered histogram as a plain text.
 - Snapshotters: The fields are all the elements of the snapshot entry `struct`
   specified when defining the data source.
+
+## Custom Text Output
+
+There are cases when you want to print custom output. This can be implemented by
+using a [WASM](./gadget-wasm-api-go.md) module and some annotations on the
+[metadata](./metadata.md) file.
+
+First of all, annotate the datasource with the name of the output mode:
+
+```yaml
+datasources:
+  mydatasource:
+    annotations:
+      cli.supported-output-modes: myoutputmode,myoutputmode1,myoutputmode2
+      cli.default-output-mode: myoutputmode
+```
+
+Then, in the WASM module create the data source and a string field called `text`
+that will be used to emit the data:
+
+:::warning
+
+The field needs to be called `text` to be recognized by the CLI operator.
+
+:::
+
+```go
+var (
+	textds    api.DataSource
+	textField api.Field
+)
+
+//go:wasmexport gadgetInit
+func gadgetInit() int32 {
+	var err error
+	textds, err = api.NewDataSource("mydatasource", api.DataSourceTypeSingle)
+	if err != nil {
+		api.Errorf("creating datasource: %s", err)
+		return 1
+	}
+
+	textField, err = textds.AddField("text", api.Kind_String)
+	if err != nil {
+		api.Errorf("adding field: %s", err)
+		return 1
+	}
+
+	return 0
+}
+```
+
+Then, format your output as a string and emit it:
+
+```go
+//go:wasmexport gadgetStart
+func gadgetStart() int32 {
+	nd, err := textds.NewPacketSingle()
+	if err != nil {
+		api.Errorf("creating packet: %s", err)
+		return 1
+	}
+
+	if err := textField.SetString(api.Data(nd), "hi there!!"); err != nil {
+		api.Errorf("setting field: %s", err)
+		return 1
+	}
+
+	if err := textds.EmitAndRelease(api.Packet(nd)); err != nil {
+		api.Errorf("emitting packet: %s", err)
+		return 1
+	}
+
+	return 0
+}
+```
+
+```bash
+$ sudo ig image build . -t hello-world
+$ sudo ig run hello-world --verify-image=false
+hi there!!
+```
