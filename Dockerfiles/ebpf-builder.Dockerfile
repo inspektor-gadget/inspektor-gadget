@@ -13,7 +13,7 @@ ARG LIBBPF_VERSION
 RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src && make install_headers
 
-	# Install bpftool
+# Install bpftool
 RUN \
 	ARCH=$(dpkg --print-architecture) && \
 	wget --quiet https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_VERSION}/bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
