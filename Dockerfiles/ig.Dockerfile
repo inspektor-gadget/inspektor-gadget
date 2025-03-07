@@ -18,13 +18,16 @@ ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-                  -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
-                  -extldflags '-static'" \
-		-tags "netgo" \
-		-o ig-${TARGETOS}-${TARGETARCH} \
-		github.com/inspektor-gadget/inspektor-gadget/cmd/ig
+RUN \
+      --mount=type=cache,target=/root/.cache/go-build \
+      --mount=type=cache,target=/go/pkg \
+      CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+        -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+        -extldflags '-static'" \
+        -tags "netgo" \
+        -o ig-${TARGETOS}-${TARGETARCH} \
+        github.com/inspektor-gadget/inspektor-gadget/cmd/ig
 
 FROM ${BASE_IMAGE}
 
