@@ -30,7 +30,10 @@ ENV IMAGE_TAG=${IMAGE_TAG}
 
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
-RUN cd /gadget && GOHOSTOS=$TARGETOS GOHOSTARCH=$TARGETARCH make kubectl-gadget
+RUN \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg \
+    cd /gadget && GOHOSTOS=$TARGETOS GOHOSTARCH=$TARGETARCH make kubectl-gadget
 
 FROM ${BASE_IMAGE}
 
