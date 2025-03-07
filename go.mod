@@ -22,7 +22,7 @@ require (
 	github.com/expr-lang/expr v1.16.9
 	github.com/florianl/go-tc v0.4.4
 	github.com/fsnotify/fsnotify v1.8.0
-	github.com/giantswarm/crd-docs-generator v0.11.2
+	github.com/giantswarm/crd-docs-generator v0.11.3
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.7.0
@@ -189,7 +189,7 @@ require (
 	github.com/sigstore/protobuf-specs v0.4.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
-	github.com/spf13/cast v1.7.0 // indirect
+	github.com/spf13/cast v1.7.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
