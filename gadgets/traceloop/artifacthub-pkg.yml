@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.39.0
+name: "traceloop"
+category: monitoring-logging
+displayName: "traceloop"
+createdAt: "2024-10-08T09:57:54Z"
+digest: "2024-10-08T09:57:54Z"
+description: "syscalls flight recvorder"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/traceloop"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/traceloop:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/traceloop"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/traceloop:latest
+    ```
+provider:
+    name: Inspektor Gadget

@@ -321,7 +321,7 @@ func (i *wasmOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	}()
 
 	// We need a new context in here, as gadgetCtx has already been cancelled
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1500)
 	defer cancel()
 
 	err := i.callGuestFunction(ctx, "gadgetStop")
