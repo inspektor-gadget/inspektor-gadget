@@ -1,0 +1,35 @@
+name: profile cpu
+description: The profile cpu gadget takes samples of the stack traces.
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_cpu
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cpu
+programs:
+  profiler:
+    perf:
+      type: software
+      config: count_sw_cpu_clock
+      sampleType: sample_raw
+    sampler:
+      frequency: 49
+datasources:
+  samples:
+    annotations:
+      views.modes.flamegraph: true
+      views.defaults.mode: flamegraph
+    fields:
+      runtime.containerName:
+        annotations:
+          flamegraph.level: 0
+          flamegraph.type: single
+      proc.comm:
+        annotations:
+          flamegraph.level: 10
+          flamegraph.type: single
+      user_stack:
+        annotations:
+          flamegraph.level: 20
+          flamegraph.type: stack
+      kern_stack:
+        annotations:
+          flamegraph.level: 30
+          flamegraph.type: stack
