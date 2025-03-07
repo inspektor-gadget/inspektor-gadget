@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 #include "profile.h"
 #include <gadget/maps.bpf.h>
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 const volatile bool kernel_stacks_only = false;

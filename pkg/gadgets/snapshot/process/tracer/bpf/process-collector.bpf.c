@@ -12,6 +12,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 const volatile bool show_threads = false;

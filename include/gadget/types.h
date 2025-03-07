@@ -3,6 +3,11 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
+// The bool definition can come from vmlinux.h or stdbool.h.
+#if !defined(__VMLINUX_H__)
+#include <stdbool.h>
+#endif
+
 // Keep these types aligned with definitions in pkg/operators/ebpf/types/types.go.
 
 // union defining either an IPv4 or IPv6 address
@@ -119,6 +124,22 @@ struct gadget_process {
 
 	struct gadget_creds creds;
 	struct gadget_parent parent;
+};
+
+#define SE_PATH_MAX 512
+
+struct sockets_value {
+	__u64 mntns;
+	__u64 pid_tgid;
+	__u64 uid_gid;
+	char task[TASK_COMM_LEN];
+	char ptask[TASK_COMM_LEN];
+	__u64 sock;
+	__u64 deletion_timestamp;
+	char cwd[SE_PATH_MAX];
+	char exepath[SE_PATH_MAX];
+	__u32 ppid;
+	char ipv6only;
 };
 
 #endif /* __TYPES_H */
