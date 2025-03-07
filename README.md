@@ -169,6 +169,13 @@ designed for developers that want to use the Golang packages exposed by
 Inspektor Gadget directly. End-users do not need this and can use
 `kubectl-gadget` or `ig` directly.
 
+## Security features
+
+Inspektor Gadget offers security features which are described in the following document:
+
+* [Verify assets](https://inspektor-gadget.io/docs/latest/reference/verify-assets): Covers everything with regard to signing and verifying of images and release assets. It also showcases the different SBOMs we generate like the [`ig`](https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.38.0/ig-linux-amd64-v0.38.0.bom.json) one.
+* [Restricting Gadgets](https://inspektor-gadget.io/docs/latest/reference/restricting-gadgets): Details how users can restrict which gadgets can be run based on different filters.
+
 ## Contributing
 
 Contributions are welcome, see [CONTRIBUTING](docs/devel/contributing.md).
