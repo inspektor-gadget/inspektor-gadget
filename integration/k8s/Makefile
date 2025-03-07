@@ -3,6 +3,8 @@
 
 include $(shell pwd)/../../minikube.mk
 
+GADGET_REPOSITORY ?= "ghcr.io/inspektor-gadget/gadget"
+GADGET_TAG ?= "main"
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 GOPROXY ?= $(shell go env GOPROXY)
 
@@ -54,4 +56,4 @@ test-%: build build-tests
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /var/lib/minikube/binaries/$(KUBERNETES_VERSION)/kubectl /bin/kubectl" && \
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /etc/kubernetes/admin.conf /root/.kube/config" && \
 	echo "Running test in minikube with profile $${MINIKUBE_PROFILE} ..." && \
-	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -test.timeout 30m -integration -dnstester-image $(DNSTESTER_IMAGE) -test-component=ig $${INTEGRATION_TESTS_PARAMS}"
+	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -test.timeout 30m -integration -dnstester-image $(DNSTESTER_IMAGE) -gadget-repository $(GADGET_REPOSITORY) -gadget-tag $(GADGET_TAG) -test-component=ig $${INTEGRATION_TESTS_PARAMS}"
