@@ -286,7 +286,7 @@ We also sign the `ebpf-builder` image which is used to build gadgets.
 You can verify it using the following command:
 
 ```bash
-$ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/ebpf-builder:latest
+$ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/ebpf-builder:%IG_TAG%
 ```
 
 We highly recommend you to verify by digest and specify the digest when building.
