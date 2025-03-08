@@ -28,6 +28,10 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		return nil, fmt.Errorf("initializing and preparing operators: %w", err)
 	}
 
+	if gadgetCtx.ExtraInfo() {
+		fmt.Println("Extra info required!!")
+		// return a different gadgetInfo with extra info
+	}
 	return gadgetCtx.SerializeGadgetInfo()
 }
 
