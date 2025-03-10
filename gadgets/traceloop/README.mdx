@@ -1,0 +1,219 @@
+---
+title: traceloop
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_dns
+
+The trace_dns gadget is used to trace DNS queries and responses.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_dns:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_dns:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+</Tabs>
+
+## Guide
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        DNS is a centerpiece of communication in Kubernetes, it allows pods to [discover other applications](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/) and communicate with the outside world. So, it is important to be able monitor DNS requests and responses to debug DNS issues.
+        In this guide, we will use the `trace_dns` gadget to trace DNS requests and responses in Kubernetes (single node minikube cluster). The gadget can be used to trace DNS requests at different stages e.g. from application pods to `kube-dns` service, from `kube-dns` service to CoreDNS pod, from CoreDNS pod to upstream DNS server, etc.
+        The gadget can also be used to trace DNS requests based on different filters e.g. namespace, pod name, container name, domain name, etc.
+
+        :::info
+        Check out video, [Demystifying DNS: A Guide to Understanding and Debugging Request Flows in Kubernetes Clusters](https://www.youtube.com/watch?v=KQpZg_NqbZw&t=523s) to learn troubleshooting DNS issues with Inspektor Gadgets.
+        :::
+
+        ### Flow of DNS request in Kubernetes:
+
+        Before we jump to scenarios, it is important to understand DNS in Kubernetes is based on multiple components:
+
+        - Application Pods: These are the pods that make DNS requests.
+        - `kube-dns` Service: The Kubernetes service to which application pods send requests ([`dnsPolicy=ClusterFirst`](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy)).
+        - CoreDNS: The DNS server that resolves DNS requests in Kubernetes.
+        - Upstream DNS: The DNS server that CoreDNS forwards DNS requests to.
+
+        :::note
+        You might have other components in your DNS setup e.g. [`nodelocaldns`](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/), etc. but for the purpose of this guide, we will focus on the above components.
+        :::
+
+        The overall flow of DNS request is as follows:
+
+        ```mermaid
+        sequenceDiagram
+        participant A as Application Pods
+        participant B as kube-dns Service
+        participant C as CoreDNS Pod
+        participant D as Upstream DNS
+
+        A->>B: DNS Request<br/> e.g Kubernertes Service / External name
+        B->>C: Forward Request<br/> e.g forwarding by host iptables
+        C->>D: Resolve or Forward Request<br/> e.g forwarding if external name
+        D-->>C: Response
+        C-->>B: Response
+        B-->>A: Response
+        ```
+
+        ### Tracing an Application Pod:
+
+        Let's try to understand the flow at different stages. We will start by tracing DNS requests for specific pod. First, create a namespace:
+
+        ```bash
+        kubectl create namespace demo
+        ```
+
+        with expected output:
+
+        ```
+        namespace/demo created
+        ```
+
+        Run the gadget in a terminal, in this case we are only focused on DNS requests/response in `demo` namespace for pod `mypod`:
+
+        ```bash
+        kubectl gadget run trace_dns:%IG_TAG% -n demo -p mypod
+        ```
+
+        Run a pod in a different terminal:
+
+        ```bash
+        kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
+        ```
+        Inside the pod, perform a DNS request:
+
+        ```sh
+        nslookup -query=a inspektor-gadget.io.
+        ```
+
+        The request/response will be logged by the DNS gadget:
+
+        ```
+        K8S.NODE             K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    SRC                       DST                       COMM              PID QR QTYPE      NAME                  RCODE    ADDRESSES
+        minikube-docker      demo                 mypod                mypod                10.244.0.4:56093          10.96.0.10:53             isc-net-0…     422204 Q  A          inspektor-gadget.io.
+        minikube-docker      demo                 mypod                mypod                10.96.0.10:53             10.244.0.4:56093          isc-net-0…     422204 R  A          inspektor-gadget.io.  Success  172.67.16…
+        ```
+
+        The first line shows the DNS request from the pod to `kube-dns` service and the second line shows the response from `kube-dns` service to the pod, we can also confirm this based on `SRC` and `DST` columns:
+        - `SRC` using `kubectl get pods -n demo mypod -o jsonpath='{.status.podIP}'`
+        - `DST` using `kubectl get svc -n kube-system -l k8s-app=kube-dns -o jsonpath='{.items[0].spec.clusterIP}`
+
+        ### Tracing Application Pod and CoreDNS Pod:
+
+        Let's try to expand the scope and see what happens to the DNS request at CoreDNS pod. Restart the gadget as:
+
+        ```bash
+        kubectl gadget run trace_dns:%IG_TAG% -n demo,kube-system -F "k8s.podName~mypod|coredns-.*" -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,src,dst,qr,name,rcode,timestamp
+        ```
+
+        This will filter the DNS request/response for pods `mypod` and  CoreDNS pods. See how are able to choose different fields via `--fields`.
+
+        On performing the DNS request again, you will see the following output from the gadget:
+
+        ```
+        K8S.NODE                K8S.NAMESPACE           K8S.PODNAME             ID            SRC                             DST                             QR NAME                   RCODE    TIMESTAMP
+        minikube-docker         demo                    mypod                   c3b5          10.244.0.4:50037                10.96.0.10:53                   Q  inspektor-gadget.io.            2024-08-30T15:15:21.13712…
+        minikube-docker         kube-system             coredns-7db…8ff4d-r7hwl c3b5          10.244.0.4:50037                10.244.0.2:53                   Q  inspektor-gadget.io.            2024-08-30T15:15:21.13720…
+        minikube-docker         kube-system             coredns-7db…8ff4d-r7hwl 0e01          10.244.0.2:56792                192.168.49.1:53                 Q  inspektor-gadget.io.            2024-08-30T15:15:21.13748…
+        minikube-docker         kube-system             coredns-7db…8ff4d-r7hwl 0e01          192.168.49.1:53                 10.244.0.2:56792                R  inspektor-gadget.io.   Success  2024-08-30T15:15:21.16513…
+        minikube-docker         kube-system             coredns-7db…8ff4d-r7hwl c3b5          10.244.0.2:53                   10.244.0.4:50037                R  inspektor-gadget.io.   Success  2024-08-30T15:15:21.16524…
+        minikube-docker         demo                    mypod                   c3b5          10.96.0.10:53                   10.244.0.4:50037                R  inspektor-gadget.io.   Success  2024-08-30T15:15:21.16526…
+        ```
+
+        In this trace, we can see the request/response involving both the CoreDNS pod and `mypod`. The first two lines show the request reaching CoreDNS pod. Since we are trying to resolve an external domain name `inspektor-gadget.io.`, CoreDNS forwards the request to the upstream DNS server (confirmed by new `ID=0e01`) in our case the upstream server is `192.168.49.1:53`. The remaining lines show the response (`ID=0e01`) of the upstream DNS server to CoreDNS pod and the response (`ID=c3b5`) of CoreDNS pod to the pod.
+
+        :::note
+        You might not see the upstream DNS request / response if you are using [CoreDNS cache plugin](https://coredns.io/plugins/cache/) since CoreDNS will cache the upstream response. Also, the output isn't sorted based on `timestamp` but you can use it to understand the sequence of events.
+        :::
+
+        ### Tracing with context related to OS:
+
+        At this point we already have the idea about what is happening to the request at different stages. In order to include context related to the OS, we can restart the gadget and don't filter by pod names:
+
+        ```bash
+        kubectl gadget run trace_dns:%IG_TAG% -n demo,kube-system  -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,pky_type,src,dst,qr,name,rcode,latency_ns,timestamp
+        ```
+
+        :::note
+        It is important that name is fully qualified domain name (FQDN) and ends with a dot (`.`) to match the domain name exactly.
+        :::
+
+        Again perform the DNS request and you will see the following output from the gadget:
+
+        ```
+        K8S.NODE                K8S.NAMESPACE        K8S.PODNAME                     ID            PKT_TYPE         NETNS_ID  SRC                                                  DST                      QR NAME                       RCODE      LATENCY_NS TIMESTAMP
+        minikube-docker         demo                 mypod                           7f22          OUTGOING       4026533235  10.244.0.4:51340                                     10.96.0.10:53            Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463173731Z
+        minikube-docker                                                              7f22          OTHERHOST      4026532708  10.244.0.4:51340                                     10.96.0.10:53            Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463189865Z
+        minikube-docker                                                              7f22          OUTGOING       4026532708  10.244.0.4:51340                                     10.244.0.2:53            Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463244572Z
+        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        7f22          HOST           4026533053  10.244.0.4:51340                                     10.244.0.2:53            Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463249670Z
+        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        ae34          OUTGOING       4026533053  10.244.0.2:50859                                     192.168.49.1:53          Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463918762Z
+        minikube-docker                                                              ae34          OTHERHOST      4026532708  10.244.0.2:50859                                     192.168.49.1:53          Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463930870Z
+        minikube-docker                                                              ae34          OUTGOING       4026532708  192.168.49.1:53                                      10.244.0.2:50859         R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493270618Z
+        minikube-docker                                                              ae34          OUTGOING       4026532708  192.168.49.1:53                                      10.244.0.2:50859         R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493277616Z
+        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        ae34          HOST           4026533053  192.168.49.1:53                                      10.244.0.2:50859         R  inspektor-gadget.io.       Success    29361746   2024-08-30T15:43:35.493280508Z
+        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        7f22          OUTGOING       4026533053  10.244.0.2:53                                        10.244.0.4:51340         R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493400601Z
+        minikube-docker                                                              7f22          OTHERHOST      4026532708  10.244.0.2:53                                        10.244.0.4:51340         R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493405074Z
+        minikube-docker                                                              7f22          OUTGOING       4026532708  10.96.0.10:53                                        10.244.0.4:51340         R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493416278Z
+        minikube-docker         demo                 mypod                           7f22          HOST           4026533235  10.96.0.10:53                                        10.244.0.4:51340         R  inspektor-gadget.io.       Success    30245219   2024-08-30T15:43:35.493418950Z
+        ```
+
+        The output is same as previous scenario, but now it provides additional context related to what is happening to DNS traffic at node level. For example, the second/third line show how packet is forwarded via the host (`NETNS_ID=4026532708`) and how kube-dns service IP is translated (e.g. by `iptables`) to specific pod IP. Similarly you can use other events with `NETNS_ID=4026532708` (or without kubernetes enrichment) to understand how the packet is handled at host level.
+
+        This showcases how `trace_dns` gadget can be used to trace DNS request at different stages. This is helpful to understand if a request/response is being dropped/altered at a specific stage. Again the output can vary based on the DNS/CNI setup in your cluster but the idea here is to provide a starting point to debug DNS issues.
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Start the gadget in a terminal:
+
+        ```bash
+        $ sudo ig run trace_dns:%IG_TAG% --containername test-trace-dns
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES
+        ```
+
+        Launch a container that makes DNS requests:
+
+        ```bash
+        $ docker run --name test-trace-dns -it --rm wbitt/network-multitool /bin/sh
+        / # nslookup -querytype=a inspektor-gadget.io.
+        ```
+
+        The requests will be logged by the DNS gadget:
+        ```bash
+        RUNTIME.CONTAINERNAME       SRC                                 DST                                 COMM                      PID QR QTYPE          NAME                       RCODE    ADDRESSES
+        test-trace-dns              172.17.0.2:36282                    192.168.0.1:53                      isc-net-0000           675195 Q  A              inspektor-gadget.io.
+        test-trace-dns              192.168.0.1:53                      172.17.0.2:36282                    isc-net-0000           675195 R  A              inspektor-gadget.io.       Success  104.21.11.16…
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete namespace demo
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-dns
+        ```
+    </TabItem>
+</Tabs>
