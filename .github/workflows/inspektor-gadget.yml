@@ -2285,15 +2285,6 @@ jobs:
         for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz; do
           mv $i $(dirname $i)/$(basename $i .tar.gz)-$REF_NAME.tar.gz
         done
-    - name: Compute checksums for all artifacts
-      shell: bash
-      env:
-        REF_NAME: ${{ github.ref_name }}
-      run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/*; do
-          hash=$(sha256sum $i | cut -d' ' -f1)
-          echo "${hash}  $(basename $i)" >> SHA256SUMS
-        done
     - name: Install cyclonedx-gomod
       uses: CycloneDX/gh-gomod-generate-sbom@efc74245d6802c8cefd925620515442756c70d8f # v2.0.0
     - name: Compute SBOM for all binary artifacts
@@ -2312,6 +2303,15 @@ jobs:
           cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version "$REF_NAME" $exe
 
           rm -fr "$temp_dir"
+        done
+    - name: Compute checksums for all artifacts
+      shell: bash
+      env:
+        REF_NAME: ${{ github.ref_name }}
+      run: |
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/* sbom/*.bom.json; do
+          hash=$(sha256sum $i | cut -d' ' -f1)
+          echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
