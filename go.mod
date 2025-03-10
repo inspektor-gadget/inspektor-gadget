@@ -76,7 +76,7 @@ require (
 	k8s.io/cri-api v0.32.2
 	k8s.io/kubelet v0.32.2
 	oras.land/oras-go/v2 v2.5.0
-	sigs.k8s.io/controller-runtime v0.20.2
+	sigs.k8s.io/controller-runtime v0.20.3
 	sigs.k8s.io/security-profiles-operator v0.9.0
 	sigs.k8s.io/yaml v1.4.0
 )
