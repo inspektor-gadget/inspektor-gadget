@@ -11,6 +11,7 @@
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+#include <gadget/user_stack_map.h>
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255
@@ -29,11 +30,15 @@ struct event {
 	__u32 fd;
 	int flags_raw;
 	__u16 mode_raw;
+	struct gadget_user_stack ustack_raw;
 	char fname[NAME_MAX];
 };
 
 const volatile bool targ_failed = false;
 GADGET_PARAM(targ_failed);
+
+const volatile bool print_ustack = false;
+GADGET_PARAM(print_ustack);
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -112,6 +117,8 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	/* event data */
 	gadget_process_populate(&event->proc);
+	if (print_ustack)
+		gadget_get_user_stack(ctx, &event->ustack_raw);
 
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
