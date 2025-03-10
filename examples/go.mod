@@ -174,3 +174,5 @@ require (
 
 // use current code of inspektor-gadget
 replace github.com/inspektor-gadget/inspektor-gadget => ../
+
+replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20250415105221-9d3fa8787e6f

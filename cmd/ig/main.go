@@ -15,9 +15,10 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -58,6 +59,22 @@ import (
 )
 
 func main() {
+	// go func() {
+	// 	for {
+	// 		runtime.GC()
+	// 		debug.FreeOSMemory()
+	// 		time.Sleep(1 * time.Second)
+	// 	}
+	// }()
+
+	// go func() {
+	// 	addr := os.Getenv("PPROF_ADDR")
+	// 	if addr == "" {
+	// 		addr = "localhost:6060"
+	// 	}
+	// 	http.ListenAndServe(addr, nil)
+	// }()
+
 	if experimental.Enabled() {
 		log.Info("Experimental features enabled")
 	}
