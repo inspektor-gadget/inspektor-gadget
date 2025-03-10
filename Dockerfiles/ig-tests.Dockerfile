@@ -14,7 +14,11 @@ RUN cd /cache && \
 	go mod download
 ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget/integration/k8s
-RUN CGO_ENABLED=0 GOARCH=${TARGETARCH} go test -c -o ig-integration-${TARGETARCH}.test ./...
+RUN \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg \
+    CGO_ENABLED=0 GOARCH=${TARGETARCH} go test \
+      -c -o ig-integration-${TARGETARCH}.test ./...
 
 FROM ${BASE_IMAGE}
 

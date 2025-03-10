@@ -20,7 +20,10 @@ RUN cd /gadget && go mod download
 
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
-RUN cd /gadget/gadget-container && \
+RUN \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg \
+    cd /gadget/gadget-container && \
 	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
 
 # Main gadget image
