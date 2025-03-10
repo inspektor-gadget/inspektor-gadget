@@ -1,0 +1,205 @@
+---
+title: bpfstats
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# bpfstats
+
+The bpfstats Gadget provides CPU and memory usage for Gadgets and eBPF programs.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/bpfstats:%IG_TAG% [flags]
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl run ghcr.io/inspektor-gadget/gadget/bpfstats:%IG_TAG% [flags]
+```
+  </TabItem>
+</Tabs>
+
+## Flags
+
+### `--programs`
+
+Collect per-program statistics
+
+Default value: "false"
+
+## Guide
+
+In order for this gadget to work, the server needs to be running with the
+`--enable-bpfstats` flag:
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget deploy --enable-bpfstats
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo ig daemon --enable-bpfstats
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run bpfstats:%IG_TAG%
+NODENAME           GADGETID  GADGETNAME         GADGETIMAGE        PROGID PROGNAME               RUNTIME     RUNCOUNT    MAPMEMORY MAPC…
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl run bpfstats:%IG_TAG%
+GADGETID    GADGETNAME           GADGETIMAGE          PROGID PROGNAME                     RUNTIME        RUNCOUNT       MAPMEMORY MAPCO…
+```
+  </TabItem>
+</Tabs>
+
+It won't print anything as there are not gadgets running on the system. Let's
+create a couple of gadgets:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run --name mytraceopen trace_open:%IG_TAG% --detach
+$ kubectl gadget run --name mytraceexec trace_exec:%IG_TAG% --detach
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl run --name mytraceopen trace_open:%IG_TAG% --detach
+$ sudo gadgetctl run --name mytraceexec trace_exec:%IG_TAG% --detach
+```
+  </TabItem>
+</Tabs>
+
+The bpfstats will print the statistics for these two gadgets:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run bpfstats:%IG_TAG%
+NODENAME           GADGETID  GADGETNAME         GADGETIMAGE        PROGID PROGNAME               RUNTIME     RUNCOUNT    MAPMEMORY MAPC…
+minikube           6bcfcca7a mytraceopen        trace_open:%IG_TAG%     0                        2537846        10798      1710240     6
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%     0                           8265           12      8742176     7
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl run bpfstats:%IG_TAG%
+GADGETID    GADGETNAME           GADGETIMAGE          PROGID PROGNAME                     RUNTIME        RUNCOUNT       MAPMEMORY MAPCO…
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%       0                                    0               0         8742176      7
+bb95fa2c8ab mytraceopen          trace_open:%IG_TAG%       0                                95233             242         1710240
+```
+  </TabItem>
+</Tabs>
+
+By default the gadget prints consolidated information for the Gadgets. It's
+possible to get per-program statistics by using the `--programs` flag. In this
+mode, the statistics for eBPF programs not handled by Inspektor Gadget are shown
+as well.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run bpfstats:%IG_TAG% --programs
+NODENAME           GADGETID  GADGETNAME         GADGETIMAGE        PROGID PROGNAME               RUNTIME     RUNCOUNT    MAPMEMORY MAPC…
+WARN[0000] minikube             | image signature verification is disabled due to using corresponding option
+NODENAME           GADGETID  GADGETNAME         GADGETIMAGE        PROGID PROGNAME               RUNTIME     RUNCOUNT    MAPMEMORY MAPC…
+NODENAME           GADGETID  GADGETNAME         GADGETIMAGE        PROGID PROGNAME               RUNTIME     RUNCOUNT    MAPMEMORY MAPC…
+minikube                                                                2 hid_tail_call                0            0         8512     1
+minikube                                                               38 sched_process_e       89770034        15277      4391808     4
+minikube                                                               39 task_newtask         172413186        91790      4391808     4
+minikube                                                               40 sched_process_e      144593647        91635      4391808     4
+minikube                                                               41 __x64_sys_renam        7185786         2173      1083840     4
+minikube                                                               42 __x64_sys_renam       23368056         2184      6467272     7
+minikube                                                               43 __x64_sys_renam        4649957         2069      1083840     4
+minikube                                                               44 __x64_sys_renam       18957942         2072      6467272     7
+minikube                                                               45 __x64_sys_renam              0            0      1083840     4
+minikube                                                               46 __x64_sys_renam              0            0      6467272     7
+minikube                                                               47 __x64_sys_unlin       37799602        14147      1083840     4
+minikube                                                               48 __x64_sys_unlin      120719371        14370      6467272     7
+minikube                                                               49 __x64_sys_unlin       17037065         9561      1083840     4
+minikube                                                               50 __x64_sys_unlin       56861068         9561      6467272     7
+minikube                                                             1244 ig_execve_e           15430709         3239       849792     2
+minikube                                                             1245 ig_execve_x            1792662         3655       837504     1
+minikube                                                             1246 ig_fa_pick_e           2899018         4581        21632     2
+minikube                                                             1247 ig_fa_pick_x           4478788         4581      1194336     4
+minikube                                                             1248 ig_sched_exec          2759885         2728       837504     1
+minikube           6bcfcca7a mytraceopen        trace_open:%IG_TAG%  1259 ig_open_x                    0            0      1615904     4
+minikube           6bcfcca7a mytraceopen        trace_open:%IG_TAG%  1260 ig_openat_x           14944051        83160      1615904     4
+minikube           6bcfcca7a mytraceopen        trace_open:%IG_TAG%  1261 ig_open_e                    0            0      1098240     3
+minikube           6bcfcca7a mytraceopen        trace_open:%IG_TAG%  1262 ig_openat_e           33097520        83005      1098240     3
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1263 ig_execve_x             200186          570      8647840     5
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1264 ig_execveat_x                0            0      8647840     5
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1265 security_bprm_c         225868          362      8372040     4
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1266 ig_execve_e             340822          518      8372040     4
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1267 ig_execveat_e            37108           52      8372040     4
+minikube           040e3fc1d mytraceexec        trace_exec:%IG_TAG%  1268 ig_sched_exec           226692          362      8647840
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl run bpfstats --programs
+GADGETID    GADGETNAME           GADGETIMAGE          PROGID PROGNAME                     RUNTIME        RUNCOUNT       MAPMEMORY MAPCO…
+                                                           2 hid_tail_call                      0               0            8512      1
+                                                          38 sched_process_e              1212539             180         4391808      4
+                                                         198                                    0               0           48672      1
+                                                         736 ig_execve_e                  1103998             317          849792      2
+                                                         737 ig_execve_x                   160239             317          837504      1
+                                                         738 ig_fa_pick_e                  373093             509           21632      2
+                                                         739 ig_fa_pick_x                  378858             509         1194336      4
+                                                         740 ig_sched_exec                 112317              67          837504      1
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     743 security_bprm_c                49435              67         8372040      4
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     744 ig_execve_e                   140296             317         8372040      4
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     745 ig_execveat_e                      0               0         8372040      4
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     746 ig_execve_x                    89667             317         8647840      5
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     747 ig_sched_exec                  76171              67         8647840      5
+a624bdbf27f mytraceexec          trace_exec:%IG_TAG%     748 ig_execveat_x                      0               0         8647840      5
+bb95fa2c8ab mytraceopen          trace_open:%IG_TAG%     749 ig_open_e                          0               0         1098240      3
+bb95fa2c8ab mytraceopen          trace_open:%IG_TAG%     750 ig_openat_e                 21538317           48300         1098240      3
+bb95fa2c8ab mytraceopen          trace_open:%IG_TAG%     751 ig_open_x                          0               0         1615904      4
+bb95fa2c8ab mytraceopen          trace_open:%IG_TAG%     752 ig_openat_x                  9076187           48503         1615904      4
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget remove mytraceexec mytraceopen
+```
+  </TabItem>
+
+  <TabItem value="ig-daemon" label="ig-daemon">
+```bash
+$ sudo gadgetctl remove mytraceexec mytraceopen
+```
+  </TabItem>
+</Tabs>
