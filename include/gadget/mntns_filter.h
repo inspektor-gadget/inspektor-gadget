@@ -3,7 +3,7 @@
 #ifndef MNTNS_FILTER_H
 #define MNTNS_FILTER_H
 
-#include <gadget/mntns.h>
+#include <gadget/types.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>

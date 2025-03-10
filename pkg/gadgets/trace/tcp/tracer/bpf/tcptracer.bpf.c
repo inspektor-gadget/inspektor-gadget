@@ -10,6 +10,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 #include "tcptracer.h"
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 const volatile uid_t filter_uid = -1;

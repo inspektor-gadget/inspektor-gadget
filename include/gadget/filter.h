@@ -12,8 +12,11 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 #include <gadget/mntns_filter.h>
+#ifndef GADGET_TYPE_NETWORKING
+#include <gadget/mntns.h>
+#endif
 
-#define GADGET_INVALID_ID ((uid_t) - 1)
+#define GADGET_INVALID_ID ((gadget_uid) - 1)
 
 const volatile gadget_pid targ_pid = 0;
 GADGET_PARAM(targ_pid);
@@ -78,6 +81,7 @@ gadget_should_discard_data(gadget_mntns_id mntns_id, gadget_pid pid,
 	       gadget_should_discard_comm(comm);
 }
 
+#ifndef GADGET_TYPE_NETWORKING
 // gadget_should_discard_data_current returns true if the gadget should drop
 // this event. This function uses the current task mount namespace, pid, tid,
 // uid, and gid to determine if the event should be dropped. This function is
@@ -118,6 +122,25 @@ static __always_inline bool gadget_should_discard_data_current()
 	}
 
 	return false;
+}
+#endif
+
+// gadget_should_discard_data_by_skb returns true if the gadget should skip this
+// event based on the fields of the skb_val struct.
+static __always_inline bool
+gadget_should_discard_data_by_skb(struct sockets_value *skb_val)
+{
+	if (!skb_val) {
+		// drop the packet if any filtering is specified
+		if (gadget_filter_by_mntns || targ_pid != 0 || targ_tid != 0 ||
+		    targ_uid != GADGET_INVALID_ID ||
+		    targ_gid != GADGET_INVALID_ID || targ_comm[0] != '\0')
+			return true;
+	}
+
+	return gadget_should_discard_data(
+		skb_val->mntns, skb_val->pid_tgid >> 32, skb_val->pid_tgid,
+		skb_val->task, skb_val->uid_gid, skb_val->uid_gid >> 32);
 }
 
 #endif
