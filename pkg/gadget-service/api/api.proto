@@ -158,6 +158,24 @@ message GadgetInfo {
   bytes metadata = 6;
   repeated Param params = 7;
   string id = 8;
+  ExtraEbpfInfo extraEbpfInfo = 9;
+}
+
+message ExtraEbpfInfo{
+  repeated string sections = 1;
+  repeated Map maps = 2;
+  repeated Program programs = 3;
+}
+
+message Map{
+  string name = 1;
+  string type = 2;
+}
+
+message Program{
+  string section = 1;
+  bytes bytecode = 2;
+
 }
 
 message DataSource {
@@ -249,6 +267,9 @@ message GetGadgetInfoRequest {
   uint32 version = 3;
 
   uint32 flags = 4;
+
+  // can be used to include more info for debugging (e.g., in ig image inspect)
+  bool extraInfo = 5;
 }
 
 message GetGadgetInfoResponse {

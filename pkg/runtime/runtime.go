@@ -47,6 +47,7 @@ type GadgetContext interface {
 	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
 	UseInstance() bool
+	ExtraInfo() bool
 
 	Cancel()
 	ImageName() string
@@ -66,6 +67,23 @@ type GadgetContext interface {
 
 	Run(paramValues api.ParamValues) error
 	PrepareGadgetInfo(paramValues api.ParamValues) error
+	PrepareExtraGadgetInfo(info GadgetImageDescEbpf)
+}
+
+type GadgetImageDescEbpf struct {
+	Sections []string
+	Maps     []MapDesc
+	Programs []ProgramDesc
+}
+
+type MapDesc struct {
+	Name string
+	Type string
+}
+
+type ProgramDesc struct {
+	Section  string
+	Bytecode []byte
 }
 
 // GadgetResult contains the (optional) payload and error of a gadget run for a node
