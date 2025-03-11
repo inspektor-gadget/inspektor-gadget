@@ -14,6 +14,7 @@
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
+#include <bpf/bpf_core_read.h>
 
 #define GADGET_TYPE_NETWORKING
 #include <gadget/sockets-map.h>
@@ -276,11 +277,34 @@ int ig_trace_dns(struct __sk_buff *skb)
 		event->uid = (__u32)skb_val->uid_gid;
 		event->gid = (__u32)(skb_val->uid_gid >> 32);
 #ifdef WITH_LONG_PATHS
-		bpf_probe_read_kernel_str(&event->cwd, sizeof(event->cwd),
-					  skb_val->cwd);
-		bpf_probe_read_kernel_str(&event->exepath,
-					  sizeof(event->exepath),
-					  skb_val->exepath);
+		if (bpf_core_enum_value_exists(
+			    enum bpf_func_id, BPF_FUNC_probe_read_kernel_str)) {
+			bpf_probe_read_kernel_str(
+				&event->cwd, sizeof(event->cwd), skb_val->cwd);
+			bpf_probe_read_kernel_str(&event->exepath,
+						  sizeof(event->exepath),
+						  skb_val->exepath);
+		} else {
+			if (sizeof(skb_val->cwd) <= sizeof(event->cwd)) {
+				int cwd_len = sizeof(skb_val->cwd);
+				if (bpf_skb_load_bytes(
+					    skb, (unsigned long)skb_val->cwd,
+					    event->cwd, cwd_len) < 0) {
+					return 0;
+				}
+			}
+
+			if (sizeof(skb_val->exepath) <=
+			    sizeof(event->exepath)) {
+				int exepath_len = sizeof(skb_val->exepath);
+				if (bpf_skb_load_bytes(
+					    skb,
+					    (unsigned long)skb_val->exepath,
+					    event->exepath, exepath_len) < 0) {
+					return 0;
+				}
+			}
+		}
 #endif
 	} else {
 		event->mount_ns_id = 0;
