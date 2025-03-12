@@ -148,7 +148,7 @@ func TestIpFormatter(t *testing.T) {
 				bytes := make([]byte, 16)
 				ipBytes := net.IPv4(192, 168, 1, 1).To16()
 				copy(bytes, ipBytes)
-				ipField.PutBytes(data, ipBytes)
+				ipField.PutBytes(data, bytes)
 				fmt.Printf("confirming ipField: %v %v\n", ipField.Get(data), ipField.Size())
 
 				versionField.PutUint8(data, 4) // IPv4 = 4, IPv6 = 6
