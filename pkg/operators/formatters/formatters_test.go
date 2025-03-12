@@ -1,160 +1,196 @@
 package formatters
 
 import (
-	"context"
-	"math/rand"
-	"sync"
+	"fmt"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
-	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTimestampFormatterUnit(t *testing.T) {
-	var tsReplacer replacer
-	found := false
-	for _, r := range replacers {
-		if r.name == "timestamp" {
-			found = true
-			tsReplacer = r
-			break
-		}
+type testCase struct {
+	name             string
+	kind             api.Kind
+	epbftype         string
+	putFunc          func(fa datasource.FieldAccessor, data datasource.Data)
+	getFormattedFunc func(fa datasource.FieldAccessor, data datasource.Data) (any, error)
+	expected         any
+}
+
+func TestGeneral(t *testing.T) {
+
+	testCases := []testCase{
+		{
+			name:     "timestamp",
+			kind:     api.Kind_Uint64,
+			epbftype: ebpftypes.TimestampTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint64(data, uint64(60*60*1e9))
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: gadgets.WallTimeFromBootTime(60 * 60 * 1e9).String(),
+		},
+		{
+			name:     "signal",
+			kind:     api.Kind_Uint32, // Signal number is stored as uint32
+			epbftype: ebpftypes.SignalTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint32(data, uint32(9)) // SIGKILL
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: "SIGKILL",
+		},
+		{
+			name:     "errno",
+			kind:     api.Kind_Uint32, // Errno is stored as uint32
+			epbftype: ebpftypes.ErrnoTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint32(data, uint32(2)) // ENOENT (No such file or directory)
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: "ENOENT",
+		},
+		{
+			name:     "bytes",
+			kind:     api.Kind_Uint64, // Bytes are stored as uint64
+			epbftype: ebpftypes.BytesTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint64(data, uint64(1048576)) // 1 MiB in bytes
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: "1.0 MB", // Expected human-readable output
+		},
+		{
+			name:     "duration",
+			kind:     api.Kind_Uint64, // Duration is stored as uint64 nanoseconds
+			epbftype: ebpftypes.DurationTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint64(data, uint64(3*time.Second+250*time.Millisecond)) // 3.25 seconds
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: "3.25s", // Expected formatted duration
+		},
+		{
+			name:     "syscall",
+			kind:     api.Kind_Uint64,
+			epbftype: ebpftypes.SyscallTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data) {
+				fa.PutUint64(data, uint64(60)) // 60 corresponds to SYS_exit in Linux
+			},
+			getFormattedFunc: func(fa datasource.FieldAccessor, data datasource.Data) (any, error) {
+				return fa.String(data)
+			},
+			expected: "SYS_EXIT", // Expected formatted syscall name
+		},
 	}
-	require.True(t, found)
 
-	ds, err := datasource.New(datasource.TypeSingle, "time", nil)
-	require.NoError(t, err)
-	require.NotNil(t, ds)
+	for _, tc := range testCases {
+		var rpl replacer
+		found := false
+		for _, r := range replacers {
+			if r.name == tc.name {
+				found = true
+				rpl = r
+				break
+			}
+		}
+		require.True(t, found)
 
-	fa, err := ds.AddField("timestamp_raw", api.Kind_Uint64, datasource.WithTags("type:"+ebpftypes.TimestampTypeName))
-	require.NoError(t, err)
-	require.NotNil(t, fa)
+		ds, _ := datasource.New(datasource.TypeSingle, tc.name)
+		fa, _ := ds.AddField(fmt.Sprintf("%s_raw", tc.name), tc.kind, datasource.WithTags("type:"+tc.epbftype))
+		lg := logger.DefaultLogger()
 
-	lg := logger.DefaultLogger()
-	randomBootTimeNs := uint64(rand.Int63n(7 * 24 * 60 * 60 * 1e9)) // Random within last 7 days
-	byteSlice := make([]byte, 8)
-	ds.ByteOrder().PutUint64(byteSlice, randomBootTimeNs)
+		replacerFunc, _ := rpl.replace(lg, ds, fa) // adds a new formatted field to the datasource
+		data, _ := ds.NewPacketSingle()
+		tc.putFunc(fa, data)
 
-	replacerFunc, err := tsReplacer.replace(lg, ds, fa)
-	require.NoError(t, err)
+		_ = replacerFunc(data)
+		fa = ds.GetField(tc.name)
+		res, _ := tc.getFormattedFunc(fa, data)
 
-	data, err := ds.NewPacketSingleFromRaw(byteSlice)
-	require.NoError(t, err)
-	require.NotNil(t, data)
-
-	err = replacerFunc(data)
-	require.NoError(t, err)
-
-	fa = ds.GetField("timestamp")
-	require.NotNil(t, fa)
-
-	res, err := fa.String(data)
-	require.NoError(t, err)
-	require.Equal(t, gadgets.WallTimeFromBootTime(randomBootTimeNs).String(), res)
+		require.Equal(t, tc.expected, res)
+	}
 }
 
-func TimestampFormatter(t *testing.T) {
-
-	var tsField datasource.FieldAccessor
-
-	randomBootTimeNs := uint64(rand.Int63n(7 * 24 * 60 * 60 * 1e9)) // Random within last 7 days
-
-	Tester(
-		t,
-		&formattersOperator{},
-		api.ParamValues{
-			"operators.formatters.formatters": "timestamp",
-		},
-		func(gadgetCtx operators.GadgetContext) error {
-			var err error
-			ds, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "time")
-			require.NoError(t, err)
-
-			// Add timestamp annotation
-			tsField, err = ds.AddField("timestamp_raw", api.Kind_Uint64,
-				datasource.WithTags("type:"+ebpftypes.TimestampTypeName))
-			// 	datasource.WithAnnotations(map[string]string{
-			// 		timestampTargetAnnotation: "formatted_timestamp",
-			// 	}),
-			// )
-			require.NoError(t, err)
-			return err
-		},
-		func(gadgetCtx operators.GadgetContext) error {
-			ds, _ := gadgetCtx.GetDataSources()["time"]
-			if ds.Type() != datasource.TypeSingle {
-				return nil
-			}
-			data, err := ds.NewPacketSingle()
-			require.NoError(t, err)
-
-			tsField.PutUint64(data, randomBootTimeNs)
-
-			return ds.EmitAndRelease(data)
-		},
-		func(gadgetCtx operators.GadgetContext) error {
-			ds, _ := gadgetCtx.GetDataSources()["time"]
-			if ds.Type() != datasource.TypeSingle {
-				return nil
-			}
-
-			accessor := ds.GetField("timestamp")
-			require.NotNil(t, accessor)
-
-			err := ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-				res, err := accessor.String(data)
-
-				require.NoError(t, err)
-				require.Equal(t, gadgets.WallTimeFromBootTime(randomBootTimeNs).String(), res)
-				return nil
-			}, Priority+1)
-
-			require.NoError(t, err)
-			return nil
-		},
-	)
+type testCaseIp struct {
+	name     string
+	kind     api.Kind
+	epbftype string
+	putFunc  func(ipField datasource.FieldAccessor, versionField datasource.FieldAccessor, data datasource.Data)
+	expected any
 }
 
-func Tester(
-	t *testing.T,
-	operator operators.DataOperator,
-	paramValues api.ParamValues,
-	prepare func(operators.GadgetContext) error,
-	produce func(operators.GadgetContext) error,
-	verify func(operators.GadgetContext) error,
-) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
-	defer cancel()
+func TestIpFormatter(t *testing.T) {
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	testCases := []testCaseIp{
+		{
+			name:     "l3endpoint",
+			kind:     api.Kind_Bytes,
+			epbftype: ebpftypes.IPAddrTypeName,
+			putFunc: func(ipField datasource.FieldAccessor, versionField datasource.FieldAccessor, data datasource.Data) {
 
-	producer := simple.New("producer",
-		simple.WithPriority(Priority-1),
-		simple.OnInit(prepare),
-		simple.OnStart(produce),
-	)
+				bytes := make([]byte, 16)
+				ipBytes := net.IPv4(192, 168, 1, 1).To16()
+				copy(bytes, ipBytes)
+				ipField.PutBytes(data, ipBytes)
+				fmt.Printf("confirming ipField: %v %v\n", ipField.Get(data), ipField.Size())
 
-	verifier := simple.New("verifier",
-		simple.WithPriority(Priority+1),
-		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-			defer wg.Done()
-			defer cancel()
-			return verify(gadgetCtx)
-		}),
-	)
+				versionField.PutUint8(data, 4) // IPv4 = 4, IPv6 = 6
 
-	gadgetCtx := gadgetcontext.New(ctx, "",
-		gadgetcontext.WithDataOperators(operator, producer, verifier),
-	)
+				fmt.Printf("confirming versionField: %v\n", versionField.Get(data))
+			},
+			expected: "192.168.10.10",
+		},
+	}
 
-	return gadgetCtx.Run(paramValues)
+	for _, tc := range testCases {
+		var rpl replacer
+		found := false
+		for _, r := range replacers {
+			if r.name == tc.name {
+				found = true
+				rpl = r
+				break
+			}
+		}
+		require.True(t, found)
+
+		ds, _ := datasource.New(datasource.TypeSingle, tc.name)
+		fa, _ := ds.AddField(fmt.Sprintf("%s_raw", tc.name), tc.kind)
+
+		// Add the raw IP address field as a 16-byte field (expected format)
+		ipField, _ := fa.AddSubField("l3endpoint_raw", api.Kind_Bytes, datasource.WithTags("type:"+ebpftypes.IPAddrTypeName, "size:16"))
+		// Add the version field separately
+		versionField, _ := fa.AddSubField("version", api.Kind_Uint8, datasource.WithTags("name:version"))
+
+		lg := logger.DefaultLogger()
+
+		replacerFunc, _ := rpl.replace(lg, ds, fa)
+		data, _ := ds.NewPacketSingle()
+		tc.putFunc(ipField, versionField, data)
+
+		require.NotNil(t, replacerFunc)
+		replacerFunc(data)
+
+		fa = ds.GetFieldsWithTag(tc.name)[0]
+		res, _ := fa.String(data)
+		fmt.Println("res: ", res)
+
+	}
 }
