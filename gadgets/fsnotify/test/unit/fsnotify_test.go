@@ -87,9 +87,17 @@ type testDef struct {
 }
 
 func TestFsnotifyGadget(t *testing.T) {
-	gadgettesting.MinimumKernelVersion(t, "5.10")
+	gadgettesting.MinimumKernelVersion(t, "5.4")
 	gadgettesting.InitUnitTest(t)
 	runnerConfig := &utilstest.RunnerConfig{}
+
+	// i_ino field is not available in Linux < 5.11
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/4222
+	ignoreInvalidIno := false
+	if gadgettesting.CheckMinimumKernelVersion(t, "5.11") {
+		ignoreInvalidIno = true
+		t.Logf("Linux < 5.11 (%s) does not give the inode number. This field will not be tested.", gadgettesting.GetKernelVersion(t))
+	}
 
 	testCases := map[string]testDef{
 		"captures_inotify_event": {
@@ -97,7 +105,7 @@ func TestFsnotifyGadget(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, eventDetails EventDetails, events []ExpectedFsnotifyEvent) {
 				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedFsnotifyEvent {
-					return &ExpectedFsnotifyEvent{
+					ev := &ExpectedFsnotifyEvent{
 						Timestamp: utils.NormalizedStr,
 
 						Type:  "inotify",
@@ -115,6 +123,10 @@ func TestFsnotifyGadget(t *testing.T) {
 
 						Name: eventDetails.FileName,
 					}
+					if ignoreInvalidIno {
+						ev.IIno = utils.NormalizedInt
+					}
+					return ev
 				})(t, info, 0, events)
 			},
 		},
@@ -132,6 +144,9 @@ func TestFsnotifyGadget(t *testing.T) {
 
 				utils.NormalizeString(&event.FaType)
 				utils.NormalizeString(&event.FaResponse)
+				if ignoreInvalidIno {
+					event.IIno = utils.NormalizedInt
+				}
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utilstest.RunWithRunner(t, runner, func() error {
