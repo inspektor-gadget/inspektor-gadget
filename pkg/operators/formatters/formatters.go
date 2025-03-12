@@ -46,6 +46,7 @@ const (
 	errnoTargetAnnotation     = "formatters.errno.target"
 	bytesTargetAnnotation     = "formatters.bytes.target"
 	durationTargetAnnotation  = "formatters.duration.target"
+	Priority                  = 0
 )
 
 type formattersOperator struct{}
@@ -506,7 +507,7 @@ var replacers = []replacer{
 }
 
 func (f *formattersOperator) Priority() int {
-	return 0
+	return Priority
 }
 
 type formattersOperatorInstance struct {
