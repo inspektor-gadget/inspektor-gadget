@@ -331,6 +331,38 @@ int BPF_KRETPROBE(inotify_handle_inode_event_x, int ret)
 	return 0;
 }
 
+// Linux < 5.11 does not have inotify_handle_inode_event but inotify_handle_event
+// https://github.com/torvalds/linux/commit/1a2620a99803ad660edc5d22fd9c66cce91ceb1c
+SEC("kprobe/inotify_handle_event")
+int BPF_KPROBE(inotify_handle_event_e, struct fsnotify_group *group,
+	       struct inode *inode)
+{
+	if (!fanotify_only) {
+		u64 pid_tgid = bpf_get_current_pid_tgid();
+		struct fsnotify_insert_event_value value = {
+			.type = inotify,
+			// FIXME: i_ino not available on Linux < 5.11
+			// https://github.com/inspektor-gadget/inspektor-gadget/issues/4222
+			.i_ino = 0,
+			.i_ino_dir = BPF_CORE_READ(inode, i_ino),
+		};
+		// context for fsnotify_insert_event
+		bpf_map_update_elem(&fsnotify_insert_event_ctx, &pid_tgid,
+				    &value, 0);
+	}
+	return 0;
+}
+
+SEC("kretprobe/inotify_handle_event")
+int BPF_KRETPROBE(inotify_handle_event_x, int ret)
+{
+	if (!fanotify_only) {
+		u64 pid_tgid = bpf_get_current_pid_tgid();
+		bpf_map_delete_elem(&fsnotify_insert_event_ctx, &pid_tgid);
+	}
+	return 0;
+}
+
 SEC("kprobe/fanotify_handle_event")
 int BPF_KPROBE(fanotify_handle_event_e)
 {
