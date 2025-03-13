@@ -137,9 +137,6 @@ func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) 
 	if len(ips) != 1 {
 		return nil, fmt.Errorf("expected %d %q field, got %d", 1, ebpftypes.IPAddrTypeName, len(ips))
 	}
-	if ips[0].Size() != 16 {
-		return nil, fmt.Errorf("expected %q to have 16 bytes, got %d", ebpftypes.IPAddrTypeName, ips[0].Size())
-	}
 	ips[0].RemoveReference(true)
 
 	versions := in.GetSubFieldsWithTag("name:version")
@@ -447,18 +444,12 @@ var replacers = []replacer{
 			if len(ports) != 1 {
 				return nil, fmt.Errorf("expected exactly 1 port field")
 			}
-			if ports[0].Size() != 2 {
-				return nil, fmt.Errorf("port size expected to be 2 bytes")
-			}
 
 			protos := in.GetSubFieldsWithTag("name:proto_raw")
 			var protoField datasource.FieldAccessor
 			var protoFieldName string
 
 			if len(protos) == 1 {
-				if protos[0].Size() != 2 {
-					return nil, fmt.Errorf("proto size expected to be 2 bytes")
-				}
 				protoFieldName = strings.TrimSuffix(protos[0].Name(), "_raw")
 				protoField, err = in.AddSubField(protoFieldName, api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
 				if err != nil {
@@ -487,11 +478,17 @@ var replacers = []replacer{
 					return err
 				}
 
-				port, _ := ports[0].Uint16(entry)
+				port, err := ports[0].Uint16(entry)
+				if err != nil {
+					return fmt.Errorf("getting port: %w", err)
+				}
 				endpointF.PutString(entry, fmt.Sprintf("%s:%d", addrStr, port))
 
 				if len(protos) == 1 {
-					protoNumber, _ := protos[0].Uint16(entry)
+					protoNumber, err := protos[0].Uint16(entry)
+					if err != nil {
+						return fmt.Errorf("getting proto: %w", err)
+					}
 					protoName, exist := protocols.GetProtocolNameByNumber(int(protoNumber))
 					if !exist {
 						protoName = fmt.Sprintf("proto#%d", protoNumber)
