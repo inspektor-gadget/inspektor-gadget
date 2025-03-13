@@ -26,6 +26,9 @@ func GetIPForVersion(data datasource.Data, version, ipAddr datasource.FieldAcces
 	if ip == nil {
 		return "", fmt.Errorf("IP field not found")
 	}
+	if len(ip) != 16 {
+		return "", fmt.Errorf("IP field has wrong length. Expected 16 got %d", len(ip))
+	}
 
 	v, err := version.Uint8(data)
 	if err != nil {
