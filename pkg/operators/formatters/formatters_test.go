@@ -188,7 +188,7 @@ func TestIpFormatter(t *testing.T) {
 		require.NotNil(t, replacerFunc)
 		replacerFunc(data)
 
-		fa = ds.GetFieldsWithTag(tc.name)[0]
+		fa = ds.GetField("l3endpoint_raw.l3endpoint")
 		res, _ := fa.String(data)
 		fmt.Println("res: ", res)
 
