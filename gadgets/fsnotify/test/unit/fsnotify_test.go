@@ -87,7 +87,7 @@ type testDef struct {
 }
 
 func TestFsnotifyGadget(t *testing.T) {
-	gadgettesting.MinimumKernelVersion(t, "5.10")
+	gadgettesting.MinimumKernelVersion(t, "5.4")
 	gadgettesting.InitUnitTest(t)
 	runnerConfig := &utilstest.RunnerConfig{}
 
