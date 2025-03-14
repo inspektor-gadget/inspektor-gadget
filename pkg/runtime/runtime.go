@@ -56,8 +56,8 @@ type GadgetContext interface {
 	GetAllDataSources() map[string]datasource.DataSource
 	SetVar(string, any)
 	GetVar(string) (any, bool)
-	SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error)
-	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraEbpfInfo) error
+	SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error)
+	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error
 	Params() []*api.Param
 	SetMetadata([]byte)
 	SetParams([]*api.Param)

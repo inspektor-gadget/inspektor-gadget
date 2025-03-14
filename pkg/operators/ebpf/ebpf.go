@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"debug/elf"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -190,6 +191,24 @@ type ebpfInstance struct {
 	wg sync.WaitGroup
 }
 
+type Map struct {
+	Name string
+	Type string
+}
+
+type Program struct {
+	Section  string
+	Bytecode []byte
+}
+
+type VariableSpec struct {
+	name   string
+	offset uint64
+	size   uint64
+	m      string
+	t      *btf.Var
+}
+
 func (i *ebpfInstance) loadSpec() error {
 	progReader := bytes.NewReader(i.program)
 	spec, err := ebpf.LoadCollectionSpecFromReader(progReader)
@@ -339,36 +358,66 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("parsing elf file: %w", err)
 	}
 	var sections []string
-	var maps []*api.Map
-	var programs []*api.Program
+	var maps []*Map
+	var programs []*Program
+	var variables []*VariableSpec
 
 	// Add sections
 	for _, sec := range ef.Sections {
 		sections = append(sections, sec.Name)
 	}
+	sectionsJson, _ := json.Marshal(sections)
 	// Add maps
 	for name, m := range i.collectionSpec.Maps {
 		if name == ".rodata" || name == ".bss" {
 			continue
 		}
-		maps = append(maps, &api.Map{
+		maps = append(maps, &Map{
 			Name: name,
 			Type: m.Type.String(),
 		})
 	}
+	mapsJson, _ := json.Marshal(maps)
+
 	// Add programs
 	for _, p := range i.collectionSpec.Programs {
-		programs = append(programs, &api.Program{
+		programs = append(programs, &Program{
 			Section:  p.SectionName,
 			Bytecode: []byte(fmt.Sprintf("%v", p.Instructions.String())),
 		})
 	}
+	programsJson, _ := json.Marshal(programs)
 
-	gadgetCtx.SetVar("extraInfo.ebpf", &api.ExtraEbpfInfo{
-		Sections: sections,
-		Maps:     maps,
-		Programs: programs,
-	})
+	// Add variables
+	for name := range i.collectionSpec.Variables {
+		variables = append(variables, &VariableSpec{
+			name: name,
+		})
+	}
+	variablesJson, _ := json.Marshal(variables)
+
+	ebpfInfo := &api.ExtraInfo{
+		Data: make(map[string]*api.GadgetInspectAddendum),
+	}
+	ebpfInfo.Data["ebpf.sections"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(sectionsJson),
+	}
+	ebpfInfo.Data["ebpf.maps"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(mapsJson),
+	}
+	ebpfInfo.Data["ebpf.programs"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(programsJson),
+	}
+	ebpfInfo.Data["ebpf.variables"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(variablesJson),
+	}
+
+	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)
+
 	return nil
 }
 

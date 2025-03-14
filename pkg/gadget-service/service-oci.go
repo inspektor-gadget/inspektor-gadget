@@ -90,7 +90,7 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		req.ImageName,
 		gadgetcontext.WithDataOperators(ops...),
 		gadgetcontext.WithAsRemoteCall(true),
-		gadgetcontext.IncludeExtraInfo(req.ExtraInfo),
+		gadgetcontext.IncludeExtraInfo(req.RequestExtraInfo),
 	)
 
 	gi, err := s.runtime.GetGadgetInfo(gadgetCtx, s.runtime.ParamDescs().ToParams(), req.ParamValues)

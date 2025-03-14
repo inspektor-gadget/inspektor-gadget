@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,8 +62,8 @@ type GadgetContext struct {
 	timeout                  time.Duration
 
 	// useInstance, if set, will try to work with existing gadget instances on the server
-	useInstance bool
-	extraInfo   bool
+	useInstance      bool
+	requestExtraInfo bool
 
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
@@ -105,7 +106,7 @@ func NewBuiltIn(
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
 		timeout:                  timeout,
-		extraInfo:                false,
+		requestExtraInfo:         false,
 
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
@@ -140,7 +141,7 @@ func (c *GadgetContext) ID() string {
 }
 
 func (c *GadgetContext) ExtraInfo() bool {
-	return c.extraInfo
+	return c.requestExtraInfo
 }
 
 func (c *GadgetContext) Context() context.Context {
@@ -314,17 +315,23 @@ func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, er
 
 	if c.ExtraInfo() && extraInfo {
 		ei, _ := c.GetVar("extraInfo.ebpf")
-		ebpfInfo := ei.(*api.ExtraEbpfInfo)
-		gi.ExtraEbpfInfo = &api.ExtraEbpfInfo{
-			Sections: ebpfInfo.Sections,
-			Maps:     ebpfInfo.Maps,
-			Programs: ebpfInfo.Programs,
+		ebpfInfo := ei.(*api.ExtraInfo)
+		gi.ExtraInfo = &api.ExtraInfo{
+			Data: make(map[string]*api.GadgetInspectAddendum),
 		}
+		// add ebpf extraInfo
+		for k, v := range ebpfInfo.Data {
+			gi.ExtraInfo.Data[k] = v
+		}
+
+		// add wasm and other exrtaInfo
+		// wi , _ := c.GetVar("extraInfo.wasm")
+
 	}
 	return gi, nil
 }
 
-func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraEbpfInfo) error {
+func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error {
 	c.lock.Lock()
 	if c.loaded {
 		// TODO: verify that info matches what we previously loaded
@@ -387,13 +394,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	if c.ExtraInfo() && extraInfo != nil {
-
-		ei := &api.ExtraEbpfInfo{
-			Sections: extraInfo.Sections,
-			Maps:     extraInfo.Maps,
-			Programs: extraInfo.Programs,
+		ei := &api.ExtraInfo{
+			Data: make(map[string]*api.GadgetInspectAddendum),
+		}
+		for k, v := range extraInfo.Data {
+			if strings.Split(k, ".")[0] == "ebpf" {
+				ei.Data[k] = v
+			}
 		}
 		c.SetVar("extraInfo.ebpf", ei)
+
+		// add wasm and other extraInfo
+
 	}
 
 	return nil

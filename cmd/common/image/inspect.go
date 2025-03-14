@@ -109,7 +109,9 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting gadget info: %w", err)
 			}
-			fmt.Println("Info:  \nSections", info.ExtraEbpfInfo.Sections, "\nMaps", info.ExtraEbpfInfo.Maps, "\nPrograms", info.ExtraEbpfInfo.Programs)
+			fmt.Println(info.ExtraInfo.Data["ebpf.sections"])
+			fmt.Println(info.ExtraInfo.Data["ebpf.maps"])
+			fmt.Println(info.ExtraInfo.Data["ebpf.programs"])
 
 			// Print the image information based on the output mode (TODO)
 			switch outputMode {

@@ -39,7 +39,7 @@ type GadgetContext interface {
 	ExtraInfo() bool
 
 	Cancel()
-	SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error)
+	SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error)
 	ImageName() string
 	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
 	GetDataSources() map[string]datasource.DataSource

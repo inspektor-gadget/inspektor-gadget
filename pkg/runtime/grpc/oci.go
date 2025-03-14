@@ -44,10 +44,10 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 	client := api.NewGadgetManagerClient(conn)
 
 	in := &api.GetGadgetInfoRequest{
-		ParamValues: paramValues,
-		ImageName:   gadgetCtx.ImageName(),
-		Version:     api.VersionGadgetInfo,
-		ExtraInfo:   gadgetCtx.ExtraInfo(),
+		ParamValues:      paramValues,
+		ImageName:        gadgetCtx.ImageName(),
+		Version:          api.VersionGadgetInfo,
+		RequestExtraInfo: gadgetCtx.ExtraInfo(),
 	}
 
 	// specify that ImageName will contain a gadget instance ID
@@ -59,10 +59,10 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
 	}
-	extraInfo := &api.ExtraEbpfInfo{}
+	extraInfo := &api.ExtraInfo{}
 
 	if gadgetCtx.ExtraInfo() {
-		extraInfo = out.GadgetInfo.ExtraEbpfInfo
+		extraInfo = out.GadgetInfo.ExtraInfo
 	}
 
 	err = gadgetCtx.LoadGadgetInfo(out.GadgetInfo, paramValues, false, extraInfo)
