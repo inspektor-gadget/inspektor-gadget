@@ -1,0 +1,485 @@
+---
+title: advise_seccomp
+sidebar_position: 0
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The seccomp profile advisor gadget records syscalls that are issued in a
+specified container, and then uses this information to generate the corresponding
+seccomp profile.
+
+## Getting started
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/advise_seccomp:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/advise_seccomp:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+No Flags.
+
+## Guide
+
+We need to start the advise_seccomp gadget before running our workload, so it's
+able to capture all the syscalls the container uses.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --podname default-pod
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --containername mycontainer
+```
+
+</TabItem>
+</Tabs>
+
+Then, start our application and interact with it to be sure it generates all the
+syscalls it needs to work.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+import unconfined from '!!raw-loader!./files/seccomp-unconfined.yaml';
+
+<CodeBlock language="yaml">{unconfined}</CodeBlock>
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/refs/heads/%IG_BRANCH%/docs/gadgets/files/seccomp-unconfined.yaml
+```
+
+Use port-forward to access the server from the client machine
+
+```bash
+$ kubectl -n default port-forward default-pod 3000:80 &
+
+$ curl localhost:3000
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ docker run --name mycontainer --rm -d docker.io/library/nginx
+e6bc6e02989054f4984c04b7213d304767faffa295b277e8f36a5b2422409e18
+
+$ curl $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mycontainer)
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+</TabItem>
+</Tabs>
+
+Now, go back and stop the gadget. It'll print to the terminal the seccomp policy
+for all container running on the system:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --podname default-pod
+C// test-container
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "accept4",
+        "access",
+        "arch_prctl",
+        "bind",
+        "brk",
+        "capget",
+        "capset",
+        "chdir",
+        "chown",
+        "clone",
+        "close",
+        "connect",
+        "dup2",
+        "epoll_create",
+        "epoll_ctl",
+        "epoll_pwait",
+        "epoll_wait",
+        "eventfd2",
+        "execve",
+        "exit_group",
+        "faccessat2",
+        "fadvise64",
+        "fchdir",
+        "fchown",
+        "fcntl",
+        "fgetxattr",
+        "fsetxattr",
+        "fstat",
+        "fstatfs",
+        "futex",
+        "getcwd",
+        "getdents64",
+        "getegid",
+        "geteuid",
+        "getgid",
+        "getpid",
+        "getppid",
+        "getrandom",
+        "gettid",
+        "getuid",
+        "io_setup",
+        "ioctl",
+        "listen",
+        "lseek",
+        "mkdir",
+        "mmap",
+        "mprotect",
+        "munmap",
+        "nanosleep",
+        "newfstatat",
+        "openat",
+        "pipe2",
+        "prctl",
+        "pread64",
+        "prlimit64",
+        "pwrite64",
+        "read",
+        "recvfrom",
+        "recvmsg",
+        "rename",
+        "rseq",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "rt_sigreturn",
+        "rt_sigsuspend",
+        "sched_getaffinity",
+        "sendfile",
+        "sendmsg",
+        "set_robust_list",
+        "set_tid_address",
+        "setgid",
+        "setgroups",
+        "setsockopt",
+        "setuid",
+        "sigaltstack",
+        "socket",
+        "socketpair",
+        "statfs",
+        "syscall_1f4",
+        "sysinfo",
+        "tgkill",
+        "umask",
+        "uname",
+        "utimensat",
+        "vfork",
+        "wait4",
+        "write",
+        "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    }
+  ]
+}
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run advise_seccomp --map-fetch-count=0 --map-fetch-interval=0 --containername mycontainer
+// mycontainer
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "accept4",
+        "access",
+        "arch_prctl",
+        "bind",
+        "brk",
+        "capget",
+        "capset",
+        "chdir",
+        "chown",
+        "clone",
+        "close",
+        "connect",
+        "dup2",
+        "epoll_create",
+        "epoll_ctl",
+        "epoll_pwait",
+        "epoll_wait",
+        "eventfd2",
+        "execve",
+        "exit_group",
+        "faccessat2",
+        "fadvise64",
+        "fchdir",
+        "fchown",
+        "fcntl",
+        "fgetxattr",
+        "fsetxattr",
+        "fstat",
+        "fstatfs",
+        "futex",
+        "getcwd",
+        "getdents64",
+        "getegid",
+        "geteuid",
+        "getgid",
+        "getpid",
+        "getppid",
+        "getrandom",
+        "gettid",
+        "getuid",
+        "io_setup",
+        "ioctl",
+        "listen",
+        "lseek",
+        "mkdir",
+        "mmap",
+        "mprotect",
+        "munmap",
+        "nanosleep",
+        "newfstatat",
+        "openat",
+        "pipe2",
+        "prctl",
+        "pread64",
+        "prlimit64",
+        "pwrite64",
+        "read",
+        "recvfrom",
+        "recvmsg",
+        "rename",
+        "rseq",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "rt_sigreturn",
+        "rt_sigsuspend",
+        "sched_getaffinity",
+        "sendfile",
+        "sendmsg",
+        "set_robust_list",
+        "set_tid_address",
+        "setgid",
+        "setgroups",
+        "setsockopt",
+        "setuid",
+        "sigaltstack",
+        "socket",
+        "socketpair",
+        "statfs",
+        "syscall_1f4",
+        "sysinfo",
+        "umask",
+        "uname",
+        "utimensat",
+        "vfork",
+        "wait4",
+        "write",
+        "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    }
+  ]
+}
+```
+
+</TabItem>
+</Tabs>
+
+Now, let's configure our container to use that policy.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+For Kubernetes, we can follow [Restrict a Container's Syscalls with
+seccomp](https://kubernetes.io/docs/tutorials/security/seccomp/).
+
+Copy the profile to the node:
+
+```bash
+$ minikube cp profile.json /var/lib/kubelet/seccomp/profile.json
+```
+
+And then deploy a pod using that profile:
+
+import confined from '!!raw-loader!./files/seccomp-confined.yaml';
+
+<CodeBlock language="yaml">{confined}</CodeBlock>
+
+```bash
+$ kubectl delete -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/refs/heads/%IG_BRANCH%/docs/gadgets/files/seccomp-unconfined.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/refs/heads/%IG_BRANCH%/docs/gadgets/files/seccomp-confined.yaml
+
+$ kubectl -n default port-forward default-pod 3000:80 &
+
+$ curl localhost:3000
+<!DOCTYPE html>
+<html>
+....
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+For Docker, we can follow this intructions in [Seccomp security profiles for
+Docker](https://docs.docker.com/engine/security/seccomp/).
+
+Save the profile in a file (removing the first line with the container name), and run the container as:
+
+```bash
+$ docker stop mycontainer
+mycontainer
+$ docker run --name mycontainer --rm -d --security-opt seccomp=<PATH-TO-profile.json> docker.io/library/nginx
+921e6b33c6660c27d2fc2ca27ef817a66b893c345226d517bad2ebeb90083a07
+$ curl $(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mycontainer)
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+</TabItem>
+</Tabs>
+
+If you try to open a bash to the pod, you'll get an error as it tries to execute
+syscall not allowed by the profile.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl exec -it default-pod -- bash
+bash: initialize_job_control: getpgrp failed: No such file or directory
+command terminated with exit code 1
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ docker exec -it mycontainer bash
+bash: initialize_job_control: getpgrp failed: No such file or directory
+```
+
+</TabItem>
+</Tabs>
+
+
+To finish, let's clean up the environment:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl delete -f confined.yaml
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ docker stop mycontainer
+```
+
+</TabItem>
+</Tabs>

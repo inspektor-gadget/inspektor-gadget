@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.37.0
+name: "advise seccomp"
+category: monitoring-logging
+displayName: "advise seccomp"
+createdAt: "2025-02-03T11:23:41Z"
+digest: "2025-02-03T11:23:41Z"
+description: "Suggest a seccomp profile"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/advise_seccomp"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/advise_seccomp:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/advise_seccomp"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/advise_seccomp:latest
+    ```
+provider:
+    name: Inspektor Gadget
