@@ -20,7 +20,7 @@ contains the length and the lower 32 the memory address.
 
 ## Wasm Module Exported Functions
 
-The Wasm module implemented by the gadget also needs to export some functions to
+The `ig` wasm module implemented by the gadget also needs to export some functions to
 be invoked by the host.
 
 ### `gadgetAPIVersion`

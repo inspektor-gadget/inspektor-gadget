@@ -20,7 +20,7 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env setConfig
+//go:wasmimport ig setConfig
 //go:linkname setConfig setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
 

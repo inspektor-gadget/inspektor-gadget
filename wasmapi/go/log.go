@@ -20,7 +20,7 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env gadgetLog
+//go:wasmimport ig gadgetLog
 //go:linkname gadgetLog gadgetLog
 func gadgetLog(level uint32, str uint64)
 

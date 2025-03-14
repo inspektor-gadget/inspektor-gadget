@@ -21,7 +21,7 @@ import (
 // Invalid ptr: out of bound 17 MB (max memory of the module is 16MB)
 const invalidPtr uint32 = uint32(17 * 1024 * 1024)
 
-//go:wasmimport env fieldGetScalar
+//go:wasmimport ig fieldGetScalar
 func fieldGetScalar(acc uint32, data uint32, kind uint32, errPtr uint32) uint64
 
 //go:wasmexport gadgetInit
