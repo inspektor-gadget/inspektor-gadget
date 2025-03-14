@@ -19,7 +19,7 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env kallsymsSymbolExists
+//go:wasmimport ig kallsymsSymbolExists
 //go:linkname kallsymsSymbolExists kallsymsSymbolExists
 func kallsymsSymbolExists(symbol uint64) uint32
 

@@ -21,23 +21,23 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env newPerfReader
+//go:wasmimport ig newPerfReader
 //go:linkname newPerfReader newPerfReader
 func newPerfReader(mapHandle uint32, size uint32, isOverwritable uint32) uint32
 
-//go:wasmimport env perfReaderPause
+//go:wasmimport ig perfReaderPause
 //go:linkname perfReaderPause perfReaderPause
 func perfReaderPause(perfMapHandle uint32) uint32
 
-//go:wasmimport env perfReaderResume
+//go:wasmimport ig perfReaderResume
 //go:linkname perfReaderResume perfReaderResume
 func perfReaderResume(perfMapHandle uint32) uint32
 
-//go:wasmimport env perfReaderRead
+//go:wasmimport ig perfReaderRead
 //go:linkname perfReaderRead perfReaderRead
 func perfReaderRead(perfMapHandle uint32, dst uint64) uint32
 
-//go:wasmimport env perfReaderClose
+//go:wasmimport ig perfReaderClose
 //go:linkname perfReaderClose perfReaderClose
 func perfReaderClose(perfMapHandle uint32) uint32
 
