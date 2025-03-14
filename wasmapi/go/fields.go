@@ -21,19 +21,19 @@ import (
 	"unsafe"
 )
 
-//go:wasmimport env fieldGetScalar
+//go:wasmimport ig fieldGetScalar
 //go:linkname fieldGetScalar fieldGetScalar
 func fieldGetScalar(field uint32, data uint32, kind uint32, errPtr uint32) uint64
 
-//go:wasmimport env fieldGetBuffer
+//go:wasmimport ig fieldGetBuffer
 //go:linkname fieldGetBuffer fieldGetBuffer
 func fieldGetBuffer(field uint32, data uint32, kind uint32, dst uint64) int32
 
-//go:wasmimport env fieldSet
+//go:wasmimport ig fieldSet
 //go:linkname fieldSet fieldSet
 func fieldSet(field uint32, data uint32, kind uint32, value uint64) uint32
 
-//go:wasmimport env fieldAddTag
+//go:wasmimport ig fieldAddTag
 //go:linkname fieldAddTag fieldAddTag
 func fieldAddTag(field uint32, tag uint64) uint32
 

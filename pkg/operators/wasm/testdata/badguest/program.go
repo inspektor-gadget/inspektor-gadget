@@ -57,85 +57,85 @@ type syscallDeclaration struct {
 	params   [6]syscallParam
 }
 
-//go:wasmimport env gadgetLog
+//go:wasmimport ig gadgetLog
 func gadgetLog(level uint32, str uint64)
 
-//go:wasmimport env newDataSource
+//go:wasmimport ig newDataSource
 func newDataSource(name uint64, typ uint32) uint32
 
-//go:wasmimport env getDataSource
+//go:wasmimport ig getDataSource
 func getDataSource(name uint64) uint32
 
-//go:wasmimport env dataSourceSubscribe
+//go:wasmimport ig dataSourceSubscribe
 func dataSourceSubscribe(ds uint32, typ uint32, prio uint32, cb uint64) uint32
 
-//go:wasmimport env dataSourceGetField
+//go:wasmimport ig dataSourceGetField
 func dataSourceGetField(ds uint32, name uint64) uint32
 
-//go:wasmimport env dataSourceAddField
+//go:wasmimport ig dataSourceAddField
 func dataSourceAddField(ds uint32, name uint64, kind uint32) uint32
 
-//go:wasmimport env dataSourceNewPacketSingle
+//go:wasmimport ig dataSourceNewPacketSingle
 func dataSourceNewPacketSingle(ds uint32) uint32
 
-//go:wasmimport env dataSourceNewPacketArray
+//go:wasmimport ig dataSourceNewPacketArray
 func dataSourceNewPacketArray(ds uint32) uint32
 
-//go:wasmimport env dataSourceEmitAndRelease
+//go:wasmimport ig dataSourceEmitAndRelease
 func dataSourceEmitAndRelease(ds uint32, packet uint32) uint32
 
-//go:wasmimport env dataSourceRelease
+//go:wasmimport ig dataSourceRelease
 func dataSourceRelease(ds uint32, packet uint32) uint32
 
-//go:wasmimport env dataArrayNew
+//go:wasmimport ig dataArrayNew
 func dataArrayNew(d uint32) uint32
 
-//go:wasmimport env dataArrayAppend
+//go:wasmimport ig dataArrayAppend
 func dataArrayAppend(d uint32, data uint32) uint32
 
-//go:wasmimport env dataArrayRelease
+//go:wasmimport ig dataArrayRelease
 func dataArrayRelease(d uint32, data uint32) uint32
 
-//go:wasmimport env dataArrayLen
+//go:wasmimport ig dataArrayLen
 func dataArrayLen(d uint32) uint32
 
-//go:wasmimport env dataArrayGet
+//go:wasmimport ig dataArrayGet
 func dataArrayGet(d uint32, index uint32) uint32
 
-//go:wasmimport env fieldGetScalar
+//go:wasmimport ig fieldGetScalar
 func fieldGetScalar(acc uint32, data uint32, kind uint32, errPtr uint32) uint64
 
-//go:wasmimport env fieldSet
+//go:wasmimport ig fieldSet
 func fieldSet(acc uint32, data uint32, kind uint32, value uint64) uint32
 
-//go:wasmimport env getParamValue
+//go:wasmimport ig getParamValue
 func getParamValue(key uint64, dst uint64) uint32
 
-//go:wasmimport env setConfig
+//go:wasmimport ig setConfig
 func setConfig(key uint64, val uint64, kind uint32) uint32
 
-//go:wasmimport env newMap
+//go:wasmimport ig newMap
 func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32
 
-//go:wasmimport env getMap
+//go:wasmimport ig getMap
 func getMap(name uint64) uint32
 
-//go:wasmimport env mapLookup
+//go:wasmimport ig mapLookup
 func mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32
 
-//go:wasmimport env mapUpdate
+//go:wasmimport ig mapUpdate
 func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
 
-//go:wasmimport env mapDelete
+//go:wasmimport ig mapDelete
 func mapDelete(m uint32, keyptr uint64) uint32
 
-//go:wasmimport env mapRelease
+//go:wasmimport ig mapRelease
 func mapRelease(m uint32) uint32
 
-//go:wasmimport env getSyscallDeclaration
+//go:wasmimport ig getSyscallDeclaration
 func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
-//go:wasmimport env kallsymsSymbolExists
+//go:wasmimport ig kallsymsSymbolExists
 func kallsymsSymbolExists(symbol uint64) uint32
 
 func stringToBufPtr(s string) uint64 {
