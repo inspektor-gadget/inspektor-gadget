@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -306,6 +306,7 @@ func wrapWebSocket(this js.Value, args []js.Value) interface{} {
 			})
 			if err != nil {
 				returnError(err.Error())
+				return
 			}
 			j, _ := protojson.Marshal(res)
 			args[1].Invoke(jsjson.Call("parse", string(j)))
