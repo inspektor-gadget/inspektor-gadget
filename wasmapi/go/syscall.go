@@ -21,15 +21,15 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env getSyscallName
+//go:wasmimport ig getSyscallName
 //go:linkname getSyscallName getSyscallName
 func getSyscallName(id uint32, dst uint64) uint32
 
-//go:wasmimport env getSyscallID
+//go:wasmimport ig getSyscallID
 //go:linkname getSyscallID getSyscallID
 func getSyscallID(name uint64) int32
 
-//go:wasmimport env getSyscallDeclaration
+//go:wasmimport ig getSyscallDeclaration
 //go:linkname getSyscallDeclaration getSyscallDeclaration
 func getSyscallDeclaration(name uint64, pointer uint64) uint32
 
