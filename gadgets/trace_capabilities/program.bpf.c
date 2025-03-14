@@ -89,7 +89,7 @@ struct cap_event {
 	int insetid;
 	gadget_syscall syscall_raw;
 	gadget_kernel_stack kstack_raw;
-	struct gadget_user_stack ustack_raw;
+	struct gadget_user_stack ustack;
 };
 
 #define MAX_ENTRIES 10240
@@ -268,7 +268,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->capable = PT_REGS_RC(ctx) == 0;
 	event->kstack_raw = gadget_get_kernel_stack(ctx);
 	if (print_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+		gadget_get_user_stack(ctx, &event->ustack);
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
