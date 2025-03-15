@@ -58,6 +58,11 @@ type (
 // MapPrefix is used to avoid clash with maps and other eBPF objects when added
 // to gadget context.
 const MapPrefix string = "map/"
+const (
+	PrioritySource      = -1000
+	PriorityPostprocess = 0
+	PrioritySink        = 1000
+)
 
 type Operator interface {
 	// Name must return a unique name for the operator
