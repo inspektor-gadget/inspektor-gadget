@@ -156,7 +156,7 @@ Use the [project documentation](https://www.inspektor-gadget.io/docs/latest/) to
 
 Kernel requirements are largely determined by the specific eBPF functionality a Gadget makes use of.
 The eBPF functionality available to Gadgets depend on the version and configuration of the kernel running
-running in the node/machine where the Gadget is being loaded. Gadgets developed by the Inspektor
+in the node/machine where the Gadget is being loaded. Gadgets developed by the Inspektor
 Gadget project require at least Linux 5.10 with [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled.
 
 Refer to the [documentation for a specific Gadget](https://www.inspektor-gadget.io/docs/latest/gadgets) for any notes regarding requirements.
