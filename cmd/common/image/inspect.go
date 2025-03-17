@@ -112,7 +112,8 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			fmt.Println(info.ExtraInfo.Data["ebpf.sections"])
 			fmt.Println(info.ExtraInfo.Data["ebpf.maps"])
 			fmt.Println(info.ExtraInfo.Data["ebpf.programs"])
-
+			fmt.Println(info.ExtraInfo.Data["wasm.upcalls"])
+			fmt.Println(info.ExtraInfo.Data["wasm.gadgetAPIVersion"])
 			// Print the image information based on the output mode (TODO)
 			switch outputMode {
 			case utils.OutputModeJSON:

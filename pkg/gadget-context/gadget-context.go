@@ -314,18 +314,21 @@ func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, er
 	}
 
 	if c.ExtraInfo() && extraInfo {
-		ei, _ := c.GetVar("extraInfo.ebpf")
-		ebpfInfo := ei.(*api.ExtraInfo)
 		gi.ExtraInfo = &api.ExtraInfo{
 			Data: make(map[string]*api.GadgetInspectAddendum),
 		}
-		// add ebpf extraInfo
-		for k, v := range ebpfInfo.Data {
+
+		// serialize ebpf extraInfo
+		ei, _ := c.GetVar("extraInfo.ebpf")
+		for k, v := range ei.(*api.ExtraInfo).Data {
 			gi.ExtraInfo.Data[k] = v
 		}
 
-		// add wasm and other exrtaInfo
-		// wi , _ := c.GetVar("extraInfo.wasm")
+		// serialize wasm extraInfo
+		wi, _ := c.GetVar("extraInfo.wasm")
+		for k, v := range wi.(*api.ExtraInfo).Data {
+			gi.ExtraInfo.Data[k] = v
+		}
 
 	}
 	return gi, nil
@@ -397,6 +400,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		ei := &api.ExtraInfo{
 			Data: make(map[string]*api.GadgetInspectAddendum),
 		}
+		// add ebpf extraInfo
 		for k, v := range extraInfo.Data {
 			if strings.Split(k, ".")[0] == "ebpf" {
 				ei.Data[k] = v
@@ -404,7 +408,16 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		}
 		c.SetVar("extraInfo.ebpf", ei)
 
-		// add wasm and other extraInfo
+		// add wasm extraInfo
+		wi := &api.ExtraInfo{
+			Data: make(map[string]*api.GadgetInspectAddendum),
+		}
+		for k, v := range extraInfo.Data {
+			if strings.Split(k, ".")[0] == "wasm" {
+				wi.Data[k] = v
+			}
+		}
+		c.SetVar("extraInfo.wasm", wi)
 
 	}
 
