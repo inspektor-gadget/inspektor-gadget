@@ -49,7 +49,7 @@ datasources:
       i_ino:
         annotations:
           columns.hidden: "true"
-          description: inode of the file accessed by inotify
+          description: inode of the file accessed by inotify (requires Linux >= 5.11)
       i_ino_dir:
         annotations:
           columns.hidden: "true"
