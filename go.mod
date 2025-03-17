@@ -2,6 +2,8 @@ module github.com/inspektor-gadget/inspektor-gadget
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.17.3
@@ -20,7 +22,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.16.9
-	github.com/florianl/go-tc v0.4.4
+	github.com/florianl/go-tc v0.4.5
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/giantswarm/crd-docs-generator v0.11.3
 	github.com/godbus/dbus/v5 v5.1.0
