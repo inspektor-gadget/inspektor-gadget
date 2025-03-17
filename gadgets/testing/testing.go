@@ -72,10 +72,9 @@ func RemoveMemlock(t testing.TB) {
 	require.NoError(t, err, "Failed to remove memlock rlimit: %s", err)
 }
 
-// MinimumKernelVersion skips the test if the current kernel version is less
-// than minKernelVersion. When used in Kubernetes, it gets the kernel version
-// from a random node in the cluster.
-func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
+// GetKernelVersion returns the kernel version of the current node.
+// When used in Kubernetes, it gets the kernel version from a random node in the cluster.
+func GetKernelVersion(t testing.TB) *kernel.VersionInfo {
 	t.Helper()
 
 	var err error
@@ -92,12 +91,32 @@ func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
 		require.NoError(t, err, "Failed to get kernel version: %s", err)
 	}
 
+	return currVersion
+}
+
+// CheckMinimumKernelVersion returns true if the current kernel version is
+// less than minKernelVersion. When used in Kubernetes, it gets the kernel
+// version from a random node in the cluster.
+func CheckMinimumKernelVersion(t testing.TB, minKernelVersion string) bool {
+	t.Helper()
+
+	currVersion := GetKernelVersion(t)
+
 	minVersion, err := kernel.ParseRelease(minKernelVersion)
 	require.NoError(t, err, "Failed to parse minKernelVersion: %s", err)
 
-	if kernel.CompareKernelVersion(*currVersion, *minVersion) < 0 {
+	return kernel.CompareKernelVersion(*currVersion, *minVersion) < 0
+}
+
+// MinimumKernelVersion skips the test if the current kernel version is less
+// than minKernelVersion. When used in Kubernetes, it gets the kernel version
+// from a random node in the cluster.
+func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
+	t.Helper()
+
+	if CheckMinimumKernelVersion(t, minKernelVersion) {
 		t.Skipf("Skipping test because kernel version %s is less than %s",
-			currVersion, minKernelVersion)
+			GetKernelVersion(t), minKernelVersion)
 	}
 }
 
