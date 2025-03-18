@@ -208,6 +208,9 @@ var replacers = []replacer{
 				case 4:
 					signalNumber, _ := in.Uint32(data)
 					signalName := unix.SignalName(syscall.Signal(signalNumber))
+					if signalName == "" {
+						signalName = fmt.Sprintf("signal#%d", signalNumber)
+					}
 					signalField.Set(data, []byte(signalName))
 				}
 				return nil
