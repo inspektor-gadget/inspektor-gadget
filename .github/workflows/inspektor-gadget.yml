@@ -110,7 +110,7 @@ jobs:
       uses: golangci/golangci-lint-action@4696ba8babb6127d732c3c6dde519db15edab9ea # v6.5.1
       with:
         # This version number must be kept in sync with Makefile lint one.
-        version: v1.63.4
+        version: v1.64.8
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
