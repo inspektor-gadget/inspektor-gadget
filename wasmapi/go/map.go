@@ -22,27 +22,27 @@ import (
 	"unsafe"
 )
 
-//go:wasmimport env newMap
+//go:wasmimport ig newMap
 //go:linkname newMap newMap
 func newMap(name uint64, typ uint32, keySize uint32, valueSize uint32, maxEntries uint32) uint32
 
-//go:wasmimport env getMap
+//go:wasmimport ig getMap
 //go:linkname getMap getMap
 func getMap(name uint64) uint32
 
-//go:wasmimport env mapLookup
+//go:wasmimport ig mapLookup
 //go:linkname mapLookup mapLookup
 func mapLookup(m uint32, keyptr uint64, valueptr uint64) uint32
 
-//go:wasmimport env mapUpdate
+//go:wasmimport ig mapUpdate
 //go:linkname mapUpdate mapUpdate
 func mapUpdate(m uint32, keyptr uint64, valueptr uint64, flags uint64) uint32
 
-//go:wasmimport env mapDelete
+//go:wasmimport ig mapDelete
 //go:linkname mapDelete mapDelete
 func mapDelete(m uint32, keyptr uint64) uint32
 
-//go:wasmimport env mapRelease
+//go:wasmimport ig mapRelease
 //go:linkname mapRelease mapRelease
 func mapRelease(m uint32) uint32
 

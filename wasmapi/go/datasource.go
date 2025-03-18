@@ -21,67 +21,67 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env newDataSource
+//go:wasmimport ig newDataSource
 //go:linkname newDataSource newDataSource
 func newDataSource(name uint64, typ uint32) uint32
 
-//go:wasmimport env getDataSource
+//go:wasmimport ig getDataSource
 //go:linkname getDataSource getDataSource
 func getDataSource(name uint64) uint32
 
-//go:wasmimport env dataSourceSubscribe
+//go:wasmimport ig dataSourceSubscribe
 //go:linkname dataSourceSubscribe dataSourceSubscribe
 func dataSourceSubscribe(ds uint32, typ uint32, prio uint32, cb uint64) uint32
 
-//go:wasmimport env dataSourceGetField
+//go:wasmimport ig dataSourceGetField
 //go:linkname dataSourceGetField dataSourceGetField
 func dataSourceGetField(ds uint32, name uint64) uint32
 
-//go:wasmimport env dataSourceAddField
+//go:wasmimport ig dataSourceAddField
 //go:linkname dataSourceAddField dataSourceAddField
 func dataSourceAddField(ds uint32, name uint64, kind uint32) uint32
 
-//go:wasmimport env dataSourceNewPacketSingle
+//go:wasmimport ig dataSourceNewPacketSingle
 //go:linkname dataSourceNewPacketSingle dataSourceNewPacketSingle
 func dataSourceNewPacketSingle(ds uint32) uint32
 
-//go:wasmimport env dataSourceNewPacketArray
+//go:wasmimport ig dataSourceNewPacketArray
 //go:linkname dataSourceNewPacketArray dataSourceNewPacketArray
 func dataSourceNewPacketArray(ds uint32) uint32
 
-//go:wasmimport env dataSourceEmitAndRelease
+//go:wasmimport ig dataSourceEmitAndRelease
 //go:linkname dataSourceEmitAndRelease dataSourceEmitAndRelease
 func dataSourceEmitAndRelease(ds uint32, packet uint32) uint32
 
-//go:wasmimport env dataSourceRelease
+//go:wasmimport ig dataSourceRelease
 //go:linkname dataSourceRelease dataSourceRelease
 func dataSourceRelease(ds uint32, packet uint32) uint32
 
-//go:wasmimport env dataSourceUnreference
+//go:wasmimport ig dataSourceUnreference
 //go:linkname dataSourceUnreference dataSourceUnreference
 func dataSourceUnreference(ds uint32) uint32
 
-//go:wasmimport env dataSourceIsReferenced
+//go:wasmimport ig dataSourceIsReferenced
 //go:linkname dataSourceIsReferenced dataSourceIsReferenced
 func dataSourceIsReferenced(ds uint32) uint32
 
-//go:wasmimport env dataArrayNew
+//go:wasmimport ig dataArrayNew
 //go:linkname dataArrayNew dataArrayNew
 func dataArrayNew(d uint32) uint32
 
-//go:wasmimport env dataArrayAppend
+//go:wasmimport ig dataArrayAppend
 //go:linkname dataArrayAppend dataArrayAppend
 func dataArrayAppend(d uint32, data uint32) uint32
 
-//go:wasmimport env dataArrayRelease
+//go:wasmimport ig dataArrayRelease
 //go:linkname dataArrayRelease dataArrayRelease
 func dataArrayRelease(d uint32, data uint32) uint32
 
-//go:wasmimport env dataArrayLen
+//go:wasmimport ig dataArrayLen
 //go:linkname dataArrayLen dataArrayLen
 func dataArrayLen(d uint32) uint32
 
-//go:wasmimport env dataArrayGet
+//go:wasmimport ig dataArrayGet
 //go:linkname dataArrayGet dataArrayGet
 func dataArrayGet(d uint32, index uint32) uint32
 

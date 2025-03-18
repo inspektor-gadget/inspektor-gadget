@@ -19,7 +19,7 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env releaseHandle
+//go:wasmimport ig releaseHandle
 //go:linkname releaseHandle releaseHandle
 func releaseHandle(handle uint32) uint32
 
