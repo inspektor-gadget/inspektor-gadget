@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,12 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 	ops := c.DataOperators()
 
-	// Sort dataOperators based on their priority
+	// Sort dataOperators based on their priority and name
 	sort.Slice(ops, func(i, j int) bool {
-		return ops[i].Priority() < ops[j].Priority()
+		if ops[i].Priority() != ops[j].Priority() {
+			return ops[i].Priority() < ops[j].Priority()
+		}
+		return ops[i].Name() < ops[j].Name()
 	})
 
 	for _, op := range ops {
