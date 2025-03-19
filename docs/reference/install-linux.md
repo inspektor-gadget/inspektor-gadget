@@ -4,7 +4,9 @@ sidebar_position: 200
 description: How to install Inspektor Gadget on Linux
 ---
 
-### Install a specific release
+To use Inspektor Gadget on a Linux machine, choose one of the following methods.
+
+### Alternative 1: install a specific release
 
 It is possible to download the asset for a given release and platform from the
 [releases page](https://github.com/inspektor-gadget/inspektor-gadget/releases/).
@@ -20,13 +22,13 @@ $ ig version
 
 We strongly advise you to verify `ig` by following our [detailed instructions](./verify-assets.mdx#verify-an-asset).
 
-### Install from distribution package
+### Alternative 2: install from distribution package
 
 `ig` is packaged for the following distributions:
 
 [![`ig`](https://repology.org/badge/vertical-allrepos/inspektor-gadget.svg)](https://repology.org/project/inspektor-gadget/versions)
 
-### Compile from source
+### Alternative 3: compile from source
 
 `ig` is built using a Docker container relying on [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx), so you don't have to worry
 about installing dependencies:
