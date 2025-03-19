@@ -20,6 +20,12 @@ $ ig version
 
 We strongly advise you to verify `ig` by following our [detailed instructions](./verify-assets.mdx#verify-an-asset).
 
+### Install from distribution package
+
+`ig` is packaged for the following distributions:
+
+[![`ig`](https://repology.org/badge/vertical-allrepos/inspektor-gadget.svg)](https://repology.org/project/inspektor-gadget/versions)
+
 ### Compile from source
 
 `ig` is built using a Docker container relying on [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx), so you don't have to worry
