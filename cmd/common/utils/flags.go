@@ -34,6 +34,14 @@ const (
 	OutputModeJSON       = "json"
 	OutputModeJSONPretty = "jsonpretty"
 	OutputModeYAML       = "yaml"
+	OutputModeCustom     = "custom"
+
+	CustomInfoEbpfMaps       = "ebpf.maps"
+	CustomInfoEbpfProgs      = "ebpf.progs"
+	CustomInfoEbpfSections   = "ebpf.sections"
+	CustomInfoEbpfVariables  = "ebpf.variables"
+	CustomInfoWasmUpcalls    = "wasm.upcalls"
+	CustomInfoWasmApiVersion = "wasm.gadgetAPIVersion"
 )
 
 var SupportedOutputModes = []string{OutputModeJSON, OutputModeColumns}
