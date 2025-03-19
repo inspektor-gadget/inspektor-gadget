@@ -164,11 +164,11 @@ struct {
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(capabilities, events, cap_event);
 
-const volatile bool print_kstack = true;
-GADGET_PARAM(print_kstack);
+const volatile bool collect_kstack = true;
+GADGET_PARAM(collect_kstack);
 
-const volatile bool print_ustack = false;
-GADGET_PARAM(print_ustack);
+const volatile bool collect_ustack = false;
+GADGET_PARAM(collect_ustack);
 
 SEC("kprobe/cap_capable")
 int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
@@ -266,8 +266,9 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->cap_raw = ap->cap;
 	// ret=0 means the process has the requested capability, otherwise ret=-EPERM
 	event->capable = PT_REGS_RC(ctx) == 0;
-	event->kstack_raw = gadget_get_kernel_stack(ctx);
-	if (print_ustack)
+	if (collect_kstack)
+		event->kstack_raw = gadget_get_kernel_stack(ctx);
+	if (collect_ustack)
 		gadget_get_user_stack(ctx, &event->ustack_raw);
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
