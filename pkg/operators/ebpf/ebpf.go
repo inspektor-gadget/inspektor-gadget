@@ -197,16 +197,16 @@ type Map struct {
 }
 
 type Program struct {
-	Section  string
-	Bytecode []byte
+	Section string
+	Source  string
 }
 
 type VariableSpec struct {
-	name   string
-	offset uint64
-	size   uint64
-	m      string
-	t      *btf.Var
+	Name   string
+	Offset uint64
+	Size   uint64
+	Map    string
+	Type   *btf.Var
 }
 
 func (i *ebpfInstance) loadSpec() error {
@@ -382,16 +382,20 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	// Add programs
 	for _, p := range i.collectionSpec.Programs {
 		programs = append(programs, &Program{
-			Section:  p.SectionName,
-			Bytecode: []byte(fmt.Sprintf("%v", p.Instructions.String())),
+			Section: p.SectionName,
+			Source:  p.Instructions.String(),
 		})
 	}
 	programsJson, _ := json.Marshal(programs)
 
 	// Add variables
-	for name := range i.collectionSpec.Variables {
+	for name, v := range i.collectionSpec.Variables {
 		variables = append(variables, &VariableSpec{
-			name: name,
+			Name:   name,
+			Offset: v.Offset(),
+			Size:   v.Size(),
+			Map:    v.MapName(),
+			Type:   v.Type(),
 		})
 	}
 	variablesJson, _ := json.Marshal(variables)

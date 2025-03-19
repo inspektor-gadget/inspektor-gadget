@@ -17,6 +17,7 @@ package wasm
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -303,12 +304,13 @@ func (i *wasmOperatorInstance) addExtraInfo(gadgetcontext operators.GadgetContex
 		Data: make(map[string]*api.GadgetInspectAddendum),
 	}
 	wasmInfo.Data["wasm.gadgetAPIVersion"] = &api.GadgetInspectAddendum{
-		ContentType: "application/json",
-		Content:     []byte(fmt.Sprintf(`{"version": %d}`, version)),
+		ContentType: "text/plain",
+		Content:     []byte(fmt.Sprintf("%d", version)),
 	}
+	upcallsJSON, _ := json.Marshal(upcalls)
 	wasmInfo.Data["wasm.upcalls"] = &api.GadgetInspectAddendum{
 		ContentType: "application/json",
-		Content:     []byte(fmt.Sprintf(`{"upcalls": %v}`, upcalls)),
+		Content:     []byte(upcallsJSON),
 	}
 	gadgetcontext.SetVar("extraInfo.wasm", wasmInfo)
 

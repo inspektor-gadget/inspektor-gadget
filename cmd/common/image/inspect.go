@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -42,7 +41,6 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	var outputMode string
 
 	outputModes := []string{utils.OutputModeYAML, utils.OutputModeJSON, utils.OutputModeJSONPretty, utils.OutputModeCustom}
-	customInfoTypes := []string{utils.CustomInfoEbpfMaps, utils.CustomInfoEbpfProgs, utils.CustomInfoEbpfSections, utils.CustomInfoEbpfVariables, utils.CustomInfoWasmUpcalls, utils.CustomInfoWasmApiVersion}
 
 	cmd := &cobra.Command{
 		Use:          "inspect",
@@ -51,7 +49,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 	}
 
-	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display, possible values are: "+strings.Join(customInfoTypes, ", "))
+	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		image, err := oci.GetGadgetImageDesc(context.TODO(), args[0])
@@ -62,6 +60,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 		runtimeParams := runtime.ParamDescs().ToParams()
 		ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+		ociParams.Set("pull", oci.PullImageNever)
 
 		// Add operator global flags
 		opGlobalParams := make(map[string]*params.Params)
@@ -138,23 +137,14 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			fmt.Fprint(cmd.OutOrStdout(), string(bytes))
 		case utils.OutputModeCustom:
 			extraInfo, _ := cmd.PersistentFlags().GetString("extra-info")
-			if !slices.Contains(customInfoTypes, extraInfo) {
-				return fmt.Errorf("invalid extra-info %q, valid values are: %s", extraInfo, strings.Join(customInfoTypes, ", "))
-			}
-			customInfoMap := make(map[string]interface{})
+			customInfo := ""
 			for k, v := range info.ExtraInfo.Data {
 				if extraInfo == k {
-					customInfoMap[k] = map[string]string{
-						"contentType": string(v.ContentType),
-						"content":     string(v.Content),
-					}
+					customInfo = string(v.Content)
+					break
 				}
 			}
-			bytes, err := json.Marshal(customInfoMap)
-			if err != nil {
-				return fmt.Errorf("marshalling image and extra info to JSON: %w", err)
-			}
-			fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+			fmt.Fprint(cmd.OutOrStdout(), customInfo)
 		default:
 			return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(outputModes, ", "))
 		}

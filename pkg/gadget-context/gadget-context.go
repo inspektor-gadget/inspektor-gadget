@@ -318,18 +318,14 @@ func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, er
 			Data: make(map[string]*api.GadgetInspectAddendum),
 		}
 
-		// serialize ebpf extraInfo
-		ei, _ := c.GetVar("extraInfo.ebpf")
-		for k, v := range ei.(*api.ExtraInfo).Data {
-			gi.ExtraInfo.Data[k] = v
+		for k, v := range c.GetVars() {
+			if !strings.HasPrefix(k, "extraInfo.") {
+				continue
+			}
+			for k, v := range v.(*api.ExtraInfo).Data {
+				gi.ExtraInfo.Data[strings.TrimPrefix(k, "extraInfo.")] = v
+			}
 		}
-
-		// serialize wasm extraInfo
-		wi, _ := c.GetVar("extraInfo.wasm")
-		for k, v := range wi.(*api.ExtraInfo).Data {
-			gi.ExtraInfo.Data[k] = v
-		}
-
 	}
 	return gi, nil
 }
@@ -397,30 +393,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	}
 
 	if c.ExtraInfo() && extraInfo != nil {
-		ei := &api.ExtraInfo{
-			Data: make(map[string]*api.GadgetInspectAddendum),
-		}
-		// add ebpf extraInfo
 		for k, v := range extraInfo.Data {
-			if strings.Split(k, ".")[0] == "ebpf" {
-				ei.Data[k] = v
+			prefix := strings.Split(k, ".")[0]
+			ei, ok := c.GetVar("extraInfo." + prefix)
+			if !ok {
+				ei = &api.ExtraInfo{
+					Data: make(map[string]*api.GadgetInspectAddendum),
+				}
+				c.SetVar("extraInfo."+prefix, ei)
 			}
+			ei.(*api.ExtraInfo).Data[k] = v
 		}
-		c.SetVar("extraInfo.ebpf", ei)
-
-		// add wasm extraInfo
-		wi := &api.ExtraInfo{
-			Data: make(map[string]*api.GadgetInspectAddendum),
-		}
-		for k, v := range extraInfo.Data {
-			if strings.Split(k, ".")[0] == "wasm" {
-				wi.Data[k] = v
-			}
-		}
-		c.SetVar("extraInfo.wasm", wi)
-
 	}
-
 	return nil
 }
 
