@@ -7,9 +7,13 @@ description: Getting Started on Kubernetes
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.
 
-## Installing kubectl gadget
+## Installing the `kubectl gadget` client
 
-Choose one way to install the Inspektor Gadget `kubectl` plugin.
+Choose one way to install the Inspektor Gadget `kubectl` plugin:
+* [Using krew](#using-krew)
+* [Install a specific release](#install-a-specific-release)
+* [Install from distribution package](#install-from-distribution-package)
+* [Compilation from source](#compilation-from-source)
 
 ### Using krew
 
@@ -43,7 +47,7 @@ $ kubectl gadget version
 
 [![`kubectl-gadget`](https://repology.org/badge/vertical-allrepos/kubectl-gadget.svg)](https://repology.org/project/kubectl-gadget/versions)
 
-### Compile from source
+### Compilation from source
 
 To build Inspektor Gadget from source, you'll need to have a Golang version
 1.23 or higher installed.
@@ -56,11 +60,16 @@ $ sudo cp kubectl-gadget-linux-amd64 /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
 ```
 
-## Installing in the cluster
+## Installing the DaemonSet in the cluster
 
 Before you begin, ensure that your Kubernetes cluster is up and running and that you can access it with `kubectl`.
 
-### Quick installation
+To install Inspektor Gadget on Kubernetes, choose one of the following methods:
+* [Quick installation with the deploy command](#quick-installation-with-the-deploy-command)
+* [Installation with the Helm chart](#installation-with-the-helm-chart)
+* [Installation on Minikube with the Inspektor Gadget Addon](#installation-on-minikube-with-the-inspektor-gadget-addon)
+
+### Quick installation with the deploy command
 
 ```bash
 $ kubectl gadget deploy
@@ -70,7 +79,7 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 
 ![Screencast of the deploy command](../install.gif)
 
-### Choosing the gadget image
+#### Choosing the gadget image
 
 If you wish to install an alternative gadget image, you could use the following commands:
 
@@ -78,7 +87,7 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=ghcr.io/myfork/inspektor-gadget:tag
 ```
 
-### Deploy to specific nodes
+#### Deploy to specific nodes
 
 The `--node-selector` flag accepts a [label
 selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
@@ -95,14 +104,14 @@ $ kubectl gadget deploy --node-selector kubernetes.io/hostname!=minikube
 $ kubectl gadget deploy --node-selector 'kubernetes.io/hostname in (minikube, minikube-m03)'
 ```
 
-### Deploying into a custom namespace
+#### Deploying into a custom namespace
 
 By default Inspektor Gadget is deployed to the namespace `gadget`.
 This can be changed with the `--gadget-namespace` flag.
 When using gadgets (e.g. `kubectl gadget trace exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
 For `undeploy` the `--gadget-namespace` flag is mandatory.
 
-### Hook Mode
+#### Hook Mode
 
 Inspektor Gadget needs to detect when containers are started and stopped.
 The different supported modes can be set by using the `hook-mode` option:
@@ -127,7 +136,7 @@ The different supported modes can be set by using the `hook-mode` option:
   eBPF module. It works with both runc and crun. It works regardless of the
   pid namespace configuration.
 
-### Deploying with an AppArmor profile
+#### Deploying with an AppArmor profile
 
 By default, Inspektor Gadget runs as unconfined because it needs to write to different files under `/sys`.
 It is nonetheless possible to deploy Inspektor Gadget using a custom AppArmor profile with the `--apparmor-profile` flag:
@@ -138,7 +147,7 @@ $ kubectl gadget deploy --apparmor-profile 'localhost/inspektor-gadget-profile'
 
 Note that, the AppArmor profile should already exists in the cluster to be used.
 
-### Deploying with a seccomp profile
+#### Deploying with a seccomp profile
 
 By default, Inspektor Gadget syscalls are not restricted.
 If the seccomp profile operator is [installed](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#install-operator), you can use the `--seccomp-profile` flag to deploy Inspektor Gadget with a custom seccomp profile.
@@ -164,20 +173,7 @@ spec:
 $ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
 ```
 
-### Helm Chart Installation
-
-Inspektor Gadget can also be installed using our [official Helm chart](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/charts). To install using Helm, run the following commands:
-
-```bash
-$ helm repo add gadget https://inspektor-gadget.github.io/charts
-$ helm install gadget gadget/gadget --namespace=gadget --create-namespace
-```
-
-For more information on the Helm chart, please refer to the [Helm Chart documentation](https://artifacthub.io/packages/helm/gadget/gadget).
-
-Also, all the above configurations options can be passed as [values](https://artifacthub.io/packages/helm/gadget/gadget#values) to the Helm chart.
-
-### Verifying the Inspektor Gadget Image
+#### Verifying the Inspektor Gadget Image
 
 When deploying Inspektor Gadget using `kubectl gadget deploy`, the image will be automatically verified if the `policy-controller` is deployed on your Kubernetes cluster.
 To do so, you first need to [install](https://docs.sigstore.dev/policy-controller/installation/) this component.
@@ -221,7 +217,7 @@ WARN[0000] No policy controller found, the container image will not be verified
 Inspektor Gadget successfully deployed
 ```
 
-#### Skipping verification
+##### Skipping verification
 
 You can also decide to not verify the image, using `--verify-image=false`.
 However, we definitely recommend enabling this security feature.
@@ -233,7 +229,7 @@ WARN[0000] You used --verify-image=false, the container image will not be verifi
 Inspektor Gadget successfully deployed
 ```
 
-#### Using custom public key for verification
+##### Using custom public key for verification
 
 To verify the image with a specific key, you can use the `--public-key` flag:
 
@@ -266,30 +262,37 @@ $ kubectl gadget run trace_exec
 INFO[0000] Experimental features enabled
 ...
 ```
-### Specific Information for Different Platforms
 
-This section explains the additional steps that are required to run Inspektor
-Gadget in some platforms.
+### Installation with the Helm chart
 
-#### Minikube
+Inspektor Gadget can also be installed using our [official Helm chart](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/charts). To install using Helm, run the following commands:
 
-You can deploy Inspektor Gadget in `minikube` in different ways:
-- Manually, using the `kubectl gadget deploy` command as described above.
-- Using the [Inspektor Gadget Addon](https://minikube.sigs.k8s.io/docs/handbook/addons/inspektor-gadget/) available
+```bash
+$ helm repo add gadget https://inspektor-gadget.github.io/charts
+$ helm install gadget gadget/gadget --namespace=gadget --create-namespace
+```
+
+For more information on the Helm chart, please refer to the [Helm Chart documentation](https://artifacthub.io/packages/helm/gadget/gadget).
+
+Also, all the above configurations options can be passed as [values](https://artifacthub.io/packages/helm/gadget/gadget#values) to the Helm chart.
+
+### Installation on Minikube with the Inspektor Gadget Addon
+
+In addition to the deploy command and the Helm chart, Inspektor Gadget offers another alternative to install on Minikube using the [Inspektor Gadget Addon](https://minikube.sigs.k8s.io/docs/handbook/addons/inspektor-gadget/) available
   since [minikube v1.31.0](https://github.com/kubernetes/minikube/releases).
 
 We recommend to use the `docker` driver:
 
 ```bash
 $ minikube start --driver=docker
-# Deploy Inspektor Gadget in the cluster as described above
+$ minikube addons enable inspektor-gadget
 ```
 
 But can also use the `kvm2` one:
 
 ```bash
 $ minikube start --driver=kvm2
-# Deploy Inspektor Gadget in the cluster as described above
+$ minikube addons enable inspektor-gadget
 ```
 
 ### Private registries
@@ -364,11 +367,19 @@ For more information about the configuration file, check the [configuration guid
 
 ## Uninstalling from the cluster
 
-The following command will remove all the resources created by Inspektor
-Gadget from the cluster:
+Depending on your installation method, use one of the following command to
+remove all the resources created by Inspektor Gadget on the cluster:
 
 ```bash
 $ kubectl gadget undeploy
+```
+
+```bash
+$ helm uninstall inspektor-gadget
+```
+
+```bash
+$ minikube addons disable inspektor-gadget
 ```
 
 ## Version skew policy
