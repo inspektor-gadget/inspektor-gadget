@@ -20,6 +20,7 @@ INTEGRATION_TEST_DIR = test/integration
 
 GADGETS = \
 	audit_seccomp \
+	bpfstats \
 	deadlock \
 	fdpass \
 	fsnotify \

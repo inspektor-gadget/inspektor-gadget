@@ -371,13 +371,6 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 		eventWrappers: make(map[datasource.DataSource]*compat.EventWrapperBase),
 	}
 
-	// hack - this makes it possible to use the Attacher interface
-	var ok bool
-	traceInstance.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
-	if !ok {
-		return nil, fmt.Errorf("getting ebpfInstance")
-	}
-
 	activate := false
 
 	// Check, whether the gadget requested a map from us
@@ -421,6 +414,12 @@ func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) para
 }
 
 func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	var ok bool
+	m.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
+	if !ok {
+		return fmt.Errorf("getting ebpfInstance")
+	}
+
 	compat.Subscribe(
 		m.eventWrappers,
 		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs,
