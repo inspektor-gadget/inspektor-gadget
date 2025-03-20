@@ -67,6 +67,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		for _, op := range operators.GetDataOperators() {
 			opGlobalParams[op.Name()] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 		}
+		opGlobalParams["oci"].Set("verify-image", "false")
 
 		var info *api.GadgetInfo
 		err = runtime.Init(runtimeGlobalParams)

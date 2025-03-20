@@ -206,7 +206,6 @@ type VariableSpec struct {
 	Offset uint64
 	Size   uint64
 	Map    string
-	Type   *btf.Var
 }
 
 func (i *ebpfInstance) loadSpec() error {
@@ -395,7 +394,6 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 			Offset: v.Offset(),
 			Size:   v.Size(),
 			Map:    v.MapName(),
-			Type:   v.Type(),
 		})
 	}
 	variablesJson, _ := json.Marshal(variables)
