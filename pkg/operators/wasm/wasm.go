@@ -219,20 +219,20 @@ func (i *wasmOperatorInstance) init(
 		WithMemoryLimitPages(256) // 16MB (64KB per page)
 	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
 
-	env := i.rt.NewHostModuleBuilder("env")
+	igModuleBuilder := i.rt.NewHostModuleBuilder("ig")
 
-	i.addLogFuncs(env)
-	i.addDataSourceFuncs(env)
-	i.addFieldFuncs(env)
-	i.addParamsFuncs(env)
-	i.addConfigFuncs(env)
-	i.addMapFuncs(env)
-	i.addHandleFuncs(env)
-	i.addSyscallsDeclarationsFuncs(env)
-	i.addPerfFuncs(env)
-	i.addKallsymsFuncs(env)
+	i.addLogFuncs(igModuleBuilder)
+	i.addDataSourceFuncs(igModuleBuilder)
+	i.addFieldFuncs(igModuleBuilder)
+	i.addParamsFuncs(igModuleBuilder)
+	i.addConfigFuncs(igModuleBuilder)
+	i.addMapFuncs(igModuleBuilder)
+	i.addHandleFuncs(igModuleBuilder)
+	i.addSyscallsDeclarationsFuncs(igModuleBuilder)
+	i.addPerfFuncs(igModuleBuilder)
+	i.addKallsymsFuncs(igModuleBuilder)
 
-	if _, err := env.Instantiate(ctx); err != nil {
+	if _, err := igModuleBuilder.Instantiate(ctx); err != nil {
 		return fmt.Errorf("instantiating host module: %w", err)
 	}
 

@@ -272,6 +272,32 @@ static __always_inline __u32 get_priority(struct fsnotify_group *group)
 	return 0;
 }
 
+static __always_inline int get_fanotify_type(struct fanotify_event *fae)
+{
+	// fanotify types were introduced by Linux v5.6
+	// https://github.com/torvalds/linux/commit/7088f35720a55b99624ea36091538baec7ec611f
+	if (bpf_core_field_exists(fae->type))
+		return BPF_CORE_READ_BITFIELD_PROBED(fae, type);
+
+	return -1;
+}
+
+static __always_inline struct path *
+fanotify_get_path(struct fanotify_event *fae)
+{
+	struct path *p = NULL;
+	int type = get_fanotify_type(fae);
+	if (type == -1)
+		return NULL;
+
+	if (type == FANOTIFY_EVENT_TYPE_PATH)
+		p = &container_of(fae, struct fanotify_path_event, fae)->path;
+	else if (type == FANOTIFY_EVENT_TYPE_PATH_PERM)
+		p = &container_of(fae, struct fanotify_perm_event, fae)->path;
+
+	return p;
+}
+
 // Probes for the tracees
 
 SEC("kprobe/inotify_handle_inode_event")
@@ -279,6 +305,8 @@ int BPF_KPROBE(inotify_handle_inode_event_e, struct fsnotify_mark *inode_mark,
 	       u32 mask, struct inode *inode, struct inode *dir,
 	       const struct qstr *name, u32 cookie)
 {
+	// inotify_handle_inode_event is introduced in Linux v5.11:
+	// https://github.com/torvalds/linux/commit/1a2620a99803ad660edc5d22fd9c66cce91ceb1c
 	if (!fanotify_only) {
 		u64 pid_tgid = bpf_get_current_pid_tgid();
 		struct fsnotify_insert_event_value value = {
@@ -295,6 +323,38 @@ int BPF_KPROBE(inotify_handle_inode_event_e, struct fsnotify_mark *inode_mark,
 
 SEC("kretprobe/inotify_handle_inode_event")
 int BPF_KRETPROBE(inotify_handle_inode_event_x, int ret)
+{
+	if (!fanotify_only) {
+		u64 pid_tgid = bpf_get_current_pid_tgid();
+		bpf_map_delete_elem(&fsnotify_insert_event_ctx, &pid_tgid);
+	}
+	return 0;
+}
+
+// Linux < 5.11 does not have inotify_handle_inode_event but inotify_handle_event
+// https://github.com/torvalds/linux/commit/1a2620a99803ad660edc5d22fd9c66cce91ceb1c
+SEC("kprobe/inotify_handle_event")
+int BPF_KPROBE(inotify_handle_event_e, struct fsnotify_group *group,
+	       struct inode *inode)
+{
+	if (!fanotify_only) {
+		u64 pid_tgid = bpf_get_current_pid_tgid();
+		struct fsnotify_insert_event_value value = {
+			.type = inotify,
+			// FIXME: i_ino not available on Linux < 5.11
+			// https://github.com/inspektor-gadget/inspektor-gadget/issues/4222
+			.i_ino = 0,
+			.i_ino_dir = BPF_CORE_READ(inode, i_ino),
+		};
+		// context for fsnotify_insert_event
+		bpf_map_update_elem(&fsnotify_insert_event_ctx, &pid_tgid,
+				    &value, 0);
+	}
+	return 0;
+}
+
+SEC("kretprobe/inotify_handle_event")
+int BPF_KRETPROBE(inotify_handle_event_x, int ret)
 {
 	if (!fanotify_only) {
 		u64 pid_tgid = bpf_get_current_pid_tgid();
@@ -404,24 +464,18 @@ int BPF_KPROBE(fsnotify_insert_event_e, struct fsnotify_group *group,
 		case fanotify:
 			fae = container_of(event, struct fanotify_event, fse);
 			ee->fa_mask = BPF_CORE_READ(fae, mask);
-			ee->fa_type = BPF_CORE_READ_BITFIELD_PROBED(fae, type);
+			// fanotify types were introduced by Linux v5.6
+			// https://github.com/torvalds/linux/commit/7088f35720a55b99624ea36091538baec7ec611f
+			if (bpf_core_field_exists(fae->type))
+				ee->fa_type = BPF_CORE_READ_BITFIELD_PROBED(
+					fae, type);
 			ee->fa_pid = BPF_CORE_READ(fae, pid, numbers[0].nr);
 			ee->fa_flags =
 				BPF_CORE_READ(group, fanotify_data.flags);
 			ee->fa_f_flags =
 				BPF_CORE_READ(group, fanotify_data.f_flags);
 
-			if (ee->fa_type == FANOTIFY_EVENT_TYPE_PATH)
-				p = &container_of(fae,
-						  struct fanotify_path_event,
-						  fae)
-					     ->path;
-			else if (ee->fa_type == FANOTIFY_EVENT_TYPE_PATH_PERM)
-				p = &container_of(fae,
-						  struct fanotify_perm_event,
-						  fae)
-					     ->path;
-
+			p = fanotify_get_path(fae);
 			if (p)
 				bpf_probe_read_kernel_str(ee->name,
 							  GADGET_PATH_MAX,
@@ -467,7 +521,9 @@ int BPF_KPROBE(fsnotify_destroy_event, struct fsnotify_group *group,
 		goto out;
 
 	fae = container_of(event, struct fanotify_event, fse);
-	fa_type = BPF_CORE_READ_BITFIELD_PROBED(fae, type);
+	fa_type = get_fanotify_type(fae);
+	if (fa_type == -1)
+		goto out;
 	if (fa_type != FANOTIFY_EVENT_TYPE_PATH_PERM)
 		goto out;
 
@@ -560,7 +616,9 @@ prepare_ee_for_fa_perm(struct enriched_event *ee, struct fsnotify_event *event,
 		return;
 
 	fae = container_of(event, struct fanotify_event, fse);
-	fa_type = BPF_CORE_READ_BITFIELD_PROBED(fae, type);
+	fa_type = get_fanotify_type(fae);
+	if (fa_type == -1)
+		return;
 	if (fa_type != FANOTIFY_EVENT_TYPE_PATH_PERM)
 		return;
 

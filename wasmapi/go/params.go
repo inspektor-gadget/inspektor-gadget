@@ -19,7 +19,7 @@ import (
 	_ "unsafe"
 )
 
-//go:wasmimport env getParamValue
+//go:wasmimport ig getParamValue
 //go:linkname getParamValue getParamValue
 func getParamValue(key uint64, dst uint64) uint32
 

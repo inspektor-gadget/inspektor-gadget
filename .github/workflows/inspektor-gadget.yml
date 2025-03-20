@@ -68,7 +68,7 @@ jobs:
             - 'docs/**'
     - name: Setup Node
       if: steps.filter.outputs.docs == 'true'
-      uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+      uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
       with:
         node-version: 18
     - name: Check website build
@@ -107,10 +107,10 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
       id: go
     - name: Lint
-      uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
+      uses: golangci/golangci-lint-action@4696ba8babb6127d732c3c6dde519db15edab9ea # v6.5.1
       with:
         # This version number must be kept in sync with Makefile lint one.
-        version: v1.63.4
+        version: v1.64.8
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
@@ -444,7 +444,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.platform }}-
     - name: Login to Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -594,7 +594,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.platform }}-
     - name: Login to Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -814,7 +814,7 @@ jobs:
           name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
       - name: Scan gadget ${{ matrix.os }} ${{ matrix.platform }} container image
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
         with:
           input: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           format: 'table'
@@ -844,7 +844,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
       - name: Login to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -912,7 +912,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
       - name: Login to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -1013,7 +1013,7 @@ jobs:
       uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
     - name: Login to Container Registry
       if: steps.check-build-helpers.outputs.build == 'true'
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -1085,7 +1085,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
     - name: Login to Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -1493,7 +1493,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Login to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -2331,7 +2331,7 @@ jobs:
         # artifact, so people can verify our signature.
         cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
     - name: Login to Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}

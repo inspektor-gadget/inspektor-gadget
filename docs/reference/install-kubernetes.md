@@ -37,6 +37,12 @@ $ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/downloa
 $ kubectl gadget version
 ```
 
+### Install from distribution package
+
+`kubectl-gadget` is packaged for the following distributions:
+
+[![`kubectl-gadget`](https://repology.org/badge/vertical-allrepos/kubectl-gadget.svg)](https://repology.org/project/kubectl-gadget/versions)
+
 ### Compile from source
 
 To build Inspektor Gadget from source, you'll need to have a Golang version

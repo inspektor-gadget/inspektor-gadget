@@ -20,7 +20,7 @@ contains the length and the lower 32 the memory address.
 
 ## Wasm Module Exported Functions
 
-The Wasm module implemented by the gadget also needs to export some functions to
+The Wasm program implemented by the gadget also needs to export some functions to
 be invoked by the host.
 
 ### `gadgetAPIVersion`
@@ -58,6 +58,8 @@ This function is called after the the gadget is stopped. This function is option
 See description in dataSourceSubscribe below.
 
 ## API
+
+The Wasm API provided to the gadget resides in the `ig` module.
 
 ### Log
 
