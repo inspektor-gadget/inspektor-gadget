@@ -55,6 +55,10 @@ kubectl gadget run trace_open:latest
 
 Check [Installing on Kubernetes](https://www.inspektor-gadget.io/docs/latest/reference/install-kubernetes) to learn more about different options.
 
+`kubectl-gadget` is also packaged for the following distributions:
+
+[![`kubectl-gadget`](https://repology.org/badge/vertical-allrepos/kubectl-gadget.svg)](https://repology.org/project/kubectl-gadget/versions)
+
 ### Kubectl Node Debug
 
 We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
@@ -81,6 +85,10 @@ sudo ig run trace_open:latest
 ```
 
 Check [Installing on Linux](https://www.inspektor-gadget.io/docs/latest/reference/install-linux) to learn more.
+
+`ig` is also packaged for the following distributions:
+
+[![`ig`](https://repology.org/badge/vertical-allrepos/inspektor-gadget.svg)](https://repology.org/project/inspektor-gadget/versions)
 
 #### Run in a Container
 
