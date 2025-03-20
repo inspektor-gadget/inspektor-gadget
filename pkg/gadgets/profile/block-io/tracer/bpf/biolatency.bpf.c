@@ -165,7 +165,10 @@ int BPF_PROG(ig_profio_done, struct request *rq, int error,
 		delta /= 1000000U;
 	else
 		delta /= 1000U;
-	slot = log2l(delta);
+	if (delta > 0)
+		slot = log2l(delta) + 1;
+	else
+		slot = log2l(delta);
 	if (slot >= MAX_SLOTS)
 		slot = MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->slots[slot], 1);
