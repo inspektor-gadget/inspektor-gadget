@@ -139,14 +139,18 @@ func (l *limiterOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) er
 		gadgetCtx.Logger().Debugf("limiter: data source %q max-entries %d", ds.Name(), maxEntries)
 
 		ds.SubscribeArray(func(ds datasource.DataSource, data datasource.DataArray) error {
-			if data.Len() <= maxEntries {
-				return nil
-			}
-			if err := data.Resize(maxEntries); err != nil {
-				return fmt.Errorf("limiting data source %q to %d entries: %w", ds.Name(), maxEntries, err)
-			}
-			return nil
+			return limiterFn(ds, data, maxEntries)
 		}, Priority)
+	}
+	return nil
+}
+
+func limiterFn(ds datasource.DataSource, data datasource.DataArray, maxEntries int) error {
+	if data.Len() <= maxEntries {
+		return nil
+	}
+	if err := data.Resize(maxEntries); err != nil {
+		return fmt.Errorf("limiting data source %q to %d entries: %w", ds.Name(), maxEntries, err)
 	}
 	return nil
 }
