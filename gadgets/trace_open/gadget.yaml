@@ -32,8 +32,20 @@ datasources:
         annotations:
           columns.width: 32
           columns.minwidth: 24
+      ustack_raw:
+        annotations:
+          columns.hidden: true
+      ustack:
+        annotations:
+          description: User stack
+          columns.hidden: true
+          columns.width: 20
 params:
   ebpf:
+    print_ustack:
+      key: print-ustack
+      defaultValue: "false"
+      description: Show user stack traces
     targ_failed:
       key: failed
       defaultValue: "false"
