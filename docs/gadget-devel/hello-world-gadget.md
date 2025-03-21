@@ -386,6 +386,8 @@ struct event {
 and set this field
 
 ```c
+u64 mntns_id;
+mntns_id = gadget_get_current_mntns_id();
 event->mntns_id = mntns_id;
 ```
 
