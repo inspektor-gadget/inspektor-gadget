@@ -17,9 +17,11 @@ package wasm
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -276,9 +278,45 @@ func (i *wasmOperatorInstance) init(
 		return fmt.Errorf("unsupported gadget API version: %d, expected: %d", ret[0], apiVersion)
 	}
 
+	// add extra info to gadgetcontext if requested
+	if gadgetCtx.ExtraInfo() {
+		err := i.addExtraInfo(gadgetCtx, ret[0], wasmProgram)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")
 
 	return err
+}
+
+func (i *wasmOperatorInstance) addExtraInfo(gadgetcontext operators.GadgetContext, version uint64, wasmProgram []byte) error {
+	module, err := i.rt.CompileModule(gadgetcontext.Context(), wasmProgram)
+	if err != nil {
+		return err
+	}
+	imports := module.ImportedFunctions()
+	upcalls := []string{}
+	for _, imp := range imports {
+		parts := strings.Split(imp.Name(), ".")
+		upcalls = append(upcalls, parts[len(parts)-1])
+	}
+	wasmInfo := &api.ExtraInfo{
+		Data: make(map[string]*api.GadgetInspectAddendum),
+	}
+	wasmInfo.Data["wasm.gadgetAPIVersion"] = &api.GadgetInspectAddendum{
+		ContentType: "text/plain",
+		Content:     []byte(fmt.Sprintf("%d", version)),
+	}
+	upcallsJSON, _ := json.Marshal(upcalls)
+	wasmInfo.Data["wasm.upcalls"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(upcallsJSON),
+	}
+	gadgetcontext.SetVar("extraInfo.wasm", wasmInfo)
+
+	return nil
 }
 
 func (i *wasmOperatorInstance) callGuestFunction(ctx context.Context, name string) error {

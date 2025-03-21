@@ -36,9 +36,10 @@ type GadgetContext interface {
 	Context() context.Context
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
+	ExtraInfo() bool
 
 	Cancel()
-	SerializeGadgetInfo() (*api.GadgetInfo, error)
+	SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error)
 	ImageName() string
 	RegisterDataSource(datasource.Type, string) (datasource.DataSource, error)
 	GetDataSources() map[string]datasource.DataSource

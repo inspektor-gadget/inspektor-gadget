@@ -137,7 +137,7 @@ func (p *GadgetInstance) Run(
 	svc := simple.New("svc",
 		simple.WithPriority(50000),
 		simple.OnInit(func(gadgetCtx operators.GadgetContext) error {
-			gi, err := gadgetCtx.SerializeGadgetInfo()
+			gi, err := gadgetCtx.SerializeGadgetInfo(false)
 			if err != nil {
 				return fmt.Errorf("serializing gadget info: %w", err)
 			}

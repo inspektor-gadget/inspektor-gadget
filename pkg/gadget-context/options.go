@@ -69,3 +69,9 @@ func WithUseInstance(val bool) Option {
 		gadgetCtx.useInstance = val
 	}
 }
+
+func IncludeExtraInfo(val bool) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.requestExtraInfo = val
+	}
+}

@@ -19,6 +19,8 @@ package ebpfoperator
 import (
 	"bufio"
 	"bytes"
+	"debug/elf"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -191,6 +193,23 @@ type ebpfInstance struct {
 	wg sync.WaitGroup
 }
 
+type Map struct {
+	Name string
+	Type string
+}
+
+type Program struct {
+	Section string
+	Source  string
+}
+
+type VariableSpec struct {
+	Name   string
+	Offset uint64
+	Size   uint64
+	Map    string
+}
+
 func (i *ebpfInstance) loadSpec() error {
 	progReader := bytes.NewReader(i.program)
 	spec, err := ebpf.LoadCollectionSpecFromReader(progReader)
@@ -307,6 +326,15 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// add extra info to gadgetcontext if requested
+	if gadgetCtx.ExtraInfo() {
+		err = i.addExtraInfo(gadgetCtx)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	err = i.analyze()
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)
@@ -321,6 +349,78 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing formatters: %w", err)
 	}
+
+	return nil
+}
+
+func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
+	ef, err := elf.NewFile(bytes.NewReader(i.program))
+	if err != nil {
+		return fmt.Errorf("parsing elf file: %w", err)
+	}
+	var sections []string
+	var maps []*Map
+	var programs []*Program
+	var variables []*VariableSpec
+
+	// Add sections
+	for _, sec := range ef.Sections {
+		sections = append(sections, sec.Name)
+	}
+	sectionsJson, _ := json.Marshal(sections)
+	// Add maps
+	for name, m := range i.collectionSpec.Maps {
+		if name == ".rodata" || name == ".bss" {
+			continue
+		}
+		maps = append(maps, &Map{
+			Name: name,
+			Type: m.Type.String(),
+		})
+	}
+	mapsJson, _ := json.Marshal(maps)
+
+	// Add programs
+	for _, p := range i.collectionSpec.Programs {
+		programs = append(programs, &Program{
+			Section: p.SectionName,
+			Source:  p.Instructions.String(),
+		})
+	}
+	programsJson, _ := json.Marshal(programs)
+
+	// Add variables
+	for name, v := range i.collectionSpec.Variables {
+		variables = append(variables, &VariableSpec{
+			Name:   name,
+			Offset: v.Offset(),
+			Size:   v.Size(),
+			Map:    v.MapName(),
+		})
+	}
+	variablesJson, _ := json.Marshal(variables)
+
+	ebpfInfo := &api.ExtraInfo{
+		Data: make(map[string]*api.GadgetInspectAddendum),
+	}
+	ebpfInfo.Data["ebpf.sections"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(sectionsJson),
+	}
+	ebpfInfo.Data["ebpf.maps"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(mapsJson),
+	}
+	ebpfInfo.Data["ebpf.programs"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(programsJson),
+	}
+	ebpfInfo.Data["ebpf.variables"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(variablesJson),
+	}
+
+	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)
 
 	return nil
 }

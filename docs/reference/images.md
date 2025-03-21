@@ -284,24 +284,35 @@ $ sudo ig image inspect -h
 Inspect the local gadget image
 
 Usage:
-  ig image inspect [flags]
+  ig image inspect IMAGE [flags]
 
 Flags:
   -h, --help            help for inspect
-  -o, --output string   Output mode, possible values are, columns, json, jsonpretty (default "columns")
+  -o, --output string   Output mode: json, jsonpretty, yaml, or custom (default "jsonpretty")
+  --extra-info string   In custom mode, specify particular info required
+
 ```
 
 ```bash
-$ sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_exec
-Successfully pulled ghcr.io/inspektor-gadget/gadget/trace_exec:latest@sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d
-$ sudo image inspect ghcr.io/inspektor-gadget/gadget/trace_exec
-REPOSITORY                                TAG                                       DIGEST       CREATED
-ghcr.io/inspektor-gadget/gadget/trace_ex… latest                                    a9e26ab904c3 about an hour ago
-$ sudo image inspect -o jsonpretty ghcr.io/inspektor-gadget/gadget/trace_exec
+# Pull an image to inspect
+$ sudo ig image pull ghcr.io/inspektor-gadget/gadget/trace_tcp
+Successfully pulled ghcr.io/inspektor-gadget/gadget/trace_tcp:latest@sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d
+
+# Inspect the image with default output (jsonpretty)
+$ sudo ig image inspect ghcr.io/inspektor-gadget/gadget/trace_tcp
 {
-  "Repository": "ghcr.io/inspektor-gadget/gadget/trace_exec",
-  "Tag": "latest",
-  "Digest": "sha256:a9e26ab904c32b47aec2588cabe11a1839332ee53faef861eac3c5323412395d",
-  "Created": "2024-09-02T10:49:44Z"
+  "ebpf.maps": {
+    "content": "[{\"Name\":\"gadget_heap\",\"Type\":\"PerCPUArray\"},{\"Name\":\"gadget_mntns_filter_map\",\"Type\":\"Hash\"},{\"Name\":\"tuplepid\",\"Type\":\"Hash\"},{\"Name\":\"sockets\",\"Type\":\"Hash\"},{\"Name\":\"events\",\"Type\":\"RingBuf\"}]",
+    "contentType": "application/json"
+  },
+  "ebpf.sections": {
+    "content": "[\"\",\".strtab\",\".text\",\"kprobe/tcp_v4_connect\",\".relkprobe/tcp_v4_connect\",\"kretprobe/tcp_v4_connect\",\".relkretprobe/tcp_v4_connect\",\"kprobe/tcp_v6_connect\",\".relkprobe/tcp_v6_connect\",\"kretprobe/tcp_v6_connect\",\".relkretprobe/tcp_v6_connect\",\"kprobe/tcp_close\",\".relkprobe/tcp_close\",\"kprobe/tcp_set_state\",\".relkprobe/tcp_set_state\",\"kretprobe/inet_csk_accept\",\".relkretprobe/inet_csk_accept\",\".rodata\",\".bss\",\"license\",\".maps\",\".BTF\",\".rel.BTF\",\".BTF.ext\",\".rel.BTF.ext\",\".llvm_addrsig\",\".symtab\"]",
+    "contentType": "application/json"
+  },
+  ...
 }
+
+# Retrieve specific info using custom output
+$ sudo ig image inspect -o custom --extra-info=ebpf.sections ghcr.io/inspektor-gadget/gadget/trace_tcp
+["",".strtab",".text","kprobe/tcp_v4_connect",".relkprobe/tcp_v4_connect","kretprobe/tcp_v4_connect",".relkretprobe/tcp_v4_connect","kprobe/tcp_v6_connect",".relkprobe/tcp_v6_connect","kretprobe/tcp_v6_connect",".relkretprobe/tcp_v6_connect","kprobe/tcp_close",".relkprobe/tcp_close","kprobe/tcp_set_state",".relkprobe/tcp_set_state","kretprobe/inet_csk_accept",".relkretprobe/inet_csk_accept",".rodata",".bss","license",".maps",".BTF",".rel.BTF",".BTF.ext",".rel.BTF.ext",".llvm_addrsig",".symtab"]
 ```
