@@ -1,0 +1,14 @@
+name: advise networkpolicy
+description: Network policies according to the K8s traffic
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/advise_networkpolicy
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/advise_networkpolicy
+datasources:
+  events:
+    annotations:
+      cli.output-mode: none
+      #ebpf.map.flush-on-stop: true
+  advise:
+    annotations:
+      cli.supported-output-modes: advise
+      cli.default-output-mode: advise
