@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -31,6 +32,35 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 )
 
+func checkForKeys(t *testing.T, attributes []attribute.KeyValue) {
+	foundDynamicKey := false
+	foundStaticInt := false
+	foundStaticFloat := false
+	foundStaticString := false
+	for _, a := range attributes {
+		if a.Key == "foo" {
+			foundDynamicKey = true
+			assert.Equal(t, "foobar", a.Value.AsString())
+		}
+		if a.Key == "testint" {
+			foundStaticInt = true
+			assert.Equal(t, int64(1337), a.Value.AsInt64())
+		}
+		if a.Key == "testfloat" {
+			foundStaticFloat = true
+			assert.Equal(t, float64(133.7), a.Value.AsFloat64())
+		}
+		if a.Key == "teststring" {
+			foundStaticString = true
+			assert.Equal(t, "IGr0x", a.Value.AsString())
+		}
+	}
+	assert.True(t, foundDynamicKey)
+	assert.True(t, foundStaticInt)
+	assert.True(t, foundStaticFloat)
+	assert.True(t, foundStaticString)
+}
+
 func TestMetricsCounterAndGauge(t *testing.T) {
 	o := &otelMetricsOperator{skipListen: true}
 	globalParams := apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
@@ -39,6 +69,7 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 	require.NoError(t, err)
 
 	var ds datasource.DataSource
+	var key datasource.FieldAccessor
 	var ctr datasource.FieldAccessor
 	var gauge datasource.FieldAccessor
 
@@ -50,6 +81,20 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 		ds, err = gadgetCtx.RegisterDataSource(datasource.TypeSingle, "metrics")
 		require.NoError(t, err)
 		ds.AddAnnotation(AnnotationMetricsCollect, "true")
+
+		ds.AddAnnotation(AnnotationKeysPrefix+"testint"+AnnotationKeysValueSuffix, "1337")
+		ds.AddAnnotation(AnnotationKeysPrefix+"testint"+AnnotationKeysTypeSuffix, "int64")
+
+		ds.AddAnnotation(AnnotationKeysPrefix+"testfloat"+AnnotationKeysValueSuffix, "133.7")
+		ds.AddAnnotation(AnnotationKeysPrefix+"testfloat"+AnnotationKeysTypeSuffix, "float64")
+
+		ds.AddAnnotation(AnnotationKeysPrefix+"teststring"+AnnotationKeysValueSuffix, "IGr0x")
+		ds.AddAnnotation(AnnotationKeysPrefix+"teststring"+AnnotationKeysTypeSuffix, "string")
+
+		key, err = ds.AddField("foo", api.Kind_String, datasource.WithAnnotations(map[string]string{
+			AnnotationMetricsType: MetricTypeKey,
+		}))
+		require.NoError(t, err)
 
 		ctr, err = ds.AddField("ctr", api.Kind_Uint32, datasource.WithAnnotations(map[string]string{
 			AnnotationMetricsType: MetricTypeCounter,
@@ -65,6 +110,8 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 	produce := func(operators.GadgetContext) error {
 		for i := range 10 {
 			data, err := ds.NewPacketSingle()
+			require.NoError(t, err)
+			err = key.PutString(data, "foobar")
 			require.NoError(t, err)
 			err = ctr.PutUint32(data, uint32(1))
 			assert.NoError(t, err)
@@ -107,12 +154,18 @@ func TestMetricsCounterAndGauge(t *testing.T) {
 				data, ok := (m.Data).(metricdata.Sum[int64])
 				assert.True(t, ok)
 				assert.Equal(t, int64(10), data.DataPoints[0].Value)
+
+				// check keys
+				checkForKeys(t, data.DataPoints[0].Attributes.ToSlice())
 			}
 			if m.Name == "gauge" {
 				foundGauge = true
 				data, ok := (m.Data).(metricdata.Gauge[int64])
 				assert.True(t, ok)
 				assert.Equal(t, int64(9), data.DataPoints[0].Value)
+
+				// check keys
+				checkForKeys(t, data.DataPoints[0].Attributes.ToSlice())
 			}
 		}
 		assert.True(t, foundCtr)
