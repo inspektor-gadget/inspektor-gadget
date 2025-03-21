@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -139,14 +139,18 @@ func (l *limiterOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) er
 		gadgetCtx.Logger().Debugf("limiter: data source %q max-entries %d", ds.Name(), maxEntries)
 
 		ds.SubscribeArray(func(ds datasource.DataSource, data datasource.DataArray) error {
-			if data.Len() <= maxEntries {
-				return nil
-			}
-			if err := data.Resize(maxEntries); err != nil {
-				return fmt.Errorf("limiting data source %q to %d entries: %w", ds.Name(), maxEntries, err)
-			}
-			return nil
+			return limiterFn(ds, data, maxEntries)
 		}, Priority)
+	}
+	return nil
+}
+
+func limiterFn(ds datasource.DataSource, data datasource.DataArray, maxEntries int) error {
+	if data.Len() <= maxEntries {
+		return nil
+	}
+	if err := data.Resize(maxEntries); err != nil {
+		return fmt.Errorf("limiting data source %q to %d entries: %w", ds.Name(), maxEntries, err)
 	}
 	return nil
 }
