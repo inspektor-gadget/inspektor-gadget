@@ -19,11 +19,13 @@ K --> |Long running| ku2>kubectl gadget]
 ```
 
 <!-- markdown-link-check-disable-next-line -->
-The following examples use the [trace_open](./gadgets/trace_open) Gadget which triggers when a file is open on the system.
+The following examples use the [trace_open](./gadgets/trace_open) Gadget which shows the files being opened.
 
 ### Kubernetes
 
-#### Deployed to the Cluster
+To use Inspektor Gadget on Kubernetes, choose one of the following methods.
+
+#### Alternative 1: long-running deployment on all worker nodes
 
 [krew](https://sigs.k8s.io/krew) is the recommended way to install
 `kubectl gadget`. You can follow the
@@ -34,24 +36,29 @@ commands.
 ```bash
 kubectl krew install gadget
 kubectl gadget deploy
-kubectl gadget run trace_open:%IG_TAG%
+kubectl gadget run trace_open:%IG_TAG% -n default -c myapp
 ```
 
-Check [Installing on Kubernetes](./reference/install-kubernetes.md) to learn more about different options.
+For more details, check [Installing on Kubernetes](./reference/install-kubernetes.md) and the [run](./reference/run.mdx) command for filtering and exporting.
 
-#### Kubectl Node Debug
+#### Alternative 2: one-shot command on one worker node
 
 We can use [kubectl node debug](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/) to run `ig` on a Kubernetes node:
 
 ```bash
-kubectl debug --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig:%IG_TAG% -- ig run trace_open:%IG_TAG%
+kubectl debug --profile=sysadmin node/minikube-docker -ti \
+        --image=ghcr.io/inspektor-gadget/ig:%IG_TAG% -- \
+        ig run trace_open:%IG_TAG% \
+        --filter k8s.namespace==default,k8s.containerName==myapp
 ```
 
 For more information on how to use `ig` without installation on Kubernetes, please refer to the [ig documentation](./reference/ig.md#using-ig-with-kubectl-debug-node).
 
 ### Linux
 
-#### Install Locally
+To use Inspektor Gadget on a Linux machine, choose one of the following methods.
+
+#### Alternative 1: download the official ig binary
 
 Install the `ig` binary locally on Linux and run a Gadget:
 
@@ -61,15 +68,15 @@ IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gad
 
 curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
 
-sudo ig run trace_open:%IG_TAG%
+sudo ig run trace_open:%IG_TAG% -c mycontainer
 ```
 
-Check [Installing on Linux](./reference/install-linux.md) to learn more.
+For more details, check [Installing on Linux](./reference/install-linux.md) and the [run](./reference/run.mdx) command for filtering and exporting.
 
-#### Run in a Container
+#### Alternative 2: run ig in a container
 
 ```bash
-docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig:%IG_TAG% run trace_open:%IG_TAG%
+docker run -ti --rm --privileged -v /:/host --pid=host ghcr.io/inspektor-gadget/ig:%IG_TAG% run trace_open:%IG_TAG% -c mycontainer
 ```
 
 For more information on how to use `ig` without installation on Linux, please check [Using ig in a container](./reference/ig.md#using-ig-in-a-container).
@@ -90,7 +97,5 @@ Download the `gadgetctl` tools for MacOS
 
 
 ```bash
-gadgetctl run trace_open:%IG_TAG% --remote-address=tcp://$IP:1234
+gadgetctl run trace_open:%IG_TAG% --remote-address=tcp://$IP:1234 -c mycontainer
 ```
-
-***The above demonstrates the simplest command. To learn how to filter, export, etc. please consult the documentation for the [run](./reference/run.mdx) command***.
