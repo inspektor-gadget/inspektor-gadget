@@ -61,6 +61,11 @@ type Container struct {
 	CgroupV1 string `json:"cgroupV1,omitempty"`
 	CgroupV2 string `json:"cgroupV2,omitempty"`
 
+	// podLabelsAsString is the same as K8s.PodLabels but in a string representation.
+	// Kept in sync via SetPodLabels() and GetPodLabelsAsString() helpers.
+	// It is used to avoid re-serializing the map[string]string for every event.
+	podLabelsAsString string
+
 	// We keep an open file descriptor of the containers mount and net namespaces to be sure the
 	// kernel doesn't reuse the inode id before we get rid of this container. This logic avoids
 	// a race condition when the ns inode id is reused by a new container and we erroneously
@@ -236,4 +241,18 @@ func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {
 		Kind: c.K8s.ownerReference.Kind,
 		Name: c.K8s.ownerReference.Name,
 	}
+}
+
+func (c *Container) K8sPodLabelsAsString() string {
+	return c.podLabelsAsString
+}
+
+func (c *Container) SetPodLabels(podLabels map[string]string) {
+	kvPairs := make([]string, 0, len(podLabels))
+	c.K8s.PodLabels = make(map[string]string, len(podLabels))
+	for k, v := range podLabels {
+		c.K8s.PodLabels[k] = v
+		kvPairs = append(kvPairs, fmt.Sprintf("%s=%s", k, v))
+	}
+	c.podLabelsAsString = strings.Join(kvPairs, ",")
 }

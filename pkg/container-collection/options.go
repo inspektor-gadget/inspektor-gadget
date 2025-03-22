@@ -67,7 +67,7 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	setIfEmptyStr(&container.K8s.PodUID, containerData.K8s.PodUID)
 	setIfEmptyStr(&container.K8s.ContainerName, containerData.K8s.ContainerName)
 	if container.K8s.PodLabels == nil {
-		container.K8s.PodLabels = containerData.K8s.PodLabels
+		container.SetPodLabels(containerData.K8s.PodLabels)
 	}
 }
 
@@ -98,7 +98,7 @@ func containerRuntimeEnricher(
 				// We couldn't get the labels, but don't drop the container.
 				return true
 			}
-			container.K8s.PodLabels = labels
+			container.SetPodLabels(labels)
 		}
 
 		return true
@@ -576,7 +576,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				container.K8s.Namespace = pod.ObjectMeta.Namespace
 				container.K8s.PodName = pod.ObjectMeta.Name
 				container.K8s.PodUID = string(pod.ObjectMeta.UID)
-				container.K8s.PodLabels = pod.ObjectMeta.Labels
+				container.SetPodLabels(pod.ObjectMeta.Labels)
 
 				// drop pause containers
 				if container.K8s.PodName != "" && container.K8s.ContainerName == "" {

@@ -16,7 +16,6 @@ package compat
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -374,18 +373,19 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 				ev.hostNetworkAccessor.PutInt8(ev.Data, 1)
 			}
 		}
-		if ev.ownerKindAccessor.IsRequested() {
-			ev.ownerKindAccessor.PutString(ev.Data, container.K8sOwnerReference().Kind)
-		}
-		if ev.ownerNameAccessor.IsRequested() {
-			ev.ownerNameAccessor.PutString(ev.Data, container.K8sOwnerReference().Name)
+		ownerKindRequest := ev.ownerKindAccessor.IsRequested()
+		ownerNameRequest := ev.ownerNameAccessor.IsRequested()
+		if ownerKindRequest || ownerNameRequest {
+			owner := container.K8sOwnerReference()
+			if ownerKindRequest {
+				ev.ownerKindAccessor.PutString(ev.Data, owner.Kind)
+			}
+			if ownerNameRequest {
+				ev.ownerNameAccessor.PutString(ev.Data, owner.Name)
+			}
 		}
 		if ev.podLabelsAccessor.IsRequested() {
-			kvPairs := make([]string, 0, len(k8s.PodLabels))
-			for k, v := range k8s.PodLabels {
-				kvPairs = append(kvPairs, fmt.Sprintf("%s=%s", k, v))
-			}
-			ev.podLabelsAccessor.PutString(ev.Data, strings.Join(kvPairs, ","))
+			ev.podLabelsAccessor.PutString(ev.Data, container.K8sPodLabelsAsString())
 		}
 	}
 	rt := container.RuntimeMetadata()
