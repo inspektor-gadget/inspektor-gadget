@@ -622,8 +622,8 @@ struct event {
 	/* other fields */
 };
 
-const volatile bool print_ustack = false;
-GADGET_PARAM(print_ustack);
+const volatile bool collect_ustack = false;
+GADGET_PARAM(collect_ustack);
 
 ...
 	struct event *event;
@@ -631,7 +631,7 @@ GADGET_PARAM(print_ustack);
 	if (!event)
 		return 0;
 
-	if (print_ustack)
+	if (collect_ustack)
 		gadget_get_user_stack(ctx, &event->ustack_raw);
 ```
 

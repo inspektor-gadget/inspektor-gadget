@@ -112,7 +112,7 @@ int main() {
 	var testingOpts []igtesting.Option
 	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
 
-	ustackFlag := "--print-ustack=true"
+	ustackFlag := "--collect-ustack=true"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), ustackFlag))
