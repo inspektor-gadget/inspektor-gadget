@@ -114,6 +114,7 @@ type Container interface {
 	UsesHostNetwork() bool
 	K8sOwnerReference() *K8sOwnerReference
 	ContainerPid() uint32
+	K8sPodLabelsAsString() string
 }
 
 type BasicRuntimeMetadata struct {
