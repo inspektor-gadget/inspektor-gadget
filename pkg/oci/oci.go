@@ -97,10 +97,11 @@ const (
 
 // GadgetImageDesc is the description of a gadget image.
 type GadgetImageDesc struct {
-	Repository string `column:"repository"`
-	Tag        string `column:"tag"`
-	Digest     string `column:"digest,width:12,fixed"`
-	Created    string `column:"created"`
+	Repository string    `column:"repository"`
+	Tag        string    `column:"tag"`
+	Digest     string    `column:"digest,width:12,fixed"`
+	Created    string    `column:"created"`
+	WasmInfo   *WasmInfo `json:"wasmInfo,omitempty"`
 }
 
 func (d *GadgetImageDesc) String() string {
@@ -490,6 +491,12 @@ func getGadgetImageDescriptor(ctx context.Context, store *oci.Store, fullTag str
 	}
 
 	image.Created = getTimeFromAnnotations(manifest.Annotations)
+
+	wasmInfo, err := getWasmInfo(ctx, store, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("getting wasm info: %w", err)
+	}
+	image.WasmInfo = wasmInfo
 
 	return image, nil
 }
