@@ -725,7 +725,7 @@ jobs:
         run: |
           go install github.com/Zxilly/go-size-analyzer/cmd/gsa@e47aa2561e70b937f2be7441b2eeca984ff60e8b # v1.7.6
       - name: Get ig-linux-${{matrix.platform}}.tar.gz from artifact
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: ig-linux-${{matrix.platform}}-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -761,7 +761,7 @@ jobs:
           cache: true
         id: go
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -809,7 +809,7 @@ jobs:
         platform: [ amd64 ]
     steps:
       - name: Download gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
@@ -1143,7 +1143,7 @@ jobs:
         cache: true
       id: go
     - name: Get ig-linux-amd64.tar.gz from artifact
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         name: ig-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/
@@ -1445,7 +1445,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -1505,7 +1505,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -1621,7 +1621,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Get ig-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         name: ig-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/
@@ -1683,7 +1683,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
     - name: Get ig-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         name: ig-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/
@@ -1692,7 +1692,7 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
         sudo mv ig /usr/bin/ig
     - name: Get gadgetctl-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         name: gadgetctl-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/
@@ -1751,7 +1751,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - name: Get ig-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
@@ -2132,7 +2132,7 @@ jobs:
         runtime: ${{ matrix.runtime }}
         multi-node: true
     - name: Get gadget-container-image-linux-amd64.tar from artifact.
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         name: gadget-container-image-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
@@ -2183,7 +2183,7 @@ jobs:
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Get all reports
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
       with:
         patterns: "test-reports-*-*"
     - name: Store test report
@@ -2244,7 +2244,7 @@ jobs:
         name: Release ${{ github.ref_name }}
         draft: true
     - name: Get all artifacts.
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
     - name: Setup go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
