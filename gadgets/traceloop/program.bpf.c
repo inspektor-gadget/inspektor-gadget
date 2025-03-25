@@ -74,6 +74,13 @@ struct syscall_event_cont_t {
 	__u8 failed;
 };
 
+/* Used as key in fake_stack map. */
+struct fake_stack_key {
+	__u64 pid_tgid;
+	__u8 event_type;
+	__u8 enter_or_exit;
+};
+
 _Static_assert(
 	sizeof(struct syscall_event_cont_t) == sizeof(struct syscall_event_t),
 	"syscall_event_t and syscall_event_cont_t must have the same size as API does not permit having different sizes");
@@ -111,7 +118,9 @@ struct remembered_args {
 #if defined(SHOW_DEBUG)
 #define bpf_debug_printk(fmt, ...) bpf_printk(fmt, ##__VA_ARGS__)
 #else /* !defined(SHOW_DEBUG) */
-#define bpf_debug_printk(fmt, ...) do {} while (0)
+#define bpf_debug_printk(fmt, ...) \
+	do {                       \
+	} while (0)
 #endif /* !defined(SHOW_DEBUG) */
 
 /*
@@ -121,7 +130,9 @@ struct remembered_args {
 #if defined(SHOW_ERROR)
 #define bpf_error_printk(fmt, ...) bpf_printk(fmt, ##__VA_ARGS__)
 #else /* !defined(SHOW_ERROR) */
-#define bpf_error_printk(fmt, ...) do {} while (0)
+#define bpf_error_printk(fmt, ...) \
+	do {                       \
+	} while (0)
 #endif /* !defined(SHOW_ERROR) */
 
 const struct syscall_event_t *unused_event __attribute__((unused));
@@ -133,6 +144,8 @@ const struct syscall_event_cont_t *unused_event_cont __attribute__((unused));
  */
 static const struct pt_regs empty;
 static struct syscall_def_t default_definition;
+static const struct syscall_event_t empty_syscall_event = {};
+static const struct syscall_event_cont_t empty_syscall_cont_event = {};
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
@@ -180,6 +193,17 @@ struct {
 	__uint(value_size, sizeof(struct pt_regs));
 	__uint(max_entries, 1024);
 } regs_map SEC(".maps");
+
+/*
+ * syscall_event_t and syscall_event_cont_t are big structures, let store them
+ * here instead of using the stack.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(struct fake_stack_key));
+	__uint(value_size, sizeof(struct syscall_event_t));
+	__uint(max_entries, 1024);
+} fake_stack SEC(".maps");
 
 static __always_inline int skip_exit_probe(int nr)
 {
@@ -230,7 +254,11 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	 * Initialize struct to empty to be sure all fields (even padding) are zeroed:
 	 * https://github.com/iovisor/bcc/issues/2623#issuecomment-560214481
 	 */
-	struct syscall_event_t sc = { .event_type = SYSCALL_EVENT_NORMAL };
+	struct fake_stack_key event_key = { .pid_tgid = pid,
+					    .event_type = SYSCALL_EVENT_NORMAL,
+					    .enter_or_exit =
+						    SYSCALL_EVENT_TYPE_ENTER };
+	struct syscall_event_t *sc;
 	struct task_struct *task;
 	u64 nr = ctx->args[1];
 	struct pt_regs *args;
@@ -238,6 +266,14 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	u64 mntns_id;
 	int ret;
 	int i;
+
+	if (bpf_map_update_elem(&fake_stack, &event_key, &empty_syscall_event,
+				BPF_NOEXIST))
+		return 0;
+
+	sc = bpf_map_lookup_elem(&fake_stack, &event_key);
+	if (!sc)
+		return 0;
 
 	/*
 	 * The boot time timestamp is used to give the timestamp to users. It
@@ -256,13 +292,14 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	 */
 	u64 monotonic_ts = bpf_ktime_get_ns();
 
-	sc.boot_timestamp = boot_ts;
-	sc.monotonic_timestamp = monotonic_ts;
-	sc.cont_nr = 0;
-	sc.cpu = bpf_get_smp_processor_id();
-	sc.pid = pid >> 32;
-	sc.typ = SYSCALL_EVENT_TYPE_ENTER;
-	sc.id = nr;
+	sc->event_type = SYSCALL_EVENT_NORMAL;
+	sc->boot_timestamp = boot_ts;
+	sc->monotonic_timestamp = monotonic_ts;
+	sc->cont_nr = 0;
+	sc->cpu = bpf_get_smp_processor_id();
+	sc->pid = pid >> 32;
+	sc->typ = SYSCALL_EVENT_TYPE_ENTER;
+	sc->id = nr;
 
 	remembered.monotonic_timestamp = monotonic_ts;
 	remembered.nr = nr;
@@ -283,9 +320,9 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 
 	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
 	if (!perf_buffer)
-		return 0;
+		goto clean;
 
-	bpf_get_current_comm(sc.comm, sizeof(sc.comm));
+	bpf_get_current_comm(sc->comm, sizeof(sc->comm));
 
 	ret = bpf_map_update_elem(&regs_map, &pid, &empty, BPF_NOEXIST);
 	if (ret) {
@@ -293,7 +330,7 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			"enter: there should not be any pt_regs for key %lu: %d",
 			pid, ret);
 
-		return 0;
+		goto clean;
 	}
 
 	args = bpf_map_lookup_elem(&regs_map, &pid);
@@ -309,17 +346,17 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		/* + 1 because PT_REGS_PARM begins from 1. */
 		u64 arg = get_arg(args, i + 1);
-		sc.args[i] = arg;
+		sc->args[i] = arg;
 		remembered.args[i] = arg;
 		if (syscall_def->args_len[i])
-			sc.cont_nr++;
+			sc->cont_nr++;
 	}
 
 	bpf_debug_printk(
 		"Perf event output: sc.id: %d; sc.comm: %s; sizeof(sc): %d",
-		sc.id, sc.comm, sizeof(sc));
-	ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
-				    sizeof(sc));
+		sc->id, sc->comm, sizeof(sc));
+	ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, sc,
+				    sizeof(*sc));
 	if (ret != 0) {
 		bpf_error_printk("Problem outputting perf event: %d", ret);
 	}
@@ -337,20 +374,31 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 #pragma unroll
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		__u64 arg_len = syscall_def->args_len[i];
+		struct fake_stack_key event_cont_key = {
+			.pid_tgid = pid,
+			.event_type = SYSCALL_EVENT_CONT,
+			.enter_or_exit = SYSCALL_EVENT_TYPE_ENTER
+		};
+		struct syscall_event_cont_t *sc_cont;
 
 		if (!arg_len || (arg_len & PARAM_PROBE_AT_EXIT_MASK) ||
 		    arg_len == USE_RET_AS_PARAM_LENGTH)
 			continue;
 
+		if (bpf_map_update_elem(&fake_stack, &event_cont_key,
+					&empty_syscall_cont_event, BPF_NOEXIST))
+			continue;
+
+		sc_cont = bpf_map_lookup_elem(&fake_stack, &event_cont_key);
+		if (!sc_cont)
+			continue;
+
+		sc_cont->event_type = SYSCALL_EVENT_CONT;
+		sc_cont->monotonic_timestamp = monotonic_ts;
+		sc_cont->index = i;
+		sc_cont->failed = false;
+
 		bool null_terminated = false;
-		struct syscall_event_cont_t sc_cont = {
-			.event_type = SYSCALL_EVENT_CONT
-		};
-
-		sc_cont.monotonic_timestamp = monotonic_ts;
-		sc_cont.index = i;
-		sc_cont.failed = false;
-
 		if (arg_len == USE_NULL_BYTE_LENGTH) {
 			null_terminated = true;
 			arg_len = 0;
@@ -378,47 +426,51 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			}
 		}
 
-		if (arg_len > sizeof(sc_cont.param))
-			arg_len = sizeof(sc_cont.param);
+		if (arg_len > sizeof(sc_cont->param))
+			arg_len = sizeof(sc_cont->param);
 
 		if (null_terminated)
-			sc_cont.length = USE_NULL_BYTE_LENGTH;
+			sc_cont->length = USE_NULL_BYTE_LENGTH;
 		else
-			sc_cont.length = arg_len;
+			sc_cont->length = arg_len;
 
 		/* + 1 because PT_REGS_PARM begins from 1. */
 		u64 arg = get_arg(args, i + 1);
 
 		if (!arg_len &&
 		    null_terminated /* NULL terminated argument like string */
-		    && bpf_probe_read_user_str(sc_cont.param, PARAM_LEN,
+		    && bpf_probe_read_user_str(sc_cont->param, PARAM_LEN,
 					       (void *)(arg)) < 0)
-			sc_cont.failed = true;
+			sc_cont->failed = true;
 		else if (sizeof(u8) <= arg_len &&
 			 arg_len <=
 				 sizeof(u64) /* Conventional arguments like type (char, int, etc.) */
-			 && bpf_probe_read_user(sc_cont.param, arg_len,
+			 && bpf_probe_read_user(sc_cont->param, arg_len,
 						(void *)(arg)))
-			sc_cont.failed = true;
+			sc_cont->failed = true;
 		else if (bpf_probe_read_user(
-				 sc_cont.param, PARAM_LEN,
+				 sc_cont->param, PARAM_LEN,
 				 (void *)(arg))) /* TODO Struct arguments? */
-			sc_cont.failed = true;
+			sc_cont->failed = true;
 
 		bpf_debug_printk(
 			"Perf event output: sc_cont.index: %d; sizeof(sc_cont): %d",
-			sc_cont.index, sizeof(sc_cont));
+			sc_cont->index, sizeof(sc_cont));
 		ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU,
-					    &sc_cont, sizeof(sc_cont));
+					    sc_cont, sizeof(*sc_cont));
 		if (ret != 0) {
 			bpf_error_printk(
 				"Problem outputting continued perf event: %d",
 				ret);
 		}
+
+		bpf_map_delete_elem(&fake_stack, &event_cont_key);
 	}
 
 end:
 	bpf_map_delete_elem(&regs_map, &pid);
+clean:
+	bpf_map_delete_elem(&fake_stack, &event_key);
 
 	return 0;
 }
@@ -452,8 +504,13 @@ SEC("raw_tracepoint/sys_exit")
 int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
+	struct fake_stack_key event_key = { .pid_tgid = pid,
+					    .event_type = SYSCALL_EVENT_NORMAL,
+					    .enter_or_exit =
+						    SYSCALL_EVENT_TYPE_EXIT };
 	struct remembered_args *remembered;
 	struct syscall_def_t *syscall_def;
+	struct syscall_event_t *sc;
 	struct task_struct *task;
 	long ret = ctx->args[1];
 	struct pt_regs *args;
@@ -485,15 +542,21 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 	if (nr == -1)
 		goto end;
 
-	struct syscall_event_t sc = {
-		.event_type = SYSCALL_EVENT_NORMAL,
-		.boot_timestamp = bpf_ktime_get_boot_ns(),
-		.cpu = bpf_get_smp_processor_id(),
-		.pid = pid >> 32,
-		.typ = SYSCALL_EVENT_TYPE_EXIT,
-		.id = nr,
-	};
-	sc.args[0] = ret;
+	if (bpf_map_update_elem(&fake_stack, &event_key, &empty_syscall_event,
+				BPF_NOEXIST))
+		goto end;
+
+	sc = bpf_map_lookup_elem(&fake_stack, &event_key);
+	if (!sc)
+		goto end;
+
+	sc->event_type = SYSCALL_EVENT_NORMAL;
+	sc->boot_timestamp = bpf_ktime_get_boot_ns();
+	sc->cpu = bpf_get_smp_processor_id();
+	sc->pid = pid >> 32;
+	sc->typ = SYSCALL_EVENT_TYPE_EXIT;
+	sc->id = nr;
+	sc->args[0] = ret;
 
 	syscall_def = bpf_map_lookup_elem(&syscalls, &nr);
 	if (syscall_def == NULL)
@@ -504,32 +567,45 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 
 	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
 	if (!perf_buffer)
-		goto end;
+		goto clean;
 
 	remembered = bpf_map_lookup_elem(&probe_at_sys_exit, &pid);
 	if (!remembered)
-		goto end;
+		goto clean;
 
 	/*
 	 * This ensures all events (enter, exit and cont) related to a given
 	 * syscall have the same timestamp.
 	 */
-	sc.monotonic_timestamp = remembered->monotonic_timestamp;
+	sc->monotonic_timestamp = remembered->monotonic_timestamp;
 
 	for (i = 0; i < SYSCALL_ARGS; i++) {
+		struct fake_stack_key event_cont_key = {
+			.pid_tgid = pid,
+			.event_type = SYSCALL_EVENT_CONT,
+			.enter_or_exit = SYSCALL_EVENT_TYPE_EXIT
+		};
+		struct syscall_event_cont_t *sc_cont;
+
 		__u64 arg_len = syscall_def->args_len[i];
 
 		if (!arg_len || !(arg_len & PARAM_PROBE_AT_EXIT_MASK))
 			goto end_loop;
 
-		bool null_terminated = false;
-		struct syscall_event_cont_t sc_cont = {
-			.event_type = SYSCALL_EVENT_CONT,
-			.monotonic_timestamp = remembered->monotonic_timestamp,
-			.index = i,
-			.failed = false,
-		};
+		if (bpf_map_update_elem(&fake_stack, &event_cont_key,
+					&empty_syscall_cont_event, BPF_NOEXIST))
+			continue;
 
+		sc_cont = bpf_map_lookup_elem(&fake_stack, &event_cont_key);
+		if (!sc_cont)
+			continue;
+
+		sc_cont->event_type = SYSCALL_EVENT_CONT;
+		sc_cont->monotonic_timestamp = remembered->monotonic_timestamp;
+		sc_cont->index = i;
+		sc_cont->failed = false;
+
+		bool null_terminated = false;
 		arg_len &= ~PARAM_PROBE_AT_EXIT_MASK;
 
 		if (arg_len == USE_RET_AS_PARAM_LENGTH) {
@@ -549,52 +625,57 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 				arg_len = PARAM_LEN;
 		}
 
-		if (arg_len > sizeof(sc_cont.param))
-			arg_len = sizeof(sc_cont.param);
+		if (arg_len > sizeof(sc_cont->param))
+			arg_len = sizeof(sc_cont->param);
 
 		if (null_terminated)
-			sc_cont.length = USE_NULL_BYTE_LENGTH;
+			sc_cont->length = USE_NULL_BYTE_LENGTH;
 		else
-			sc_cont.length = arg_len;
+			sc_cont->length = arg_len;
 
 		if (arg_len == 0 && null_terminated) {
 			if (bpf_probe_read_user_str(
-				    sc_cont.param, PARAM_LEN,
+				    sc_cont->param, PARAM_LEN,
 				    (void *)(remembered->args[i])) < 0)
-				sc_cont.failed = true;
+				sc_cont->failed = true;
 		} else if (sizeof(u8) <= arg_len && arg_len <= sizeof(u64) &&
-			   bpf_probe_read_user(sc_cont.param, arg_len,
+			   bpf_probe_read_user(sc_cont->param, arg_len,
 					       (void *)(remembered->args[i]))) {
-			sc_cont.failed = true;
-		} else if (bpf_probe_read_user(sc_cont.param, PARAM_LEN,
+			sc_cont->failed = true;
+		} else if (bpf_probe_read_user(sc_cont->param, PARAM_LEN,
 					       (void *)(remembered->args[i]))) {
-			sc_cont.failed = true;
+			sc_cont->failed = true;
 		}
 
 		bpf_debug_printk(
 			"Perf event output (continued): sc_cont.index: %d; sizeof(sc_cont): %d",
-			sc_cont.index, sizeof(sc_cont));
+			sc_cont->index, sizeof(sc_cont));
 		r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU,
-					  &sc_cont, sizeof(sc_cont));
+					  sc_cont, sizeof(*sc_cont));
 		if (r != 0) {
 			bpf_error_printk(
 				"Problem outputting continued perf event: %d",
 				ret);
 		}
+
+		bpf_map_delete_elem(&fake_stack, &event_cont_key);
 end_loop:
 		bpf_map_delete_elem(&probe_at_sys_exit, &pid);
 	}
 
-	bpf_get_current_comm(sc.comm, sizeof(sc.comm));
+	bpf_get_current_comm(sc->comm, sizeof(sc->comm));
 
 	bpf_debug_printk(
 		"Perf event output (exit): sc.id: %d; sc.comm: %s; sizeof(sc): %d",
-		sc.id, sc.comm, sizeof(sc));
-	r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
-				  sizeof(sc));
+		sc->id, sc->comm, sizeof(sc));
+	r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, sc,
+				  sizeof(*sc));
 	if (r != 0) {
 		bpf_error_printk("Problem outputting exit perf event: %d", ret);
 	}
+
+clean:
+	bpf_map_delete_elem(&fake_stack, &event_key);
 end:
 	bpf_map_delete_elem(&regs_map, &pid);
 
