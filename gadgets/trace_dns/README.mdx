@@ -140,39 +140,6 @@ Running the gadget:
         You might not see the upstream DNS request / response if you are using [CoreDNS cache plugin](https://coredns.io/plugins/cache/) since CoreDNS will cache the upstream response. Also, the output isn't sorted based on `timestamp` but you can use it to understand the sequence of events.
         :::
 
-        ### Tracing with context related to OS:
-
-        At this point we already have the idea about what is happening to the request at different stages. In order to include context related to the OS, we can restart the gadget and don't filter by pod names:
-
-        ```bash
-        kubectl gadget run trace_dns:%IG_TAG% -n demo,kube-system  -F "name==inspektor-gadget.io." --fields=k8s.node,k8s.namespace,k8s.podname,id,pky_type,src,dst,qr,name,rcode,latency_ns,timestamp
-        ```
-
-        :::note
-        It is important that name is fully qualified domain name (FQDN) and ends with a dot (`.`) to match the domain name exactly.
-        :::
-
-        Again perform the DNS request and you will see the following output from the gadget:
-
-        ```
-        K8S.NODE                K8S.NAMESPACE        K8S.PODNAME                     ID            PKT_TYPE         NETNS_ID  SRC                                                    DST                                          QR NAME                       RCODE      LATENCY_NS TIMESTAMP
-        minikube-docker         demo                 mypod                           7f22          OUTGOING       4026533235  p/demo/mypod:51340                                     s/kube-system/kube-dns:53                    Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463173731Z
-        minikube-docker                                                              7f22          OTHERHOST      4026532708  p/demo/mypod:51340                                     s/kube-system/kube-dns:53                    Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463189865Z
-        minikube-docker                                                              7f22          OUTGOING       4026532708  p/demo/mypod:51340                                     p/kube-system/coredns-7db6d8ff4d-r7hwl:53    Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463244572Z
-        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        7f22          HOST           4026533053  p/demo/mypod:51340                                     p/kube-system/coredns-7db6d8ff4d-r7hwl:53    Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463249670Z
-        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        ae34          OUTGOING       4026533053  p/kube-system/coredns-7db6d8ff4d-r7hwl:50859           192.168.49.1:53                              Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463918762Z
-        minikube-docker                                                              ae34          OTHERHOST      4026532708  p/kube-system/coredns-7db6d8ff4d-r7hwl:50859           192.168.49.1:53                              Q  inspektor-gadget.io.                  0          2024-08-30T15:43:35.463930870Z
-        minikube-docker                                                              ae34          OUTGOING       4026532708  192.168.49.1:53                                        p/kube-system/coredns-7db6d8ff4d-r7hwl:50859 R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493270618Z
-        minikube-docker                                                              ae34          OUTGOING       4026532708  192.168.49.1:53                                        p/kube-system/coredns-7db6d8ff4d-r7hwl:50859 R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493277616Z
-        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        ae34          HOST           4026533053  192.168.49.1:53                                        p/kube-system/coredns-7db6d8ff4d-r7hwl:50859 R  inspektor-gadget.io.       Success    29361746   2024-08-30T15:43:35.493280508Z
-        minikube-docker         kube-system          coredns-7db6d8ff4d-r7hwl        7f22          OUTGOING       4026533053  p/kube-system/coredns-7db6d8ff4d-r7hwl:53              p/demo/mypod:51340                           R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493400601Z
-        minikube-docker                                                              7f22          OTHERHOST      4026532708  p/kube-system/coredns-7db6d8ff4d-r7hwl:53              p/demo/mypod:51340                           R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493405074Z
-        minikube-docker                                                              7f22          OUTGOING       4026532708  s/kube-system/kube-dns:53                              p/demo/mypod:51340                           R  inspektor-gadget.io.       Success    0          2024-08-30T15:43:35.493416278Z
-        minikube-docker         demo                 mypod                           7f22          HOST           4026533235  s/kube-system/kube-dns:53                              p/demo/mypod:51340                           R  inspektor-gadget.io.       Success    30245219   2024-08-30T15:43:35.493418950Z
-        ```
-
-        The output is same as previous scenario, but now it provides additional context related to what is happening to DNS traffic at node level. For example, the second/third line show how packet is forwarded via the host (`NETNS_ID=4026532708`) and how kube-dns service IP is translated (e.g. by `iptables`) to specific pod IP. Similarly you can use other events with `NETNS_ID=4026532708` (or without kubernetes enrichment) to understand how the packet is handled at host level.
-
         This showcases how `trace_dns` gadget can be used to trace DNS request at different stages. This is helpful to understand if a request/response is being dropped/altered at a specific stage. Again the output can vary based on the DNS/CNI setup in your cluster but the idea here is to provide a starting point to debug DNS issues.
     </TabItem>
 
