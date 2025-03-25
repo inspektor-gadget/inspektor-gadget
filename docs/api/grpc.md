@@ -8,25 +8,13 @@ This document describes the gRPC API provided by Inspektor Gadget for remote con
 
 ## api.proto​
 
+The complete API definition can be found in [pkg/gadget-service/api/api.proto](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/pkg/gadget-service/api/api.proto)
+
 The `api.proto` defines the core gRPC services and message types for interacting with Inspektor Gadget.
 
 ### Services​
 
 The API provides three main services:
-
-#### BuiltInGadgetManager​
-
-Service for managing built-in gadgets that come pre-packaged with Inspektor Gadget.
-
-```protobuf
-service BuiltInGadgetManager {
-  rpc GetInfo(InfoRequest) returns (InfoResponse) {}
-  rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
-}
-```
-
-* `GetInfo`: Retrieves information about the gadget service
-* `RunBuiltInGadget`: Runs a built-in gadget with streaming control
 
 #### GadgetManager
 
@@ -128,7 +116,7 @@ message GadgetInspectAddendum {
 - `contentType`: Type of the content (e.g., "application/json", "text/plain", "text/mermaid", "text/markdown")
 - `content`: The actual content bytes
 
-This mechanism is particularly useful for commands like `inspect` that need to retrieve detailed information about a gadget. For example, when running `ig inspect trace_tcp`, the extra info might include diagrams, or detailed configuration options in various formats like JSON, Markdown, or Mermaid diagrams.
+This mechanism is particularly useful for commands like `inspect` that need to retrieve detailed information about a gadget.
 
 #### Runtime Control Messages
 
@@ -156,6 +144,25 @@ message GadgetRunRequest {
 - `logLevel`: Logging verbosity level
 - `timeout`: Duration to run the gadget (in nanoseconds, 0 for no timeout)
 
+##### GadgetControlRequest
+
+Messages for controlling gadget execution:
+
+```protobuf
+message GadgetControlRequest {
+  oneof Event {
+    GadgetRunRequest runRequest = 1;
+    GadgetStopRequest stopRequest = 2;
+    GadgetAttachRequest attachRequest = 3;
+  }
+}
+```
+
+- `Event`: One of run, stop, or attach requests
+- `runRequest`: Request to start a gadget
+- `stopRequest`: Request to stop a gadget
+- `attachRequest`: Request to attach to an existing gadget
+
 #### Event and Data Handling
 
 These messages handle the data and events produced by running gadgets:
@@ -178,9 +185,32 @@ message GadgetEvent {
 - `payload`: Event data
 - `dataSourceID`: ID of the data source that generated the event
 
-#### Instance Management
+##### Data Handling Types
 
-These messages handle long-running gadget instances that persist across sessions:
+Messages for handling gadget data:
+
+```protobuf
+message DataElement {
+  repeated bytes payload = 1;
+}
+
+message GadgetData {
+  string node = 1;
+  uint32 seq = 2;
+  DataElement data = 3;
+}
+
+message GadgetDataArray {
+  string node = 1;
+  uint32 seq = 2;
+  repeated DataElement dataArray = 3;
+}
+```
+
+- `payload`: Raw data bytes from the gadget
+- `node`: Node where the data was collected
+- `seq`: Sequence number for ordering
+- `data/dataArray`: Single or multiple data elements
 
 ##### DataSource and Field Types
 
@@ -212,107 +242,6 @@ message Field {
   int32 order = 12;
 }
 ```
-
-#### InfoRequest and InfoResponse
-
-Used to get information about the gadget service:
-
-```protobuf
-message InfoRequest {
-  string version = 1;
-}
-
-message InfoResponse {
-  string version = 1;
-  bytes catalog = 2;
-  bool experimental = 3;
-  string serverVersion = 4;
-}
-```
-
-- `version`: Protocol version
-- `catalog`: Serialized catalog of available gadgets
-- `experimental`: Whether experimental features are enabled
-- `serverVersion`: Version of the gadget service
-
-#### BuiltInGadgetRunRequest
-
-Used to run a built-in gadget:
-
-```protobuf
-message BuiltInGadgetRunRequest {
-  string gadgetName = 1;
-  string gadgetCategory = 2;
-  map<string, string> params = 3;
-  repeated string args = 4;
-  repeated string nodes = 10;
-  bool fanOut = 11;
-  uint32 logLevel = 12;
-  int64 timeout = 13;
-}
-```
-
-- `gadgetName`: Name of the gadget as returned by gadgetDesc.Name()
-- `gadgetCategory`: Category of the gadget as returned by gadgetDesc.Category()
-- `params`: Combined map of all parameters including runtime and operator params
-- `args`: Parameters not specified with flags
-- `nodes`: List of nodes to run on (empty for all nodes)
-- `fanOut`: When true, forwards request to each node and combines output
-- `logLevel`: Logging verbosity level
-- `timeout`: Duration in nanoseconds (0 for no timeout)
-
-#### Control Request Types
-
-Messages for controlling gadget execution:
-
-```protobuf
-message BuiltInGadgetControlRequest {
-  oneof Event {
-    BuiltInGadgetRunRequest runRequest = 1;
-    BuiltInGadgetStopRequest stopRequest = 2;
-  }
-}
-
-message GadgetControlRequest {
-  oneof Event {
-    GadgetRunRequest runRequest = 1;
-    GadgetStopRequest stopRequest = 2;
-    GadgetAttachRequest attachRequest = 3;
-  }
-}
-```
-
-- `Event`: One of run, stop, or attach requests
-- `runRequest`: Request to start a gadget
-- `stopRequest`: Request to stop a gadget
-- `attachRequest`: Request to attach to an existing gadget
-
-#### Data Handling Types
-
-Messages for handling gadget data:
-
-```protobuf
-message DataElement {
-  repeated bytes payload = 1;
-}
-
-message GadgetData {
-  string node = 1;
-  uint32 seq = 2;
-  DataElement data = 3;
-}
-
-message GadgetDataArray {
-  string node = 1;
-  uint32 seq = 2;
-  repeated DataElement dataArray = 3;
-}
-```
-
-- `payload`: Raw data bytes from the gadget
-- `node`: Node where the data was collected
-- `seq`: Sequence number for ordering
-- `data/dataArray`: Single or multiple data elements
 
 #### Instance Management Types
 
@@ -352,10 +281,94 @@ message StatusResponse {
 - `gadgetInstances`: List of running gadget instances
 - `id`: Unique identifier for a gadget instance (hex characters in lowercase)
 
-The complete API definition can be found in [pkg/gadget-service/api/api.proto](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/gadget-service/api/api.proto)
+### Built-in Gadget Types (Deprecated)
+
+> **Warning**
+> Built-in gadgets are being deprecated in favor of OCI gadgets. Built-in gadgets
+> will be removed in v0.42.0 (July 2025). Please migrate to their OCI counterparts.
+> You can find the list of OCI gadgets in the [gadgets section](../gadgets/).
+
+#### BuiltInGadgetManager​
+
+Service for managing built-in gadgets that come pre-packaged with Inspektor Gadget.
+
+```protobuf
+service BuiltInGadgetManager {
+  rpc GetInfo(InfoRequest) returns (InfoResponse) {}
+  rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
+}
+```
+
+* `GetInfo`: Retrieves information about the gadget service
+* `RunBuiltInGadget`: Runs a built-in gadget with streaming control
+
+##### InfoRequest and InfoResponse
+
+Used to get information about the gadget service:
+
+```protobuf
+message InfoRequest {
+  string version = 1;
+}
+
+message InfoResponse {
+  string version = 1;
+  bytes catalog = 2;
+  bool experimental = 3;
+  string serverVersion = 4;
+}
+```
+
+- `version`: Protocol version
+- `catalog`: Serialized catalog of available gadgets
+- `experimental`: Whether experimental features are enabled
+- `serverVersion`: Version of the gadget service
+
+##### BuiltInGadgetRunRequest
+
+Used to run a built-in gadget:
+
+```protobuf
+message BuiltInGadgetRunRequest {
+  string gadgetName = 1;
+  string gadgetCategory = 2;
+  map<string, string> params = 3;
+  repeated string args = 4;
+  repeated string nodes = 10;
+  bool fanOut = 11;
+  uint32 logLevel = 12;
+  int64 timeout = 13;
+}
+```
+
+- `gadgetName`: Name of the gadget as returned by gadgetDesc.Name()
+- `gadgetCategory`: Category of the gadget as returned by gadgetDesc.Category()
+- `params`: Combined map of all parameters including runtime and operator params
+- `args`: Parameters not specified with flags
+- `nodes`: List of nodes to run on (empty for all nodes)
+- `fanOut`: When true, forwards request to each node and combines output
+- `logLevel`: Logging verbosity level
+- `timeout`: Duration in nanoseconds (0 for no timeout)
+
+##### BuiltInGadgetControlRequest
+
+Messages for controlling built-in gadget execution:
+
+```protobuf
+message BuiltInGadgetControlRequest {
+  oneof Event {
+    BuiltInGadgetRunRequest runRequest = 1;
+    BuiltInGadgetStopRequest stopRequest = 2;
+  }
+}
+```
+
+- `Event`: One of run or stop requests
+- `runRequest`: Request to start a built-in gadget
+- `stopRequest`: Request to stop a built-in gadget
 
 ## gadgettracermanager.proto
 
-[pkg/gadgettracermanager/api/gadgettracermanager.proto](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/gadgettracermanager/api/gadgettracermanager.proto)
+[pkg/gadgettracermanager/api/gadgettracermanager.proto](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/pkg/gadgettracermanager/api/gadgettracermanager.proto)
 
 TODO
