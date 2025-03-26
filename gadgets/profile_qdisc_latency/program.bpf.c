@@ -75,7 +75,10 @@ static __always_inline void trace_stop(struct sk_buff *skb)
 		delta /= 1000000U;
 	else
 		delta /= 1000U;
-	slot = log2l(delta);
+	if (delta > 0)
+		slot = log2l(delta) + 1;
+	else
+		slot = log2l(delta);
 	if (slot >= PROFILER_MAX_SLOTS)
 		slot = PROFILER_MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->latency[slot], 1);
