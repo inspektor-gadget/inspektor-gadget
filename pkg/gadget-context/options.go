@@ -69,3 +69,15 @@ func WithUseInstance(val bool) Option {
 		gadgetCtx.useInstance = val
 	}
 }
+
+func WithID(id string) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.id = id
+	}
+}
+
+func WithName(name string) Option {
+	return func(gadgetCtx *GadgetContext) {
+		gadgetCtx.name = name
+	}
+}
