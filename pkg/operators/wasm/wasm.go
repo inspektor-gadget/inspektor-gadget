@@ -276,6 +276,14 @@ func (i *wasmOperatorInstance) init(
 		return fmt.Errorf("unsupported gadget API version: %d, expected: %d", ret[0], apiVersion)
 	}
 
+	// add extra info to gadgetcontext if requested
+	if gadgetCtx.ExtraInfo() {
+		err := i.addExtraInfo(gadgetCtx, ret[0], wasmProgram)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	i.dataSourceCallback = mod.ExportedFunction("dataSourceCallback")
 
 	return err

@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
@@ -104,6 +105,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
+	rootCmd.AddCommand(image.NewImageCmd(runtime))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
