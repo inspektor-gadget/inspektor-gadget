@@ -204,11 +204,38 @@ func TestImage(t *testing.T) {
 			},
 		},
 		{
+			name: "remove-registry-image-for-import",
+			cmd:  commonImage.NewRemoveCmd(),
+			args: []string{testRegistryImage},
+			expectedStdout: []string{
+				fmt.Sprintf("Successfully removed %s", testRegistryImage),
+			},
+		},
+		{
+			name:           "validate-remove-for-import",
+			cmd:            commonImage.NewListCmd(),
+			args:           []string{},
+			negateExpected: true,
+			// can't use combined repository here as REPOSITORY column can be truncated
+			expectedStdout: []string{
+				testRegistryImage,
+			},
+		},
+		{
 			name: "import",
 			cmd:  commonImage.NewImportCmd(),
 			args: []string{exportPath},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully imported images:\n  %s", testRegistryImage),
+			},
+		},
+		{
+			name: "validate-import",
+			cmd:  commonImage.NewListCmd(),
+			args: []string{},
+			expectedStdout: []string{
+				registryAddr,
+				testTag,
 			},
 		},
 	}
