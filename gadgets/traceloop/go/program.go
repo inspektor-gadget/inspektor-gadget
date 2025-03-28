@@ -167,9 +167,10 @@ func paramsToString(parameters []syscallParam) string {
 		if p.content != nil {
 			value = *p.content
 		}
-	        sb.WriteString(p.name)
-                sb.WriteRune('=')
-                sb.WriteString(p.value)
+
+		sb.WriteString(p.name)
+		sb.WriteRune('=')
+		sb.WriteString(value)
 
 		if idx < len(parameters)-1 {
 			sb.WriteString(", ")
