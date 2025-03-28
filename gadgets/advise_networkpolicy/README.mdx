@@ -1,0 +1,142 @@
+---
+title: advise networkpolicy
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The advise networkpolicy gadget monitors the network activity in the specified namespaces
+and records a summary of TCP and UDP traffic. This is then used to generate Kubernetes
+network policies.
+
+## Getting started
+
+
+```bash
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/advise_networkpolicy:%IG_TAG% [flags]
+```
+
+## Flags
+
+No flags.
+
+## Guide
+
+First, we need to create an nginx deployment which can respond to our requests. 
+
+```bash
+$ kubectl create service nodeport nginx --tcp=80:80
+service/nginx created
+$ kubectl create deployment nginx --image=nginx
+deployment.apps/nginx created
+```
+
+Then, start the advise_networkpolicy gadget in another terminal.
+
+```bash
+$ kubectl gadget run advise_seccomp:%IG_TAG%
+```
+
+Now we can deploy our client pod, send a request to our nginx deployment and `1.1.1.1` and then quit.
+
+```bash
+$ kubectl run --rm -ti --image busybox test-pod          
+If you don't see a command prompt, try pressing enter.
+/ # wget nginx
+Connecting to nginx (10.105.129.249:80)
+saving to 'index.html'
+index.html           100% |********************************|   615  0:00:00 ETA
+'index.html' saved
+/ # wget 1.1.1.1
+Connecting to 1.1.1.1 (1.1.1.1:80)
+Connecting to 1.1.1.1 (1.1.1.1:443)
+wget: note: TLS certificate validation not implemented
+Connecting to one.one.one.one (1.1.1.1:443)
+wget: can't open 'index.html': File exists
+/ # exit
+Session ended, resume using 'kubectl attach test-pod -c test-pod -i -t' command when the pod is running
+pod "test-pod" deleted
+```
+
+Let's switch back to the gadget terminal and we can see the generated policies.
+
+```bash
+$ kubectl gadget run advise_seccomp:%IG_TAG%
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: nginx-network
+  namespace: default
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          run: test-pod
+    ports:
+    - port: 80
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app: nginx
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: test-pod-network
+  namespace: default
+spec:
+  egress:
+  - ports:
+    - port: 80
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+  - ports:
+    - port: 80
+      protocol: TCP
+    to:
+    - podSelector:
+        matchLabels:
+          app: nginx
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+  - ports:
+    - port: 53
+      protocol: UDP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+          kubernetes.io/cluster-service: "true"
+          kubernetes.io/name: CoreDNS
+  podSelector:
+    matchLabels:
+      run: test-pod
+  policyTypes:
+  - Ingress
+  - Egress
+```
+
+Finally, clean the system:
+
+```bash
+$ kubectl delete deployment nginx
+deployment.apps "nginx" deleted
+$ kubectl delete service nginx
+service "nginx" deleted
+```
