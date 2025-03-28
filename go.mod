@@ -2,6 +2,8 @@ module github.com/inspektor-gadget/inspektor-gadget
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.17.3
@@ -200,7 +202,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect

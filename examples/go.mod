@@ -2,6 +2,8 @@ module examples
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/cilium/ebpf v0.17.3
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
@@ -138,7 +140,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
