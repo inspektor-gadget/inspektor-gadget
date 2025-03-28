@@ -223,7 +223,7 @@ func (t *tracelooper) attach(cgroupID uint64, mntnsID uint64) error {
 func (t *tracelooper) detach(mntnsID uint64) error {
 	err := t.mapOfPerfBuffers.Delete(mntnsID)
 	if err != nil {
-		return fmt.Errorf("removing perf buffer from map with mntnsID %d: %v", mntnsID, err)
+		return fmt.Errorf("removing perf buffer from map with mntnsID %d: %w", mntnsID, err)
 	}
 
 	return nil
@@ -649,7 +649,7 @@ func gadgetInit() int32 {
 		name := fieldInfo.name
 		field, err := dsOutput.AddField(name, fieldInfo.kind)
 		if err != nil {
-			api.Errorf("adding %s field: %w", name, err)
+			api.Errorf("adding %s field: %v", name, err)
 			return 1
 		}
 
@@ -658,7 +658,7 @@ func gadgetInit() int32 {
 
 	err = fields["mntns_id"].AddTag("type:gadget_mntns_id")
 	if err != nil {
-		api.Errorf("adding tag to mntns_id field: %w", err)
+		api.Errorf("adding tag to mntns_id field: %v", err)
 		return 1
 	}
 
