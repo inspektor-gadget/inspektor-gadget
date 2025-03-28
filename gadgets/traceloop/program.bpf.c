@@ -267,6 +267,10 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	int ret;
 	int i;
 
+	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
+	if (!perf_buffer)
+		goto clean;
+
 	if (bpf_map_update_elem(&fake_stack, &event_key, &empty_syscall_event,
 				BPF_NOEXIST))
 		return 0;
@@ -317,10 +321,6 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 
 	task = (struct task_struct *)bpf_get_current_task();
 	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
-	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
-	if (!perf_buffer)
-		goto clean;
 
 	bpf_get_current_comm(sc->comm, sizeof(sc->comm));
 
