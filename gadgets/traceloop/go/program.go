@@ -159,7 +159,7 @@ type event struct {
 	retval     string
 }
 
-func toString(parameters []syscallParam) string {
+func paramsToString(parameters []syscallParam) string {
 	var sb strings.Builder
 
 	for idx, p := range parameters {
@@ -811,7 +811,7 @@ func gadgetStop() int32 {
 			fields["pid"].SetUint32(api.Data(packet), event.pid)
 			fields["comm"].SetString(api.Data(packet), event.comm)
 			fields["syscall"].SetString(api.Data(packet), event.syscall)
-			fields["parameters"].SetString(api.Data(packet), toString(event.parameters))
+			fields["parameters"].SetString(api.Data(packet), paramsToString(event.parameters))
 			fields["ret"].SetString(api.Data(packet), event.retval)
 
 			dsOutput.EmitAndRelease(api.Packet(packet))
