@@ -98,8 +98,16 @@ func TestTraceBind(t *testing.T) {
 				Timestamp: utils.NormalizedStr,
 			}
 
+			if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+				expectedEntry.Addr.K8s = utils.K8s{
+					Kind: "raw",
+				}
+			}
+
 			normalize := func(e *traceBindEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
+				utils.NormalizeEndpoint(&e.Addr)
+				utils.NormalizeEndpoint(&e.Addr)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeProc(&e.Proc)
 			}
