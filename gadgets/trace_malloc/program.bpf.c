@@ -118,8 +118,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->size = size;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	if (collect_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -144,8 +143,7 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 	event->size = 0;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	if (collect_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

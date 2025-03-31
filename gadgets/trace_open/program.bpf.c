@@ -117,8 +117,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	/* event data */
 	gadget_process_populate(&event->proc);
-	if (collect_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
 
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;

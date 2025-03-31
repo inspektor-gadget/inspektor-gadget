@@ -117,9 +117,22 @@ gadget_inode_get_mtime(struct inode *inode, __u64 *mtime_sec, __u32 *mtime_nsec)
 	}
 }
 
+/* gadget_get_user_stack gets the user stack into ustack if collect_ustack is
+ * true, or initialize ustack to 0 otherwise.
+ */
 static __always_inline void
-gadget_get_user_stack(struct pt_regs *ctx, struct gadget_user_stack *ustack)
+gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack,
+		      bool collect_ustack)
 {
+	if (!collect_ustack) {
+		ustack->stack_id = 0;
+		ustack->exe_inode = 0;
+		ustack->pid_level0 = 0;
+		ustack->pidns_level0 = 0;
+		ustack->pid_level1 = 0;
+		ustack->pidns_level1 = 0;
+		return;
+	}
 	ustack->stack_id = bpf_get_stackid(
 		ctx, &ig_ustack, BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK);
 
@@ -137,6 +150,9 @@ gadget_get_user_stack(struct pt_regs *ctx, struct gadget_user_stack *ustack)
 		numbers += 1;
 		ustack->pid_level1 = BPF_CORE_READ(numbers, nr);
 		ustack->pidns_level1 = BPF_CORE_READ(numbers, ns, ns.inum);
+	} else {
+		ustack->pid_level1 = 0;
+		ustack->pidns_level1 = 0;
 	}
 
 	gadget_inode_get_mtime(inode, &ustack->mtime_sec, &ustack->mtime_nsec);
