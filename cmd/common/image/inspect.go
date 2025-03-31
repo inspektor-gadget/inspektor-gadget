@@ -26,12 +26,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -40,47 +38,37 @@ import (
 func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	var outputMode string
 
+	opGlobalParams := make(map[string]*params.Params)
+
 	outputModes := []string{utils.OutputModeYAML, utils.OutputModeJSON, utils.OutputModeJSONPretty, utils.OutputModeCustom}
 
 	cmd := &cobra.Command{
 		Use:          "inspect",
-		Short:        "Inspect the local gadget image",
+		Short:        "Inspect a gadget image",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 	}
 
 	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display")
 
+	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+
+	for _, op := range operators.GetDataOperators() {
+		opGlobalParams[op.Name()] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
+	}
+
+	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+	runtimeParams := runtime.ParamDescs().ToParams()
+
+	runtime.Init(runtimeGlobalParams)
+	defer runtime.Close()
+
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		image, err := oci.GetGadgetImageDesc(context.TODO(), args[0])
-		if err != nil {
-			return fmt.Errorf("inspecting image: %w", err)
-		}
-
-		runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
-		runtimeParams := runtime.ParamDescs().ToParams()
-		ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
-		ociParams.Set("pull", oci.PullImageNever)
-
-		// Add operator global flags
-		opGlobalParams := make(map[string]*params.Params)
-		for _, op := range operators.GetDataOperators() {
-			opGlobalParams[op.Name()] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
-		}
-		if ociParams, exists := opGlobalParams["oci"]; exists {
-			ociParams.Set("verify-image", "false")
-		}
-
-		var info *api.GadgetInfo
-		err = runtime.Init(runtimeGlobalParams)
-		if err != nil {
-			return fmt.Errorf("initializing runtime: %w", err)
-		}
-		defer runtime.Close()
+		image := args[0]
 
 		// set global operator flags from the config file
 		for o, p := range opGlobalParams {
-			err = common.SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
+			err := common.SetFlagsForParams(cmd, p, config.OperatorKey+"."+o)
 			if err != nil {
 				return fmt.Errorf("setting operator %s flags: %w", o, err)
 			}
@@ -98,7 +86,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 
 		gadgetCtx := gadgetcontext.New(
 			context.Background(),
-			image.String(),
+			image,
 			gadgetcontext.WithDataOperators(ops...),
 			gadgetcontext.WithUseInstance(false),
 			gadgetcontext.IncludeExtraInfo(true),
@@ -107,7 +95,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		paramValueMap := make(map[string]string)
 		ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
-		info, err = runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
+		info, err := runtime.GetGadgetInfo(gadgetCtx, runtimeParams, paramValueMap)
 		if err != nil {
 			return fmt.Errorf("getting gadget info: %w", err)
 		}
@@ -161,6 +149,16 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		utils.OutputModeJSONPretty,
 		fmt.Sprintf("Output mode, possible values are, %s", strings.Join(outputModes, ", ")),
 	)
+
+	// We don't want to add the headless-related flags to the inspect command
+	skipParams := []string{"!attach"}
+
+	for _, operatorParams := range opGlobalParams {
+		common.AddOCIFlags(cmd, operatorParams, skipParams, runtime)
+	}
+	common.AddOCIFlags(cmd, ociParams, skipParams, runtime)
+	common.AddOCIFlags(cmd, runtimeGlobalParams, skipParams, runtime)
+	common.AddOCIFlags(cmd, runtimeParams, skipParams, runtime)
 
 	return cmd
 }
