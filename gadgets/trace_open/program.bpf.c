@@ -30,7 +30,7 @@ struct event {
 	__u32 fd;
 	int flags_raw;
 	__u16 mode_raw;
-	struct gadget_user_stack ustack_raw;
+	struct gadget_user_stack ustack;
 	char fname[NAME_MAX];
 };
 
@@ -117,7 +117,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	/* event data */
 	gadget_process_populate(&event->proc);
-	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
