@@ -86,7 +86,7 @@ $(GADGETS_README):
 	@# Replace architecture section and insert mermaid graph
 	sed -i '/^## Architecture/,/^## /{/^## /!d}' $@
 	echo -e "\n\n### Flowchart Graph\n\nMermaid graph showing relations between maps and programs\n\`\`\`mermaid" >> $@
-	sudo ig image inspect $(@D):main -o custom --extra-info=ebpf.mermaid.flowchart >> $@
+	sudo ig image inspect $(@:/README.mdx=):$(GADGET_TAG) -o custom --extra-info=ebpf.mermaid.flowchart >> $@
 	echo "\`\`\`" >> $@
 	echo -e "\n### Sequence Graph \n\n TBD" >> $@
 	@# Create symlinks for README if not exists

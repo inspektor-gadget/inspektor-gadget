@@ -60,6 +60,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 		runtimeParams := runtime.ParamDescs().ToParams()
 		ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
+		ociParams.Set("pull", oci.PullImageNever)
 
 		// Add operator global flags
 		opGlobalParams := make(map[string]*params.Params)
