@@ -164,7 +164,11 @@ func removeSplitSortArgs(args []string) []string {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--sort" {
 			// Remove also the next element as it is the arg of --sort
-			return append(args[:i], args[i+2:]...)
+			if i == len(args)-1 {
+				return args[:len(args)-1]
+			} else {
+				return append(args[:i], args[i+2:]...)
+			}
 		}
 	}
 	return args
