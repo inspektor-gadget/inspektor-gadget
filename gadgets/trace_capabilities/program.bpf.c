@@ -268,8 +268,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->capable = PT_REGS_RC(ctx) == 0;
 	if (collect_kstack)
 		event->kstack_raw = gadget_get_kernel_stack(ctx);
-	if (collect_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 

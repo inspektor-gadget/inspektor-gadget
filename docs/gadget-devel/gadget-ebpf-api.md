@@ -341,7 +341,7 @@ Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stac
 
 ### `gadget_user_stack`
 
-Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack_raw)` (see [user-stack-traces](#user-stack-traces)).
+Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack)` (see [user-stack-traces](#user-stack-traces)).
 
 #### Annotations
 
@@ -611,10 +611,10 @@ struct {
 Then, add a field in the event structure with the type of `gadget_user_stack`,
 designated for storing the stack id along with identifiers for the executable
 so that the stack can be symbolised in userspace.
-`gadget_get_user_stack(ctx, &event->ustack_raw)` could be used  to populate
-this field, this helper function will store the kernel stack into
-`ig_ustack` and fill the field passed as parameter. When ustack_raw is left
-initialized to zero, ig will ignore the stack trace.
+`gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack)` could be used
+to populate this field, this helper function will store the kernel stack into
+`ig_ustack` and fill the field passed as parameter. When collect_ustack is
+false, ustack_raw is initialized to zero and ig will ignore the stack trace.
 
 ```C
 struct event {
@@ -631,8 +631,7 @@ GADGET_PARAM(collect_ustack);
 	if (!event)
 		return 0;
 
-	if (collect_ustack)
-		gadget_get_user_stack(ctx, &event->ustack_raw);
+	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
 ```
 
 ## Common information
