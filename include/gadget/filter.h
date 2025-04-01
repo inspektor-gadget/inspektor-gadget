@@ -136,6 +136,7 @@ gadget_should_discard_data_by_skb(struct sockets_value *skb_val)
 		    targ_uid != GADGET_INVALID_ID ||
 		    targ_gid != GADGET_INVALID_ID || targ_comm[0] != '\0')
 			return true;
+		return false;
 	}
 
 	return gadget_should_discard_data(

@@ -363,7 +363,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// Enrich event with process metadata
 	gadget_process_populate_from_socket(skb_val, &event->proc);
 
-	if (paths) {
+	if (paths && skb_val != NULL) {
 		if (bpf_core_enum_value_exists(
 			    enum bpf_func_id, BPF_FUNC_probe_read_kernel_str)) {
 			bpf_probe_read_kernel_str(
