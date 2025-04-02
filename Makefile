@@ -109,8 +109,13 @@ list-ig-targets:
 .PHONY: ig-all
 ig-all: $(IG_TARGETS) ig
 
-ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
-	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
+ig:
+	CGO_ENABLED=0 go build \
+        -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+        -extldflags '-static'" \
+        -tags "netgo" \
+        ./cmd/ig
 
 # Compile ig with debug options and debug it using delve:
 # -N: disable optimization.
