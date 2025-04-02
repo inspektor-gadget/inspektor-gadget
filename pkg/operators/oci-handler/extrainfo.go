@@ -88,6 +88,10 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 	ociInfo := &api.ExtraInfo{
 		Data: make(map[string]*api.GadgetInspectAddendum),
 	}
+	ociInfo.Data["oci.metadata"] = &api.GadgetInspectAddendum{
+		ContentType: "text/yaml",
+		Content:     metadata,
+	}
 	ociInfo.Data["oci.repository"] = &api.GadgetInspectAddendum{
 		ContentType: "text/plain",
 		Content:     []byte(repository),
@@ -110,10 +114,10 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 		ContentType: "application/json",
 		Content:     []byte(fmt.Sprintf("%v", string(layersJson))),
 	}
-	dataSourcesJson, _ := json.Marshal(datasourceFields)
-	ociInfo.Data["oci.datasources"] = &api.GadgetInspectAddendum{
+	dataSourcesFieldsJson, _ := json.Marshal(datasourceFields)
+	ociInfo.Data["oci.datasourceFields"] = &api.GadgetInspectAddendum{
 		ContentType: "application/json",
-		Content:     []byte(fmt.Sprintf("%v", string(dataSourcesJson))),
+		Content:     []byte(fmt.Sprintf("%v", string(dataSourcesFieldsJson))),
 	}
 	ebpfsJson, _ := json.Marshal(ebpfParams)
 	ociInfo.Data["oci.ebpfParams"] = &api.GadgetInspectAddendum{
