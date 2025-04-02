@@ -115,10 +115,18 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("generating mermaid graph: %w", err)
 	}
+	sequenceDiagram, err := graphutils.GenerateSequenceMermaidGraph(i.collectionSpec)
+	if err != nil {
+		return fmt.Errorf("generating mermaid sequence diagram: %w", err)
+	}
 
 	ebpfInfo.Data["ebpf.mermaid.flowchart"] = &api.GadgetInspectAddendum{
 		ContentType: "text/mermaid",
 		Content:     []byte(flowchartGraph),
+	}
+	ebpfInfo.Data["ebpf.mermaid.sequence"] = &api.GadgetInspectAddendum{
+		ContentType: "text/mermaid",
+		Content:     []byte(sequenceDiagram),
 	}
 
 	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)

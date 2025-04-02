@@ -16,11 +16,14 @@ package graphutils
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+
+	"github.com/nao1215/mermaid/sequence"
 )
 
 func GenerateFlowchartMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, error) {
@@ -109,4 +112,69 @@ func GenerateFlowchartMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string,
 		graph += fmt.Sprintf("%s[\"%s\"]\n", prog.Name, prog.Name)
 	}
 	return graph, nil
+}
+
+func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, error) {
+	graph := sequence.NewDiagram(io.Discard)
+
+	var progsList []*ebpf.ProgramSpec
+	graph.BoxStart([]string{"eBPF Programs"})
+	for _, p := range collectionSpec.Programs {
+		progsList = append(progsList, p)
+		graph.Participant(p.Name)
+	}
+	graph.BoxEnd()
+
+	graph.BoxStart([]string{"eBPF Maps"})
+	for _, m := range collectionSpec.Maps {
+		if m.Name == ".rodata" || m.Name == ".bss" {
+			continue
+		}
+		graph.Participant(m.Name)
+	}
+	graph.BoxEnd()
+
+	type event struct {
+		sender   string
+		receiver string
+		label    string
+	}
+	var events []event
+
+	for _, prog := range progsList {
+		references := make(map[string]bool)
+		previousRef := map[asm.Register]string{}
+		for _, ins := range prog.Instructions {
+			if ins.IsBuiltinCall() {
+				builtinFunc := asm.BuiltinFunc(ins.Constant)
+				builtinFuncName := fmt.Sprint(builtinFunc)
+				ref := ""
+				if strings.HasPrefix(builtinFuncName, "FnMap") &&
+					strings.HasSuffix(builtinFuncName, "Elem") {
+					builtinFuncName = strings.TrimPrefix(builtinFuncName, "FnMap")
+					builtinFuncName = strings.TrimSuffix(builtinFuncName, "Elem")
+					ref = previousRef[asm.R1]
+				} else if builtinFuncName == "FnPerfEventOutput" {
+					builtinFuncName = strings.TrimPrefix(builtinFuncName, "FnPerf")
+					ref = previousRef[asm.R2]
+				}
+				if ref != "" {
+					references[ref+"\000"+builtinFuncName] = true
+					events = append(events, event{
+						sender:   prog.Name,
+						receiver: ref,
+						label:    builtinFuncName,
+					})
+				}
+			}
+			if ref := ins.Reference(); ref != "" {
+				previousRef[ins.Dst] = ref
+			}
+		}
+	}
+	for _, e := range events {
+		graph.SyncRequest(e.sender, e.receiver, e.label)
+	}
+
+	return graph.String(), nil
 }

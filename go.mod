@@ -223,6 +223,8 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 )
 
+require github.com/nao1215/mermaid v0.0.2
+
 // gopacket/gopacket with:
 // - https://github.com/gopacket/gopacket/pull/101
 replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8

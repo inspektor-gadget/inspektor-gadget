@@ -88,7 +88,10 @@ $(GADGETS_README):
 	echo -e "\n\n### Flowchart Graph\n\nMermaid graph showing relations between maps and programs\n\`\`\`mermaid" >> $@
 	sudo ig image inspect $(@:/README.mdx=):$(GADGET_TAG) -o custom --extra-info=ebpf.mermaid.flowchart >> $@
 	echo "\`\`\`" >> $@
-	echo -e "\n### Sequence Graph \n\n TBD" >> $@
+	echo -e "\n### Sequence Graph \n\n" >> $@
+	echo -e "Mermaid graph showing the sequence of events\n\`\`\`mermaid" >> $@
+	sudo ig image inspect $(@:/README.mdx=):$(GADGET_TAG) -o custom --extra-info=ebpf.mermaid.sequence >> $@
+	echo -e "\n\`\`\`" >> $@
 	@# Create symlinks for README if not exists
 	if [ ! -f $(ROOT_DIR)../docs/gadgets/$(@) ] ; then \
 		ln -sf ../../gadgets/$@ $(ROOT_DIR)../docs/gadgets/$(shell dirname $@).mdx ; \
