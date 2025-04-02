@@ -90,7 +90,7 @@ Available Commands:
   build       Build a gadget image
   export      Export the SRC_IMAGE images to DST_FILE
   import      Import images from SRC_FILE
-  inspect     Inspect the local gadget image
+  inspect     Inspect a gadget image
   list        List gadget images on the host
   pull        Pull the specified image from a remote registry
   push        Push the specified image to a remote registry
@@ -277,11 +277,11 @@ trace_open                     latest                        19ea8377298f 30 min
 
 #### `inspect`
 
-Inspect the given local gadget image.
+Inspect the given gadget image.
 
 ```bash
 $ sudo ig image inspect -h
-Inspect the local gadget image
+Inspect a gadget image
 
 Usage:
   ig image inspect IMAGE [flags]
