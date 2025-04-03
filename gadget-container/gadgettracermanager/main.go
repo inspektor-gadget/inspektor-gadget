@@ -153,8 +153,8 @@ func main() {
 	var conn *grpc.ClientConn
 	if liveness || dump != "" || method != "" {
 		var err error
-		//nolint:staticcheck
-		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+		conn, err = grpc.NewClient("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("fail to dial: %v", err)
 		}
