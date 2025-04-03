@@ -69,22 +69,6 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 		fmt.Printf("Error unmarshalling metadata: %v\n", err)
 	}
 
-	// Extract datasource fields
-	datasourceFields := []string{}
-	for _, datasourceMap := range config.Datasources {
-		for fieldName := range datasourceMap.Fields {
-			datasourceFields = append(datasourceFields, fieldName)
-		}
-	}
-
-	// Extract ebpf params
-	ebpfParams := []string{}
-	if value, exists := config.Params["ebpf"]; exists {
-		for paramName := range value {
-			ebpfParams = append(ebpfParams, paramName)
-		}
-	}
-
 	ociInfo := &api.ExtraInfo{
 		Data: make(map[string]*api.GadgetInspectAddendum),
 	}
@@ -114,15 +98,6 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 		ContentType: "application/json",
 		Content:     []byte(fmt.Sprintf("%v", string(layersJson))),
 	}
-	dataSourcesFieldsJson, _ := json.Marshal(datasourceFields)
-	ociInfo.Data["oci.datasourceFields"] = &api.GadgetInspectAddendum{
-		ContentType: "application/json",
-		Content:     []byte(fmt.Sprintf("%v", string(dataSourcesFieldsJson))),
-	}
-	ebpfsJson, _ := json.Marshal(ebpfParams)
-	ociInfo.Data["oci.ebpfParams"] = &api.GadgetInspectAddendum{
-		ContentType: "application/json",
-		Content:     []byte(fmt.Sprintf("%v", string(ebpfsJson))),
-	}
+
 	gadgetCtx.SetVar("extraInfo.oci", ociInfo)
 }
