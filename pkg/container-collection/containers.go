@@ -248,6 +248,14 @@ func (c *Container) K8sPodLabelsAsString() string {
 }
 
 func (c *Container) SetPodLabels(podLabels map[string]string) {
+	if len(podLabels) == 0 {
+		// IsEnriched relies on c.K8s.PodLabels == nil to know if it
+		// has been initialized.
+		c.K8s.PodLabels = nil
+		c.podLabelsAsString = ""
+		return
+	}
+
 	kvPairs := make([]string, 0, len(podLabels))
 	c.K8s.PodLabels = make(map[string]string, len(podLabels))
 	for k, v := range podLabels {
