@@ -31,6 +31,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
+type ustack struct {
+	Symbols string `json:"symbols"`
+}
+
 type traceCapabilitiesEvent struct {
 	utils.CommonData
 
@@ -45,7 +49,7 @@ type traceCapabilitiesEvent struct {
 	Insetid       uint32 `json:"insetid"`
 	Syscall       string `json:"syscall"`
 	Kstack        string `json:"kstack"`
-	Ustack        string `json:"ustack"`
+	Ustack        ustack `json:"ustack"`
 	Capable       bool   `json:"capable"`
 }
 
@@ -131,8 +135,8 @@ int main() {
 					Cap:        "CAP_SYS_CHROOT",
 					Syscall:    "SYS_CHROOT",
 					Audit:      1,
-					Capable:    false,    // container runtime dependent. See normalize function.
-					Ustack:     "level2", // normalize() just checks for the presence of this string
+					Capable:    false,            // container runtime dependent. See normalize function.
+					Ustack:     ustack{"level2"}, // normalize() just checks for the presence of this string
 
 					// Check the existence of the following fields
 					Timestamp:     utils.NormalizedStr,
@@ -149,7 +153,7 @@ int main() {
 					Syscall:    "SYS_SETPRIORITY",
 					Audit:      1,
 					Capable:    false,
-					Ustack:     "",
+					Ustack:     ustack{""},
 
 					// Check the existence of the following fields
 					Timestamp:     utils.NormalizedStr,
@@ -169,8 +173,8 @@ int main() {
 				utils.NormalizeString(&e.CapEffective)
 
 				if e.Proc.Comm == "mychroot" {
-					if strings.Contains(e.Ustack, "level2") {
-						e.Ustack = "level2"
+					if strings.Contains(e.Ustack.Symbols, "level2") {
+						e.Ustack.Symbols = "level2"
 					}
 
 					// The default capabilities vary between container runtimes:
@@ -186,7 +190,7 @@ int main() {
 					// able to chroot.
 					e.Capable = false
 				} else {
-					e.Ustack = ""
+					e.Ustack.Symbols = ""
 				}
 
 				// Manually normalize fields that might contain 0

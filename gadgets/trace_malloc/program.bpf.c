@@ -33,7 +33,7 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
 
-	struct gadget_user_stack ustack_raw;
+	struct gadget_user_stack ustack;
 
 	enum memop operation_raw;
 	__u64 addr;
@@ -118,7 +118,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->size = size;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -143,7 +143,7 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 	event->size = 0;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	gadget_get_user_stack(ctx, &event->ustack_raw, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
