@@ -173,10 +173,11 @@ func (i *wasmOperatorInstance) perfReaderRead(ctx context.Context, m wapi.Module
 
 	record, err := perfReader.Read()
 	if err != nil {
-		i.logger.Warnf("perfReaderRead: reading perf buffer: %v", err)
-		stack[0] = 1
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			stack[0] = 2
+		} else {
+			stack[0] = 1
+			i.logger.Warnf("perfReaderRead: reading perf buffer: %v", err)
 		}
 		return
 	}
