@@ -125,14 +125,8 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 	}
 	graph.BoxEnd()
 
-	graph.BoxStart([]string{"eBPF Maps"})
-	for _, m := range collectionSpec.Maps {
-		if m.Name == ".rodata" || m.Name == ".bss" {
-			continue
-		}
-		graph.Participant(m.Name)
-	}
-	graph.BoxEnd()
+	orderedMapNames := []string{}
+	mapSeen := make(map[string]bool)
 
 	type event struct {
 		sender   string
@@ -142,7 +136,6 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 	var events []event
 
 	for _, prog := range progsList {
-		references := make(map[string]bool)
 		previousRef := map[asm.Register]string{}
 		for _, ins := range prog.Instructions {
 			if ins.IsBuiltinCall() {
@@ -159,7 +152,10 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 					ref = previousRef[asm.R2]
 				}
 				if ref != "" {
-					references[ref+"\000"+builtinFuncName] = true
+					if !mapSeen[ref] {
+						orderedMapNames = append(orderedMapNames, ref)
+						mapSeen[ref] = true
+					}
 					events = append(events, event{
 						sender:   prog.Name,
 						receiver: ref,
@@ -172,6 +168,16 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 			}
 		}
 	}
+
+	graph.BoxStart([]string{"eBPF Maps"})
+	for _, mName := range orderedMapNames {
+		if mName == ".rodata" || mName == ".bss" {
+			continue
+		}
+		graph.Participant(mName)
+	}
+	graph.BoxEnd()
+
 	for _, e := range events {
 		graph.SyncRequest(e.sender, e.receiver, e.label)
 	}
