@@ -12,6 +12,7 @@
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+#include <gadget/user_stack_map.h>
 
 enum code {
 	SECCOMP_RET_KILL_PROCESS = 0x80000000,
@@ -32,7 +33,11 @@ struct event {
 
 	gadget_syscall syscall_raw;
 	enum code code_raw;
+	struct gadget_user_stack ustack;
 };
+
+const volatile bool collect_ustack = false;
+GADGET_PARAM(collect_ustack);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
@@ -56,6 +61,7 @@ int ig_audit_secc(struct pt_regs *ctx)
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->syscall_raw = syscall;
 	event->code_raw = code;
+	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
