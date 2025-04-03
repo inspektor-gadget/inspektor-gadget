@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.1
 
 require (
-	github.com/cilium/ebpf v0.17.3
+	github.com/cilium/ebpf v0.18.0
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.1
 	k8s.io/api v0.32.3
