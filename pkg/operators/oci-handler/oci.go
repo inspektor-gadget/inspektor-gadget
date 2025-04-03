@@ -309,6 +309,11 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 	r.Close()
 
+	// add extra info is requested
+	if gadgetCtx.ExtraInfo() {
+		addExtraInfo(gadgetCtx, metadata, manifest)
+	}
+
 	// Store metadata for serialization
 	gadgetCtx.SetMetadata(metadata)
 
