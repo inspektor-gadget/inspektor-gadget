@@ -1,0 +1,37 @@
+name: traceloop
+description: syscalls flight recorder
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/traceloop
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/traceloop
+annotations:
+  enable-containers-datasource: true
+datasources:
+  traceloop:
+    annotations:
+      description: Syscalls
+    fields:
+      mntns_id:
+        annotations:
+          template: mntns_id
+      cpu:
+        annotations:
+          description: CPU number where the syscall was executed
+          columns.maxwidth: 4
+      pid:
+        annotations:
+          template: pid
+      comm:
+        annotations:
+          template: comm
+      syscall:
+        annotations:
+          template: syscall
+      parameters:
+        annotations:
+          description: Syscall's parameters
+          columns.width: 20
+      ret:
+        annotations:
+          description: Syscall's return value
+          columns.width: 10
+          columns.alignment: right
