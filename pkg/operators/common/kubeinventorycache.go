@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -122,7 +122,7 @@ type K8sInventoryCache interface {
 }
 
 type inventoryCache struct {
-	clientset *kubernetes.Clientset
+	clientset kubernetes.Interface
 
 	factory     informers.SharedInformerFactory
 	podsHandler k8sCache.ResourceEventHandlerRegistration
@@ -318,6 +318,10 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 			log.Warnf("OnAdd: error getting key for pod: %v", err)
 			return
 		}
+		if key == "" {
+			log.Warnf("OnAdd: empty key for pod")
+			return
+		}
 		slimPod := NewSlimPod(o)
 		cache.pods.Add(key, slimPod)
 		if ip := slimPod.Status.PodIP; ip != "" {
@@ -327,6 +331,10 @@ func (cache *inventoryCache) OnAdd(obj any, _ bool) {
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
 		if err != nil {
 			log.Warnf("OnAdd: error getting key for service: %v", err)
+			return
+		}
+		if key == "" {
+			log.Warnf("OnAdd: empty key for svc")
 			return
 		}
 		slimService := NewSlimService(o)
@@ -347,6 +355,10 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 			log.Warnf("OnUpdate: error getting key for pod: %v", err)
 			return
 		}
+		if key == "" {
+			log.Warnf("OnUpdate: empty key for pod")
+			return
+		}
 		slimPod := NewSlimPod(o)
 		cache.pods.Add(key, slimPod)
 		if ip := slimPod.Status.PodIP; ip != "" {
@@ -356,6 +368,10 @@ func (cache *inventoryCache) OnUpdate(_, newObj any) {
 		key, err := k8sCache.MetaNamespaceKeyFunc(o)
 		if err != nil {
 			log.Warnf("OnUpdate: error getting key for service: %v", err)
+			return
+		}
+		if key == "" {
+			log.Warnf("OnUpdate: empty key for svc")
 			return
 		}
 		slimService := NewSlimService(o)
