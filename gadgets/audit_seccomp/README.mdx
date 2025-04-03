@@ -164,6 +164,43 @@ test-audit-seccomp    unshare            485888      485888         …_KILL_THR
 </TabItem>
 </Tabs>
 
+In the previous examples, it is straightforward why the application is
+performing the syscall. The unshare program executes the unshare syscall and
+the mkdir program executes the mkdir syscall. For bigger applications, it can
+be useful to show the user stack trace.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
+...
+  "ustack": {
+    "addresses": "[0]0x000000000040332e; [1]0x00000000004771e6; [2]0x000000000047752e; [3]0x000000000048250b; [4]0x00000000004829ae; [5]0x0000000000482a7e; [6]0x0000000000482afe; [7]0x0000000000482b7e; [8]0x0000000000435a9d; [9]0x00000000004625a1; ",
+    ...
+    "symbols": "[0]runtime/internal/syscall.Syscall6; [1]syscall.Syscall; [2]syscall.Syscall.abi0; [3]golang.org/x/sys/unix.Chroot; [4]main.level3; [5]main.level2; [6]main.level1; [7]main.main; [8]runtime.main; [9]runtime.goexit.abi0; "
+  }
+^C
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```bash
+$ sudo -E ig run audit_seccomp:%IG_TAG% --collect-ustack -o jsonpretty
+...
+  "ustack": {
+    "addresses": "[0]0x000000000040332e; [1]0x00000000004771e6; [2]0x000000000047752e; [3]0x000000000048250b; [4]0x00000000004829ae; [5]0x0000000000482a7e; [6]0x0000000000482afe; [7]0x0000000000482b7e; [8]0x0000000000435a9d; [9]0x00000000004625a1; ",
+    ...
+    "symbols": "[0]runtime/internal/syscall.Syscall6; [1]syscall.Syscall; [2]syscall.Syscall.abi0; [3]golang.org/x/sys/unix.Chroot; [4]main.level3; [5]main.level2; [6]main.level1; [7]main.main; [8]runtime.main; [9]runtime.goexit.abi0; "
+  }
+^C
+```
+
+</TabItem>
+</Tabs>
+
 Finally, clean the system:
 
 <Tabs groupId="env">

@@ -17,3 +17,22 @@ datasources:
           description: Seccomp return code
           columns.width: 20
           columns.ellipsis: start
+      ustack:
+        annotations:
+          columns.hidden: true
+      ustack.addresses:
+        annotations:
+          description: User stack's addresses
+          columns.hidden: true
+          columns.width: 20
+      ustack.symbols:
+        annotations:
+          description: User stack's symbols
+          columns.hidden: true
+          columns.width: 20
+params:
+  ebpf:
+    collect_ustack:
+      key: collect-ustack
+      defaultValue: "false"
+      description: Collect user stack traces
