@@ -33,7 +33,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v28.0.4+incompatible
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.2.1
 	github.com/prometheus/client_golang v1.21.1
