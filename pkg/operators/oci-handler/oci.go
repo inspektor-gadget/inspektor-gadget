@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
@@ -158,11 +159,8 @@ func (o *ociHandler) InstanceParams() api.Params {
 	}
 }
 
-func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, error) {
-	k8sClient, err := k8sutil.NewClientset("")
-	if err != nil {
-		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
-	}
+func getPullSecret(pullSecretString string, gadgetNamespace string, k8sClient kubernetes.Interface) ([]byte, error) {
+
 	gps, err := k8sClient.CoreV1().Secrets(gadgetNamespace).Get(context.TODO(), pullSecretString, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("getting secret %q: %w", pullSecretString, err)
@@ -210,8 +208,7 @@ func (o *OciHandlerInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.
 	return o.extraParams
 }
 
-func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
-	currentVersion := version.Version()
+func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger, currentVersion semver.Version) {
 
 	// Do not print any warning if this is a prerelease to avoid annoying developers
 	if len(currentVersion.Pre) > 0 {
@@ -237,6 +234,53 @@ func checkBuilderVersion(manifest *v1.Manifest, logger logger.Logger) {
 	}
 }
 
+func constructTempConfig(ann string) (map[string]any, error, int) {
+	annInfo := strings.SplitN(ann, ":", 2)
+	if len(annInfo) != 2 {
+		return nil, fmt.Errorf("invalid annotation %q", ann), 0
+	}
+
+	annotation := strings.SplitN(annInfo[1], "=", 2)
+	if len(annotation) != 2 {
+		return nil, fmt.Errorf("invalid annotation %q", ann), 0
+	}
+
+	subject := strings.SplitN(annInfo[0], ".", 2)
+	switch len(subject) {
+	case 1:
+		// data source
+		tmpConfig := map[string]any{
+			"datasources": map[string]any{
+				annInfo[0]: map[string]any{
+					"annotations": map[string]any{
+						annotation[0]: annotation[1],
+					},
+				},
+			},
+		}
+		viper.Set("a", "b")
+		return tmpConfig, nil, 1
+
+	case 2:
+		// field
+		tmpConfig := map[string]any{
+			"datasources": map[string]any{
+				subject[0]: map[string]any{
+					"fields": map[string]any{
+						subject[1]: map[string]any{
+							"annotations": map[string]any{
+								annotation[0]: annotation[1],
+							},
+						},
+					},
+				},
+			},
+		}
+		return tmpConfig, nil, 2
+	}
+	return nil, nil, 0
+}
+
 func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	if len(gadgetCtx.ImageName()) == 0 {
 		return fmt.Errorf("imageName empty")
@@ -250,8 +294,12 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 		if pullSecretString != "" {
 			var err error
+			k8sClient, err := k8sutil.NewClientset("")
+			if err != nil {
+				return fmt.Errorf("creating new k8s clientset: %w", err)
+			}
 			// TODO: Namespace is still hardcoded
-			secretBytes, err = getPullSecret(pullSecretString, "gadget")
+			secretBytes, err = getPullSecret(pullSecretString, "gadget", k8sClient)
 			if err != nil {
 				return err
 			}
@@ -296,7 +344,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 
 	log := gadgetCtx.Logger()
-	checkBuilderVersion(manifest, log)
+	checkBuilderVersion(manifest, log, version.Version())
 
 	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, manifest.Config)
 	if err != nil {
@@ -323,54 +371,20 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		if len(ann) == 0 {
 			continue
 		}
-		annInfo := strings.SplitN(ann, ":", 2)
-		if len(annInfo) != 2 {
-			return fmt.Errorf("invalid annotation %q", ann)
+		tmpConfig, err, lenSubject := constructTempConfig(ann)
+		if err != nil {
+			return err
 		}
 
-		annotation := strings.SplitN(annInfo[1], "=", 2)
-		if len(annotation) != 2 {
-			return fmt.Errorf("invalid annotation %q", ann)
+		err = viper.MergeConfigMap(tmpConfig)
+		if err != nil {
+			return fmt.Errorf("adding annotation %q: %w", ann, err)
 		}
 
-		subject := strings.SplitN(annInfo[0], ".", 2)
-		switch len(subject) {
+		switch lenSubject {
 		case 1:
-			// data source
-			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					annInfo[0]: map[string]any{
-						"annotations": map[string]any{
-							annotation[0]: annotation[1],
-						},
-					},
-				},
-			}
-			viper.Set("a", "b")
-			err = viper.MergeConfigMap(tmpConfig)
-			if err != nil {
-				return fmt.Errorf("adding annotation %q: %w", ann, err)
-			}
 			log.Debugf("ds annotation %q added", ann)
 		case 2:
-			// field
-			tmpConfig := map[string]any{
-				"datasources": map[string]any{
-					subject[0]: map[string]any{
-						"fields": map[string]any{
-							subject[1]: map[string]any{
-								"annotations": map[string]any{
-									annotation[0]: annotation[1],
-								},
-							},
-						},
-					},
-				},
-			}
-			err = viper.MergeConfigMap(tmpConfig)
-			if err != nil {
-				return fmt.Errorf("adding annotation %q: %w", ann, err)
-			}
 			log.Debugf("field annotation %q added", ann)
 		}
 	}
