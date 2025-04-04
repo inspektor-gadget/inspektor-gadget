@@ -1,0 +1,15 @@
+# confined.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: default-pod
+  labels:
+    app: default-pod
+spec:
+  securityContext:
+    seccompProfile:
+      type: Localhost
+      localhostProfile: profile.json
+  containers:
+  - name: test-container
+    image: docker.io/library/nginx:latest
