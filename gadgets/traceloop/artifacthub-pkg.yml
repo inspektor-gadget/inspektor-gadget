@@ -3,8 +3,8 @@ version: 0.39.0
 name: "traceloop"
 category: monitoring-logging
 displayName: "traceloop"
-createdAt: "2024-10-08T09:57:54Z"
-digest: "2024-10-08T09:57:54Z"
+createdAt: "2025-04-07T08:31:55Z"
+digest: "2025-04-07T08:31:55Z"
 description: "syscalls flight recorder"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
