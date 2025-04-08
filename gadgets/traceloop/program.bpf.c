@@ -247,6 +247,8 @@ static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 SEC("raw_tracepoint/sys_enter")
 int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 {
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	u64 mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	struct remembered_args remembered = {};
 	u64 pid = bpf_get_current_pid_tgid();
 	struct syscall_def_t *syscall_def;
@@ -259,13 +261,15 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 		.event_type = SYSCALL_EVENT_TYPE_ENTER,
 	};
 	struct syscall_event_t *sc;
-	struct task_struct *task;
 	u64 nr = ctx->args[1];
 	struct pt_regs *args;
 	void *perf_buffer;
-	u64 mntns_id;
 	int ret;
 	int i;
+
+	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
+	if (!perf_buffer)
+		return 0;
 
 	if (bpf_map_update_elem(&fake_stack, &event_key, &empty_syscall_event,
 				BPF_NOEXIST))
@@ -313,13 +317,6 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	 */
 	if (syscall_def == NULL)
 		syscall_def = &default_definition;
-
-	task = (struct task_struct *)bpf_get_current_task();
-	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
-	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
-	if (!perf_buffer)
-		goto clean;
 
 	bpf_get_current_comm(sc->comm, sizeof(sc->comm));
 
@@ -501,6 +498,8 @@ static __always_inline int syscall_get_nr(struct pt_regs *regs)
 SEC("raw_tracepoint/sys_exit")
 int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 {
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	u64 mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	u64 pid = bpf_get_current_pid_tgid();
 	struct fake_stack_key event_key = {
 		.pid_tgid = pid, .event_type = SYSCALL_EVENT_TYPE_EXIT
@@ -508,13 +507,15 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 	struct remembered_args *remembered;
 	struct syscall_def_t *syscall_def;
 	struct syscall_event_t *sc;
-	struct task_struct *task;
 	long ret = ctx->args[1];
 	struct pt_regs *args;
 	void *perf_buffer;
-	u64 mntns_id;
 	int i, r;
 	u64 nr;
+
+	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
+	if (!perf_buffer)
+		return 0;
 
 	r = bpf_map_update_elem(&regs_map, &pid, &empty, BPF_NOEXIST);
 	if (r) {
@@ -557,13 +558,6 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 	syscall_def = bpf_map_lookup_elem(&syscalls, &nr);
 	if (syscall_def == NULL)
 		syscall_def = &default_definition;
-
-	task = (struct task_struct *)bpf_get_current_task();
-	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
-	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
-	if (!perf_buffer)
-		goto clean;
 
 	remembered = bpf_map_lookup_elem(&probe_at_sys_exit, &pid);
 	if (!remembered)
