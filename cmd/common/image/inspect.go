@@ -60,11 +60,11 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 	runtimeParams := runtime.ParamDescs().ToParams()
 
-	runtime.Init(runtimeGlobalParams)
-	defer runtime.Close()
-
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		image := args[0]
+
+		runtime.Init(runtimeGlobalParams)
+		defer runtime.Close()
 
 		// set global operator flags from the config file
 		for o, p := range opGlobalParams {
