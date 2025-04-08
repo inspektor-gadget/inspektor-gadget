@@ -23,7 +23,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.17.2
 	github.com/florianl/go-tc v0.4.5
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/giantswarm/crd-docs-generator v0.11.3
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gofrs/flock v0.12.1
