@@ -108,6 +108,14 @@ func TestTraceTCPretrans(t *testing.T) {
 				Timestamp: utils.NormalizedStr,
 				NetNs:     utils.NormalizedInt,
 			}
+
+			if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+				expectedEntries.Src.K8s = utils.K8s{
+					Kind: "raw",
+				}
+				expectedEntries.Dst.K8s = expectedEntries.Src.K8s
+			}
+
 			normalize := func(e *traceTCPretransEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
