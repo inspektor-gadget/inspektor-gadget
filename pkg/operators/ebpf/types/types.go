@@ -55,6 +55,7 @@ const (
 	KernelPerfMaxStackDepth = 127
 	// Keep in sync with `include/gadget/user_stack_map.h`
 	UserStackMapName      = "ig_ustack"
+	BuildIdMapName        = "ig_build_id"
 	UserPerfMaxStackDepth = 127
 )
 
