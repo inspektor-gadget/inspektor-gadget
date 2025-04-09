@@ -53,42 +53,41 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 		layers = append(layers, manifest.Layers[i].MediaType)
 	}
 
-	ociInfo := &api.ExtraInfo{
-		Data: make(map[string]*api.GadgetInspectAddendum),
-	}
+	ociData := make(map[string]*api.ExtraInfoData)
+
 	manifestJson, _ := json.Marshal(manifest)
-	ociInfo.Data["oci.manifest"] = &api.GadgetInspectAddendum{
+	ociData["manifest"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     manifestJson,
 	}
-	ociInfo.Data["oci.metadata"] = &api.GadgetInspectAddendum{
+	ociData["metadata"] = &api.ExtraInfoData{
 		ContentType: "text/yaml",
 		Content:     metadata,
 	}
-	ociInfo.Data["oci.repository"] = &api.GadgetInspectAddendum{
+	ociData["repository"] = &api.ExtraInfoData{
 		ContentType: "text/plain",
 		Content:     []byte(repository),
 	}
-	ociInfo.Data["oci.tag"] = &api.GadgetInspectAddendum{
+	ociData["tag"] = &api.ExtraInfoData{
 		ContentType: "text/plain",
 		Content:     []byte(tag),
 	}
-	ociInfo.Data["oci.digest"] = &api.GadgetInspectAddendum{
+	ociData["digest"] = &api.ExtraInfoData{
 		ContentType: "text/plain",
 		Content:     []byte(digest),
 	}
-	ociInfo.Data["oci.created"] = &api.GadgetInspectAddendum{
+	ociData["created"] = &api.ExtraInfoData{
 		ContentType: "text/plain",
 		Content:     []byte(created),
 	}
 
 	layersJson, _ := json.Marshal(layers)
-	ociInfo.Data["oci.layers"] = &api.GadgetInspectAddendum{
+	ociData["layers"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(fmt.Sprintf("%v", string(layersJson))),
 	}
 
-	gadgetCtx.SetVar("extraInfo.oci", ociInfo)
+	gadgetCtx.SetVar("extraInfo.oci", ociData)
 
 	return nil
 }

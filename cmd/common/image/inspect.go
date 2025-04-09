@@ -100,11 +100,14 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			return fmt.Errorf("getting gadget info: %w", err)
 		}
 
-		extraInfoMap := make(map[string]interface{})
-		for k, v := range info.ExtraInfo.Data {
-			extraInfoMap[k] = map[string]string{
-				"contentType": string(v.ContentType),
-				"content":     string(v.Content),
+		extraInfoMap := make(map[string]map[string]any)
+		for k, v := range info.ExtraInfo.GetAddendum() {
+			extraInfoMap[k] = make(map[string]any)
+			for k2, v2 := range v.Data {
+				extraInfoMap[k][k2] = map[string]string{
+					"contentType": string(v2.ContentType),
+					"content":     string(v2.Content),
+				}
 			}
 		}
 		switch outputMode {
@@ -131,11 +134,19 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			if extraInfo == "" {
 				return fmt.Errorf("extra info not specified (see --extra-info)")
 			}
-			if info.ExtraInfo.Data[extraInfo] == nil {
-				return fmt.Errorf("extra info %q not found", extraInfo)
+
+			split := strings.Split(extraInfo, ".")
+			if len(split) != 2 {
+				return fmt.Errorf("extra info %q not in the form <key>.<subkey>", extraInfo)
 			}
-			customInfo := string(info.ExtraInfo.Data[extraInfo].Content)
-			fmt.Fprint(cmd.OutOrStdout(), customInfo)
+			if info.ExtraInfo.Addendum[split[0]] == nil {
+				return fmt.Errorf("extra info %q not found", split[0])
+			}
+			if info.ExtraInfo.Addendum[split[0]].Data[split[1]] == nil {
+				return fmt.Errorf("extra info %q not found", split[1])
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), string(info.ExtraInfo.Addendum[split[0]].Data[split[1]].Content))
 		default:
 			return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(outputModes, ", "))
 		}

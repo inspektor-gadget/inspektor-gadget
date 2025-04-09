@@ -162,11 +162,17 @@ message GadgetInfo {
 }
 
 message ExtraInfo {
-  // key can be "wasm.upcalls", "ebpf.sections", etc
-  map<string, GadgetInspectAddendum> data = 1;
+  // key is the name of the module providing the extra info, e.g., "wasm", "ebpf", etc.
+  map<string, GadgetInspectAddendum> addendum = 1;
 }
 
 message GadgetInspectAddendum {
+  // key is the actual name of the extra info provided by the module, e.g.,
+  // "orograms" which is provided by the ebpf module
+  map<string, ExtraInfoData> data = 1;
+}
+
+message ExtraInfoData {
   // contentType could be application/json, text/plain, text/mermaid, text/markdown...
   string contentType = 1;
   bytes content = 2;

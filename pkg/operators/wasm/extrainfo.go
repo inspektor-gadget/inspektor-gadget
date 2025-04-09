@@ -35,19 +35,18 @@ func (i *wasmOperatorInstance) addExtraInfo(gadgetcontext operators.GadgetContex
 			upcalls = append(upcalls, name)
 		}
 	}
-	wasmInfo := &api.ExtraInfo{
-		Data: make(map[string]*api.GadgetInspectAddendum),
-	}
-	wasmInfo.Data["wasm.gadgetAPIVersion"] = &api.GadgetInspectAddendum{
+	wasmData := make(map[string]*api.ExtraInfoData)
+
+	wasmData["gadgetAPIVersion"] = &api.ExtraInfoData{
 		ContentType: "text/plain",
 		Content:     []byte(fmt.Sprintf("%d", version)),
 	}
 	upcallsJSON, _ := json.Marshal(upcalls)
-	wasmInfo.Data["wasm.upcalls"] = &api.GadgetInspectAddendum{
+	wasmData["upcalls"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(upcallsJSON),
 	}
-	gadgetcontext.SetVar("extraInfo.wasm", wasmInfo)
+	gadgetcontext.SetVar("extraInfo.wasm", wasmData)
 
 	return nil
 }

@@ -89,27 +89,26 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	}
 	variablesJson, _ := json.Marshal(variables)
 
-	ebpfInfo := &api.ExtraInfo{
-		Data: make(map[string]*api.GadgetInspectAddendum),
-	}
-	ebpfInfo.Data["ebpf.sections"] = &api.GadgetInspectAddendum{
+	ebpfData := make(map[string]*api.ExtraInfoData)
+
+	ebpfData["sections"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(sectionsJson),
 	}
-	ebpfInfo.Data["ebpf.maps"] = &api.GadgetInspectAddendum{
+	ebpfData["maps"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(mapsJson),
 	}
-	ebpfInfo.Data["ebpf.programs"] = &api.GadgetInspectAddendum{
+	ebpfData["programs"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(programsJson),
 	}
-	ebpfInfo.Data["ebpf.variables"] = &api.GadgetInspectAddendum{
+	ebpfData["variables"] = &api.ExtraInfoData{
 		ContentType: "application/json",
 		Content:     []byte(variablesJson),
 	}
 
-	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)
+	gadgetCtx.SetVar("extraInfo.ebpf", ebpfData)
 
 	return nil
 }
