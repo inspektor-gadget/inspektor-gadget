@@ -24,6 +24,23 @@ struct {
 	__uint(max_entries, GADGET_USER_STACK_MAP_MAX_ENTRIES);
 } ig_ustack SEC(".maps");
 
+const volatile bool collect_build_id = false;
+GADGET_PARAM(collect_build_id);
+
+const volatile int ig_build_id_max_entries = 5;
+GADGET_PARAM(ig_build_id_max_entries);
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(u32));
+	__uint(value_size,
+	       USER_MAX_STACK_DEPTH * sizeof(struct bpf_stack_build_id));
+	__uint(max_entries, 0); // To be replaced at runtime
+} ig_build_id SEC(".maps");
+
+
+static const struct bpf_stack_build_id empty_build_id[USER_MAX_STACK_DEPTH] = {};
+
 // Linux v4.0 - v4.17
 struct timespec___obsolete {
 	__kernel_old_time_t tv_sec;
@@ -162,6 +179,26 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 	}
 
 	gadget_inode_get_mtime(inode, &ustack->mtime_sec, &ustack->mtime_nsec);
+
+	if (collect_build_id && ustack->stack_id >= 0) {
+		int already_exists =
+			bpf_map_update_elem(&ig_build_id, &ustack->stack_id,
+					    &empty_build_id, BPF_NOEXIST);
+		if (already_exists != 0)
+			return;
+		struct bpf_stack_build_id *build_id =
+			bpf_map_lookup_elem(&ig_build_id, &ustack->stack_id);
+		if (!build_id)
+			return;
+
+		int ret =
+			bpf_get_stack(ctx, build_id,
+				      USER_MAX_STACK_DEPTH *
+					      sizeof(struct bpf_stack_build_id),
+				      BPF_F_USER_STACK | BPF_F_USER_BUILD_ID);
+		if (ret < 0)
+			return;
+	}
 }
 
 #endif /* __STACK_MAP_H */
