@@ -3,6 +3,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
+#include <gadget/mntns.h>
 #include <gadget/mntns_filter.h>
 
 #ifndef TASK_COMM_LEN
@@ -251,8 +252,7 @@ static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 SEC("raw_tracepoint/sys_enter")
 int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 {
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	u64 mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	u64 mntns_id = gadget_get_current_mntns_id();
 	struct remembered_args remembered = {};
 	u64 pid = bpf_get_current_pid_tgid();
 	struct syscall_def_t *syscall_def;
@@ -478,8 +478,7 @@ static __always_inline int syscall_get_nr(struct pt_regs *regs)
 SEC("raw_tracepoint/sys_exit")
 int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 {
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	u64 mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	u64 mntns_id = gadget_get_current_mntns_id();
 	u64 pid = bpf_get_current_pid_tgid();
 	struct remembered_args *remembered;
 	struct syscall_def_t *syscall_def;
