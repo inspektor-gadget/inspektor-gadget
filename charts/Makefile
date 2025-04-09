@@ -47,7 +47,7 @@ lint: build
 	$(HELM) lint $(CHART_DIR)
 
 template: build
-	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds | tee $(OUTPUT_DIR)/deploy.yaml
+	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds --set skipLabels=true | tee $(OUTPUT_DIR)/deploy.yaml
 
 package: build
 	$(HELM) package $(CHART_DIR) -d $(BUILD_DIR)
