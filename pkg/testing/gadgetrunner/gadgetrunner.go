@@ -32,6 +32,7 @@ import (
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -52,10 +53,11 @@ import (
 )
 
 type GadgetRunnerOpts[T any] struct {
-	Image          string
-	Timeout        time.Duration
-	MntnsFilterMap *ebpf.Map
-	ParamValues    api.ParamValues
+	Image              string
+	Timeout            time.Duration
+	MntnsFilterMap     *ebpf.Map
+	ParamValues        api.ParamValues
+	GlobalParamsValues api.ParamValues
 
 	OnGadgetRun     func(gadgetCtx operators.GadgetContext) error
 	BeforeGadgetRun func() error
@@ -63,12 +65,13 @@ type GadgetRunnerOpts[T any] struct {
 }
 
 type GadgetRunner[T any] struct {
-	image          string
-	timeout        time.Duration
-	mntnsFilterMap *ebpf.Map
-	paramValues    api.ParamValues
-	runtimeParams  *params.Params
-	testCtx        *testing.T
+	image             string
+	timeout           time.Duration
+	mntnsFilterMap    *ebpf.Map
+	paramValues       api.ParamValues
+	globalParamValues api.ParamValues
+	runtimeParams     *params.Params
+	testCtx           *testing.T
 
 	gadgetCtx     *gadgetcontext.GadgetContext
 	DataFunc      datasource.DataFunc
@@ -104,12 +107,13 @@ func NewGadgetRunner[T any](t *testing.T, opts GadgetRunnerOpts[T]) *GadgetRunne
 
 	gadgetImage := GetGadgetImageName(opts.Image)
 	return &GadgetRunner[T]{
-		image:          gadgetImage,
-		timeout:        opts.Timeout,
-		paramValues:    opts.ParamValues,
-		CapturedEvents: make([]T, 0),
-		mntnsFilterMap: opts.MntnsFilterMap,
-		testCtx:        t,
+		image:             gadgetImage,
+		timeout:           opts.Timeout,
+		paramValues:       opts.ParamValues,
+		globalParamValues: opts.GlobalParamsValues,
+		CapturedEvents:    make([]T, 0),
+		mntnsFilterMap:    opts.MntnsFilterMap,
+		testCtx:           t,
 
 		onGadgetRun:     opts.OnGadgetRun,
 		beforeGadgetRun: opts.BeforeGadgetRun,
@@ -188,6 +192,16 @@ func (g *GadgetRunner[T]) RunGadget() {
 
 	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, gadgetContextOps...)
 	runtime := local.New()
+
+	for _, op := range operators.GetDataOperators() {
+		opParams := apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
+		err := opParams.CopyFromMap(g.globalParamValues, "operator."+op.Name()+".")
+		require.NoError(g.testCtx, err, "copying global params error")
+
+		err = op.Init(opParams)
+		require.NoError(g.testCtx, err, "operator initialization error")
+	}
+
 	err := runtime.Init(nil)
 	require.NoError(g.testCtx, err, "runtime initialization error")
 
