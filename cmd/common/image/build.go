@@ -46,7 +46,7 @@ import (
 var helpersFS embed.FS
 
 // It can be overridden at build time
-var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:main"
+var builderImage = "ghcr.io/inspektor-gadget/gadget-builder:main"
 
 const (
 	DEFAULT_EBPF_SOURCE = "program.bpf.c"

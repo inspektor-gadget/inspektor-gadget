@@ -29,7 +29,7 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_IMAGE ?= golangci/golangci-lint:v1.64.8@sha256:2987913e27f4eca9c8a39129d2c7bc1e74fbcf77f181e01cea607be437aa5cb8
 
-EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:main
+GADGET_BUILDER ?= ghcr.io/inspektor-gadget/gadget-builder:main
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 
@@ -78,7 +78,7 @@ phony_explicit:
 
 ebpf-objects:
 	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
-		-v $(shell pwd):/work $(EBPF_BUILDER) \
+		-v $(shell pwd):/work $(GADGET_BUILDER) \
 		make ebpf-objects-outside-docker
 
 ebpf-objects-outside-docker:
@@ -119,7 +119,7 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 debug-ig:
 	CGO_ENABLED=0 go build \
 		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
 		-extldflags '-static'" \
 		-gcflags='all=-N -l' \
 		-o ig-debug \
@@ -138,7 +138,7 @@ ig-%: phony_explicit
 			ARCH=$(subst linux-,,$*) BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	$(BUILD_COMMAND) --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
-		--build-arg VERSION=$(VERSION) --build-arg EBPF_BUILDER=$(EBPF_BUILDER) \
+		--build-arg VERSION=$(VERSION) --build-arg GADGET_BUILDER=$(GADGET_BUILDER) \
 		--build-arg GOPROXY=$(GOPROXY) .
 	docker create --name ig-$*-container $@
 	docker cp ig-$*-container:/usr/bin/ig $@
@@ -295,7 +295,7 @@ integration-tests: kubectl-gadget
 
 .PHONY: component-tests
 component-tests:
-	go test -exec sudo -v ./integration/components/... -integration -timeout 5m --builder-image $(EBPF_BUILDER)
+	go test -exec sudo -v ./integration/components/... -integration -timeout 5m --builder-image $(GADGET_BUILDER)
 
 .PHONY: generate-documentation
 generate-documentation:
@@ -325,7 +325,7 @@ lint:
 .PHONY: clang-format
 clang-format:
 	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
-		-v $(shell pwd):/work -w /work $(EBPF_BUILDER) \
+		-v $(shell pwd):/work -w /work $(GADGET_BUILDER) \
 		make clang-format-outside-docker
 
 .PHONY: clang-format-outside-docker

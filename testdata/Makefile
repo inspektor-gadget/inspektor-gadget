@@ -1,6 +1,6 @@
 CLANG ?= clang
 LLVM_STRIP ?= llvm-strip
-EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
+GADGET_BUILDER ?= ghcr.io/inspektor-gadget/gadget-builder
 
 .PHOHY: all
 all: testdata_docker
@@ -40,7 +40,7 @@ testdata_host: $(TESTDATA)
 .PHONY: testdata_docker
 testdata_docker:
 	docker run --rm --name testdata-builder --user $(shell id -u):$(shell id -g) \
-		-v $(shell pwd):/work $(EBPF_BUILDER) \
+		-v $(shell pwd):/work $(GADGET_BUILDER) \
 		bash -c "cd /work && make testdata_host"
 
 .PHONY: clean

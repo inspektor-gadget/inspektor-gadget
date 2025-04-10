@@ -7,7 +7,7 @@ env:
   GO_VERSION_DOC_CHECK: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:main
-  DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:main
+  DEFAULT_GADGET_BUILDER_IMAGE: ghcr.io/inspektor-gadget/gadget-builder:main
   # With the recent update of docker/build-push-action to v6, this action
   # started creating docker build summary files (i.e. .dockerbuild).
   # Sadly, these files create troubles when trying to download artifact in the
@@ -142,6 +142,8 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Check ebpf formatting
+        env:
+          GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
         run: |
           make clang-format
           changes="$(git status --porcelain)"
@@ -152,7 +154,7 @@ jobs:
           fi
       - name: Detect changes for ebpf objects
         env:
-          EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
         run: |
           make ebpf-objects
           changes="$(git status --porcelain)"
@@ -161,6 +163,8 @@ jobs:
             exit 1
           fi
       - name: Check that testdata is updated
+        env:
+          GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
         run: |
           make testdata
           changes="$(git status --porcelain)"
@@ -325,7 +329,7 @@ jobs:
         key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - name: Build ig-linux-${{ matrix.platform }}
       env:
-        EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+        GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
       run: |
         if [ "${{ matrix.platform }}" = 'arm64' ]; then
           sudo apt-get update
@@ -632,7 +636,7 @@ jobs:
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          GADGET_BUILDER=${{ needs.build-helper-images.outputs.gadget_builder_image }}
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
@@ -651,7 +655,7 @@ jobs:
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          GADGET_BUILDER=${{ needs.build-helper-images.outputs.gadget_builder_image }}
           BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
@@ -667,7 +671,7 @@ jobs:
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
         build-args: |
           VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          GADGET_BUILDER=${{ needs.build-helper-images.outputs.gadget_builder_image }}
     - name: Setup oras
       if: github.event_name != 'pull_request'
       uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
@@ -970,7 +974,7 @@ jobs:
       - check-secrets
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester }}
-      ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder }}
+      gadget_builder_image: ${{ steps.image-tag.outputs.gadget-builder }}
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -986,13 +990,13 @@ jobs:
             platform: "linux/amd64,linux/arm64"
             filter-patterns:
               - "tools/dnstester/*"
-          - name: "ebpf-builder"
+          - name: "gadget-builder"
             context: "/home/runner/work/inspektor-gadget/inspektor-gadget"
-            dockerfile: "Dockerfiles/ebpf-builder.Dockerfile"
+            dockerfile: "Dockerfiles/gadget-builder.Dockerfile"
             platform: "linux/amd64,linux/arm64"
             filter-patterns:
               - "include/**"
-              - "Dockerfiles/ebpf-builder.Dockerfile"
+              - "Dockerfiles/gadget-builder.Dockerfile"
               - "cmd/common/image/Makefile.build"
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -1049,8 +1053,8 @@ jobs:
         else
           if [ ${{ matrix.image.name }} == "dnstester" ]; then
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
-          elif [ ${{ matrix.image.name }} == "ebpf-builder" ]; then
-            image=${{ env.DEFAULT_EBPF_BUILDER_IMAGE }}
+          elif [ ${{ matrix.image.name }} == "gadget-builder" ]; then
+            image=${{ env.DEFAULT_GADGET_BUILDER_IMAGE }}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
             exit 1
@@ -1321,7 +1325,7 @@ jobs:
         cache: true
     - name: Run component tests
       env:
-        EBPF_BUILDER: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+        GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
       run: |
         make component-tests
 
@@ -1516,13 +1520,13 @@ jobs:
       - name: Install Cosign
         if: needs.check-secrets.outputs.cosign == 'true'
         uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
-      - name: Verify eBPF builder image
+      - name: Verify gadget builder image
         if: needs.check-secrets.outputs.cosign == 'true'
         run: |
-          cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.gadget_builder_image }}
       - name: Build gadgets
         env:
-          BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.ebpf_builder_image }}
+          BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
           GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
           GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
         run: |

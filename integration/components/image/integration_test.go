@@ -23,7 +23,7 @@ import (
 
 var (
 	integration      = flag.Bool("integration", false, "run integration tests")
-	testBuilderImage = flag.String("builder-image", "ghcr.io/inspektor-gadget/ebpf-builder:main", "ebpf builder image")
+	testBuilderImage = flag.String("builder-image", "ghcr.io/inspektor-gadget/gadget-builder:main", "gadget builder image")
 )
 
 func TestMain(m *testing.M) {
