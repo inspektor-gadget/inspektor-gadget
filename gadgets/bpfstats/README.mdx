@@ -300,9 +300,9 @@ current memory allocation. Additionally, maps can be used by more than one
 program and would account towards the MapMemory of all those programs.
 
 Also note:
-* BPF_MAP_TYPE_PERF_EVENT_ARRAY: value_size is not counting the ring buffers,
+* `BPF_MAP_TYPE_PERF_EVENT_ARRAY`: value_size is not counting the ring buffers,
   but only their file descriptors (i.e. sizeof(int) = 4 bytes)
-* BPF_MAP_TYPE_{HASH,ARRAY}_OF_MAPS: value_size is not counting the inner maps,
+* `BPF_MAP_TYPE_{HASH,ARRAY}_OF_MAPS`: value_size is not counting the inner maps,
   but only their file descriptors (i.e. sizeof(int) = 4 bytes)
 
 #### bpfstats not disabled for Kernels < 5.8
