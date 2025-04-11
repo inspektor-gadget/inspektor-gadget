@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
@@ -70,83 +71,88 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 	}
 
 	for _, ds := range gadgetCtx.GetDataSources() {
-		var formatters []func(ds datasource.DataSource, data datasource.Data) error
-
-		for _, en := range i.enums {
-			enum := en.Enum
-			name := en.memberName
-			in := ds.GetField(name)
-			if in == nil {
-				continue
-			}
-			in.SetHidden(true, false)
-
-			if btfSpec != nil {
-				kernelEnum := &btf.Enum{}
-				if err = btfSpec.TypeByName(enum.Name, &kernelEnum); err == nil {
-					// Use kernel enum if found
-					enum = kernelEnum
-				}
-			}
-
-			targetName, err := annotations.GetTargetNameFromAnnotation(i.logger, "enum", in, enumTargetNameAnnotation)
-			if err != nil {
-				i.logger.Warnf("getting target name for enum field %q: %v", in.Name(), err)
-				continue
-			}
-
-			out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
-			if err != nil {
-				return err
-			}
-
-			var formatter func(ds datasource.DataSource, data datasource.Data) error
-
-			isBitField := strings.HasSuffix(enum.Name, "_set")
-			if isBitField {
-				separator := in.Annotations()[enumBitfieldSeparatorAnnotation]
-				if separator == "" {
-					separator = "|"
-				}
-
-				formatter = func(ds datasource.DataSource, data datasource.Data) error {
-					inBytes := in.Get(data)
-					val := byteSliceAsUint64(inBytes, enum.Signed, ds)
-
-					var arr []string
-					for _, v := range enum.Values {
-						if val&v.Value == v.Value {
-							arr = append(arr, v.Name)
-						}
-					}
-					out.PutString(data, strings.Join(arr, separator))
-					return nil
-				}
-			} else {
-				formatter = func(ds datasource.DataSource, data datasource.Data) error {
-					// TODO: lookup table?
-					inBytes := in.Get(data)
-					val := byteSliceAsUint64(inBytes, enum.Signed, ds)
-					for _, v := range enum.Values {
-						if val == v.Value {
-							out.Set(data, []byte(v.Name))
-							return nil
-						}
-					}
-					out.Set(data, []byte("UNKNOWN"))
-					return nil
-				}
-			}
-
-			formatters = append(formatters, formatter)
+		formatters, err := getFormattersForEnums(i.enums, ds, btfSpec, i.logger)
+		if err != nil {
+			return err
 		}
-
 		if len(formatters) > 0 {
 			i.formatters[ds] = formatters
 		}
 	}
 
 	return nil
+}
+
+func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf.Spec, lg logger.Logger) ([]func(ds datasource.DataSource, data datasource.Data) error, error) {
+	formatters := []func(ds datasource.DataSource, data datasource.Data) error{}
+	for _, en := range enums {
+		enum := en.Enum
+		name := en.memberName
+		in := ds.GetField(name)
+		if in == nil {
+			continue
+		}
+		in.SetHidden(true, false)
+
+		if btfSpec != nil {
+			kernelEnum := &btf.Enum{}
+			if err := btfSpec.TypeByName(enum.Name, &kernelEnum); err == nil {
+				// Use kernel enum if found
+				enum = kernelEnum
+			}
+		}
+
+		targetName, err := annotations.GetTargetNameFromAnnotation(lg, "enum", in, enumTargetNameAnnotation)
+		if err != nil {
+			lg.Warnf("getting target name for enum field %q: %v", in.Name(), err)
+			continue
+		}
+
+		out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
+		if err != nil {
+			return formatters, err
+		}
+
+		var formatter func(ds datasource.DataSource, data datasource.Data) error
+
+		isBitField := strings.HasSuffix(enum.Name, "_set")
+		if isBitField {
+			separator := in.Annotations()[enumBitfieldSeparatorAnnotation]
+			if separator == "" {
+				separator = "|"
+			}
+
+			formatter = func(ds datasource.DataSource, data datasource.Data) error {
+				inBytes := in.Get(data)
+				val := byteSliceAsUint64(inBytes, enum.Signed, ds)
+
+				var arr []string
+				for _, v := range enum.Values {
+					if val&v.Value == v.Value {
+						arr = append(arr, v.Name)
+					}
+				}
+				out.PutString(data, strings.Join(arr, separator))
+				return nil
+			}
+		} else {
+			formatter = func(ds datasource.DataSource, data datasource.Data) error {
+				// TODO: lookup table?
+				inBytes := in.Get(data)
+				val := byteSliceAsUint64(inBytes, enum.Signed, ds)
+				for _, v := range enum.Values {
+					if val == v.Value {
+						return out.Set(data, []byte(v.Name))
+					}
+				}
+				out.Set(data, []byte("UNKNOWN"))
+				return nil
+			}
+		}
+
+		formatters = append(formatters, formatter)
+	}
+	return formatters, nil
 }
 
 func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
@@ -184,23 +190,12 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
 				inBytes := in.Get(data)
 				stackId := ds.ByteOrder().Uint32(inBytes)
-
-				stack := [ebpftypes.KernelPerfMaxStackDepth]uint64{}
-				err = i.kernelStackMap.Lookup(stackId, &stack)
+				outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
 				if err != nil {
 					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
 					out.Set(data, []byte{})
 					return nil
 				}
-
-				outString := ""
-				for depth, addr := range stack {
-					if addr == 0 {
-						break
-					}
-					outString += fmt.Sprintf("[%d]%s; ", depth, kernelSymbolResolver.LookupByInstructionPointer(addr))
-				}
-
 				out.Set(data, []byte(outString))
 				return nil
 			}
@@ -208,6 +203,22 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 		}
 	}
 	return nil
+}
+
+func fetchAndFormatStackTrace(stackId uint32, stackLookup func(interface{}, interface{}) error, lookupByInstructionPointer func(uint64) string) (string, error) {
+	stack := [ebpftypes.KernelPerfMaxStackDepth]uint64{}
+	err := stackLookup(stackId, &stack)
+	if err != nil {
+		return "", err
+	}
+	outString := ""
+	for depth, addr := range stack {
+		if addr == 0 {
+			break
+		}
+		outString += fmt.Sprintf("[%d]%s; ", depth, lookupByInstructionPointer(addr))
+	}
+	return outString, nil
 }
 
 func (i *ebpfInstance) initFormatters(gadgetCtx operators.GadgetContext) error {
