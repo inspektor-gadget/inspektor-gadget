@@ -44,3 +44,8 @@ pkg/btfgen/btfs/arm64/*
 
 !gadgets/*.o
 !testdata/*.o
+
+# Rust Wasm 
+wasmapi/rust/target
+wasmapi/rust/Cargo.lock
+
