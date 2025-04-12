@@ -48,3 +48,4 @@ pkg/btfgen/btfs/arm64/*
 # Rust Wasm 
 wasmapi/rust/target
 wasmapi/rust/Cargo.lock
+
