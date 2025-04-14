@@ -16,7 +16,7 @@ Usage:
 Flags:
       --btfgen                  Enable btfgen
       --btfhub-archive string   Path to the location of the btfhub-archive files
-      --builder-image string    Builder image to use (default "ghcr.io/inspektor-gadget/ebpf-builder:%IG_TAG%")
+      --builder-image string    Builder image to use (default "ghcr.io/inspektor-gadget/gadget-builder:%IG_TAG%")
   -f, --file string             Path to build.yaml (default "build.yaml")
   -h, --help                    help for build
   -l, --local                   Build using local tools
@@ -122,9 +122,9 @@ $ export IG_SOURCE_PATH=/home/ig/inspektor-gadget
 
 # Build an in-tree gadget that uses Wasm
 $ sudo -E ig image build $IG_SOURCE_PATH/gadgets/trace_open -t trace_open
-Pulling builder image ghcr.io/inspektor-gadget/ebpf-builder:%IG_TAG%
-latest: Pulling from inspektor-gadget/ebpf-builder
+Pulling builder image ghcr.io/inspektor-gadget/gadget-builder:%IG_TAG%
+latest: Pulling from inspektor-gadget/gadget-builder
 Digest: sha256:5deec444ea81b866f135430f62b2a580374b7bbcfa5961298cb292546395e3b4
-Status: Image is up to date for ghcr.io/inspektor-gadget/ebpf-builder:%IG_TAG%
+Status: Image is up to date for ghcr.io/inspektor-gadget/gadget-builder:%IG_TAG%
 Successfully built ghcr.io/inspektor-gadget/gadget/trace_open:latest@sha256:d3c0fa005cfc16ae1f9184919b517aa784730ed5bbfb54edc50a3befacbe3383
 ```

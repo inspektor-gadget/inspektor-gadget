@@ -7,8 +7,8 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=v0.0.0
 ENV VERSION=${VERSION}
-ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:main
-ENV EBPF_BUILDER=${EBPF_BUILDER}
+ARG GADGET_BUILDER=ghcr.io/inspektor-gadget/gadget-builder:main
+ENV GADGET_BUILDER=${GADGET_BUILDER}
 ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
 
@@ -23,7 +23,7 @@ RUN \
       --mount=type=cache,target=/go/pkg \
       CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
         -extldflags '-static'" \
         -tags "netgo" \
         -o ig-${TARGETOS}-${TARGETARCH} \
