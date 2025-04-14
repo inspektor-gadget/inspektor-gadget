@@ -17,7 +17,8 @@ datasources:
           columns.hidden: true
       type:
         annotations:
-          description: Type of TCP connection event (connect, accept, close)
+          description: Type of TCP connection event
+          value.one-of: "connect, accept, close"
       error_raw:
         annotations:
           columns.hidden: true

@@ -28,7 +28,7 @@ datasources:
           template: pid
       fa_response:
         annotations:
-          description: 'response to a fanotify permission request: allow or deny'
+          description: 'response to a fanotify permission request'
           value.one-of: "na, allow, deny, interrupted"
       fa_response_raw:
         annotations:

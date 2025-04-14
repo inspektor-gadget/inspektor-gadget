@@ -181,7 +181,7 @@ func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api
 				fmt.Fprintf(&sb, "      %s\n", desc)
 			}
 			if oneOf, ok := f.Annotations[metadatav1.ValueOneOfAnnotation]; ok {
-				fmt.Fprintf(&sb, "      One of: (%s)\n", oneOf)
+				fmt.Fprintf(&sb, "      One of: %s\n", oneOf)
 			}
 		}
 		fieldsDescriptions = append(fieldsDescriptions, sb.String())

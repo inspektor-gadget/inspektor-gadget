@@ -39,7 +39,7 @@ datasources:
           template: l4endpoint
       id:
         annotations:
-          description: DNS query/response ID
+          description: DNS query/response ID, used to match queries with responses
           columns.hidden: "true"
       latency_ns_raw:
         annotations:
@@ -48,7 +48,7 @@ datasources:
           description: DNS request latency
       name:
         annotations:
-          description: DNS name
+          description: Domain name being queried
           columns.width: "30"
       num_answers:
         annotations:
@@ -63,7 +63,7 @@ datasources:
           columns.hidden: "true"
       qr:
         annotations:
-          description: Query (Q)/Response(R) Flag
+          description: Specifies whether this message is a query (Q), or a response (R).
           value.one-of: "Q, R"
           columns.minwidth: "2"
           columns.width: "2"
