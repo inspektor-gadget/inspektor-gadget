@@ -26,6 +26,7 @@ datasources:
       rw:
         annotations:
           description: Indicates if the operation was a read or a write
+          value.one-of: "read, write"
           columns.width: 5
       us:
         annotations:
