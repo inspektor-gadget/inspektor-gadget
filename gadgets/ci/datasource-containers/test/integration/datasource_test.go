@@ -51,10 +51,6 @@ func TestDatasourceContainers(t *testing.T) {
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		t.Skip("Skipping test as datasource containers was not ported to kubemanager")
-	}
-
-	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
 		ns = utils.GenerateTestNamespaceName(t, "test-datasource-containers")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}

@@ -72,7 +72,7 @@ func NewContainersPublisher(gadgetCtx operators.GadgetContext, collection *conta
 	return publisher, nil
 }
 
-func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType containercollection.EventType, container *containercollection.Container) error {
+func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType containercollection.EventType, container *containercollection.Container, k8s bool) error {
 	ev, err := publisher.containersDs.NewPacketSingle()
 	if err != nil {
 		return fmt.Errorf("creating new containers datasource packet: %w", err)
@@ -81,7 +81,11 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 	publisher.eventTypeField.PutString(ev, eventType.String())
 	publisher.cgroupIDField.PutUint64(ev, container.CgroupID)
 	publisher.mountNsIDField.PutUint64(ev, container.Mntns)
-	publisher.nameField.PutString(ev, container.Runtime.ContainerName)
+	if k8s {
+		publisher.nameField.PutString(ev, container.K8s.ContainerName)
+	} else {
+		publisher.nameField.PutString(ev, container.Runtime.ContainerName)
+	}
 
 	err = publisher.containersDs.EmitAndRelease(ev)
 	if err != nil {
@@ -91,7 +95,7 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 	return nil
 }
 
-func (publisher *ContainersPublisher) PublishContainers(extraContainers []*containercollection.Container, containerSelector containercollection.ContainerSelector) error {
+func (publisher *ContainersPublisher) PublishContainers(k8s bool, extraContainers []*containercollection.Container, containerSelector containercollection.ContainerSelector) error {
 	var containers []*containercollection.Container
 
 	if publisher.collection != nil {
@@ -102,7 +106,7 @@ func (publisher *ContainersPublisher) PublishContainers(extraContainers []*conta
 			publisher.containersSubscriptionKey,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				err := publisher.emitContainersDatasourceEvent(event.Type, event.Container)
+				err := publisher.emitContainersDatasourceEvent(event.Type, event.Container, k8s)
 				if err != nil {
 					log.Errorf("publishing new container event: %v", err)
 				}
@@ -115,7 +119,7 @@ func (publisher *ContainersPublisher) PublishContainers(extraContainers []*conta
 	}
 
 	for _, container := range containers {
-		err := publisher.emitContainersDatasourceEvent(containercollection.EventTypeAddContainer, container)
+		err := publisher.emitContainersDatasourceEvent(containercollection.EventTypeAddContainer, container, k8s)
 		if err != nil {
 			return fmt.Errorf("publishing existing container event: %w", err)
 		}

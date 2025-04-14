@@ -663,7 +663,7 @@ func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) erro
 		extraContainers = append(extraContainers, l.manager.fakeContainer)
 	}
 
-	return l.containersPublisher.PublishContainers(extraContainers, containerSelector)
+	return l.containersPublisher.PublishContainers(false, extraContainers, containerSelector)
 }
 
 func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error {
