@@ -75,9 +75,6 @@ int trace_sched_process_exit(void *ctx)
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(malloc, events, event);
 
-const volatile bool collect_ustack = false;
-GADGET_PARAM(collect_ustack);
-
 static __always_inline int gen_alloc_enter(size_t size)
 {
 	u32 tid;
@@ -118,7 +115,7 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->size = size;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
@@ -143,7 +140,7 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 	event->size = 0;
 	event->timestamp_raw = bpf_ktime_get_ns();
 
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

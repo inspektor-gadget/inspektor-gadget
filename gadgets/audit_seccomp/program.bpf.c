@@ -36,9 +36,6 @@ struct event {
 	struct gadget_user_stack ustack;
 };
 
-const volatile bool collect_ustack = false;
-GADGET_PARAM(collect_ustack);
-
 GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(seccomp, events, event);
@@ -61,7 +58,7 @@ int ig_audit_secc(struct pt_regs *ctx)
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 	event->syscall_raw = syscall;
 	event->code_raw = code;
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 

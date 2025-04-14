@@ -167,9 +167,6 @@ GADGET_TRACER(capabilities, events, cap_event);
 const volatile bool collect_kstack = true;
 GADGET_PARAM(collect_kstack);
 
-const volatile bool collect_ustack = false;
-GADGET_PARAM(collect_ustack);
-
 SEC("kprobe/cap_capable")
 int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	       struct user_namespace *targ_ns, int cap, int cap_opt)
@@ -268,7 +265,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->capable = PT_REGS_RC(ctx) == 0;
 	if (collect_kstack)
 		event->kstack_raw = gadget_get_kernel_stack(ctx);
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 

@@ -37,9 +37,6 @@ struct event {
 const volatile bool targ_failed = false;
 GADGET_PARAM(targ_failed);
 
-const volatile bool collect_ustack = false;
-GADGET_PARAM(collect_ustack);
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
@@ -117,7 +114,7 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	/* event data */
 	gadget_process_populate(&event->proc);
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;
