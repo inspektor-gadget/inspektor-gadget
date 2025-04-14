@@ -107,7 +107,7 @@ func main() {
 
 	rootCmd.AddCommand(newDaemonCommand(runtime))
 	rootCmd.AddCommand(common.NewLoginCmd())
-	rootCmd.AddCommand(image.NewImageCmd(runtime))
+	rootCmd.AddCommand(image.NewImageCmd(runtime, nil))
 	rootCmd.AddCommand(common.NewLogoutCmd())
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))

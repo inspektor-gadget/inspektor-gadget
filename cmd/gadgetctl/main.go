@@ -97,6 +97,11 @@ func main() {
 		log.Fatalf("setting runtime flags from config: %v", err)
 	}
 
+	// add image subcommands to be added, for now only inspect is supported
+	imgCommands := []*cobra.Command{
+		image.NewInspectCmd(runtime),
+	}
+
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
@@ -105,7 +110,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
-	rootCmd.AddCommand(image.NewImageCmd(runtime))
+	rootCmd.AddCommand(image.NewImageCmd(runtime, imgCommands))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

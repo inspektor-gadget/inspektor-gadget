@@ -26,6 +26,7 @@ import (
 	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	img "github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -153,6 +154,11 @@ func main() {
 		log.Warnf(err.Error())
 	}
 
+	// add image subcommands to be added, for now only inspect is supported
+	imgCommands := []*cobra.Command{
+		img.NewInspectCmd(grpcRuntime),
+	}
+
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 
 	hiddenColumnTags := []string{"runtime"}
@@ -167,6 +173,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))
+	rootCmd.AddCommand(img.NewImageCmd(grpcRuntime, imgCommands))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
