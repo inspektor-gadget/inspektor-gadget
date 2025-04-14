@@ -27,6 +27,8 @@ const (
 
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
+
+	ValueOneOfAnnotation = "value.one-of"
 )
 
 var AnnotationsTemplates = map[string]map[string]string{
