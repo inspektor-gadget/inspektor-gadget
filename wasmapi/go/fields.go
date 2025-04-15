@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"runtime"
 	"unsafe"
@@ -198,7 +199,7 @@ func (f Field) AddTag(tag string) error {
 	ret := fieldAddTag(uint32(f), uint64(stringToBufPtr(tag)))
 	runtime.KeepAlive(tag)
 	if ret != 0 {
-		return errors.New("error adding tag")
+		return fmt.Errorf("error adding tag %q in field handle %d", tag, f)
 	}
 	return nil
 }
