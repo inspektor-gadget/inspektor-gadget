@@ -109,7 +109,16 @@ list-ig-targets:
 .PHONY: ig-all
 ig-all: $(IG_TARGETS) ig
 
-ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
+.PHONY: ig
+ig:
+	CGO_ENABLED=0 go build \
+        -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+        -extldflags '-static'" \
+        -tags "netgo" \
+        ./cmd/ig
+
+ig-on-docker: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
 
 # Compile ig with debug options and debug it using delve:
@@ -414,6 +423,7 @@ help:
 	@echo  '  all		  		- Build all targets marked with [*]'
 	@echo  '* ig		  		- Build the ig cli tool'
 	@echo  '  ig-all	  		- Build the ig cli tool for all architectures'
+	@echo  '  ig-on-docker                  - Build the ig cli tool using docker'
 	@echo  '* build		  		- Build all targets marked with [o]'
 	@echo  'o manifests			- Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects'
 	@echo  'o generate			- Generate client API code and DeepCopy related code'
