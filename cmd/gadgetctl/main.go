@@ -85,7 +85,7 @@ func main() {
 		if err != nil {
 			log.Warnf("Failed to load deploy info: %s", err)
 		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
-			log.Warnf(err.Error())
+			log.Warn(err.Error())
 		}
 	}
 

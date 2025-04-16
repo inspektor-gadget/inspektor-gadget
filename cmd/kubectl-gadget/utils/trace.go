@@ -196,7 +196,7 @@ func printVersionSkewWarning(pods *corev1.PodList) {
 
 		// Use 1: to remove the v prefix
 		if err := commonutils.CheckServerVersionSkew(versionStr[1:]); err != nil {
-			log.Warnf(err.Error())
+			log.Warn(err.Error())
 			break
 		}
 	}
