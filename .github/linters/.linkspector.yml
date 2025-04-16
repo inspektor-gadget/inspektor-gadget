@@ -1,0 +1,12 @@
+modifiedFilesOnly: true
+reporter: github-pr-check
+useGitIgnore: true
+fileExtensions:
+  - md
+  - mdx
+  - txt
+replacementPatterns:
+  - pattern: '%IG_BRANCH%'
+    replacement: 'main'
+  - pattern: '%IG_TAG%'
+    replacement: 'latest'

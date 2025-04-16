@@ -54,12 +54,11 @@ jobs:
         make generate-documentation
         git diff --exit-code HEAD --
     - name: Check that there are not broken links
-      uses: gaurav-nelson/github-action-markdown-link-check@3c3b66f1f7d0900e37b71eca45b63ea9eedfce31 # v1.0.17
+      uses: umbrelladocs/action-linkspector@v1.3.5
       with:
-        config-file: .github/workflows/mlc_config.json
-        use-quiet-mode: 'yes'
-        check-modified-files-only: 'yes'
-        base-branch: 'main'
+        config_file: .github/workflows/linkspector.yml
+        reporter: github-pr-review
+        fail_level: any
     - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
       id: filter
       with:
