@@ -1,8 +1,6 @@
 module github.com/inspektor-gadget/inspektor-gadget/tools/dnstester
 
-go 1.23.0
-
-toolchain go1.24.1
+go 1.24.0
 
 require github.com/miekg/dns v1.1.65
 
