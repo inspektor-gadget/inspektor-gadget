@@ -9,6 +9,10 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/types.h>
+#include <gadget/macros.h>
+
+const volatile bool collect_ustack = false;
+GADGET_PARAM(collect_ustack);
 
 #define USER_MAX_STACK_DEPTH 127
 #define USER_STACK_MAP_MAX_ENTRIES 10000
@@ -121,8 +125,7 @@ gadget_inode_get_mtime(struct inode *inode, __u64 *mtime_sec, __u32 *mtime_nsec)
  * true, or initialize ustack to 0 otherwise.
  */
 static __always_inline void
-gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack,
-		      bool collect_ustack)
+gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 {
 	if (!collect_ustack) {
 		ustack->stack_id = 0;

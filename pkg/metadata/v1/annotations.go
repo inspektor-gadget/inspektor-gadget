@@ -139,6 +139,10 @@ var AnnotationsTemplates = map[string]map[string]string{
 	"errorString": {
 		ColumnsWidthAnnotation: "12",
 	},
+	"user_stack": {
+		DescriptionAnnotation:   "User stack trace",
+		ColumnsHiddenAnnotation: "true",
+	},
 }
 
 func ApplyAnnotationsTemplate(templateAnn string, dst map[string]string) bool {
