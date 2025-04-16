@@ -433,7 +433,7 @@ and filling them in their eBPF programs
 This gadget creates the eBPF maps on behalf of users when they specify they want a counter. We will
 need to be sure those maps stick to the contract defined above. The syntax to defining counters,
 histograms, etc by using the DSL can be very similar to what we already have in bpftrace
-[https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#2-count-count](https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#2-count-count),
+[https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#2-count-count](https://github.com/iovisor/bpftrace/blob/master/do/reference_guide.md#2-count-count),
 [https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#8-hist-log2-histogram](https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#8-hist-log2-histogram).
 
 # Out of Scope
