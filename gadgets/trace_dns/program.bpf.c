@@ -281,13 +281,13 @@ int ig_trace_dns(struct __sk_buff *skb)
 		return 0;
 
 	// Calculate the DNS offset in the packet
+	struct tcphdr tcph;
 	switch (proto) {
 	case IPPROTO_UDP:
 		dns_off = l4_off + sizeof(struct udphdr);
 		break;
 	case IPPROTO_TCP:
 		// This is best effort, since we don't reassemble TCP segments.
-		struct tcphdr tcph;
 		if (bpf_skb_load_bytes(skb, l4_off, &tcph, sizeof tcph))
 			return 0;
 
