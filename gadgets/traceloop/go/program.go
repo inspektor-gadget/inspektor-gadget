@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -242,12 +243,15 @@ func (t *tracelooper) detach(mntnsID uint64) error {
 }
 
 func fromCString(in []byte) string {
-	for i := 0; i < len(in); i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
+	idx := bytes.IndexByte(in, 0)
+	switch {
+	case idx == -1:
+		return string(in)
+	case idx < len(in):
+		return string(in[:idx])
+	default:
+		return string(in)
 	}
-	return string(in)
 }
 
 func fromCStringN(in []byte, length int) string {
@@ -256,12 +260,16 @@ func fromCStringN(in []byte, length int) string {
 		l = length
 	}
 
-	for i := 0; i < l; i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
+	buf := in[:l]
+	idx := bytes.IndexByte(buf, 0)
+	switch {
+	case idx == -1:
+		return string(in)
+	case idx < l:
+		return string(in[:idx])
+	default:
+		return string(in)
 	}
-	return string(in[:l])
 }
 
 func timestampFromEvent(event *syscallEvent) int64 {

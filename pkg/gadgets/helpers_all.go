@@ -17,6 +17,7 @@
 package gadgets
 
 import (
+	"bytes"
 	"fmt"
 	"syscall"
 )
@@ -35,12 +36,15 @@ func ProtoString(proto int) string {
 }
 
 func FromCString(in []byte) string {
-	for i := 0; i < len(in); i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
+	idx := bytes.IndexByte(in, 0)
+	switch {
+	case idx == -1:
+		return string(in)
+	case idx < len(in):
+		return string(in[:idx])
+	default:
+		return string(in)
 	}
-	return string(in)
 }
 
 func FromCStringN(in []byte, length int) string {
@@ -49,10 +53,14 @@ func FromCStringN(in []byte, length int) string {
 		l = length
 	}
 
-	for i := 0; i < l; i++ {
-		if in[i] == 0 {
-			return string(in[:i])
-		}
+	buf := in[:l]
+	idx := bytes.IndexByte(buf, 0)
+	switch {
+	case idx == -1:
+		return string(in)
+	case idx < l:
+		return string(in[:idx])
+	default:
+		return string(in)
 	}
-	return string(in[:l])
 }
