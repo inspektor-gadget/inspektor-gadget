@@ -1,0 +1,41 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+events[("events")]
+gadget_mntns_filter_map[("gadget_mntns_filter_map")]
+gadget_sockets[("gadget_sockets")]
+query_map[("query_map")]
+tmp_events[("tmp_events")]
+ig_trace_dns -- "EventOutput" --> events
+ig_trace_dns -- "Lookup" --> gadget_mntns_filter_map
+ig_trace_dns -- "Lookup" --> gadget_sockets
+ig_trace_dns -- "Lookup+Update+Delete" --> query_map
+ig_trace_dns -- "Lookup" --> tmp_events
+ig_trace_dns["ig_trace_dns"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_trace_dns
+end
+box eBPF Maps
+participant query_map
+participant events
+participant tmp_events
+participant gadget_sockets
+participant gadget_mntns_filter_map
+end
+ig_trace_dns->>query_map: Update
+ig_trace_dns->>query_map: Lookup
+ig_trace_dns->>query_map: Delete
+ig_trace_dns->>events: EventOutput
+ig_trace_dns->>tmp_events: Lookup
+ig_trace_dns->>gadget_sockets: Lookup
+ig_trace_dns->>gadget_mntns_filter_map: Lookup
+```

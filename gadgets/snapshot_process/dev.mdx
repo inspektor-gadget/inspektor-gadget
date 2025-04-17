@@ -1,0 +1,23 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+gadget_mntns_filter_map[("gadget_mntns_filter_map")]
+ig_snap_proc -- "Lookup" --> gadget_mntns_filter_map
+ig_snap_proc["ig_snap_proc"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_snap_proc
+end
+box eBPF Maps
+participant gadget_mntns_filter_map
+end
+ig_snap_proc->>gadget_mntns_filter_map: Lookup
+```

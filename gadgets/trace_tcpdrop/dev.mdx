@@ -1,0 +1,36 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+events[("events")]
+gadget_heap[("gadget_heap")]
+gadget_mntns_filter_map[("gadget_mntns_filter_map")]
+gadget_sockets[("gadget_sockets")]
+ig_kstack[("ig_kstack")]
+ig_tcpdrop -- "EventOutput" --> events
+ig_tcpdrop -- "Lookup" --> gadget_heap
+ig_tcpdrop -- "Lookup" --> gadget_mntns_filter_map
+ig_tcpdrop -- "Lookup" --> gadget_sockets
+ig_tcpdrop["ig_tcpdrop"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_tcpdrop
+end
+box eBPF Maps
+participant gadget_heap
+participant gadget_sockets
+participant gadget_mntns_filter_map
+participant events
+end
+ig_tcpdrop->>gadget_heap: Lookup
+ig_tcpdrop->>gadget_sockets: Lookup
+ig_tcpdrop->>gadget_mntns_filter_map: Lookup
+ig_tcpdrop->>events: EventOutput
+```

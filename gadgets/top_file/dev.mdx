@@ -1,0 +1,41 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+bufs[("bufs")]
+gadget_mntns_filter_map[("gadget_mntns_filter_map")]
+stats[("stats")]
+ig_topfile_rd_e -- "Lookup" --> bufs
+ig_topfile_rd_e -- "Lookup" --> gadget_mntns_filter_map
+ig_topfile_rd_e -- "Lookup+Update" --> stats
+ig_topfile_rd_e["ig_topfile_rd_e"]
+ig_topfile_wr_e -- "Lookup" --> bufs
+ig_topfile_wr_e -- "Lookup" --> gadget_mntns_filter_map
+ig_topfile_wr_e -- "Lookup+Update" --> stats
+ig_topfile_wr_e["ig_topfile_wr_e"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_topfile_rd_e
+participant ig_topfile_wr_e
+end
+box eBPF Maps
+participant gadget_mntns_filter_map
+participant stats
+participant bufs
+end
+ig_topfile_rd_e->>gadget_mntns_filter_map: Lookup
+ig_topfile_rd_e->>stats: Lookup
+ig_topfile_rd_e->>stats: Update
+ig_topfile_rd_e->>bufs: Lookup
+ig_topfile_wr_e->>gadget_mntns_filter_map: Lookup
+ig_topfile_wr_e->>stats: Lookup
+ig_topfile_wr_e->>stats: Update
+ig_topfile_wr_e->>bufs: Lookup
+```
