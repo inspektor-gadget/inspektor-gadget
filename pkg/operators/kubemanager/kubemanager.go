@@ -22,8 +22,10 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	containerspublisher "github.com/inspektor-gadget/inspektor-gadget/pkg/containers-publisher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/compat"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -198,17 +200,16 @@ type KubeManagerInstance struct {
 	gadgetCtx          operators.GadgetContext
 
 	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
+
+	containersPublisher *containerspublisher.ContainersPublisher
 }
 
 func (m *KubeManagerInstance) Name() string {
 	return OperatorName
 }
 
-func (m *KubeManagerInstance) PreGadgetRun() error {
-	log := m.gadgetCtx.Logger()
-
+func newContainerSelector(selectorSlice []string, namespace, podName, containerName string, useAllNamespace bool) containercollection.ContainerSelector {
 	labels := make(map[string]string)
-	selectorSlice := m.params.Get(ParamSelector).AsStringSlice()
 	for _, pair := range selectorSlice {
 		kv := strings.Split(pair, "=")
 		labels[kv[0]] = kv[1]
@@ -217,17 +218,31 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 	containerSelector := containercollection.ContainerSelector{
 		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: types.BasicK8sMetadata{
-				Namespace:     m.params.Get(ParamNamespace).AsString(),
-				PodName:       m.params.Get(ParamPodName).AsString(),
-				ContainerName: m.params.Get(ParamContainerName).AsString(),
+				Namespace:     namespace,
+				PodName:       podName,
+				ContainerName: containerName,
 				PodLabels:     labels,
 			},
 		},
 	}
 
-	if m.params.Get(ParamAllNamespaces).AsBool() {
+	if useAllNamespace {
 		containerSelector.K8s.Namespace = ""
 	}
+
+	return containerSelector
+}
+
+func (m *KubeManagerInstance) PreGadgetRun() error {
+	log := m.gadgetCtx.Logger()
+
+	containerSelector := newContainerSelector(
+		m.params.Get(ParamSelector).AsStringSlice(),
+		m.params.Get(ParamNamespace).AsString(),
+		m.params.Get(ParamPodName).AsString(),
+		m.params.Get(ParamContainerName).AsString(),
+		m.params.Get(ParamAllNamespaces).AsBool(),
+	)
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
 		err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
@@ -314,6 +329,7 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 		m.gadgetCtx.Logger().Debugf("calling RemoveTracer()")
 		m.manager.gadgetTracerManager.RemoveTracer(m.id)
 	}
+
 	if m.subscribed {
 		m.gadgetCtx.Logger().Debugf("calling Unsubscribe()")
 		m.manager.gadgetTracerManager.Unsubscribe(m.id)
@@ -323,6 +339,7 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 			m.attacher.DetachContainer(container)
 		}
 	}
+
 	return nil
 }
 
@@ -360,6 +377,25 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 		return nil, err
 	}
 
+	cfg, ok := gadgetCtx.GetVar("config")
+	if !ok {
+		return nil, fmt.Errorf("missing configuration")
+	}
+	v, ok := cfg.(*viper.Viper)
+	if !ok {
+		return nil, fmt.Errorf("invalid configuration format")
+	}
+
+	enableContainersDs := v.GetBool("annotations.enable-containers-datasource")
+
+	var containersPublisher *containerspublisher.ContainersPublisher
+	if enableContainersDs {
+		containersPublisher, err = containerspublisher.NewContainersPublisher(gadgetCtx, &k.gadgetTracerManager.ContainerCollection)
+		if err != nil {
+			return nil, fmt.Errorf("creating containers publisher: %w", err)
+		}
+	}
+
 	traceInstance := &KubeManagerInstance{
 		manager:            k,
 		enrichEvents:       false,
@@ -369,6 +405,8 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 		id:                 uuid.New().String(),
 
 		eventWrappers: make(map[datasource.DataSource]*compat.EventWrapperBase),
+
+		containersPublisher: containersPublisher,
 	}
 
 	activate := false
@@ -475,11 +513,28 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 }
 
 func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
-	return nil
+	if m.containersPublisher == nil {
+		return nil
+	}
+
+	containerSelector := newContainerSelector(
+		m.params.Get(ParamSelector).AsStringSlice(),
+		m.params.Get(ParamNamespace).AsString(),
+		m.params.Get(ParamPodName).AsString(),
+		m.params.Get(ParamContainerName).AsString(),
+		m.params.Get(ParamAllNamespaces).AsBool(),
+	)
+
+	return m.containersPublisher.PublishContainers(true, []*containercollection.Container{}, containerSelector)
 }
 
 func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	m.manager.gadgetTracerManager.RemoveTracer(m.id)
+
+	if m.containersPublisher != nil {
+		m.containersPublisher.Unsubscribe()
+	}
+
 	return nil
 }
 
