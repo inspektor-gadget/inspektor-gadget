@@ -400,6 +400,14 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		return nil
 	}
 
+	// add extra info if requested
+	if gadgetCtx.ExtraInfo() {
+		err := addExtraInfo(gadgetCtx, metadata, manifest)
+		if err != nil {
+			return fmt.Errorf("adding extra info: %w", err)
+		}
+	}
+
 	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
 		err := opInst.Prepare(o.gadgetCtx)
