@@ -171,7 +171,6 @@ SEC("kprobe/cap_capable")
 int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	       struct user_namespace *targ_ns, int cap, int cap_opt)
 {
-	u64 mntns_id;
 	__u64 pid_tgid;
 	struct task_struct *task;
 
@@ -203,7 +202,7 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	if (unique) {
 		struct unique_key key = {
 			.cap = cap,
-			.mntns_id = mntns_id,
+			.mntns_id = gadget_get_current_mntns_id(),
 		};
 
 		if (bpf_map_lookup_elem(&seen, &key) != NULL) {
