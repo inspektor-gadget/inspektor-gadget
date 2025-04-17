@@ -2,7 +2,7 @@ name: Inspektor Gadget CI
 env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
-  GO_VERSION: 1.23.4
+  GO_VERSION: 1.24.2
   # controller-gen with go >1.21 panics, but we can't update controller-gen itself
   GO_VERSION_DOC_CHECK: 1.21.3
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
@@ -761,7 +761,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
-          go-version: '1.23.4'
+          go-version: ${{ env.GO_VERSION }}
           cache: true
         id: go
       - name: Get ig-linux-amd64.tar.gz from artifact.
