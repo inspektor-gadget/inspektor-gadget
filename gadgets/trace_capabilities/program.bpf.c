@@ -76,21 +76,29 @@ enum cap_effective_flags_set : __u64 {
 	FOR_EACH_CAPABILITY(LIST_CAPABILITY_FLAG)
 };
 
-struct cap_event {
-	gadget_timestamp timestamp_raw;
-	struct gadget_process proc;
-
-	__u64 current_userns;
-	__u64 target_userns;
-	enum cap_effective_flags_set cap_effective_raw;
-	enum capability cap_raw;
-	bool capable;
-	int audit;
-	int insetid;
-	gadget_syscall syscall_raw;
+#define COMMON_FIELDS                                   \
+	gadget_timestamp timestamp_raw;                 \
+	struct gadget_process proc;                     \
+	__u64 current_userns;                           \
+	__u64 target_userns;                            \
+	enum cap_effective_flags_set cap_effective_raw; \
+	enum capability cap_raw;                        \
+	bool capable;                                   \
+	int audit;                                      \
+	int insetid;                                    \
+	gadget_syscall syscall_raw;                     \
 	gadget_kernel_stack kstack_raw;
+
+struct cap_event {
+	COMMON_FIELDS
+};
+
+struct cap_event___collect_ustack {
+	COMMON_FIELDS
 	struct gadget_user_stack ustack;
 };
+const struct cap_event___collect_ustack *__gadget_tracer_type_capabilities_alt1
+	__attribute__((unused));
 
 #define MAX_ENTRIES 10240
 
@@ -252,9 +260,19 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	if (!ap)
 		return 0; /* missed entry */
 
-	event = gadget_reserve_buf(&events, sizeof(struct cap_event));
-	if (!event)
-		return 0;
+	if (collect_ustack) {
+		event = gadget_reserve_buf(
+			&events, sizeof(struct cap_event___collect_ustack));
+		if (!event)
+			return 0;
+		gadget_get_user_stack(
+			ctx,
+			&((struct cap_event___collect_ustack *)event)->ustack);
+	} else {
+		event = gadget_reserve_buf(&events, sizeof(struct cap_event));
+		if (!event)
+			return 0;
+	}
 
 	gadget_process_populate(&event->proc);
 	event->current_userns = ap->current_userns;
@@ -265,7 +283,6 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event->capable = PT_REGS_RC(ctx) == 0;
 	if (collect_kstack)
 		event->kstack_raw = gadget_get_kernel_stack(ctx);
-	gadget_get_user_stack(ctx, &event->ustack);
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
 
