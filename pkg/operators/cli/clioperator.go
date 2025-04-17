@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package clioperator
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"sort"
@@ -337,11 +338,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			}
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
 				before()
-				for _, f := range ds.Accessors(false) {
-					if s, err := f.String(data); err == nil {
-						fmt.Print(s)
-					}
-				}
+				defaultDataFn(ds, data, os.Stdout)
 				return nil
 			}, Priority)
 		case ModeNone:
@@ -394,6 +391,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					handler(datasource.NewDataTuple(ds, data))
 					return nil
 				}, Priority)
+
 			case datasource.TypeArray:
 				// print the header before only for gadgets that will clean the
 				// screen later on, otherwise it could be printed multiple
@@ -443,13 +441,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				// For the time being, this uses a slow approach to marshal to YAML, by first
 				// converting to JSON and then to YAML. This should get a dedicated formatter sooner or later.
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					yml, err := yaml.JSONToYAML(jsonFormatter.Marshal(data))
-					if err != nil {
-						return fmt.Errorf("serializing yaml: %w", err)
-					}
-					fmt.Println("---")
-					fmt.Print(string(yml))
-					return nil
+					return yamlDataFn(ds, data, jsonFormatter, os.Stdout)
 				}, Priority)
 				continue
 			}
@@ -457,18 +449,45 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			switch ds.Type() {
 			case datasource.TypeSingle:
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					fmt.Println(string(jsonFormatter.Marshal(data)))
+					jsonSingleDataFn(ds, data, jsonFormatter, os.Stdout)
 					return nil
 				}, Priority)
 			case datasource.TypeArray:
 				ds.SubscribeArray(func(ds datasource.DataSource, dataArray datasource.DataArray) error {
-					fmt.Println(string(jsonFormatter.MarshalArray(dataArray)))
+					jsonArrayDataFn(ds, dataArray, jsonFormatter, os.Stdout)
 					return nil
 				}, Priority)
 			}
 		}
+
 	}
 	return nil
+}
+
+func defaultDataFn(ds datasource.DataSource, data datasource.Data, w io.Writer) {
+	for _, f := range ds.Accessors(false) {
+		if s, err := f.String(data); err == nil {
+			fmt.Fprint(w, s)
+		}
+	}
+}
+
+func yamlDataFn(ds datasource.DataSource, data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) error {
+	yml, err := yaml.JSONToYAML(jsonFormatter.Marshal(data))
+	if err != nil {
+		return fmt.Errorf("serializing yaml: %w", err)
+	}
+	fmt.Fprintln(w, "---")
+	fmt.Fprint(w, string(yml))
+	return nil
+}
+
+func jsonSingleDataFn(ds datasource.DataSource, data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) {
+	fmt.Fprintln(w, string(jsonFormatter.Marshal(data)))
+}
+
+func jsonArrayDataFn(ds datasource.DataSource, dataArray datasource.DataArray, jsonFormatter *json.Formatter, w io.Writer) {
+	fmt.Fprintln(w, string(jsonFormatter.MarshalArray(dataArray)))
 }
 
 func (o *cliOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
