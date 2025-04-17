@@ -39,6 +39,7 @@ datasources:
           template: l4endpoint
       id:
         annotations:
+          description: DNS query/response ID, used to match queries with responses
           columns.hidden: "true"
       latency_ns_raw:
         annotations:
@@ -47,6 +48,7 @@ datasources:
           description: DNS request latency
       name:
         annotations:
+          description: Domain name being queried
           columns.width: "30"
       num_answers:
         annotations:
@@ -61,6 +63,8 @@ datasources:
           columns.hidden: "true"
       qr:
         annotations:
+          description: Specifies whether this message is a query (Q), or a response (R).
+          value.one-of: "Q, R"
           columns.minwidth: "2"
           columns.width: "2"
       qr_raw:
@@ -69,11 +73,14 @@ datasources:
       qtype:
         annotations:
           description: Query type
+          value.one-of: "A, NS, CNAME, SOA, PTR, MX, TXT, AAAA, SRV, OPT, WKS, HINFO, MINFO, AXFR, ALL"
       qtype_raw:
         annotations:
           columns.hidden: "true"
       rcode:
         annotations:
+          description: Response code
+          value.one-of: "Success, FormatError, ServerFailure, NameError, NotImplemented, Refused"
           columns.minwidth: "8"
           columns.width: "8"
       rcode_raw:

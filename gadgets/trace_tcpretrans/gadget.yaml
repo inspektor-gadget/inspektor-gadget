@@ -29,7 +29,8 @@ datasources:
           columns.hidden: true
       type:
         annotations:
-          description: Type of the retransmission, either RETRANS or LOSS
+          description: Type of the retransmission
+          value.one-of: "RETRANS, LOSS"
           columns.width: 10
       state:
         annotations:

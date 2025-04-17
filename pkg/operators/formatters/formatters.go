@@ -194,7 +194,13 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			signalField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(in))
+			opts := []datasource.FieldOption{
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.ValueOneOfAnnotation: strings.Join(signalNames, ", "),
+				}),
+				datasource.WithSameParentAs(in),
+			}
+			signalField, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
 				return nil, err
 			}
@@ -230,7 +236,8 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					metadatav1.TemplateAnnotation: "errorString",
+					metadatav1.TemplateAnnotation:   "errorString",
+					metadatav1.ValueOneOfAnnotation: strings.Join(errnoNames, ", "),
 				}),
 				datasource.WithSameParentAs(in),
 			}

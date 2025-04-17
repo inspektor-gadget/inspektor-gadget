@@ -66,6 +66,7 @@ The field annotations can be defined for each field of the datasource. The
 following annotations are a non-exhaustive list of the available annotations:
 
 - `description`: Column description
+- `value.one-of`: Defines a list of possible values for this field.
 - `columns.width`: Width to reserve for this column
 - `columns.maxwidth`: Maximum width this column will be scaled to when using auto-scaling
 - `columns.minwidth`: MinWidth will be the minimum width this column will be scaled to when using auto-scaling

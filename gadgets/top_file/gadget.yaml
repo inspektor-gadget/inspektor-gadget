@@ -33,11 +33,13 @@ datasources:
           description: Type of file, 'R' for regular files, 'S' for sockets and 'O'
             for others (including pipes). By default, only regular files are shown;
             use the --all-files flag to include all file types.
+          value.one-of: "R, S, O"
           columns.width: 1
       t_raw:
         annotations:
           description: Raw value of file type. '0' for regular files, '1' for sockets
             and '2' for others.
+          value.one-of: "0, 1, 2"
           columns.width: 1
           columns.hidden: true
       file:

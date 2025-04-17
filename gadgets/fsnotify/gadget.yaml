@@ -28,16 +28,17 @@ datasources:
           template: pid
       fa_response:
         annotations:
-          description: 'response to a fanotify permission request: allow or deny'
+          description: 'response to a fanotify permission request'
+          value.one-of: "na, allow, deny, interrupted"
       fa_response_raw:
         annotations:
           columns.hidden: "true"
       fa_type:
         annotations:
           columns.hidden: "true"
-          description: 'Type of fanotify event: FANOTIFY_EVENT_TYPE_FID, FANOTIFY_EVENT_TYPE_FID_NAME,
-            FANOTIFY_EVENT_TYPE_PATH, FANOTIFY_EVENT_TYPE_PATH_PERM, FANOTIFY_EVENT_TYPE_OVERFLOW,
-            or FANOTIFY_EVENT_TYPE_FS_ERROR'
+          description: 'Type of fanotify event'
+          value.one-of: 'FANOTIFY_EVENT_TYPE_FID, FANOTIFY_EVENT_TYPE_FID_NAME, FANOTIFY_EVENT_TYPE_PATH,
+            FANOTIFY_EVENT_TYPE_PATH_PERM, FANOTIFY_EVENT_TYPE_OVERFLOW, FANOTIFY_EVENT_TYPE_FS_ERROR'
       fa_type_raw:
         annotations:
           columns.hidden: "true"
@@ -74,6 +75,7 @@ datasources:
           description: 'fsnotify group priorities. Events are send in order from highest
             priority to lowest priority. 0: default, normal notifiers, no permissions.
             1: fanotify content based access control. 2: fanotify pre-content access.'
+          value.one-of: "0, 1, 2"
       tracee:
         annotations:
           columns.hidden: "true"
@@ -162,7 +164,8 @@ datasources:
           description: Tracer user name
       type:
         annotations:
-          description: 'Type of event: inotify or fanotify'
+          description: 'Type of event'
+          value.one-of: "inotify, fanotify"
       type_raw:
         annotations:
           columns.hidden: "true"
