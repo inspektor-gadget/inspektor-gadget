@@ -24,7 +24,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
@@ -123,7 +122,7 @@ func (t *Tracer) install() error {
 
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			SpecCacheDisabled: true,
 		},
 	}
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {

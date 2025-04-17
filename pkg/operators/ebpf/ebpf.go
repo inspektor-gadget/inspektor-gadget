@@ -657,6 +657,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	i.logger.Debugf("creating ebpf collection")
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Programs: ebpf.ProgramOptions{
+			SpecCacheDisabled: true,
+		},
 	}
 
 	// check if the btfgen operator has stored the kernel types in the context

@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
@@ -81,7 +80,7 @@ func (se *SocketEnricher) start() error {
 
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
+			SpecCacheDisabled: true,
 		},
 	}
 
