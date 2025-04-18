@@ -66,3 +66,17 @@ datasources:
       # comm:
       #   logs.name: body
 ```
+
+#### Adding static attributes
+
+Static attributes of types "string", "int64" and "float64" can be added using the following syntax:
+
+ ```yaml
+ datasources:
+   events:
+     annotations:
+       logs.attribute.my-attribute-name.value: my-attribute-value
+       logs.attribute.my-attribute-name.type: string
+ ```
+
+Those annotations can also easily be added at runtime by using the `--annotate` flag.
