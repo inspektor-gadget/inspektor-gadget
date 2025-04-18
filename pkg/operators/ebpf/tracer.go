@@ -29,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 type Tracer struct {
@@ -93,9 +94,28 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 		return fmt.Errorf("trace map is invalid: %w", err)
 	}
 
-	var btfStruct *btf.Struct
+	var btfStruct, altBtfStruct *btf.Struct
 	if err := i.collectionSpec.Types.TypeByName(structName, &btfStruct); err != nil {
 		return fmt.Errorf("finding struct %q in eBPF object: %w", structName, err)
+	}
+
+	for paramName, p := range i.params {
+		if params.TypeHint(p.TypeHint) != params.TypeBool {
+			continue
+		}
+
+		altStructName := fmt.Sprintf("%s___%s", structName, paramName)
+		if err := i.collectionSpec.Types.TypeByName(altStructName, &altBtfStruct); err != nil {
+			continue
+		}
+		i.logger.Debugf("> alternative struct name available: %q", altStructName)
+
+		b := i.paramValues[p.Key] == "true"
+		if b {
+			i.logger.Debugf("> selecting alternative struct name: %q", altStructName)
+			btfStruct = altBtfStruct
+			break
+		}
 	}
 
 	i.logger.Debugf("adding tracer %q", name)
