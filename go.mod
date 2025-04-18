@@ -8,7 +8,7 @@ require (
 	github.com/containerd/containerd v1.7.27
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
-	github.com/containers/common v0.62.3
+	github.com/containers/common v0.63.0
 	github.com/containers/image/v5 v5.35.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1
@@ -204,7 +204,7 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
