@@ -1,0 +1,38 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+cgroup_map[("cgroup_map")]
+hists[("hists")]
+start[("start")]
+ig_profio_done -- "Lookup+Update" --> hists
+ig_profio_done -- "Lookup+Delete" --> start
+ig_profio_done["ig_profio_done"]
+ig_profio_ins -- "Update" --> start
+ig_profio_ins["ig_profio_ins"]
+ig_profio_iss -- "Update" --> start
+ig_profio_iss["ig_profio_iss"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_profio_ins
+participant ig_profio_iss
+participant ig_profio_done
+end
+box eBPF Maps
+participant start
+participant hists
+end
+ig_profio_ins->>start: Update
+ig_profio_iss->>start: Update
+ig_profio_done->>start: Lookup
+ig_profio_done->>hists: Lookup
+ig_profio_done->>hists: Update
+ig_profio_done->>start: Delete
+```

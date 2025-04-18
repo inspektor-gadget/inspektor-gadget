@@ -1,0 +1,84 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+bufs[("bufs")]
+events[("events")]
+fget_raw_ctx[("fget_raw_ctx")]
+gadget_heap[("gadget_heap")]
+gadget_mntns_filter_map[("gadget_mntns_filter_map")]
+scm_send_ctx[("scm_send_ctx")]
+sendmsg_ctx[("sendmsg_ctx")]
+fget_raw_e -- "Update" --> fget_raw_ctx
+fget_raw_e -- "Lookup" --> gadget_mntns_filter_map
+fget_raw_e -- "Lookup" --> scm_send_ctx
+fget_raw_e["fget_raw_e"]
+fget_raw_x -- "Lookup" --> bufs
+fget_raw_x -- "EventOutput" --> events
+fget_raw_x -- "Lookup+Delete" --> fget_raw_ctx
+fget_raw_x -- "Lookup" --> gadget_heap
+fget_raw_x -- "Lookup" --> scm_send_ctx
+fget_raw_x -- "Lookup" --> sendmsg_ctx
+fget_raw_x["fget_raw_x"]
+scm_snd_e -- "Lookup" --> gadget_mntns_filter_map
+scm_snd_e -- "Update" --> scm_send_ctx
+scm_snd_e["scm_snd_e"]
+scm_snd_x -- "Delete" --> scm_send_ctx
+scm_snd_x["scm_snd_x"]
+sendmmsg_e -- "Lookup" --> gadget_mntns_filter_map
+sendmmsg_e -- "Update" --> sendmsg_ctx
+sendmmsg_e["sendmmsg_e"]
+sendmmsg_x -- "Delete" --> sendmsg_ctx
+sendmmsg_x["sendmmsg_x"]
+sendmsg_e -- "Lookup" --> gadget_mntns_filter_map
+sendmsg_e -- "Update" --> sendmsg_ctx
+sendmsg_e["sendmsg_e"]
+sendmsg_x -- "Delete" --> sendmsg_ctx
+sendmsg_x["sendmsg_x"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant sendmmsg_x
+participant scm_snd_e
+participant scm_snd_x
+participant fget_raw_e
+participant fget_raw_x
+participant sendmsg_e
+participant sendmsg_x
+participant sendmmsg_e
+end
+box eBPF Maps
+participant sendmsg_ctx
+participant gadget_mntns_filter_map
+participant scm_send_ctx
+participant fget_raw_ctx
+participant events
+participant gadget_heap
+participant bufs
+end
+sendmmsg_x->>sendmsg_ctx: Delete
+scm_snd_e->>gadget_mntns_filter_map: Lookup
+scm_snd_e->>scm_send_ctx: Update
+scm_snd_x->>scm_send_ctx: Delete
+fget_raw_e->>gadget_mntns_filter_map: Lookup
+fget_raw_e->>scm_send_ctx: Lookup
+fget_raw_e->>fget_raw_ctx: Update
+fget_raw_x->>events: EventOutput
+fget_raw_x->>fget_raw_ctx: Delete
+fget_raw_x->>scm_send_ctx: Lookup
+fget_raw_x->>fget_raw_ctx: Lookup
+fget_raw_x->>sendmsg_ctx: Lookup
+fget_raw_x->>gadget_heap: Lookup
+fget_raw_x->>bufs: Lookup
+sendmsg_e->>gadget_mntns_filter_map: Lookup
+sendmsg_e->>sendmsg_ctx: Update
+sendmsg_x->>sendmsg_ctx: Delete
+sendmmsg_e->>gadget_mntns_filter_map: Lookup
+sendmmsg_e->>sendmsg_ctx: Update
+```

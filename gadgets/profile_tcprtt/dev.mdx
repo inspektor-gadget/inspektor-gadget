@@ -1,0 +1,24 @@
+## Program-Map Relationships
+
+### Flowchart Graph
+
+```mermaid
+flowchart LR
+hists[("hists")]
+ig_tcprcvest_kp -- "Lookup+Update" --> hists
+ig_tcprcvest_kp["ig_tcprcvest_kp"]
+```
+
+### Sequence Graph 
+
+```mermaid
+sequenceDiagram
+box eBPF Programs
+participant ig_tcprcvest_kp
+end
+box eBPF Maps
+participant hists
+end
+ig_tcprcvest_kp->>hists: Lookup
+ig_tcprcvest_kp->>hists: Update
+```

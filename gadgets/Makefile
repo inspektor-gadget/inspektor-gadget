@@ -58,6 +58,7 @@ GADGETS = \
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 GADGETS_README = $(filter-out ci/%, $(addsuffix /README.mdx, $(GADGETS)))
+GADGETS_README_DEV = $(filter-out ci/%, $(addsuffix /dev.mdx, $(GADGETS)))
 
 .PHONY: all
 all: build
@@ -90,6 +91,17 @@ $(GADGETS_README):
 	if [ ! -f $(ROOT_DIR)../docs/gadgets/$(@) ] ; then \
 		ln -sf ../../gadgets/$@ $(ROOT_DIR)../docs/gadgets/$(shell dirname $@).mdx ; \
 	fi
+
+.PHONY: $(GADGETS_README_DEV)
+$(GADGETS_README_DEV):
+	@# Replace program-map section and insert mermaid graph
+	sed -i '/^## Program-Map Relationships/,/^## /{/^## /!d}' $@
+	echo -e "\n### Flowchart Graph\n\n\`\`\`mermaid" >> $@
+	sudo ig image inspect $(@:/dev.mdx=):$(GADGET_TAG) -o custom --extra-info=ebpf.mermaid.flowchart >> $@
+	echo "\`\`\`" >> $@
+	echo -e "\n### Sequence Graph \n\n\`\`\`mermaid" >> $@
+	sudo ig image inspect $(@:/dev.mdx=):$(GADGET_TAG) -o custom --extra-info=ebpf.mermaid.sequence >> $@
+	echo -e "\`\`\`" >> $@	
 
 %-push: %-build
 	@echo "Pushing $*"
