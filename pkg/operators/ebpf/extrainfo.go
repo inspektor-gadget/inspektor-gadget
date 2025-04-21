@@ -22,6 +22,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	graphutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf2graph"
 )
 
 type extraInfoMap struct {
@@ -107,6 +108,25 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	ebpfInfo.Data["ebpf.variables"] = &api.GadgetInspectAddendum{
 		ContentType: "application/json",
 		Content:     []byte(variablesJson),
+	}
+
+	// add mermaid graph data
+	flowchartGraph, err := graphutils.GenerateFlowchartMermaidGraph(i.collectionSpec)
+	if err != nil {
+		return fmt.Errorf("generating mermaid flow graph: %w", err)
+	}
+	sequenceDiagram, err := graphutils.GenerateSequenceMermaidGraph(i.collectionSpec)
+	if err != nil {
+		return fmt.Errorf("generating mermaid sequence diagram: %w", err)
+	}
+
+	ebpfInfo.Data["ebpf.flowchart"] = &api.GadgetInspectAddendum{
+		ContentType: "text/mermaid",
+		Content:     []byte(flowchartGraph),
+	}
+	ebpfInfo.Data["ebpf.sequence"] = &api.GadgetInspectAddendum{
+		ContentType: "text/mermaid",
+		Content:     []byte(sequenceDiagram),
 	}
 
 	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)
