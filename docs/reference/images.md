@@ -316,9 +316,17 @@ $ sudo ig image inspect fsnotify:main |jq keys
 WARN[0001] image signature verification is disabled due to using corresponding option 
 [
   "ebpf.maps",
+  "ebpf.mermaid.flowchart",
+  "ebpf.mermaid.sequence",
   "ebpf.programs",
   "ebpf.sections",
   "ebpf.variables",
+  "oci.created",
+  "oci.digest",
+  "oci.manifest",
+  "oci.metadata",
+  "oci.repository",
+  "oci.tag",
   "wasm.gadgetAPIVersion",
   "wasm.upcalls"
 ]
@@ -351,4 +359,57 @@ ig_fa_pick_e:
 ...
 	25: MovImm dst: r0 imm: 0
 	26: Exit
+
+# Printing the gadget annotations
+$ sudo ig image inspect audit_seccomp:main --extra-info=oci.manifest -o custom|jq '.annotations'
+{
+  "io.inspektor-gadget.builder.version": "fb7bfcd",
+  "org.opencontainers.image.created": "2025-04-10T08:49:17Z",
+  "org.opencontainers.image.description": "Audit syscalls according to the seccomp profile",
+  "org.opencontainers.image.documentation": "https://www.inspektor-gadget.io/docs/latest/gadgets/audit_seccomp",
+  "org.opencontainers.image.source": "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/audit_seccomp",
+  "org.opencontainers.image.title": "audit seccomp",
+  "org.opencontainers.image.url": "https://inspektor-gadget.io/"
+}
+
+# Printing the gadget metadata
+$ sudo ig image inspect audit_seccomp:main --extra-info=oci.metadata -o custom
+name: audit seccomp
+description: Audit syscalls according to the seccomp profile
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/audit_seccomp
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/audit_seccomp
+datasources:
+  seccomp:
+    fields:
+      syscall_raw:
+        annotations:
+          columns.hidden: true
+      syscall:
+        annotations:
+          columns.width: 20
+      code:
+        annotations:
+          description: Seccomp return code
+          columns.width: 20
+          columns.ellipsis: start
+      ustack:
+        annotations:
+          columns.hidden: true
+      ustack.addresses:
+        annotations:
+          description: User stack's addresses
+          columns.hidden: true
+          columns.width: 20
+      ustack.symbols:
+        annotations:
+          description: User stack's symbols
+          columns.hidden: true
+          columns.width: 20
+params:
+  ebpf:
+    collect_ustack:
+      key: collect-ustack
+      defaultValue: "false"
+      description: Collect user stack traces
 ```
