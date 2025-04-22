@@ -9,7 +9,6 @@
 #include <linux/tcp.h>
 #include <linux/types.h>
 #include <linux/udp.h>
-#include <sys/socket.h>
 #include <stdbool.h>
 
 #include <bpf/bpf_helpers.h>
@@ -35,6 +34,9 @@ unsigned long long load_word(const void *skb,
 #ifndef PACKET_OUTGOING
 #define PACKET_OUTGOING 0x4
 #endif
+
+#define AF_INET 2 /* Internet IP Protocol */
+#define AF_INET6 10 /* IP version 6 */
 
 #ifndef NEXTHDR_HOP
 #define NEXTHDR_HOP 0 /* Hop-by-hop option header. */

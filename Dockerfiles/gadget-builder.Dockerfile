@@ -27,14 +27,11 @@ FROM golang:1.24.2@sha256:d9db32125db0c3a680cfb7a1afcaefb89c898a075ec148fdc2f0f6
 ARG CLANG_LLVM_VERSION
 # libc-dev is needed for various headers, among others
 # /usr/include/arch-linux-gnu/asm/types.h.
-# libc-dev-i386 is needed on amd64 to provide <gnu/stubs-32.h>.
 # We make clang aware of these files through CFLAGS in Makefile.
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script
 # xz-utils is needed by btfgen makefile
 RUN apt-get update \
-	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils \
-	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
-RUN apt install -y software-properties-common
+	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils software-properties-common
 
 # Install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
