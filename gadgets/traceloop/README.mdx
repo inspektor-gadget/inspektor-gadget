@@ -16,7 +16,7 @@ Running the gadget:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/traceloop:%IG_TAG% [flags]
     </TabItem>
 
     <TabItem value="ig" label="ig">
@@ -32,7 +32,12 @@ First, we need to run an application that generates some events.
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        ```bash
+        $ kubectl create ns test-traceloop-ns
+        namespace/test-traceloop-ns created
+        $ kubectl run -n test-traceloop-ns --image busybox test-traceloop-pod --command -- sleep inf
+        pod/test-traceloop-pod created
+        ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
@@ -46,7 +51,8 @@ Then, let's run the gadget:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        $ kubectl gadget run traceloop:%IG_TAG% --namespace test-traceloop-ns
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   CPU         PID COMM      SYSCALL     PARAMETERS      RET
     </TabItem>
 
     <TabItem value="ig" label="ig">
@@ -61,7 +67,12 @@ Now, let's generate some events:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        Run a command inside the pod:
+
+        ```bash
+        $ kubectl exec -ti -n test-traceloop-ns test-traceloop-pod -- /bin/hush
+        / # ls
+        ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
@@ -77,7 +88,21 @@ Let's collect the syscalls:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        Press Ctrl+C to collect the syscalls:
+
+        ```bash
+        $ kubectl gadget run traceloop:%IG_TAG% --namespace test-traceloop-ns
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   CPU         PID COMM      SYSCALL     PARAMETERS      RET
+        ^C
+        ...
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        brk         brk=0        94032…
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        mmap        addr=0, len… 14008…
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        access      filename="/… -1 (P…
+        ...
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        write       fd=1, buf="…    201
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        exit_group  error_code=0      X
+        ```
+
     </TabItem>
 
     <TabItem value="ig" label="ig">
@@ -86,6 +111,7 @@ Let's collect the syscalls:
         ```bash
         $ sudo ig run traceloop:%IG_TAG% --containername test-traceloop
         RUNTIME.CONTAINERNAME                        CPU         PID COMM             SYSCALL                     PARAMETERS                  RET
+        ^C
         ...
         test-traceloop                            5         58054 sh               execve                    filename="/bin/ls", a…             0
         test-traceloop                            5         58054 ls               brk                       brk=0                  102559763509…
@@ -103,7 +129,10 @@ Finally, clean the system:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
-        Unsupported
+        ```bash
+        $ kubectl delete ns test-traceloop-ns
+        namespace "test-traceloop-ns" deleted
+        ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
