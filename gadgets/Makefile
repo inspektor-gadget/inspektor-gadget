@@ -58,6 +58,7 @@ GADGETS = \
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 GADGETS_README = $(filter-out ci/%, $(addsuffix /README.mdx, $(GADGETS)))
+GADGETS_README_DEV = $(filter-out ci/%, $(addsuffix /dev.md, $(GADGETS)))
 
 .PHONY: all
 all: build
@@ -90,6 +91,25 @@ $(GADGETS_README):
 	if [ ! -f $(ROOT_DIR)../docs/gadgets/$(@) ] ; then \
 		ln -sf ../../gadgets/$@ $(ROOT_DIR)../docs/gadgets/$(shell dirname $@).mdx ; \
 	fi
+
+# GADGET_README_DEV_PARAMS can be used to pass additional parameters e.g
+# GADGET_README_DEV_PARAMS="--verify-image=false" make mygadget/dev.md
+.PHONY: $(GADGETS_README_DEV)
+$(GADGETS_README_DEV):
+	@# Create dev.md if not exists
+	@if [ ! -f "$@" ]; then \
+		echo "Creating $@"; \
+		touch $@; \
+	fi
+	@# Update dev.md with mermaid diagrams. 
+	echo -e "# Developer Notes\n\nThis file complements the README file with implementation details specific to this gadget. It includes diagrams that illustrate how eBPF programs interact with eBPF maps. These visualizations help clarify the internal data flow and logic, making it easier to understand, maintain, and extend the gadget." > "$@"; \
+	echo -e "\n## Program-Map interactions\n\nThe following diagrams are generated using the \`ig image inspect\` command. Note they are a best-effort representation of the actual interactions, as they do not account for conditionals in the code that may prevent certain program–map interactions from occurring at runtime." >> "$@"
+	echo -e "\n### Flowchart\n\n\`\`\`mermaid" >> "$@"
+	sudo ig image inspect $(@:/dev.md=):$(GADGET_TAG) -o custom --extra-info=ebpf.flowchart $$GADGET_README_DEV_PARAMS >> "$@"
+	echo "\`\`\`" >> "$@"
+	echo -e "\n### Sequence Diagram\n\n\`\`\`mermaid" >> "$@"
+	sudo ig image inspect $(@:/dev.md=):$(GADGET_TAG) -o custom --extra-info=ebpf.sequence $$GADGET_README_DEV_PARAMS >> "$@"
+	echo -e "\`\`\`" >> "$@"
 
 %-push: %-build
 	@echo "Pushing $*"
