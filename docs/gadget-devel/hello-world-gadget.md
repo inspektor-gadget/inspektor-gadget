@@ -386,7 +386,7 @@ struct event {
 and set this field
 
 ```c
-event->mntns_id = mntns_id;
+event->mntns_id = gadget_get_current_mntns_id();
 ```
 
 After adding the `gadget_mntns_id` field to the event structure, compiling and running again,
