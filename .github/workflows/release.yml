@@ -19,6 +19,8 @@ jobs:
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Setup tmate session
+      env:
+        GH_TOKEN: ${{ github.token }}
       uses: mxschmitt/action-tmate@v3
     - uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
     - name: Update latest tag
