@@ -499,9 +499,8 @@ DEBU[0000] Adding field "gid"
 ...
 ```
 
-The uid, gid and mntns_id (added in the [previous
-step](#filtering-and-container-enrichement) fields were added to the metadata
-file:
+The uid, gid and mntns_id (added in a [previous step](#container-enrichment))
+fields were added to the metadata file:
 
 ```yaml
       gid:
