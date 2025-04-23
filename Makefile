@@ -1,13 +1,24 @@
 TAG := `git describe --tags --always`
 VERSION :=
 
-CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
+CONTAINER_REPO_NAMESPACE ?= ghcr.io/inspektor-gadget
+CONTAINER_REPO ?= $(CONTAINER_REPO_NAMESPACE)/inspektor-gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
+
+CONTAINER_IMAGES = \
+	inspektor-gadget \
+	ig \
+	gadget-builder \
+	dnstester \
+	#
+
+GADGET_BUILDER ?= $(CONTAINER_REPO_NAMESPACE)/gadget-builder:main
+DNSTESTER_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/dnstester:main
 
 MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
 GADGET_TAG ?= $(shell ./tools/image-tag branch)
-GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
+GADGET_REPOSITORY ?= $(CONTAINER_REPO_NAMESPACE)/gadget
 VERIFY_GADGETS ?= true
 TEST_COMPONENT ?= inspektor-gadget
 
@@ -29,13 +40,12 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_IMAGE ?= golangci/golangci-lint:v1.64.8@sha256:2987913e27f4eca9c8a39129d2c7bc1e74fbcf77f181e01cea607be437aa5cb8
 
-GADGET_BUILDER ?= ghcr.io/inspektor-gadget/gadget-builder:main
 
-DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:main"
 
 PLATFORMS ?= "linux/amd64,linux/arm64"
 
 CLANG_FORMAT ?= clang-format
+CRANE ?= crane
 
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
@@ -416,6 +426,14 @@ testdata:
 .PHONY: go-mod-tidy
 go-mod-tidy:
 	find ./ -type f -name go.mod -execdir go mod tidy \;
+
+.PHONY:
+%-update-latest-tag:
+	$(CRANE) copy $(CONTAINER_REPO_NAMESPACE)/$*:$(IMAGE_TAG) $(CONTAINER_REPO_NAMESPACE)/$*:latest
+
+.PHOHY:
+update-latest-tag: $(addsuffix -update-latest-tag,$(CONTAINER_IMAGES))
+	$(MAKE) -C gadgets/ update-latest-tag
 
 .PHONY: help
 help:
