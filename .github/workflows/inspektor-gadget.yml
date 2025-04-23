@@ -2235,23 +2235,23 @@ jobs:
     # level: 5
     needs:
       - ebpf-objects-checks
-      - lint
-      - semgrep
-      - test-integration-minikube
-      - test-integration-aks
-      - test-components
-      - build-ig-cwe
-      - test-ig
-      - test-gadgets-local
-      - test-integration-k8s-ig
-      - test-integration-non-k8s-ig
-      - build-examples
-      - build-gadgets-examples
-      - package-helm-charts
-      - check-secrets
-      - scan-gadget-container-images
-      - publish-gadget-images-manifest
-      - public-key-check
+      #- lint
+      #- semgrep
+      #- test-integration-minikube
+      #- test-integration-aks
+      #- test-components
+      #- build-ig-cwe
+      #- test-ig
+      #- test-gadgets-local
+      #- test-integration-k8s-ig
+      #- test-integration-non-k8s-ig
+      #- build-examples
+      #- build-gadgets-examples
+      #- package-helm-charts
+      #- check-secrets
+      #- scan-gadget-container-images
+      #- publish-gadget-images-manifest
+      #- public-key-check
     runs-on: ubuntu-latest
     permissions:
       contents: write

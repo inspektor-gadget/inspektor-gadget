@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-OWNER="inspektor-gadget"
+OWNER="mauriciovasquezbernal"
 OLD_TAG="$1"
 NEW_TAG="latest"
 
@@ -16,7 +16,7 @@ get_all_repos() {
 
   while :; do
     response=$(gh api -H "Accept: application/vnd.github.v3+json" \
-      "/orgs/$OWNER/packages?package_type=container&per_page=$per_page&page=$page")
+      "/users/$OWNER/packages?package_type=container&per_page=$per_page&page=$page")
 
     current_repos=$(echo "$response" | jq -r '.[].name')
     if [[ -z "$current_repos" ]]; then
