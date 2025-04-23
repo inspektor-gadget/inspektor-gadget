@@ -5,7 +5,7 @@ sidebar_position: 500
 
 > These instructions explain how to implement metrics collection if you're developing your own or extending an existing
 > gadget. For the user perspective of things (actually exporting the metrics to a third party), please read
-> this (TODO).
+> [this](../reference/export-logs.mdx) .
 
 Inspektor Gadget allows you to easily add metrics to your gadgets that then can be exported to OpenTelemetry compatible
 software (like Prometheus), the CLI, or other third parties by implementing a dedicated operator for that.
@@ -17,10 +17,10 @@ Metrics can either be collected in user-space or directly inside your eBPF progr
 choose depends on how you collect the data and the quantity of it.
 
 If you're sending events to user-space, you can create metrics from those by just adding a couple of annotations to your
-`gadget.yaml` file, or by using some well-known types (TODO links to macros) inside your struct definition inside eBPF code.
+`gadget.yaml` file, or by using some well-known types inside your struct definition inside eBPF code.
 
 If you don't want to emit events, because it would just be too much throughput, you can choose to write the metrics into
-eBPF maps instead and let IG create a data source (TODO link to data source) from it. Those can then be
+eBPF maps instead and let IG create a [data source](gadget-intro.md#data-sources) from it. Those can then be
 exported to for example Prometheus.
 
 | Source     | Application                                                                             | Performance |
@@ -93,8 +93,17 @@ you can easily set annotations when running a gadget using the `--annotate` flag
 
 ### Using well-known types in the eBPF code
 
-You can also edit your eBPF source code and use well-known types (TODO links to well known types) instead of annotating
-the individual fields. An event struct using this could look like:
+You can also edit your eBPF source code and use well-known types instead of annotating
+the individual fields. Inspektor Gadget provides the following types:
+
+- `gadget_counter__u32`: a counter of type `__u32`
+- `gadget_counter__u64`: a counter of type `__u64`
+- `gadget_gauge__u32`: a gauge of type `__u32`
+- `gadget_gauge__u64`: a gauge of type `__u64`
+- `gadget_histogram_slot__u32`: a histogram slot of type `__u32`
+- `gadget_histogram_slot__u64`: a histogram slot of type `__u64`
+
+An event struct using this could look like:
 
 ```c
 struct event {
@@ -145,8 +154,7 @@ data source later on) for the map `metrics` defined above. That map is of type `
 `struct metrics_key` as its key and `struct metrics_value` as its value types respectively.
 
 If you look at the `struct metrics_value` definition, you see one field of type `gadget_counter__u32`. This will tell
-IG that this value is meant to be registered as a `counter` of type `__u32`. All members of `struct metrics_value` will
-be registered as `keys` (labels).
+IG that this value is meant to be registered as a `counter` of type `__u32`. The key fields need to be annotated with `metrics.type: key` on the metadata file.
 
 You can fill the map like you usually would (e.g. using `bpf_map_update_elem`, `bpf_map_lookup_elem` and so on), but
 you still need to annotate the data source with key `metrics.collect` and value `true` like so:
