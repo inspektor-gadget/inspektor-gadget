@@ -14,8 +14,15 @@ jobs:
       # https://github.com/peter-evans/create-pull-request#token
       contents: write
       pull-requests: write
+      packages: write
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
+    - name: Update latest tag
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run:
+        ./tools/update_latest_tag.sh $GITHUB_REF_NAME
     - name: Update new version in krew-index
       if: github.repository == 'inspektor-gadget/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@3d9faef30a82761d610544f62afddca00993eef9 # v0.0.47
