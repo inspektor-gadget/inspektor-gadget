@@ -21,7 +21,7 @@ In order to enable the metrics listener, you need to set the
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        WIP: Headless mode for kubectl gadget is under development
+        kubectl gadget deploy --otel-metrics-listen=true
         ```
     </TabItem>
 
@@ -69,13 +69,18 @@ Following is an example of how to enable metrics export for the
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        WIP: Headless mode for kubectl gadget is under development
+        kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% \
+                    --name profileblockio \
+                    --annotate=blockio:metrics.collect=true \
+                    --otel-metrics-name=blockio:blockio-metrics \
+                    --detach
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
         gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_blockio:%IG_TAG% \
+                    --name profileblockio \
                     --annotate=blockio:metrics.collect=true \
                     --otel-metrics-name=blockio:blockio-metrics \
                     --detach
@@ -97,7 +102,40 @@ the metrics export for the gadget. For example, under `blockio-metrics` for the
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        WIP: Headless mode for kubectl gadget is under development
+        $ POD_NAME=$(kubectl get pods -n gadget -o jsonpath="{.items[0].metadata.name}")
+        $ kubectl -n gadget port-forward $POD_NAME 2224:2224 &
+        $ curl http://localhost:2224/metrics -s | grep blockio-metrics
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4"} 0
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8"} 4347
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16"} 11534
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32"} 17621
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="64"} 23856
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="128"} 34452
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="256"} 37677
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="512"} 37812
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1024"} 37876
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2048"} 37882
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4096"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8192"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="16384"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="32768"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="65536"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="131072"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="262144"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="524288"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.048576e+06"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2.097152e+06"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4.194304e+06"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="8.388608e+06"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1.6777216e+07"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="3.3554432e+07"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="6.7108864e+07"} 37891
+        latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="+Inf"} 37891
+        latency_sum{otel_scope_name="blockio-metrics",otel_scope_version=""} 3.109288e+06
+        latency_count{otel_scope_name="blockio-metrics",otel_scope_version=""} 37891
+        otel_scope_info{otel_scope_name="blockio-metrics",otel_scope_version=""} 1
         ```
     </TabItem>
 
@@ -146,20 +184,13 @@ You can stop the metrics collection at any time by deleting the gadget instance:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        WIP: Headless mode for kubectl gadget is under development
+        $ kubectl gadget delete profileblockio
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ gadgetctl list
-        ID           NAME                                                      TAGS                                                      GADGET
-        3e68634c4c28 amazing_payne                                                                                                       ghcr.io/inspektor-gadget/gadget/profile_blockio:latest
-        ```
-
-        ```bash
-        $ gadgetctl delete 3e68634c4c28
-        3e68634c4c28a981a60fe96a29d24a99
+        $ gadgetctl delete profileblockio
         ```
     </TabItem>
 </Tabs>
