@@ -630,6 +630,10 @@ GADGET_PARAM(collect_ustack);
 	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 ```
 
+## Metrics
+
+Check [metrics](metrics.md#using-well-known-types-in-the-ebpf-code).
+
 ## Common information
 
 Most gadgets provide common information like comm, pid, etc. Inspektor Gadget
