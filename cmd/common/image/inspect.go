@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PaesslerAG/jsonpath"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -40,7 +41,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 
 	opGlobalParams := make(map[string]*params.Params)
 
-	outputModes := []string{utils.OutputModeYAML, utils.OutputModeJSON, utils.OutputModeJSONPretty, utils.OutputModeCustom}
+	outputModes := []string{utils.OutputModeYAML, utils.OutputModeJSON, utils.OutputModeJSONPretty}
 
 	cmd := &cobra.Command{
 		Use:          "inspect",
@@ -50,6 +51,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display")
+	cmd.PersistentFlags().String("jsonpath", "", "JSONPath to extract from the extra info")
 
 	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
 
@@ -107,35 +109,110 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 				"content":     string(v.Content),
 			}
 		}
-		switch outputMode {
-		case utils.OutputModeJSON:
-			bytes, err := json.Marshal(extraInfoMap)
-			if err != nil {
-				return fmt.Errorf("marshalling image and extra info to JSON: %w", err)
-			}
-			fmt.Fprint(cmd.OutOrStdout(), string(bytes))
-		case utils.OutputModeJSONPretty:
-			bytes, err := json.MarshalIndent(extraInfoMap, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshalling image and extra info to JSON: %w", err)
-			}
-			fmt.Fprint(cmd.OutOrStdout(), string(bytes))
-		case utils.OutputModeYAML:
-			bytes, err := yaml.Marshal(extraInfoMap)
-			if err != nil {
-				return fmt.Errorf("marshalling image and extra info to YAML: %w", err)
-			}
-			fmt.Fprint(cmd.OutOrStdout(), string(bytes))
-		case utils.OutputModeCustom:
-			extraInfo, _ := cmd.PersistentFlags().GetString("extra-info")
-			if extraInfo == "" {
-				return fmt.Errorf("extra info not specified (see --extra-info)")
-			}
-			if info.ExtraInfo.Data[extraInfo] == nil {
+
+		var customResult interface{}
+		extraInfo, _ := cmd.PersistentFlags().GetString("extra-info")
+		jsonPath, _ := cmd.PersistentFlags().GetString("jsonpath")
+		if extraInfo != "" {
+			dataEntry, ok := info.ExtraInfo.Data[extraInfo]
+			if !ok {
 				return fmt.Errorf("extra info %q not found", extraInfo)
 			}
-			customInfo := string(info.ExtraInfo.Data[extraInfo].Content)
-			fmt.Fprint(cmd.OutOrStdout(), customInfo)
+
+			switch dataEntry.ContentType {
+			case "application/json":
+				if err := json.Unmarshal(dataEntry.Content, &customResult); err != nil {
+					return fmt.Errorf("unmarshalling JSON content: %w", err)
+				}
+			case "text/yaml":
+				var jsonCompatible map[string]interface{}
+
+				jsonBytes, err := yaml.YAMLToJSON(dataEntry.Content)
+				if err != nil {
+					return fmt.Errorf("converting YAML to JSON: %w", err)
+				}
+
+				if err := json.Unmarshal(jsonBytes, &jsonCompatible); err != nil {
+					return fmt.Errorf("unmarshalling JSON content: %w", err)
+				}
+
+				customResult = jsonCompatible
+			default:
+				customResult = string(dataEntry.Content)
+			}
+			if jsonPath != "" {
+				if dataEntry.ContentType != "application/json" && dataEntry.ContentType != "text/yaml" {
+					return fmt.Errorf("jsonpath %q can only be used with JSON or YAML content", jsonPath)
+				}
+
+				customResult, err = jsonpath.Get(fmt.Sprintf("$%s", jsonPath), customResult)
+				if err != nil {
+					return fmt.Errorf("resolving path %q: %w", jsonPath, err)
+				}
+				if customResult == nil {
+					return fmt.Errorf("path %q not found in extra info %q", jsonPath, extraInfo)
+				}
+			}
+		}
+		if jsonPath != "" && extraInfo == "" {
+			return fmt.Errorf("jsonpath %q can only be used with extra info", jsonPath)
+		}
+
+		switch outputMode {
+		case utils.OutputModeJSON:
+			if customResult != nil {
+				if _, ok := customResult.(string); !ok {
+					bytes, err := json.Marshal(customResult)
+					if err != nil {
+						return fmt.Errorf("marshalling image and extra info to JSON: %w", err)
+					}
+					fmt.Fprint(cmd.OutOrStdout(), string(bytes), "\n")
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), customResult, "\n")
+				}
+			} else {
+				bytes, err := json.Marshal(extraInfoMap)
+				if err != nil {
+					return fmt.Errorf("marshalling image and extra info to JSON: %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes), "\n")
+			}
+		case utils.OutputModeJSONPretty:
+			if customResult != nil {
+				if _, ok := customResult.(string); !ok {
+					bytes, err := json.MarshalIndent(customResult, "", "  ")
+					if err != nil {
+						return fmt.Errorf("marshalling image and extra info to JSON (pretty): %w", err)
+					}
+					fmt.Fprint(cmd.OutOrStdout(), string(bytes), "\n")
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), customResult, "\n")
+				}
+			} else {
+				bytes, err := json.MarshalIndent(extraInfoMap, "", "  ")
+				if err != nil {
+					return fmt.Errorf("marshalling image and extra info to JSON (pretty): %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes), "\n")
+			}
+		case utils.OutputModeYAML:
+			if customResult != nil {
+				if _, ok := customResult.(string); !ok {
+					bytes, err := yaml.Marshal(customResult)
+					if err != nil {
+						return fmt.Errorf("marshalling image and extra info to YAML: %w", err)
+					}
+					fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), customResult, "\n")
+				}
+			} else {
+				bytes, err := yaml.Marshal(extraInfoMap)
+				if err != nil {
+					return fmt.Errorf("marshalling image and extra info to YAML: %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+			}
 		default:
 			return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(outputModes, ", "))
 		}

@@ -288,8 +288,9 @@ Usage:
 
 Flags:
   -h, --help            help for inspect
-  -o, --output string   Output mode: json, jsonpretty, yaml, or custom (default "jsonpretty")
-  --extra-info string   In custom mode, specify particular info required
+  -o, --output string   Output mode: json, jsonpretty, yaml (default "jsonpretty")
+  --extra-info string   specify particular info required
+  --jsonpath   string   JSONPath to extract from the extra info
 ```
 
 ```bash
@@ -313,13 +314,12 @@ $ sudo ig image inspect ghcr.io/inspektor-gadget/gadget/trace_tcp
 
 # List possible extra-info
 $ sudo ig image inspect fsnotify:main |jq keys
-WARN[0001] image signature verification is disabled due to using corresponding option 
 [
+  "ebpf.flowchart",
   "ebpf.maps",
-  "ebpf.mermaid.flowchart",
-  "ebpf.mermaid.sequence",
   "ebpf.programs",
   "ebpf.sections",
+  "ebpf.sequence",
   "ebpf.variables",
   "oci.created",
   "oci.digest",
@@ -331,25 +331,27 @@ WARN[0001] image signature verification is disabled due to using corresponding o
   "wasm.upcalls"
 ]
 
-# Retrieve specific info using custom output
-$ sudo ig image inspect -o custom --extra-info=ebpf.sections ghcr.io/inspektor-gadget/gadget/trace_tcp
+# Retrieve specific info using --extra-info
+$ sudo ig image inspect --extra-info=ebpf.sections ghcr.io/inspektor-gadget/gadget/trace_tcp -o json
 ["",".strtab",".text","kprobe/tcp_v4_connect",".relkprobe/tcp_v4_connect","kretprobe/tcp_v4_connect",".relkretprobe/tcp_v4_connect","kprobe/tcp_v6_connect",".relkprobe/tcp_v6_connect","kretprobe/tcp_v6_connect",".relkretprobe/tcp_v6_connect","kprobe/tcp_close",".relkprobe/tcp_close","kprobe/tcp_set_state",".relkprobe/tcp_set_state","kretprobe/inet_csk_accept",".relkretprobe/inet_csk_accept",".rodata",".bss","license",".maps",".BTF",".rel.BTF",".BTF.ext",".rel.BTF.ext",".llvm_addrsig",".symtab"]
 
 # Listing programs
-$ sudo ig image inspect -o custom fsnotify --extra-info ebpf.programs|jq -r '.[].Section'
-WARN[0001] image signature verification is disabled due to using corresponding option 
-kprobe/fanotify_handle_event
-kprobe/fsnotify_remove_first_event
-kretprobe/fsnotify_remove_first_event
-kprobe/inotify_handle_inode_event
-kretprobe/fanotify_handle_event
-kprobe/fsnotify_insert_event
-kprobe/fsnotify_destroy_event
-kretprobe/inotify_handle_inode_event
+$ sudo ig image inspect fsnotify --extra-info ebpf.programs --jsonpath='[*].Section'
+[
+  "kprobe/fsnotify_insert_event",
+  "kretprobe/inotify_handle_inode_event",
+  "kretprobe/fanotify_handle_event",
+  "kretprobe/fsnotify_remove_first_event",
+  "kretprobe/inotify_handle_event",
+  "kprobe/fanotify_handle_event",
+  "kprobe/fsnotify_destroy_event",
+  "kprobe/fsnotify_remove_first_event",
+  "kprobe/inotify_handle_inode_event",
+  "kprobe/inotify_handle_event"
+]
 
 # Printing the source of a program
-$ sudo ig image inspect -o custom fsnotify:latest --extra-info ebpf.programs|jq -r '.[] | select(.Section=="kprobe/fsnotify_remove_first_event") | .Source'
-WARN[0001] image signature verification is disabled due to using corresponding option 
+$ sudo ig image inspect fsnotify:latest --extra-info ebpf.programs|jq -r '.[] | select(.Section=="kprobe/fsnotify_remove_first_event") | .Source'
 ig_fa_pick_e:
 	  ; int BPF_KPROBE(ig_fa_pick_e, struct fsnotify_group *group)
 	 0: LdXMemDW dst: r6 src: r1 off: 112 imm: 0
@@ -361,7 +363,7 @@ ig_fa_pick_e:
 	26: Exit
 
 # Printing the gadget annotations
-$ sudo ig image inspect audit_seccomp:main --extra-info=oci.manifest -o custom|jq '.annotations'
+$ sudo ig image inspect audit_seccomp:main --extra-info=oci.manifest --jsonpath='.annotations'
 {
   "io.inspektor-gadget.builder.version": "fb7bfcd",
   "org.opencontainers.image.created": "2025-04-10T08:49:17Z",
@@ -372,8 +374,16 @@ $ sudo ig image inspect audit_seccomp:main --extra-info=oci.manifest -o custom|j
   "org.opencontainers.image.url": "https://inspektor-gadget.io/"
 }
 
+# Indexing ebpf programs using the jsonpath flag
+$ sudo ig image inspect advise_seccomp:latest --extra-info=ebpf.programs --jsonpath="[0].Section"
+"raw_tracepoint/sys_enter"
+
+# Indexing oci manifest fields using jsonpath flag
+$ sudo ig image inspect advise_seccomp:latest --extra-info=oci.manifest --jsonpath=".layers[0].digest"
+"sha256:36f802754b93c6592a9d44e6a6b5ee4910773750966f230f3f10324065017639"
+
 # Printing the gadget metadata
-$ sudo ig image inspect audit_seccomp:main --extra-info=oci.metadata -o custom
+$ sudo ig image inspect audit_seccomp:main --extra-info=oci.metadata
 name: audit seccomp
 description: Audit syscalls according to the seccomp profile
 homepageURL: https://inspektor-gadget.io/
@@ -412,4 +422,9 @@ params:
       key: collect-ustack
       defaultValue: "false"
       description: Collect user stack traces
+
+# Listing the layers from the oci manifest
+$ sudo ig image inspect advise_seccomp:latest --extra-info=oci.manifest --jsonpath=".layers[*].mediaType" -o yaml
+- application/vnd.gadget.ebpf.program.v1+binary
+- application/vnd.gadget.wasm.program.v1+binary
 ```
