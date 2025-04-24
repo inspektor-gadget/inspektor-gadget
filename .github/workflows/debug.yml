@@ -2,7 +2,7 @@ name: Inspektor Gadget Debug
 on:
   workflow_dispatch:
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   debug:
