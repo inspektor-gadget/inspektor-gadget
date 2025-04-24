@@ -19,6 +19,10 @@ import (
 	"debug/elf"
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -31,8 +35,9 @@ type extraInfoMap struct {
 }
 
 type extraInfoProgram struct {
-	Section string
-	Source  string
+	Section              string
+	Source               string
+	SourceWithRelocation string
 }
 
 type extraInfoVariable struct {
@@ -73,8 +78,9 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	// Add programs
 	for _, p := range i.collectionSpec.Programs {
 		programs = append(programs, &extraInfoProgram{
-			Section: p.SectionName,
-			Source:  p.Instructions.String(),
+			Section:              p.SectionName,
+			Source:               p.Instructions.String(),
+			SourceWithRelocation: getSourceWithRelocations(p.Instructions),
 		})
 	}
 	programsJson, _ := json.Marshal(programs)
@@ -132,4 +138,20 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	gadgetCtx.SetVar("extraInfo.ebpf", ebpfInfo)
 
 	return nil
+}
+
+func getSourceWithRelocations(insns asm.Instructions) (relocations string) {
+	var relocs strings.Builder
+
+	iter := insns.Iterate()
+	for iter.Next() {
+		if source := iter.Ins.Source(); source != nil {
+			relocs.WriteString(fmt.Sprintf("; %s\n", source))
+		}
+		if relo := btf.CORERelocationMetadata(iter.Ins); relo != nil {
+			relocs.WriteString(fmt.Sprintf("; %v\n", relo))
+		}
+		relocs.WriteString(fmt.Sprintf("%v\n", iter.Ins))
+	}
+	return relocs.String()
 }
