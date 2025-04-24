@@ -1,6 +1,6 @@
 name: Inspektor Gadget Debug
 on:
-  workflow_dispatch:
+  push:
 
 permissions: write-all
 
