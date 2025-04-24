@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PaesslerAG/jsonpath"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -50,6 +51,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display")
+	cmd.PersistentFlags().String("jsonpath", "", "JSONPath to extract from the extra info")
 
 	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
 
@@ -131,8 +133,34 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 			if extraInfo == "" {
 				return fmt.Errorf("extra info not specified (see --extra-info)")
 			}
-			if info.ExtraInfo.Data[extraInfo] == nil {
+			if _, ok := info.ExtraInfo.Data[extraInfo]; !ok {
 				return fmt.Errorf("extra info %q not found", extraInfo)
+			}
+
+			jsonPath, _ := cmd.PersistentFlags().GetString("jsonpath")
+
+			if jsonPath != "" {
+				dataEntry := info.ExtraInfo.Data[extraInfo]
+				if dataEntry.ContentType != "application/json" {
+					return fmt.Errorf("extra info %q is not JSON", extraInfo)
+				}
+
+				// unmarshal the JSON content
+				var dataEntryContent interface{}
+				if err := json.Unmarshal(dataEntry.Content, &dataEntryContent); err != nil {
+					return fmt.Errorf("unmarshalling JSON content: %w", err)
+				}
+
+				result, err := jsonpath.Get(fmt.Sprintf("$%s", jsonPath), dataEntryContent)
+				if err != nil {
+					return fmt.Errorf("resolving path %q: %w", jsonPath, err)
+				}
+				bytes, err := json.Marshal(result)
+				if err != nil {
+					return fmt.Errorf("marshalling JSONPath result to JSON: %w", err)
+				}
+				fmt.Fprint(cmd.OutOrStdout(), string(bytes))
+				return nil
 			}
 			customInfo := string(info.ExtraInfo.Data[extraInfo].Content)
 			fmt.Fprint(cmd.OutOrStdout(), customInfo)
