@@ -404,8 +404,8 @@ github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
 github.com/sigstore/protobuf-specs v0.4.1 h1:5SsMqZbdkcO/DNHudaxuCUEjj6x29tS2Xby1BxGU7Zc=
 github.com/sigstore/protobuf-specs v0.4.1/go.mod h1:+gXR+38nIa2oEupqDdzg4qSBT0Os+sP7oYv6alWewWc=
-github.com/sigstore/sigstore v1.9.3 h1:y2qlTj+vh+Or3ictKuR3JUFawZPdDxAjrWkeFhon0OQ=
-github.com/sigstore/sigstore v1.9.3/go.mod h1:VwYkiw0G0dRtwL25KSs04hCyVFF6CYMd/qvNeYrl7EQ=
+github.com/sigstore/sigstore v1.9.4 h1:64+OGed80+A4mRlNzRd055vFcgBeDghjZw24rPLZgDU=
+github.com/sigstore/sigstore v1.9.4/go.mod h1:Q7tGTC3gbtK7c3jcxEmGc2MmK4rRpIRzi3bxRFWKvEY=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
