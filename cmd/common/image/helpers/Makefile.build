@@ -2,7 +2,18 @@
 
 CLANG ?= clang
 LLVM_STRIP ?= llvm-strip
-BASECFLAGS = -target bpf -Wall -g -O2
+# We need <asm/types.h> and depending on Linux distributions, it is installed
+# at different paths:
+#
+# * Ubuntu, package linux-libc-dev:
+#   /usr/include/x86_64-linux-gnu/asm/types.h
+#
+# * Fedora, package kernel-headers
+#   /usr/include/asm/types.h
+#
+# Since Ubuntu does not install it in a standard path, add a compiler flag for
+# it.
+BASECFLAGS = -target bpf -Wall -g -O2 -I/usr/include/$(shell uname -m)-linux-gnu
 CFLAGS ?=
 OUTPUTDIR ?= /tmp
 EBPFSOURCE ?= program.bpf.c

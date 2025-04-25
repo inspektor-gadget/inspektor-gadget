@@ -9,7 +9,6 @@
 #include <linux/tcp.h>
 #include <linux/types.h>
 #include <linux/udp.h>
-#include <sys/socket.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
