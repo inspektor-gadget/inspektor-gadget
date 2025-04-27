@@ -33,6 +33,12 @@ ARG CLANG_LLVM_VERSION
 RUN apt-get update \
 	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils software-properties-common
 
+# Rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y && \
+    . "$HOME/.cargo/env"
+
+ENV PATH="/root/.cargo/bin:$PATH"
+
 # Install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \
@@ -49,7 +55,12 @@ ENV GOCACHE=/tmp/
 # Create a directory which can be read, written and executed by everyone, this
 # avoid trouble when running as non root.
 RUN mkdir -m 777 /work
+
+# Rust wasm target
+RUN rustup target add wasm32-wasip1
+
 WORKDIR /work
 
 # Add files used to build containerized gadgets
 ADD include /usr/include
+
