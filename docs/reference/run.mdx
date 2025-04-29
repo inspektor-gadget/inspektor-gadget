@@ -142,6 +142,16 @@ The filter syntax supports the following operations:
 - `field~value`: Matches if the content of `field` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
 ```
 
+:::info
+
+It's recommended to wrap the **entire** filter expression with single quotes when using filters containing special characters to avoid unexpected behavior:
+
+```bash
+--filter 'proc.comm~^ba.*$'
+```
+
+:::
+
 #### Examples
 
 **Equal filter**: To filter events where the `comm` field equals `cat`, use:
