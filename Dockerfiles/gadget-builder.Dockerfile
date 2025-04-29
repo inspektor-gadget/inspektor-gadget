@@ -33,8 +33,11 @@ ARG CLANG_LLVM_VERSION
 RUN apt-get update \
 	&& apt-get install -y libc-dev lsb-release wget gnupg xz-utils software-properties-common
 
-# Install clang 15
-RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION all \
+# Install clang
+## Get the installation script and remove the installation line
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sed -i '/apt-get install -y \$PKG/d' ./llvm.sh
+## Now we can precisly install the packages we actually need instead of installing everything
+RUN ./llvm.sh $CLANG_LLVM_VERSION && apt-get install -y clang-$CLANG_LLVM_VERSION llvm-$CLANG_LLVM_VERSION clang-format-$CLANG_LLVM_VERSION \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \
 	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-$CLANG_LLVM_VERSION) 100 \
 	&& update-alternatives --install /usr/local/bin/clang-format clang-format $(which clang-format-$CLANG_LLVM_VERSION) 100
