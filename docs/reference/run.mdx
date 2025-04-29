@@ -147,7 +147,7 @@ The filter syntax supports the following operations:
 **Equal filter**: To filter events where the `comm` field equals `cat`, use:
 
 ```bash
---filter comm==cat
+--filter 'proc.comm==cat'
 ```
 
 This filters for events related to the `cat` command.
@@ -155,13 +155,13 @@ This filters for events related to the `cat` command.
 **Not equal filter**: To filter out events where the `uid` is not 0 (root user), use:
 
 ```bash
---filter uid!=0
+--filter 'proc.creds.uid!=0'
 ```
 
 **Regular expression filter**: To match a regular expression in a specific column, use:
 
 ```bash
---filter comm~'^c.*'
+--filter 'proc.comm~^c.*'
 ```
 
 This filters for commands starting with the letter "c".
@@ -169,7 +169,7 @@ This filters for commands starting with the letter "c".
 **Multiple filters**: You can combine multiple filters to narrow down results further. For example, to find processes executed by the root user (`uid==0`) where the command is `cat`, use:
 
 ```bash
---filter comm==cat,uid==0
+--filter 'proc.comm==cat,proc.creds.uid==0'
 ```
 
 Also, you can use backslash (`\`) to escape comma in the filter values.
