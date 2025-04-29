@@ -15,6 +15,9 @@
 /* The syscall can have max 6 arguments. */
 #define SYSCALL_ARGS 6
 
+/* 16 syscalls should be enough to filter out. */
+#define SYSCALL_FILTERS 16
+
 const __u64 PARAM_PROBE_AT_EXIT_MASK = 0xf000000000000000ULL;
 const __u64 USE_RET_AS_PARAM_LENGTH = 0x0ffffffffffffffeULL;
 
@@ -200,6 +203,26 @@ struct {
 	__uint(max_entries, 1);
 } fake_stack SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(u64));
+	/*
+	 * We do not care about the value here, so let's use a bool to consume one
+	 * byte per value.
+	 */
+	__uint(value_size, sizeof(bool));
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__uint(max_entries, SYSCALL_FILTERS);
+} syscall_filters SEC(".maps");
+
+// the below map is a surrogate for the --sycall-filters parameter
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1);
+	__type(key, __u32); // index: zero
+	__type(value, bool);
+} syscall_enable_filters SEC(".maps");
+
 void *fake_stack_alloc(void *event)
 {
 	u32 zero = 0;
@@ -214,6 +237,13 @@ static __always_inline int skip_exit_probe(int nr)
 {
 	return !!(nr == __NR_exit || nr == __NR_exit_group ||
 		  nr == __NR_rt_sigreturn);
+}
+
+static __always_inline bool should_filter_out_syscall(u64 syscall_nr)
+{
+	__u32 zero = 0;
+	return bpf_map_lookup_elem(&syscall_enable_filters, &zero) != NULL &&
+	       bpf_map_lookup_elem(&syscall_filters, &syscall_nr) == NULL;
 }
 
 /*
@@ -262,6 +292,9 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	void *perf_buffer;
 	int ret;
 	int i;
+
+	if (should_filter_out_syscall(nr))
+		return 0;
 
 	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
 	if (!perf_buffer)
