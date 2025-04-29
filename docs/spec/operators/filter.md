@@ -30,6 +30,25 @@ The filter syntax supports the following operations:
 - `field<value`: Matches if the content of `field` is less than `value`.
 - `field~value`: Matches if the content of `field` matches the regular expression `value`. See [RE2 Syntax](https://github.com/google/re2/wiki/Syntax) for more details.
 
+:::info
+
+If facing unexpected behavior with filters containing special characters, try wrapping the
+**entire** filter expression with single quotes (rather than just the right hand of the operator):
+
+[CLI](../../reference/run.mdx) example:
+
+```bash
+--filter 'proc.comm~^ba.*$'
+```
+
+[Gadget instance manifest](../../reference/manifests.mdx) example:
+
+```yaml
+operator.filter.filter: 'proc.comm~^ba.*$'
+```
+
+:::
+
 Fully qualified name: `operator.filter.filter`
 
 ### multiple filters
