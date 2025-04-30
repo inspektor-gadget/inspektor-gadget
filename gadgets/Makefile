@@ -12,6 +12,7 @@ IG_RUNTIME ?= docker
 IG_FLAGS ?=
 IG_DEBUG_LOGS ?= true
 COSIGN ?= cosign
+CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
 
@@ -101,7 +102,7 @@ $(GADGETS_README_DEV):
 		echo "Creating $@"; \
 		touch $@; \
 	fi
-	@# Update dev.md with mermaid diagrams. 
+	@# Update dev.md with mermaid diagrams.
 	echo -e "# Developer Notes\n\nThis file complements the README file with implementation details specific to this gadget. It includes diagrams that illustrate how eBPF programs interact with eBPF maps. These visualizations help clarify the internal data flow and logic, making it easier to understand, maintain, and extend the gadget." > "$@"; \
 	echo -e "\n## Program-Map interactions\n\nThe following diagrams are generated using the \`ig image inspect\` command. Note they are a best-effort representation of the actual interactions, as they do not account for conditionals in the code that may prevent certain program–map interactions from occurring at runtime." >> "$@"
 	echo -e "\n### Flowchart\n\n\`\`\`mermaid" >> "$@"
@@ -212,3 +213,10 @@ test-local: test-integration
 .PHONY:
 test-k8s: IG_PATH=$(KUBECTL_GADGET)
 test-k8s: test-integration
+
+.PHONY:
+%-update-latest-tag:
+	$(CRANE) copy $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(GADGET_REPOSITORY)/$*:latest
+
+.PHONY:
+update-latest-tag: $(addsuffix -update-latest-tag,$(GADGETS))
