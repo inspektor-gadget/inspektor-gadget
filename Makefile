@@ -123,7 +123,7 @@ ig-all: $(IG_TARGETS) ig
 ig:
 	CGO_ENABLED=0 go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
         -extldflags '-static'" \
         -tags "netgo" \
         ./cmd/ig
