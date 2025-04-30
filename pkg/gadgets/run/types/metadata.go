@@ -479,7 +479,13 @@ func checkParamVar(spec *ebpf.CollectionSpec, name string) error {
 	if btfVar.Linkage != btf.GlobalVar {
 		return fmt.Errorf("%q is not a global variable", name)
 	}
-	btfConst, ok := btfVar.Type.(*btf.Const)
+	typ := btfVar.Type
+	if btfArr, ok := typ.(*btf.Array); ok {
+		// Example of valid array of constants:
+		// const volatile gadget_comm targ_comm[TASK_COMM_LEN] = {};
+		typ = btfArr.Type
+	}
+	btfConst, ok := typ.(*btf.Const)
 	if !ok {
 		return fmt.Errorf("%q is not const", name)
 	}
