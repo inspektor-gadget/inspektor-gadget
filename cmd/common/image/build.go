@@ -420,7 +420,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 			Type:     mount.TypeBind,
 			Target:   "/work",
 			Source:   pathHost,
-			ReadOnly: true,
+			ReadOnly: false,
 		},
 		{
 			Type:   mount.TypeBind,
