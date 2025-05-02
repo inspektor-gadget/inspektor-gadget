@@ -34,6 +34,8 @@ import (
 const (
 	ParamMapIterInterval = "map-fetch-interval"
 	ParamMapIterCount    = "map-fetch-count"
+
+	mapIterIntervalDefault = "1000ms"
 )
 
 type mapIter struct {
@@ -77,7 +79,7 @@ func (i *ebpfInstance) mapParams() api.Params {
 		{
 			Key:          ParamMapIterInterval,
 			Description:  "interval in which to iterate over maps",
-			DefaultValue: "1000ms",
+			DefaultValue: mapIterIntervalDefault,
 			TypeHint:     api.TypeString,
 			Title:        "Map fetch interval",
 		},
@@ -99,7 +101,14 @@ func (i *ebpfInstance) evaluateMapParams(paramValues api.ParamValues) error {
 	globalDuration := time.Duration(0)
 	globalCount := 0
 
-	durations, err := apihelpers.GetDurationValuesPerDataSource(paramValues[ParamMapIterInterval])
+	mapIterInterval := paramValues[ParamMapIterInterval]
+	// It's possible that in the param is empty in some cases, like running the
+	// gadget from a gadget spec file. In this case we need to set the param to
+	// the default value.
+	if mapIterInterval == "" {
+		mapIterInterval = mapIterIntervalDefault
+	}
+	durations, err := apihelpers.GetDurationValuesPerDataSource(mapIterInterval)
 	if err != nil {
 		return fmt.Errorf("evaluating map fetch interval: %w", err)
 	}
