@@ -92,10 +92,6 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
 
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
-
 	struct held_mutex *held_mutexes = bpf_map_lookup_or_try_init(
 		&thread_to_held_mutexes, &tid, &EMPTY_HELD_MUTEXES);
 	if (!held_mutexes) {
@@ -176,10 +172,6 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
 
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
-
 	// Fetch the held mutexes for the current thread
 	struct held_mutex *held_mutexes =
 		bpf_map_lookup_elem(&thread_to_held_mutexes, &tid);
@@ -226,10 +218,6 @@ static __always_inline int trace_process_exit(void *ctx)
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
-
-	/* filters */
-	if (targ_pid && targ_pid != pid)
-		return 0;
 
 	bpf_map_delete_elem(&thread_to_held_mutexes, &tid);
 
