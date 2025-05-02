@@ -14,8 +14,6 @@
 #define AF_INET 2 /* Internet IP Protocol 	*/
 #define AF_INET6 10 /* IP version 6			*/
 
-const volatile pid_t target_pid = 0;
-GADGET_PARAM(target_pid);
 const volatile int target_family = -1;
 GADGET_PARAM(target_family);
 
@@ -52,9 +50,6 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
-
-	if (target_pid != 0 && target_pid != pid)
-		return 0;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (target_family != -1 && ((target_family == 4 && family != AF_INET) ||
