@@ -155,6 +155,7 @@ type k8sAccesors struct {
 	Namespace datasource.FieldAccessor
 	PodIP     datasource.FieldAccessor
 	HostIP    datasource.FieldAccessor
+	PodLabels datasource.FieldAccessor
 }
 
 func (k *KubeNameResolver) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -186,6 +187,12 @@ func (k *KubeNameResolver) InstantiateDataOperator(gadgetCtx operators.GadgetCon
 		k8sAccesors.Namespace = ds.GetField("k8s.namespace")
 		if k8sAccesors.Namespace == nil {
 			logger.Warnf("No namespace field found in datasource %q", ds.Name())
+			continue
+		}
+
+		k8sAccesors.PodLabels = ds.GetField("k8s.podLabels")
+		if k8sAccesors.PodLabels == nil {
+			logger.Warnf("No podLabels field found in datasource %q", ds.Name())
 			continue
 		}
 
@@ -233,6 +240,12 @@ func (m *KubeNameResolverInstance) enrichSingle(data datasource.Data, accessor k
 	if pod == nil {
 		return nil
 	}
+
+	labelKeyValuePairs := make([]string, 0, len(pod.Labels))
+	for k, v := range pod.Labels {
+		labelKeyValuePairs = append(labelKeyValuePairs, fmt.Sprintf("%s=%s", k, v))
+	}
+	accessor.PodLabels.PutString(data, strings.Join(labelKeyValuePairs, ","))
 
 	accessor.HostIP.PutString(data, pod.Status.HostIP)
 	accessor.PodIP.PutString(data, pod.Status.PodIP)
