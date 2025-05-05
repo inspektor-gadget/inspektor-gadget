@@ -100,7 +100,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 
 	eventCallback := func(event *types.Event) {
 		r, err := json.Marshal(event)

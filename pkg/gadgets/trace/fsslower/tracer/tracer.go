@@ -235,12 +235,12 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 
-	t.reader, err = perf.NewReader(t.objs.fsslowerMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	t.reader, err = perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 
-	if err := gadgets.FreezeMaps(t.objs.fsslowerMaps.Events); err != nil {
+	if err := gadgets.FreezeMaps(t.objs.Events); err != nil {
 		return err
 	}
 

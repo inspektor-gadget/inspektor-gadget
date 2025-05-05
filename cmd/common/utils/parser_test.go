@@ -191,7 +191,7 @@ func TestBaseParser(t *testing.T) {
 					case "pid":
 						sb.WriteString(fmt.Sprintf("%d", e.Pid))
 					case "comm":
-						sb.WriteString(fmt.Sprintf("%s", e.Comm))
+						sb.WriteString(e.Comm)
 					default:
 						continue
 					}

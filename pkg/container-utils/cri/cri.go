@@ -441,7 +441,7 @@ func buildContainerData(runtimeName types.RuntimeName, container CRIContainer, p
 	runtimeclient.EnrichWithK8sMetadata(containerData, container.GetLabels())
 
 	// Initial labels are stored in the pod sandbox
-	containerData.K8s.BasicK8sMetadata.PodLabels = getFilteredPodLabels(podSandbox)
+	containerData.K8s.PodLabels = getFilteredPodLabels(podSandbox)
 
 	// CRI-O does not use the same container name of Kubernetes as containerd.
 	// Instead, it uses a composed name as Docker does, but such name is not

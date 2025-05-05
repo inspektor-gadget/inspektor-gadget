@@ -79,7 +79,7 @@ func (f *filterOperator) InstanceParams() api.Params {
 }
 
 func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	filterCfg, _ := instanceParamValues[ParamFilter]
+	filterCfg := instanceParamValues[ParamFilter]
 
 	fop := &filterOperatorInstance{
 		ffns: map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
@@ -171,10 +171,7 @@ func extractFilter(filter string) (dsName string, fieldName string, op compariso
 	stage := 0
 	pos := 0
 nextChar:
-	for {
-		if pos >= len(filter) {
-			break
-		}
+	for pos < len(filter) {
 		switch stage {
 		case 0:
 			switch filter[pos] {

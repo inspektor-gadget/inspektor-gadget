@@ -88,14 +88,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 
 			switch runtimeName {
 			case types.RuntimeNameDocker:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.RuntimesSocketPathConfig.Docker)
+				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Docker)
 			case types.RuntimeNameContainerd:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.RuntimesSocketPathConfig.Containerd)
+				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Containerd)
 				namespace = commonFlags.ContainerdNamespace
 			case types.RuntimeNameCrio:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.RuntimesSocketPathConfig.Crio)
+				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Crio)
 			case types.RuntimeNamePodman:
-				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.RuntimesSocketPathConfig.Podman)
+				socketPath, err = securejoin.SecureJoin(host.HostRoot, commonFlags.Podman)
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",
 					fmt.Errorf("runtime %q is not supported", p))

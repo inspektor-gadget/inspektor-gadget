@@ -307,7 +307,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 				}
 
 				if utils.CurrentTestComponent == utils.IgLocalTestComponent {
-					utils.NormalizeString(&e.CommonData.Runtime.ContainerImageName)
+					utils.NormalizeString(&e.Runtime.ContainerImageName)
 				}
 			}
 

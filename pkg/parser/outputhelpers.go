@@ -51,7 +51,7 @@ type outputHelper[T any] struct {
 }
 
 func (oh *outputHelper[T]) forwardEvent(ev *T) {
-	oh.eventCallback(oh.TextColumnsFormatter.FormatEntry(ev))
+	oh.eventCallback(oh.FormatEntry(ev))
 	if !oh.enableExtraLines {
 		return
 	}

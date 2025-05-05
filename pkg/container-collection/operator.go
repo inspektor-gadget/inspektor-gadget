@@ -54,6 +54,4 @@ func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoF
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.
 	// 	What should we do here?
 	// }
-
-	return
 }

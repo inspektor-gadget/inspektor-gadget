@@ -160,7 +160,7 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 	}
 
 	if enricher != nil {
-		enricher.EnrichByMntNs(&event.CommonData, event.WithMountNsID.MountNsID)
+		enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 	}
 
 	return event, nil

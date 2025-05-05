@@ -494,7 +494,7 @@ func getPodByCgroups(clientset *kubernetes.Clientset, nodeName string, container
 	}
 
 	for _, pod := range pods.Items {
-		uid := string(pod.ObjectMeta.UID)
+		uid := string(pod.UID)
 		// check if this container is associated to this pod
 		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
 
@@ -549,7 +549,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 				if container.K8s.ContainerName == "" {
 					var containerName string
-					uid := string(pod.ObjectMeta.UID)
+					uid := string(pod.UID)
 					containerNames := []string{}
 					for _, c := range pod.Spec.Containers {
 						containerNames = append(containerNames, c.Name)
@@ -573,10 +573,10 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 					container.K8s.ContainerName = containerName
 				}
 
-				container.K8s.Namespace = pod.ObjectMeta.Namespace
-				container.K8s.PodName = pod.ObjectMeta.Name
-				container.K8s.PodUID = string(pod.ObjectMeta.UID)
-				container.SetPodLabels(pod.ObjectMeta.Labels)
+				container.K8s.Namespace = pod.Namespace
+				container.K8s.PodName = pod.Name
+				container.K8s.PodUID = string(pod.UID)
+				container.SetPodLabels(pod.Labels)
 
 				// drop pause containers
 				if container.K8s.PodName != "" && container.K8s.ContainerName == "" {

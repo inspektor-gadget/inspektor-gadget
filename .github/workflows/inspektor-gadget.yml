@@ -110,12 +110,8 @@ jobs:
       uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6.5.2
       with:
         # This version number must be kept in sync with Makefile lint one.
-        version: v1.64.8
+        version: v2.1.6
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
-        # Workaround to display the output:
-        # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
-        args: "--out-${NO_FUTURE}format colored-line-number"
-        skip-pkg-cache: true
 
   semgrep:
     name: semgrep

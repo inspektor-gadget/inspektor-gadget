@@ -285,9 +285,7 @@ func (c *GadgetContext) Params() []*api.Param {
 }
 
 func (c *GadgetContext) SetParams(params []*api.Param) {
-	for _, p := range params {
-		c.params = append(c.params, p)
-	}
+	c.params = append(c.params, params...)
 }
 
 func (c *GadgetContext) SetMetadata(m []byte) {

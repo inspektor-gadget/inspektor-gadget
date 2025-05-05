@@ -384,18 +384,12 @@ func (ci *Column[T]) HasTag(tag string) bool {
 }
 
 func (ci *Column[T]) HasNoTags() bool {
-	if len(ci.Tags) == 0 {
-		return true
-	}
-	return false
+	return len(ci.Tags) == 0
 }
 
 // IsEmbedded returns true, if the current column is a member of an embedded struct
 func (ci *Column[T]) IsEmbedded() bool {
-	if len(ci.subFieldIndex) == 0 {
-		return false
-	}
-	return true
+	return len(ci.subFieldIndex) != 0
 }
 
 // IsVirtual returns true, if the column has direct reference to a field

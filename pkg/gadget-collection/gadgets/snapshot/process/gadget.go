@@ -67,7 +67,7 @@ func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOp
 }
 
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)

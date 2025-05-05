@@ -100,7 +100,7 @@ func (t *Trace) publishEvent(
 	trace *gadgetv1alpha1.Trace,
 	event *netTypes.Event,
 ) {
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 	t.helpers.PublishEvent(
 		traceName,
 		eventtypes.EventString(event),
@@ -148,7 +148,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		// Enrich event but only with the fields required for the advise network-policy gadget.
 		event.K8s.Node = trace.Spec.Node
 		if t.helpers != nil {
-			t.helpers.EnrichByNetNs(&event.CommonData, event.WithNetNsID.NetNsID)
+			t.helpers.EnrichByNetNs(&event.CommonData, event.NetNsID)
 		}
 
 		// Use KubeIPResolver and KubeNameResolver to enrich event based on Namespace/Pod and IP.
