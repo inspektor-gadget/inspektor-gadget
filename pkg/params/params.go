@@ -279,6 +279,10 @@ func b64DecodeAndDecompress(s string) ([]byte, error) {
 
 func (p *Params) CopyToMap(target map[string]string, prefix string) {
 	for _, param := range *p {
+		if target[prefix+param.Key] != "" {
+			continue
+		}
+
 		if param.TypeHint == TypeBytes {
 			target[prefix+param.Key] = compressAndB64Encode(param.String())
 		} else {
