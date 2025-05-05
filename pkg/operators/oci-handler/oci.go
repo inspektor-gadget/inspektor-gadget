@@ -68,6 +68,10 @@ func (o *ociHandler) Name() string {
 
 func (o *ociHandler) Init(params *params.Params) error {
 	o.globalParams = params
+	if o.globalParams == nil {
+		o.globalParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+	}
+
 	return nil
 }
 
@@ -174,22 +178,18 @@ func getPullSecret(pullSecretString string, gadgetNamespace string, k8sClient ku
 func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
-	ociParams := o.globalParams
-	if ociParams == nil {
-		ociParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
-	}
-
-	*ociParams = append(*ociParams, *apihelpers.ToParamDescs(o.InstanceParams()).ToParams()...)
-	err := ociParams.CopyFromMap(instanceParamValues, "")
+	instanceParams := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
+	err := instanceParams.CopyFromMap(instanceParamValues, "")
 	if err != nil {
 		return nil, err
 	}
 
 	instance := &OciHandlerInstance{
-		ociHandler:  o,
-		gadgetCtx:   gadgetCtx,
-		ociParams:   ociParams,
-		paramValues: instanceParamValues,
+		ociHandler:     o,
+		gadgetCtx:      gadgetCtx,
+		globalParams:   o.globalParams,
+		instanceParams: instanceParams,
+		paramValues:    instanceParamValues,
 	}
 
 	err = instance.init(gadgetCtx)
@@ -308,8 +308,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	var secretBytes []byte
 
 	// TODO: move to a place without dependency on k8s
-	if pullSecretParam := o.ociParams.Get(pullSecret); pullSecretParam != nil {
-		pullSecretString := o.ociParams.Get(pullSecret).AsString()
+	if pullSecretParam := o.globalParams.Get(pullSecret); pullSecretParam != nil {
+		pullSecretString := o.globalParams.Get(pullSecret).AsString()
 
 		if pullSecretString != "" {
 			var err error
@@ -327,17 +327,17 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	imgOpts := &oci.ImageOptions{
 		AuthOptions: oci.AuthOptions{
-			AuthFile:           o.ociParams.Get(authfileParam).AsString(),
+			AuthFile:           o.globalParams.Get(authfileParam).AsString(),
 			SecretBytes:        secretBytes,
-			InsecureRegistries: o.ociParams.Get(insecureRegistriesParam).AsStringSlice(),
-			DisallowPulling:    o.ociParams.Get(disallowPulling).AsBool(),
+			InsecureRegistries: o.globalParams.Get(insecureRegistriesParam).AsStringSlice(),
+			DisallowPulling:    o.globalParams.Get(disallowPulling).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
-			VerifyPublicKey: o.ociParams.Get(verifyImage).AsBool(),
-			PublicKeys:      o.ociParams.Get(publicKeys).AsStringSlice(),
+			VerifyPublicKey: o.globalParams.Get(verifyImage).AsBool(),
+			PublicKeys:      o.globalParams.Get(publicKeys).AsStringSlice(),
 		},
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
-			AllowedGadgets: o.ociParams.Get(allowedGadgets).AsStringSlice(),
+			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
 		},
 		Logger: gadgetCtx.Logger(),
 	}
@@ -351,7 +351,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		// Make sure the image is available, either through pulling or by just accessing a local copy
 		// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
 		err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(),
-			imgOpts, o.ociParams.Get(pullParam).AsString())
+			imgOpts, o.instanceParams.Get(pullParam).AsString())
 		if err != nil {
 			return fmt.Errorf("ensuring image: %w", err)
 		}
@@ -386,7 +386,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("unmarshalling metadata: %w", err)
 	}
 
-	for _, ann := range o.ociParams.Get(annotate).AsStringSlice() {
+	for _, ann := range o.instanceParams.Get(annotate).AsStringSlice() {
 		if len(ann) == 0 {
 			continue
 		}
@@ -528,7 +528,8 @@ type OciHandlerInstance struct {
 	imageOperatorInstances []operators.ImageOperatorInstance
 	extraParams            api.Params
 	paramValues            api.ParamValues
-	ociParams              *params.Params
+	globalParams           *params.Params
+	instanceParams         *params.Params
 }
 
 func (o *OciHandlerInstance) Name() string {
