@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.39.0
+version: 0.40.0
 name: "trace ssl"
 category: monitoring-logging
 displayName: "trace ssl"
-createdAt: "2025-04-07T08:31:55Z"
-digest: "2025-04-07T08:31:55Z"
+createdAt: "2025-05-05T21:08:08Z"
+digest: "2025-05-05T21:08:08Z"
 description: "use uprobe to capture data on read/recv or write/send functions of OpenSSL, GnuTLS, NSS and Libcrypto"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

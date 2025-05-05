@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.38.0
+version: 0.40.0
 name: "bpfstats"
 category: monitoring-logging
 displayName: "bpfstats"
-createdAt: "2025-03-03T14:38:04Z"
-digest: "2025-03-03T14:38:04Z"
+createdAt: "2025-05-05T21:08:08Z"
+digest: "2025-05-05T21:08:08Z"
 description: "Get memory and CPU usage of eBPF programs and Gadgets"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
