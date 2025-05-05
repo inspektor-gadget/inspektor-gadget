@@ -96,12 +96,12 @@ func NewGadgetRunner[T any](t *testing.T, opts GadgetRunnerOpts[T]) *GadgetRunne
 
 	verifyImage := strings.ToLower(os.Getenv("IG_VERIFY_IMAGE"))
 	if verifyImage == "true" || verifyImage == "false" {
-		if opts.ParamValues == nil {
-			opts.ParamValues = map[string]string{
+		if opts.GlobalParamsValues == nil {
+			opts.GlobalParamsValues = map[string]string{
 				"operator.oci.verify-image": verifyImage,
 			}
 		} else {
-			opts.ParamValues["operator.oci.verify-image"] = verifyImage
+			opts.GlobalParamsValues["operator.oci.verify-image"] = verifyImage
 		}
 	}
 
@@ -193,7 +193,7 @@ func (g *GadgetRunner[T]) RunGadget() {
 	g.gadgetCtx = gadgetcontext.New(context.Background(), g.image, gadgetContextOps...)
 	runtime := local.New()
 
-	for _, op := range operators.GetDataOperators() {
+	for _, op := range g.DataOperator {
 		opParams := apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 		err := opParams.CopyFromMap(g.globalParamValues, "operator."+op.Name()+".")
 		require.NoError(g.testCtx, err, "copying global params error")

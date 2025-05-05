@@ -68,10 +68,6 @@ func (o *ociHandler) Name() string {
 
 func (o *ociHandler) Init(params *params.Params) error {
 	o.globalParams = params
-	if o.globalParams == nil {
-		o.globalParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
-	}
-
 	return nil
 }
 
@@ -178,6 +174,12 @@ func getPullSecret(pullSecretString string, gadgetNamespace string, k8sClient ku
 func (o *ociHandler) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (
 	operators.DataOperatorInstance, error,
 ) {
+	// TODO: This should be moved to Init(), but we're relying on Init() not
+	// being called in many places, specially tests and examples.
+	if o.globalParams == nil {
+		o.globalParams = apihelpers.ToParamDescs(o.GlobalParams()).ToParams()
+	}
+
 	instanceParams := apihelpers.ToParamDescs(o.InstanceParams()).ToParams()
 	err := instanceParams.CopyFromMap(instanceParamValues, "")
 	if err != nil {
