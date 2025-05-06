@@ -474,17 +474,20 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	case status = <-statusCh:
 	}
 
-	if status.StatusCode != 0 || common.Verbose {
-		opts := container.LogsOptions{ShowStdout: true, ShowStderr: true}
-		out, err := cli.ContainerLogs(ctx, resp.ID, opts)
-		if err != nil {
-			return fmt.Errorf("getting builder container logs: %w", err)
-		}
+	outputOpts := container.LogsOptions{ShowStderr: true}
 
-		fmt.Println("Build logs start:")
-		stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-		fmt.Println("Build logs end")
+	if status.StatusCode != 0 || common.Verbose {
+		outputOpts.ShowStdout = true
 	}
+
+	out, err := cli.ContainerLogs(ctx, resp.ID, outputOpts)
+	if err != nil {
+		return fmt.Errorf("getting builder container logs: %w", err)
+	}
+
+	fmt.Println("Build logs start:")
+	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	fmt.Println("Build logs end")
 
 	if status.StatusCode != 0 {
 		return fmt.Errorf("builder container exited with status %d", status.StatusCode)
