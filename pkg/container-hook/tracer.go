@@ -40,6 +40,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,6 +69,7 @@ type EventType int
 const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
+	EventTypePreCreateContainer
 )
 
 const (
@@ -709,7 +711,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 
 	// Insert new entry
 	now := time.Now()
-	n.pendingContainers[pidFile] = &pendingContainer{
+	pc := &pendingContainer{
 		id:             containerID,
 		bundleDir:      bundleDir,
 		configJSONPath: configJSONPath,
@@ -719,8 +721,57 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		timestamp:      now,
 		removeMarks:    removeMarks,
 	}
+	n.pendingContainers[pidFile] = pc
+
+	n.callPreCreateContainerCallback(pc)
 
 	return nil
+}
+
+func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer) {
+	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
+	if err != nil {
+		log.Errorf("fanotify: could not open config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+	defer bundleConfigJSONFile.Close()
+	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
+	if err != nil {
+		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+	containerConfigOriginal := &ocispec.Spec{}
+	containerConfigCopy := &ocispec.Spec{}
+	err = json.Unmarshal(bundleConfigJSON, containerConfigOriginal)
+	if err != nil {
+		log.Errorf("fanotify: could not unmarshal config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+	_ = json.Unmarshal(bundleConfigJSON, containerConfigCopy)
+
+	n.callback(ContainerEvent{
+		Type:            EventTypePreCreateContainer,
+		ContainerID:     pc.id,
+		ContainerConfig: containerConfigCopy,
+		Bundle:          pc.bundleDir,
+	})
+
+	if reflect.DeepEqual(containerConfigOriginal, containerConfigCopy) {
+		// No changes. No need to write it back.
+		return
+	}
+
+	newConfigJSON, err := json.Marshal(containerConfigCopy)
+	if err != nil {
+		log.Errorf("fanotify: could not marshal config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+
+	err = os.WriteFile(pc.configJSONPath, newConfigJSON, 0o644)
+	if err != nil {
+		log.Errorf("fanotify: could not write config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
 }
 
 func (n *ContainerNotifier) watchRuntimeBinary() {
