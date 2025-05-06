@@ -377,6 +377,20 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		}
 		m.accessor = accessor
 		m.ds = ds
+
+		m.tlvFieldsSizeAcc = ds.GetField("tlv.size")
+		if m.tlvFieldsSizeAcc == nil {
+			return fmt.Errorf("missing tlv.size field in %q", name)
+		}
+
+		for _, tlvField := range m.tlvFields {
+			acc, err := ds.AddField(tlvField.Name, api.Kind_String)
+			if err != nil {
+				return fmt.Errorf("adding tlv field %q: %w", tlvField.Name, err)
+			}
+
+			tlvField.accessor = acc
+		}
 	}
 	for name, m := range i.snapshotters {
 		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)

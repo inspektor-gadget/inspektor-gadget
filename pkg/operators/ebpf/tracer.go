@@ -15,6 +15,7 @@
 package ebpfoperator
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -31,6 +32,13 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
+type tlvField struct {
+	Id   uint16
+	Name string
+	Typ  string
+
+	accessor datasource.FieldAccessor
+}
 type Tracer struct {
 	mapName    string
 	structName string
@@ -38,10 +46,12 @@ type Tracer struct {
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
 
-	mapType       ebpf.MapType
-	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array
-	ringbufReader *ringbuf.Reader
-	perfReader    *perf.Reader
+	mapType          ebpf.MapType
+	eventSize        uint32 // needed to trim trailing bytes when reading for perf event array
+	ringbufReader    *ringbuf.Reader
+	perfReader       *perf.Reader
+	tlvFields        map[uint16]*tlvField
+	tlvFieldsSizeAcc datasource.FieldAccessor
 }
 
 func validateTracerMap(traceMap *ebpf.MapSpec) error {
@@ -105,10 +115,26 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 		eventSize:  btfStruct.Size,
 	}
 
+	//fmt.Printf("event size is %v\n", btfStruct.Size)
+
 	err := i.populateStructDirect(btfStruct)
 	if err != nil {
 		return fmt.Errorf("populating struct %q for tracer %q: %w", btfStruct.Name, name, err)
 	}
+
+	tracer := i.tracers[name]
+	tracer.tlvFields = make(map[uint16]*tlvField)
+	tlvFields := make(map[string]tlvField)
+
+	// tlv fields
+	sub := i.config.Sub("datasources." + name + ".tlvfields")
+	sub.Unmarshal(&tlvFields)
+
+	for _, tlv := range tlvFields {
+		tracer.tlvFields[tlv.Id] = &tlv
+	}
+
+	//fmt.Printf("TLV fields: %v\n", tracer.tlvFields)
 
 	return nil
 }
@@ -126,8 +152,8 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 }
 
 func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) error {
-	slowBuf := make([]byte, t.eventSize)
-	lastSlowLen := 0
+	//slowBuf := make([]byte, t.eventSize)
+	//lastSlowLen := 0
 	for {
 		rec, err := t.ringbufReader.Read()
 		if err != nil {
@@ -143,25 +169,79 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 			continue
 		}
 		sample := rec.RawSample
-		if uint32(len(rec.RawSample)) < t.eventSize {
-			// event is truncated; we need to copy
-			copy(slowBuf, rec.RawSample)
+		//		if uint32(len(rec.RawSample)) < t.eventSize {
+		//			// event is truncated; we need to copy
+		//			copy(slowBuf, rec.RawSample)
+		//
+		//			// zero difference; TODO: improve
+		//			if len(rec.RawSample) < lastSlowLen {
+		//				for i := len(rec.RawSample); i < lastSlowLen; i++ {
+		//					slowBuf[i] = 0
+		//				}
+		//			}
+		//			lastSlowLen = len(rec.RawSample)
+		//			sample = slowBuf
+		//		}
 
-			// zero difference; TODO: improve
-			if len(rec.RawSample) < lastSlowLen {
-				for i := len(rec.RawSample); i < lastSlowLen; i++ {
-					slowBuf[i] = 0
-				}
-			}
-			lastSlowLen = len(rec.RawSample)
-			sample = slowBuf
-		}
-		err = t.accessor.Set(pSingle, sample)
+		// 1. static part:
+		err = t.accessor.Set(pSingle, sample[0:t.eventSize])
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
 			t.ds.Release(pSingle)
 			continue
 		}
+
+		fmt.Printf("evnet size is %d\n", t.eventSize)
+
+		// 2. TLV part:
+		if t.tlvFieldsSizeAcc != nil {
+			tlvIndex := uint16(0)
+			wholeTlvSample := sample[t.eventSize:]
+
+			//tlvTotalSize := binary.NativeEndian.Uint16(wholeTlvSample[tlvIndex : tlvIndex+2])
+			tlvTotalSize, err := t.tlvFieldsSizeAcc.Uint16(pSingle)
+			if err != nil {
+				gadgetCtx.Logger().Warnf("error getting tlv total size: %v", err)
+				continue
+			}
+			fmt.Printf("tlvTotalSize is %v\n", tlvTotalSize)
+
+			//tlvIndex += 0
+
+			for tlvIndex < tlvTotalSize {
+				tlvId := binary.NativeEndian.Uint16(wholeTlvSample[tlvIndex : tlvIndex+2])
+				fmt.Printf("tlvId is %v\n", tlvId)
+
+				//if tlvId == 0 {
+				//	break
+				//}
+
+				tlvSize := binary.NativeEndian.Uint16(wholeTlvSample[tlvIndex+2 : tlvIndex+4])
+				fmt.Printf("tlvSize is %v\n", tlvSize)
+				tlvSample := wholeTlvSample[tlvIndex+4 : tlvIndex+4+tlvSize]
+
+				tlvIndex += 4 + tlvSize
+
+				tlvField, ok := t.tlvFields[tlvId]
+				if !ok {
+					gadgetCtx.Logger().Warnf("unknown tlv field %d", tlvId)
+					continue
+				}
+
+				//if tlvField.accessor == nil {
+				//	gadgetCtx.Logger().Warnf("tlv field %d has no accessor", tlvId)
+				//	break
+				//}
+
+				err = tlvField.accessor.Set(pSingle, tlvSample)
+				if err != nil {
+					gadgetCtx.Logger().Warnf("error setting tlv field %d: %v", tlvId, err)
+					continue
+				}
+
+			}
+		}
+
 		err = t.ds.EmitAndRelease(pSingle)
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error emitting data: %v", err)

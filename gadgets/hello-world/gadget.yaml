@@ -1,0 +1,24 @@
+name: mygadget
+description: Example gadget
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
+datasources:
+  open:
+    #annotations:
+    #  cli.supported-output-modes: none
+    #  cli.default-output-mode: none
+    tlvfields:
+      filename:
+        name: filename
+        id: 1
+        type: bytes
+      exepath:
+        name: exepath
+        id: 2
+        type: bytes
+
+
+  #open:
+  #  annotations:
+  #    cli.output-mode: none
