@@ -1463,7 +1463,7 @@ jobs:
   test-integration-k8s-ig:
     name: Test ig w/ k8s
     # level: 3
-    needs: [ test-unit, test-ig, build-ig, build-helper-images ]
+    needs: [ test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1771,7 +1771,6 @@ jobs:
     name: Test ig w/o k8s
     # level: 3
     needs:
-      - test-unit
       - test-ig
       - build-ig
       - build-helper-images
@@ -1820,7 +1819,6 @@ jobs:
     # level: 4
     needs:
       - check-secrets
-      - test-unit
       - build-clients
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -1918,7 +1916,6 @@ jobs:
     # level: 4
     needs:
       - check-secrets
-      - test-unit
       - build-clients
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -1968,7 +1965,6 @@ jobs:
     name: Integration tests on EKS
     # level: 4
     needs:
-      - test-unit
       - build-clients
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -2049,7 +2045,6 @@ jobs:
     if: needs.check-secrets.outputs.gke == 'true'
     needs:
       - check-secrets
-      - test-unit
       - build-clients
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -2146,7 +2141,6 @@ jobs:
     name: Integr. tests
     # level: 3
     needs:
-      - test-unit
       - build-clients
       - build-gadget-container-images
       - build-helper-images
