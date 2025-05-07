@@ -9,3 +9,4 @@
 * [Qasim Sarfraz](https://github.com/mqasimsarfraz)
 * [Claudia Marcu](https://github.com/claudiamarcubina)
 * [Chris Kühl](https://github.com/blixtra) (project manager)
+* [Maya Singh](https://github.com/mayasingh17) (project manager)
