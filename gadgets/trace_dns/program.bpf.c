@@ -78,6 +78,7 @@ struct event_t {
 	gadget_timestamp timestamp_raw;
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
+	struct gadget_l3endpoint_t nameserver;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
 	char cwd[GADGET_PATH_MAX];
@@ -103,6 +104,7 @@ struct event_header_t {
 	gadget_timestamp timestamp_raw;
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
+	struct gadget_l3endpoint_t nameserver;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
 	char cwd[GADGET_PATH_MAX];
@@ -393,6 +395,21 @@ int ig_trace_dns(struct __sk_buff *skb)
 		}
 	}
 
+	// Handle nameserver
+	union dnsflags flags;
+	flags.flags = load_half(skb, dns_off + offsetof(struct dnshdr, flags));
+	__u8 qr = flags.qr;
+	if (qr == DNS_QR_QUERY) {
+		event->nameserver.version = event->dst.version;
+		event->nameserver.addr_raw = event->dst.addr_raw;
+	} else if (qr == DNS_QR_RESP) {
+		event->nameserver.version = event->src.version;
+		event->nameserver.addr_raw = event->src.addr_raw;
+	} else {
+		// Unknown QR value
+		return 0;
+	}
+
 	// Calculate latency:
 	//
 	// Track the latency from when a query is sent from a container
@@ -411,11 +428,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// or if event->timestamp == 0 (kernels before 5.8 don't support bpf_ktime_get_boot_ns, and the patched
 	// version IG injects always returns zero).
 	if (skb_val != NULL && event->timestamp_raw > 0) {
-		union dnsflags flags;
-		flags.flags = load_half(skb, dns_off + offsetof(struct dnshdr,
-								flags));
 		id = load_half(skb, dns_off + offsetof(struct dnshdr, id));
-		__u8 qr = flags.qr;
 
 		struct query_key_t query_key = {
 			.pid_tgid = skb_val->pid_tgid,
