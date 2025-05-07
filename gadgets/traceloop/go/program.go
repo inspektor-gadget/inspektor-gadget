@@ -688,7 +688,56 @@ func gadgetInit() int32 {
 
 //go:wasmexport gadgetStart
 func gadgetStart() int32 {
-	var err error
+
+	rawString, err := api.GetParamValue("syscall-filters", 256)
+	if err != nil {
+		api.Errorf("failed to get param: %v", err)
+		return 1
+	}
+
+	syscallsFilterMapName := "syscall_filters"
+
+	syscallsFilterMap, err := api.GetMap(syscallsFilterMapName)
+	if err != nil {
+		api.Errorf("no map named %s", syscallsFilterMapName)
+		return 1
+	}
+
+	var syscallFilters []string
+
+	if rawString != "" {
+		syscallFilters = strings.Split(rawString, ",")
+	}
+
+	for _, name := range syscallFilters {
+
+		id, err := api.GetSyscallID(name)
+		if err != nil {
+			api.Errorf("syscall %q does not exist", name)
+			return 1
+		}
+
+		err = syscallsFilterMap.Put(uint64(id), true)
+		if err != nil {
+			api.Errorf("Could not add %q (%d) to syscall filter map: %v", name, id, err)
+			return 1
+		}
+	}
+	
+	if len(syscallFilters) > 0 {
+		syscallsEnableFilterMapName := "syscall_enable_filters"
+		syscallsEnableFilterMap, err := api.GetMap(syscallsEnableFilterMapName)
+		if err != nil {
+			api.Errorf("no map named %s", syscallsEnableFilterMapName)
+			return 1
+		}
+		err = syscallsEnableFilterMap.Put(uint32(0), true)
+		if err != nil {
+			api.Errorf("Could not add not enable filter syscall: %v", err)
+			return 1
+		}
+	}
+
 	mapName := "map_of_perf_buffers"
 
 	t.mapOfPerfBuffers, err = api.GetMap(mapName)
