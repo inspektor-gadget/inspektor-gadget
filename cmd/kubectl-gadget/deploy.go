@@ -111,7 +111,6 @@ var (
 	disallowGadgetsPull   bool
 	otelMetricsListen     bool
 	otelMetricsListenAddr string
-	enableBpfStats        bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify+ebpf"}
@@ -260,9 +259,6 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&otelMetricsListenAddr,
 		"otel-metrics-listen-address", "0.0.0.0:2224", "Address and port to create the OpenTelemetry metrics listener (Prometheus compatible) on")
-	deployCmd.PersistentFlags().BoolVar(
-		&enableBpfStats,
-		"enable-bpfstats", false, "Enable capturing eBPF stats")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -819,11 +815,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 				opCfg[gadgettracermanagerconfig.OtelMetrics] = otelMetricsConfig
 			}
-
-			opEbpfCfg := map[string]interface{}{
-				gadgettracermanagerconfig.EnableBPFStats: enableBpfStats,
-			}
-			opCfg[gadgettracermanagerconfig.EBPFOperator] = opEbpfCfg
 
 			data, err := yaml.Marshal(cfg)
 			if err != nil {

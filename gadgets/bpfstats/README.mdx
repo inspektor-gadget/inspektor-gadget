@@ -38,20 +38,18 @@ Default value: "false"
 
 ## Guide
 
-In order for this gadget to work, the server needs to be running with the
-`--enable-bpfstats` flag:
-
+Start the server part of IG:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
-$ kubectl gadget deploy --enable-bpfstats
+$ kubectl gadget deploy
 ```
   </TabItem>
 
   <TabItem value="ig-daemon" label="ig-daemon">
 ```bash
-$ sudo ig daemon --enable-bpfstats
+$ sudo ig daemon
 ```
   </TabItem>
 </Tabs>
@@ -304,14 +302,3 @@ Also note:
   but only their file descriptors (i.e. sizeof(int) = 4 bytes)
 * `BPF_MAP_TYPE_{HASH,ARRAY}_OF_MAPS`: value_size is not counting the inner maps,
   but only their file descriptors (i.e. sizeof(int) = 4 bytes)
-
-#### bpfstats not disabled for Kernels < 5.8
-
-The bpfstats Gadgets enables collection of eBPF program stats by trying to use
-`BPF_ENABLE_STATS` first (which requires Linux >= 5.8). If that fails, it will
-fall back to trying to enable via sysctl (/proc/sys/kernel/bpf_stats_enabled),
-on this case, the collection of stats will remain active even after stopping
-Inspektor Gadget.
-
-It is a temporary limitation that we're working to fix, in the meanwhile you can
-use `sysctl kernel.bpf_stats_enabled=0` to disable it.

@@ -36,34 +36,13 @@ const (
 	EmitStatsAnn                  = "emitstats"
 	ParamAllProgramsStats         = "all"
 	StatsDSName                   = "bpfstats"
-	EnableBPFStatsParam           = "enable-bpfstats"
 )
 
 func (o *ebpfOperator) GlobalParams() api.Params {
-	return api.Params{
-		{
-			Key:          EnableBPFStatsParam,
-			Description:  "Enable capturing eBPF stats",
-			DefaultValue: "false",
-			TypeHint:     api.TypeBool,
-			Title:        "Enable eBPF stats",
-		},
-	}
+	return nil
 }
 
 func (o *ebpfOperator) Init(params *params.Params) error {
-	if !params.Get(EnableBPFStatsParam).AsBool() {
-		return nil
-	}
-
-	o.gadgetObjs = make(map[operators.GadgetContext]gadgetObjs)
-
-	// Enable stats collection
-	// TODO: when to disable it?
-	if err := bpfstats.EnableBPFStats(); err != nil {
-		return fmt.Errorf("enabling bpf stats: %w", err)
-	}
-
 	return nil
 }
 
@@ -82,10 +61,6 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	emitStatsAnn := v.GetBool(fmt.Sprintf("operator.%s.%s", o.Name(), EmitStatsAnn))
 	if !emitStatsAnn {
 		return nil, nil
-	}
-
-	if o.gadgetObjs == nil {
-		return nil, fmt.Errorf("bpfstats aren't enabled")
 	}
 
 	var err error
@@ -485,6 +460,10 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 }
 
 func (i *ebpfOperatorDataInstance) Start(gadgetCtx operators.GadgetContext) error {
+	if err := bpfstats.EnableBPFStats(); err != nil {
+		return fmt.Errorf("enabling bpf stats: %w", err)
+	}
+
 	go func() {
 		ticker := time.NewTicker(i.interval)
 		for {
@@ -509,6 +488,11 @@ func (i *ebpfOperatorDataInstance) Start(gadgetCtx operators.GadgetContext) erro
 }
 
 func (i *ebpfOperatorDataInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	close(i.done)
+	defer close(i.done)
+
+	if err := bpfstats.DisableBPFStats(); err != nil {
+		return fmt.Errorf("disabling bpf stats: %w", err)
+	}
+
 	return nil
 }
