@@ -38,8 +38,9 @@ type traceDNSEvent struct {
 	NetNsID   uint64        `json:"netns_id"`
 	Proc      utils.Process `json:"proc"`
 
-	Src utils.L4Endpoint `json:"src"`
-	Dst utils.L4Endpoint `json:"dst"`
+	Src        utils.L4Endpoint `json:"src"`
+	Dst        utils.L4Endpoint `json:"dst"`
+	Nameserver utils.L3Endpoint `json:"nameserver"`
 
 	// Raw fields are coming from wasm, test them too
 	ID                 string `json:"id"`
@@ -163,6 +164,10 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
+					Nameserver: utils.L3Endpoint{
+						Addr:    serverIP,
+						Version: 4,
+					},
 					QrRaw:    false,
 					Qr:       "Q",
 					Name:     "fake.test.com.",
@@ -197,6 +202,10 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 						Port:    utils.NormalizedInt,
 						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
+					},
+					Nameserver: utils.L3Endpoint{
+						Addr:    serverIP,
+						Version: 4,
 					},
 					QrRaw:     true,
 					Qr:        "R",
@@ -234,6 +243,10 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataServer,
 					},
+					Nameserver: utils.L3Endpoint{
+						Addr:    serverIP,
+						Version: 4,
+					},
 					QrRaw:    false,
 					Qr:       "Q",
 					Name:     "fake.test.com.",
@@ -268,6 +281,10 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 						Port:    utils.NormalizedInt,
 						Proto:   strings.ToUpper(tc.protocol),
 						K8s:     k8sDataClient,
+					},
+					Nameserver: utils.L3Endpoint{
+						Addr:    serverIP,
+						Version: 4,
 					},
 					QrRaw:     true,
 					Qr:        "R",
