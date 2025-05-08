@@ -187,14 +187,12 @@ func TestRealKAllSymsParsing(t *testing.T) {
 			expectedKmod:   "",
 			expectedExists: true,
 		},
-		// This test is failing a lot, disable it until we understand why.
-		// See https://github.com/inspektor-gadget/inspektor-gadget/issues/4367
-		//{
-		//	name:           "symbol_from_veth_kmod",
-		//	symbol:         "veth_init",
-		//	expectedKmod:   "veth",
-		//	expectedExists: true,
-		//},
+		{
+			name:           "symbol_from_veth_kmod",
+			symbol:         "veth_open",
+			expectedKmod:   "veth",
+			expectedExists: true,
+		},
 		{
 			name:           "symbol_from_netem_kmod",
 			symbol:         "netem_module_init",
