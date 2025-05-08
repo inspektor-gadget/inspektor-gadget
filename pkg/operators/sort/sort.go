@@ -40,10 +40,7 @@ type arrSort struct {
 }
 
 func (s *arrSort) Less(i, j int) bool {
-	if s.fn(s.DataArray.Get(i), s.DataArray.Get(j)) {
-		return true
-	}
-	return false
+	return s.fn(s.Get(i), s.Get(j))
 }
 
 func (s *sortOperator) Name() string {

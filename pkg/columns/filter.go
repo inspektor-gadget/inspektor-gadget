@@ -45,10 +45,7 @@ func And(filters ...ColumnFilter) ColumnFilter {
 // WithEmbedded checks whether a column matches the embedded criteria
 func WithEmbedded(embedded bool) ColumnFilter {
 	return func(matcher ColumnMatcher) bool {
-		if matcher.IsEmbedded() == embedded {
-			return true
-		}
-		return false
+		return matcher.IsEmbedded() == embedded
 	}
 }
 

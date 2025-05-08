@@ -58,8 +58,8 @@ func TestBuiltinTraceTcpconnect(t *testing.T) {
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
 		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
-		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
-		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.SrcEndpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.DstEndpoint.Kind = eventtypes.EndpointKindRaw
 	}
 
 	traceTcpconnectCmd := &Command{
@@ -128,8 +128,8 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-n %s", ns)
 		expectedEntry.Event = BuildBaseEventK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
-		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
-		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.SrcEndpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.DstEndpoint.Kind = eventtypes.EndpointKindRaw
 	}
 
 	traceTcpconnectCmd := &Command{

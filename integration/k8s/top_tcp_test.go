@@ -95,8 +95,8 @@ func TestBuiltinTopTCP(t *testing.T) {
 	case InspektorGadgetTestComponent:
 		extraArgs = fmt.Sprintf("-m 100 -n %s", ns)
 		expectedEntry.CommonData = BuildCommonDataK8s(ns, WithContainerImageName("ghcr.io/inspektor-gadget/ci/nginx:latest", isDockerRuntime))
-		expectedEntry.SrcEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
-		expectedEntry.DstEndpoint.L3Endpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.SrcEndpoint.Kind = eventtypes.EndpointKindRaw
+		expectedEntry.DstEndpoint.Kind = eventtypes.EndpointKindRaw
 	}
 
 	t.Run("StartAndStop", func(t *testing.T) {

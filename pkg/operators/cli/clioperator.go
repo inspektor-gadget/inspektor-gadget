@@ -124,12 +124,9 @@ func getNamesFromFields(fields []*api.Field) []string {
 func (o *cliOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
 	dataSources := gadgetCtx.GetDataSources()
 
-	nameDS := false
+	nameDS := len(dataSources) > 1
 
 	// if we have multiple DataSources, we need to prefix the list of fields with the DataSource's name
-	if len(dataSources) > 1 {
-		nameDS = true
-	}
 
 	fieldsDefaultValues := make([]string, 0, len(dataSources))
 	fieldsDescriptions := make([]string, 0, len(dataSources)+1)

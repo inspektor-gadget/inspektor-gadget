@@ -109,7 +109,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.traceName = gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	t.traceName = gadgets.TraceName(trace.Namespace, trace.Name)
 	t.node = trace.Spec.Node
 
 	maxRows := top.MaxRowsDefault

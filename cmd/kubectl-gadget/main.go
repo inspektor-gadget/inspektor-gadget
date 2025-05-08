@@ -65,11 +65,7 @@ func main() {
 	// Some commands don't need the gadget namespace. Run then before to avoid
 	// printing warnings about gadget namespace not found.
 	needGadgetNamespace := true
-	isHelp := false
-
-	if len(os.Args) == 1 {
-		isHelp = true
-	}
+	isHelp := len(os.Args) == 1
 
 	// Need to loop through all arguments to skip flags...
 	for _, arg := range os.Args[1:] {

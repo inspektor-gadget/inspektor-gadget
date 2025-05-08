@@ -467,10 +467,10 @@ func (l *localManagerTrace) PostGadgetRun() error {
 
 func (l *localManagerTrace) enrich(ev any) {
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		l.manager.igManager.ContainerCollection.EnrichEventByMntNs(event)
+		l.manager.igManager.EnrichEventByMntNs(event)
 	}
 	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		l.manager.igManager.ContainerCollection.EnrichEventByNetNs(event)
+		l.manager.igManager.EnrichEventByNetNs(event)
 	}
 }
 
@@ -607,8 +607,8 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 	if l.manager.igManager != nil {
 		compat.Subscribe(
 			l.eventWrappers,
-			l.manager.igManager.ContainerCollection.EnrichEventByMntNs,
-			l.manager.igManager.ContainerCollection.EnrichEventByNetNs,
+			l.manager.igManager.EnrichEventByMntNs,
+			l.manager.igManager.EnrichEventByNetNs,
 			0,
 		)
 	}

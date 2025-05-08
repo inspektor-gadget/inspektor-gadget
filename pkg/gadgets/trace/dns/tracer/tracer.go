@@ -260,7 +260,7 @@ func (t *Tracer) run(ctx context.Context, logger logger.Logger) error {
 	// Start a background thread to garbage collect queries without responses
 	// from the queries map (used to calculate DNS latency).
 	// The goroutine terminates when t.ctx is done.
-	queryMap := t.Tracer.GetMap(BPFQueryMapName)
+	queryMap := t.GetMap(BPFQueryMapName)
 	if queryMap == nil {
 		t.Close()
 		return fmt.Errorf("got nil retrieving DNS query map")

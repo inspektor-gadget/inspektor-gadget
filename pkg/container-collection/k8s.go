@@ -160,7 +160,7 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 	containers := []Container{}
 
 	labels := map[string]string{}
-	for k, v := range pod.ObjectMeta.Labels {
+	for k, v := range pod.Labels {
 		labels[k] = v
 	}
 

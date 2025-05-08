@@ -197,13 +197,13 @@ func (t *Tracer) install() error {
 	}
 	t.capExitLink = kretprobe
 
-	reader, err := perf.NewReader(t.objs.capabilitiesMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	reader, err := perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 
-	if err := gadgets.FreezeMaps(t.objs.capabilitiesMaps.Events); err != nil {
+	if err := gadgets.FreezeMaps(t.objs.Events); err != nil {
 		return err
 	}
 

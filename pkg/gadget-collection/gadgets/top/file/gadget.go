@@ -107,7 +107,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 
 	maxRows := top.MaxRowsDefault
 	intervalSeconds := top.IntervalDefault

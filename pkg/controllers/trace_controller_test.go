@@ -75,8 +75,8 @@ func (f *FakeFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOpe
 func (f *FakeFactory) Magic(trace *gadgetv1alpha1.Trace) {
 	f.mu.Lock()
 	key := fmt.Sprintf("operation/%s/%s/%s/",
-		trace.ObjectMeta.Namespace,
-		trace.ObjectMeta.Name,
+		trace.Namespace,
+		trace.Name,
 		"magic",
 	)
 	f.calls[key] = struct{}{}

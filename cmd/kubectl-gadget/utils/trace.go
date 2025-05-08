@@ -262,7 +262,7 @@ func createTraces(gadgetNamespace string, trace *gadgetv1alpha1.Trace) error {
 			context.TODO(), trace, metav1.CreateOptions{},
 		)
 		if err != nil {
-			traceID, present := trace.ObjectMeta.Labels[GlobalTraceID]
+			traceID, present := trace.Labels[GlobalTraceID]
 			if present {
 				// Clean before exiting!
 				deleteTraces(gadgetNamespace, traceClient, traceID)
@@ -308,7 +308,7 @@ func updateTraceOperation(gadgetNamespace string, trace *gadgetv1alpha1.Trace, o
 	}
 
 	_, err = traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Patch(
-		context.TODO(), trace.ObjectMeta.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
+		context.TODO(), trace.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
 	)
 
 	return err
@@ -354,7 +354,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 				"nodeName":   config.CommonFlags.Node,
 				// Kubernetes labels cannot contain ',' but can contain '_'
 				// Kubernetes names cannot contain either, so no need for more complicated escaping
-				"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
+				"namespace":     strings.ReplaceAll(config.CommonFlags.Namespace, ",", "_"),
 				"podName":       config.CommonFlags.Podname,
 				"containerName": config.CommonFlags.Containername,
 				"outputMode":    string(config.TraceOutputMode),
@@ -374,12 +374,12 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	}
 
 	for key, value := range config.AdditionalLabels {
-		v, ok := trace.ObjectMeta.Labels[key]
+		v, ok := trace.Labels[key]
 		if ok {
 			return "", fmt.Errorf("label %q is already present with value %q", key, v)
 		}
 
-		trace.ObjectMeta.Labels[key] = value
+		trace.Labels[key] = value
 	}
 
 	err := createTraces(config.GadgetNamespace, trace)
@@ -517,7 +517,7 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 		}
 
 		if trace.Status.OperationError != "" {
-			erroredTraces[trace.ObjectMeta.Name] = &traceList.Items[i]
+			erroredTraces[trace.Name] = &traceList.Items[i]
 
 			continue
 		}
@@ -526,7 +526,7 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 			continue
 		}
 
-		satisfiedTraces[trace.ObjectMeta.Name] = &traceList.Items[i]
+		satisfiedTraces[trace.Name] = &traceList.Items[i]
 	}
 
 	tracesNumber := len(traceList.Items)
@@ -570,7 +570,7 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 				tracesNumber--
 
 				trace, _ := event.Object.(*gadgetv1alpha1.Trace)
-				traceName := trace.ObjectMeta.Name
+				traceName := trace.Name
 
 				// We also remove it from the maps to avoid returning a deleted trace
 				// and timing out.
@@ -609,11 +609,11 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 			}
 
 			if trace.Status.OperationError != "" {
-				erroredTraces[trace.ObjectMeta.Name] = trace
+				erroredTraces[trace.Name] = trace
 
 				// If the trace satisfied the function, we do not care now because it
 				// has an error.
-				delete(satisfiedTraces, trace.ObjectMeta.Name)
+				delete(satisfiedTraces, trace.Name)
 
 				return len(satisfiedTraces)+len(erroredTraces) == tracesNumber, nil
 			}
@@ -624,7 +624,7 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 				return false, nil
 			}
 
-			satisfiedTraces[trace.ObjectMeta.Name] = trace
+			satisfiedTraces[trace.Name] = trace
 
 			return len(satisfiedTraces)+len(erroredTraces) == tracesNumber, nil
 		})
@@ -654,8 +654,8 @@ func waitForCondition(gadgetNamespace string, traceID string, conditionFunction 
 
 		// Print a message for traces that timed out
 		for _, trace := range traceList.Items {
-			_, satisfied := satisfiedTraces[trace.ObjectMeta.Name]
-			_, errored := erroredTraces[trace.ObjectMeta.Name]
+			_, satisfied := satisfiedTraces[trace.Name]
+			_, errored := erroredTraces[trace.Name]
 			if !satisfied && !errored {
 				fmt.Fprintf(os.Stderr,
 					"Error: timeout waiting for condition on node %q\n",
@@ -683,11 +683,11 @@ func waitForTraceState(gadgetNamespace string, traceID string, expectedState str
 // not have an operation.
 func waitForNoOperation(gadgetNamespace string, traceID string) (*gadgetv1alpha1.TraceList, error) {
 	return waitForCondition(gadgetNamespace, traceID, func(trace *gadgetv1alpha1.Trace) bool {
-		if trace.ObjectMeta.Annotations == nil {
+		if trace.Annotations == nil {
 			return true
 		}
 
-		_, present := trace.ObjectMeta.Annotations[GadgetOperation]
+		_, present := trace.Annotations[GadgetOperation]
 		return !present
 	})
 }
@@ -813,7 +813,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 	filter := map[string]string{
 		"gadgetName":    config.GadgetName,
 		"nodeName":      config.CommonFlags.Node,
-		"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
+		"namespace":     strings.ReplaceAll(config.CommonFlags.Namespace, ",", "_"),
 		"podName":       config.CommonFlags.Podname,
 		"containerName": config.CommonFlags.Containername,
 		"outputMode":    string(config.TraceOutputMode),
@@ -852,7 +852,7 @@ func PrintAllTraces(config *TraceConfig) error {
 	printingMap := map[string]*printingInformation{}
 
 	for _, trace := range traces {
-		id, present := trace.ObjectMeta.Labels[GlobalTraceID]
+		id, present := trace.Labels[GlobalTraceID]
 		if !present {
 			continue
 		}
@@ -988,11 +988,8 @@ func genericStreams(
 		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
-	verbose := false
+	verbose := params.Verbose && params.OutputMode != commonutils.OutputModeJSON
 	// verbose only when not json is used
-	if params.Verbose && params.OutputMode != commonutils.OutputModeJSON {
-		verbose = true
-	}
 
 	config := &PostProcessConfig{
 		Flows:     len(results.Items),
@@ -1022,7 +1019,7 @@ func genericStreams(
 			} else {
 				completion <- fmt.Sprintf("Error: failed to receive stream on node %q: %v", nodeName, err)
 			}
-		}(i.Spec.Node, i.ObjectMeta.Namespace, i.ObjectMeta.Name, index)
+		}(i.Spec.Node, i.Namespace, i.Name, index)
 	}
 
 	exit := make(chan bool)

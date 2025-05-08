@@ -143,7 +143,7 @@ func GetIfacePeers(pid int) ([]*net.Interface, error) {
 				continue
 			}
 
-			if veth.LinkAttrs.Flags&net.FlagUp == 0 {
+			if veth.Flags&net.FlagUp == 0 {
 				continue
 			}
 

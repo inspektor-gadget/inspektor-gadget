@@ -436,7 +436,7 @@ func tarFolderToFile(src, filePath string, headerTime time.Time) error {
 		header.ChangeTime = headerTime
 
 		// update the name to correctly reflect the desired destination when untaring
-		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
+		header.Name = strings.TrimPrefix(strings.ReplaceAll(file, src, ""), string(filepath.Separator))
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

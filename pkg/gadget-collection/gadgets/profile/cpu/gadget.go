@@ -87,7 +87,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 
 	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {

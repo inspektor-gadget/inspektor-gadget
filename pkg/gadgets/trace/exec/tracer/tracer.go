@@ -192,13 +192,13 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("attaching kprobe security_bprm_check: %w", err)
 	}
 
-	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	reader, err := perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 
-	if err := gadgets.FreezeMaps(t.objs.execsnoopMaps.Events); err != nil {
+	if err := gadgets.FreezeMaps(t.objs.Events); err != nil {
 		return err
 	}
 

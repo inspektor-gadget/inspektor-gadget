@@ -201,8 +201,8 @@ func TestTraceTcpGadget(t *testing.T) {
 					utils.NormalizeInt(&event.Src.Port)
 				}
 			}
-			var fd int = -1
-			var acceptFd int = -1
+			fd := -1
+			acceptFd := -1
 
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utilstest.RunWithRunner(t, runner, func() error {

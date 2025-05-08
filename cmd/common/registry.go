@@ -519,15 +519,11 @@ func buildCommandFromGadget(
 			requestedAllRelativeColumns := true
 			for _, col := range strings.Split(strings.ToLower(outputModeParams), ",") {
 				if strings.HasPrefix(col, "+") {
-					for _, c := range expandedColumns(strings.TrimPrefix(col, "+")) {
-						addCols = append(addCols, c)
-					}
+					addCols = append(addCols, expandedColumns(strings.TrimPrefix(col, "+"))...)
 					continue
 				}
 				if strings.HasPrefix(col, "-") {
-					for _, c := range expandedColumns(strings.TrimPrefix(col, "-")) {
-						removeCols = append(removeCols, c)
-					}
+					removeCols = append(removeCols, expandedColumns(strings.TrimPrefix(col, "-"))...)
 					continue
 				}
 				requestedAllRelativeColumns = false

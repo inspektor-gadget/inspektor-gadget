@@ -158,7 +158,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(out)
-		t.Logf("Container %q output:\n%s", d.name, string(buf.Bytes()))
+		t.Logf("Container %q output:\n%s", d.name, buf.String())
 	}
 
 	if d.options.removal {

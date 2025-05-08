@@ -309,7 +309,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	traceUnique.Unlock()
 
 	existingContainers := t.helpers.Subscribe(
-		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
+		genPubSubKey(trace.Namespace+"/"+trace.Name),
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		containerEventCallback,
 	)
@@ -368,7 +368,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 	r, err := json.Marshal(events)
 	if err != nil {
 		log.Warnf("Gadget %s: error marshaling event: %s", trace.Spec.Gadget, err)
@@ -496,7 +496,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+	t.helpers.Unsubscribe(genPubSubKey(trace.Namespace + "/" + trace.Name))
 
 	traceUnique.Lock()
 	traceUnique.users--

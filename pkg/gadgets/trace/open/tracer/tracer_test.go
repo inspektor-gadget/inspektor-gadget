@@ -580,11 +580,11 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 		return expectedEvents[i].mntNsID < expectedEvents[j].mntNsID
 	})
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].WithMountNsID.MountNsID < events[j].WithMountNsID.MountNsID
+		return events[i].MountNsID < events[j].MountNsID
 	})
 
 	for i := 0; i < n-1; i++ {
-		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].WithMountNsID.MountNsID,
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
 			"Captured event has bad MountNsID")
 
 		utilstest.Equal(t, expectedEvents[i].fd, events[i].Fd,

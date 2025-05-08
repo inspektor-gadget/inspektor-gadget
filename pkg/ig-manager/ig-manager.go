@@ -50,7 +50,7 @@ func (l *IGManager) ContainersMap() *ebpf.Map {
 
 func (l *IGManager) Dump() string {
 	out := "List of containers:\n"
-	l.ContainerCollection.ContainerRange(func(c *containercollection.Container) {
+	l.ContainerRange(func(c *containercollection.Container) {
 		out += fmt.Sprintf("%+v\n", c)
 	})
 	return out
@@ -109,7 +109,7 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []
 		opts = append(warnings, opts...)
 	}
 
-	err = l.ContainerCollection.Initialize(opts...)
+	err = l.Initialize(opts...)
 	if err != nil {
 		return nil, err
 	}

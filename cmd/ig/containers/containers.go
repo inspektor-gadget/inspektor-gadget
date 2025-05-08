@@ -93,7 +93,7 @@ func NewListContainersCmd() *cobra.Command {
 			if err != nil {
 				return commonutils.WrapInErrParserCreate(err)
 			}
-			containers := igmanager.ContainerCollection.Subscribe(
+			containers := igmanager.Subscribe(
 				igSubKey,
 				selector,
 				func(event containercollection.PubSubEvent) {
@@ -102,7 +102,7 @@ func NewListContainersCmd() *cobra.Command {
 					}
 				},
 			)
-			defer igmanager.ContainerCollection.Unsubscribe(igSubKey)
+			defer igmanager.Unsubscribe(igSubKey)
 
 			if commonFlags.OutputMode != commonutils.OutputModeJSON {
 				fmt.Println(parser.BuildColumnsHeader())
