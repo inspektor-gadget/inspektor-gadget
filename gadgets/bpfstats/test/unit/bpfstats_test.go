@@ -15,6 +15,9 @@
 package tests
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -35,8 +38,11 @@ type ExpectedBpfstatsEvent struct {
 	MapMemory   int    `json:"mapMemory"`
 	ProgID      int    `json:"progID"`
 	ProgName    string `json:"progName"`
+	ProgType    string `json:"progType"`
 	Runcount    int    `json:"runcount"`
 	Runtime     int    `json:"runtime"`
+	Comms       string `json:"comms"`
+	Pids        string `json:"pids"`
 }
 
 type testDef struct {
@@ -53,6 +59,12 @@ const (
 func TestBpfstatsGadget(t *testing.T) {
 	gadgettesting.InitUnitTest(t)
 	runnerConfig := &utilstest.RunnerConfig{}
+
+	comm, err := os.Executable()
+	require.NoError(t, err)
+	comm = filepath.Base(comm)
+
+	pids := fmt.Sprintf("%d", os.Getpid())
 
 	testCases := map[string]testDef{
 		"by_gadget": {
@@ -77,11 +89,17 @@ func TestBpfstatsGadget(t *testing.T) {
 					GadgetImage: gadgetrunner.GetGadgetImageName(testGadgetImage),
 					ProgName:    "ig_openat_e",
 					ProgID:      utils.NormalizedInt,
+					ProgType:    "TracePoint",
+					Comms:       comm,
+					Pids:        pids,
 				},
 				{
 					GadgetImage: gadgetrunner.GetGadgetImageName(testGadgetImage),
 					ProgName:    "ig_openat_x",
 					ProgID:      utils.NormalizedInt,
+					ProgType:    "TracePoint",
+					Comms:       comm,
+					Pids:        pids,
 				},
 				// TODO: test external program
 			},
