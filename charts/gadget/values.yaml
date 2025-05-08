@@ -86,3 +86,6 @@ skipLabels: true
 # -- Labels to be added to all other resources.
 additionalLabels:
   labels: {}
+
+# -- RuntimeClassName used by daemonset
+runtimeClassName: ""
