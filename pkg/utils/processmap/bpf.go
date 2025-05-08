@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package piditer
+package processmap
 
 import (
 	"fmt"
@@ -26,10 +26,10 @@ import (
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -type pid_iter_entry bpf ./bpf/pid_iter.bpf.c -- -I./bpf/
 
-type PidIter struct {
-	objs piditerObjects
+type pidIterEbpf struct {
+	objs bpfObjects
 	iter *link.Iter
 }
 
@@ -39,10 +39,10 @@ type PidIterEntry struct {
 	Comm   string
 }
 
-var iterEntrySize = int(unsafe.Sizeof(piditerPidIterEntry{}))
+var iterEntrySize = int(unsafe.Sizeof(bpfPidIterEntry{}))
 
-func NewTracer() (iter *PidIter, err error) {
-	p := &PidIter{}
+func NewTracer() (iter *pidIterEbpf, err error) {
+	p := &pidIterEbpf{}
 	defer func() {
 		if err != nil {
 			if p.iter != nil {
@@ -52,7 +52,7 @@ func NewTracer() (iter *PidIter, err error) {
 		}
 	}()
 
-	spec, err := loadPiditer()
+	spec, err := loadBpf()
 	if err != nil {
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
@@ -77,9 +77,7 @@ func NewTracer() (iter *PidIter, err error) {
 	return p, nil
 }
 
-// DumpPids returns an array of PidIterEntry containing information
-// on which pid (and comm) has an open fd to which eBPF Program ID.
-func (p *PidIter) DumpPids() ([]*PidIterEntry, error) {
+func (p *pidIterEbpf) Get() (map[uint32][]Process, error) {
 	buf, err := bpfiterns.Read(p.iter)
 	if err != nil {
 		return nil, fmt.Errorf("reading iter: %w", err)
@@ -90,20 +88,30 @@ func (p *PidIter) DumpPids() ([]*PidIterEntry, error) {
 		return nil, fmt.Errorf("invalid format: %d", n)
 	}
 
-	res := make([]*PidIterEntry, 0)
+	pids := make([]*PidIterEntry, 0)
 	for i := 0; i < n/iterEntrySize; i++ {
-		entry := (*piditerPidIterEntry)(unsafe.Pointer(&buf[i*iterEntrySize]))
-		res = append(res, &PidIterEntry{
+		entry := (*bpfPidIterEntry)(unsafe.Pointer(&buf[i*iterEntrySize]))
+		pids = append(pids, &PidIterEntry{
 			ProgID: entry.Id,
 			Pid:    entry.Pid,
 			Comm:   gadgets.FromCString(entry.Comm[:]),
 		})
 	}
 
-	return res, nil
+	pidmap := make(map[uint32][]Process)
+	for _, e := range pids {
+		if _, ok := pidmap[e.ProgID]; !ok {
+			pidmap[e.ProgID] = make([]Process, 0, 1)
+		}
+		pidmap[e.ProgID] = append(pidmap[e.ProgID], Process{
+			Pid:  e.Pid,
+			Comm: e.Comm,
+		})
+	}
+	return pidmap, nil
 }
 
-func (p *PidIter) Close() (err error) {
+func (p *pidIterEbpf) Close() (err error) {
 	// If there's an error, return the last one
 	if tmpErr := p.iter.Close(); tmpErr != nil {
 		err = tmpErr
