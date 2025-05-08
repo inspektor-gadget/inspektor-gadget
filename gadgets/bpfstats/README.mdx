@@ -76,6 +76,8 @@ GADGETID    GADGETNAME           GADGETIMAGE          PROGID PROGNAME           
 You can run the gadget with `--help` to get the meaning of the different
 columns:
 
+- comms
+  List of processes using the eBPF program
 - gadgetID
   Unique ID assigned to each Gadget instance
 - gadgetImage
@@ -86,10 +88,14 @@ columns:
   Number of maps used by the eBPF program or Gadget
 - mapMemory
   Memory used by maps in bytes
+- pids
+  List of PIDs using the eBPF program
 - progID
   eBPF program ID assigned by the Linux kernel
 - progName
   Name of the eBPF program
+- progType
+  Type of the eBPF program
 - runcount
   Number of times the eBPF program or Gadget has run
 - runtime
