@@ -92,9 +92,6 @@ func TestBpfstatsGadget(t *testing.T) {
 			t.Parallel()
 
 			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
-			globalParams := map[string]string{
-				"operator.ebpf.enable-bpfstats": "true",
-			}
 
 			normalizeEvent := func(event *ExpectedBpfstatsEvent) {
 				utils.NormalizeInt(&event.MapCount)
@@ -117,12 +114,11 @@ func TestBpfstatsGadget(t *testing.T) {
 			}
 
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedBpfstatsEvent]{
-				Image:              "bpfstats",
-				Timeout:            5 * time.Second,
-				ParamValues:        paramValues,
-				GlobalParamsValues: globalParams,
-				OnGadgetRun:        onGadgetRun,
-				NormalizeEvent:     normalizeEvent,
+				Image:          "bpfstats",
+				Timeout:        5 * time.Second,
+				ParamValues:    paramValues,
+				OnGadgetRun:    onGadgetRun,
+				NormalizeEvent: normalizeEvent,
 			}
 
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
