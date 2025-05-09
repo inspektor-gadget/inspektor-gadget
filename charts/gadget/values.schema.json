@@ -44,6 +44,54 @@
         },
         "eventsBufferLength": {
           "type": "string"
+        },
+        "daemonLogLevel": {
+          "type": "string",
+          "enum": [
+            "trace",
+            "debug",
+            "info",
+            "warning",
+            "error",
+            "fatal",
+            "panic"
+          ]
+        },
+        "verifyGadgets": {
+          "type": "boolean"
+        },
+        "gadgetsPublicKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowedGadgets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disallowGadgetsPulling": {
+          "type": "boolean"
+        },
+        "mountPullSecret": {
+          "type": "boolean"
+        },
+        "appArmorProfile": {
+            "type": "string"
+        },
+        "otelMetricsListen" : {
+          "type": "boolean"
+        },
+        "otelMetricsAddress" : {
+          "type": "string"
+        },
+        "extraOperatorConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
         }
       }
     },
