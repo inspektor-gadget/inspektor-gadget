@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -215,7 +215,7 @@ func (ds DataSource) NewPacketArray() (PacketArray, error) {
 func (ds DataSource) EmitAndRelease(packet Packet) error {
 	ret := dataSourceEmitAndRelease(uint32(ds), uint32(packet))
 	if ret != 0 {
-		return fmt.Errorf("emitting data")
+		return errors.New("emitting data")
 	}
 	return nil
 }
