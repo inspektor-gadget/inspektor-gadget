@@ -58,7 +58,8 @@ type GadgetContext interface {
 	SetVar(string, any)
 	GetVar(string) (any, bool)
 	SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error)
-	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error
+	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, extraInfo *api.ExtraInfo) error
+	LoadGadgetInfoAndRun(info *api.GadgetInfo, paramValues api.ParamValues, remoteDone chan any) error
 	Params() []*api.Param
 	SetMetadata([]byte)
 	SetParams([]*api.Param)
