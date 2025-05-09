@@ -1,0 +1,13 @@
+name: top process
+description: Periodically report process statistics
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_process
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_process
+internalDataSources:
+  processes:
+    enabled: true
+    interval: 3s
+datasources:
+  processes:
+    annotations:
+      cli.clear-screen-before: "true"
