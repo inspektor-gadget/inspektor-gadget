@@ -38,7 +38,6 @@ var RuntimePaths = []string{
 	"/usr/local/bin/runc",
 	"/usr/local/sbin/runc",
 	"/usr/lib/cri-o-runc/sbin/runc",
-	"/run/torcx/unpack/docker/bin/runc", // Used in Flatcar Container Linux
 	"/usr/bin/crun",
 	"/var/lib/rancher/k3s/data/current/bin/runc", // Used in k3s
 	"/var/lib/rancher/rke2/bin/runc",             // Used in RKE2
