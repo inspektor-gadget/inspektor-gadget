@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -346,6 +347,18 @@ func (l *localManagerTrace) Name() string {
 
 func (l *localManagerTrace) PreGadgetRun() error {
 	log := l.gadgetCtx.Logger()
+
+	if l.gadgetInstance != nil {
+		err := l.handleGadgetInstance(log)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
 
@@ -451,7 +464,6 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			attachContainerFunc(container)
 		}
 	}
-
 	return nil
 }
 
@@ -612,12 +624,7 @@ func (l *localManager) Priority() int {
 }
 
 func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) error {
-	// hack - this makes it possible to use the Attacher interface
-	var ok bool
-	l.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
-	if !ok {
-		return fmt.Errorf("getting ebpfInstance")
-	}
+	l.gadgetInstance, _ = gadgetCtx.GetVar("ebpfInstance")
 
 	if l.manager.igManager != nil {
 		compat.Subscribe(
