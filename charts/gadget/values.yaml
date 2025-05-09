@@ -59,6 +59,26 @@ config:
   # -- Enable eBPF stats
   enableBpfStats: false
 
+  # Allow specifying extra operator config for the operator as:
+  #config:
+  #  extraOperatorConfig:
+  #    otel-logs:
+  #      exporters:
+  #        grpc:
+  #          exporter: otlp-grpc
+  #          compression: gzip
+  #          endpoint: "127.0.0.1:4317"
+  #          insecure: true
+  #    otel-metrics:
+  #      exporters:
+  #        grpc:
+  #          exporter: otlp-grpc
+  #          endpoint: "127.0.0.1:4317"
+  #          insecure: true
+  #          temporality: delta
+  #          interval: 30s
+  # -- Allow specifying extra operator configuration
+  extraOperatorConfig: {}
 image:
   # -- Container repository for the container image
   repository: ghcr.io/inspektor-gadget/inspektor-gadget

@@ -1,5 +1,5 @@
 HELM ?= helm
-HELM_DOCS_IMAGE ?= jnorwood/helm-docs:v1.11.0
+HELM_DOCS_IMAGE ?= jnorwood/helm-docs:v1.14.2
 BUILD_DIR ?= bin
 OUTPUT_DIR ?= $(BUILD_DIR)
 CHART_DIR := $(BUILD_DIR)/gadget
