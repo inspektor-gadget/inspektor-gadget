@@ -51,6 +51,7 @@ GADGETS = \
 	trace_tcpretrans \
 	top_blockio \
 	top_file \
+	top_process \
 	top_tcp \
 	snapshot_process \
 	snapshot_socket \

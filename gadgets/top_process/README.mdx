@@ -1,0 +1,77 @@
+---
+title: top_process
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# top_process
+
+The top_process gadget periodically reports process statistics, including CPU usage, memory usage, and other process information.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG%
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG%
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+The top_process gadget provides detailed information about running processes, including:
+
+- Process ID (PID)
+- Parent Process ID (PPID)
+- Command name
+- CPU usage percentage
+- Memory usage (RSS and virtual)
+- Thread count
+- Process state
+- User ID
+- Process start time
+- Mount namespace ID
+
+It also adds environment enrichments (container/k8s information), if possible.
+
+You can sort the output by any field, for example by CPU usage:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG% --sort -cpuUsage --max-entries 12
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME         PID COMM               CPUUSAGE CPUUSAGERELA…     MEMORYRSS MEMORYVIRTUAL MEMORYRELATI… THREADCOUNT STATE               UID STARTTIMESTR
+        minikube            test-namespace      test-pod            test-container            747 ig                      0.3           0.1      94101504    1979633664           2.3           8 S                     0 2025-05-20T2
+        minikube            test-namespace      test-pod            test-container          40192 ig                      0.3           0.1     134131712    2056871936           3.3           9 S                     0 2025-05-27T1
+        minikube            test-namespace      test-pod            test-container          32493 ig                      0.3           0.1     161894400    2061258752           3.9           8 S                     0 2025-05-24T1
+                                                                                               98 ata_sff                 0.0           0.0             0             0           0.0           1 I                     0 2025-05-20T2
+                                                                                               99 md                      0.0           0.0             0             0           0.0           1 I                     0 2025-05-20T2
+                                                                                              817 sshd                    0.0           0.0       6160384      15507456           0.2           1 S                     0 2025-05-20T2
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run top_process --sort -cpuUsage --max-entries 12
+        RUNTIME.CONTAINERNAME            PID COMM               CPUUSAGE CPUUSAGERELA…     MEMORYRSS MEMORYVIRTUAL MEMORYRELATI… THREADCOUNT STATE               UID STARTTIMESTR
+        test-container                   747 ig                      0.3           0.1      94101504    1979633664           2.3           8 S                     0 2025-05-20T2
+        test-container                 40192 ig                      0.3           0.1     134131712    2056871936           3.3           9 S                     0 2025-05-27T1
+        test-container                 32493 ig                      0.3           0.1     161894400    2061258752           3.9           8 S                     0 2025-05-24T1
+                                          98 ata_sff                 0.0           0.0             0             0           0.0           1 I                     0 2025-05-20T2
+                                          99 md                      0.0           0.0             0             0           0.0           1 I                     0 2025-05-20T2
+                                         817 sshd                    0.0           0.0       6160384      15507456           0.2           1 S                     0 2025-05-20T2
+        ...
+        ```
+    </TabItem>
+</Tabs>
