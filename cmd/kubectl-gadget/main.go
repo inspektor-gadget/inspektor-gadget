@@ -29,6 +29,7 @@ import (
 	img "github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/tool"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	igconfig "github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -174,6 +175,7 @@ func main() {
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))
 	rootCmd.AddCommand(img.NewImageCmd(grpcRuntime, imgCommands))
+	rootCmd.AddCommand(tool.NewToolCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
