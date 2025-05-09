@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -244,81 +244,85 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 		m.params.Get(ParamAllNamespaces).AsBool(),
 	)
 
-	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
-		err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
-		if err != nil {
-			return fmt.Errorf("adding tracer: %w", err)
-		}
+	if m.gadgetInstance != 0 {
 
-		// Create mount namespace map to filter by containers
-		mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
-		if err != nil {
-			m.manager.gadgetTracerManager.RemoveTracer(m.id)
-			return fmt.Errorf("creating mountns map: %w", err)
-		}
-
-		log.Debugf("set mountnsmap for gadget")
-		setter.SetMountNsMap(mountnsmap)
-
-		m.mountnsmap = mountnsmap
-	}
-
-	if attacher, ok := m.gadgetInstance.(Attacher); ok {
-		m.attacher = attacher
-		m.attachedContainers = make(map[string]*containercollection.Container)
-
-		attachContainerFunc := func(container *containercollection.Container) {
-			log.Debugf("calling gadget.AttachContainer()")
-			err := attacher.AttachContainer(container)
+		if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
+			err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
 			if err != nil {
-				var ve *ebpf.VerifierError
-				if errors.As(err, &ve) {
-					m.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.K8s.ContainerName, ve)
-				}
-
-				log.Warnf("start tracing container %q: %s", container.K8s.ContainerName, err)
-				return
+				return fmt.Errorf("adding tracer: %w", err)
 			}
 
-			m.attachedContainers[container.Runtime.ContainerID] = container
-
-			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
-		}
-
-		detachContainerFunc := func(container *containercollection.Container) {
-			log.Debugf("calling gadget.Detach()")
-			delete(m.attachedContainers, container.Runtime.ContainerID)
-
-			err := attacher.DetachContainer(container)
+			// Create mount namespace map to filter by containers
+			mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
 			if err != nil {
-				log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
-				return
+				m.manager.gadgetTracerManager.RemoveTracer(m.id)
+				return fmt.Errorf("creating mountns map: %w", err)
 			}
-			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
+
+			log.Debugf("set mountnsmap for gadget")
+			setter.SetMountNsMap(mountnsmap)
+
+			m.mountnsmap = mountnsmap
 		}
 
-		m.subscribed = true
+		if attacher, ok := m.gadgetInstance.(Attacher); ok {
+			m.attacher = attacher
+			m.attachedContainers = make(map[string]*containercollection.Container)
 
-		log.Debugf("add subscription to gadgetTracerManager")
-		containers := m.manager.gadgetTracerManager.Subscribe(
-			m.id,
-			containerSelector,
-			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
-				switch event.Type {
-				case containercollection.EventTypeAddContainer:
-					attachContainerFunc(event.Container)
-				case containercollection.EventTypeRemoveContainer:
-					detachContainerFunc(event.Container)
+			attachContainerFunc := func(container *containercollection.Container) {
+				log.Debugf("calling gadget.AttachContainer()")
+				err := attacher.AttachContainer(container)
+				if err != nil {
+					var ve *ebpf.VerifierError
+					if errors.As(err, &ve) {
+						m.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.K8s.ContainerName, ve)
+					}
+
+					log.Warnf("start tracing container %q: %s", container.K8s.ContainerName, err)
+					return
 				}
-			},
-		)
 
-		for _, container := range containers {
-			attachContainerFunc(container)
+				m.attachedContainers[container.Runtime.ContainerID] = container
+
+				log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
+					container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
+			}
+
+			detachContainerFunc := func(container *containercollection.Container) {
+				log.Debugf("calling gadget.Detach()")
+				delete(m.attachedContainers, container.Runtime.ContainerID)
+
+				err := attacher.DetachContainer(container)
+				if err != nil {
+					log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
+					return
+				}
+				log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
+					container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
+			}
+
+			m.subscribed = true
+
+			log.Debugf("add subscription to gadgetTracerManager")
+			containers := m.manager.gadgetTracerManager.Subscribe(
+				m.id,
+				containerSelector,
+				func(event containercollection.PubSubEvent) {
+					log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
+					switch event.Type {
+					case containercollection.EventTypeAddContainer:
+						attachContainerFunc(event.Container)
+					case containercollection.EventTypeRemoveContainer:
+						detachContainerFunc(event.Container)
+					}
+				},
+			)
+
+			for _, container := range containers {
+				attachContainerFunc(container)
+			}
 		}
+
 	}
 
 	return nil
@@ -452,11 +456,7 @@ func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) para
 }
 
 func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	var ok bool
-	m.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
-	if !ok {
-		return fmt.Errorf("getting ebpfInstance")
-	}
+	m.gadgetInstance, _ = gadgetCtx.GetVar("ebpfInstance")
 
 	compat.Subscribe(
 		m.eventWrappers,
