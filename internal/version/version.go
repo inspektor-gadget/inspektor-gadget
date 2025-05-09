@@ -17,16 +17,37 @@
 package version
 
 import (
+	"runtime/debug"
+
 	"github.com/blang/semver"
 )
 
-// version is filled out by the Makefile at build
+// When used in the Inspektor Gadget project, version is filled out by the
+// Makefile at build-time using:
+// -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION}"
 var (
 	version       = "v0.0.0"
 	parsedVersion semver.Version
 )
 
 func init() {
+	if version == "v0.0.0" {
+		// If Inspektor Gadget is used as a library, its version will
+		// be in ReadBuildInfo
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, dep := range info.Deps {
+				if dep.Path == "github.com/inspektor-gadget/inspektor-gadget" {
+					if dep.Replace == nil {
+						version = dep.Version
+					} else {
+						version = dep.Replace.Version
+					}
+					break
+				}
+			}
+		}
+	}
+
 	parsedVersion, _ = semver.ParseTolerant(version)
 }
 
