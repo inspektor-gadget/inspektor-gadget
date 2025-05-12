@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
@@ -40,6 +41,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -74,6 +76,11 @@ type Service struct {
 
 	// operators stores all global parameters for DataOperators (non-legacy)
 	operators map[operators.DataOperator]*params.Params
+
+	// metrics (only covering image-based gadgets)
+	ctrGetGadgetInfo metric.Int64Counter
+	ctrRunGadget     metric.Int64Counter
+	ctrAttachGadget  metric.Int64Counter
 }
 
 func NewService(defaultLogger logger.Logger) *Service {
@@ -81,11 +88,27 @@ func NewService(defaultLogger logger.Logger) *Service {
 	for _, op := range operators.GetDataOperators() {
 		ops[op] = apihelpers.ToParamDescs(op.GlobalParams()).ToParams()
 	}
-	return &Service{
+
+	svc := &Service{
 		servers:   map[*grpc.Server]struct{}{},
 		logger:    defaultLogger,
 		operators: ops,
 	}
+
+	svc.ctrGetGadgetInfo, _ = metrics.Int64Counter("ig_grpc_get_gadget_info",
+		metric.WithUnit("{instance}"),
+		metric.WithDescription("Number of GetGadgetInfo() gRPC requests"),
+	)
+	svc.ctrRunGadget, _ = metrics.Int64Counter("ig_grpc_run_gadget",
+		metric.WithUnit("{request}"),
+		metric.WithDescription("Number of RunGadget()/Run gRPC requests"),
+	)
+	svc.ctrAttachGadget, _ = metrics.Int64Counter("ig_grpc_attach_gadget",
+		metric.WithUnit("{request}"),
+		metric.WithDescription("Number of RunGadget()/Attach gRPC requests"),
+	)
+
+	return svc
 }
 
 func (s *Service) SetEventBufferLength(val uint64) {

@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
@@ -49,6 +51,11 @@ func (s *Service) GetOperatorMap() map[operators.DataOperator]*params.Params {
 }
 
 func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
+	metricAttribs := attribute.NewSet(
+		attribute.KeyValue{Key: "gadget_image", Value: attribute.StringValue(req.ImageName)},
+	)
+	defer s.ctrGetGadgetInfo.Add(context.Background(), 1, metric.WithAttributeSet(metricAttribs))
+
 	if req.Version != api.VersionGadgetInfo {
 		return nil, fmt.Errorf("expected version to be %d, got %d", api.VersionGadgetInfo, req.Version)
 	}
@@ -114,6 +121,8 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		if s.instanceMgr == nil {
 			return errors.New("instance manager not initialized")
 		}
+
+		s.ctrAttachGadget.Add(context.Background(), 1)
 		return s.instanceMgr.AttachToGadgetInstance(attachRequest.Id, runGadget)
 	}
 
@@ -121,6 +130,11 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	if ociRequest == nil {
 		return fmt.Errorf("expected first control message to be gadget run request")
 	}
+
+	metricAttribs := attribute.NewSet(
+		attribute.KeyValue{Key: "gadget_image", Value: attribute.StringValue(ociRequest.ImageName)},
+	)
+	defer s.ctrRunGadget.Add(context.Background(), 1, metric.WithAttributeSet(metricAttribs))
 
 	p, ok := peer.FromContext(runGadget.Context())
 	if ok && p.AuthInfo != nil {
