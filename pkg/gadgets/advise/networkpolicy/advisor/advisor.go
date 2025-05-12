@@ -148,11 +148,12 @@ func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
 }
 
 func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
-	if e.DstEndpoint.Kind == eventtypes.EndpointKindPod {
+	switch e.DstEndpoint.Kind {
+	case eventtypes.EndpointKindPod:
 		ret = string(e.DstEndpoint.Kind) + ":" + e.DstEndpoint.Namespace + ":" + a.labelKeyString(e.DstEndpoint.PodLabels)
-	} else if e.DstEndpoint.Kind == eventtypes.EndpointKindService {
+	case eventtypes.EndpointKindService:
 		ret = string(e.DstEndpoint.Kind) + ":" + e.DstEndpoint.Namespace + ":" + a.labelKeyString(e.DstEndpoint.PodLabels)
-	} else if e.DstEndpoint.Kind == eventtypes.EndpointKindRaw {
+	case eventtypes.EndpointKindRaw:
 		ret = string(e.DstEndpoint.Kind) + ":" + e.DstEndpoint.Addr
 	}
 	return fmt.Sprintf("%s:%d", ret, e.Port)
@@ -167,7 +168,8 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 			Protocol: &protocol,
 		},
 	}
-	if e.DstEndpoint.Kind == eventtypes.EndpointKindPod {
+	switch e.DstEndpoint.Kind {
+	case eventtypes.EndpointKindPod:
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.DstEndpoint.PodLabels)},
@@ -184,7 +186,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				},
 			}
 		}
-	} else if e.DstEndpoint.Kind == eventtypes.EndpointKindService {
+	case eventtypes.EndpointKindService:
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.DstEndpoint.PodLabels},
@@ -201,7 +203,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				},
 			}
 		}
-	} else if e.DstEndpoint.Kind == eventtypes.EndpointKindRaw {
+	case eventtypes.EndpointKindRaw:
 		if e.DstEndpoint.Addr == "127.0.0.1" {
 			// No need to generate a network policy for localhost
 			peers = []networkingv1.NetworkPolicyPeer{}
@@ -214,7 +216,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				},
 			}
 		}
-	} else {
+	default:
 		panic("unknown event")
 	}
 	return
@@ -296,11 +298,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		}
 
 		key := a.localPodKey(e)
-		if _, ok := eventsBySource[key]; ok {
-			eventsBySource[key] = append(eventsBySource[key], e)
-		} else {
-			eventsBySource[key] = []types.Event{e}
-		}
+		eventsBySource[key] = append(eventsBySource[key], e)
 	}
 
 	for _, events := range eventsBySource {

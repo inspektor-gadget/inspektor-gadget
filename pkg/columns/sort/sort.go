@@ -130,7 +130,7 @@ func getLessFunc[OT constraints.Ordered, T any](array []*T, column columns.Colum
 		if array[j] == nil {
 			return true
 		}
-		return !(fieldFunc(array[i]) < fieldFunc(array[j])) != order
+		return (fieldFunc(array[i]) >= fieldFunc(array[j])) != order
 	}
 }
 

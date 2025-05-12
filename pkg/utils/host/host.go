@@ -120,10 +120,8 @@ func Init(config Config) error {
 
 // AddFlags adds CLI flags for various workarounds
 func AddFlags(command *cobra.Command) {
-	automountFilesystemsDefault := false
-	if HostRoot != "" && HostRoot != "/" {
-		automountFilesystemsDefault = true
-	}
+	automountFilesystemsDefault := HostRoot != "" && HostRoot != "/"
+
 	command.PersistentFlags().BoolVarP(
 		&autoMountFilesystemsFlag,
 		"auto-mount-filesystems",

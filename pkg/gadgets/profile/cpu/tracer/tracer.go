@@ -82,11 +82,11 @@ type keyCount struct {
 
 func (t *Tracer) readCountsMap() ([]keyCount, error) {
 	var prev *profileKeyT = nil
-	counts := t.objs.profileMaps.Counts
+	counts := t.objs.Counts
 	keysCounts := []keyCount{}
 	key := profileKeyT{}
 
-	if t.objs.profileMaps.Counts == nil {
+	if t.objs.Counts == nil {
 		return nil, fmt.Errorf("counts map was not created at moment of stop")
 	}
 
@@ -230,7 +230,7 @@ func (t *Tracer) collectResult() ([]byte, error) {
 
 	reports := make([]types.Report, len(keysCounts))
 	for i, keyVal := range keysCounts {
-		report, err := getReport(t, kAllSyms, t.objs.profileMaps.Stackmap, keyVal)
+		report, err := getReport(t, kAllSyms, t.objs.Stackmap, keyVal)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +341,7 @@ func (t *TracerWrap) SetEventHandler(handler any) {
 
 func (t *TracerWrap) SetEventEnricher(enricher func(ev any) error) {
 	t.enricherFunc = enricher
-	t.Tracer.enricher = t
+	t.enricher = t
 }
 
 func (t *TracerWrap) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
@@ -353,7 +353,7 @@ func (t *TracerWrap) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint6
 }
 
 func (t *TracerWrap) SetMountNsMap(mountNsMap *ebpf.Map) {
-	t.Tracer.config.MountnsMap = mountNsMap
+	t.config.MountnsMap = mountNsMap
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {

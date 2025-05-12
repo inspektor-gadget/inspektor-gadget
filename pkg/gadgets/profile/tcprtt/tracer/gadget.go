@@ -168,7 +168,7 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 					if h.Average > 0 {
 						sb.WriteString(fmt.Sprintf(" [AVG %f]", h.Average))
 					}
-					sb.WriteString(fmt.Sprintf("\n%s\n", h.Histogram.String()))
+					sb.WriteString(fmt.Sprintf("\n%s\n", h.String()))
 				}
 				return []byte(sb.String()), nil
 			},

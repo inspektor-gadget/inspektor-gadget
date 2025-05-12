@@ -101,7 +101,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 
 	count := 0
 	transform := func(line string) string {
-		line = strings.Replace(line, "\r", "\n", -1)
+		line = strings.ReplaceAll(line, "\r", "\n")
 		mu.Lock()
 		w.Write([]byte(line))
 		w.Flush()

@@ -93,7 +93,7 @@ func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOp
 }
 
 func (t *Trace) publishEvent(trace *gadgetv1alpha1.Trace, event *dnsTypes.Event) {
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.Namespace, trace.Name)
 	t.helpers.PublishEvent(
 		traceName,
 		eventtypes.EventString(event),

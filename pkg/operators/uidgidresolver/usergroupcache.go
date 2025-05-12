@@ -173,13 +173,14 @@ func (cache *userGroupCache) handleEvent(event fsnotify.Event) {
 
 	targetFilePath := ""
 	var resourceCache cachedmap.CachedMap[uint32, string]
-	if event.Name == fullPasswdPath {
+	switch event.Name {
+	case fullPasswdPath:
 		targetFilePath = fullPasswdPath
 		resourceCache = cache.userCache
-	} else if event.Name == fullGroupPath {
+	case fullGroupPath:
 		targetFilePath = fullGroupPath
 		resourceCache = cache.groupCache
-	} else {
+	default:
 		return
 	}
 

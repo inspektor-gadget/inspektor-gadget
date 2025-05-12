@@ -142,7 +142,8 @@ func TestInventoryCacheAdd(t *testing.T) {
 			cache.OnAdd(tc.initialObj, false)
 
 			// Verify results based on kind.
-			if tc.kind == "pod" {
+			switch tc.kind {
+			case "pod":
 				retrieved := cache.GetPodByName("default", tc.expectedName)
 				require.NotNil(t, retrieved, "expected pod to be added")
 				assert.Equal(t, tc.expectedName, retrieved.Name)
@@ -151,7 +152,7 @@ func TestInventoryCacheAdd(t *testing.T) {
 					require.NotNil(t, retrievedByIP, "expected pod to be retrievable by IP")
 					assert.Equal(t, tc.expectedName, retrievedByIP.Name)
 				}
-			} else if tc.kind == "svc" {
+			case "svc":
 				retrieved := cache.GetSvcByName("default", tc.expectedName)
 				require.NotNil(t, retrieved, "expected service to be added")
 				assert.Equal(t, tc.expectedName, retrieved.Name)
@@ -237,13 +238,14 @@ func TestInventoryCacheUpdate(t *testing.T) {
 
 			cache.OnUpdate(tc.initialObj, tc.updatedObj)
 
-			if tc.kind == "pod" {
+			switch tc.kind {
+			case "pod":
 				retrieved := cache.GetPodByName("default", "test-pod")
 				require.NotNil(t, retrieved, "expected pod to exist after update")
 				assert.Equal(t, tc.expectedIP, retrieved.Status.PodIP)
 				retrievedByIP := cache.GetPodByIp(tc.expectedIP)
 				require.NotNil(t, retrievedByIP, "expected pod to be retrievable by new IP")
-			} else if tc.kind == "svc" {
+			case "svc":
 				retrieved := cache.GetSvcByName("default", "test-svc")
 				require.NotNil(t, retrieved, "expected service to exist after update")
 				assert.Equal(t, tc.expectedIP, retrieved.Spec.ClusterIP)

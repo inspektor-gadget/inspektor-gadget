@@ -157,7 +157,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	if containerDefinition.Id == "" {
 		return nil, fmt.Errorf("container id not set")
 	}
-	if g.ContainerCollection.GetContainer(containerDefinition.Id) != nil {
+	if g.GetContainer(containerDefinition.Id) != nil {
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
 	}
 
@@ -204,7 +204,7 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 		return nil, fmt.Errorf("container Id not set")
 	}
 
-	c := g.ContainerCollection.GetContainer(containerDefinition.Id)
+	c := g.GetContainer(containerDefinition.Id)
 	if c == nil {
 		return nil, fmt.Errorf("unknown container %q", containerDefinition.Id)
 	}
@@ -308,7 +308,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
 	}
 
-	err = g.ContainerCollection.Initialize(opts...)
+	err = g.Initialize(opts...)
 	if err != nil {
 		return nil, err
 	}

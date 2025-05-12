@@ -1,53 +1,54 @@
-output:
-  sort-results: true
-
+version: "2"
 run:
-  go: "1.24.2"
-  timeout: 10m
+  go: 1.24.2
   build-tags:
-  - docs
-
-issues:
-  exclude-use-default: false
-  max-same-issues: 0
-  max-issues-per-linter: 0
-  exclude-rules:
-    # Ignore check: Packages must have a package comment
-    - text: "ST1000: at least one file in a package should have a package comment"
-      linters:
-        - stylecheck
-    # Ignore rule about ID vs Id: https://github.com/golang/lint/issues/89
-    - text: "ST1003:"
-      linters:
-        - stylecheck
-    - text: "Switch to image-based gadgets instead"
-      linters:
-        - staticcheck
-
+    - docs
 linters:
-  disable-all: true
+  default: none
   enable:
-  - gofumpt
-  - stylecheck
-  - staticcheck
-  - errorlint
-  - goimports
+    - errorlint
+    - staticcheck
+  settings:
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    staticcheck:
+      checks:
+        - all
+  exclusions:
+    generated: lax
+    rules:
+      # Ignore check: Packages must have a package comment
+      - linters:
+          - staticcheck
+        text: 'ST1000: at least one file in a package should have a package comment'
+      # Ignore rule about ID vs Id: https://github.com/golang/lint/issues/89
+      - linters:
+          - staticcheck
+        text: 'ST1003:'
+      - linters:
+          - staticcheck
+        text: Switch to image-based gadgets instead
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
 
-linters-settings:
-  staticcheck:
-    checks: ["all"]
-  stylecheck:
-    checks: ["all"]
-  errorlint:
-    # https://github.com/polyfloyd/go-errorlint
-    # Check whether fmt.Errorf uses the %w verb for formatting errors.
-    errorf: true
-    # Check for plain type assertions and type switches (errors.As must be used).
-    asserts: true
-    # Check for plain error comparisons (errors.Is must be used)
-    comparison: true
-  goimports:
-    # A comma-separated list of prefixes, which, if set, checks import paths
-    # with the given prefixes are grouped after 3rd-party packages.
-    # Default: ""
-    local-prefixes: github.com/inspektor-gadget/inspektor-gadget
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/inspektor-gadget/inspektor-gadget
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -184,23 +184,23 @@ func seccompProfileAddLabelsAndAnnotations(
 	containerName string,
 	ownerReference *metav1.OwnerReference,
 ) {
-	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container"] = containerName
+	traceName := fmt.Sprintf("%s/%s", trace.Namespace, trace.Name)
+	r.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
+	r.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
+	r.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
+	r.Annotations["seccomp.gadget.kinvolk.io/container"] = containerName
 	if ownerReference != nil {
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-APIVersion"] = ownerReference.APIVersion
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Kind"] = ownerReference.Kind
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Name"] = ownerReference.Name
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = string(ownerReference.UID)
+		r.Annotations["seccomp.gadget.kinvolk.io/ownerReference-APIVersion"] = ownerReference.APIVersion
+		r.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Kind"] = ownerReference.Kind
+		r.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Name"] = ownerReference.Name
+		r.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = string(ownerReference.UID)
 	}
 
 	// Copy labels from the trace into the SeccompProfile. This will allow
 	// the CLI to add a label on the trace and gather its output
-	if trace.ObjectMeta.Labels != nil {
-		for key, value := range trace.ObjectMeta.Labels {
-			r.ObjectMeta.Labels[key] = value
+	if trace.Labels != nil {
+		for key, value := range trace.Labels {
+			r.Labels[key] = value
 		}
 	}
 }
@@ -301,7 +301,7 @@ func getSeccompProfileNsName(
 func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscallNames []string, podname, containername, fullPodName string, ownerReference *metav1.OwnerReference) (*seccompprofile.SeccompProfile, error) {
 	profileName, err := getSeccompProfileNsName(
 		client,
-		trace.ObjectMeta.Namespace,
+		trace.Namespace,
 		trace.Spec.Output,
 		podname,
 	)
@@ -329,7 +329,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 		return
 	}
 
-	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := fmt.Sprintf("%s/%s", trace.Namespace, trace.Name)
 
 	// Get the list of syscallNames from the BPF hash map
 	syscallNames, err := traceSingleton.tracer.Peek(event.Container.Mntns)
@@ -370,7 +370,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 			return
 		}
 		t.helpers.PublishEvent(
-			gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+			gadgets.TraceName(trace.Namespace, trace.Name),
 			fmt.Sprintf("%s\n---\n", string(yamlOutput)),
 		)
 		t.policyGenerated = true
@@ -416,7 +416,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	// containers to be sure this field is set when the
 	// container terminates.
 	containers := t.helpers.Subscribe(
-		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
+		genPubSubKey(trace.Namespace+"/"+trace.Name),
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		func(event containercollection.PubSubEvent) {
 			switch event.Type {
@@ -568,7 +568,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	traceSingleton.mu.Lock()
 	defer traceSingleton.mu.Unlock()
 
-	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+	t.helpers.Unsubscribe(genPubSubKey(trace.Namespace + "/" + trace.Name))
 
 	traceSingleton.users--
 	if traceSingleton.users == 0 {

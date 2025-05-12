@@ -345,10 +345,10 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 
 func (m *KubeManagerInstance) enrich(ev any) {
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs(event)
+		m.manager.gadgetTracerManager.EnrichEventByMntNs(event)
 	}
 	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByNetNs(event)
+		m.manager.gadgetTracerManager.EnrichEventByNetNs(event)
 	}
 }
 
@@ -460,8 +460,8 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 
 	compat.Subscribe(
 		m.eventWrappers,
-		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs,
-		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByNetNs,
+		m.manager.gadgetTracerManager.EnrichEventByMntNs,
+		m.manager.gadgetTracerManager.EnrichEventByNetNs,
 		0,
 	)
 
