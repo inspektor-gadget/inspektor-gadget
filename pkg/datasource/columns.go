@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -152,6 +152,11 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 				}
 			case metadatav1.ColumnsAliasAnnotation:
 				attributes.Alias = v
+			case metadatav1.ColumnsPrecisionAnnotation:
+				attributes.Precision, err = strconv.Atoi(v)
+				if err != nil {
+					return nil, fmt.Errorf("reading precision for column %q: %w", f.Name, err)
+				}
 			}
 		}
 
