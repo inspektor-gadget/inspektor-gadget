@@ -30,3 +30,8 @@ data:
             otel-metrics-listen: {{ .Values.config.otelMetricsListen }}
             otel-metrics-listen-address: {{ .Values.config.otelMetricsAddress }}
       {{- end }}
+      {{- if .Values.config.extraOperatorConfig }}
+      {{- range $operatorName, $operatorConfig := .Values.config.extraOperatorConfig }}
+        {{ $operatorName }}:{{ toYaml $operatorConfig | nindent 10 }}
+      {{- end }}
+      {{- end }}
