@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,8 +35,10 @@ type Tracer struct {
 	mapName    string
 	structName string
 
-	ds       datasource.DataSource
-	accessor datasource.FieldAccessor
+	ds              datasource.DataSource
+	accessor        datasource.FieldAccessor
+	restAccessor    datasource.FieldAccessor
+	restLenAccessor datasource.FieldAccessor
 
 	mapType       ebpf.MapType
 	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array
@@ -183,6 +185,25 @@ func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []by
 	if err := t.accessor.Set(pSingle, sample); err != nil {
 		t.ds.Release(pSingle)
 		return fmt.Errorf("setting buffer: %w", err)
+	}
+
+	if t.restAccessor != nil && sampleLen > t.eventSize {
+		xlen := sampleLen - t.eventSize
+
+		if t.restLenAccessor != nil {
+			// Read length
+			xlen, err = t.restLenAccessor.Uint32(pSingle)
+			if err != nil {
+				return fmt.Errorf("getting rest length: %w", err)
+			}
+
+			if t.eventSize+xlen > sampleLen {
+				return fmt.Errorf("rest length %d is larger than data length %d - event size %d",
+					xlen, sampleLen, t.eventSize)
+			}
+		}
+
+		t.restAccessor.Set(pSingle, fullSample[t.eventSize:t.eventSize+xlen])
 	}
 
 	if err := t.ds.EmitAndRelease(pSingle); err != nil {

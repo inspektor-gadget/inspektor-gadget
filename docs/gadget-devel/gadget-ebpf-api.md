@@ -674,9 +674,20 @@ common information.
 - `gadget_parent`: Contains the name and pid of the parent process.
 - `gadget_process`: Contains the name, pid, tid, user and parent of the process.
 
-### Helpers
+## Helpers
 
 - `void gadget_process_populate(struct gadget_process *p)`: Fill `p` with
   the current process information
 - `void gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct gadget_process *p)`:
   Fill `p` with the information on `skb_val` returned by `gadget_socket_lookup()`.
+
+### Trailing Data
+
+Tracers can add trailing data to the events they emit. This is useful for
+gadgets that want to append optional data at the end of an event, like a
+fragment of a network packet. Inspektor Gadget will create and store this data
+on a field according to the `ebpf.rest.name` datasource annotation. The
+`ebpf.rest.len` optional datasource annotation is used to set the name of the
+field that contains the length of the trailing data. If the gadget doesn't
+provide this annotation, the whole remaining data will be used as the trailing
+data.
