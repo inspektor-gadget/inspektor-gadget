@@ -223,7 +223,7 @@ struct {
 	__type(value, bool);
 } syscall_enable_filters SEC(".maps");
 
-void *fake_stack_alloc(void *event)
+void *fake_stack_alloc(const void *event)
 {
 	u32 zero = 0;
 
