@@ -21,7 +21,12 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
+	"github.com/gopacket/gopacket/pcapgo"
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
@@ -48,6 +53,7 @@ const (
 	ModeYAML       = "yaml"
 	ModeNone       = "none"
 	ModeRaw        = "raw"
+	ModePCAPNG     = "pcap-ng"
 
 	DefaultOutputMode = ModeColumns
 
@@ -455,6 +461,53 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					return nil
 				}, Priority)
 			}
+		case ModePCAPNG:
+			// Check ds for compatiblity
+			payloadField := ds.GetField(ds.Annotations()["cli.pcap-ng.payload"])
+			if payloadField == nil {
+				return fmt.Errorf("payload field not found")
+			}
+			interfaceField := ds.GetField(ds.Annotations()["cli.pcap-ng.interface"])
+			if interfaceField == nil {
+				return fmt.Errorf("interface field not found")
+			}
+			timestampField := ds.GetField(ds.Annotations()["cli.pcap-ng.timestamp"])
+			if timestampField == nil {
+				return fmt.Errorf("timestamp field not found")
+			}
+			lengthField := ds.GetField(ds.Annotations()["cli.pcap-ng.length"])
+			if lengthField == nil {
+				return fmt.Errorf("length field not found")
+			}
+
+			var mu sync.Mutex
+
+			// Output using pcap-ng
+			wr, err := pcapgo.NewNgWriter(os.Stdout, layers.LinkTypeEthernet)
+			if err != nil {
+				return fmt.Errorf("could not create pcapgo.NgWriter: %w", err)
+			}
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				mu.Lock()
+				defer mu.Unlock()
+
+				// ifIndex, _ := interfaceField.Uint32(data)
+				// ts, _ := timestampField.Uint64(data)
+				payload, _ := payloadField.Bytes(data)
+				length, _ := lengthField.Uint32(data)
+
+				wr.WritePacket(gopacket.CaptureInfo{
+					Timestamp:      time.Now(),
+					CaptureLength:  int(length),
+					Length:         int(length),
+					InterfaceIndex: 0,
+					AncillaryData:  nil,
+				}, payload)
+
+				// need to make sure this gets written before returning buffers
+				wr.Flush()
+				return nil
+			}, Priority)
 		}
 
 	}
