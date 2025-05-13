@@ -102,6 +102,9 @@ datasources:
         annotations:
           columns.hidden: "true"
           description: Recursion Desired Flag
+      nameserver:
+        annotations:
+          description: Nameserver for the DNS request
 
 params:
   ebpf:
