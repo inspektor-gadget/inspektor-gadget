@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
@@ -33,6 +34,7 @@ import (
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	pcapng "github.com/inspektor-gadget/inspektor-gadget/pkg/pcap-ng"
 )
 
 const (
@@ -49,6 +51,7 @@ const (
 	ModeYAML       = "yaml"
 	ModeNone       = "none"
 	ModeRaw        = "raw"
+	ModePCAPNG     = "pcap-ng"
 
 	DefaultOutputMode = ModeColumns
 
@@ -459,6 +462,55 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					return nil
 				}, Priority)
 			}
+		case ModePCAPNG:
+			// Check ds for compatiblity
+			payloadField := ds.GetField(ds.Annotations()["cli.pcap-ng.payload"])
+			if payloadField == nil {
+				return fmt.Errorf("payload field not found")
+			}
+			interfaceField := ds.GetField(ds.Annotations()["cli.pcap-ng.interface"])
+			if interfaceField == nil {
+				return fmt.Errorf("interface field not found")
+			}
+			timestampField := ds.GetField(ds.Annotations()["cli.pcap-ng.timestamp"])
+			if timestampField == nil {
+				return fmt.Errorf("timestamp field not found")
+			}
+			lengthField := ds.GetField(ds.Annotations()["cli.pcap-ng.length"])
+			if lengthField == nil {
+				return fmt.Errorf("length field not found")
+			}
+
+			var mu sync.Mutex
+
+			// Output using pcap-ng
+			// wr, err := pcapgo.NewNgWriter(os.Stdout, layers.LinkTypeEthernet)
+			wr, err := pcapng.New(os.Stdout)
+			if err != nil {
+				return fmt.Errorf("creating pcapgo.NgWriter: %w", err)
+			}
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				mu.Lock()
+				defer mu.Unlock()
+
+				// ifIndex, _ := interfaceField.Uint32(data)
+				// ts, _ := timestampField.Uint64(data)
+				payload, _ := payloadField.Bytes(data)
+				length, _ := lengthField.Uint32(data)
+
+				wr.WritePacket(payload, &pcapng.PacketOptions{
+					Timestamp:      time.Now(),
+					InterfaceIndex: 0,
+					CaptureLength:  int(length),
+					Length:         int(length),
+					AncillaryData:  nil,
+					Comment:        "fooby",
+				})
+
+				// need to make sure this gets written before returning buffers
+				wr.Flush()
+				return nil
+			}, Priority)
 		}
 
 	}
