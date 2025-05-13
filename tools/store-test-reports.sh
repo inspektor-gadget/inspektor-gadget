@@ -41,6 +41,11 @@ function store-reports {
       --arg job_key ${job_key} \
       '.[$job_key] = (.[$job_key][-99:] + $obj)' \
       data/workflows.json > workflows.json.tmp
+      if [ ! -s workflows.json.tmp ]; then
+        echo "Skipping empty file: $i" >&2
+        rm workflows.json.tmp
+        continue
+      fi
       mv workflows.json.tmp data/workflows.json
   done
 
