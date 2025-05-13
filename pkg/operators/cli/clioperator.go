@@ -17,12 +17,18 @@ package clioperator
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
+	"github.com/gopacket/gopacket/pcapgo"
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
@@ -49,6 +55,7 @@ const (
 	ModeYAML       = "yaml"
 	ModeNone       = "none"
 	ModeRaw        = "raw"
+	ModePCAPNG     = "pcap-ng"
 
 	DefaultOutputMode = ModeColumns
 
@@ -62,6 +69,23 @@ const (
 
 	// AnnotationDefaultOutputMode can be used to specify the default output mode for a DataSource.
 	AnnotationDefaultOutputMode = "cli.default-output-mode"
+
+	// AnnotationPCAPPayload must point to the field carrying the binary payload of a packet
+	AnnotationPCAPPayload = "pcap.payload"
+
+	// AnnotationPCAPTimestamp must point to the field containing the capture timestamp of a packet
+	AnnotationPCAPTimestamp = "pcap.timestamp"
+
+	// AnnotationPCAPPacketLen must point to the field containing the original length of the packet
+	AnnotationPCAPPacketLen = "pcap.packet-length"
+
+	// AnnotationPCAPInterfaceKey (if set to true) defines for a field to become part of the interface key
+	// (a composite of host info and interface info that makes it unique)
+	AnnotationPCAPInterfaceKey = "pcap.interface-key"
+
+	// AnnotationPCAPInterfaceVar registers a field to become part of the interface comment variables
+	// with the given name
+	AnnotationPCAPInterfaceVar = "pcap.interface-var"
 )
 
 var (
@@ -460,6 +484,128 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					return nil
 				}, Priority)
 			}
+		case ModePCAPNG:
+			// Check ds for compatiblity
+			payloadField := ds.GetField(ds.Annotations()[AnnotationPCAPPayload])
+			if payloadField == nil {
+				return fmt.Errorf("%s annotation not found", AnnotationPCAPPayload)
+			}
+			timestampField := ds.GetField(ds.Annotations()[AnnotationPCAPTimestamp])
+			if timestampField == nil {
+				return fmt.Errorf("timestamp field not found")
+			}
+			lengthField := ds.GetField(ds.Annotations()[AnnotationPCAPPacketLen])
+			if lengthField == nil {
+				return fmt.Errorf("length field not found")
+			}
+
+			// TODO:
+			// Currently, each data packet carries all interface/enriched information with the payload;
+			// optimally, we would create a special datasource for it and cache the sent information both
+			// on sender and receiver to save bandwidth.
+
+			// Find fields to be used for the interface key
+			var interfaceKeyFields []datasource.FieldAccessor
+			for _, f := range ds.Fields() {
+				if v, ok := f.Annotations[AnnotationPCAPInterfaceKey]; ok && v == "true" {
+					acc := ds.GetField(f.FullName)
+					if acc == nil {
+						return fmt.Errorf("field %q not found", f.FullName)
+					}
+					interfaceKeyFields = append(interfaceKeyFields, acc)
+				}
+			}
+
+			// Find fields to be used for the interface variables; these variables will become
+			// part of the interface description and can be decoded using scripts in WireShark, for
+			// example. TODO: also add this functionality on a packet level.
+			var interfaceVarFns []func(datasource.Data, *strings.Builder)
+			for _, f := range ds.Fields() {
+				if v, ok := f.Annotations[AnnotationPCAPInterfaceVar]; ok {
+					acc := ds.GetField(f.FullName)
+					if acc == nil {
+						return fmt.Errorf("field %q not found", f.FullName)
+					}
+					if acc.Type() != api.Kind_String && acc.Type() != api.Kind_CString {
+						return fmt.Errorf("field %q cannot be used as interface variable; currently, only string fields are supported", f.FullName)
+					}
+					interfaceVarFns = append(interfaceVarFns, func(data datasource.Data, sb *strings.Builder) {
+						str, err := acc.String(data)
+						if err != nil {
+							return
+						}
+						sb.WriteString(v)
+						sb.WriteByte('=')
+						sb.WriteString(url.QueryEscape(str))
+					})
+					interfaceKeyFields = append(interfaceKeyFields, acc)
+				}
+			}
+
+			var mu sync.Mutex
+
+			wr, err := pcapgo.NewNgWriter(os.Stdout, layers.LinkTypeEthernet)
+			if err != nil {
+				return fmt.Errorf("creating pcapgo.NgWriter: %w", err)
+			}
+
+			interfaces := make(map[string]int)
+
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				mu.Lock()
+				defer mu.Unlock()
+
+				var key strings.Builder
+				for _, f := range interfaceKeyFields {
+					key.Write(f.Get(data))
+					key.WriteByte(':') // Delimiter
+				}
+				ifIndex := key.String()
+
+				ts, _ := timestampField.Uint64(data)
+				payload, _ := payloadField.Bytes(data)
+				length, _ := lengthField.Uint32(data)
+
+				pcapInterface, ok := interfaces[ifIndex]
+				if !ok {
+					// Build description for interface
+					var description strings.Builder
+					for i, f := range interfaceVarFns {
+						if i > 0 {
+							description.WriteByte(';')
+						}
+						f(data, &description)
+					}
+
+					newInterface := pcapgo.NgInterface{
+						Name:        "virtual", // TODO: get from host
+						Description: description.String(),
+						OS:          runtime.GOOS, // TODO: get from host
+						LinkType:    layers.LinkTypeEthernet,
+					}
+					newIndex, err := wr.AddInterface(newInterface)
+					if err != nil {
+						return err
+					}
+					interfaces[ifIndex] = newIndex
+					pcapInterface = newIndex
+				}
+
+				err = wr.WritePacket(gopacket.CaptureInfo{
+					Timestamp:      time.Unix(0, int64(time.Duration(ts)*time.Microsecond)),
+					InterfaceIndex: pcapInterface,
+					CaptureLength:  len(payload),
+					Length:         int(length),
+				}, payload)
+				if err != nil {
+					gadgetCtx.Logger().Warnf("failed to write packet: %v", err)
+					return nil
+				}
+
+				// need to make sure this gets written before returning buffers
+				wr.Flush()
+				return nil
+			}, Priority)
 		}
 
 	}
