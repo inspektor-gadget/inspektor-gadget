@@ -344,6 +344,29 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				defaultDataFn(ds, data, os.Stdout)
 				return nil
 			}, Priority)
+		case ModeRaw:
+			// get raw fields
+			rawFieldsCSV := strings.TrimSpace(ds.Annotations()["cli.raw.fields"])
+			if len(rawFieldsCSV) == 0 {
+				return fmt.Errorf("no raw fields provided for raw output mode")
+			}
+			ffs := make([]func(data datasource.Data), 0)
+			for _, rawField := range strings.Split(rawFieldsCSV, ",") {
+				rawField = strings.TrimSpace(rawField)
+				field := ds.GetField(rawField)
+				if field == nil {
+					return fmt.Errorf("raw field not found: %q", rawField)
+				}
+				ffs = append(ffs, func(data datasource.Data) {
+					os.Stdout.Write(field.Get(data))
+				})
+			}
+			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				for _, ff := range ffs {
+					ff(data)
+				}
+				return nil
+			}, Priority)
 		case ModeNone:
 			// Do nothing.
 		case ModeColumns:
