@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.18.0
+	github.com/ebitengine/purego v0.6.1
 	github.com/containerd/containerd v1.7.27
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
@@ -79,6 +80,12 @@ require (
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/security-profiles-operator v0.9.1
 	sigs.k8s.io/yaml v1.4.0
+)
+
+require (
+	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
+	golang.org/x/net v0.40.0
+	golang.org/x/tools v0.33.0
 )
 
 require (
@@ -199,10 +206,8 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.31.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
