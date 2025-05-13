@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,8 +35,10 @@ type Tracer struct {
 	mapName    string
 	structName string
 
-	ds       datasource.DataSource
-	accessor datasource.FieldAccessor
+	ds              datasource.DataSource
+	accessor        datasource.FieldAccessor
+	restAccessor    datasource.FieldAccessor
+	restLenAccessor datasource.FieldAccessor
 
 	mapType       ebpf.MapType
 	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array
@@ -156,7 +158,25 @@ func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) 
 			lastSlowLen = len(rec.RawSample)
 			sample = slowBuf
 		}
-		err = t.accessor.Set(pSingle, sample)
+		err = t.accessor.Set(pSingle, sample[:t.eventSize])
+		if t.restAccessor != nil && uint32(len(rec.RawSample)) > t.eventSize {
+			if t.restLenAccessor != nil {
+				// Read length
+				xlen, err := t.restLenAccessor.Uint32(pSingle)
+				if err == nil {
+					if xlen > uint32(len(rec.RawSample))-t.eventSize {
+						// fail
+						gadgetCtx.Logger().Debugf("NOPEY")
+					} else {
+						gadgetCtx.Logger().Debugf("Len is %d (%d)", xlen, t.eventSize)
+						t.restAccessor.Set(pSingle, rec.RawSample[t.eventSize:t.eventSize+xlen])
+					}
+				}
+			} else {
+				// Write full
+				t.restAccessor.Set(pSingle, rec.RawSample[t.eventSize:])
+			}
+		}
 		if err != nil {
 			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
 			t.ds.Release(pSingle)
