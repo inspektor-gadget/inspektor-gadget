@@ -77,6 +77,11 @@ require (
 )
 
 require (
+	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
+	github.com/packetcap/go-pcap v0.0.0-20250723190045-d00b185f30b7
+)
+
+require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
