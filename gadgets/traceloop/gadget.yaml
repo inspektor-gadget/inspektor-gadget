@@ -35,3 +35,10 @@ datasources:
           description: Syscall's return value
           columns.width: 10
           columns.alignment: right
+params:
+  wasm:
+    syscall-filters:
+      key: syscall-filters
+      defaultValue: ""
+      description: "Filter out by syscall names. Join multiple names with ','"
+      title: Syscallfilters
