@@ -18,8 +18,6 @@ data:
       docker-socketpath: {{ .Values.config.dockerSocketPath }}
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       operator:
-        ebpf:
-          enable-bpfstats: {{ .Values.config.enableBpfStats }}
         oci:
           verify-image: {{ .Values.config.verifyGadgets }}
           public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}

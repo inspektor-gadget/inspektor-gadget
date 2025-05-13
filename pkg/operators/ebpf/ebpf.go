@@ -67,7 +67,7 @@ const (
 	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
 )
 
-type gadgetObjs struct {
+type gadgetObjects struct {
 	programIDs []ebpf.ProgramID
 	mapIDs     []ebpf.MapID
 }
@@ -75,7 +75,7 @@ type gadgetObjs struct {
 // ebpfOperator reads ebpf programs from OCI images and runs them
 type ebpfOperator struct {
 	mu         sync.Mutex
-	gadgetObjs map[operators.GadgetContext]gadgetObjs
+	gadgetObjs map[operators.GadgetContext]gadgetObjects
 }
 
 func (o *ebpfOperator) Name() string {
@@ -679,35 +679,36 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	i.collection = collection
 
-	if i.bpfOperator.gadgetObjs != nil {
-		// collect program IDs and map IDs for this gadget
-		gadgetObjs := gadgetObjs{}
+	// collect program IDs and map IDs for this gadget
+	gadgetObjs := gadgetObjects{}
 
-		for _, p := range i.collection.Programs {
-			info, err := p.Info()
-			if err != nil {
-				i.logger.Warnf("stats for this gadget won't be available: getting program info: %v", err)
-				continue
-			}
-
-			id, _ := info.ID()
-			gadgetObjs.programIDs = append(gadgetObjs.programIDs, id)
+	for _, p := range i.collection.Programs {
+		info, err := p.Info()
+		if err != nil {
+			i.logger.Warnf("stats for this gadget won't be available: getting program info: %v", err)
+			continue
 		}
 
-		for _, m := range i.collection.Maps {
-			info, err := m.Info()
-			if err != nil {
-				i.logger.Warnf("stats for this gadget won't be available: getting map info: %v", err)
-				continue
-			}
-
-			id, _ := info.ID()
-			gadgetObjs.mapIDs = append(gadgetObjs.mapIDs, id)
-		}
-		i.bpfOperator.mu.Lock()
-		i.bpfOperator.gadgetObjs[gadgetCtx] = gadgetObjs
-		i.bpfOperator.mu.Unlock()
+		id, _ := info.ID()
+		gadgetObjs.programIDs = append(gadgetObjs.programIDs, id)
 	}
+
+	for _, m := range i.collection.Maps {
+		info, err := m.Info()
+		if err != nil {
+			i.logger.Warnf("stats for this gadget won't be available: getting map info: %v", err)
+			continue
+		}
+
+		id, _ := info.ID()
+		gadgetObjs.mapIDs = append(gadgetObjs.mapIDs, id)
+	}
+	i.bpfOperator.mu.Lock()
+	if i.bpfOperator.gadgetObjs == nil {
+		i.bpfOperator.gadgetObjs = make(map[operators.GadgetContext]gadgetObjects)
+	}
+	i.bpfOperator.gadgetObjs[gadgetCtx] = gadgetObjs
+	i.bpfOperator.mu.Unlock()
 
 	for name, m := range i.collection.Maps {
 		gadgetCtx.SetVar(operators.MapPrefix+name, m)

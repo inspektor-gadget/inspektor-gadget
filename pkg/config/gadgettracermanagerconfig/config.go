@@ -34,6 +34,5 @@ const (
 	OtelMetrics              = "otel-metrics"
 	OtelMetricsListen        = "otel-metrics-listen"
 	OtelMetricsListenAddress = "otel-metrics-listen-address"
-	EnableBPFStats           = "enable-bpfstats"
 	EBPFOperator             = "ebpf"
 )
