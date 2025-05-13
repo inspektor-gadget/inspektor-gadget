@@ -39,7 +39,6 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 {
 	struct event *event;
 	u64 mntns_id;
-	u64 uid_gid = bpf_get_current_uid_gid();
 
 	mntns_id = (u64)BPF_CORE_READ(oc, chosen, nsproxy, mnt_ns, ns.inum);
 
