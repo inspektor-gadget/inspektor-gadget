@@ -145,7 +145,10 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 
 	struct pid *thread_pid = BPF_CORE_READ(task, thread_pid);
 	unsigned int level = BPF_CORE_READ(thread_pid, level);
-	struct upid *numbers = &thread_pid->numbers;
+	// Cast pointer to "struct upid *" to avoid compilation warning in a way
+	// that works both on Linux < v6.5 and >= v6.5. See:
+	// https://github.com/torvalds/linux/commit/b69f0aeb068980af983d399deafc7477cec8bc04
+	struct upid *numbers = (struct upid *)&thread_pid->numbers;
 
 	ustack->pid_level0 = BPF_CORE_READ(numbers, nr);
 	ustack->pidns_level0 = BPF_CORE_READ(numbers, ns, ns.inum);
