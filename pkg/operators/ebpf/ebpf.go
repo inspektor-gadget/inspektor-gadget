@@ -548,7 +548,7 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 		defer tracePipe.Close()
 		scanner := bufio.NewScanner(tracePipe)
 		for scanner.Scan() {
-			log.Debug(scanner.Text())
+			log.Info(scanner.Text())
 		}
 	}()
 	return nil
