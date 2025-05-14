@@ -548,6 +548,11 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 						return false
 					}
 				}
+				srcs, err := ociConfigGetSourceMounts(container.OciConfig)
+				if err != nil {
+					log.Warnf("kubernetes enricher: failed to get source mounts for container %s: %s", container.Runtime.ContainerID, err)
+					// We won't get ContainerName but keep going
+				}
 
 				if container.K8s.ContainerName == "" {
 					var containerName string
@@ -564,9 +569,9 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 					}
 				outerLoop:
 					for _, name := range containerNames {
-						for _, m := range container.OciConfig.Mounts {
+						for _, src := range srcs {
 							pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, name)
-							if strings.Contains(m.Source, pattern) {
+							if strings.Contains(src, pattern) {
 								containerName = name
 								break outerLoop
 							}
@@ -715,7 +720,7 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 // metadata from OCI config that WithOCIConfigEnrichment is able to provide.
 // Keep in sync with what WithOCIConfigEnrichment does.
 func isEnrichedWithOCIConfigInfo(container *Container) bool {
-	return container.OciConfig != nil &&
+	return container.OciConfig != "" &&
 		container.Runtime.RuntimeName != "" &&
 		container.Runtime.ContainerImageName != "" &&
 		container.K8s.ContainerName != "" &&
@@ -729,15 +734,21 @@ func isEnrichedWithOCIConfigInfo(container *Container) bool {
 func WithOCIConfigEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.OciConfig == nil || isEnrichedWithOCIConfigInfo(container) {
+			if container.OciConfig == "" || isEnrichedWithOCIConfigInfo(container) {
 				return true
 			}
 
-			if cm, ok := container.OciConfig.Annotations["io.container.manager"]; ok && cm == "libpod" {
+			annotations, err := ociConfigGetAnnotations(container.OciConfig)
+			if err != nil {
+				log.Errorf("OCIConfig enricher: failed to get annotations from OCI config (len=%d): %s", len(container.OciConfig), err)
+				return true
+			}
+
+			if cm, ok := annotations["io.container.manager"]; ok && cm == "libpod" {
 				container.Runtime.RuntimeName = types.RuntimeNamePodman
 			}
 
-			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)
+			resolver, err := ociannotations.NewResolverFromAnnotations(annotations)
 			// ignore if annotations aren't supported for runtime e.g docker
 			if err != nil {
 				log.Debugf("OCIConfig enricher: failed to initialize annotation resolver: %s", err)
@@ -746,28 +757,28 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 
 			// TODO: handle this once we support pod sandboxes via WithContainerRuntimeEnrichment
 			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1095
-			if ct := resolver.ContainerType(container.OciConfig.Annotations); ct == "sandbox" {
+			if ct := resolver.ContainerType(annotations); ct == "sandbox" {
 				return false
 			}
 
 			// Enrich the container. Keep in sync with isEnrichedWithOCIConfigInfo.
 			container.Runtime.RuntimeName = resolver.Runtime()
-			if name := resolver.ContainerName(container.OciConfig.Annotations); name != "" {
+			if name := resolver.ContainerName(annotations); name != "" {
 				container.K8s.ContainerName = name
 			}
-			if podName := resolver.PodName(container.OciConfig.Annotations); podName != "" {
+			if podName := resolver.PodName(annotations); podName != "" {
 				container.K8s.PodName = podName
 			}
-			if podNamespace := resolver.PodNamespace(container.OciConfig.Annotations); podNamespace != "" {
+			if podNamespace := resolver.PodNamespace(annotations); podNamespace != "" {
 				container.K8s.Namespace = podNamespace
 			}
-			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
+			if podUID := resolver.PodUID(annotations); podUID != "" {
 				container.K8s.PodUID = podUID
 			}
-			if imageName := resolver.ContainerImageName(container.OciConfig.Annotations); imageName != "" {
+			if imageName := resolver.ContainerImageName(annotations); imageName != "" {
 				container.Runtime.ContainerImageName = imageName
 			}
-			if podSandboxId := resolver.PodSandboxId(container.OciConfig.Annotations); podSandboxId != "" {
+			if podSandboxId := resolver.PodSandboxId(annotations); podSandboxId != "" {
 				container.SandboxId = podSandboxId
 			}
 

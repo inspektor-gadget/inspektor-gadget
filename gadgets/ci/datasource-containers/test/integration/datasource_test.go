@@ -30,10 +30,12 @@ import (
 )
 
 type DatasourceContainersEvent struct {
-	CgroupID  uint64 `json:"cgroup_id"`
-	EventType string `json:"event_type"`
-	MntnsID   uint64 `json:"mntns_id"`
-	Name      string `json:"name"`
+	ContainerID     string `json:"container_id"`
+	ContainerConfig string `json:"container_config"`
+	CgroupID        uint64 `json:"cgroup_id"`
+	EventType       string `json:"event_type"`
+	MntnsID         uint64 `json:"mntns_id"`
+	Name            string `json:"name"`
 }
 
 func TestDatasourceContainers(t *testing.T) {
@@ -80,15 +82,21 @@ func TestDatasourceContainers(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &DatasourceContainersEvent{
-				EventType: "CREATED",
-				Name:      containerName,
-				MntnsID:   utils.NormalizedInt,
-				CgroupID:  utils.NormalizedInt,
+				EventType:       "CREATED",
+				Name:            containerName,
+				MntnsID:         utils.NormalizedInt,
+				CgroupID:        utils.NormalizedInt,
+				ContainerID:     utils.NormalizedStr,
+				ContainerConfig: "", // See issue 3884
 			}
 
 			normalize := func(e *DatasourceContainersEvent) {
 				utils.NormalizeInt(&e.CgroupID)
 				utils.NormalizeInt(&e.MntnsID)
+				utils.NormalizeString(&e.ContainerID)
+				// ContainerConfig is sometimes empty:
+				// https://github.com/inspektor-gadget/inspektor-gadget/issues/3884
+				e.ContainerConfig = ""
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

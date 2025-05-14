@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/moby/moby/pkg/stringid"
-	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
@@ -41,7 +40,7 @@ type Container struct {
 
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
-	OciConfig *ocispec.Spec `json:"ociConfig,omitempty"`
+	OciConfig string `json:"ociConfig,omitempty"`
 
 	// Bundle is the directory containing the config.json from the OCI
 	// runtime spec

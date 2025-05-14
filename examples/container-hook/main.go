@@ -32,7 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
+	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -123,43 +123,37 @@ func callback(notif containerhook.ContainerEvent) {
 	// command in the same way that OCI hooks would do. For this we need to
 	// synthesise the OCI State.
 	ociState := &ocispec.State{
-		Version: ocispec.Version,
-		ID:      notif.ContainerID,
-		Pid:     int(notif.ContainerPID),
-		Bundle:  notif.Bundle,
+		Version:     ocispec.Version,
+		ID:          notif.ContainerID,
+		Pid:         int(notif.ContainerPID),
+		Bundle:      notif.Bundle,
+		Annotations: make(map[string]string),
 	}
-	if notif.ContainerConfig != nil && notif.ContainerConfig.Annotations != nil {
-		ociState.Annotations = notif.ContainerConfig.Annotations
-	} else {
-		ociState.Annotations = make(map[string]string)
+	if notif.ContainerConfig != "" {
+		ociSpec := &ocispec.Spec{}
+		_ = json.Unmarshal([]byte(notif.ContainerConfig), ociSpec)
+		if ociSpec.Annotations != nil {
+			ociState.Annotations = ociSpec.Annotations
+		}
 	}
 
 	var cmd string
 	switch notif.Type {
 	case containerhook.EventTypeAddContainer:
 		ociState.Status = ocispec.StateCreated
-		var config string
-		if notif.ContainerConfig != nil {
-			b, err := json.Marshal(notif.ContainerConfig)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to marshal ContainerConfig: %s\n", err)
-			} else {
-				config = string(b)
-			}
-		}
 		if outputAdd {
 			fmt.Printf("Container added: %v pid %d\n", notif.ContainerID, notif.ContainerPID)
 		}
 		if outputConfig {
-			if config != "" {
-				fmt.Printf("%s\n", config)
+			if notif.ContainerConfig != "" {
+				fmt.Printf("%s\n", notif.ContainerConfig)
 			} else {
 				fmt.Fprintf(os.Stderr, "Error: container config not found for container %s\n", notif.ContainerID)
 			}
 		}
 		if *publishKubernetesEvent {
-			if config != "" {
-				publishEvent("NewContainerConfig", config)
+			if notif.ContainerConfig != "" {
+				publishEvent("NewContainerConfig", notif.ContainerConfig)
 			} else {
 				publishEvent("ContainerConfigNotFound", "")
 			}
