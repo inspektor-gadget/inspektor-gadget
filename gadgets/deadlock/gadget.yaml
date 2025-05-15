@@ -1,4 +1,5 @@
 name: deadlock
+category: observer
 description: use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so
   and detect potential deadlocks
 homepageURL: https://inspektor-gadget.io/

@@ -32,10 +32,15 @@ func TestValidate(t *testing.T) {
 	}
 
 	tests := map[string]testCase{
+		"valid_metadata": {
+			objectPath:        "../../../../testdata/validate_metadata1.o",
+			metadata:          &metadatav1.GadgetMetadata{},
+			expectedErrString: "gadget category \"\" is not valid",
+		},
 		"param_nonexistent": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
+				Category: metadatav1.CategoryObserver,
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
 						"bar": {},
@@ -47,7 +52,7 @@ func TestValidate(t *testing.T) {
 		"param_nokey": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
+				Category: metadatav1.CategoryObserver,
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
 						"bar": {},
@@ -59,7 +64,7 @@ func TestValidate(t *testing.T) {
 		"param_good": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
+				Category: metadatav1.CategoryObserver,
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
 						"param": {
@@ -72,7 +77,7 @@ func TestValidate(t *testing.T) {
 		"param2_not_volatile": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
+				Category: metadatav1.CategoryObserver,
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
 						"param2": {},
@@ -84,7 +89,7 @@ func TestValidate(t *testing.T) {
 		"param3_not_const": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{
-				Name: "foo",
+				Category: metadatav1.CategoryObserver,
 				Params: map[string]map[string]params.ParamDesc{
 					"ebpf": {
 						"param3": {},
@@ -126,6 +131,7 @@ func TestPopulate(t *testing.T) {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
 			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "TODO: Fill the gadget name",
+				Category:         metadatav1.CategoryObserver,
 				Description:      "TODO: Fill the gadget description",
 				HomepageURL:      "TODO: Fill the gadget homepage URL",
 				DocumentationURL: "TODO: Fill the gadget documentation URL",
@@ -168,6 +174,7 @@ func TestPopulate(t *testing.T) {
 			},
 			expectedMetadata: &metadatav1.GadgetMetadata{
 				Name:             "foo",
+				Category:         metadatav1.CategoryObserver,
 				Description:      "bar",
 				HomepageURL:      "url1",
 				DocumentationURL: "url2",

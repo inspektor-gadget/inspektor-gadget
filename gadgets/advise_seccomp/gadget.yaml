@@ -1,4 +1,5 @@
 name: advise seccomp
+category: observer
 description: Suggest a seccomp profile
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/advise_seccomp
