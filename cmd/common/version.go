@@ -17,6 +17,7 @@ package common
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
@@ -28,6 +29,7 @@ func NewVersionCmd() *cobra.Command {
 		Short: "Show version",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("v%s\n", version.Version().String())
+			log.Debugf("Inspektor Gadget User Agent: %s\n", version.UserAgent())
 		},
 	}
 }
