@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -129,7 +130,7 @@ func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting Kubernetes config: %w", err)
 	}
-
+	kubeconfig.UserAgent = version.UserAgent() + " (container-collection/GetOwnerReference)"
 	dynamicClient, err := dynamic.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("getting get dynamic Kubernetes client: %w", err)

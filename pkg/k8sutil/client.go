@@ -24,6 +24,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
 func NewKubeConfig(kubeconfigPath string) (*rest.Config, error) {
@@ -42,6 +44,7 @@ func NewKubeConfig(kubeconfigPath string) (*rest.Config, error) {
 			}
 		}
 	}
+	config.UserAgent = version.UserAgent() + " (k8sutil/NewKubeConfig)"
 	return config, err
 }
 
