@@ -375,6 +375,11 @@ func isImageLocallyAvailable(ctx context.Context, cli *client.Client, imageRefer
 				return true, nil
 			}
 		}
+		for _, digest := range img.RepoDigests {
+			if digest == imageReference {
+				return true, nil
+			}
+		}
 	}
 	return false, nil
 }
