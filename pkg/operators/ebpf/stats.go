@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -29,6 +30,8 @@ import (
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/processmap"
+	processmaptypes "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/processmap/types"
 )
 
 const (
@@ -63,12 +66,16 @@ func (o *ebpfOperator) InstantiateDataOperator(
 		return nil, nil
 	}
 
-	var err error
+	processMap, err := processmap.NewProcessMap()
+	if err != nil {
+		return nil, fmt.Errorf("creating processMap: %w", err)
+	}
 
 	instance := &ebpfOperatorDataInstance{
 		bpfOperator:      o,
 		done:             make(chan struct{}),
 		allProgramsStats: paramValues[ParamAllProgramsStats] == "true",
+		processMap:       processMap,
 	}
 
 	instance.ds, err = gadgetCtx.RegisterDataSource(datasource.TypeArray, StatsDSName)
@@ -152,6 +159,15 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	if err != nil {
 		return nil, err
 	}
+	instance.progTypeField, err = instance.ds.AddField("progType", api.Kind_String,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsWidthAnnotation: "16",
+			metadatav1.DescriptionAnnotation:  "Type of the eBPF program",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	// stats fields
 	instance.runtimeField, err = instance.ds.AddField("runtime", api.Kind_Uint64,
@@ -201,6 +217,29 @@ func (o *ebpfOperator) InstantiateDataOperator(
 		return nil, err
 	}
 
+	// process fields
+	// TODO: Ideally these should be arrays, but it's not supported yet by
+	// Inspektor Gadget, see
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/3032
+	instance.commsField, err = instance.ds.AddField("comms", api.Kind_String,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsWidthAnnotation: "16",
+			metadatav1.DescriptionAnnotation:  "List of processes using the eBPF program",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	instance.pidsField, err = instance.ds.AddField("pids", api.Kind_String,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsWidthAnnotation: "16",
+			metadatav1.DescriptionAnnotation:  "List of PIDs using the eBPF program",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return instance, nil
 }
 
@@ -232,6 +271,7 @@ type ebpfOperatorDataInstance struct {
 	ds          datasource.DataSource
 	interval    time.Duration
 	done        chan struct{}
+	processMap  *processmap.ProcessMap
 
 	// used to emit incremental values
 	oldProgStats map[ebpf.ProgramID]progStat
@@ -250,12 +290,17 @@ type ebpfOperatorDataInstance struct {
 	// low-level fields
 	progIDField   datasource.FieldAccessor
 	progNameField datasource.FieldAccessor
+	progTypeField datasource.FieldAccessor
 
 	// stats fields
 	runtimeField   datasource.FieldAccessor
 	runcountField  datasource.FieldAccessor
 	mapMemoryField datasource.FieldAccessor
 	mapCountField  datasource.FieldAccessor
+
+	// process fields
+	commsField datasource.FieldAccessor
+	pidsField  datasource.FieldAccessor
 }
 
 func (i *ebpfOperatorDataInstance) Name() string {
@@ -269,11 +314,15 @@ type stat struct {
 
 	programID   uint32
 	programName string
+	programType string
 
 	runtime   uint64
 	runcount  uint64
 	mapMemory uint64
 	mapCount  uint64
+
+	comms string
+	pids  string
 }
 
 type progStat struct {
@@ -299,11 +348,14 @@ func (i *ebpfOperatorDataInstance) sendStats(stats []stat) error {
 		if i.allProgramsStats {
 			i.progIDField.PutUint32(d, stat.programID)
 			i.progNameField.PutString(d, stat.programName)
+			i.progTypeField.PutString(d, stat.programType)
 		}
 		i.runtimeField.PutUint64(d, stat.runtime)
 		i.runcountField.PutUint64(d, stat.runcount)
 		i.mapMemoryField.PutUint64(d, stat.mapMemory)
 		i.mapCountField.PutUint64(d, stat.mapCount)
+		i.commsField.PutString(d, stat.comms)
+		i.pidsField.PutString(d, stat.pids)
 
 		arr.Append(d)
 	}
@@ -339,12 +391,34 @@ func getProgramStats(cache map[ebpf.ProgramID]progStat, id ebpf.ProgramID) (prog
 	return stat, nil
 }
 
+func enrichStat(stat *stat, processMap map[uint32][]processmaptypes.Process) {
+	procs, ok := processMap[stat.programID]
+	if !ok {
+		return
+	}
+
+	comms := make([]string, 0, len(procs))
+	pids := make([]string, 0, len(procs))
+	for _, proc := range procs {
+		comms = append(comms, proc.Comm)
+		pids = append(pids, fmt.Sprintf("%d", proc.Pid))
+	}
+	stat.comms = strings.Join(comms, ",")
+	stat.pids = strings.Join(pids, ",")
+}
+
 func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 	stats := make([]stat, 0)
 
 	mapSizes, err := bpfstats.GetMapsMemUsage()
 	if err != nil {
 		return nil, fmt.Errorf("getting map memory usage: %w", err)
+	}
+
+	// get process information to enrich ebpf programs
+	processMap, err := i.processMap.Fetch()
+	if err != nil {
+		return nil, fmt.Errorf("getting processMap: %w", err)
 	}
 
 	i.bpfOperator.mu.Lock()
@@ -381,6 +455,8 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 				stat.mapMemory += mapSizes[mapID]
 				stat.mapCount += 1
 			}
+
+			enrichStat(&stat, processMap)
 
 			stats = append(stats, stat)
 		}
@@ -425,6 +501,7 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 		id, _ := pi.ID()
 		stat.programID = uint32(id)
 		stat.programName = pi.Name
+		stat.programType = pi.Type.String()
 		runtime, _ := pi.Runtime()
 		stat.runtime = uint64(runtime)
 		stat.runcount, _ = pi.RunCount()
@@ -450,6 +527,8 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 			stat.gadgetName = ctx.Name()
 			stat.gadgetImage = ctx.ImageName()
 		}
+
+		enrichStat(&stat, processMap)
 
 		stats = append(stats, stat)
 

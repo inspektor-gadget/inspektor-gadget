@@ -17,15 +17,10 @@
 package tracer
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -35,9 +30,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/processmap"
 )
 
 type Config struct {
@@ -58,8 +52,7 @@ type Tracer struct {
 	eventCallback func(*top.Event[types.Stats])
 	done          chan bool
 
-	iter                *piditer.PidIter
-	useFallbackIterator bool
+	processMap *processmap.ProcessMap
 
 	startStats map[string]programStats
 	prevStats  map[string]programStats
@@ -101,16 +94,9 @@ func (t *Tracer) install() error {
 		return err
 	}
 
-	t.useFallbackIterator = false
-
-	// To resolve pids, we will first try to iterate using a bpf
-	// program. If that doesn't work, we will fall back to scanning
-	// all used fds in all processes /proc/$pid/fdinfo/$fd.
-	iter, err := piditer.NewTracer()
+	t.processMap, err = processmap.NewProcessMap()
 	if err != nil {
-		t.useFallbackIterator = true
-	} else {
-		t.iter = iter
+		return fmt.Errorf("creating pidmap: %w", err)
 	}
 
 	return nil
@@ -125,83 +111,11 @@ func (t *Tracer) Stop() {
 func (t *Tracer) close() {
 	close(t.done)
 
-	if t.iter != nil {
-		t.iter.Close()
+	if t.processMap != nil {
+		t.processMap.Close()
 	}
 
 	bpfstats.DisableBPFStats()
-}
-
-func getPidMapFromPids(pids []*piditer.PidIterEntry) map[uint32][]*types.Process {
-	pidmap := make(map[uint32][]*types.Process)
-	for _, e := range pids {
-		if _, ok := pidmap[e.ProgID]; !ok {
-			pidmap[e.ProgID] = make([]*types.Process, 0, 1)
-		}
-		pidmap[e.ProgID] = append(pidmap[e.ProgID], &types.Process{
-			Pid:  e.Pid,
-			Comm: e.Comm,
-		})
-	}
-	return pidmap
-}
-
-func getProgIDFromFile(fn string) (uint32, error) {
-	f, err := os.Open(fn)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if strings.HasPrefix(sc.Text(), "prog_id:") {
-			progID, _ := strconv.ParseUint(strings.TrimSpace(strings.Split(sc.Text(), ":")[1]), 10, 32)
-			return uint32(progID), nil
-		}
-	}
-	return 0, os.ErrNotExist
-}
-
-func getPidMapFromProcFs() (map[uint32][]*types.Process, error) {
-	processes, err := os.ReadDir(host.HostProcFs)
-	if err != nil {
-		return nil, err
-	}
-	pidmap := make(map[uint32][]*types.Process)
-	for _, p := range processes {
-		if !p.IsDir() {
-			continue
-		}
-		_, err := strconv.Atoi(p.Name())
-		if err != nil {
-			continue
-		}
-		fdescs, err := os.ReadDir(filepath.Join(host.HostProcFs, p.Name(), "fdinfo"))
-		if err != nil {
-			continue
-		}
-		for _, fd := range fdescs {
-			if progID, err := getProgIDFromFile(filepath.Join(host.HostProcFs, p.Name(), "fdinfo", fd.Name())); err == nil {
-				pid, err := strconv.ParseUint(p.Name(), 10, 32)
-				if err != nil {
-					return nil, err
-				}
-				if pid > math.MaxInt32 {
-					return nil, fmt.Errorf("PID (%d) exceeds math.MaxInt32 (%d)", pid, math.MaxInt32)
-				}
-				if _, ok := pidmap[progID]; !ok {
-					pidmap[progID] = make([]*types.Process, 0, 1)
-				}
-				comm := host.GetProcComm(int(pid))
-				pidmap[progID] = append(pidmap[progID], &types.Process{
-					Pid:  uint32(pid),
-					Comm: strings.TrimSpace(string(comm)),
-				})
-			}
-		}
-	}
-	return pidmap, nil
 }
 
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
@@ -209,7 +123,6 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 
 	var err error
 	var prog *ebpf.Program
-	var pids []*piditer.PidIterEntry
 	curID := ebpf.ProgramID(0)
 	nextID := ebpf.ProgramID(0)
 
@@ -318,20 +231,9 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 
 	t.prevStats = curStats
 
-	var processMap map[uint32][]*types.Process
-
-	if !t.useFallbackIterator {
-		pids, err = t.iter.DumpPids()
-		if err != nil {
-			return nil, fmt.Errorf("getting pids for programs using iterator: %w", err)
-		}
-		processMap = getPidMapFromPids(pids)
-	} else {
-		// Fallback...
-		processMap, err = getPidMapFromProcFs()
-		if err != nil {
-			return nil, fmt.Errorf("getting pids for programs using fallback method: %w", err)
-		}
+	processMap, err := t.processMap.Fetch()
+	if err != nil {
+		return nil, fmt.Errorf("getting pidmap: %w", err)
 	}
 
 	for i := range stats {
