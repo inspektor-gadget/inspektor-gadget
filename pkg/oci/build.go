@@ -160,7 +160,7 @@ func pushDescriptorIfNotExists(ctx context.Context, target oras.Target, desc oci
 func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, mediaType string) (ocispec.Descriptor, error) {
 	progBytes, err := os.ReadFile(progFilePath)
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("reading eBPF program file: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("reading file: %w", err)
 	}
 	progDesc := content.NewDescriptorFromBytes(mediaType, progBytes)
 
