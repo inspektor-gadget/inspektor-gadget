@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 )
@@ -78,6 +79,7 @@ func (s *Store) init() error {
 	if err != nil {
 		return err
 	}
+	config.UserAgent = version.UserAgent() + " (k8s-configmap-store/init)"
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err

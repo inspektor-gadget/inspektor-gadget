@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
@@ -520,6 +521,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			if err != nil {
 				return fmt.Errorf("getting Kubernetes config: %w", err)
 			}
+			kubeconfig.UserAgent = version.UserAgent() + " (container-collection/WithKubernetesEnrichment)"
 		}
 		clientset, err := kubernetes.NewForConfig(kubeconfig)
 		if err != nil {

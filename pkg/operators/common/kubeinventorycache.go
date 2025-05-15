@@ -199,7 +199,7 @@ func transformObject(obj any) (any, error) {
 }
 
 func newCache() (*inventoryCache, error) {
-	clientset, err := k8sutil.NewClientsetWithProtobuf("")
+	clientset, err := k8sutil.NewClientsetWithProtobuf("", "kube-inventory-cache")
 	if err != nil {
 		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
 	}
