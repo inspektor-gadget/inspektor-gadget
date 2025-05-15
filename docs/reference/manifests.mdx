@@ -83,6 +83,7 @@ image: trace_exec
 name: my-gadget-1
 paramValues:
   operator.LocalManager.host: true
+  operator.filter.filter: 'proc.comm~^ba.*$'
 tags:
   - mytag1
   - mytag2
