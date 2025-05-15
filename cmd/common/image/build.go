@@ -16,9 +16,13 @@ package image
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
 	"errors"
 	"fmt"
+	"hash"
+	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +45,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/diskcache"
 )
 
 //go:embed helpers
@@ -53,6 +58,12 @@ const (
 	DEFAULT_EBPF_SOURCE = "program.bpf.c"
 	DEFAULT_WASM        = "" // Wasm is optional; unset by default
 	DEFAULT_METADATA    = "gadget.yaml"
+)
+
+const (
+	BUILD_CACHE_PATH             = "/var/lib/ig/build-cache"
+	BUILD_CACHE_CLEANUP_INTERVAL = 24 * time.Hour     // How often to clean up the cache
+	BUILD_CACHE_ENTRY_TTL        = 7 * 24 * time.Hour // How long to keep files before deleting them
 )
 
 type buildFile struct {
@@ -75,6 +86,7 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	noCache          bool
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -113,9 +125,9 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.builderImagePull, "builder-image-pull", "always", "Specify when the builder image should be pulled [always, missing, never]")
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
 	cmd.Flags().BoolVar(&opts.validateMetadata, "validate-metadata", true, "Validate the metadata file before building the gadget image")
-
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+	cmd.Flags().BoolVar(&opts.noCache, "no-cache", false, "Disable the use of cache")
 
 	return cmd
 }
@@ -139,6 +151,33 @@ func buildCmd(outputDir, ebpf, wasm, cflags, btfhubarchive string, btfgen bool) 
 	}
 
 	return cmd
+}
+
+func calculateFolderDigest(folderPath string, hasher hash.Hash, skipFile func(path string) bool) error {
+	err := filepath.WalkDir(folderPath, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if skipFile != nil && skipFile(path) {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		if _, err := io.Copy(hasher, file); err != nil {
+			return fmt.Errorf("copying file %s: %w", path, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walking folder: %w", err)
+	}
+	return nil
 }
 
 func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
@@ -243,7 +282,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	if !hasEBPFSource && !hasMetadata && !hasWasm && !hasGo {
-		return fmt.Errorf("ateast one of ebpf source (program.bpf.c), metadata (gadget.yaml), .go files (present in go folder) or wasm module is required")
+		return fmt.Errorf("at least one of ebpf source (program.bpf.c), metadata (gadget.yaml), .go files (present in go folder) or wasm module is required")
 	}
 
 	// copy helper files
@@ -267,9 +306,163 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		}
 	}
 
-	if conf.EBPFSource != "" || conf.Wasm != "" {
+	// TODO: make this configurable?
+	archs := []string{oci.ArchAmd64, oci.ArchArm64}
+	objectsPaths := map[string]*oci.ObjectPath{
+		oci.ArchAmd64: {},
+		oci.ArchArm64: {},
+	}
+
+	var builderDigest string
+
+	if !opts.local {
+		ctx := context.TODO()
+		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			return fmt.Errorf("creating docker client: %w", err)
+		}
+		defer cli.Close()
+
+		if builderDigest, err = ensureBuilderImage(ctx, cli, opts.builderImage, opts.builderImagePull); err != nil {
+			return err
+		}
+	}
+
+	caches := struct {
+		ebpf   map[string]*diskcache.CacheEntry
+		wasm   map[string]*diskcache.CacheEntry
+		btfgen map[string]*diskcache.CacheEntry
+	}{
+		ebpf:   make(map[string]*diskcache.CacheEntry),
+		wasm:   make(map[string]*diskcache.CacheEntry),
+		btfgen: make(map[string]*diskcache.CacheEntry),
+	}
+
+	if !opts.noCache {
+		cache, err := diskcache.NewCache(diskcache.CacheOpts{
+			BasePath:        BUILD_CACHE_PATH,
+			CleanUpInterval: BUILD_CACHE_CLEANUP_INTERVAL,
+			CacheEntryTTL:   BUILD_CACHE_ENTRY_TTL,
+		})
+		if err != nil {
+			return fmt.Errorf("creating cache: %w", err)
+		}
+		defer cache.Close()
+
+		// Use a seed for the hash in order to invalidate the cache if any build
+		// dependency changes
+		hashSeed := sha256.New()
+
+		// 1. The builder image as it ships the C api
+		hashSeed.Write([]byte(builderDigest))
+
+		// 2. The build.yaml file as it defines the build configuration
+		hashSeed.Write(buildContent)
+
+		// 3. Local files if it's an in-tree build
+		inspektorGadetSrcPath := os.Getenv("IG_SOURCE_PATH")
+		if inspektorGadetSrcPath != "" {
+			// both, the ebpf build and btfgen depend on the headers files
+			if conf.EBPFSource != "" || opts.btfgen {
+				includePath := filepath.Join(inspektorGadetSrcPath, "include")
+				if err := calculateFolderDigest(includePath, hashSeed, nil); err != nil {
+					return err
+				}
+			}
+			if conf.Wasm != "" {
+				wasmAPiPath := filepath.Join(inspektorGadetSrcPath, "wasmapi")
+				if err := calculateFolderDigest(wasmAPiPath, hashSeed, nil); err != nil {
+					return err
+				}
+			}
+		}
+
+		// consider all compiled objects for caching
+		for _, arch := range archs {
+			// 4. The archicture as some binaries have different architecture representations
+			hasher := sha256.New()
+			hasher.Write(hashSeed.Sum(nil))
+			hasher.Write([]byte(arch))
+
+			if conf.EBPFSource != "" {
+				caches.ebpf[arch], err = cache.NewEntry(conf.EBPFSource, hasher)
+				if err != nil {
+					return fmt.Errorf("creating cache entry: %w", err)
+				}
+			}
+			if conf.Wasm != "" {
+				caches.wasm[arch], err = cache.NewEntry(conf.Wasm, hasher)
+				if err != nil {
+					return fmt.Errorf("creating cache entry: %w", err)
+				}
+			}
+			if opts.btfgen {
+				archClean := arch
+				if arch == oci.ArchAmd64 {
+					archClean = "x86_64"
+				}
+				skipPath := func(path string) bool {
+					return !strings.HasSuffix(path, ".btf.tar.xz") || !strings.Contains(path, archClean)
+				}
+				if err := calculateFolderDigest(opts.btfhubarchive, hashSeed, skipPath); err != nil {
+					return err
+				}
+				// btfgen files are affected by the ebpf source code
+				caches.btfgen[arch], err = cache.NewEntry(conf.EBPFSource, hasher)
+				if err != nil {
+					return fmt.Errorf("creating cache entry: %w", err)
+				}
+			}
+		}
+	}
+
+	ebpfSource := conf.EBPFSource
+	wasmSource := conf.Wasm
+	runBtfgen := opts.btfgen
+
+	needsToBuild := opts.noCache
+
+	// we don't support caching with --local as there are many things to
+	// consider, like the version of the local C headers changing and so on
+	if opts.local {
+		opts.noCache = true
+		needsToBuild = true
+	}
+
+	if !opts.noCache {
+		// check if we have a cached available for the objects
+		for arch, obj := range objectsPaths {
+			if conf.EBPFSource != "" {
+				if ok, path := caches.ebpf[arch].Get(); ok {
+					obj.EBPF = path
+					ebpfSource = ""
+				} else {
+					needsToBuild = true
+				}
+			}
+			if conf.Wasm != "" {
+				if ok, path := caches.wasm[arch].Get(); ok {
+					obj.Wasm = path
+					wasmSource = ""
+				} else {
+					needsToBuild = true
+				}
+			}
+			if opts.btfgen {
+				if ok, path := caches.btfgen[arch].Get(); ok {
+					obj.Btfgen = path
+					runBtfgen = false
+				} else {
+					needsToBuild = true
+				}
+			}
+		}
+	}
+
+	// build the objects
+	if needsToBuild {
 		if opts.local {
-			cmd := buildCmd(opts.outputDir, conf.EBPFSource, conf.Wasm, conf.CFlags, opts.btfhubarchive, opts.btfgen)
+			cmd := buildCmd(opts.outputDir, ebpfSource, wasmSource, conf.CFlags, opts.btfhubarchive, runBtfgen)
 			command := exec.Command(cmd[0], cmd[1:]...)
 			out, err := command.CombinedOutput()
 			if err != nil {
@@ -285,14 +478,27 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		}
 	}
 
-	// TODO: make this configurable?
-	archs := []string{oci.ArchAmd64, oci.ArchArm64}
-	objectsPaths := map[string]*oci.ObjectPath{}
+	// update cache, Set() does nothing if the cache was a hit
+	if !opts.noCache {
+		for _, arch := range archs {
+			if conf.EBPFSource != "" {
+				caches.ebpf[arch].Put(filepath.Join(opts.outputDir, arch+".bpf.o"))
+			}
+			if conf.Wasm != "" {
+				caches.wasm[arch].Put(filepath.Join(opts.outputDir, "program.wasm"))
+			}
+			if opts.btfgen {
+				archClean := arch
+				if arch == oci.ArchAmd64 {
+					archClean = "x86_64"
+				}
+				caches.btfgen[arch].Put(filepath.Join(opts.outputDir, fmt.Sprintf("btfs-%s.tar.gz", archClean)))
+			}
+		}
+	}
 
-	for _, arch := range archs {
-		obj := &oci.ObjectPath{}
-
-		if conf.EBPFSource != "" {
+	for arch, obj := range objectsPaths {
+		if conf.EBPFSource != "" && obj.EBPF == "" {
 			obj.EBPF = filepath.Join(opts.outputDir, arch+".bpf.o")
 		}
 
@@ -301,12 +507,12 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		if strings.HasSuffix(conf.Wasm, ".wasm") {
 			// User provided an already-built wasm file
 			obj.Wasm = conf.Wasm
-		} else if conf.Wasm != "" {
+		} else if conf.Wasm != "" && obj.Wasm == "" {
 			// User provided a source file to build wasm from
 			obj.Wasm = filepath.Join(opts.outputDir, "program.wasm")
 		}
 
-		if opts.btfgen {
+		if opts.btfgen && obj.Btfgen == "" {
 			archClean := arch
 			if arch == oci.ArchAmd64 {
 				archClean = "x86_64"
@@ -314,8 +520,6 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 			obj.Btfgen = filepath.Join(opts.outputDir, fmt.Sprintf("btfs-%s.tar.gz", archClean))
 		}
-
-		objectsPaths[arch] = obj
 	}
 
 	buildOpts := &oci.BuildGadgetImageOpts{
@@ -379,47 +583,47 @@ func isImageLocallyAvailable(ctx context.Context, cli *client.Client, imageRefer
 	return false, nil
 }
 
-func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage string, builderImagePull string) error {
+func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage string, builderImagePull string) (string, error) {
 	switch builderImagePull {
 	case "always":
-		return pullImage(ctx, cli, builderImage)
+		if err := pullImage(ctx, cli, builderImage); err != nil {
+			return "", err
+		}
 	case "missing":
 		localAvailable, err := isImageLocallyAvailable(ctx, cli, builderImage)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if !localAvailable {
-			return pullImage(ctx, cli, builderImage)
+			if err := pullImage(ctx, cli, builderImage); err != nil {
+				return "", err
+			}
 		}
 	case "never":
 		localAvailable, err := isImageLocallyAvailable(ctx, cli, builderImage)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if !localAvailable {
-			return fmt.Errorf("image %s is not available locally and pull is disabled", builderImage)
+			return "", fmt.Errorf("image %s is not available locally and pull is disabled", builderImage)
 		}
 	default:
-		return fmt.Errorf("invalid --builder-image-pull value: %s", builderImagePull)
+		return "", fmt.Errorf("invalid --builder-image-pull value: %s", builderImagePull)
 	}
-	return nil
+
+	// Retrieve the image digest
+	imageInspect, err := cli.ImageInspect(ctx, builderImage)
+	if err != nil {
+		return "", fmt.Errorf("inspecting image: %w", err)
+	}
+
+	return imageInspect.ID, nil
 }
 
 func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting current directory: %w", err)
-	}
-
-	ctx := context.TODO()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("creating docker client: %w", err)
-	}
-	defer cli.Close()
-
-	if err := ensureBuilderImage(ctx, cli, opts.builderImage, opts.builderImagePull); err != nil {
-		return err
 	}
 
 	// where the gadget source code is mounted in the container
@@ -472,6 +676,13 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 			Source: opts.btfhubarchive,
 		})
 	}
+
+	ctx := context.TODO()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("creating docker client: %w", err)
+	}
+	defer cli.Close()
 
 	resp, err := cli.ContainerCreate(
 		ctx,
