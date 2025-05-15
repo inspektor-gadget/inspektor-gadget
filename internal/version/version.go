@@ -17,7 +17,12 @@
 package version
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"github.com/blang/semver"
 )
@@ -28,15 +33,19 @@ import (
 var (
 	version       = "v0.0.0"
 	parsedVersion semver.Version
+
+	userAgent = ""
 )
 
 func init() {
+	thirdParty := false
 	if version == "v0.0.0" {
 		// If Inspektor Gadget is used as a library, its version will
 		// be in ReadBuildInfo
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, dep := range info.Deps {
 				if dep.Path == "github.com/inspektor-gadget/inspektor-gadget" {
+					thirdParty = true
 					if dep.Replace == nil {
 						version = dep.Version
 					} else {
@@ -49,6 +58,49 @@ func init() {
 	}
 
 	parsedVersion, _ = semver.ParseTolerant(version)
+
+	// UserAgent builds the user agent similarly to
+	// https://github.com/kubernetes/client-go/blob/v0.33.0/rest/config.go#L524
+	// but with correct IG versioning. User agent should be in the format:
+	// https://www.rfc-editor.org/rfc/rfc9110#name-user-agent
+	command := os.Args[0]
+	if command == "" {
+		command = "unknown"
+	}
+	command = filepath.Base(command)
+	kubernetesVersion := "unknown"
+	mainVersion := "unknown"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		mainVersion = info.Main.Version
+		for _, dep := range info.Deps {
+			if dep.Path == "k8s.io/client-go" {
+				if dep.Replace == nil {
+					kubernetesVersion = dep.Version
+				} else {
+					kubernetesVersion = dep.Replace.Version
+				}
+				break
+			}
+		}
+	}
+	// Avoid parenthesis such as "(devel)" when compiled without vcs info
+	mainVersion = strings.Trim(mainVersion, "()")
+
+	if thirdParty {
+		// Other software using IG Golang packages
+		userAgent = fmt.Sprintf("%s/%s (%s/%s) ig/%s kubernetes/%s",
+			command, mainVersion,
+			runtime.GOOS, runtime.GOARCH,
+			version,
+			kubernetesVersion)
+	} else {
+		// Executable from the main inspektor-gadget repository.
+		// No need to give version twice.
+		userAgent = fmt.Sprintf("%s/%s (%s/%s) kubernetes/%s",
+			command, version,
+			runtime.GOOS, runtime.GOARCH,
+			kubernetesVersion)
+	}
 }
 
 func Version() semver.Version {
@@ -57,4 +109,8 @@ func Version() semver.Version {
 
 func VersionString() string {
 	return version
+}
+
+func UserAgent() string {
+	return userAgent
 }
