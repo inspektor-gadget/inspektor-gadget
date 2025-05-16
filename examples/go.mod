@@ -6,9 +6,9 @@ require (
 	github.com/cilium/ebpf v0.18.0
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.1
-	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
-	k8s.io/client-go v0.33.0
+	k8s.io/api v0.33.1
+	k8s.io/apimachinery v0.33.1
+	k8s.io/client-go v0.33.1
 )
 
 require (
@@ -152,12 +152,12 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	k8s.io/cli-runtime v0.33.0 // indirect
-	k8s.io/component-base v0.33.0 // indirect
-	k8s.io/cri-api v0.33.0 // indirect
+	k8s.io/cli-runtime v0.33.1 // indirect
+	k8s.io/component-base v0.33.1 // indirect
+	k8s.io/cri-api v0.33.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
-	k8s.io/kubelet v0.33.0 // indirect
+	k8s.io/kubelet v0.33.1 // indirect
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e // indirect
 	oras.land/oras-go/v2 v2.5.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
