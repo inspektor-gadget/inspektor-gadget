@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/process"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"

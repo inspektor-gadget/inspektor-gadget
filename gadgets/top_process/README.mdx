@@ -1,0 +1,77 @@
+---
+title: top_process
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# top_process
+
+The top_process gadget periodically reports process statistics, including CPU usage, memory usage, and other process information.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG%
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG%
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+The top_process gadget provides detailed information about running processes, including:
+
+- Process ID (PID)
+- Parent Process ID (PPID)
+- Command name
+- CPU usage percentage
+- Memory usage (RSS and virtual)
+- Thread count
+- Process state
+- User ID
+- Process start time
+- Mount namespace ID
+
+It also adds environment enrichments (container/k8s information), if possible.
+
+You can sort the output by any field, for example by CPU usage:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_process:%IG_TAG% --sort -cpuUsage --max-entries 12
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   PID         PPID        COMM                    CPUUSAGE       MEMORYRSS   MEMORYVIRTUAL THREADCOUNT STATE           UID              STARTTIME STARTTIMESTR    MOUNTNSID
+        minikube            test-namespace      test-pod            test-container      71692       44166       openssl                   100.1         4886528         6651904           1 R               0                 28835603 2025-05-13T18:… 4026532271
+                                                                                        884         1           prltoolsd                   0.3         1388544       313229312           4 S               0                      923 2025-05-10T10:… 4026531841
+                                                                                        71770       71769       ig                          0.3       145944576      2057170944           9 S               0                 28836321 2025-05-13T18:… 4026531841
+                                                                                        99          2           md                          0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+                                                                                        98          2           ata_sff                     0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+                                                                                        97          2           tpm_dev_wq                  0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run top_process --sort -cpuUsage --max-entries 12
+        RUNTIME.CONTAINERNAME         PID         PPID        COMM                   CPUUSAGE       MEMORYRSS   MEMORYVIRTUAL THREADCOUNT STATE           UID              STARTTIME STARTTIMESTR    MOUNTNSID
+        test-trace-tcpretrans         71692       44166       openssl                   100.1         4886528         6651904           1 R               0                 28835603 2025-05-13T18:… 4026532271
+                                      884         1           prltoolsd                   0.3         1388544       313229312           4 S               0                      923 2025-05-10T10:… 4026531841
+                                      71770       71769       ig                          0.3       145944576      2057170944           9 S               0                 28836321 2025-05-13T18:… 4026531841
+                                      99          2           md                          0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+                                      98          2           ata_sff                     0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+                                      97          2           tpm_dev_wq                  0.0               0               0           1 I               0                        7 2025-05-10T10:… 4026531841
+        ...
+        ```
+    </TabItem>
+</Tabs>
