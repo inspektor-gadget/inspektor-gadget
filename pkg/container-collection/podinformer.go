@@ -36,6 +36,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
 type PodInformer struct {
@@ -54,6 +56,7 @@ func NewPodInformer(node string) (*PodInformer, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.UserAgent = version.UserAgent() + " (container-collection/NewPodInformer)"
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err

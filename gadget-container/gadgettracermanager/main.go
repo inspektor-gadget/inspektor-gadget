@@ -287,6 +287,7 @@ func main() {
 
 	if serve {
 		log.Infof("Inspektor Gadget version: %s", version.Version().String())
+		log.Infof("Inspektor Gadget User Agent: %s", version.UserAgent())
 
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
