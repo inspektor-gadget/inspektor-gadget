@@ -801,9 +801,9 @@ func gadgetStart() int32 {
 	}
 
 	ds.Subscribe(func(ds api.DataSource, data api.Data) {
-		// Event type is CREATED or DELETED, 7 is the length of longest string, i.e.
-		// DELETED.
-		eventType, err := eventTypeField.String(data, 7)
+		// Event type is PRECREATE, CREATED or DELETED, 9 is the length
+		// of longest string, i.e. PRECREATE.
+		eventType, err := eventTypeField.String(data, 9)
 		if err != nil {
 			api.Errorf("getting event_type from corresponding field: %v", err)
 			return

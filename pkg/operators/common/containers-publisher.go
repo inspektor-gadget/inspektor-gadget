@@ -15,6 +15,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -31,9 +32,11 @@ type ContainersPublisher struct {
 
 	containersDs              datasource.DataSource
 	eventTypeField            datasource.FieldAccessor
+	idField                   datasource.FieldAccessor
 	cgroupIDField             datasource.FieldAccessor
 	mountNsIDField            datasource.FieldAccessor
 	nameField                 datasource.FieldAccessor
+	containerConfigField      datasource.FieldAccessor
 	containersSubscriptionKey string
 }
 
@@ -52,6 +55,11 @@ func NewContainersPublisher(gadgetCtx operators.GadgetContext, collection *conta
 		return nil, fmt.Errorf("adding field event_type: %w", err)
 	}
 
+	publisher.idField, err = publisher.containersDs.AddField("container_id", api.Kind_String)
+	if err != nil {
+		return nil, fmt.Errorf("adding field container_id: %w", err)
+	}
+
 	publisher.cgroupIDField, err = publisher.containersDs.AddField("cgroup_id", api.Kind_Uint64)
 	if err != nil {
 		return nil, fmt.Errorf("adding field cgroup_id: %w", err)
@@ -67,6 +75,11 @@ func NewContainersPublisher(gadgetCtx operators.GadgetContext, collection *conta
 		return nil, fmt.Errorf("adding field name: %w", err)
 	}
 
+	publisher.containerConfigField, err = publisher.containersDs.AddField("container_config", api.Kind_String)
+	if err != nil {
+		return nil, fmt.Errorf("adding field container_config: %w", err)
+	}
+
 	publisher.collection = collection
 
 	return publisher, nil
@@ -79,6 +92,7 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 	}
 
 	publisher.eventTypeField.PutString(ev, eventType.String())
+	publisher.idField.PutString(ev, container.Runtime.ContainerID)
 	publisher.cgroupIDField.PutUint64(ev, container.CgroupID)
 	publisher.mountNsIDField.PutUint64(ev, container.Mntns)
 	if k8s {
@@ -87,9 +101,21 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 		publisher.nameField.PutString(ev, container.Runtime.ContainerName)
 	}
 
+	configJSON, errOciConfig := json.Marshal(container.OciConfig)
+	if errOciConfig == nil {
+		publisher.containerConfigField.PutBytes(ev, configJSON)
+	}
+	configJSONStr := string(configJSON)
+
 	err = publisher.containersDs.EmitAndRelease(ev)
 	if err != nil {
 		return fmt.Errorf("emitting containers datasource event: %w", err)
+	}
+
+	newConfigJSON := publisher.containerConfigField.Get(ev)
+	if errOciConfig == nil && string(newConfigJSON) != configJSONStr {
+		log.Debugf("Container %s: OCI config was modified", container.Runtime.ContainerID)
+		json.Unmarshal(newConfigJSON, &container.OciConfig)
 	}
 
 	return nil

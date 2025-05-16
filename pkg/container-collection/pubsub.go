@@ -26,12 +26,15 @@ type FuncNotify func(event PubSubEvent)
 const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
+	EventTypePreCreateContainer
 )
 
 func (e *EventType) String() string {
 	switch *e {
 	case EventTypeRemoveContainer:
 		return "DELETED"
+	case EventTypePreCreateContainer:
+		return "PRECREATE"
 	case EventTypeAddContainer:
 		fallthrough
 	default:
@@ -43,6 +46,8 @@ func EventTypeFromString(s string) EventType {
 	switch s {
 	case "DELETED":
 		return EventTypeRemoveContainer
+	case "PRECREATE":
+		return EventTypePreCreateContainer
 	case "CREATED":
 		fallthrough
 	default:

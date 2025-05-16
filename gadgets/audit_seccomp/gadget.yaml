@@ -3,6 +3,8 @@ description: Audit syscalls according to the seccomp profile
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/audit_seccomp
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/audit_seccomp
+annotations:
+  enable-containers-datasource: true
 datasources:
   seccomp:
     fields:

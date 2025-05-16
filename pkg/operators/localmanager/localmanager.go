@@ -420,6 +420,8 @@ func (l *localManagerTrace) PreGadgetRun() error {
 						attachContainerFunc(event.Container)
 					case containercollection.EventTypeRemoveContainer:
 						detachContainerFunc(event.Container)
+					case containercollection.EventTypePreCreateContainer:
+						// nothing to do
 					default:
 						log.Errorf("unknown event type, expected either %s or %s, got %s", containercollection.EventTypeAddContainer, containercollection.EventTypeRemoveContainer, event.Type)
 						return
