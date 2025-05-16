@@ -44,6 +44,22 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 
 	created := manifest.Annotations[ocispec.AnnotationCreated]
 
+	datasources := []*api.DataSource{}
+	for _, ds := range gadgetCtx.GetDataSources() {
+		datasource := &api.DataSource{
+			Name: ds.Name(),
+		}
+		datasource.Fields = make([]*api.Field, len(ds.Fields()))
+		for i, field := range ds.Fields() {
+			datasource.Fields[i] = &api.Field{
+				Name:        field.Name,
+				Annotations: map[string]string{"description": field.Annotations["description"]},
+			}
+		}
+		datasources = append(datasources, datasource)
+	}
+	datasourcesJson, _ := json.Marshal(datasources)
+
 	ociInfo := &api.ExtraInfo{
 		Data: make(map[string]*api.GadgetInspectAddendum),
 	}
@@ -71,6 +87,10 @@ func addExtraInfo(gadgetCtx operators.GadgetContext, metadata []byte, manifest *
 	ociInfo.Data["oci.created"] = &api.GadgetInspectAddendum{
 		ContentType: "text/plain",
 		Content:     []byte(created),
+	}
+	ociInfo.Data["oci.datasources"] = &api.GadgetInspectAddendum{
+		ContentType: "application/json",
+		Content:     []byte(datasourcesJson),
 	}
 
 	gadgetCtx.SetVar("extraInfo.oci", ociInfo)
