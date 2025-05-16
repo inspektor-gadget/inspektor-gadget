@@ -24,9 +24,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gopacket/gopacket"
-	"github.com/gopacket/gopacket/layers"
-	"github.com/gopacket/gopacket/pcapgo"
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
@@ -37,6 +34,7 @@ import (
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	pcapng "github.com/inspektor-gadget/inspektor-gadget/pkg/pcap-ng"
 )
 
 const (
@@ -506,7 +504,8 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			var mu sync.Mutex
 
 			// Output using pcap-ng
-			wr, err := pcapgo.NewNgWriter(os.Stdout, layers.LinkTypeEthernet)
+			// wr, err := pcapgo.NewNgWriter(os.Stdout, layers.LinkTypeEthernet)
+			wr, err := pcapng.New(os.Stdout)
 			if err != nil {
 				return fmt.Errorf("creating pcapgo.NgWriter: %w", err)
 			}
@@ -519,13 +518,14 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				payload, _ := payloadField.Bytes(data)
 				length, _ := lengthField.Uint32(data)
 
-				wr.WritePacket(gopacket.CaptureInfo{
+				wr.WritePacket(payload, &pcapng.PacketOptions{
 					Timestamp:      time.Now(),
+					InterfaceIndex: 0,
 					CaptureLength:  int(length),
 					Length:         int(length),
-					InterfaceIndex: 0,
 					AncillaryData:  nil,
-				}, payload)
+					Comment:        "fooby",
+				})
 
 				// need to make sure this gets written before returning buffers
 				wr.Flush()
