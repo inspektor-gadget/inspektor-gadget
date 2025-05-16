@@ -270,15 +270,15 @@ Inspektor Gadget can also be installed using our [official Helm chart](https://g
 #### From OCI registry
 
 ```bash
-$ CHART_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name | sed 's/^v//')
-$ helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/charts/gadget --version=$CHART_VERSION
+CHART_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name | sed 's/^v//')
+helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=$CHART_VERSION
 ```
 
 #### From HTTP(s) repository
 
 ```bash
-$ helm repo add gadget https://inspektor-gadget.github.io/charts
-$ helm install gadget gadget/gadget --namespace=gadget --create-namespace
+helm repo add gadget https://inspektor-gadget.github.io/charts
+helm install gadget gadget/gadget --namespace=gadget --create-namespace
 ```
 
 For more information on the Helm chart, please refer to the [Helm Chart documentation](https://artifacthub.io/packages/helm/gadget/gadget).
