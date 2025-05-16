@@ -1,0 +1,29 @@
+# Artifact Hub package metadata file
+version: 0.37.0
+name: "advise_networkpolicy"
+category: monitoring-logging
+displayName: "advise networkpolicy"
+createdAt: "2025-02-03T11:23:41Z"
+digest: "2025-02-03T11:23:41Z"
+description: "Network policies according to the K8s traffic"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/advise_networkpolicy"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/advise_networkpolicy:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/advise_networkpolicy"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/advise_networkpolicy:latest
+    ```
+provider:
+    name: Inspektor Gadget
