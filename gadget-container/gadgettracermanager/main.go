@@ -394,7 +394,12 @@ func main() {
 			log.Fatalf("initializing manager: %v", err)
 		}
 
-		store, err := k8sconfigmapstore.New(mgr)
+		gadgetNs := config.Config.GetString(gadgettracermanagerconfig.GadgetNamespace)
+		if gadgetNs == "" {
+			log.Fatalf("gadget namespace must not be empty")
+		}
+
+		store, err := k8sconfigmapstore.New(mgr, gadgetNs)
 		if err != nil {
 			log.Fatalf("initializing store: %v", err)
 		}

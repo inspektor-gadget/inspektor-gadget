@@ -791,6 +791,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
 			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
 			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
+			cfg[gadgettracermanagerconfig.GadgetNamespace] = gadgetNamespace
 
 			opCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})
 			if !ok {
