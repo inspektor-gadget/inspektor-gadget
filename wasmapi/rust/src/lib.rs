@@ -23,9 +23,10 @@
 pub mod config;
 pub mod datasources;
 pub mod fields;
+pub mod handle;
 pub mod helpers;
 pub mod log;
 pub mod map;
 pub mod params;
+pub mod perf;
 pub mod version;
-pub mod handle;
