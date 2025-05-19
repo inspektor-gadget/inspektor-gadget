@@ -10,6 +10,7 @@ perf \
 syscall \
 kallsyms \
 filtering \
+baderrptr \
 #
 
 all: $(TEST_ARTIFACTS)
