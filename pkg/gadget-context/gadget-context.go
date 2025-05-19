@@ -335,7 +335,7 @@ func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, er
 	return gi, nil
 }
 
-func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error {
+func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, extraInfo *api.ExtraInfo) error {
 	c.lock.Lock()
 	if c.loaded {
 		// TODO: verify that info matches what we previously loaded
@@ -383,25 +383,6 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		return fmt.Errorf("initializing local operators: %w", err)
 	}
 
-	if run {
-		if err := c.preStart(); err != nil {
-			return fmt.Errorf("pre-starting operators: %w", err)
-		}
-		if err := c.start(); err != nil {
-			return fmt.Errorf("starting local operators: %w", err)
-		}
-
-		c.Logger().Debugf("running...")
-
-		go func() {
-			// TODO: Client shouldn't need to wait for the timeout. It should be
-			// managed only on the server side.
-			WaitForTimeoutOrDone(c)
-			c.stop()
-			c.postStop()
-		}()
-	}
-
 	if c.ExtraInfo() && extraInfo != nil {
 		for k, v := range extraInfo.Data {
 			// k is in the form of "wasm.upcalls", "ebpf.sections", etc.
@@ -416,6 +397,43 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 			ei.(*api.ExtraInfo).Data[k] = v
 		}
 	}
+	return nil
+}
+
+func (c *GadgetContext) LoadGadgetInfoAndRun(info *api.GadgetInfo, paramValues api.ParamValues, remoteDone chan any) error {
+	err := c.LoadGadgetInfo(info, paramValues, nil)
+	if err != nil {
+		return err
+	}
+
+	if err := c.preStart(); err != nil {
+		return fmt.Errorf("pre-starting operators: %w", err)
+	}
+	if err := c.start(); err != nil {
+		return fmt.Errorf("starting local operators: %w", err)
+	}
+
+	if err := c.start(); err != nil {
+		return fmt.Errorf("starting local operators: %w", err)
+	}
+
+	c.Logger().Debugf("running...")
+
+	go func() {
+		// TODO: Client shouldn't need to wait for the timeout. It should be
+		// managed only on the server side.
+		WaitForTimeoutOrDone(c)
+
+		select {
+		case <-remoteDone:
+		// TODO Do we need a timeout here? I think not, since a second Ctrl+C does an exit
+		case <-time.After(3 * time.Second):
+		}
+
+		c.stop()
+		c.postStop()
+	}()
+
 	return nil
 }
 

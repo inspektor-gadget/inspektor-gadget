@@ -98,6 +98,8 @@ func (o *cliOperator) Priority() int {
 }
 
 type cliOperatorInstance struct {
+	done bool
+
 	paramValues api.ParamValues
 	// key: datasource name, value: supported output modes
 	supportedOutputModes map[string][]string
@@ -334,6 +336,11 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				before = clearScreen
 			}
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+				if o.done {
+					fmt.Printf("cli was done\n")
+					return nil
+				}
+
 				before()
 				defaultDataFn(ds, data, os.Stdout)
 				return nil
@@ -492,6 +499,7 @@ func (o *cliOperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *cliOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	o.done = true
 	return nil
 }
 
