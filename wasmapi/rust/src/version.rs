@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
-
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
-
-pub mod helpers;
-pub mod version;
+#[no_mangle]
+#[allow(non_snake_case)]
+pub fn gadgetAPIVersion() -> u64 {
+    1
+}
