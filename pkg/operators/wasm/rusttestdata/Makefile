@@ -8,6 +8,7 @@ map \
 mapofmap \
 perf \
 syscall \
+kallsyms \
 #
 
 all: $(TEST_ARTIFACTS)
