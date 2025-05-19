@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
+#[link(wasm_import_module = "ig")]
+extern "C" {
+    #[link_name = "releaseHandle"]
+    fn _release_handle(handle: u32) -> u32;
+}
 
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
+pub type Result<T> = std::result::Result<T, String>;
 
-pub mod helpers;
-pub mod version;
-pub mod log;
-pub mod datasources;
-pub mod fields;
-pub mod params;
-pub mod config;
-pub mod map;
-pub mod handle;
+pub fn release_handle<T: Into<u32>>(h: T) -> Result<()> {
+    let ret = unsafe { _release_handle(h.into()) };
+    if ret != 0 {
+        Err("error releasing handle".to_string())
+    } else {
+        Ok(())
+    }
+}
