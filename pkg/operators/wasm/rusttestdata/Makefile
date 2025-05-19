@@ -6,6 +6,7 @@ params \
 config \
 map \
 mapofmap \
+perf \
 #
 
 all: $(TEST_ARTIFACTS)
