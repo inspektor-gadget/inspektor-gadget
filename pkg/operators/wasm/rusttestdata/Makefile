@@ -3,6 +3,7 @@ IG ?= ig
 
 TEST_ARTIFACTS = \
 params \
+config \
 #
 
 all: $(TEST_ARTIFACTS)

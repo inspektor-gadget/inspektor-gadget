@@ -12,18 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
+use api::{
+    errorf,
+    {config::set_config, log::LogLevel},
+};
 
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
+#[no_mangle]
+#[allow(non_snake_case)]
+fn gadgetInit() -> i32 {
+    if let Err(err) = set_config("foo.bar.zas".to_string(), "myvalue".to_string()) {
+        errorf!("SetConfig failed: {:?}", err);
+        return 1;
+    }
 
-pub mod helpers;
-pub mod version;
-pub mod log;
-pub mod datasources;
-pub mod fields;
-pub mod params;
-pub mod config;
+    // This should fail at compile time as the value is not a string
+    let invalid_result = set_config("foo.bar.zas".to_string(), 42);
+
+    if let Ok(_) = invalid_result {
+        errorf!("SetConfig should have failed");
+        return 1;
+    }
+
+    0
+}
