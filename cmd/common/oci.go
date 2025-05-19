@@ -50,8 +50,8 @@ import (
 type CommandMode string
 
 const (
-	CommandModeRun    CommandMode = "run"
-	CommandModeAttach CommandMode = "attach"
+	CommandModeRun    CommandMode = "run GADGET"
+	CommandModeAttach CommandMode = "attach GADGET_INSTANCE"
 )
 
 var commandModesDescriptions = map[CommandMode]string{
