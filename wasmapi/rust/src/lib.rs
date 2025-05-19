@@ -21,9 +21,11 @@
 //! block lifetime.
 
 pub mod config;
+pub mod config;
 pub mod datasources;
 pub mod fields;
 pub mod helpers;
 pub mod log;
+pub mod map;
 pub mod params;
 pub mod version;
