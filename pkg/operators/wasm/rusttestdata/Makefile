@@ -4,6 +4,7 @@ IG ?= ig
 TEST_ARTIFACTS = \
 	dataemit \
 	dataarray \
+	fields \
 
 all: $(TEST_ARTIFACTS)
 
