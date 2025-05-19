@@ -24,4 +24,5 @@ pub mod datasources;
 pub mod fields;
 pub mod helpers;
 pub mod log;
+pub mod params;
 pub mod version;

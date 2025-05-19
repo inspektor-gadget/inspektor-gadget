@@ -5,6 +5,7 @@ TEST_ARTIFACTS = \
 	dataemit \
 	dataarray \
 	fields \
+	params \
 
 all: $(TEST_ARTIFACTS)
 

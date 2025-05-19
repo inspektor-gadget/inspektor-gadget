@@ -1,0 +1,11 @@
+name: params_test
+params:
+  wasm:
+    param-key:
+      key: param-key
+      description: param-description
+      defaultValue: param-default-value
+      typeHint: param-type-hint
+      title: param-title
+      alias: param-alias
+      isMandatory: true
