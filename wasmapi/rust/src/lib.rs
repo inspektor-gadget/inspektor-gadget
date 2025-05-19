@@ -29,4 +29,5 @@ pub mod log;
 pub mod map;
 pub mod params;
 pub mod perf;
+pub mod syscall;
 pub mod version;

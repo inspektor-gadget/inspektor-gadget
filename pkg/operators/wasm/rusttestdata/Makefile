@@ -10,6 +10,7 @@ TEST_ARTIFACTS = \
 	map \
 	mapofmap \
 	perf \
+	syscall \
 
 all: $(TEST_ARTIFACTS)
 
