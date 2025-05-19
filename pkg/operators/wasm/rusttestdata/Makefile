@@ -7,6 +7,7 @@ config \
 map \
 mapofmap \
 perf \
+syscall \
 #
 
 all: $(TEST_ARTIFACTS)
