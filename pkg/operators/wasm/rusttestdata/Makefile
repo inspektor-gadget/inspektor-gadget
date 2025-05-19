@@ -12,6 +12,7 @@ TEST_ARTIFACTS = \
 	perf \
 	syscall \
 	kallsyms \
+	filtering \
 
 all: $(TEST_ARTIFACTS)
 
