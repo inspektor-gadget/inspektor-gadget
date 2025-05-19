@@ -23,3 +23,4 @@
 pub mod helpers;
 pub mod version;
 pub mod log;
+pub mod datasources;
