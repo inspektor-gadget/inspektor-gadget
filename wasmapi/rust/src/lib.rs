@@ -22,3 +22,4 @@
 
 pub mod helpers;
 pub mod version;
+pub mod log;
