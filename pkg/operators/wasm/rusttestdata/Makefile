@@ -7,6 +7,8 @@ TEST_ARTIFACTS = \
 	fields \
 	params \
 	config \
+	map \
+	mapofmap \
 
 all: $(TEST_ARTIFACTS)
 
