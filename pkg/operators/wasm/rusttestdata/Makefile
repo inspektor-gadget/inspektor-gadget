@@ -9,6 +9,7 @@ TEST_ARTIFACTS = \
 	config \
 	map \
 	mapofmap \
+	perf \
 
 all: $(TEST_ARTIFACTS)
 
