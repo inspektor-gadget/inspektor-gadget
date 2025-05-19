@@ -6,6 +6,7 @@ TEST_ARTIFACTS = \
 	dataarray \
 	fields \
 	params \
+	config \
 
 all: $(TEST_ARTIFACTS)
 
