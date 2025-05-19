@@ -21,4 +21,5 @@
 //! block lifetime.
 
 pub mod helpers;
+pub mod log;
 pub mod version;
