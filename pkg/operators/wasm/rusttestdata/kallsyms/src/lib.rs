@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
+use api::errorf;
+use api::{kallsyms, log::LogLevel};
 
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
+#[no_mangle]
+#[allow(non_snake_case)]
+fn gadgetInit() -> i32 {
+    let mut exists = kallsyms::kallsyms_symbol_exists("abcde_this_symbol_does_not_exist");
+    if exists {
+        errorf!("kallsyms_symbol_exists wrongly found symbol");
+        return 1;
+    }
 
-pub mod config;
-pub mod datasources;
-pub mod fields;
-pub mod handle;
-pub mod helpers;
-pub mod kallsyms;
-pub mod log;
-pub mod map;
-pub mod params;
-pub mod perf;
-pub mod syscall;
-pub mod version;
+    exists = kallsyms::kallsyms_symbol_exists("socket_file_ops");
+    if !exists {
+        errorf!("kallsyms_symbol_exists did not find symbol");
+        return 1;
+    }
+
+    return 0;
+}
