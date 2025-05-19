@@ -20,6 +20,7 @@
 //! rust due to ownership model as the variable don't go out of scope until
 //! block lifetime.
 
+pub mod datasources;
 pub mod helpers;
 pub mod log;
 pub mod version;

@@ -265,6 +265,7 @@ cross-kubectl-gadget-container:
 generate-testdata:
 	$(MAKE) -C ./pkg/operators/ebpf/testdata
 	$(MAKE) -C ./pkg/operators/wasm/testdata
+	$(MAKE) -C ./pkg/operators/wasm/rusttestdata
 
 .PHONY: test
 test: generate-testdata
