@@ -13,6 +13,7 @@ TEST_ARTIFACTS = \
 	syscall \
 	kallsyms \
 	filtering \
+	baderrptr \
 
 all: $(TEST_ARTIFACTS)
 
