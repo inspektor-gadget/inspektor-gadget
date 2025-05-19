@@ -9,6 +9,7 @@ mapofmap \
 perf \
 syscall \
 kallsyms \
+filtering \
 #
 
 all: $(TEST_ARTIFACTS)
