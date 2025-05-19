@@ -12,17 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
+use crate::helpers::{bytes_to_buf_ptr, from_c_string, string_to_buf_ptr};
 
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
+#[link(wasm_import_module = "ig")]
+extern "C" {
+    #[link_name = "getParamValue"]
+    fn _get_param_value(key: u64, dst: u64) -> u32;
+}
 
-pub mod datasources;
-pub mod fields;
-pub mod helpers;
-pub mod log;
-pub mod params;
-pub mod version;
+pub fn get_param_value(key: String, max_size: u64) -> Result<String, String> {
+    let dst = vec![0u8; max_size as usize];
+
+    let key_ptr = string_to_buf_ptr(&key);
+    let dst_ptr = bytes_to_buf_ptr(&dst);
+
+    let result = unsafe { _get_param_value(key_ptr, dst_ptr) };
+    if result == 1 {
+        return Err("error getting param value".to_string());
+    }
+
+    Ok(from_c_string(&dst))
+}
