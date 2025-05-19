@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! "api" crate contains the reference implementation of the wasm API for Inspektor
-//! Gadget. It's designed to be used by gadgets and not by any other internal
-//! component of Inspektor Gadget.
+use api::{
+    errorf,
+    {filter::should_discard_mntns_id, log::LogLevel},
+};
 
-//! A similar function to runtime.keepAlive() in 'Golang' is not required in
-//! rust due to ownership model as the variable don't go out of scope until
-//! block lifetime.
+const MNTNS_DISCARDED: u64 = 555;
+const MNTNS_NOT_DISCARDED: u64 = 777;
 
-pub mod config;
-pub mod datasources;
-pub mod fields;
-pub mod handle;
-pub mod helpers;
-pub mod kallsyms;
-pub mod log;
-pub mod map;
-pub mod params;
-pub mod perf;
-pub mod syscall;
-pub mod version;
-pub mod filter;
+#[no_mangle]
+#[allow(non_snake_case)]
+fn gadgetStart() -> i32 {
+    if !should_discard_mntns_id(MNTNS_DISCARDED) {
+        errorf!("mntns should be discarded");
+        return 1;
+    }
+    if should_discard_mntns_id(MNTNS_NOT_DISCARDED) {
+        errorf!("mntns should not be discarded");
+        return 1;
+    }
+    0
+}
