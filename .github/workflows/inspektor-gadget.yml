@@ -211,7 +211,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: github/codeql-action/init@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+    - uses: github/codeql-action/init@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -245,7 +245,7 @@ jobs:
           ${{ matrix.client }}${dot_exe} LICENSE
         rm -rf "$platform"
     - name: CWE checks for ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
-      uses: github/codeql-action/analyze@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+      uses: github/codeql-action/analyze@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         category: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
@@ -366,7 +366,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+    - uses: github/codeql-action/init@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         languages: go
     - name: Build ig-linux-${{ matrix.platform }} for CWE checks
@@ -378,7 +378,7 @@ jobs:
           -ldflags "-extldflags '-static'" \
           github.com/inspektor-gadget/inspektor-gadget/cmd/ig
     - name: CWE checks for ig-linux-${{ matrix.platform }}
-      uses: github/codeql-action/analyze@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+      uses: github/codeql-action/analyze@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         category: ig-linux-${{ matrix.platform }}
 
@@ -397,14 +397,14 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - uses: github/codeql-action/init@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+    - uses: github/codeql-action/init@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         languages: go
     - name: Build gadget-container-deps
       run: |
         make -C gadget-container
     - name: CWE checks for gadget-container-deps
-      uses: github/codeql-action/analyze@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
+      uses: github/codeql-action/analyze@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         category: gadget-container-deps
 
