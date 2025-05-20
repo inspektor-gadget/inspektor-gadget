@@ -3,4 +3,4 @@
 !go.sum
 !examples
 !pkg
-!internal/thirdparty
+!internal

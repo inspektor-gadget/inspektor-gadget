@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/rest"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -55,6 +56,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.UserAgent = version.UserAgent() + " (container-collection/NewK8sClient)"
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err

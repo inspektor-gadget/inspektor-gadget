@@ -109,7 +109,7 @@ func main() {
 		*node = os.Getenv("NODE_NAME")
 	}
 
-	config, err := k8sutil.NewKubeConfig(*kubeconfig)
+	config, err := k8sutil.NewKubeConfig(*kubeconfig, "kube-container-collection")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get kubeconfig: %s\n", err)
 		os.Exit(1)

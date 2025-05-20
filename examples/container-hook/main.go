@@ -222,7 +222,7 @@ func main() {
 		if *kubeconfig == "" && os.Getenv("KUBECONFIG") != "" {
 			*kubeconfig = os.Getenv("KUBECONFIG")
 		}
-		client, err = k8sutil.NewClientset(*kubeconfig)
+		client, err = k8sutil.NewClientset(*kubeconfig, "container-hook-publish-event")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get Kubernetes client set: %s\n", err)
 			os.Exit(1)

@@ -24,9 +24,11 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
+	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
-func NewKubeConfig(kubeconfigPath string) (*rest.Config, error) {
+func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 	if kubeconfigPath != "" {
@@ -42,11 +44,16 @@ func NewKubeConfig(kubeconfigPath string) (*rest.Config, error) {
 			}
 		}
 	}
+	config.UserAgent = version.UserAgent()
+	if userAgentComment != "" {
+		config.UserAgent += " (" + userAgentComment + ")"
+	}
+
 	return config, err
 }
 
-func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
-	config, err := NewKubeConfig(kubeconfigPath)
+func NewClientset(kubeconfigPath, userAgentComment string) (*kubernetes.Clientset, error) {
+	config, err := NewKubeConfig(kubeconfigPath, userAgentComment)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +68,8 @@ func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
 
 // NewClientsetWithProtobuf creates a client to talk to the Kubernetes API
 // server using protobuf encoding.
-func NewClientsetWithProtobuf(kubeconfigPath string) (*kubernetes.Clientset, error) {
-	config, err := NewKubeConfig(kubeconfigPath)
+func NewClientsetWithProtobuf(kubeconfigPath, userAgentComment string) (*kubernetes.Clientset, error) {
+	config, err := NewKubeConfig(kubeconfigPath, userAgentComment)
 	if err != nil {
 		return nil, err
 	}

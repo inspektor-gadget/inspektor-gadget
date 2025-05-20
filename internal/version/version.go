@@ -17,7 +17,12 @@
 package version
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"github.com/blang/semver"
 )
@@ -28,27 +33,92 @@ import (
 var (
 	version       = "v0.0.0"
 	parsedVersion semver.Version
+
+	userAgent = ""
 )
 
 func init() {
+	thirdParty := false
 	if version == "v0.0.0" {
 		// If Inspektor Gadget is used as a library, its version will
 		// be in ReadBuildInfo
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, dep := range info.Deps {
-				if dep.Path == "github.com/inspektor-gadget/inspektor-gadget" {
-					if dep.Replace == nil {
-						version = dep.Version
-					} else {
-						version = dep.Replace.Version
-					}
-					break
+				if dep.Path != "github.com/inspektor-gadget/inspektor-gadget" {
+					continue
 				}
+				thirdParty = true
+				if dep.Replace == nil {
+					version = dep.Version
+				} else {
+					version = dep.Replace.Version
+				}
+				break
 			}
 		}
 	}
 
 	parsedVersion, _ = semver.ParseTolerant(version)
+
+	kubernetesVersion, mainVersion := getVersions()
+	userAgent = buildUserAgent(thirdParty, kubernetesVersion, mainVersion)
+}
+
+func getVersions() (kubernetesVersion string, mainVersion string) {
+	kubernetesVersion = "unknown"
+	mainVersion = "unknown"
+
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return kubernetesVersion, mainVersion
+	}
+
+	mainVersion = info.Main.Version
+	for _, dep := range info.Deps {
+		if dep.Path != "k8s.io/client-go" {
+			continue
+		}
+
+		if dep.Replace == nil {
+			kubernetesVersion = dep.Version
+		} else {
+			kubernetesVersion = dep.Replace.Version
+		}
+		break
+	}
+	// Avoid parenthesis such as "(devel)" when compiled without vcs info
+	mainVersion = strings.Trim(mainVersion, "()")
+
+	return kubernetesVersion, mainVersion
+}
+
+func getCommand() string {
+	command := os.Args[0]
+	if command == "" {
+		command = "unknown"
+	}
+	return filepath.Base(command)
+}
+
+// buildUserAgent builds the user agent similarly to
+// https://github.com/kubernetes/client-go/blob/v0.33.0/rest/config.go#L524
+// but with correct IG versioning. User agent should be in the format:
+// https://www.rfc-editor.org/rfc/rfc9110#name-user-agent
+func buildUserAgent(thirdParty bool, kubernetesVersion string, mainVersion string) string {
+	if thirdParty {
+		// Other software using IG Golang packages
+		return fmt.Sprintf("%s/%s (%s/%s) ig/%s kubernetes/%s",
+			getCommand(), mainVersion,
+			runtime.GOOS, runtime.GOARCH,
+			version,
+			kubernetesVersion)
+	}
+	// Executable from the main inspektor-gadget repository.
+	// No need to give version twice.
+	return fmt.Sprintf("%s/%s (%s/%s) kubernetes/%s",
+		getCommand(), version,
+		runtime.GOOS, runtime.GOARCH,
+		kubernetesVersion)
 }
 
 func Version() semver.Version {
@@ -57,4 +127,8 @@ func Version() semver.Version {
 
 func VersionString() string {
 	return version
+}
+
+func UserAgent() string {
+	return userAgent
 }

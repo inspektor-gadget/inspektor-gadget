@@ -315,7 +315,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 		if pullSecretString != "" {
 			var err error
-			k8sClient, err := k8sutil.NewClientset("")
+			k8sClient, err := k8sutil.NewClientset("", "pull-secret")
 			if err != nil {
 				return fmt.Errorf("creating new k8s clientset: %w", err)
 			}
