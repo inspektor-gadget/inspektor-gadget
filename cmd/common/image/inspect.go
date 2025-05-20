@@ -52,6 +52,7 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 
 	cmd.PersistentFlags().String("extra-info", "", "Custom info type to display")
 	cmd.PersistentFlags().String("jsonpath", "", "JSONPath to extract from the extra info")
+	cmd.PersistentFlags().Bool("show-datasources", false, "Show datasources with their fields")
 
 	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
 
@@ -113,6 +114,14 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 		var customResult interface{}
 		extraInfo, _ := cmd.PersistentFlags().GetString("extra-info")
 		jsonPath, _ := cmd.PersistentFlags().GetString("jsonpath")
+		showDataSources, _ := cmd.PersistentFlags().GetBool("show-datasources")
+
+		if jsonPath != "" && extraInfo == "" && !showDataSources {
+			return fmt.Errorf("jsonpath %q can only be used with extra info or show-datasources", jsonPath)
+		}
+		if extraInfo != "" && showDataSources {
+			return fmt.Errorf("extra-info %q and show-datasources cannot be used together", extraInfo)
+		}
 		if extraInfo != "" {
 			dataEntry, ok := info.ExtraInfo.Data[extraInfo]
 			if !ok {
@@ -154,8 +163,22 @@ func NewInspectCmd(runtime runtime.Runtime) *cobra.Command {
 				}
 			}
 		}
-		if jsonPath != "" && extraInfo == "" {
-			return fmt.Errorf("jsonpath %q can only be used with extra info", jsonPath)
+		if showDataSources {
+			if jsonPath != "" {
+				dataSourcesJSON, err := json.Marshal(info.DataSources)
+				if err != nil {
+					return fmt.Errorf("marshalling DataSources to JSON: %w", err)
+				}
+				if err := json.Unmarshal(dataSourcesJSON, &customResult); err != nil {
+					return fmt.Errorf("unmarshalling JSON content: %w", err)
+				}
+				customResult, err = jsonpath.Get(fmt.Sprintf("$%s", jsonPath), customResult)
+				if err != nil {
+					return fmt.Errorf("resolving path %q: %w", jsonPath, err)
+				}
+			} else {
+				customResult = info.DataSources
+			}
 		}
 
 		switch outputMode {
