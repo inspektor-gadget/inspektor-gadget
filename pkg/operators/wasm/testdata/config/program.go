@@ -26,14 +26,14 @@ import (
 func gadgetInit() int32 {
 	err := api.SetConfig("foo.bar.zas", "myvalue")
 	if err != nil {
-		api.Errorf("SetAnnotation failed: %v", err)
+		api.Errorf("SetConfig failed: %v", err)
 		return 1
 	}
 
 	// This should fail as the key is not a string
 	err = api.SetConfig("foo.bar.zas", 42)
 	if err == nil {
-		api.Errorf("SetAnnotation should have failed")
+		api.Errorf("SetConfig should have failed")
 		return 1
 	}
 
