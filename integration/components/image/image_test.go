@@ -124,7 +124,7 @@ func TestImage(t *testing.T) {
 			cmd:  commonImage.NewPushCmd(),
 			args: []string{"unknown", "--insecure-registries", registryAddr},
 			expectedStderr: []string{
-				"failed to resolve ghcr.io/inspektor-gadget/gadget/unknown:latest: not found",
+				"failed to perform \"Resolve\" on source",
 			},
 		},
 		{
@@ -132,7 +132,7 @@ func TestImage(t *testing.T) {
 			cmd:  commonImage.NewPushCmd(),
 			args: []string{fmt.Sprintf("%s/%s:%s", registryAddr, testRepo, "unknown"), "--insecure-registries", registryAddr},
 			expectedStderr: []string{
-				fmt.Sprintf("%s/%s:%s: not found", registryAddr, testRepo, "unknown"),
+				"failed to perform \"Resolve\" on source",
 			},
 		},
 		{
@@ -184,7 +184,7 @@ func TestImage(t *testing.T) {
 			cmd:  commonImage.NewPullCmd(),
 			args: []string{"unknown", "--insecure-registries", registryAddr},
 			expectedStderr: []string{
-				"failed to resolve ghcr.io/inspektor-gadget/gadget/unknown:latest",
+				"failed to perform \"FetchReference\" on source",
 			},
 		},
 		{
