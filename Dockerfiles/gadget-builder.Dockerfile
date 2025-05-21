@@ -26,6 +26,8 @@ RUN \
 	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
 	chmod +x /usr/local/bin/bpftool
 
+FROM rust:slim-bullseye@sha256:300ec56abce8cc9448ddea2172747d048ed902a3090e6b57babb2bf19f754081 AS rustbuilder
+
 FROM debian:bookworm-slim@sha256:4b50eb66f977b4062683ff434ef18ac191da862dbe966961bc11990cf5791a8d
 ARG CLANG_LLVM_VERSION
 ARG GOLANG_VERSION
@@ -62,6 +64,15 @@ RUN ARCH=$(dpkg --print-architecture) \
 
 COPY --from=builder /usr/include/bpf /usr/include/bpf
 COPY --from=builder /usr/local/bin/bpftool /usr/local/bin/bpftool
+COPY --from=rustbuilder /usr/local/cargo /usr/local/.cargo
+COPY --from=rustbuilder /usr/local/rustup /usr/local/.rustup
+
+# Add Rust to PATH
+ENV PATH="/usr/local/.cargo/bin:/usr/local/.rustup:$PATH"
+
+# Add wasm target
+RUN rustup default stable
+RUN rustup target add wasm32-wasip1
 
 # To avoid hitting
 # 1. failed to initialize build cache at /.cache/go-build: mkdir /.cache: permission denied
@@ -77,7 +88,10 @@ ENV GOTOOLCHAIN=local
 # Create a directory which can be read, written and executed by everyone, this
 # avoid trouble when running as non root.
 RUN mkdir -m 777 /work
+
 WORKDIR /work
 
 # Add files used to build containerized gadgets
 ADD include /usr/include
+
+

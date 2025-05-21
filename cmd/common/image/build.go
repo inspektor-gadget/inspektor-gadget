@@ -451,12 +451,14 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	cmd := buildCmd("/out", ebpfFullPath, wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
+	// Currently building wasm requires read and write mounts which is a temporary solution. Possible
+	// solution could be update using rustc and rustup together rather than cargo
 	mounts := []mount.Mount{
 		{
 			Type:     mount.TypeBind,
 			Target:   "/work",
 			Source:   pathHost,
-			ReadOnly: true,
+			ReadOnly: false,
 		},
 		{
 			Type:   mount.TypeBind,

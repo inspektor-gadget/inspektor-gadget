@@ -1,0 +1,40 @@
+name: trace open
+description: trace open files
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_open
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_open
+datasources:
+  open:
+    fields:
+      flags_raw:
+        annotations:
+          columns.hidden: true
+      flags:
+        annotations:
+          columns.hidden: true
+          columns.width: 10
+      mode_raw:
+        annotations:
+          columns.hidden: true
+      mode:
+        annotations:
+          description: File access mode
+      error_raw:
+        annotations:
+          columns.hidden: true
+      fd:
+        annotations:
+          description: File descriptor. 0 in case of error
+          columns.minwidth: 2
+          columns.maxwidth: 3
+          columns.alignment: right
+      fname:
+        annotations:
+          columns.width: 32
+          columns.minwidth: 24
+params:
+  ebpf:
+    targ_failed:
+      key: failed
+      defaultValue: "false"
+      description: Show only failed events
