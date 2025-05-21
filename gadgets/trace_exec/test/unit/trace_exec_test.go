@@ -146,7 +146,10 @@ func TestTraceExecGadget(t *testing.T) {
 					if testCase.runFromThread {
 						generateEventFromThread(t, testCase.argv)
 					} else {
-						os.StartProcess(testCase.argv[0], testCase.argv, &os.ProcAttr{})
+						p, err := os.StartProcess(testCase.argv[0], testCase.argv, &os.ProcAttr{})
+						if err == nil {
+							defer p.Wait()
+						}
 					}
 					return nil
 				})
