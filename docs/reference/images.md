@@ -287,11 +287,12 @@ Usage:
   ig image inspect IMAGE [flags]
 
 Flags:
-  -h, --help            help for inspect
-  -o, --output string   Output mode: json, jsonpretty, yaml (default "jsonpretty")
-  --extra-info string   specify particular info required
-  --jsonpath   string   JSONPath to extract from the extra info
-```
+  -h, --help                  help for inspect
+  -o, --output       string   Output mode: json, jsonpretty, yaml (default "jsonpretty")
+  --extra-info       string   specify particular info required
+  --jsonpath         string   JSONPath to extract from the extra info
+  --show-datasources bool     show datasources along with their fields
+  ```
 
 ```bash
 # Pull an image to inspect
@@ -427,4 +428,29 @@ params:
 $ sudo ig image inspect advise_seccomp:latest --extra-info=oci.manifest --jsonpath=".layers[*].mediaType" -o yaml
 - application/vnd.gadget.ebpf.program.v1+binary
 - application/vnd.gadget.wasm.program.v1+binary
+
+# List the fields of a datasource
+$ sudo ig image inspect advise_seccomp:latest --show-datasources --jsonpath='[0].fields[*].fullName'
+[
+  "mntns_id_raw",
+  "syscalls",
+  "k8s",
+  "k8s.node",
+  "k8s.namespace",
+  "k8s.podName",
+  "k8s.containerName",
+  "k8s.hostnetwork",
+  "k8s.podLabels",
+  "k8s.owner",
+  "k8s.owner.kind",
+  "k8s.owner.name",
+  "runtime",
+  "runtime.containerName",
+  "runtime.runtimeName",
+  "runtime.containerId",
+  "runtime.containerPid",
+  "runtime.containerImageName",
+  "runtime.containerImageDigest",
+  "runtime.containerStartedAt"
+]
 ```
