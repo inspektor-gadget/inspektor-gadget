@@ -30,8 +30,9 @@ import (
 
 // runner is responsible for storing configuration of ig executable and provide methods to interact with.
 type runner struct {
-	path  string
-	image string
+	path       string
+	image      string
+	outputMode string
 
 	// command.Command contains *exec.Cmd and additional properties and methods for the same.
 	command.Command
@@ -39,7 +40,7 @@ type runner struct {
 }
 
 func (ig *runner) createCmd() {
-	ig.flags = append(ig.flags, "-o=json")
+	ig.flags = append(ig.flags, "-o="+ig.outputMode)
 	args := append([]string{"run", ig.image}, ig.flags...)
 
 	ig.Cmd = exec.Command(ig.path, args...)
@@ -75,6 +76,13 @@ func WithValidateOutput(validateOutput func(t *testing.T, output string)) Option
 	}
 }
 
+// WithOutputMode sets the output mode
+func WithOutputMode(outputMode string) Option {
+	return func(ig *runner) {
+		ig.outputMode = outputMode
+	}
+}
+
 // New creates a new IG configured with the Options passed as parameters.
 func New(image string, opts ...Option) igtesting.TestStep {
 	commandName := fmt.Sprintf("Run_%s", image)
@@ -88,8 +96,9 @@ func New(image string, opts ...Option) igtesting.TestStep {
 	}
 
 	factoryRunner := &runner{
-		path:  "ig",
-		image: image,
+		path:       "ig",
+		image:      image,
+		outputMode: "json",
 		Command: command.Command{
 			Name: commandName,
 		},
