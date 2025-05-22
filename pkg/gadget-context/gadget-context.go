@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -315,6 +316,9 @@ func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, er
 		}
 		gi.DataSources = append(gi.DataSources, di)
 	}
+	sort.Slice(gi.DataSources, func(i, j int) bool {
+		return gi.DataSources[i].Name < gi.DataSources[j].Name
+	})
 
 	if c.ExtraInfo() && extraInfo {
 		gi.ExtraInfo = &api.ExtraInfo{
