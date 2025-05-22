@@ -78,7 +78,7 @@ func TestContainerHookEvent(t *testing.T) {
 				// normalize
 				event.ContainerName = ""
 				event.ContainerPID = 0
-				event.ContainerConfig = nil
+				event.ContainerConfig = ""
 				event.Bundle = ""
 
 				events = append(events, event)

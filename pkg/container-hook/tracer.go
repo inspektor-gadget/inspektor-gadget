@@ -32,7 +32,6 @@
 package containerhook
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -48,7 +47,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -108,7 +106,7 @@ type ContainerEvent struct {
 
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
-	ContainerConfig *ocispec.Spec
+	ContainerConfig string
 
 	// Bundle is the directory containing the config.json from the OCI
 	// runtime spec
@@ -570,12 +568,6 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
 		return nil
 	}
-	containerConfig := &ocispec.Spec{}
-	err = json.Unmarshal(bundleConfigJSON, containerConfig)
-	if err != nil {
-		log.Errorf("fanotify: could not unmarshal config.json (%q): %s", pc.configJSONPath, err)
-		return nil
-	}
 
 	err = n.AddWatchContainerTermination(pc.id, containerPID)
 	if err != nil {
@@ -596,7 +588,7 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		Type:            EventTypeAddContainer,
 		ContainerID:     pc.id,
 		ContainerPID:    uint32(containerPID),
-		ContainerConfig: containerConfig,
+		ContainerConfig: string(bundleConfigJSON),
 		Bundle:          pc.bundleDir,
 		ContainerName:   containerName,
 	})

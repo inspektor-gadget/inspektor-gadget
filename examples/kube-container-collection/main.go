@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -81,13 +80,8 @@ func callback(notif containercollection.PubSubEvent) {
 	switch notif.Type {
 	case containercollection.EventTypeAddContainer:
 		fmt.Printf("Container added: %v pid %d\n", notif.Container.Runtime.ContainerID, notif.Container.ContainerPid())
-		if notif.Container.OciConfig != nil {
-			config, err := json.Marshal(notif.Container.OciConfig)
-			if err != nil {
-				publishEvent(notif.Container, "CannotMarshalContainerConfig", err.Error())
-			} else {
-				publishEvent(notif.Container, "NewContainerConfig", string(config))
-			}
+		if notif.Container.OciConfig != "" {
+			publishEvent(notif.Container, "NewContainerConfig", notif.Container.OciConfig)
 		} else {
 			publishEvent(notif.Container, "ContainerConfigNotFound", "")
 		}

@@ -26,8 +26,6 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
-	ocispec "github.com/opencontainers/runtime-spec/specs-go"
-
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -175,20 +173,13 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 				ContainerName: containerDefinition.Name,
 			},
 		},
+		OciConfig: containerDefinition.OciConfig,
 	}
 	if containerDefinition.LabelsSet {
 		container.K8s.PodLabels = make(map[string]string)
 		for _, l := range containerDefinition.Labels {
 			container.K8s.PodLabels[l.Key] = l.Value
 		}
-	}
-	if containerDefinition.OciConfig != "" {
-		containerConfig := &ocispec.Spec{}
-		err := json.Unmarshal([]byte(containerDefinition.OciConfig), containerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling container config: %w", err)
-		}
-		container.OciConfig = containerConfig
 	}
 
 	g.ContainerCollection.AddContainer(&container)
