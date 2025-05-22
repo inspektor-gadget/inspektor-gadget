@@ -106,12 +106,33 @@ func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCon
 				return nil, fmt.Errorf("getting fetch annotation for ds %s: %w", ds.Name(), err)
 			}
 
+			// Disable original data source to avoid other operators subscribing to it
+			ds.Unreference()
+
+			// Register a new data source that will emit the combined data
+			combinedDs, err := gadgetCtx.RegisterDataSource(
+				datasource.TypeArray,
+				fmt.Sprintf("%s-%s", DataSourcePrefix, ds.Name()),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("registering combiner data source for %s: %w", ds.Name(), err)
+			}
+
+			gadgetCtx.Logger().Debugf("combiner: registered ds %q", combinedDs.Name())
+
+			// Use the same fields and annotations as the original data source
+			ds.CopyFieldsTo(combinedDs)
+			for k, v := range ds.Annotations() {
+				combinedDs.AddAnnotation(k, v)
+			}
+
 			configs[ds] = &combinerConfig{
 				// TODO: What happen if we receive more than one packet for the same
 				// target? We should probably have a way to handle this case.
-				packetBuf: make(chan datasource.PacketArray, targets),
-				interval:  interval,
-				count:     count,
+				packetBuf:  make(chan datasource.PacketArray, targets),
+				interval:   interval,
+				combinedDs: combinedDs,
+				count:      count,
 			}
 		}
 	}
@@ -140,6 +161,9 @@ type combinerConfig struct {
 
 	// Buffer to send data to the combiner data source
 	packetBuf chan datasource.PacketArray
+
+	// The new combined data source
+	combinedDs datasource.DataSource
 }
 
 type combinerOperatorInstance struct {
@@ -263,27 +287,7 @@ func (o *combinerOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 	o.done = make(chan struct{})
 
 	for ds, config := range o.configs {
-		// Disable original data source to avoid other operators subscribing to it
-		ds.Unreference()
-
-		// Register a new data source that will emit the combined data
-		combinedDs, err := gadgetCtx.RegisterDataSource(
-			datasource.TypeArray,
-			fmt.Sprintf("%s-%s", DataSourcePrefix, ds.Name()),
-		)
-		if err != nil {
-			return fmt.Errorf("registering combiner data source for %s: %w", ds.Name(), err)
-		}
-
-		gadgetCtx.Logger().Debugf("combiner: registered ds %q", combinedDs.Name())
-
-		// Use the same fields and annotations as the original data source
-		ds.CopyFieldsTo(combinedDs)
-		for k, v := range ds.Annotations() {
-			combinedDs.AddAnnotation(k, v)
-		}
-
-		go o.forwardData(gadgetCtx, config, combinedDs)
+		go o.forwardData(gadgetCtx, config, config.combinedDs)
 
 		gadgetCtx.Logger().Debugf("combiner: subscribing to %q", ds.Name())
 
@@ -292,7 +296,7 @@ func (o *combinerOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			// released once the callback returns. Use Marshal/Unmarshal to
 			// create a deep copy.
 			b, _ := proto.Marshal(packet.Raw())
-			pArray, err := combinedDs.NewPacketArrayFromRaw(b)
+			pArray, err := config.combinedDs.NewPacketArrayFromRaw(b)
 			if err != nil {
 				return fmt.Errorf("creating packet array from raw: %w", err)
 			}
