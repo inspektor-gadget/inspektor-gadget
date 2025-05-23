@@ -13,6 +13,7 @@
 // union defining either an IPv4 or IPv6 address
 union gadget_ip_addr_t {
 	__u8 v6[16];
+	unsigned __int128 v6_raw;
 	__u32 v4;
 };
 
