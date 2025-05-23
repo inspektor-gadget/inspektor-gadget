@@ -11,7 +11,31 @@ image-based one.
 
 :::
 
-The snapshot socket gadget gathers information about TCP and UDP sockets.
+The snapshot socket gadget gathers information about TCP and UDP sockets, providing visibility into network connections at the socket level.
+
+## Use Cases
+
+1. **Network Service Discovery**
+   - Quickly identify all listening services and their associated ports across your cluster
+   - Map out the network topology by understanding which services are communicating with each other
+
+2. **Troubleshooting Network Connectivity**
+   - Verify that services are binding to expected ports and addresses
+   - Identify unauthorized or unexpected listening ports that might indicate security issues
+   - Diagnose connection issues by checking if expected connections are in ESTABLISHED state
+
+3. **Security Auditing**
+   - Detect potentially malicious network activity by identifying unusual connection patterns
+   - Verify network isolation between namespaces by checking for unexpected cross-namespace communications
+   - Audit network exposure by identifying services listening on public interfaces
+
+4. **Capacity Planning**
+   - Monitor connection counts and states to understand service load patterns
+   - Identify services that might need scaling based on connection metrics
+
+5. **Compliance and Documentation**
+   - Document the network behavior of applications for compliance purposes
+   - Verify that network policies are correctly enforced by examining actual socket states
 
 ### On Kubernetes
 

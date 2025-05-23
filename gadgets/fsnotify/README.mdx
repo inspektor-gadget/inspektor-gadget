@@ -8,7 +8,38 @@ import TabItem from '@theme/TabItem';
 
 # fsnotify
 
-The fsnotify gadget detects applications using inotify or fanotify and enriches the events with the process-related metadata.
+The fsnotify gadget detects applications using inotify or fanotify and enriches the events with process metadata.
+
+## Common Use Cases
+
+### Monitor file system watches
+```bash
+# Show all inotify and fanotify watches
+fsnotify
+
+# Example output:
+# NAMESPACE  POD     CONTAINER  PID  COMM  TYPE     MOUNT_NS  WATCH_TYPE  PATH
+# default    nginx   nginx      1234 nginx INOTIFY  402653184 IN_CREATE  /etc/nginx/conf.d
+```
+
+### Filter by watch type
+```bash
+# Show only fanotify watches
+fsnotify --fanotify-only
+
+# Show only inotify watches
+fsnotify --inotify-only
+```
+
+### Filter by process
+```bash
+# Show watches for a specific process
+fsnotify --pid 1234
+```
+
+:::note
+This gadget requires Linux >= 5.4. The `i_ino` field is only available in Linux >= 5.11.
+:::
 
 This gadget requires Linux >= 5.4. Additionally, the field `i_ino` is only available in Linux >= 5.11.
 
