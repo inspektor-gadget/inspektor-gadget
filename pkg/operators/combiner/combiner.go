@@ -24,6 +24,7 @@ package combiner
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -61,16 +62,24 @@ func (o *combinerOperator) InstanceParams() api.Params {
 	return nil
 }
 
-func getFetchAnnotation(ds datasource.DataSource) (time.Duration, error) {
+func getFetchAnnotations(ds datasource.DataSource) (time.Duration, int, error) {
 	intervalAnn, ok := ds.Annotations()[api.FetchIntervalAnnotation]
 	if !ok {
-		return 0, errors.New("missing fetch interval annotation")
+		return 0, 0, errors.New("missing fetch interval annotation")
 	}
 	fetchInterval, err := time.ParseDuration(intervalAnn)
 	if err != nil {
-		return 0, fmt.Errorf("parsing fetch interval annotation to duration: %w", err)
+		return 0, 0, fmt.Errorf("parsing fetch interval annotation to duration: %w", err)
 	}
-	return fetchInterval, nil
+	countAnn, ok := ds.Annotations()[api.FetchCountAnnotation]
+	if !ok {
+		return 0, 0, errors.New("missing fetch count annotation")
+	}
+	fetchCount, err := strconv.Atoi(countAnn)
+	if err != nil {
+		return 0, 0, fmt.Errorf("parsing fetch count annotation to int: %w", err)
+	}
+	return fetchInterval, fetchCount, nil
 }
 
 func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -92,7 +101,7 @@ func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCon
 	configs := make(map[datasource.DataSource]*combinerConfig)
 	for _, ds := range gadgetCtx.GetDataSources() {
 		if ds.Type() == datasource.TypeArray {
-			interval, err := getFetchAnnotation(ds)
+			interval, count, err := getFetchAnnotations(ds)
 			if err != nil {
 				return nil, fmt.Errorf("getting fetch annotation for ds %s: %w", ds.Name(), err)
 			}
@@ -102,6 +111,7 @@ func (o *combinerOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCon
 				// target? We should probably have a way to handle this case.
 				packetBuf: make(chan datasource.PacketArray, targets),
 				interval:  interval,
+				count:     count,
 			}
 		}
 	}
@@ -124,6 +134,9 @@ func (o *combinerOperator) Priority() int {
 type combinerConfig struct {
 	// Interval to wait for data before emitting the combined data
 	interval time.Duration
+
+	// Count of how many events are expected
+	count int
 
 	// Buffer to send data to the combiner data source
 	packetBuf chan datasource.PacketArray
@@ -171,11 +184,14 @@ func (o *combinerOperatorInstance) forwardData(
 	var c <-chan time.Time
 
 	if config.interval == 0 {
-		// Define a maximum waiting time for data from all targets
+		// If count is 0, wait until the user stops the gadget, otherwise wait for
+		// 5 seconds
 		// TODO: Make it configurable?
-		timeout := time.NewTimer(5 * time.Second)
-		defer timeout.Stop()
-		c = timeout.C
+		if config.count != 0 {
+			timeout := time.NewTimer(5 * time.Second)
+			c = timeout.C
+			defer timeout.Stop()
+		}
 	} else {
 		// Even if we receive data from all targets, we emit the combined data
 		// only after the requested interval
