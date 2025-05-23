@@ -10,6 +10,34 @@ import TabItem from '@theme/TabItem';
 
 Use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so and detect potential deadlocks.
 
+## Common Use Cases
+
+### Detect potential deadlocks
+```bash
+# Monitor for potential deadlocks in all processes
+deadlock
+
+# Example output:
+# RUNTIME.CONTAINERNAME  PID  NODES  STACK_IDS  COMM
+# myapp                 1234  2      [1,2]      myapp
+```
+
+### Analyze lock ordering
+```bash
+# Show detailed stack traces for lock acquisitions
+deadlock --stack-trace
+```
+
+### Monitor specific process
+```bash
+# Monitor only a specific process by PID
+deadlock --pid 1234
+```
+
+:::note
+This gadget detects "potential" deadlocks - lock order inversions that could lead to deadlocks under certain conditions.
+:::
+
 ## Getting started
 
 Running the gadget:
