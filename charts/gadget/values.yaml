@@ -64,6 +64,15 @@ image:
    # -- Tag for the container image
   tag: ""
 
+# -- CPU and memory resources
+resources: {}
+  # limits:
+  #   cpu: 200m
+  #   memory: 50Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 30Mi
+
 # -- Node selector used by `gadget` container
 nodeSelector:
   kubernetes.io/os: linux
