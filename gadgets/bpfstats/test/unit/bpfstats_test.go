@@ -114,9 +114,12 @@ func TestBpfstatsGadget(t *testing.T) {
 			normalizeEvent := func(event *ExpectedBpfstatsEvent) {
 				utils.NormalizeInt(&event.MapCount)
 				utils.NormalizeInt(&event.MapMemory)
-				utils.NormalizeInt(&event.Runcount)
-				utils.NormalizeInt(&event.Runtime)
 				utils.NormalizeInt(&event.ProgID)
+
+				// Manually set the values to the normalized values because the
+				// function doesn't modify the value when is 0
+				event.Runcount = utils.NormalizedInt
+				event.Runtime = utils.NormalizedInt
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utilstest.RunWithRunner(t, runner, func() error {
