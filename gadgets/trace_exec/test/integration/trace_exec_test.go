@@ -37,19 +37,20 @@ type traceExecEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	Loginuid    uint32 `json:"loginuid"`
-	Sessionid   uint32 `json:"sessionid"`
-	Error       string `json:"error"`
-	UpperLayer  bool   `json:"upper_layer"`
-	PupperLayer bool   `json:"pupper_layer"`
-	FupperLayer bool   `json:"fupper_layer"`
-	Exepath     string `json:"exepath"`
-	File        string `json:"file"`
-	Cwd         string `json:"cwd"`
-	Args        string `json:"args"`
-	DevMajor    uint32 `json:"dev_major"`
-	DevMinor    uint32 `json:"dev_minor"`
-	Inode       uint64 `json:"inode"`
+	Loginuid      uint32 `json:"loginuid"`
+	Sessionid     uint32 `json:"sessionid"`
+	Error         string `json:"error"`
+	UpperLayer    bool   `json:"upper_layer"`
+	PupperLayer   bool   `json:"pupper_layer"`
+	FupperLayer   bool   `json:"fupper_layer"`
+	Exepath       string `json:"exepath"`
+	File          string `json:"file"`
+	Cwd           string `json:"cwd"`
+	Args          string `json:"args"`
+	DevMajor      uint32 `json:"dev_major"`
+	DevMinor      uint32 `json:"dev_minor"`
+	Inode         uint64 `json:"inode"`
+	ParentExepath string `json:"parent_exepath"`
 }
 
 func TestTraceExec(t *testing.T) {
@@ -202,19 +203,20 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:        utils.BuildProc("with_shebeng.sh", 1000, 1111),
-						Cwd:         "/tmp",
-						Args:        "/bin/with_shebeng.sh",
-						PupperLayer: true,
-						UpperLayer:  false,
-						FupperLayer: true,
-						Exepath:     "/usr/bin/dash",
-						File:        "/usr/bin/with_shebeng.sh",
-						Error:       "",
-						DevMajor:    utils.NormalizedInt,
-						DevMinor:    utils.NormalizedInt,
-						Inode:       utils.NormalizedInt,
+						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:          utils.BuildProc("with_shebeng.sh", 1000, 1111),
+						Cwd:           "/tmp",
+						Args:          "/bin/with_shebeng.sh",
+						PupperLayer:   true,
+						UpperLayer:    false,
+						FupperLayer:   true,
+						Exepath:       "/usr/bin/dash",
+						File:          "/usr/bin/with_shebeng.sh",
+						Error:         "",
+						DevMajor:      utils.NormalizedInt,
+						DevMinor:      utils.NormalizedInt,
+						Inode:         utils.NormalizedInt,
+						ParentExepath: "/usr/bin/sh2",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -223,18 +225,19 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// inner sh
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:        utils.BuildProc("sh2", 1000, 1111),
-						Cwd:         "/",
-						Args:        strings.Join(innerShArgs, " "),
-						PupperLayer: false,
-						UpperLayer:  true,
-						FupperLayer: true,
-						Exepath:     "/usr/bin/sh2",
-						File:        "/usr/bin/sh2",
-						DevMajor:    utils.NormalizedInt,
-						DevMinor:    utils.NormalizedInt,
-						Inode:       utils.NormalizedInt,
+						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:          utils.BuildProc("sh2", 1000, 1111),
+						Cwd:           "/",
+						Args:          strings.Join(innerShArgs, " "),
+						PupperLayer:   false,
+						UpperLayer:    true,
+						FupperLayer:   true,
+						Exepath:       "/usr/bin/sh2",
+						File:          "/usr/bin/sh2",
+						DevMajor:      utils.NormalizedInt,
+						DevMinor:      utils.NormalizedInt,
+						Inode:         utils.NormalizedInt,
+						ParentExepath: "/usr/bin/dash",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -243,18 +246,19 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// sleeps
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:        utils.BuildProc("sleep", 1000, 1111),
-						Cwd:         "/tmp",
-						Args:        strings.Join(sleep1Args, " "),
-						PupperLayer: true,
-						UpperLayer:  false,
-						FupperLayer: false,
-						Exepath:     "/usr/bin/sleep",
-						File:        "/usr/bin/sleep",
-						DevMajor:    utils.NormalizedInt,
-						DevMinor:    utils.NormalizedInt,
-						Inode:       utils.NormalizedInt,
+						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:          utils.BuildProc("sleep", 1000, 1111),
+						Cwd:           "/tmp",
+						Args:          strings.Join(sleep1Args, " "),
+						PupperLayer:   true,
+						UpperLayer:    false,
+						FupperLayer:   false,
+						Exepath:       "/usr/bin/sleep",
+						File:          "/usr/bin/sleep",
+						DevMajor:      utils.NormalizedInt,
+						DevMinor:      utils.NormalizedInt,
+						Inode:         utils.NormalizedInt,
+						ParentExepath: "/usr/bin/sh2",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,
@@ -262,18 +266,19 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
-						Proc:        utils.BuildProc("sleep", 1000, 1111),
-						Cwd:         "/tmp",
-						Args:        strings.Join(sleep2Args, " "),
-						PupperLayer: true,
-						UpperLayer:  false,
-						FupperLayer: false,
-						Exepath:     "/usr/bin/sleep",
-						File:        "/usr/bin/sleep",
-						DevMajor:    utils.NormalizedInt,
-						DevMinor:    utils.NormalizedInt,
-						Inode:       utils.NormalizedInt,
+						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						Proc:          utils.BuildProc("sleep", 1000, 1111),
+						Cwd:           "/tmp",
+						Args:          strings.Join(sleep2Args, " "),
+						PupperLayer:   true,
+						UpperLayer:    false,
+						FupperLayer:   false,
+						Exepath:       "/usr/bin/sleep",
+						File:          "/usr/bin/sleep",
+						DevMajor:      utils.NormalizedInt,
+						DevMinor:      utils.NormalizedInt,
+						Inode:         utils.NormalizedInt,
+						ParentExepath: "/usr/bin/sh2",
 
 						// Check the existence of the following fields
 						Timestamp: utils.NormalizedStr,

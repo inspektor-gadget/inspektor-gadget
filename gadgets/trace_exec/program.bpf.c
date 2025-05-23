@@ -50,6 +50,7 @@ struct event {
 	unsigned int dev_minor;
 	unsigned long inode;
 	char exepath[GADGET_PATH_MAX];
+	char parent_exepath[GADGET_PATH_MAX];
 	char args[FULL_MAX_ARGS_ARR];
 };
 
@@ -243,6 +244,13 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 		char *exepath = get_path_str(&exe_file->f_path);
 		bpf_probe_read_kernel_str(event->exepath,
 					  sizeof(event->exepath), exepath);
+
+		struct file *parent_exe_file =
+			BPF_CORE_READ(parent, mm, exe_file);
+		char *parent_exepath = get_path_str(&parent_exe_file->f_path);
+		bpf_probe_read_kernel_str(event->parent_exepath,
+					  sizeof(event->parent_exepath),
+					  parent_exepath);
 	}
 
 	size_t len = EVENT_SIZE(event);

@@ -18,6 +18,12 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
+      parent_exepath:
+        annotations:
+          description: The executable binary file of the parent process (require --paths flag)
+          columns.width: 64
+          columns.hidden: "true"
+          columns.alignment: left
       file:
         annotations:
           description: The executable file of the process. It might be different to exepath in case of a script (require --paths flag)
