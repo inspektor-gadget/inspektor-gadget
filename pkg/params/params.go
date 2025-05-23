@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -299,7 +299,7 @@ func (p *Params) CopyToMapExt(target map[string]any, prefix string) {
 		case TypeBytes:
 			target[prefix+param.Key] = compressAndB64Encode(param.String())
 		case TypeStringSlice:
-			target[prefix+param.Key] = strings.Split(param.String(), ",")
+			target[prefix+param.Key] = SplitStringSlice(param.String())
 		default:
 			target[prefix+param.Key] = param.String()
 		}
@@ -493,10 +493,7 @@ func (p *Param) AsBytes() []byte {
 }
 
 func (p *Param) AsStringSlice() []string {
-	if p.value == "" {
-		return []string{}
-	}
-	return strings.Split(p.value, ",")
+	return SplitStringSlice(p.value)
 }
 
 func (p *Param) AsBool() bool {
@@ -547,4 +544,39 @@ func (p *Param) AsDuration() time.Duration {
 
 func (p *Param) AsIP() net.IP {
 	return net.ParseIP(p.value)
+}
+
+// SplitStringSlice splits a string into multiple strings that were
+// delimited by comma characters.
+func SplitStringSlice(s string) []string {
+	if len(s) == 0 {
+		return []string{}
+	}
+	var result []string
+	var b strings.Builder
+	var escape bool
+	for _, c := range s {
+		if escape {
+			escape = false
+			if c != ',' && c != '\\' {
+				// Leave escape char alone if not a comma or backslash
+				b.WriteByte('\\')
+			}
+			b.WriteRune(c)
+			continue
+		}
+		switch c {
+		case '\\':
+			escape = true
+		case ',':
+			result = append(result, b.String())
+			b.Reset()
+		default:
+			b.WriteRune(c)
+		}
+	}
+	if b.Len() > 0 {
+		result = append(result, b.String())
+	}
+	return result
 }
