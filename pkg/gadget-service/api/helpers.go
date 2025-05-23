@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,26 +97,30 @@ func (pv ParamValues) ExtractPrefixedValues(prefix string) ParamValues {
 
 func SplitStringWithEscape(s string, sep rune) []string {
 	var result []string
-	var part string
+	var b strings.Builder
 	var escape bool
 	for _, c := range s {
 		if escape {
 			escape = false
-			part += string(c)
+			if c != sep && c != '\\' {
+				// Leave escape char alone if not a sep or backslash
+				b.WriteByte('\\')
+			}
+			b.WriteRune(c)
 			continue
 		}
 		switch c {
 		case '\\':
 			escape = true
 		case sep:
-			result = append(result, part)
-			part = ""
+			result = append(result, b.String())
+			b.Reset()
 		default:
-			part += string(c)
+			b.WriteRune(c)
 		}
 	}
-	if part != "" {
-		result = append(result, part)
+	if b.Len() > 0 {
+		result = append(result, b.String())
 	}
 	return result
 }
