@@ -15,7 +15,10 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,13 +26,67 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
+// VersionInfo contains client and server version information
+type VersionInfo struct {
+	ClientVersion *version.BuildInfo `json:"clientVersion,omitempty"`
+	ServerVersion *version.BuildInfo `json:"serverVersion,omitempty"`
+}
+
 func NewVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	var output string
+
+	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Show version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("v%s\n", version.Version().String())
+		Short: "Show version information",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			info := &VersionInfo{
+				ClientVersion: version.GetBuildInfo(),
+			}
+
+			switch strings.ToLower(output) {
+			case "json":
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(info)
+			default:
+				printVersionInfo(info)
+			}
+
 			log.Debugf("Inspektor Gadget User Agent: %s\n", version.UserAgent())
+			return nil
 		},
+	}
+
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Output format. One of: json")
+
+	return cmd
+}
+
+// printVersionInfo prints version information in a human-readable format
+func printVersionInfo(info *VersionInfo) {
+	cv := info.ClientVersion
+	fmt.Printf("Client Version: %s\n", cv.Version)
+	if cv.GitCommit != "" {
+		fmt.Printf("Git Commit: %s\n", cv.GitCommit)
+	}
+	if cv.GitTreeState != "" {
+		fmt.Printf("Git Tree State: %s\n", cv.GitTreeState)
+	}
+	if cv.BuildDate != "" {
+		fmt.Printf("Build Date: %s\n", cv.BuildDate)
+	}
+	fmt.Printf("Go Version: %s\n", cv.GoVersion)
+	fmt.Printf("Compiler: %s\n", cv.Compiler)
+	fmt.Printf("Platform: %s\n", cv.Platform)
+
+	if sv := info.ServerVersion; sv != nil {
+		fmt.Println("\nServer Version:")
+		fmt.Printf("  Version: %s\n", sv.Version)
+		if sv.GitCommit != "" {
+			fmt.Printf("  Git Commit: %s\n", sv.GitCommit)
+		}
+		if sv.GitTreeState != "" {
+			fmt.Printf("  Git Tree State: %s\n", sv.GitTreeState)
+		}
 	}
 }

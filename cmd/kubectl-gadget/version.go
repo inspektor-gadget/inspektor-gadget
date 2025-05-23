@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,74 +29,102 @@ import (
 
 // VersionInfo represents the structure for version information output
 type VersionInfo struct {
-	ClientVersion *Version `json:"clientVersion,omitempty"`
-	ServerVersion *Version `json:"serverVersion,omitempty"`
+	ClientVersion *version.BuildInfo `json:"clientVersion,omitempty"`
+	ServerVersion *version.BuildInfo `json:"serverVersion,omitempty"`
 }
 
-// Version contains detailed version information
-type Version struct {
-	Version string `json:"version"`
-}
-
-var outputFormat string
+var (
+	outputFormat string
+	versionCmd   = &cobra.Command{
+		Use:          "version",
+		Short:        "Show version information",
+		SilenceUsage: true,
+		RunE:         runVersion,
+	}
+)
 
 func init() {
-	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Output format. One of: json|''")
+	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Output format. One of: json")
 	rootCmd.AddCommand(versionCmd)
 }
 
-var versionCmd = &cobra.Command{
-	Use:          "version",
-	Short:        "Show version",
-	SilenceUsage: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Initialize version info structure
-		versionInfo := &VersionInfo{
-			ClientVersion: &Version{
-				Version: version.Version().String(),
-			},
-		}
+func runVersion(cmd *cobra.Command, args []string) error {
+	// Initialize version info structure
+	versionInfo := &VersionInfo{
+		ClientVersion: version.GetBuildInfo(),
+	}
 
-		// Get server version information
-		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+	// Get server version information if available
+	gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: getting running Inspektor Gadget instances: %s\n", err)
+	}
+
+	if len(gadgetNamespaces) == 1 {
+		// Exactly one running gadget instance found, use it
+		runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+		info, err := grpcRuntime.InitDeployInfo()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: getting running Inspektor Gadget instances: %s\n", err)
-		}
-
-		if len(gadgetNamespaces) == 1 {
-			// Exactly one running gadget instance found, use it
-			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
-			info, err := grpcRuntime.InitDeployInfo()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
-			} else {
-				versionInfo.ServerVersion = &Version{
-					Version: info.ServerVersion,
-				}
+			fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
+		} else {
+			// Create a basic BuildInfo for the server with the version we know
+			versionInfo.ServerVersion = &version.BuildInfo{
+				Version: info.ServerVersion,
 			}
-		} else if len(gadgetNamespaces) > 1 {
-			fmt.Fprintf(os.Stderr, "Error: multiple Inspektor Gadget instances found in namespaces: %s\n", gadgetNamespaces)
 		}
+	} else if len(gadgetNamespaces) > 1 {
+		fmt.Fprintf(os.Stderr, "Error: multiple Inspektor Gadget instances found in namespaces: %s\n", gadgetNamespaces)
+	}
 
-		// Output based on format
-		switch outputFormat {
-		case "json":
-			output, err := json.MarshalIndent(versionInfo, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshaling version info: %w", err)
-			}
-			fmt.Println(string(output))
-		case "":
-			fmt.Printf("Client version: v%s\n", versionInfo.ClientVersion.Version)
-			if versionInfo.ServerVersion != nil && versionInfo.ServerVersion.Version != "" {
-				fmt.Printf("Server version: v%s\n", versionInfo.ServerVersion.Version)
-			} else {
-				fmt.Println("Server version: not available")
-			}
-		default:
-			return fmt.Errorf("invalid output format: %s", outputFormat)
+	// Output based on format
+	switch strings.ToLower(outputFormat) {
+	case "json":
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(versionInfo)
+	default:
+		printVersionInfo(versionInfo)
+	}
+
+	return nil
+}
+
+// printVersionInfo prints version information in a human-readable format
+func printVersionInfo(info *VersionInfo) {
+	cv := info.ClientVersion
+	fmt.Printf("Client Version: %s\n", cv.Version)
+	if cv.Major != "" && cv.Minor != "" {
+		fmt.Printf("  Major: %s\n", cv.Major)
+		fmt.Printf("  Minor: %s\n", cv.Minor)
+	}
+	if cv.GitCommit != "" {
+		fmt.Printf("  Git Commit: %s\n", cv.GitCommit)
+	}
+	if cv.GitTreeState != "" {
+		fmt.Printf("  Git Tree State: %s\n", cv.GitTreeState)
+	}
+	if cv.BuildDate != "" {
+		fmt.Printf("  Build Date: %s\n", cv.BuildDate)
+	}
+	fmt.Printf("  Go Version: %s\n", cv.GoVersion)
+	fmt.Printf("  Compiler: %s\n", cv.Compiler)
+	fmt.Printf("  Platform: %s\n", cv.Platform)
+
+	if sv := info.ServerVersion; sv != nil {
+		fmt.Println("\nServer Version:")
+		fmt.Printf("  Version: %s\n", sv.Version)
+		// Server might not have all the build info fields
+		if sv.Major != "" && sv.Minor != "" {
+			fmt.Printf("  Major: %s\n", sv.Major)
+			fmt.Printf("  Minor: %s\n", sv.Minor)
 		}
-
-		return nil
-	},
+		if sv.GitCommit != "" {
+			fmt.Printf("  Git Commit: %s\n", sv.GitCommit)
+		}
+		if sv.GitTreeState != "" {
+			fmt.Printf("  Git Tree State: %s\n", sv.GitTreeState)
+		}
+	} else {
+		fmt.Println("\nServer: not available")
+	}
 }
