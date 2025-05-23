@@ -154,13 +154,13 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 		event->src.version = event->dst.version = 6;
 
 		BPF_CORE_READ_INTO(
-			&event->src.addr_raw.v6, sk,
+			&event->src.addr_raw.v6_raw, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		if (event->src.addr_raw.v6 == 0)
+		if (event->src.addr_raw.v6_raw == 0)
 			goto cleanup;
-		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6, sk,
+		BPF_CORE_READ_INTO(&event->dst.addr_raw.v6_raw, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-		if (event->dst.addr_raw.v6 == 0)
+		if (event->dst.addr_raw.v6_raw == 0)
 			goto cleanup;
 		break;
 

@@ -59,7 +59,7 @@ struct {
 
 GADGET_MAPITER(file, stats);
 
-static void get_file_path(struct file *file, __u8 *buf, size_t size)
+static void get_file_path(struct file *file, char *buf, size_t size)
 {
 	struct path f_path = BPF_CORE_READ(file, f_path);
 	// Extract the full path string

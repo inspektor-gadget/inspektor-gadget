@@ -13,7 +13,7 @@ LLVM_STRIP ?= llvm-strip
 #
 # Since Ubuntu does not install it in a standard path, add a compiler flag for
 # it.
-BASECFLAGS = -target bpf -Wall -g -O2 -I/usr/include/$(shell uname -m)-linux-gnu
+BASECFLAGS = -target bpf -Wall -Werror -g -O2 -I/usr/include/$(shell uname -m)-linux-gnu
 CFLAGS ?=
 OUTPUTDIR ?= /tmp
 EBPFSOURCE ?= program.bpf.c
