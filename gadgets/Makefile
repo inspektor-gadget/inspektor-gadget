@@ -56,6 +56,7 @@ GADGETS = \
 	ci/datasource-containers \
 	ci/inner_fields \
 	ci/sched_cls_drop \
+	ci/image_inspect \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
