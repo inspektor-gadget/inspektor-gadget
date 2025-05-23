@@ -70,6 +70,7 @@ type GadgetContext struct {
 	lock             sync.Mutex
 	dataSources      map[string]datasource.DataSource
 	dataOperators    []operators.DataOperator
+	localOperators   []operators.DataOperatorInstance
 	vars             map[string]any
 	params           []*api.Param
 	prepareCallbacks []func()
@@ -378,25 +379,18 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		c.SetVar("config", v)
 	}
 
-	// After loading gadget info, start local operators as well
-	localOperators, err := c.initAndPrepareOperators(paramValues)
+	var err error
+	// After loading gadget info, get local operators params as well
+	c.localOperators, err = c.initAndPrepareOperators(paramValues)
 	if err != nil {
 		return fmt.Errorf("initializing local operators: %w", err)
 	}
 
 	if run {
-		if err := c.start(localOperators); err != nil {
+		if err := c.start(c.localOperators); err != nil {
 			return fmt.Errorf("starting local operators: %w", err)
 		}
-
 		c.Logger().Debugf("running...")
-
-		go func() {
-			// TODO: Client shouldn't need to wait for the timeout. It should be
-			// managed only on the server side.
-			WaitForTimeoutOrDone(c)
-			c.stop(localOperators)
-		}()
 	}
 
 	if c.ExtraInfo() && extraInfo != nil {
@@ -414,6 +408,14 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		}
 	}
 	return nil
+}
+
+func (c *GadgetContext) StopLocalOperators() {
+	if c.localOperators == nil {
+		return
+	}
+	c.stop(c.localOperators)
+	c.localOperators = nil
 }
 
 func (c *GadgetContext) OrasTarget() oras.ReadOnlyTarget {

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,6 +134,12 @@ func TestParamAs(t *testing.T) {
 			name:     "StringSlice()_Empty",
 			value:    "",
 			expected: []string{},
+			getter:   func(p *Param) any { return p.AsStringSlice() },
+		},
+		{
+			name:     "StringSlice()_EscapedCommas",
+			value:    "foo,bar,zas\\,foob,olo\\lol,fro\\\\bedeedoo",
+			expected: []string{"foo", "bar", "zas,foob", "olo\\lol", "fro\\bedeedoo"},
 			getter:   func(p *Param) any { return p.AsStringSlice() },
 		},
 		{
@@ -463,8 +469,8 @@ func TestBytesHandling(t *testing.T) {
 }
 
 func TestStringSlice(t *testing.T) {
-	const testStringSlice = "foo,bar,quux"
-	testStringSliceExpected := []string{"foo", "bar", "quux"}
+	const testStringSlice = "foo,bar,quux,abc\\,def"
+	testStringSliceExpected := []string{"foo", "bar", "quux", "abc,def"}
 	params := Params{
 		&Param{
 			ParamDesc: &ParamDesc{
