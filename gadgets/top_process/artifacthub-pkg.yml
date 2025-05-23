@@ -1,0 +1,31 @@
+# Artifact Hub package metadata file
+version: 0.40.0
+name: "top process"
+category: monitoring-logging
+displayName: "top process"
+createdAt: "2025-05-13T18:00:00Z"
+digest: "2025-05-13T18:00:00Z"
+description: "Periodically report process statistics"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/top_process"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/top_process:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - process
+    - monitoring
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_process"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/top_process:latest
+    ```
+provider:
+    name: Inspektor Gadget

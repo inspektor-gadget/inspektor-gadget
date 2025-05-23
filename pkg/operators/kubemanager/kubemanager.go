@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -236,6 +237,17 @@ func newContainerSelector(selectorSlice []string, namespace, podName, containerN
 func (m *KubeManagerInstance) PreGadgetRun() error {
 	log := m.gadgetCtx.Logger()
 
+	if m.gadgetInstance != nil {
+		err := m.handleGadgetInstance(log)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 	containerSelector := newContainerSelector(
 		m.params.Get(ParamSelector).AsStringSlice(),
 		m.params.Get(ParamNamespace).AsString(),
@@ -320,7 +332,6 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			attachContainerFunc(container)
 		}
 	}
-
 	return nil
 }
 
@@ -452,11 +463,7 @@ func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) para
 }
 
 func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	var ok bool
-	m.gadgetInstance, ok = gadgetCtx.GetVar("ebpfInstance")
-	if !ok {
-		return fmt.Errorf("getting ebpfInstance")
-	}
+	m.gadgetInstance, _ = gadgetCtx.GetVar("ebpfInstance")
 
 	compat.Subscribe(
 		m.eventWrappers,
