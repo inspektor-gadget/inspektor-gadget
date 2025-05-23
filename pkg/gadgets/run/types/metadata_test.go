@@ -32,11 +32,6 @@ func TestValidate(t *testing.T) {
 	}
 
 	tests := map[string]testCase{
-		"missing_name": {
-			objectPath:        "../../../../testdata/validate_metadata1.o",
-			metadata:          &metadatav1.GadgetMetadata{},
-			expectedErrString: "gadget name is required",
-		},
 		"param_nonexistent": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
 			metadata: &metadatav1.GadgetMetadata{

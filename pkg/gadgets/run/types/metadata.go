@@ -45,10 +45,6 @@ const (
 func Validate(m *metadatav1.GadgetMetadata, spec *ebpf.CollectionSpec) error {
 	var errs []error
 
-	if m.Name == "" {
-		errs = append(errs, errors.New("gadget name is required"))
-	}
-
 	errs = append(errs, validateEbpfParams(m, spec))
 
 	return errors.Join(errs...)
