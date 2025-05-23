@@ -21,6 +21,7 @@ UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
 
 GADGETS = \
+	advise_networkpolicy \
 	advise_seccomp \
 	audit_seccomp \
 	bpfstats \
