@@ -123,6 +123,9 @@ func (r *Runtime) runGadgetOnTargets(
 	}
 
 	wg.Wait()
+	// Stop local operators after all remote targets
+	// have stopped their operators and "returned"
+	gadgetCtx.StopLocalOperators()
 	return results, results.Err()
 }
 

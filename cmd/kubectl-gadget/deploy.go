@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"regexp"
@@ -511,7 +512,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	objects = append(objects, traceObjects...)
 
 	if seccompProfile != "" {
@@ -611,6 +611,19 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
+			// modify the otel-metrics-listen-address if specified
+			if otelMetricsListen {
+				// modify the prometheus.io/port annotation
+				_, otelListenPort, err := net.SplitHostPort(otelMetricsListenAddr)
+				if err != nil {
+					return fmt.Errorf("parsing port: %w", err)
+				}
+				if daemonSet.Spec.Template.Annotations == nil {
+					daemonSet.Spec.Template.Annotations = make(map[string]string)
+				}
+				daemonSet.Spec.Template.Annotations["prometheus.io/port"] = otelListenPort
+			}
+
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
 
 			daemonSet.Namespace = gadgetNamespace
@@ -791,6 +804,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
 			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
 			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
+			cfg[gadgettracermanagerconfig.GadgetNamespace] = gadgetNamespace
 
 			opCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})
 			if !ok {

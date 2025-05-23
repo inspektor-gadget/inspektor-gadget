@@ -35,4 +35,5 @@ const (
 	OtelMetricsListen        = "otel-metrics-listen"
 	OtelMetricsListenAddress = "otel-metrics-listen-address"
 	EBPFOperator             = "ebpf"
+	GadgetNamespace          = "gadget-namespace"
 )

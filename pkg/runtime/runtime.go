@@ -59,6 +59,7 @@ type GadgetContext interface {
 	GetVar(string) (any, bool)
 	SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error)
 	LoadGadgetInfo(info *api.GadgetInfo, paramValues api.ParamValues, run bool, extraInfo *api.ExtraInfo) error
+	StopLocalOperators()
 	Params() []*api.Param
 	SetMetadata([]byte)
 	SetParams([]*api.Param)

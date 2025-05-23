@@ -393,6 +393,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		// combiner operator handle the data correctly
 		// TODO: Make this configurable
 		m.ds.AddAnnotation(api.FetchIntervalAnnotation, "0")
+		m.ds.AddAnnotation(api.FetchCountAnnotation, "1")
 	}
 	for name, m := range i.mapIters {
 		fields := make([]*Field, 0)
