@@ -989,7 +989,10 @@ jobs:
             context: "/home/runner/work/inspektor-gadget/inspektor-gadget"
             dockerfile: "Dockerfiles/gadget-builder.Dockerfile"
             platform: "linux/amd64,linux/arm64"
-            key-files: "'include/**','Dockerfiles/gadget-builder.Dockerfile','cmd/common/image/Makefile.build'"
+            key-files: |
+              include/**
+              Dockerfiles/gadget-builder.Dockerfile
+              cmd/common/image/Makefile.build
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Docker Buildx
