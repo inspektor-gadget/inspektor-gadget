@@ -25,7 +25,7 @@ jobs:
     - name: Gather valid gadgets
       id: filter-gadgets
       run: |
-        gadgets=$(find gadgets -name 'artifacthub-pkg.yml' | cut -d'/' -f2 | perl -p -e 's/_/-/')
+        gadgets=$(find gadgets -name 'artifacthub-pkg.yml' | cut -d'/' -f2 | perl -p -e 's/_/-/g')
         gadgets=$(echo "$gadgets" | tr '\n' ',' | sed 's/,$//')
 
         echo "valid-gadgets-string=${gadgets}" >> $GITHUB_OUTPUT
