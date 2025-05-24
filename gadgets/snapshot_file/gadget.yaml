@@ -1,0 +1,18 @@
+name: snapshot file
+description: Show files
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_file
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_file
+datasources:
+  processes:
+    fields:
+params:
+  ebpf:
+    show_threads:
+      key: threads
+      defaultValue: "false"
+      description: Show all threads (by default, only processes are shown)
+    file_type_mask:
+      key: type-mask
+      defaultValue: "0xFFFFFFF"
+      description: File type mask to filter files by type (default is 0x7f, which includes regular files, directories, symlinks, sockets, and FIFOs)
