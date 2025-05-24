@@ -1,10 +1,9 @@
 ---
 title: 'Using snapshot socket'
 sidebar_position: 20
-description: >
+description: |
   Gather information about TCP and UDP sockets.
 ---
-
 :::warning
 
 This Gadget is deprecated, please use the [snapshot_socket](../../snapshot_socket.mdx)
@@ -16,58 +15,89 @@ The snapshot socket gadget gathers information about TCP and UDP sockets.
 
 ### On Kubernetes
 
-We will start this demo by using nginx to create a web server on port 80:
+#### Example 1: Basic TCP Socket Monitoring
+
+We'll start by creating a simple nginx web server and monitor its listening sockets:
 
 ```bash
-$ kubectl create ns test-socketcollector
-namespace/test-socketcollector created
-$ kubectl run --restart=Never -n test-socketcollector --image=nginx nginx-app --port=80
-pod/nginx-app created
+# Create a test namespace
+kubectl create ns test-socketcollector
+
+# Create an nginx pod
+kubectl run nginx-app --restart=Never -n test-socketcollector --image=nginx --port=80
+
+# Wait for the pod to be ready
+kubectl wait --timeout=-1s -n test-socketcollector --for=condition=ready pod/nginx-app
+kubectl get pod -n test-socketcollector
 ```
 
-Wait for the pod to get ready:
+Now, let's check the listening sockets:
 
 ```bash
-$ kubectl wait --timeout=-1s -n test-socketcollector --for=condition=ready pod/nginx-app ; kubectl get pod -n test-socketcollector
-pod/nginx-app condition met
-NAME        READY   STATUS    RESTARTS   AGE
-nginx-app   1/1     Running   0          46s
+kubectl gadget snapshot socket -n test-socketcollector
 ```
 
-We will now use the snapshot socket gadget to retrieve the TCP/UDP sockets information
-of the nginx-app pod. Notice we are filtering by namespace but we could have
-done it also using the podname or labels:
-
-```bash
-$ kubectl gadget snapshot socket -n test-socketcollector
-K8S.NODE            K8S.NAMESPACE       K8S.PODNAME        PROTOCOL SRC                      DST                      STATUS
-minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:80             r/0.0.0.0:0              LISTEN
+Example output:
+```
+K8S.NODE            K8S.NAMESPACE       K8S.PODNAME  PROTOCOL  SRC                DST                STATUS
+minikube-docker     test-socketcollector nginx-app    TCP       r/0.0.0.0:80       r/0.0.0.0:0        LISTEN
 ```
 
-In the output, "SRC" is the local IP address and port number pair.
-If connected, "DST" is the remote IP address and port number pair,
-otherwise, it will be "0.0.0.0:0". While "STATUS" is the internal
-status of the socket.
+#### Example 2: Monitoring TCP Established Connections
 
-Now, modify the nginx configuration to listen on port 8080 instead of 80 and reload the daemon:
+Let's create a TCP client that connects to our nginx server:
 
 ```bash
-$ kubectl exec -n test-socketcollector nginx-app -- /bin/bash -c "sed -i 's/listen \+80;/listen\t8080;/g' /etc/nginx/conf.d/default.conf && exec nginx -s reload"
-[...] signal process started
+# Get the nginx pod IP
+NGINX_IP=$(kubectl get pod -n test-socketcollector nginx-app -o jsonpath='{.status.podIP}')
+
+# Create a busybox pod that will connect to nginx
+kubectl run client --restart=Never -n test-socketcollector --image=busybox -- /bin/sh -c "while true; do wget -qO- http://$NGINX_IP:80; sleep 5; done"
+
+# Wait for the client pod to be ready
+kubectl wait --timeout=-1s -n test-socketcollector --for=condition=ready pod/client
+
+# Check the sockets again
+kubectl gadget snapshot socket -n test-socketcollector
 ```
 
-Now, we can check again with the snapshot socket gadget what the active socket is:
+You should now see established TCP connections in the output.
+
+#### Example 3: Monitoring UDP Sockets
+
+Let's create a simple UDP server and client:
 
 ```bash
-K8S.NODE            K8S.NAMESPACE       K8S.PODNAME        PROTOCOL SRC                      DST                      STATUS
-minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:8080           r/0.0.0.0:0              LISTEN
+# Create a UDP server using netcat
+kubectl create -n test-socketcollector -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: udp-server
+spec:
+  containers:
+  - name: udp-server
+    image: busybox
+    command: ["sh", "-c", "nc -l -u -p 5000"]
+  restartPolicy: Never
+EOF
+
+# Wait for the server to be ready
+kubectl wait --timeout=-1s -n test-socketcollector --for=condition=ready pod/udp-server
+
+# Create a client that sends UDP packets
+kubectl run udp-client --restart=Never -n test-socketcollector --image=busybox -- /bin/sh -c "while true; do echo 'test' | nc -u -w 1 udp-server 5000; sleep 5; done"
+
+# Check UDP sockets
+kubectl gadget snapshot socket -n test-socketcollector --protocol udp
 ```
 
-Delete test namespace:
+### Cleaning Up
+
+When you're done testing, clean up the resources:
 
 ```bash
-$ kubectl delete ns test-socketcollector
-namespace "test-socketcollector" deleted
+kubectl delete ns test-socketcollector
 ```
 
 ### With `ig`
