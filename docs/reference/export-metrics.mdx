@@ -215,6 +215,8 @@ operator:
         insecure: true
         temporality: delta
         interval: 30s
+        collectGoMetrics: false
+        collectIGMetrics: false
 ```
 
 This will add a new exporter named "myexporter" that can be selected by using the flag
@@ -233,3 +235,12 @@ Can be `cumulative` (default) or `delta`. See the
 #### Interval
 
 Interval in which to report metrics to the server.
+
+#### collectGoMetrics
+
+Enable collecting/exporting internal Go metrics. These are exposed by the Go programming language (that IG is written in)
+and contain a set of performance and usage metrics.
+
+#### collectIGMetrics
+
+Enable collecting/exporting internal Inspektor Gadget metrics.

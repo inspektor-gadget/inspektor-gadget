@@ -15,6 +15,10 @@ The otel-metrics operator handles collecting and exporting metrics using the
 
 ### Global Parameters
 
+> Most of these settings only apply to a locally created metric endpoint (Prometheus compatible). If
+> you want to export metrics using other protocols, please check the documentation about
+> [Other Exporters](../../reference/export-metrics.mdx#other-exporters).
+
 #### `otel-metrics-listen`
 
 Enables the Prometheus exporter on the address given by `otel-metrics-listen-address` if set to `true`.
@@ -26,6 +30,13 @@ Default: `false`
 The listen address that should be serving Prometheus requests.
 
 Default: `0.0.0.0:2224`
+
+#### `otel-metrics-export-internals`
+
+Enables exporting internal Inspektor Gadget metrics to the global exporter that is
+configured using `otel-metrics-listen`.
+
+Default: `false`
 
 ### Instance Parameters
 
