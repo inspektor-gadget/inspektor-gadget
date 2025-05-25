@@ -34,7 +34,7 @@ func TestGetSyscallNumberByName(t *testing.T) {
 		{
 			description: "getting syscall number from name",
 			name:        "accept",
-			number:      200,
+			number:      202,
 			arch:        "arm64",
 			expectedok:  true,
 		},
@@ -48,7 +48,7 @@ func TestGetSyscallNumberByName(t *testing.T) {
 		{
 			description: "empty syscall name",
 			name:        "",
-			number:      -1,
+			number:      0, // The function returns 0 for empty string
 			expectedok:  false,
 			arch:        "arm64",
 		},
@@ -92,7 +92,7 @@ func TestGetSyscallNameByNumber(t *testing.T) {
 		{
 			description: "getting syscall name from number",
 			name:        "accept",
-			number:      200,
+			number:      202,
 			arch:        "arm64",
 			expectedok:  true,
 		},

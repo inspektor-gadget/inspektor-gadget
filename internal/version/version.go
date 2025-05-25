@@ -132,26 +132,26 @@ func VersionString() string {
 
 // BuildInfo contains version information
 type BuildInfo struct {
-	Major         string `json:"major,omitempty"`
-	Minor         string `json:"minor,omitempty"`
-	Version       string `json:"version"`
-	GitCommit     string `json:"gitCommit"`
-	GitTreeState  string `json:"gitTreeState"`
-	BuildDate     string `json:"buildDate"`
-	GoVersion     string `json:"goVersion"`
-	Compiler      string `json:"compiler"`
-	Platform      string `json:"platform"`
+	Major        string `json:"major,omitempty"`
+	Minor        string `json:"minor,omitempty"`
+	Version      string `json:"version"`
+	GitCommit    string `json:"gitCommit"`
+	GitTreeState string `json:"gitTreeState"`
+	BuildDate    string `json:"buildDate"`
+	GoVersion    string `json:"goVersion"`
+	Compiler     string `json:"compiler"`
+	Platform     string `json:"platform"`
 }
 
 // GetBuildInfo returns detailed build information
 func GetBuildInfo() *BuildInfo {
 	info := &BuildInfo{
-		Version:       version,
-		GoVersion:     runtime.Version(),
-		Compiler:      runtime.Compiler,
-		Platform:      fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-		GitTreeState:  "clean",
-		BuildDate:     time.Now().UTC().Format(time.RFC3339),
+		Version:      version,
+		GoVersion:    runtime.Version(),
+		Compiler:     runtime.Compiler,
+		Platform:     fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		GitTreeState: "clean",
+		BuildDate:    time.Now().UTC().Format(time.RFC3339),
 	}
 
 	// Parse version into major.minor

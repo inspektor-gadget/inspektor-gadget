@@ -458,10 +458,10 @@ func EventString(i interface{}) string {
 }
 
 type WithMountNsID struct {
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	MountNsID uint32 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
-func (e *WithMountNsID) GetMountNSID() uint64 {
+func (e *WithMountNsID) GetMountNSID() uint32 {
 	return e.MountNsID
 }
 

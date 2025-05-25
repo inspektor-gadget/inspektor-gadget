@@ -108,7 +108,7 @@ func WriteTree(output io.Writer, processes []*Event) error {
 	containers := make(map[uint64][]*Event, len(processes))
 	for _, process := range processes {
 		mntNsID := process.GetMountNSID()
-		containers[mntNsID] = append(containers[mntNsID], process)
+		containers[uint64(mntNsID)] = append(containers[uint64(mntNsID)], process)
 	}
 
 	for _, container := range containers {

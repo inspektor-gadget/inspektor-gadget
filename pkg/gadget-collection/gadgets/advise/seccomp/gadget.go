@@ -332,14 +332,14 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	traceName := fmt.Sprintf("%s/%s", trace.Namespace, trace.Name)
 
 	// Get the list of syscallNames from the BPF hash map
-	syscallNames, err := traceSingleton.tracer.Peek(event.Container.Mntns)
+	syscallNames, err := traceSingleton.tracer.Peek(uint64(event.Container.Mntns))
 	if err != nil {
 		log.Errorf("peeking syscalls for mntns %d: %s", event.Container.Mntns, err)
 		return
 	}
 
 	// The container has terminated. Cleanup the BPF hash map
-	traceSingleton.tracer.Delete(event.Container.Mntns)
+	traceSingleton.tracer.Delete(uint64(event.Container.Mntns))
 
 	namespacedName := fmt.Sprintf("%s/%s", event.Container.K8s.Namespace, event.Container.K8s.PodName)
 
@@ -461,11 +461,11 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	var mntns uint64
 	var containerName string
 	if trace.Spec.Filter.ContainerName != "" {
-		mntns = t.helpers.LookupMntnsByContainer(
+		mntns = uint64(t.helpers.LookupMntnsByContainer(
 			trace.Spec.Filter.Namespace,
 			trace.Spec.Filter.Podname,
 			trace.Spec.Filter.ContainerName,
-		)
+		))
 		if mntns == 0 {
 			// Notify this only if the policy was not already generated at pod termination
 			if !t.policyGenerated {
@@ -497,7 +497,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		containerList := []string{}
 		for k, v := range mntnsMap {
 			containerName = k
-			mntns = v
+			mntns = uint64(v) // Convert uint32 to uint64
 			containerList = append(containerList, k)
 		}
 		sort.Strings(containerList)
@@ -539,7 +539,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	case gadgetv1alpha1.TraceOutputModeExternalResource:
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
 
-		ownerReference := t.helpers.LookupOwnerReferenceByMntns(mntns)
+		ownerReference := t.helpers.LookupOwnerReferenceByMntns(uint32(mntns))
 
 		r, err := generateSeccompPolicy(t.client, trace, syscallNames, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
 		if err != nil {

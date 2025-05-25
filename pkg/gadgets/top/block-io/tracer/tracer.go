@@ -201,11 +201,11 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 
 		stat := types.Stats{
-			Write:         key.Rwflag != 0,
-			Major:         int(key.Major),
-			Minor:         int(key.Minor),
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: key.Mntnsid},
-			Pid:           int32(key.Pid),
+			Write:     key.Rwflag != 0,
+			Major:     int(key.Major),
+			Minor:     int(key.Minor),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(key.Mntnsid)},
+			Pid:       int32(key.Pid),
 			Comm:          gadgets.FromCString(key.Name[:]),
 			Bytes:         val.Bytes,
 			MicroSecs:     val.Us,

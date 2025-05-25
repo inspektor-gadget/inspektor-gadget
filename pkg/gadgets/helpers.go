@@ -60,7 +60,7 @@ type DataNodeEnricher interface {
 // like node, namespace, pod name and container name when the network namespace
 // is available.
 type DataEnricherByNetNs interface {
-	EnrichByNetNs(event *types.CommonData, netnsid uint64)
+	EnrichByNetNs(event *types.CommonData, netnsid uint32)
 }
 
 func Htonl(hl uint32) uint32 {

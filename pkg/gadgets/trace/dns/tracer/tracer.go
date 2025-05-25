@@ -166,7 +166,7 @@ func (t *Tracer) parseDNSPacket(rawSample []byte, netns uint64) (*types.Event, e
 			Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 		},
 		WithNetNsID:   eventtypes.WithNetNsID{NetNsID: netns},
-		WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
+		WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(bpfEvent.MountNsId)},
 		Pid:           bpfEvent.Pid,
 		Tid:           bpfEvent.Tid,
 		Ppid:          bpfEvent.Ppid,
