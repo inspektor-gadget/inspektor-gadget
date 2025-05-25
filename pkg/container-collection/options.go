@@ -701,14 +701,14 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
-			container.Mntns = mntns
+			container.Mntns = uint32(mntns)
 
 			netns, err := containerutils.GetNetNs(pid)
 			if err != nil {
 				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
-			container.Netns = netns
+			container.Netns = uint32(netns)
 			container.HostNetwork = netns == netnsHost
 			return true
 		})

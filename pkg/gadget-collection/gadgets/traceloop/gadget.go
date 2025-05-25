@@ -34,7 +34,7 @@ import (
 )
 
 type containerSlim struct {
-	mntnsid  uint64
+	mntnsid  uint32
 	detached bool
 }
 

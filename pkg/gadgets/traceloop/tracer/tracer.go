@@ -90,7 +90,7 @@ var syscallDefs = map[string][6]uint64{
 
 type containerRingReader struct {
 	perfReader *perf.Reader
-	mntnsID    uint64
+	mntnsID    uint32
 }
 
 type Tracer struct {
@@ -125,7 +125,7 @@ type syscallEvent struct {
 	pid                uint32
 	comm               string
 	args               []uint64
-	mountNsID          uint64
+	mountNsID          uint32
 	retval             int
 }
 
@@ -244,7 +244,7 @@ func (t *Tracer) close() {
 	t.objs.Close()
 }
 
-func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
+func (t *Tracer) Attach(containerID string, mntnsID uint32) error {
 	innerBufferSpec := t.innerMapSpec.Copy()
 	innerBufferSpec.Name = fmt.Sprintf("perf_buffer_%d", mntnsID)
 
@@ -268,7 +268,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 		innerBuffer.Close()
 		perfReader.Close()
 
-		return fmt.Errorf("adding perf buffer to map with mntnsID %d: %w", mntnsID, err)
+		return fmt.Errorf("adding perf buffer to map with mntnsID %d", mntnsID)
 	}
 
 	t.readers.Store(containerID, &containerRingReader{
@@ -672,7 +672,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	return events, nil
 }
 
-func (t *Tracer) Detach(mntnsID uint64) error {
+func (t *Tracer) Detach(mntnsID uint32) error {
 	err := t.objs.MapOfPerfBuffers.Delete(mntnsID)
 	if err != nil {
 		return fmt.Errorf("removing perf buffer from map with mntnsID %d", mntnsID)

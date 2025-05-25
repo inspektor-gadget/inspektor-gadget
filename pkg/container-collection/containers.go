@@ -51,8 +51,8 @@ type Container struct {
 	SandboxId string `json:"sandboxId,omitempty"`
 
 	// Linux metadata can be derived from the pid via /proc/$pid/...
-	Mntns       uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
-	Netns       uint64 `json:"netns,omitempty" column:"netns,template:ns"`
+	Mntns       uint32 `json:"mntns,omitempty" column:"mntns,template:ns"`
+	Netns       uint32 `json:"netns,omitempty" column:"netns,template:ns"`
 	HostNetwork bool   `json:"hostNetwork,omitempty" column:"hostNetwork,width:11,fixed,hide"`
 	CgroupPath  string `json:"cgroupPath,omitempty"`
 	CgroupID    uint64 `json:"cgroupID,omitempty"`

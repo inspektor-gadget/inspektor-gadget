@@ -54,7 +54,7 @@ func BenchmarkCreateContainerCollection(b *testing.B) {
 					ContainerID: fmt.Sprint(n),
 				},
 			},
-			Mntns: uint64(n),
+			Mntns: uint32(n),
 		})
 	}
 }
@@ -73,14 +73,14 @@ func BenchmarkLookupContainerByMntns(b *testing.B) {
 					ContainerID: fmt.Sprint(n),
 				},
 			},
-			Mntns: uint64(n),
+			Mntns: uint32(n),
 		})
 	}
 
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		mntnsID := uint64(r.Intn(TestContainerCount))
+		mntnsID := uint32(r.Intn(TestContainerCount))
 		container := cc.LookupContainerByMntns(mntnsID)
 		if container == nil {
 			b.Fatalf("there should be a container for mount namespace ID %d", mntnsID)
@@ -98,14 +98,14 @@ func BenchmarkLookupContainerByNetns(b *testing.B) {
 					ContainerID: fmt.Sprint(n),
 				},
 			},
-			Netns: uint64(n),
+			Netns: uint32(n),
 		})
 	}
 
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		netnsID := uint64(r.Intn(TestContainerCount))
+		netnsID := uint32(r.Intn(TestContainerCount))
 		container := cc.LookupContainersByNetns(netnsID)
 		if len(container) == 0 {
 			b.Fatalf("there should be a container for net namespace ID %d", netnsID)
