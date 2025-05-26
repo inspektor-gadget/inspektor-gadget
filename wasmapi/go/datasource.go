@@ -119,30 +119,25 @@ const (
 	DataSourceTypeArray     DataSourceType = 2
 )
 
-type subscription struct {
-	typ subscriptionType
-	cb  any
-}
-
 var (
 	dsSubscriptionCtr = uint64(0)
-	dsSubcriptions    = map[uint64]subscription{}
+	dsSubcriptions    = map[uint64]any{}
 )
 
 //go:wasmexport dataSourceCallback
 func dataSourceCallback(cbID uint64, ds uint32, data uint32) {
-	sub, ok := dsSubcriptions[cbID]
+	cb, ok := dsSubcriptions[cbID]
 	if !ok {
 		return
 	}
 
-	switch sub.typ {
-	case subscriptionTypeData:
-		sub.cb.(DataFunc)(DataSource(ds), Data(data))
-	case subscriptionTypeArray:
-		sub.cb.(ArrayFunc)(DataSource(ds), DataArray(data))
-	case subscriptionTypePacket:
-		sub.cb.(PacketFunc)(DataSource(ds), Packet(data))
+	switch cb := cb.(type) {
+	case DataFunc:
+		cb(DataSource(ds), Data(data))
+	case ArrayFunc:
+		cb(DataSource(ds), DataArray(data))
+	case PacketFunc:
+		cb(DataSource(ds), Packet(data))
 	}
 }
 
@@ -176,7 +171,7 @@ func NewDataSource(name string, typ DataSourceType) (DataSource, error) {
 
 func (ds DataSource) subscribe(cb any, priority uint32, typ subscriptionType) error {
 	dsSubscriptionCtr++
-	dsSubcriptions[dsSubscriptionCtr] = subscription{typ: typ, cb: cb}
+	dsSubcriptions[dsSubscriptionCtr] = cb
 	ret := dataSourceSubscribe(uint32(ds), uint32(typ), priority, dsSubscriptionCtr)
 	if ret != 0 {
 		return fmt.Errorf("subscribing to datasource")
