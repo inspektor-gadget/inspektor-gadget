@@ -267,7 +267,11 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 
 	additionalOpts := []containercollection.ContainerCollectionOption{}
 	if operatorParams.Get(EnrichWithK8sApiserver).AsBool() {
-		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment("", nil))
+		nodeName := os.Getenv("NODE_NAME")
+		if nodeName == "" {
+			return errors.New("NODE_NAME environment variable is not set, cannot enrich with K8s API server")
+		}
+		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName, nil))
 	}
 
 	igManager, err := igmanager.NewManager(l.rc, additionalOpts)

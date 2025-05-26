@@ -16,6 +16,7 @@ package k8sconfigmapstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -61,9 +62,13 @@ type Store struct {
 }
 
 func New(mgr *instancemanager.Manager, namespace string) (*Store, error) {
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		return nil, errors.New("NODE_NAME environment variable is not set, cannot use config map store")
+	}
 	s := &Store{
 		instanceMgr:     mgr,
-		nodeName:        os.Getenv("NODE_NAME"),
+		nodeName:        nodeName,
 		gadgetNamespace: namespace,
 	}
 	err := s.init()
