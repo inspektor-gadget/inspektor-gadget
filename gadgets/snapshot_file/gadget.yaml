@@ -4,14 +4,26 @@ homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_file
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_file
 datasources:
-  processes:
+  files:
     fields:
+      mntns_id:
+        annotations:
+          columns.hidden: true
+      tid:
+        annotations:
+          columns.hidden: true
+      pid:
+        annotations:
+          columns.hidden: true
+      inode:
+        annotations:
+          columns.hidden: true
 params:
   ebpf:
-    show_threads:
-      key: threads
+    paths:
+      key: paths
       defaultValue: "false"
-      description: Show all threads (by default, only processes are shown)
+      description: Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
     file_type_mask:
       key: type-mask
       defaultValue: "0xFFFFFFF"
