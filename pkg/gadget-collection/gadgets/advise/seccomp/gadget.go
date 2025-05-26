@@ -378,7 +378,8 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 }
 
 func getContainerOwnerReference(c *containercollection.Container) *metav1.OwnerReference {
-	ownerRef, err := c.GetOwnerReference()
+	// Builtin advise-seccomp gadget won't support custom kubeconfig
+	ownerRef, err := c.GetOwnerReference("")
 	if err != nil {
 		log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
 			c.K8s.Namespace, c.K8s.PodName, c.K8s.ContainerName, err)
