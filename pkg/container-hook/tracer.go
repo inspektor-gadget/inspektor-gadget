@@ -66,6 +66,7 @@ type EventType int
 const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
+	EventTypePreCreateContainer
 )
 
 const (
@@ -701,7 +702,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 
 	// Insert new entry
 	now := time.Now()
-	n.pendingContainers[pidFile] = &pendingContainer{
+	pc := &pendingContainer{
 		id:             containerID,
 		bundleDir:      bundleDir,
 		configJSONPath: configJSONPath,
@@ -711,8 +712,33 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		timestamp:      now,
 		removeMarks:    removeMarks,
 	}
+	n.pendingContainers[pidFile] = pc
+
+	n.callPreCreateContainerCallback(pc)
 
 	return nil
+}
+
+func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer) {
+	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
+	if err != nil {
+		log.Errorf("fanotify: could not open config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+	defer bundleConfigJSONFile.Close()
+	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
+	if err != nil {
+		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
+		return
+	}
+
+	containerConfig := string(bundleConfigJSON)
+	n.callback(ContainerEvent{
+		Type:            EventTypePreCreateContainer,
+		ContainerID:     pc.id,
+		ContainerConfig: containerConfig,
+		Bundle:          pc.bundleDir,
+	})
 }
 
 func (n *ContainerNotifier) watchRuntimeBinary() {
