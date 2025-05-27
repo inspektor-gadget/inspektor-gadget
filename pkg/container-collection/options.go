@@ -539,11 +539,6 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 						return false
 					}
 				}
-				srcs, err := ociConfigGetSourceMounts(container.OciConfig)
-				if err != nil {
-					log.Warnf("kubernetes enricher: failed to get source mounts for container %s: %s", container.Runtime.ContainerID, err)
-					// We won't get ContainerName but keep going
-				}
 
 				if container.K8s.ContainerName == "" {
 					var containerName string
@@ -558,6 +553,13 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 					for _, c := range pod.Spec.EphemeralContainers {
 						containerNames = append(containerNames, c.Name)
 					}
+
+					srcs, err := ociConfigGetSourceMounts(container.OciConfig)
+					if err != nil {
+						log.Warnf("kubernetes enricher: failed to get source mounts for container %s: %s", container.Runtime.ContainerID, err)
+						// We won't get ContainerName but keep going
+					}
+
 				outerLoop:
 					for _, name := range containerNames {
 						for _, src := range srcs {
