@@ -112,6 +112,7 @@ impl Field {
                 Ok(FieldData::Uint64(val))
             }
             FieldKind::CString => Err("FieldKind CString is invalid".to_string()),
+            FieldKind::Invalid => Err("invalid fiel kind".to_string()),
         }
     }
 

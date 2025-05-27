@@ -58,7 +58,7 @@ func createGadgetCtx(t *testing.T, name string, ops ...operators.DataOperator) *
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
-	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("testdata/%s.tar", name))
+	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("rusttestdata/%s.tar", name))
 	require.NoError(t, err, "creating oci store")
 
 	dataOps := []operators.DataOperator{ocihandler.OciHandler}
