@@ -59,27 +59,28 @@ type execsnoopEventAbbrev struct {
 
 // needs to be kept in sync with execsnoopWithLongPathsEvent from execsnoopwithlongpaths_bpfel.go without the Args field
 type execsnoopWithLongPathsEventAbbrev struct {
-	MntnsId     uint64
-	Timestamp   uint64
-	Pid         uint32
-	Tid         uint32
-	Ptid        uint32
-	Ppid        uint32
-	Uid         uint32
-	Gid         uint32
-	Loginuid    uint32
-	Sessionid   uint32
-	Retval      int32
-	ArgsCount   int32
-	UpperLayer  bool
-	PupperLayer bool
-	_           [2]byte
-	ArgsSize    uint32
-	Comm        [16]uint8
-	Pcomm       [16]uint8
-	Cwd         [512]uint8
-	Exepath     [512]uint8
-	File        [512]uint8
+	MntnsId       uint64
+	Timestamp     uint64
+	Pid           uint32
+	Tid           uint32
+	Ptid          uint32
+	Ppid          uint32
+	Uid           uint32
+	Gid           uint32
+	Loginuid      uint32
+	Sessionid     uint32
+	Retval        int32
+	ArgsCount     int32
+	UpperLayer    bool
+	PupperLayer   bool
+	_             [2]byte
+	ArgsSize      uint32
+	Comm          [16]uint8
+	Pcomm         [16]uint8
+	Cwd           [512]uint8
+	Exepath       [512]uint8
+	File          [512]uint8
+	ParentExePath [512]uint8
 }
 
 type Config struct {
@@ -259,6 +260,7 @@ func (t *Tracer) run() {
 			event.Cwd = gadgets.FromCString(bpfEventWithLongPaths.Cwd[:])
 			event.ExePath = gadgets.FromCString(bpfEventWithLongPaths.Exepath[:])
 			event.File = gadgets.FromCString(bpfEventWithLongPaths.File[:])
+			event.ParentExePath = gadgets.FromCString(bpfEventWithLongPaths.ParentExePath[:])
 			args = record.RawSample[unsafe.Offsetof(execsnoopWithLongPathsEvent{}.Args):]
 		}
 

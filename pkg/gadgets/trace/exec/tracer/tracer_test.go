@@ -239,6 +239,9 @@ func TestExecTracer(t *testing.T) {
 				// Depending on the Linux distribution, /bin can be a symlink to /usr/bin
 				exepath := strings.TrimPrefix(events[0].ExePath, "/usr")
 				require.Equal(t, exepath, "/bin/cat", "Event has bad exe path")
+				executable, err := os.Executable()
+				require.NoError(t, err, "Failed to get current executable")
+				require.Equal(t, executable, events[0].ParentExePath)
 			},
 		},
 		"event_failed": {
