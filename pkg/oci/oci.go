@@ -206,6 +206,16 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 		return nil, fmt.Errorf("copying to local repository: %w", err)
 	}
 
+	imageDigest := desc.Digest.String()
+	signature, payload, err := getSigningInformation(ctx, repo, imageDigest)
+	if err != nil {
+		// it's not a requirement to have a signature for pulling the image
+		return &desc, nil
+	}
+	if err := cacheSigningInformation(ctx, signature, payload, imageDigest); err != nil {
+		return nil, fmt.Errorf("caching signing information: %w", err)
+	}
+
 	return &desc, nil
 }
 
@@ -802,6 +812,37 @@ func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDi
 	return signature, payload, nil
 }
 
+func cacheSigningInformation(ctx context.Context, signature, payload []byte, imageDigest string) error {
+	signaturePath := path.Join(defaultOciStore, imageDigest+".sig")
+	payloadPath := path.Join(defaultOciStore, imageDigest+".payload")
+
+	if err := os.WriteFile(signaturePath, []byte(signature), 0o600); err != nil {
+		return fmt.Errorf("writing signature file %q: %w", signaturePath, err)
+	}
+
+	if err := os.WriteFile(payloadPath, []byte(payload), 0o600); err != nil {
+		return fmt.Errorf("writing payload file %q: %w", payloadPath, err)
+	}
+
+	return nil
+}
+
+func loadSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
+	signagturePath := path.Join(defaultOciStore, imageDigest+".sig")
+	signatureBytes, err := os.ReadFile(signagturePath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading signature file %q: %w", signagturePath, err)
+	}
+
+	payloadPath := path.Join(defaultOciStore, imageDigest+".payload")
+	payloadBytes, err := os.ReadFile(payloadPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading payload file %q: %w", payloadPath, err)
+	}
+
+	return signatureBytes, payloadBytes, nil
+}
+
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
 	block, _ := pem.Decode(publicKey)
 	if block == nil {
@@ -851,9 +892,18 @@ func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return fmt.Errorf("creating repository: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := getSigningInformation(ctx, repo, imageDigest)
+	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, repo, imageDigest)
 	if err != nil {
-		return fmt.Errorf("getting signing information: %w", err)
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("getting signing information: %w", err)
+		}
+		signatureBytes, payloadBytes, err = getSigningInformation(ctx, repo, imageDigest)
+		if err != nil {
+			return fmt.Errorf("getting signing information from registry: %w", err)
+		}
+		if err := cacheSigningInformation(ctx, signatureBytes, payloadBytes, imageDigest); err != nil {
+			return fmt.Errorf("caching signing information: %w", err)
+		}
 	}
 
 	verified := false
