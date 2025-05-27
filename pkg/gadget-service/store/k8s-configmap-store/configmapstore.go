@@ -31,13 +31,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 const (
@@ -80,12 +79,7 @@ func New(mgr *instancemanager.Manager, namespace string) (*Store, error) {
 
 func (s *Store) init() error {
 	log.Infof("initializing ConfigMap store for node %q", s.nodeName)
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
-	config.UserAgent = version.UserAgent() + " (k8s-configmap-store/init)"
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := k8sutil.NewClientset("", "k8s-configmap-store/init")
 	if err != nil {
 		return err
 	}

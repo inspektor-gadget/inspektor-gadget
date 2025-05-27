@@ -58,6 +58,7 @@ const (
 	ContainerdNamespace    = "containerd-namespace"
 	RuntimeProtocol        = "runtime-protocol"
 	EnrichWithK8sApiserver = "enrich-with-k8s-apiserver"
+	KubeconfigPath         = "kubeconfig"
 )
 
 type MountNsMapSetter interface {
@@ -132,6 +133,11 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 			Description:  "Connect to the K8s API server to get further K8s enrichment",
 			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          KubeconfigPath,
+			DefaultValue: "", // Try in-cluster config by default
+			Description:  "Path to kubeconfig file. If not set, in-cluster config will be used.",
 		},
 	}
 }
@@ -266,12 +272,17 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 	}
 
 	additionalOpts := []containercollection.ContainerCollectionOption{}
+	if kubeconfig := operatorParams.Get(KubeconfigPath).AsString(); kubeconfig != "" {
+		additionalOpts = append(additionalOpts, containercollection.WithKubeconfigPath(kubeconfig))
+	}
+
 	if operatorParams.Get(EnrichWithK8sApiserver).AsBool() {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
 			return errors.New("NODE_NAME environment variable is not set, cannot enrich with K8s API server")
 		}
-		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName, nil))
+		additionalOpts = append(additionalOpts, containercollection.WithNodeName(nodeName))
+		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
 
 	igManager, err := igmanager.NewManager(l.rc, additionalOpts)

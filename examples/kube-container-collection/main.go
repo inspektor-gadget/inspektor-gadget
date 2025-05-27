@@ -103,13 +103,8 @@ func main() {
 		*node = os.Getenv("NODE_NAME")
 	}
 
-	config, err := k8sutil.NewKubeConfig(*kubeconfig, "kube-container-collection")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get kubeconfig: %s\n", err)
-		os.Exit(1)
-	}
-
-	client, err = kubernetes.NewForConfig(config)
+	var err error
+	client, err = k8sutil.NewClientset(*kubeconfig, "publish-event")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get Kubernetes client set: %s\n", err)
 		os.Exit(1)
@@ -119,7 +114,9 @@ func main() {
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
-		containercollection.WithKubernetesEnrichment(*node, config),
+		containercollection.WithKubeconfigPath(*kubeconfig),
+		containercollection.WithNodeName(*node),
+		containercollection.WithKubernetesEnrichment(*node),
 		containercollection.WithContainerFanotifyEbpf(),
 	}
 

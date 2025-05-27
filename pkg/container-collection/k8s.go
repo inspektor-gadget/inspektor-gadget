@@ -30,15 +30,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -51,13 +50,8 @@ type K8sClient struct {
 	RuntimeConfig *containerutilsTypes.RuntimeConfig
 }
 
-func NewK8sClient(nodeName string) (*K8sClient, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	config.UserAgent = version.UserAgent() + " (container-collection/NewK8sClient)"
-	clientset, err := kubernetes.NewForConfig(config)
+func NewK8sClient(nodeName string, kubeconfigPath string, userAgentComment string) (*K8sClient, error) {
+	clientset, err := k8sutil.NewClientset(kubeconfigPath, userAgentComment)
 	if err != nil {
 		return nil, err
 	}

@@ -34,6 +34,9 @@ func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error
 	if kubeconfigPath != "" {
 		// kubeconfig is set explicitly (-kubeconfig flag or $KUBECONFIG variable)
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// kubeconfig from a pod Service Account token
 		config, err = rest.InClusterConfig()
@@ -41,6 +44,9 @@ func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error
 			// kubeconfig from $HOME/.kube/config
 			if home := homedir.HomeDir(); home != "" {
 				config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(home, ".kube", "config"))
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	}

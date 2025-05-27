@@ -33,10 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
@@ -44,6 +42,7 @@ import (
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -268,7 +267,7 @@ func WithFallbackPodInformer(nodeName string) ContainerCollectionOption {
 
 func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		k8sClient, err := NewK8sClient(nodeName)
+		k8sClient, err := NewK8sClient(nodeName, cc.kubeconfigPath, "WithPodInformer")
 		if err != nil {
 			return fmt.Errorf("creating Kubernetes client: %w", err)
 		}
@@ -376,7 +375,7 @@ func WithHost() ContainerCollectionOption {
 // already gets initial containers.
 func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		k8sClient, err := NewK8sClient(nodeName)
+		k8sClient, err := NewK8sClient(nodeName, cc.kubeconfigPath, "WithInitialKubernetesContainers")
 		if err != nil {
 			return fmt.Errorf("creating Kubernetes client: %w", err)
 		}
@@ -513,17 +512,9 @@ func getPodByCgroups(clientset *kubernetes.Clientset, nodeName string, container
 // WithKubernetesEnrichment automatically adds pod metadata
 //
 // ContainerCollection.Initialize(WithKubernetesEnrichment())
-func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) ContainerCollectionOption {
+func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		if kubeconfig == nil {
-			var err error
-			kubeconfig, err = rest.InClusterConfig()
-			if err != nil {
-				return fmt.Errorf("getting Kubernetes config: %w", err)
-			}
-			kubeconfig.UserAgent = version.UserAgent() + " (container-collection/WithKubernetesEnrichment)"
-		}
-		clientset, err := kubernetes.NewForConfig(kubeconfig)
+		clientset, err := k8sutil.NewClientset(cc.kubeconfigPath, "container-collection/WithKubernetesEnrichment")
 		if err != nil {
 			return fmt.Errorf("getting Kubernetes client: %w", err)
 		}
@@ -592,7 +583,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			}
 
 			if container.K8s.ownerReference == nil {
-				_, err = container.GetOwnerReference()
+				_, err = container.GetOwnerReference(cc.kubeconfigPath)
 				if err != nil {
 					log.Errorf("kubernetes enricher: failed to get owner reference for container %s: %s", container.Runtime.ContainerID, err)
 					// Don't drop the container. We just have problems getting the owner reference, but still want to trace the container.
@@ -911,6 +902,15 @@ func WithProcEnrichment() ContainerCollectionOption {
 			container.Runtime.ContainerStartedAt = procStat.StartedAt
 			return true
 		})
+		return nil
+	}
+}
+
+// WithKubeconfigPath sets the kubeconfig path for the Kubernetes client.
+// Some options like WithPodInformer or WithKubernetesEnrichment will use it.
+func WithKubeconfigPath(kubeconfigPath string) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.kubeconfigPath = kubeconfigPath
 		return nil
 	}
 }

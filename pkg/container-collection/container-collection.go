@@ -82,6 +82,10 @@ type ContainerCollection struct {
 
 	// disableContainerRuntimeWarnings is used to disable warnings about container runtimes.
 	disableContainerRuntimeWarnings bool
+
+	// kubeconfigPath is the path to the kubeconfig file, or empty for in-cluster config.
+	// Some options like WithPodInformer will use it.
+	kubeconfigPath string
 }
 
 // ContainerCollectionOption are options to pass to
@@ -345,7 +349,7 @@ func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if mntns == c.Mntns {
-			ownerRef, err = c.GetOwnerReference()
+			ownerRef, err = c.GetOwnerReference(cc.kubeconfigPath)
 			if err != nil {
 				log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
 					c.K8s.Namespace, c.K8s.PodName, c.K8s.ContainerName, err)
