@@ -630,6 +630,20 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 				cc.AddContainer(container)
 			case containerhook.EventTypeRemoveContainer:
 				cc.RemoveContainer(notif.ContainerID)
+			case containerhook.EventTypePreCreateContainer:
+				if cc.pubsub != nil {
+					container := &Container{
+						Runtime: RuntimeMetadata{
+							types.BasicRuntimeMetadata{
+								ContainerID:   notif.ContainerID,
+								ContainerName: notif.ContainerName,
+							},
+						},
+						OciConfig: notif.ContainerConfig,
+						Bundle:    notif.Bundle,
+					}
+					cc.pubsub.Publish(EventTypePreCreateContainer, container)
+				}
 			}
 		})
 		if err != nil {
