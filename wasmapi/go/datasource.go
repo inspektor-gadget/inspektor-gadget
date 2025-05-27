@@ -129,9 +129,10 @@ const (
 	DataSourceContainers = "containers"
 
 	// Data source "containers" has a field EventType with the following possible values:
+	// - PRECREATE
 	// - CREATED
 	// - DELETED
-	// The maximum length is 7. Keeping more for future compatibility.
+	// The maximum length is 9. Keeping more for future compatibility.
 	DataSourceContainersEventTypeMaxSize = 16
 )
 

@@ -490,7 +490,8 @@ func (cc *ContainerCollection) Subscribe(key interface{}, selector ContainerSele
 	}
 	ret := []*Container{}
 	cc.pubsub.Subscribe(key, func(event PubSubEvent) {
-		if ContainerSelectorMatches(&selector, event.Container) {
+		// PRECREATE events cannot be filtered since they are not enriched yet.
+		if event.Type == EventTypePreCreateContainer || ContainerSelectorMatches(&selector, event.Container) {
 			f(event)
 		}
 	}, func() {
