@@ -15,11 +15,16 @@
 package gadgetcontext
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
@@ -162,6 +167,13 @@ func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 	defer c.cancel()
 
+	metricAttribs := attribute.NewSet(
+		attribute.KeyValue{Key: "gadget_image", Value: attribute.StringValue(c.imageName)},
+	)
+
+	udCtrRunningGadgets.Add(context.Background(), 1, metric.WithAttributeSet(metricAttribs))
+	defer udCtrRunningGadgets.Add(context.Background(), -1, metric.WithAttributeSet(metricAttribs))
+
 	dataOperatorInstances, err := c.initAndPrepareOperators(paramValues)
 	if err != nil {
 		return fmt.Errorf("initializing and preparing operators: %w", err)
@@ -178,3 +190,8 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 
 	return nil
 }
+
+var udCtrRunningGadgets, _ = metrics.Int64UpDownCounter("ig_gadgets_running",
+	metric.WithDescription("Number of running gadgets"),
+	metric.WithUnit("{instance}"),
+)

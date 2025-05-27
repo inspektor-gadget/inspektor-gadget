@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otelprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -39,6 +41,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -47,12 +50,13 @@ import (
 const (
 	name = "otel-metrics"
 
-	Priority                      = 9995 // slightly before CLI so we can reroute output there
-	ParamOtelMetricsListen        = "otel-metrics-listen"
-	ParamOtelMetricsListenAddress = "otel-metrics-listen-address"
-	ParamOtelMetricsName          = "otel-metrics-name"
-	ParamOtelMetricsExporter      = "otel-metrics-exporter"
-	ParamOtelMetricsPrintInterval = "otel-metrics-print-interval"
+	Priority                        = 9995 // slightly before CLI so we can reroute output there
+	ParamOtelMetricsListen          = "otel-metrics-listen"
+	ParamOtelMetricsListenAddress   = "otel-metrics-listen-address"
+	ParamOtelMetricsExportInternals = "otel-metrics-export-internals"
+	ParamOtelMetricsName            = "otel-metrics-name"
+	ParamOtelMetricsExporter        = "otel-metrics-exporter"
+	ParamOtelMetricsPrintInterval   = "otel-metrics-print-interval"
 
 	MetricTypeKey       = "key"
 	MetricTypeCounter   = "counter"
@@ -84,11 +88,13 @@ var renderedDsCliAnnotations = map[string]string{
 }
 
 type metricsConfig struct {
-	Exporter    string        `json:"exporter" yaml:"exporter"`
-	Endpoint    string        `json:"endpoint" yaml:"endpoint"`
-	Insecure    bool          `json:"insecure" yaml:"insecure"`
-	Temporality string        `json:"temporality" yaml:"temporality"`
-	Interval    time.Duration `json:"interval" yaml:"interval"`
+	Exporter         string        `json:"exporter" yaml:"exporter"`
+	Endpoint         string        `json:"endpoint" yaml:"endpoint"`
+	Insecure         bool          `json:"insecure" yaml:"insecure"`
+	Temporality      string        `json:"temporality" yaml:"temporality"`
+	Interval         time.Duration `json:"interval" yaml:"interval"`
+	CollectGoMetrics bool          `json:"collectGoMetrics" yaml:"collectGoMetrics"`
+	CollectIGMetrics bool          `json:"collectIGMetrics" yaml:"collectIGMetrics"`
 }
 
 func deltaSelector(kind sdkmetric.InstrumentKind) metricdata.Temporality {
@@ -168,6 +174,29 @@ func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
 						sdkmetric.NewPeriodicReader(otlpcollector, periodicReaderOptions...),
 					),
 				)
+
+				if v.CollectIGMetrics {
+					// Register with internal metrics
+					log.Debugf("registering internal metrics for provider %q", k)
+					err := metrics.RegisterProvider(m.providers[k])
+					if err != nil {
+						return fmt.Errorf("registering internal metrics for provider %q: %w", k, err)
+					}
+				}
+
+				if v.CollectGoMetrics {
+					// Don't use deprecated runtime metrics
+					os.Setenv("OTEL_GO_X_DEPRECATED_RUNTIME_METRICS", "false")
+					// Also register go internal metrics
+					log.Debugf("registering go metrics for provider %q", k)
+					if err := runtime.Start(
+						runtime.WithMeterProvider(m.providers[k]),
+						runtime.WithMinimumReadMemStatsInterval(v.Interval),
+					); err != nil {
+						return fmt.Errorf("starting runtime instrumentation (internal Go metrics) for provider %q: %w", k, err)
+					}
+				}
+
 				log.Debugf("initialized metric provider %q", k)
 			}
 		}
@@ -184,6 +213,15 @@ func (m *otelMetricsOperator) Init(globalParams *params.Params) error {
 	}
 	m.exporter = exporter
 	m.meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+
+	if globalParams.Get(ParamOtelMetricsExportInternals).AsBool() {
+		log.Debug("enabled exporting internal metrics to global provider")
+
+		err = metrics.RegisterProvider(m.meterProvider)
+		if err != nil {
+			return fmt.Errorf("registering internal metrics for global provider: %w", err)
+		}
+	}
 
 	// Start HTTP listener for the global exporter
 	if !m.skipListen {
@@ -213,6 +251,12 @@ func (m *otelMetricsOperator) GlobalParams() api.Params {
 			DefaultValue: "0.0.0.0:2224",
 			TypeHint:     api.TypeString,
 			Description:  "address and port to create the OpenTelemetry metrics listener (Prometheus compatible) on",
+		},
+		{
+			Key:          ParamOtelMetricsExportInternals,
+			DefaultValue: "false",
+			TypeHint:     api.TypeBool,
+			Description:  "export Inspektor Gadget internal metrics",
 		},
 	}
 }
