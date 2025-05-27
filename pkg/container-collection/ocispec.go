@@ -20,10 +20,15 @@ package containercollection
 
 import (
 	"encoding/json"
+	"errors"
 )
 
 // ociConfigGetSourceMounts returns the source mounts from the oci config
 func ociConfigGetSourceMounts(ociConfig string) (out []string, err error) {
+	if ociConfig == "" {
+		return nil, errors.New("ociConfig is empty")
+	}
+
 	var config struct {
 		Mounts []struct {
 			Source string `json:"source,omitempty"`
@@ -41,6 +46,10 @@ func ociConfigGetSourceMounts(ociConfig string) (out []string, err error) {
 
 // ociConfigGetAnnotations returns the annotations from the oci config
 func ociConfigGetAnnotations(ociConfig string) (map[string]string, error) {
+	if ociConfig == "" {
+		return nil, errors.New("ociConfig is empty")
+	}
+
 	var config struct {
 		Annotations map[string]string `json:"annotations,omitempty"`
 	}
