@@ -15,8 +15,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
+
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -66,7 +70,6 @@ func newListContainerTestStep(
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.OciConfig = ""
 				c.Bundle = ""
 				c.Mntns = 0
 				c.Netns = 0
@@ -86,6 +89,14 @@ func newListContainerTestStep(
 				if isDockerRuntime {
 					c.Runtime.ContainerImageName = ""
 				}
+
+				// only validate the OCI config is not empty before normalizing it
+				var spec *ocispec.Spec
+				err := json.Unmarshal([]byte(c.OciConfig), &spec)
+				require.NoError(t, err, "unmarshalling OCI config")
+				require.NotNil(t, spec, "OCI config is nil")
+				require.NotEmpty(t, spec.Version, "OCI config version is empty")
+				c.OciConfig = ""
 			}
 
 			verifyOutput(t, output, normalize, expectedContainer)
