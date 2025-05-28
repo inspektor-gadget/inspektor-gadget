@@ -170,7 +170,6 @@ static __always_inline int trace_mutex_release(struct pt_regs *ctx, u64 mutex)
 
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
-	u32 pid = pid_tgid >> 32;
 
 	// Fetch the held mutexes for the current thread
 	struct held_mutex *held_mutexes =
