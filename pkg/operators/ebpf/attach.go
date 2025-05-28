@@ -16,7 +16,9 @@ package ebpfoperator
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -45,6 +47,22 @@ const (
 const (
 	disabledProgram = "gadget_program_disabled"
 )
+
+func findCgroupPath() string {
+	paths := []string{
+		"/sys/fs/cgroup",
+		"/sys/fs/cgroup/unified",
+		"/sys/fs/cgroup/system.slice",
+	}
+
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	log.Fatal("Could not find cgroup path")
+	return ""
+}
 
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
 	attachTo := p.AttachTo
@@ -225,6 +243,19 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			}
 		}
 		return nil, nil
+	case ebpf.CGroupSKB:
+		i.logger.Debugf("Attaching cgroup skb %q to %q", p.Name, attachTo)
+		cgroupPath := findCgroupPath()
+		if cgroupPath == "" {
+			return nil, fmt.Errorf("could not find cgroup path for attaching cgroup skb program %q", p.Name)
+		}
+
+		return link.AttachCgroup(link.CgroupOptions{
+			Program: prog,
+			Path:    cgroupPath,
+			Attach:  p.AttachType,
+		})
+
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
