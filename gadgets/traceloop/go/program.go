@@ -691,7 +691,6 @@ func gadgetInit() int32 {
 
 //go:wasmexport gadgetStart
 func gadgetStart() int32 {
-
 	rawString, err := api.GetParamValue("syscall-filters", 256)
 	if err != nil {
 		api.Errorf("failed to get param: %v", err)
@@ -730,7 +729,7 @@ func gadgetStart() int32 {
 			return 1
 		}
 	}
-	
+
 	if len(syscallFilters) > 0 {
 		syscallsEnableFilterMapName := "syscall_enable_filters"
 		syscallsEnableFilterMap, err := api.GetMap(syscallsEnableFilterMapName)
@@ -776,7 +775,7 @@ func gadgetStart() int32 {
 		}
 	}
 
-	ds, err := api.GetDataSource("containers")
+	ds, err := api.GetDataSource(api.DataSourceContainers)
 	if err != nil {
 		api.Errorf("Failed to get data source: %v", err)
 		return 1
@@ -801,9 +800,7 @@ func gadgetStart() int32 {
 	}
 
 	ds.Subscribe(func(ds api.DataSource, data api.Data) {
-		// Event type is CREATED or DELETED, 7 is the length of longest string, i.e.
-		// DELETED.
-		eventType, err := eventTypeField.String(data, 7)
+		eventType, err := eventTypeField.String(data, api.DataSourceContainersEventTypeMaxSize)
 		if err != nil {
 			api.Errorf("getting event_type from corresponding field: %v", err)
 			return
@@ -837,7 +834,7 @@ func gadgetStart() int32 {
 				return
 			}
 		default:
-			api.Errorf("unknown event type for container %v: got %v, expected CREATED or DELETED", name, eventType)
+			// Nothing to do, we don't care about other events.
 		}
 	}, 0)
 

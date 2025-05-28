@@ -129,6 +129,17 @@ var (
 	dsSubcriptions    = map[uint64]subscription{}
 )
 
+const (
+	// Well known data sources
+	DataSourceContainers = "containers"
+
+	// Data source "containers" has a field EventType with the following possible values:
+	// - CREATED
+	// - DELETED
+	// The maximum length is 7. Keeping more for future compatibility.
+	DataSourceContainersEventTypeMaxSize = 16
+)
+
 //go:wasmexport dataSourceCallback
 func dataSourceCallback(cbID uint64, ds uint32, data uint32) {
 	sub, ok := dsSubcriptions[cbID]
