@@ -87,6 +87,11 @@ datasources:
           description: Whether the executable file of the process (script in case of script) is in the upper layer of the overlay filesystem. Initialized when the execution succeeded or failed with the -ENOEXEC error ("Exec format error"). Notice that to get failed executions, you need to set ignore_failed to false.
           columns.width: 5
           columns.hidden: true
+      tty:
+        annotations:
+          description: The controlling terminal of the process. 0 for processes without a terminal.
+          columns.width: 5
+          columns.hidden: false
 params:
   ebpf:
     ignore_failed:
