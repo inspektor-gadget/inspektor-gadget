@@ -49,7 +49,7 @@ require (
 	github.com/tklauser/numcpus v0.10.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.60.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.61.0
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.12.2
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
@@ -60,12 +60,12 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.12.2
 	go.opentelemetry.io/otel/sdk/metric v1.36.0
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.14.0
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
 	golang.org/x/text v0.25.0
-	golang.org/x/tools v0.33.0
+	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/grpc v1.72.2
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
