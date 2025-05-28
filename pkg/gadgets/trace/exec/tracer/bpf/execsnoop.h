@@ -34,6 +34,7 @@ struct event {
 	__u8 cwd[GADGET_PATH_MAX];
 	__u8 exepath[GADGET_PATH_MAX];
 	__u8 file[GADGET_PATH_MAX];
+	__u8 parent_exepath[GADGET_PATH_MAX];
 #endif
 	__u8 args[FULL_MAX_ARGS_ARR];
 };

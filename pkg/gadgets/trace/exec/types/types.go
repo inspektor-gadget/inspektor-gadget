@@ -25,25 +25,26 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid         uint32   `json:"pid,omitempty" column:"pid,template:pid"`
-	Tid         uint32   `json:"tid,omitempty" column:"tid,template:pid"`
-	Ppid        uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
-	Ptid        uint32   `json:"ptid,omitempty" column:"ptid,template:pid"`
-	Comm        string   `json:"comm,omitempty" column:"comm,template:comm"`
-	Pcomm       string   `json:"pcomm,omitempty" column:"pcomm,template:comm"`
-	Retval      int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
-	Args        []string `json:"args,omitempty" column:"args,width:40"`
-	Uid         uint32   `json:"uid" column:"uid,template:uid,hide"`
-	Username    string   `json:"user,omitempty" column:"user,hide"`
-	Gid         uint32   `json:"gid" column:"gid,template:gid,hide"`
-	Groupname   string   `json:"group,omitempty" column:"group,hide"`
-	UpperLayer  bool     `json:"upperlayer" column:"upperlayer,width:10,fixed,hide"`
-	PupperLayer bool     `json:"pupperlayer" column:"pupperlayer,width:11,fixed,hide"`
-	LoginUid    uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
-	SessionId   uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
-	Cwd         string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:paths"`
-	ExePath     string   `json:"exepath,omitempty" column:"exepath,width:40" columnTags:"param:paths"`
-	File        string   `json:"file,omitempty" column:"file,width:40" columnTags:"param:paths"`
+	Pid           uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid           uint32   `json:"tid,omitempty" column:"tid,template:pid"`
+	Ppid          uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
+	Ptid          uint32   `json:"ptid,omitempty" column:"ptid,template:pid"`
+	Comm          string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Pcomm         string   `json:"pcomm,omitempty" column:"pcomm,template:comm"`
+	Retval        int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Args          []string `json:"args,omitempty" column:"args,width:40"`
+	Uid           uint32   `json:"uid" column:"uid,template:uid,hide"`
+	Username      string   `json:"user,omitempty" column:"user,hide"`
+	Gid           uint32   `json:"gid" column:"gid,template:gid,hide"`
+	Groupname     string   `json:"group,omitempty" column:"group,hide"`
+	UpperLayer    bool     `json:"upperlayer" column:"upperlayer,width:10,fixed,hide"`
+	PupperLayer   bool     `json:"pupperlayer" column:"pupperlayer,width:11,fixed,hide"`
+	LoginUid      uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
+	SessionId     uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
+	Cwd           string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:paths"`
+	ExePath       string   `json:"exepath,omitempty" column:"exepath,width:40" columnTags:"param:paths"`
+	File          string   `json:"file,omitempty" column:"file,width:40" columnTags:"param:paths"`
+	ParentExePath string   `json:"parent_exepath,omitempty" column:"parent_exepath,width:40" columnTags:"param:paths"`
 }
 
 func (e *Event) GetUid() uint32 {

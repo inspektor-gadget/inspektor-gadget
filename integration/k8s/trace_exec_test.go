@@ -57,37 +57,40 @@ func TestBuiltinTraceExec(t *testing.T) {
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*traceexecTypes.Event{
 				{
-					Event:   expectedEvent,
-					Comm:    "sh",
-					Pcomm:   "", // Not tested, see normalize()
-					Args:    shArgs,
-					Cwd:     "/",
-					ExePath: "/bin/sh",
-					File:    "/bin/sh",
+					Event:         expectedEvent,
+					Comm:          "sh",
+					Pcomm:         "", // Not tested, see normalize()
+					Args:          shArgs,
+					Cwd:           "/",
+					ExePath:       "/bin/sh",
+					ParentExePath: "",
+					File:          "/bin/sh",
 				},
 				{
-					Event:      expectedEvent,
-					Comm:       "sh",
-					Pcomm:      "", // Not tested, see normalize()
-					Args:       innerShArgs,
-					Uid:        1000,
-					Gid:        1111,
-					Cwd:        "/",
-					ExePath:    "/usr/bin/sh",
-					File:       "/usr/bin/sh",
-					UpperLayer: true,
+					Event:         expectedEvent,
+					Comm:          "sh",
+					Pcomm:         "", // Not tested, see normalize()
+					Args:          innerShArgs,
+					Uid:           1000,
+					Gid:           1111,
+					Cwd:           "/",
+					ExePath:       "/usr/bin/sh",
+					ParentExePath: "",
+					File:          "/usr/bin/sh",
+					UpperLayer:    true,
 				},
 				{
-					Event:       expectedEvent,
-					Comm:        "sleep",
-					Pcomm:       "sh",
-					Args:        sleepArgs,
-					Uid:         1000,
-					Gid:         1111,
-					Cwd:         "/",
-					ExePath:     "/bin/sleep",
-					File:        "/bin/sleep",
-					PupperLayer: true,
+					Event:         expectedEvent,
+					Comm:          "sleep",
+					Pcomm:         "sh",
+					Args:          sleepArgs,
+					Uid:           1000,
+					Gid:           1111,
+					Cwd:           "/",
+					ExePath:       "/bin/sleep",
+					ParentExePath: "",
+					File:          "/bin/sleep",
+					PupperLayer:   true,
 				},
 			}
 
@@ -103,6 +106,7 @@ func TestBuiltinTraceExec(t *testing.T) {
 				e.MountNsID = 0
 				e.Username = ""
 				e.Groupname = ""
+				e.ParentExePath = ""
 
 				if e.Comm == "sh" {
 					// Not tested because it varies depending on container runtime:

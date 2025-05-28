@@ -224,6 +224,12 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	exe_file = BPF_CORE_READ(task, mm, exe_file);
 	exepath = get_path_str(&exe_file->f_path);
 	bpf_probe_read_kernel_str(event->exepath, GADGET_PATH_MAX, exepath);
+
+	struct file *parent_exe_file =
+		BPF_CORE_READ(task, real_parent, mm, exe_file);
+	char *parent_exepath = get_path_str(&parent_exe_file->f_path);
+	bpf_probe_read_kernel_str(event->parent_exepath, GADGET_PATH_MAX,
+				  parent_exepath);
 #endif
 
 	size_t len = EVENT_SIZE(event);
