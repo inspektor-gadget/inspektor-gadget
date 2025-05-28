@@ -18,16 +18,6 @@ type socketenricherBufT struct {
 	Buf [32768]uint8
 }
 
-type socketenricherSocketsKey struct {
-	_      structs.HostLayout
-	Netns  uint32
-	Family uint16
-	Proto  uint8
-	_      [1]byte
-	Port   uint16
-	_      [2]byte
-}
-
 type socketenricherSocketsValue struct {
 	_                 structs.HostLayout
 	Mntns             uint64
@@ -86,16 +76,8 @@ type socketenricherSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketenricherProgramSpecs struct {
-	IgBindIpv4E   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv4_e"`
-	IgBindIpv4X   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv4_x"`
-	IgBindIpv6E   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_e"`
-	IgBindIpv6X   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_x"`
-	IgFreeIpv4E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv4_e"`
-	IgFreeIpv6E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv6_e"`
-	IgTcpCoE      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_e"`
-	IgTcpCoX      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_x"`
-	IgUdp6Sendmsg *ebpf.ProgramSpec `ebpf:"ig_udp6_sendmsg"`
-	IgUdpSendmsg  *ebpf.ProgramSpec `ebpf:"ig_udp_sendmsg"`
+	CgroupSockCreate  *ebpf.ProgramSpec `ebpf:"cgroup_sock_create"`
+	CgroupSockRelease *ebpf.ProgramSpec `ebpf:"cgroup_sock_release"`
 }
 
 // socketenricherMapSpecs contains maps before they are loaded into the kernel.
@@ -161,30 +143,14 @@ type socketenricherVariables struct {
 //
 // It can be passed to loadSocketenricherObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketenricherPrograms struct {
-	IgBindIpv4E   *ebpf.Program `ebpf:"ig_bind_ipv4_e"`
-	IgBindIpv4X   *ebpf.Program `ebpf:"ig_bind_ipv4_x"`
-	IgBindIpv6E   *ebpf.Program `ebpf:"ig_bind_ipv6_e"`
-	IgBindIpv6X   *ebpf.Program `ebpf:"ig_bind_ipv6_x"`
-	IgFreeIpv4E   *ebpf.Program `ebpf:"ig_free_ipv4_e"`
-	IgFreeIpv6E   *ebpf.Program `ebpf:"ig_free_ipv6_e"`
-	IgTcpCoE      *ebpf.Program `ebpf:"ig_tcp_co_e"`
-	IgTcpCoX      *ebpf.Program `ebpf:"ig_tcp_co_x"`
-	IgUdp6Sendmsg *ebpf.Program `ebpf:"ig_udp6_sendmsg"`
-	IgUdpSendmsg  *ebpf.Program `ebpf:"ig_udp_sendmsg"`
+	CgroupSockCreate  *ebpf.Program `ebpf:"cgroup_sock_create"`
+	CgroupSockRelease *ebpf.Program `ebpf:"cgroup_sock_release"`
 }
 
 func (p *socketenricherPrograms) Close() error {
 	return _SocketenricherClose(
-		p.IgBindIpv4E,
-		p.IgBindIpv4X,
-		p.IgBindIpv6E,
-		p.IgBindIpv6X,
-		p.IgFreeIpv4E,
-		p.IgFreeIpv6E,
-		p.IgTcpCoE,
-		p.IgTcpCoX,
-		p.IgUdp6Sendmsg,
-		p.IgUdpSendmsg,
+		p.CgroupSockCreate,
+		p.CgroupSockRelease,
 	)
 }
 

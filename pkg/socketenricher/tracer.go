@@ -15,7 +15,9 @@
 package socketenricher
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -66,6 +68,22 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 	return se, nil
 }
 
+func findCgroupPath() string {
+	paths := []string{
+		"/sys/fs/cgroup",
+		"/sys/fs/cgroup/unified",
+		"/sys/fs/cgroup/system.slice",
+	}
+
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	log.Fatal("Could not find cgroup path")
+	return ""
+}
+
 func (se *SocketEnricher) start() error {
 	specIter, err := loadSocketsiter()
 	if err != nil {
@@ -111,72 +129,34 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&se.objs, &opts); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			fmt.Printf("Socket enricher: %+v\n", ve)
+		}
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	var l link.Link
 
-	// bind
-	l, err = link.Kprobe("inet_bind", se.objs.IgBindIpv4E, nil)
+	cgroupPath := findCgroupPath()
+
+	l, err = link.AttachCgroup(link.CgroupOptions{
+		Path:    cgroupPath,
+		Attach:  ebpf.AttachCGroupInetSockCreate,
+		Program: se.objs.CgroupSockCreate,
+	})
 	if err != nil {
-		return fmt.Errorf("attaching ipv4 kprobe: %w", err)
+		return err
 	}
 	se.links = append(se.links, l)
 
-	l, err = link.Kretprobe("inet_bind", se.objs.IgBindIpv4X, nil)
+	l, err = link.AttachCgroup(link.CgroupOptions{
+		Path:    cgroupPath,
+		Attach:  ebpf.AttachCgroupInetSockRelease,
+		Program: se.objs.CgroupSockRelease,
+	})
 	if err != nil {
-		return fmt.Errorf("attaching ipv4 kretprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kprobe("inet6_bind", se.objs.IgBindIpv6E, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv6 kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kretprobe("inet6_bind", se.objs.IgBindIpv6X, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv6 kretprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	// connect
-	l, err = link.Kprobe("tcp_connect", se.objs.IgTcpCoE, nil)
-	if err != nil {
-		return fmt.Errorf("attaching connect kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kretprobe("tcp_connect", se.objs.IgTcpCoX, nil)
-	if err != nil {
-		return fmt.Errorf("attaching connect kretprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	// udp_sendmsg
-	l, err = link.Kprobe("udp_sendmsg", se.objs.IgUdpSendmsg, nil)
-	if err != nil {
-		return fmt.Errorf("attaching udp_sendmsg ipv4 kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kprobe("udpv6_sendmsg", se.objs.IgUdp6Sendmsg, nil)
-	if err != nil {
-		return fmt.Errorf("attaching udpv6_sendmsg ipv6 kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	// release
-	l, err = link.Kprobe("inet_release", se.objs.IgFreeIpv4E, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv4 release kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kprobe("inet6_release", se.objs.IgFreeIpv6E, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv6 release kprobe: %w", err)
+		return err
 	}
 	se.links = append(se.links, l)
 
@@ -195,18 +175,18 @@ func (se *SocketEnricher) start() error {
 			return fmt.Errorf("read BPF iterator: %w", err)
 		}
 
-		// Schedule socket cleanup
-		cleanupIter, err := link.AttachIter(link.IterOptions{
-			Program: se.objsIter.IgSkCleanup,
-			Map:     se.objsIter.GadgetSockets,
-		})
-		if err != nil {
-			return fmt.Errorf("attach BPF iterator for cleanups: %w", err)
-		}
-		se.links = append(se.links, cleanupIter)
-
-		se.done = make(chan bool)
-		go se.cleanupDeletedSockets(cleanupIter)
+		//		// Schedule socket cleanup
+		//		cleanupIter, err := link.AttachIter(link.IterOptions{
+		//			Program: se.objsIter.IgSkCleanup,
+		//			Map:     se.objsIter.GadgetSockets,
+		//		})
+		//		if err != nil {
+		//			return fmt.Errorf("attach BPF iterator for cleanups: %w", err)
+		//		}
+		//		se.links = append(se.links, cleanupIter)
+		//
+		//		se.done = make(chan bool)
+		//		go se.cleanupDeletedSockets(cleanupIter)
 	}
 
 	return nil

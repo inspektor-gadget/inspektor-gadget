@@ -25,10 +25,11 @@ static struct sockets_value socket_value = {};
 static __always_inline void insert_socket_from_iter(struct sock *sock,
 						    struct task_struct *task)
 {
-	struct sockets_key socket_key = {
-		0,
-	};
-	prepare_socket_key(&socket_key, sock);
+	// TODO: This is a nasty hack as it's not possible to use
+	// bpf_get_socket_cookie() here. This require the cookie to be set for all
+	// sockets, so we should run an iter_tcp, iter_udp on all of them and ignore
+	// the ones that return 0 here.
+	__u64 socket_key = BPF_CORE_READ(sock, __sk_common.skc_cookie.counter);
 
 	bpf_probe_read_kernel(&socket_value, sizeof(socket_value),
 			      &empty_sockets_value);
@@ -125,37 +126,6 @@ int ig_sockets_it(struct bpf_iter__task_file *ctx)
 	// Since the iterator is not executed from the context of the process that
 	// opened the socket, we need to pass the task_struct to the map.
 	insert_socket_from_iter(sock, task);
-	return 0;
-}
-
-// This iterator is called from a Go Ticker to remove expired sockets
-SEC("iter/bpf_map_elem")
-int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
-{
-	struct seq_file *seq = ctx->meta->seq;
-	__u32 seq_num = ctx->meta->seq_num;
-	struct bpf_map *map = ctx->map;
-	struct sockets_key *socket_key = ctx->key;
-	struct sockets_key tmp_key;
-	struct sockets_value *socket_value = ctx->value;
-
-	if (!socket_key || !socket_value)
-		return 0;
-
-	__u64 now = bpf_ktime_get_ns();
-	__u64 deletion_timestamp = socket_value->deletion_timestamp;
-	__u64 socket_expiration_ns =
-		1000ULL * 1000ULL * 1000ULL * 5ULL; // 5 seconds
-
-	if (deletion_timestamp != 0 &&
-	    deletion_timestamp + socket_expiration_ns < now) {
-		// The socket is expired, remove it from the map.
-		__builtin_memcpy(&tmp_key, socket_key,
-				 sizeof(struct sockets_key));
-		bpf_map_delete_elem(&gadget_sockets, &tmp_key);
-		return 0;
-	}
-
 	return 0;
 }
 

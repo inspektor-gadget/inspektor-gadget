@@ -18,16 +18,6 @@ type socketsiterBufT struct {
 	Buf [32768]uint8
 }
 
-type socketsiterSocketsKey struct {
-	_      structs.HostLayout
-	Netns  uint32
-	Family uint16
-	Proto  uint8
-	_      [1]byte
-	Port   uint16
-	_      [2]byte
-}
-
 type socketsiterSocketsValue struct {
 	_                 structs.HostLayout
 	Mntns             uint64
@@ -86,7 +76,6 @@ type socketsiterSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketsiterProgramSpecs struct {
-	IgSkCleanup *ebpf.ProgramSpec `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt *ebpf.ProgramSpec `ebpf:"ig_sockets_it"`
 }
 
@@ -147,13 +136,11 @@ type socketsiterVariables struct {
 //
 // It can be passed to loadSocketsiterObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketsiterPrograms struct {
-	IgSkCleanup *ebpf.Program `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt *ebpf.Program `ebpf:"ig_sockets_it"`
 }
 
 func (p *socketsiterPrograms) Close() error {
 	return _SocketsiterClose(
-		p.IgSkCleanup,
 		p.IgSocketsIt,
 	)
 }
