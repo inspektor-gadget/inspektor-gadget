@@ -18,12 +18,14 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
@@ -123,4 +125,20 @@ func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
 func InitUnitTest(t testing.TB) {
 	utilstest.RequireRoot(t)
 	RemoveMemlock(t)
+}
+
+// DummyGadgetTest runs a dummy gadget test that only checks if the gadget
+// can be started without errors.
+func DummyGadgetTest(t *testing.T, gadgetName string) {
+	t.Helper()
+
+	InitUnitTest(t)
+
+	opts := gadgetrunner.GadgetRunnerOpts[any]{
+		Image:   gadgetName,
+		Timeout: 5 * time.Second,
+	}
+
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
+	gadgetRunner.RunGadget()
 }
