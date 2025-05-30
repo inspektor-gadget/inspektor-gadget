@@ -628,6 +628,34 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
+		gadgetCtx.Logger().Debugf("using socket enricher BTF spec from context")
+		// Load the programs with the spec from the socket enricher and the
+		// kernel or btfgen specs
+		seBTFSpec, ok := seBtfSpecI.(*btf.Spec)
+		if !ok {
+			return fmt.Errorf("invalid socket enricher BTF spec: expected *btf.Spec, got %T", seBtfSpecI)
+		}
+
+		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seBTFSpec}
+
+		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
+		if !ok {
+			return fmt.Errorf("missing socket enricher struct size in context")
+		}
+		btfStruct, ok := bpfStructI.(*btf.Struct)
+		if !ok {
+			return fmt.Errorf("invalid socket enricher struct: expected *btf.Struct, got %T", bpfStructI)
+		}
+		mapSpec := i.collectionSpec.Maps[socketenricher.SocketsMapName]
+
+		mapSpec.ValueSize = btfStruct.Size
+	}
+
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
 		if !ok {
@@ -660,9 +688,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 
 	i.logger.Debugf("creating ebpf collection")
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
 
 	// check if the btfgen operator has stored the kernel types in the context
 	if btfSpecI, ok := gadgetCtx.GetVar(kernelTypesVar); ok {

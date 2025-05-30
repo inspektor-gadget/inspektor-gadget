@@ -176,4 +176,4 @@ replace github.com/inspektor-gadget/inspektor-gadget => ../
 // - https://github.com/cilium/ebpf/pull/1772
 // - https://github.com/cilium/ebpf/pull/1778
 // - https://github.com/cilium/ebpf/pull/1794
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250623141833-9958a4f58fb4
+replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20250625205447-f72d1b709b03
