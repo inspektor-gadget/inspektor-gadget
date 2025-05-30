@@ -94,8 +94,7 @@ static __always_inline void insert_current_socket(struct sock *sock)
 	}
 	if (bpf_core_field_exists(socket_value->exepath)) {
 		int exepath_size = bpf_core_field_size(socket_value->exepath);
-		char *exepath =
-			get_path_str(&exe_file->f_path);
+		char *exepath = get_path_str(&exe_file->f_path);
 		bpf_probe_read_kernel_str(socket_value->exepath, exepath_size,
 					  exepath);
 	}

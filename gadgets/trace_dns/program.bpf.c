@@ -190,6 +190,11 @@ struct {
 	__uint(max_entries, 1024);
 } query_map SEC(".maps");
 
+static __always_inline unsigned int min(unsigned int a, unsigned int b)
+{
+	return a < b ? a : b;
+}
+
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
@@ -365,32 +370,25 @@ int ig_trace_dns(struct __sk_buff *skb)
 	gadget_process_populate_from_socket(skb_val, &event->proc);
 
 	if (paths && skb_val != NULL) {
-		if (bpf_core_enum_value_exists(
-			    enum bpf_func_id, BPF_FUNC_probe_read_kernel_str)) {
-			bpf_probe_read_kernel_str(
-				&event->cwd, sizeof(event->cwd), skb_val->cwd);
-			bpf_probe_read_kernel_str(&event->exepath,
-						  sizeof(event->exepath),
-						  skb_val->exepath);
-		} else {
-			if (sizeof(skb_val->cwd) <= sizeof(event->cwd)) {
-				int cwd_len = sizeof(skb_val->cwd);
-				if (bpf_skb_load_bytes(
-					    skb, (unsigned long)skb_val->cwd,
-					    event->cwd, cwd_len) < 0) {
-					return 0;
-				}
+		unsigned int cwd_len =
+			min(bpf_core_field_size(skb_val->cwd), GADGET_PATH_MAX);
+		unsigned int exepath_len = min(
+			bpf_core_field_size(skb_val->exepath), GADGET_PATH_MAX);
+		bool cwd_exists = bpf_core_field_exists(skb_val->cwd);
+		bool exepath_exists = bpf_core_field_exists(skb_val->exepath);
+		bool probe_read_kernel_str_exists = bpf_core_enum_value_exists(
+			enum bpf_func_id, BPF_FUNC_probe_read_kernel_str);
+
+		if (probe_read_kernel_str_exists) {
+			if (cwd_exists) {
+				bpf_probe_read_kernel_str(&event->cwd, cwd_len,
+							  skb_val->cwd);
 			}
 
-			if (sizeof(skb_val->exepath) <=
-			    sizeof(event->exepath)) {
-				int exepath_len = sizeof(skb_val->exepath);
-				if (bpf_skb_load_bytes(
-					    skb,
-					    (unsigned long)skb_val->exepath,
-					    event->exepath, exepath_len) < 0) {
-					return 0;
-				}
+			if (exepath_exists) {
+				bpf_probe_read_kernel_str(&event->exepath,
+							  exepath_len,
+							  skb_val->exepath);
 			}
 		}
 	}
