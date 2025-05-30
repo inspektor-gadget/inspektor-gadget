@@ -17,6 +17,8 @@
 package btfhelpers
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/cilium/ebpf/btf"
@@ -149,4 +151,73 @@ func getSimpleType(typ btf.Type) reflect.Type {
 		}
 	}
 	return nil
+}
+
+func MergeBtfs(spec1, spec2 *btf.Spec) (*btf.Spec, error) {
+	types := []btf.Type{}
+	iterator := spec1.Iterate()
+	for iterator.Next() {
+		types = append(types, iterator.Type)
+	}
+
+	builder, err := btf.NewBuilder(types)
+	if err != nil {
+		return nil, fmt.Errorf("creating BTF builder: %w", err)
+	}
+
+	iterator = spec2.Iterate()
+	for iterator.Next() {
+		if _, err := builder.Add(iterator.Type); err != nil {
+			return nil, fmt.Errorf("adding types: %w", err)
+		}
+	}
+
+	buf := make([]byte, 0, 10*1024*1024) // 10MB buffer
+	mergedBtfRaw, err := builder.Marshal(buf, nil)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling BTF: %w", err)
+	}
+
+	mergedBtf, err := btf.LoadSpecFromReader(bytes.NewReader(mergedBtfRaw))
+	if err != nil {
+		return nil, fmt.Errorf("loading merged BTF spec: %w", err)
+	}
+
+	return mergedBtf, nil
+}
+
+func BuildBTFSpec(types []btf.Type) (*btf.Spec, error) {
+	builder, err := btf.NewBuilder(types)
+	if err != nil {
+		return nil, fmt.Errorf("creating BTF builder: %w", err)
+	}
+
+	// TODO: do we need this?
+	buf := make([]byte, 0, 10*1024*1024) // 10MB buffer
+	mergedBtfRaw, err := builder.Marshal(buf, nil)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling BTF: %w", err)
+	}
+
+	spec, err := btf.LoadSpecFromReader(bytes.NewReader(mergedBtfRaw))
+	if err != nil {
+		return nil, fmt.Errorf("loading btf spec: %w", err)
+	}
+
+	return spec, nil
+}
+
+func BtfInt(size uint32, encoding btf.IntEncoding) *btf.Int {
+	return &btf.Int{
+		Size:     size,
+		Encoding: encoding,
+	}
+}
+
+func BtfArray(indexT, valueT btf.Type, nelems uint32) *btf.Array {
+	return &btf.Array{
+		Index:  indexT,
+		Type:   valueT,
+		Nelems: nelems,
+	}
 }

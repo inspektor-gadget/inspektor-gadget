@@ -365,15 +365,26 @@ int ig_trace_dns(struct __sk_buff *skb)
 	gadget_process_populate_from_socket(skb_val, &event->proc);
 
 	if (paths && skb_val != NULL) {
-		if (bpf_core_enum_value_exists(
-			    enum bpf_func_id, BPF_FUNC_probe_read_kernel_str)) {
-			bpf_probe_read_kernel_str(
-				&event->cwd, sizeof(event->cwd), skb_val->cwd);
-			bpf_probe_read_kernel_str(&event->exepath,
-						  sizeof(event->exepath),
-						  skb_val->exepath);
+		bool cwd_exists = bpf_core_field_exists(skb_val->cwd);
+		bool exepath_exists = bpf_core_field_exists(skb_val->exepath);
+		bool probe_read_kernel_str_exists = bpf_core_enum_value_exists(
+			enum bpf_func_id, BPF_FUNC_probe_read_kernel_str);
+
+		if (probe_read_kernel_str_exists) {
+			if (cwd_exists) {
+				bpf_probe_read_kernel_str(&event->cwd,
+							  sizeof(event->cwd),
+							  skb_val->cwd);
+			}
+
+			if (exepath_exists) {
+				bpf_probe_read_kernel_str(
+					&event->exepath, sizeof(event->exepath),
+					skb_val->exepath);
+			}
 		} else {
-			if (sizeof(skb_val->cwd) <= sizeof(event->cwd)) {
+			if (cwd_exists &&
+			    sizeof(skb_val->cwd) <= sizeof(event->cwd)) {
 				int cwd_len = sizeof(skb_val->cwd);
 				if (bpf_skb_load_bytes(
 					    skb, (unsigned long)skb_val->cwd,
@@ -382,8 +393,8 @@ int ig_trace_dns(struct __sk_buff *skb)
 				}
 			}
 
-			if (sizeof(skb_val->exepath) <=
-			    sizeof(event->exepath)) {
+			if (exepath_exists && sizeof(skb_val->exepath) <=
+						      sizeof(event->exepath)) {
 				int exepath_len = sizeof(skb_val->exepath);
 				if (bpf_skb_load_bytes(
 					    skb,
