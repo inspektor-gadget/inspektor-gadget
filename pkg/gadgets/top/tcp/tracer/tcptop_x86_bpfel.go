@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcptopIpKeyT struct {
+	_       structs.HostLayout
 	Saddr   [16]uint8
 	Daddr   [16]uint8
 	Mntnsid uint64
@@ -25,6 +27,7 @@ type tcptopIpKeyT struct {
 }
 
 type tcptopTrafficT struct {
+	_        structs.HostLayout
 	Sent     uint64
 	Received uint64
 }

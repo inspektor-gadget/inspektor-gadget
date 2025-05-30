@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcpRTTHist struct {
+	_       structs.HostLayout
 	Latency uint64
 	Cnt     uint64
 	Slots   [27]uint32
@@ -20,6 +22,7 @@ type tcpRTTHist struct {
 }
 
 type tcpRTTHistKey struct {
+	_      structs.HostLayout
 	Family uint16
 	Addr   [16]uint8
 }

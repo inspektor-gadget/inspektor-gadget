@@ -8,13 +8,18 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
-type biolatencyHist struct{ Slots [27]uint32 }
+type biolatencyHist struct {
+	_     structs.HostLayout
+	Slots [27]uint32
+}
 
 type biolatencyHistKey struct {
+	_        structs.HostLayout
 	CmdFlags uint32
 	Dev      uint32
 }

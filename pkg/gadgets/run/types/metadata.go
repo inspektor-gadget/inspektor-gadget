@@ -327,9 +327,11 @@ func GetGadgetIdentByPrefix(spec *ebpf.CollectionSpec, prefix string) ([]string,
 	var resultNames []string
 	var errs []error
 
-	it := spec.Types.Iterate()
-	for it.Next() {
-		btfVar, ok := it.Type.(*btf.Var)
+	for typ, err := range spec.Types.All() {
+		if err != nil {
+			return nil, fmt.Errorf("getting type: %w", err)
+		}
+		btfVar, ok := typ.(*btf.Var)
 		if !ok {
 			continue
 		}

@@ -8,13 +8,18 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
-type socketsiterBufT struct{ Buf [32768]uint8 }
+type socketsiterBufT struct {
+	_   structs.HostLayout
+	Buf [32768]uint8
+}
 
 type socketsiterSocketsKey struct {
+	_      structs.HostLayout
 	Netns  uint32
 	Family uint16
 	Proto  uint8
@@ -24,6 +29,7 @@ type socketsiterSocketsKey struct {
 }
 
 type socketsiterSocketsValue struct {
+	_                 structs.HostLayout
 	Mntns             uint64
 	PidTgid           uint64
 	UidGid            uint64

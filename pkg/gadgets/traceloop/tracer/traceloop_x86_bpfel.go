@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type traceloopSyscallEventContT struct {
+	_                  structs.HostLayout
 	Param              [128]uint8
 	MonotonicTimestamp uint64
 	Length             uint64
@@ -22,6 +24,7 @@ type traceloopSyscallEventContT struct {
 }
 
 type traceloopSyscallEventT struct {
+	_                  structs.HostLayout
 	Args               [6]uint64
 	MonotonicTimestamp uint64
 	BootTimestamp      uint64

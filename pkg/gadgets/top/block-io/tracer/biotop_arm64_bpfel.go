@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type biotopInfoT struct {
+	_       structs.HostLayout
 	Mntnsid uint64
 	Pid     uint32
 	Rwflag  int32
@@ -22,11 +24,13 @@ type biotopInfoT struct {
 }
 
 type biotopStartReqT struct {
+	_       structs.HostLayout
 	Ts      uint64
 	DataLen uint64
 }
 
 type biotopValT struct {
+	_     structs.HostLayout
 	Bytes uint64
 	Us    uint64
 	Io    uint32
@@ -34,6 +38,7 @@ type biotopValT struct {
 }
 
 type biotopWhoT struct {
+	_       structs.HostLayout
 	Mntnsid uint64
 	Pid     uint32
 	Name    [16]int8

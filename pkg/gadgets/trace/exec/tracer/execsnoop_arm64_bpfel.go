@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type execsnoopEvent struct {
+	_           structs.HostLayout
 	MntnsId     uint64
 	Timestamp   uint64
 	Pid         uint32

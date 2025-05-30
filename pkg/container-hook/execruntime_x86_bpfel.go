@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type execruntimeRecord struct {
+	_          structs.HostLayout
 	MntnsId    uint64
 	Pid        uint32
 	ArgsSize   uint32

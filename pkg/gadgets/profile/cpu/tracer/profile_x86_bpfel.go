@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type profileKeyT struct {
+	_           structs.HostLayout
 	KernelIp    uint64
 	MntnsId     uint64
 	Pid         uint32

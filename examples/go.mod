@@ -171,3 +171,9 @@ require (
 
 // use current code of inspektor-gadget
 replace github.com/inspektor-gadget/inspektor-gadget => ../
+
+// ebpf-go with some memory optimizations like
+// - https://github.com/cilium/ebpf/pull/1763
+// - https://github.com/cilium/ebpf/pull/1772
+// - https://github.com/cilium/ebpf/pull/1778
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250521101936-dd4d949f2f7b

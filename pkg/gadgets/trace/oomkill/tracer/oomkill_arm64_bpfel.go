@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type oomkillDataT struct {
+	_         structs.HostLayout
 	Fpid      uint32
 	Fuid      uint32
 	Fgid      uint32

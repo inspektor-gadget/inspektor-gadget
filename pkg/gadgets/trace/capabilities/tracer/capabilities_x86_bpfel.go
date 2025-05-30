@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type capabilitiesArgsT struct {
+	_             structs.HostLayout
 	CurrentUserns uint64
 	TargetUserns  uint64
 	CapEffective  uint64
@@ -21,6 +23,7 @@ type capabilitiesArgsT struct {
 }
 
 type capabilitiesCapEvent struct {
+	_             structs.HostLayout
 	Mntnsid       uint64
 	CurrentUserns uint64
 	TargetUserns  uint64
@@ -39,6 +42,7 @@ type capabilitiesCapEvent struct {
 }
 
 type capabilitiesUniqueKey struct {
+	_       structs.HostLayout
 	Cap     int32
 	_       [4]byte
 	MntnsId uint64

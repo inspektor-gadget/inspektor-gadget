@@ -8,13 +8,18 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
-type execsnoopWithLongPathsBufT struct{ Buf [32768]uint8 }
+type execsnoopWithLongPathsBufT struct {
+	_   structs.HostLayout
+	Buf [32768]uint8
+}
 
 type execsnoopWithLongPathsEvent struct {
+	_             structs.HostLayout
 	MntnsId       uint64
 	Timestamp     uint64
 	Pid           uint32

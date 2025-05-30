@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcpconnectEvent struct {
+	_         structs.HostLayout
 	SaddrV6   [16]uint8
 	DaddrV6   [16]uint8
 	Task      [16]uint8
@@ -29,6 +31,7 @@ type tcpconnectEvent struct {
 }
 
 type tcpconnectIpv4FlowKey struct {
+	_     structs.HostLayout
 	Saddr uint32
 	Daddr uint32
 	Dport uint16
@@ -36,12 +39,14 @@ type tcpconnectIpv4FlowKey struct {
 }
 
 type tcpconnectIpv6FlowKey struct {
+	_     structs.HostLayout
 	Saddr [16]uint8
 	Daddr [16]uint8
 	Dport uint16
 }
 
 type tcpconnectPiddata struct {
+	_       structs.HostLayout
 	Comm    [16]int8
 	Ts      uint64
 	Pid     uint32
