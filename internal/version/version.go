@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 )
@@ -127,6 +128,44 @@ func Version() semver.Version {
 
 func VersionString() string {
 	return version
+}
+
+// BuildInfo contains version information
+type BuildInfo struct {
+	Major         string `json:"major,omitempty"`
+	Minor         string `json:"minor,omitempty"`
+	Version       string `json:"version"`
+	GitCommit     string `json:"gitCommit"`
+	GitTreeState  string `json:"gitTreeState"`
+	BuildDate     string `json:"buildDate"`
+	GoVersion     string `json:"goVersion"`
+	Compiler      string `json:"compiler"`
+	Platform      string `json:"platform"`
+}
+
+// GetBuildInfo returns detailed build information
+func GetBuildInfo() *BuildInfo {
+	info := &BuildInfo{
+		Version:       version,
+		GoVersion:     runtime.Version(),
+		Compiler:      runtime.Compiler,
+		Platform:      fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		GitTreeState:  "clean",
+		BuildDate:     time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// Parse version into major.minor
+	if v, err := semver.ParseTolerant(version); err == nil {
+		info.Major = fmt.Sprintf("%d", v.Major)
+		info.Minor = fmt.Sprintf("%d", v.Minor)
+
+		// If there's a pre-release or metadata, it might contain the git commit
+		if len(v.Pre) > 0 {
+			info.GitCommit = v.Pre[0].VersionStr
+		}
+	}
+
+	return info
 }
 
 func UserAgent() string {

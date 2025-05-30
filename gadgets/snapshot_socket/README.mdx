@@ -1,12 +1,32 @@
 ---
-title: snapshot_socket
+title: 'Using snapshot socket'
 sidebar_position: 0
+description: |
+  Gather information about TCP and UDP sockets.
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-The `snapshot_socket` shows existing sockets.
+The `snapshot_socket` gadget gathers information about TCP and UDP sockets, providing visibility into network connections at the socket level.
+
+## Use Cases
+
+1. **Network Service Discovery**
+   - Identify all listening services and their associated ports
+   - Map network topology by understanding service communications
+
+2. **Troubleshooting**
+   - Verify service bindings and diagnose connection issues
+   - Identify unauthorized or unexpected listening ports
+
+3. **Security Auditing**
+   - Detect unusual connection patterns
+   - Verify network isolation between namespaces
+
+4. **Capacity Planning**
+   - Monitor connection counts and states
+   - Identify services needing scaling based on metrics
 
 ## Getting started
 
@@ -28,25 +48,71 @@ Running the gadget:
 
 ## Guide
 
-Run a pod / container:
+### Basic Usage
+
+Run the gadget to see all sockets in the system:
 
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 ```bash
-$ kubectl run --restart=Never --image=nginx test-snapshot-socket
-pod/test-snapshot-socket created
+# Monitor all sockets in the cluster
+kubectl gadget snapshot socket
+
+# Example output:
+# NAMESPACE  POD               CONTAINER  PROTO  LOCAL  REMOTE  STATUS  
+# default    nginx-pod        nginx      TCP    80     0.0.0.0:0  LISTEN  
+# kube-system kube-dns-xxxxx  dnsmasq    UDP    53    0.0.0.0:0   LISTEN
 ```
 </TabItem>
 
 <TabItem value="ig" label="ig">
 ```bash
-$ docker run --name test-snapshot-socket -d nginx
-...
+# Monitor all sockets on the host
+sudo ig snapshot socket
 ```
 </TabItem>
 </Tabs>
 
-Then, run the gadget and see how it shows the sockets used by nginx:
+### Common Examples
+
+1. **Monitor a specific namespace**:
+   ```bash
+   kubectl gadget snapshot socket -n kube-system
+   ```
+
+2. **Filter by protocol**:
+   ```bash
+   # Show only TCP sockets
+   kubectl gadget snapshot socket --proto tcp
+   
+   # Show only UDP sockets
+   kubectl gadget snapshot socket --proto udp
+   ```
+
+3. **Show container socket details**:
+   ```bash
+   # For a specific pod
+   kubectl gadget snapshot socket -p nginx-pod
+   
+   # With container name
+   kubectl gadget snapshot socket -p nginx-pod -c nginx
+   ```
+
+### Advanced Usage
+
+Monitor socket changes in real-time:
+
+```bash
+# Watch for socket changes with 2s refresh
+kubectl gadget snapshot socket -w 2s
+```
+
+Show extended socket information:
+
+```bash
+# Include process information
+kubectl gadget snapshot socket -o wide
+```
 
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
