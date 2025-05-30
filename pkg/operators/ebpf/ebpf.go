@@ -272,21 +272,23 @@ func (i *ebpfInstance) analyze() error {
 	}
 
 	// Iterate over types and populate the gadget
-	it := i.collectionSpec.Types.Iterate()
-	for it.Next() {
+	for typ, err := range i.collectionSpec.Types.All() {
+		if err != nil {
+			return fmt.Errorf("iterating over types: %w", err)
+		}
 		for _, entry := range prefixLookups {
-			typeName, ok := entry.prefixFunc(it.Type.TypeName())
+			typeName, ok := entry.prefixFunc(typ.TypeName())
 			if !ok {
 				continue
 			}
 			if entry.validator != nil {
-				err := entry.validator(it.Type, strings.TrimPrefix(it.Type.TypeName(), typeName))
+				err := entry.validator(typ, strings.TrimPrefix(typ.TypeName(), typeName))
 				if err != nil {
-					i.logger.Debugf("type %q error: %v", it.Type.TypeName(), err)
+					i.logger.Debugf("type %q error: %v", typ.TypeName(), err)
 					continue
 				}
 			}
-			err := entry.populateFunc(it.Type, typeName)
+			err := entry.populateFunc(typ, typeName)
 			if err != nil {
 				return fmt.Errorf("handling type by prefix %q: %w", typeName, err)
 			}
