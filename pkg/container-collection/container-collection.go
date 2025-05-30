@@ -236,7 +236,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 
 // LookupMntnsByContainer returns the mount namespace inode of the container
 // specified in arguments or zero if not found
-func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container string) (mntns uint64) {
+func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container string) (mntns uint32) {
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if namespace == c.K8s.Namespace && pod == c.K8s.PodName && container == c.K8s.ContainerName {
@@ -249,7 +249,7 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 	return
 }
 
-func lookupContainerByMntns(m *sync.Map, mntnsid uint64) *Container {
+func lookupContainerByMntns(m *sync.Map, mntnsid uint32) *Container {
 	var container *Container
 
 	m.Range(func(key, value interface{}) bool {
@@ -266,7 +266,7 @@ func lookupContainerByMntns(m *sync.Map, mntnsid uint64) *Container {
 
 // LookupContainerByMntns returns a container by its mount namespace
 // inode id. If not found nil is returned.
-func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
+func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint32) *Container {
 	container, ok := cc.containersByMntNs.Load(mntnsid)
 	if !ok {
 		return nil
@@ -277,7 +277,7 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container
 // LookupContainersByNetns returns a slice of containers that run in a given
 // network namespace. Or an empty slice if there are no containers running in
 // that network namespace.
-func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) []*Container {
+func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint32) []*Container {
 	containers, ok := cc.containersByNetNs.Load(netnsid)
 	if !ok {
 		return nil
@@ -285,7 +285,7 @@ func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) []*Contai
 	return containers.([]*Container)
 }
 
-func lookupContainersByNetns(m *sync.Map, netnsid uint64) (containers []*Container) {
+func lookupContainersByNetns(m *sync.Map, netnsid uint32) (containers []*Container) {
 	m.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if c.Netns == netnsid {
@@ -299,8 +299,8 @@ func lookupContainersByNetns(m *sync.Map, netnsid uint64) (containers []*Contain
 // LookupMntnsByPod returns the mount namespace inodes of all containers
 // belonging to the pod specified in arguments, indexed by the name of the
 // containers or an empty map if not found
-func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
-	ret := make(map[string]uint64)
+func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[string]uint32 {
+	ret := make(map[string]uint32)
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if namespace == c.K8s.Namespace && pod == c.K8s.PodName {
@@ -343,7 +343,7 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 
 // LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 // container identified by the mount namespace, or nil if not found
-func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1.OwnerReference {
+func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint32) *metav1.OwnerReference {
 	var ownerRef *metav1.OwnerReference
 	var err error
 	cc.containers.Range(func(key, value interface{}) bool {
@@ -417,7 +417,7 @@ func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
 	event.K8s.Node = cc.nodeName
 }
 
-func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
+func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint32) {
 	event.K8s.Node = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)
@@ -439,7 +439,7 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 	}
 }
 
-func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
+func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint32) {
 	event.K8s.Node = cc.nodeName
 
 	containers := cc.LookupContainersByNetns(netnsid)

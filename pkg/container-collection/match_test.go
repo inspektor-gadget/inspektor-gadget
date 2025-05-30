@@ -199,7 +199,7 @@ func TestContainerResolver(t *testing.T) {
 					ContainerPID: uint32(100 + i),
 				},
 			},
-			Mntns:      55555 + uint64(i),
+			Mntns:      55555 + uint32(i),
 			CgroupPath: "/none",
 			CgroupID:   1,
 			K8s: K8sMetadata{

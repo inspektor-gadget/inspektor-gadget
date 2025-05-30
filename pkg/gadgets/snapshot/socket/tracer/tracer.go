@@ -183,10 +183,11 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
-	if _, ok := t.visitedNamespaces[container.Netns]; ok {
+	netns := uint64(container.Netns)
+	if _, ok := t.visitedNamespaces[netns]; ok {
 		return nil
 	}
-	t.visitedNamespaces[container.Netns] = container.ContainerPid()
+	t.visitedNamespaces[netns] = container.ContainerPid()
 	return nil
 }
 
