@@ -15,10 +15,12 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
@@ -87,16 +89,21 @@ func TestDatasourceContainers(t *testing.T) {
 				MntnsID:         utils.NormalizedInt,
 				CgroupID:        utils.NormalizedInt,
 				ContainerID:     utils.NormalizedStr,
-				ContainerConfig: "", // See issue 3884
+				ContainerConfig: utils.NormalizedStr,
 			}
 
 			normalize := func(e *DatasourceContainersEvent) {
 				utils.NormalizeInt(&e.CgroupID)
 				utils.NormalizeInt(&e.MntnsID)
 				utils.NormalizeString(&e.ContainerID)
-				// ContainerConfig is sometimes empty:
-				// https://github.com/inspektor-gadget/inspektor-gadget/issues/3884
-				e.ContainerConfig = ""
+
+				// only validate the OCI config is not empty before normalizing it
+				var spec *ocispec.Spec
+				err = json.Unmarshal([]byte(e.ContainerConfig), &spec)
+				require.NoError(t, err, "unmarshalling OCI config")
+				require.NotNil(t, spec, "OCI spec is not empty")
+				require.NotEmpty(t, spec.Version, "OCI runtime spec version is not empty")
+				utils.NormalizeString(&e.ContainerConfig)
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)

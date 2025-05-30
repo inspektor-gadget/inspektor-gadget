@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	corev1 "k8s.io/api/core/v1"
@@ -43,8 +45,15 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	processhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/process-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+)
+
+const (
+	// config.json is typically less than 100 KiB.
+	// 16 MiB should be enough.
+	configJsonMaxSize = int64(16 * 1024 * 1024)
 )
 
 func setIfEmptyStr[T ~string](s *T, v T) {
@@ -723,7 +732,9 @@ func isEnrichedWithOCIConfigInfo(container *Container) bool {
 		container.SandboxId != ""
 }
 
-// WithOCIConfigEnrichment enriches container using provided OCI config
+// WithOCIConfigEnrichment enriches container using provided OCI config.
+// Since this enricher is performant compared to the runtime client, it
+// should be used as a first step in the enrichment pipeline.
 func WithOCIConfigEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
@@ -779,6 +790,57 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 		})
 		return nil
 	}
+}
+
+// WithOCIConfigForInitialContainer enriches initial containers with the OCI config.
+// It assumes that the initial containers are already populated in the ContainerCollection
+func WithOCIConfigForInitialContainer() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		for _, container := range cc.initialContainers {
+			info, err := processhelpers.GetProcessInfo(int(container.ContainerPid()), 0, &procOpts{})
+			if err != nil {
+				log.Errorf("OCIConfig enricher: failed to get process info for container %s: %s", container.Runtime.ContainerID, err)
+				continue
+			}
+			bPath, err := os.Readlink(filepath.Join(host.HostProcFs, fmt.Sprintf("%d", info.PPID), "cwd"))
+			if err != nil {
+				log.Errorf("OCIConfig enricher: failed to read cwd symlink of container runtime for container %s: %s", container.Runtime.ContainerID, err)
+				continue
+			}
+
+			// In case of containerd, we get the bundle path of sandbox containers so we need to switch to the actual container directory.
+			if container.Runtime.RuntimeName == types.RuntimeNameContainerd && !strings.HasSuffix(bPath, container.Runtime.ContainerID) {
+				bPath = filepath.Join(filepath.Dir(bPath), filepath.Base(container.Runtime.ContainerID))
+			}
+
+			cfgPath, err := securejoin.SecureJoin(host.HostRoot, filepath.Join(bPath, "config.json"))
+			if err != nil {
+				log.Errorf("OCIConfig enricher: failed to join config.json path for container %s: %s", container.Runtime.ContainerID, err)
+				continue
+			}
+			cfg, err := readOciConfigFromPath(cfgPath)
+			if err != nil {
+				log.Errorf("OCIConfig enricher: failed to get OCI config for container %s: %s", container.Runtime.ContainerID, err)
+				continue
+			}
+			container.OciConfig = cfg
+		}
+		return nil
+	}
+}
+
+func readOciConfigFromPath(cfgPath string) (string, error) {
+	cfgData, err := os.Open(cfgPath)
+	if err != nil {
+		return "", fmt.Errorf("reading config.json for pid %s: %w", cfgPath, err)
+	}
+	defer cfgData.Close()
+
+	cfg, err := io.ReadAll(io.LimitReader(cfgData, configJsonMaxSize))
+	if err != nil {
+		return "", fmt.Errorf("reading config.json for pid %s: %w", cfgPath, err)
+	}
+	return string(cfg), nil
 }
 
 func WithNodeName(nodeName string) ContainerCollectionOption {
