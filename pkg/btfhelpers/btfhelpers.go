@@ -17,6 +17,8 @@
 package btfhelpers
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/cilium/ebpf/btf"
@@ -149,4 +151,51 @@ func getSimpleType(typ btf.Type) reflect.Type {
 		}
 	}
 	return nil
+}
+
+func AppendTypesToSpec(spec *btf.Spec, types []btf.Type) (*btf.Spec, error) {
+	allTypes := []btf.Type{}
+	iterator := spec.Iterate()
+	for iterator.Next() {
+		allTypes = append(allTypes, iterator.Type)
+	}
+
+	builder, err := btf.NewBuilder(allTypes)
+	if err != nil {
+		return nil, fmt.Errorf("creating BTF builder: %w", err)
+	}
+
+	for _, typ := range types {
+		if _, err := builder.Add(typ); err != nil {
+			return nil, fmt.Errorf("adding types: %w", err)
+		}
+	}
+
+	buf := []byte{}
+	mergedBtfRaw, err := builder.Marshal(buf, nil)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling BTF: %w", err)
+	}
+
+	newSpec, err := btf.LoadSpecFromReader(bytes.NewReader(mergedBtfRaw))
+	if err != nil {
+		return nil, fmt.Errorf("loading BTF spec: %w", err)
+	}
+
+	return newSpec, nil
+}
+
+func BtfInt(size uint32, encoding btf.IntEncoding) *btf.Int {
+	return &btf.Int{
+		Size:     size,
+		Encoding: encoding,
+	}
+}
+
+func BtfArray(indexT, valueT btf.Type, nelems uint32) *btf.Array {
+	return &btf.Array{
+		Index:  indexT,
+		Type:   valueT,
+		Nelems: nelems,
+	}
 }

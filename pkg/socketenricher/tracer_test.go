@@ -37,7 +37,7 @@ func TestSocketEnricherCreate(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, err := NewSocketEnricher()
+	tracer, err := NewSocketEnricher(Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, _ := NewSocketEnricher()
+	tracer, _ := NewSocketEnricher(Config{})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Close()
@@ -103,8 +103,8 @@ func TestSocketEnricherBind(t *testing.T) {
 		}
 		return
 	}
-	stringToSlice512 := func(s string) (ret [512]int8) {
-		for i := 0; i < 512; i++ {
+	stringToSlice4096 := func(s string) (ret [4096]int8) {
+		for i := 0; i < 4096; i++ {
 			if i >= len(s) {
 				break
 			}
@@ -130,8 +130,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -152,8 +152,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -180,8 +180,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice512(cwd),
-						Exepath:  stringToSlice512(exepath),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -202,8 +202,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -224,8 +224,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -252,8 +252,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice512(cwd),
-						Exepath:  stringToSlice512(exepath),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -276,8 +276,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						UidGid:  uint64(1111)<<32 + uint64(1000),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -293,7 +293,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
 			// 2. lateTracer will be started after the event is generated
-			earlyTracer, err := NewSocketEnricher()
+			earlyTracer, err := NewSocketEnricher(Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -317,7 +317,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			})
 
 			// Start the late tracer after the event has been generated
-			lateTracer, err := NewSocketEnricher()
+			lateTracer, err := NewSocketEnricher(Config{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -76,7 +76,9 @@ static __always_inline struct qstr get_d_name_from_dentry(struct dentry *dentry)
 	return BPF_CORE_READ(dentry, d_name);
 }
 
-static __always_inline void *get_path_str(struct path *path)
+// get_path_str_with_size() returns a pointer to a string representation of the
+// path. Size has to be a power of two.
+static __always_inline void *get_path_str_with_size(struct path *path, __u32 size)
 {
 	struct path f_path;
 	bpf_probe_read(&f_path, sizeof(struct path), path);
@@ -124,7 +126,7 @@ static __always_inline void *get_path_str(struct path *path)
 		}
 		// Add this dentry name to path
 		d_name = get_d_name_from_dentry(dentry);
-		len = (d_name.len + 1) & (GADGET_PATH_MAX - 1);
+		len = (d_name.len + 1) & (size - 1);
 		off = buf_off - len;
 
 		// Is string buffer big enough for dentry name?
@@ -160,6 +162,10 @@ static __always_inline void *get_path_str(struct path *path)
 	}
 
 	return &string_p->buf[buf_off];
+}
+
+static __always_inline void *get_path_str(struct path *path) {
+	return get_path_str_with_size(path, GADGET_PATH_MAX);
 }
 
 // Function to extract file structure from a user space file descriptor

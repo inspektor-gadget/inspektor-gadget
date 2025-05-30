@@ -20,6 +20,8 @@ package socketenricher
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cilium/ebpf"
@@ -34,6 +36,9 @@ import (
 
 const (
 	OperatorName = "SocketEnricher"
+	BTFSpecKey   = "socketEnricherbtf"
+	BTFStructKey = "socketEnricherStruct"
+	fieldsParam  = "se-fields"
 )
 
 type SocketEnricherInterface interface {
@@ -44,6 +49,7 @@ type SocketEnricher struct {
 	mu             sync.Mutex
 	socketEnricher *tracer.SocketEnricher
 	refCount       int
+	seConfig       *tracer.Config
 }
 
 func (s *SocketEnricher) Name() string {
@@ -83,6 +89,36 @@ func (s *SocketEnricher) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (s *SocketEnricher) Init(params *params.Params) error {
+	fields := params.Get(fieldsParam).AsStringSlice()
+
+	s.seConfig = &tracer.Config{}
+
+	for _, field := range fields {
+		sizeStr := "512"
+
+		parts := strings.Split(field, "=")
+		field := parts[0]
+		if len(parts) >= 2 {
+			sizeStr = parts[1]
+		}
+
+		size, err := strconv.ParseUint(sizeStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid size for field %s: %w", field, err)
+		}
+
+		switch field {
+		case "cwd":
+			s.seConfig.Cwd.Enabled = true
+			s.seConfig.Cwd.Size = uint32(size)
+		case "exepath":
+			s.seConfig.Exepath.Enabled = true
+			s.seConfig.Exepath.Size = uint32(size)
+		default:
+			return fmt.Errorf("unsupported field: %s", field)
+		}
+	}
+
 	return nil
 }
 
@@ -125,7 +161,7 @@ func (i *SocketEnricherInstance) PreGadgetRun() error {
 	defer i.manager.mu.Unlock()
 
 	if i.manager.refCount == 0 {
-		t, err := tracer.NewSocketEnricher()
+		t, err := tracer.NewSocketEnricher(*i.manager.seConfig)
 		if err != nil {
 			return err
 		}
@@ -157,7 +193,15 @@ func (i *SocketEnricherInstance) EnrichEvent(ev any) error {
 }
 
 func (s *SocketEnricher) GlobalParams() api.Params {
-	return nil
+	return api.Params{
+		{
+			Key:          fieldsParam,
+			Title:        "Socket enricher fields",
+			Description:  "List of fields and their sizes to the enabled on the socket enricher. It uses the field0=size,field1=size,... format",
+			DefaultValue: "cwd=512,exepath=512",
+			TypeHint:     api.TypeStringSlice,
+		},
+	}
 }
 
 func (s *SocketEnricher) InstanceParams() api.Params {
@@ -182,7 +226,19 @@ func (s *SocketEnricher) Priority() int {
 }
 
 func (i *SocketEnricherInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	return i.PreGadgetRun()
+	err := i.PreGadgetRun()
+	if err != nil {
+		return err
+	}
+
+	types, btfStruct, err := i.manager.socketEnricher.Types()
+	if err != nil {
+		return err
+	}
+
+	gadgetCtx.SetVar(BTFSpecKey, types)
+	gadgetCtx.SetVar(BTFStructKey, btfStruct)
+	return nil
 }
 
 func (i *SocketEnricherInstance) Start(gadgetCtx operators.GadgetContext) error {
