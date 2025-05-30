@@ -38,6 +38,7 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -628,6 +629,38 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if seTypesI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
+		gadgetCtx.Logger().Debugf("using socket enricher BTF spec from context")
+		// Load the programs with the spec from the socket enricher and the
+		// kernel or btfgen specs
+		seTypes, ok := seTypesI.([]btf.Type)
+		if !ok {
+			return fmt.Errorf("invalid socket enricher BTF spec: expected []btf.Type, got %T", seTypesI)
+		}
+
+		seSpec, err := btfhelpers.BuildSpec(seTypes)
+		if err != nil {
+			return fmt.Errorf("creating socket enricher BTF spec: %w", err)
+		}
+		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seSpec}
+
+		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
+		if !ok {
+			return fmt.Errorf("missing socket enricher struct size in context")
+		}
+		btfStruct, ok := bpfStructI.(*btf.Struct)
+		if !ok {
+			return fmt.Errorf("invalid socket enricher struct size: expected uint32, got %T", bpfStructI)
+		}
+		mapSpec := i.collectionSpec.Maps[socketenricher.SocketsMapName]
+
+		mapSpec.ValueSize = btfStruct.Size
+	}
+
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
 		if !ok {
@@ -660,9 +693,6 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 
 	i.logger.Debugf("creating ebpf collection")
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
 
 	// check if the btfgen operator has stored the kernel types in the context
 	if btfSpecI, ok := gadgetCtx.GetVar(kernelTypesVar); ok {

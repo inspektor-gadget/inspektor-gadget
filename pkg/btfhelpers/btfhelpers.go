@@ -17,6 +17,8 @@
 package btfhelpers
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/cilium/ebpf/btf"
@@ -149,4 +151,38 @@ func getSimpleType(typ btf.Type) reflect.Type {
 		}
 	}
 	return nil
+}
+
+func BuildSpec(types []btf.Type) (*btf.Spec, error) {
+	builder, err := btf.NewBuilder(types)
+	if err != nil {
+		return nil, fmt.Errorf("creating BTF builder: %w", err)
+	}
+
+	buf, err := builder.Marshal(nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling BTF: %w", err)
+	}
+
+	spec, err := btf.LoadSpecFromReader(bytes.NewReader(buf))
+	if err != nil {
+		return nil, fmt.Errorf("loading BTF spec: %w", err)
+	}
+
+	return spec, nil
+}
+
+func BtfInt(size uint32, encoding btf.IntEncoding) *btf.Int {
+	return &btf.Int{
+		Size:     size,
+		Encoding: encoding,
+	}
+}
+
+func BtfArray(indexT, valueT btf.Type, nelems uint32) *btf.Array {
+	return &btf.Array{
+		Index:  indexT,
+		Type:   valueT,
+		Nelems: nelems,
+	}
 }
