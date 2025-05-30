@@ -33,7 +33,10 @@ import (
 )
 
 const (
-	OperatorName = "SocketEnricher"
+	OperatorName       = "SocketEnricher"
+	BTFSpecKey         = "socketEnricherbtf"
+	BTFStructKey       = "socketEnricherStruct"
+	enabledFieldsParam = "se-enabled-fields"
 )
 
 type SocketEnricherInterface interface {
@@ -44,6 +47,7 @@ type SocketEnricher struct {
 	mu             sync.Mutex
 	socketEnricher *tracer.SocketEnricher
 	refCount       int
+	enabledFields  []string
 }
 
 func (s *SocketEnricher) Name() string {
@@ -83,6 +87,8 @@ func (s *SocketEnricher) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (s *SocketEnricher) Init(params *params.Params) error {
+	s.enabledFields = params.Get(enabledFieldsParam).AsStringSlice()
+
 	return nil
 }
 
@@ -125,7 +131,9 @@ func (i *SocketEnricherInstance) PreGadgetRun() error {
 	defer i.manager.mu.Unlock()
 
 	if i.manager.refCount == 0 {
-		t, err := tracer.NewSocketEnricher()
+		t, err := tracer.NewSocketEnricher(tracer.Config{
+			EnabledFields: i.manager.enabledFields,
+		})
 		if err != nil {
 			return err
 		}
@@ -157,7 +165,15 @@ func (i *SocketEnricherInstance) EnrichEvent(ev any) error {
 }
 
 func (s *SocketEnricher) GlobalParams() api.Params {
-	return nil
+	return api.Params{
+		{
+			Key:          enabledFieldsParam,
+			Title:        "Socket enricher enabled fields",
+			Description:  "Optional fields to enabled. Enabling more fields increases the memory usage",
+			DefaultValue: "cwd,exepath",
+			TypeHint:     api.TypeStringSlice,
+		},
+	}
 }
 
 func (s *SocketEnricher) InstanceParams() api.Params {
@@ -182,7 +198,19 @@ func (s *SocketEnricher) Priority() int {
 }
 
 func (i *SocketEnricherInstance) PreStart(gadgetCtx operators.GadgetContext) error {
-	return i.PreGadgetRun()
+	err := i.PreGadgetRun()
+	if err != nil {
+		return err
+	}
+
+	spec, btfStruct, err := i.manager.socketEnricher.ValueBtf()
+	if err != nil {
+		return err
+	}
+
+	gadgetCtx.SetVar(BTFSpecKey, spec)
+	gadgetCtx.SetVar(BTFStructKey, btfStruct)
+	return nil
 }
 
 func (i *SocketEnricherInstance) Start(gadgetCtx operators.GadgetContext) error {

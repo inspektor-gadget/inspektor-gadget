@@ -185,3 +185,39 @@ func MergeBtfs(spec1, spec2 *btf.Spec) (*btf.Spec, error) {
 
 	return mergedBtf, nil
 }
+
+func BuildBTFSpec(types []btf.Type) (*btf.Spec, error) {
+	builder, err := btf.NewBuilder(types)
+	if err != nil {
+		return nil, fmt.Errorf("creating BTF builder: %w", err)
+	}
+
+	// TODO: do we need this?
+	buf := make([]byte, 0, 10*1024*1024) // 10MB buffer
+	mergedBtfRaw, err := builder.Marshal(buf, nil)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling BTF: %w", err)
+	}
+
+	spec, err := btf.LoadSpecFromReader(bytes.NewReader(mergedBtfRaw))
+	if err != nil {
+		return nil, fmt.Errorf("loading btf spec: %w", err)
+	}
+
+	return spec, nil
+}
+
+func BtfInt(size uint32, encoding btf.IntEncoding) *btf.Int {
+	return &btf.Int{
+		Size:     size,
+		Encoding: encoding,
+	}
+}
+
+func BtfArray(indexT, valueT btf.Type, nelems uint32) *btf.Array {
+	return &btf.Array{
+		Index:  indexT,
+		Type:   valueT,
+		Nelems: nelems,
+	}
+}

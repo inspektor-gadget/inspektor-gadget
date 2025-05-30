@@ -37,7 +37,7 @@ func TestSocketEnricherCreate(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, err := NewSocketEnricher()
+	tracer, err := NewSocketEnricher(Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, _ := NewSocketEnricher()
+	tracer, _ := NewSocketEnricher(Config{})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Close()
@@ -293,7 +293,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
 			// 2. lateTracer will be started after the event is generated
-			earlyTracer, err := NewSocketEnricher()
+			earlyTracer, err := NewSocketEnricher(Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -317,7 +317,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			})
 
 			// Start the late tracer after the event has been generated
-			lateTracer, err := NewSocketEnricher()
+			lateTracer, err := NewSocketEnricher(Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
