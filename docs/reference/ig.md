@@ -193,13 +193,14 @@ In order to use `--enrich-with-k8s-apiserver`, the spawned debug pod has to have
 This can be done with giving it the `cluster-admin` role:
 
 ```bash
-$ kubectl create serviceaccount -n kube-system ig
+$ kubectl create namespace ig
 
 $ kubectl create clusterrolebinding ig \
   --clusterrole=cluster-admin \
-  --serviceaccount=kube-system:ig
+  --serviceaccount=ig:default
 
-$ kubectl debug -n kube-system --as system:serviceaccount:kube-system:ig --profile=sysadmin node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig trace exec --enrich-with-k8s-apiserver -o columns=k8s.owner.kind,k8s.owner.name,pid,comm,args
+$ NODE_NAME=minikube-docker
+$ kubectl debug -n ig --profile=sysadmin node/$NODE_NAME --env NODE_NAME=$NODE_NAME  -ti --image=ghcr.io/inspektor-gadget/ig -- ig run trace_exec --enrich-with-k8s-apiserver --fields k8s.owner.kind,k8s.owner.name,pid,comm,args
 ```
 
 ### Using ig as a daemon
