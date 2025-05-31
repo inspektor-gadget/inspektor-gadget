@@ -38,6 +38,13 @@ wasm: $(WASM)
 	# -buildmode=c-shared to build the wasm as a reactor module. See https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi
 	cd $(dir $(WASM)) && \
 	CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm go build -o $(OUTPUTDIR)/program.wasm -buildmode=c-shared -ldflags "-w -s" $(notdir $(WASM))
+else ifeq (rs, $(patsubst %.rs,rs,$(WASM)))
+wasm: $(WASM)
+	cd $(dir $(WASM)) && \
+	cargo build --target wasm32-wasip1 --release && \
+	PACKAGE_NAME=$(shell awk -F\" '/^name *=/ { print $$2; exit }' $(dir $(WASM))/../Cargo.toml) && \
+	cp ../target/wasm32-wasip1/release/$$PACKAGE_NAME.wasm $(OUTPUTDIR)/program.wasm && \
+	cd /work
 else ifeq (wasm,$(patsubst %.wasm,wasm,$(WASM)))
 wasm:
 	# Wasm file already compiled. Nothing to do.
