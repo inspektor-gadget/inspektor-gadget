@@ -40,6 +40,7 @@ struct event {
 	__u32 sessionid;
 	gadget_errno error_raw;
 	int args_count;
+	int tty;
 	bool upper_layer;
 	bool fupper_layer;
 	bool pupper_layer;
@@ -133,6 +134,8 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 
 	event->args_count = 0;
 	event->args_size = 0;
+
+	event->tty = BPF_CORE_READ(task, signal, tty, index);
 
 	if (paths) {
 		struct fs_struct *fs = BPF_CORE_READ(task, fs);
