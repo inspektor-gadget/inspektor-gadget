@@ -42,3 +42,25 @@ func GetTargetNameFromAnnotation(
 
 	return "", fmt.Errorf("neither %q annotation nor '_raw' suffix found", targetAnnotation)
 }
+
+func SetColumnsHiddenAnnotation(
+	defaultValue bool,
+	in datasource.FieldAccessor,
+) {
+	annotations := in.Annotations()
+
+	in.SetHidden(true, true)
+
+	outName, ok := annotations["columns.hidden"]
+	if !ok {
+		in.SetHidden(defaultValue, false)
+	} else {
+		hide := false
+
+		if outName == "true" {
+			hide = true
+		}
+
+		in.SetHidden(hide, false)
+	}
+}
