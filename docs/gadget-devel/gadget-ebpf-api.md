@@ -219,6 +219,8 @@ The IP field will be translated to its string representation:
   },
 ```
 
+By default this field is shown but you can use `columns.hidden` to the control visibility.
+
 ### `struct gadget_l4endpoint_t`
 
 Represents a layer 4 endpoint (IP address + port) for UDP and TCP. It's defined as:
@@ -245,6 +247,7 @@ It'll produce an output like:
 
 or `172.17.0.2:46076` depending on the output mode used.
 
+By default this field is shown but you can use `columns.hidden` to the control visibility.
 
 ### `gadget_timestamp`
 
@@ -267,7 +270,7 @@ It will produce the following output when using the `json` output mode:
   "timestamp_raw": 1721943247136974800,
 ```
 
-Notice both fields will be hidden by default when using the `columns` output mode.
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
 
 #### Annotations
 
@@ -289,6 +292,8 @@ struct event {
   "sig_raw": 23,
 ```
 
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
+
 #### Annotations
 
 - `formatters.signal.target`: Name of the new field. If the annotation is not set and the source field name has a _raw suffix, the target name will be set to the source name without that suffix.
@@ -308,6 +313,8 @@ struct event {
   "error_raw": 2,
 ```
 
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
+
 #### Annotations
 
 - `formatters.errno.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
@@ -326,6 +333,8 @@ struct event {
   "syscall": "SYS_SOCKET",
   "syscall_raw": 41,
 ```
+
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
 
 #### Annotations
 
