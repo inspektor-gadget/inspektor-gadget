@@ -46,18 +46,25 @@ enum operation {
 	libcrypto_ossl_ecdh_compute_key,
 };
 
-struct event {
-	gadget_timestamp timestamp_raw;
-	struct gadget_process proc;
-
-	enum operation operation_raw;
-	gadget_duration latency_ns_raw;
-	u32 len;
+#define COMMON_FIELDS                   \
+	gadget_timestamp timestamp_raw; \
+	struct gadget_process proc;     \
+	enum operation operation_raw;   \
+	gadget_duration latency_ns_raw; \
+	u32 len;                        \
 	gadget_errno error_raw;
+
+struct event {
+	COMMON_FIELDS
+};
+struct event___record_data {
+	COMMON_FIELDS
 	u8 buf[MAX_BUF_SIZE];
 };
+const struct event___record_data *__gadget_tracer_type_ssl_alt1
+	__attribute__((unused));
 
-#define BASE_EVENT_SIZE ((size_t)(&((struct event *)0)->buf))
+#define BASE_EVENT_SIZE ((size_t)(&((struct event___record_data *)0)->buf))
 #define EVENT_SIZE(X) (BASE_EVENT_SIZE + ((size_t)(X)))
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -153,9 +160,21 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	// buf_copy_size does not go above the upper limit
 	buf_copy_size &= MAX_BUF_SIZE - 1;
 
-	event = gadget_reserve_buf(&events, sizeof(struct event));
-	if (!event)
-		goto clean;
+	if (record_data) {
+		event = gadget_reserve_buf(&events,
+					   sizeof(struct event___record_data));
+		if (!event)
+			goto clean;
+		if (bpf_probe_read_user(
+			    &((struct event___record_data *)event)->buf,
+			    buf_copy_size, (char *)ssl_data->buffer))
+			buf_copy_size = 0;
+	} else {
+		event = gadget_reserve_buf(&events, sizeof(struct event));
+		if (!event)
+			goto clean;
+		buf_copy_size = 0;
+	}
 
 	gadget_process_populate(&event->proc);
 	event->operation_raw = op;
@@ -164,10 +183,8 @@ static __always_inline int probe_ssl_rw_exit(struct pt_regs *ctx,
 	event->len = len;
 	event->error_raw = -PT_REGS_RC(ctx);
 
-	if (!record_data || bpf_probe_read_user(&event->buf, buf_copy_size,
-						(char *)ssl_data->buffer))
-		buf_copy_size = 0;
-
+	// gadget_submit_buf only use the size for BPF_MAP_TYPE_PERF_EVENT_ARRAY.
+	// BPF_MAP_TYPE_RINGBUF needs the size at gadget_reserve_buf-time.
 	gadget_submit_buf(ctx, &events, event, EVENT_SIZE(buf_copy_size));
 
 clean:
