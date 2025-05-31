@@ -20,6 +20,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
 func GetTargetNameFromAnnotation(
@@ -41,4 +42,22 @@ func GetTargetNameFromAnnotation(
 	}
 
 	return "", fmt.Errorf("neither %q annotation nor '_raw' suffix found", targetAnnotation)
+}
+
+// SetFieldVisibility sets the visibility of a field using metadatav1.ColumnsHiddenAnnotation
+// For a field with subfields, it will only set the visibility of the root field
+func SetFieldVisibility(
+	defaultValue bool,
+	in datasource.FieldAccessor,
+) {
+	annotations := in.Annotations()
+
+	in.SetHidden(true, true)
+
+	outName, ok := annotations[metadatav1.ColumnsHiddenAnnotation]
+	if !ok {
+		in.SetHidden(defaultValue, false)
+	} else {
+		in.SetHidden(outName == "true", false)
+	}
 }
