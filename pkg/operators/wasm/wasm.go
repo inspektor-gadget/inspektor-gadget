@@ -25,6 +25,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
@@ -62,7 +63,7 @@ type wasmOperator struct {
 func newWasmOperator() *wasmOperator {
 	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
 	if err != nil {
-		logger.DefaultLogger().Debugf("failed to create wasm compilation cache: %v", err)
+		log.Warnf("failed to setup wasm compilation cache, skipping cache: %v", err)
 		return &wasmOperator{}
 	}
 	return &wasmOperator{

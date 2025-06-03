@@ -322,6 +322,11 @@ spec:
             - mountPath: /etc/ig
               name: config
               readOnly: true
+            # We need a dedicated volume to store the wasm cache
+            # otherwise it will fail as the container root filesystem is read only.
+            - mountPath: /var/run/ig/wasm-cache
+              name: wasm-cache
+              readOnly: false
       nodeSelector:
         kubernetes.io/os: linux
       affinity:
@@ -379,3 +384,5 @@ spec:
           configMap:
             name: gadget
             defaultMode: 0o400
+        - name: wasm-cache
+          emptyDir: {}
