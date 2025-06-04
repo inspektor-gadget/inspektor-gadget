@@ -544,6 +544,10 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 
 	var containersPublisher *common.ContainersPublisher
 	if enableContainersDs {
+		if l.igManager == nil {
+			return nil, fmt.Errorf("container-collection isn't available, but containers datasource is enabled")
+		}
+
 		containersPublisher, err = common.NewContainersPublisher(gadgetCtx, &l.igManager.ContainerCollection)
 		if err != nil {
 			return nil, fmt.Errorf("creating containers publisher: %w", err)
