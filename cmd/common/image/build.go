@@ -454,6 +454,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		ebpfFullPath = filepath.Join(gadgetSourcePath, conf.EBPFSource)
 	}
 
+	if cflags, set := os.LookupEnv("CFLAGS"); set {
+		conf.CFlags += " " + cflags
+	}
+
 	cmd := buildCmd("/out", ebpfFullPath, wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
 	mounts := []mount.Mount{
