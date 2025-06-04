@@ -10,3 +10,10 @@ import TabItem from '@theme/TabItem';
 
 The gadget was merged into the `trace_tcp` gadget in version `v0.37.0`.
 The `trace_tcp` gadget can be instrumented to only show `connect` events if no other events are needed.
+
+## Requirements
+
+| Minimum Kernel | Additional `CONFIG_*` |
+|----------------|-----------------------|
+| 5.8            | `KPROBES`, `KRETPROBES` |
+

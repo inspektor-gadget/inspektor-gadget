@@ -21,6 +21,12 @@ Docker](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linu
 Specially if our pod is directly run as user instead of root (runAsUser: ID), we can give some more
 capabilities (think as partly root) and still take all unused capabilities to really lock it down.
 
+## Requirements
+
+| Minimum Kernel | Additional `CONFIG_*` |
+|----------------|-----------------------|
+| U.U            | `KPROBES`             |
+
 ## Getting started
 
 Running the gadget:

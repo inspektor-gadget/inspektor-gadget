@@ -24,6 +24,12 @@ The histogram shows the number of TCP RTT operations (`count` column) that lie i
 the latency range `interval-start` -> `interval-end` (`µs` column), which,
 as the columns name indicates, is given in microseconds.
 
+## Requirements
+
+| Minimum Kernel | Additional `CONFIG_*` |
+|----------------|-----------------------|
+| U.U            | `KPROBES`             |
+
 ## Getting started
 
 Running the gadget:
