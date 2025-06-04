@@ -188,7 +188,7 @@ func gadgetInit() int32 {
 	debug.SetGCPercent(-1)
 
 	const (
-		dsSingleName = "myarrayds"
+		dsSingleName = "mysingleds"
 		dsArrayName  = "myarrayds"
 		fieldName    = "myfield"
 	)
