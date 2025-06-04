@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This program tries as hard as it can to break the host by calling functions
-// with wrong arguments. It uses the low level functions directly as the goal is
-// to test the host and not the wrapper API. Tests under dataarray and fields
-// test also the higher level API.
 package main
 
 import (
