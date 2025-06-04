@@ -2,6 +2,7 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 IG ?= ig
 
 TEST_ARTIFACTS = \
+	badguest \
 	dataemit \
 	dataarray \
 	fields \
