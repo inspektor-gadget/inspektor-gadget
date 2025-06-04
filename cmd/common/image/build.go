@@ -456,12 +456,14 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	cmd := buildCmd("/out", ebpfFullPath, wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
 
+	// '/work' mount should have write permissions because cargo creates multiple artifacts which needs to be stored.
+	// This is a temporary fix.
 	mounts := []mount.Mount{
 		{
 			Type:     mount.TypeBind,
 			Target:   "/work",
 			Source:   pathHost,
-			ReadOnly: true,
+			ReadOnly: false,
 		},
 		{
 			Type:   mount.TypeBind,
