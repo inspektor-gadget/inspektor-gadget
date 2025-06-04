@@ -2,6 +2,7 @@ ARG CLANG_LLVM_VERSION=18
 ARG BPFTOOL_VERSION=v7.3.0
 ARG LIBBPF_VERSION=v1.3.0
 ARG GOLANG_VERSION=1.24.2
+ARG RUST_VERSION=1.87.0
 
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
@@ -29,6 +30,7 @@ RUN \
 FROM debian:bookworm-slim@sha256:90522eeb7e5923ee2b871c639059537b30521272f10ca86fdbbbb2b75a8c40cd
 ARG CLANG_LLVM_VERSION
 ARG GOLANG_VERSION
+ARG RUST_VERSION
 # libc-dev is needed for various headers, among others
 # /usr/include/arch-linux-gnu/asm/types.h.
 # We make clang aware of these files through CFLAGS in Makefile.
@@ -59,6 +61,19 @@ RUN ARCH=$(dpkg --print-architecture) \
 	rm go${GOLANG_VERSION}.linux-${ARCH}.tar.gz && \
 	ln -s /usr/local/go/bin/go /usr/local/bin/go && \
 	chmod +x /usr/local/go/bin/go
+
+# Install rust, this was taken from:
+# https://github.com/rust-lang/rustup/blob/ece5ff09f126/rustup-init.sh#L162
+# We also remove components we do not need for building gadgets.
+RUN ARCH=$(dpkg --print-architecture | perl -pi -e 's/amd64/x86_64/' | perl -pi -e 's/arm64/aarch64/') \
+	&& wget --quiet https://static.rust-lang.org/rustup/dist/${ARCH}-unknown-linux-gnu/rustup-init && \
+	chmod +x rustup-init && \
+	./rustup-init -y --default-toolchain ${RUST_VERSION} --target wasm32-wasip1 --no-update-default-toolchain --no-modify-path && \
+	/root/.cargo/bin/rustup component remove clippy && \
+	/root/.cargo/bin/rustup component remove rust-docs && \
+	/root/.cargo/bin/rustup component remove rustfmt && \
+	rm rustup-init && \
+	ln -s /root/.cargo/bin/cargo /usr/local/bin/cargo
 
 COPY --from=builder /usr/include/bpf /usr/include/bpf
 COPY --from=builder /usr/local/bin/bpftool /usr/local/bin/bpftool
