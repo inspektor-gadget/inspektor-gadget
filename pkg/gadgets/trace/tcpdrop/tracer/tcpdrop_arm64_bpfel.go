@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcpdropEvent struct {
+	_           structs.HostLayout
 	Saddr       [16]uint8
 	Daddr       [16]uint8
 	Timestamp   uint64
@@ -24,6 +26,7 @@ type tcpdropEvent struct {
 	Reason      uint32
 	Netns       uint32
 	ProcCurrent struct {
+		_         structs.HostLayout
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32
@@ -32,6 +35,7 @@ type tcpdropEvent struct {
 		Task      [16]uint8
 	}
 	ProcSocket struct {
+		_         structs.HostLayout
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32

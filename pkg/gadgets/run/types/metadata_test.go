@@ -42,7 +42,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			expectedErrString: "variable \"bar\" not found in eBPF object: type name bar: not found",
+			expectedErrString: "variable \"bar\" not found in eBPF object",
 		},
 		"param_nokey": {
 			objectPath: "../../../../testdata/validate_metadata1.o",

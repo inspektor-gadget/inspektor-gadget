@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcpretransEvent struct {
+	_           structs.HostLayout
 	Saddr       [16]uint8
 	Daddr       [16]uint8
 	Timestamp   uint64
@@ -26,6 +28,7 @@ type tcpretransEvent struct {
 	Type        tcpretransType
 	_           [4]byte
 	ProcCurrent struct {
+		_         structs.HostLayout
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32
@@ -34,6 +37,7 @@ type tcpretransEvent struct {
 		Task      [16]uint8
 	}
 	ProcSocket struct {
+		_         structs.HostLayout
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32

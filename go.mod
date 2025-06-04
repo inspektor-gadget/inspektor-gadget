@@ -99,6 +99,7 @@ require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
 	github.com/containerd/containerd/api v1.8.0 // indirect
@@ -225,8 +226,12 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
 
-require github.com/cenkalti/backoff/v5 v5.0.2 // indirect
-
 // gopacket/gopacket with:
 // - https://github.com/gopacket/gopacket/pull/101
 replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8
+
+// ebpf-go with some memory optimizations like
+// - https://github.com/cilium/ebpf/pull/1763
+// - https://github.com/cilium/ebpf/pull/1772
+// - https://github.com/cilium/ebpf/pull/1778
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250521101936-dd4d949f2f7b

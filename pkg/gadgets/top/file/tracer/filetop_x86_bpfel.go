@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type filetopFileId struct {
+	_     structs.HostLayout
 	Inode uint64
 	Dev   uint32
 	Pid   uint32
@@ -21,6 +23,7 @@ type filetopFileId struct {
 }
 
 type filetopFileStat struct {
+	_          structs.HostLayout
 	Reads      uint64
 	ReadBytes  uint64
 	Writes     uint64

@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type fsslowerEvent struct {
+	_         structs.HostLayout
 	DeltaUs   uint64
 	EndNs     uint64
 	Offset    int64

@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tcptracerEvent struct {
+	_         structs.HostLayout
 	Saddr     [16]uint8
 	Daddr     [16]uint8
 	Task      [16]uint8

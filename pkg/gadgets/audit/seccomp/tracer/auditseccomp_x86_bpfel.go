@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type auditseccompEvent struct {
+	_         structs.HostLayout
 	Pid       uint64
 	MntnsId   uint64
 	Timestamp uint64

@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type bpfPidIterEntry struct {
+	_    structs.HostLayout
 	Id   uint32
 	Pid  uint32
 	Comm [16]uint8
