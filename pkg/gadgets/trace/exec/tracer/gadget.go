@@ -29,6 +29,7 @@ import (
 const (
 	ParamPaths        = "paths"
 	ParamIgnoreErrors = "ignore-errors"
+	ParamFieldsSize   = "fields-size"
 )
 
 type GadgetDesc struct {
@@ -66,6 +67,12 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Description:  "Show only successful exec calls",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          ParamFieldsSize,
+			Description:  "Fields size",
+			DefaultValue: "512",
+			TypeHint:     params.TypeUint32,
 		},
 	}
 }

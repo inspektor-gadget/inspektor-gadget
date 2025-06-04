@@ -12,26 +12,32 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type execsnoopBufT struct{ Buf [32768]uint8 }
+
 type execsnoopEvent struct {
-	MntnsId     uint64
-	Timestamp   uint64
-	Pid         uint32
-	Tid         uint32
-	Ptid        uint32
-	Ppid        uint32
-	Uid         uint32
-	Gid         uint32
-	Loginuid    uint32
-	Sessionid   uint32
-	Retval      int32
-	ArgsCount   int32
-	UpperLayer  bool
-	PupperLayer bool
-	_           [2]byte
-	ArgsSize    uint32
-	Comm        [16]uint8
-	Pcomm       [16]uint8
-	Args        [5120]uint8
+	MntnsId       uint64
+	Timestamp     uint64
+	Pid           uint32
+	Tid           uint32
+	Ptid          uint32
+	Ppid          uint32
+	Uid           uint32
+	Gid           uint32
+	Loginuid      uint32
+	Sessionid     uint32
+	Retval        int32
+	ArgsCount     int32
+	UpperLayer    bool
+	PupperLayer   bool
+	_             [2]byte
+	ArgsSize      uint32
+	Comm          [16]uint8
+	Pcomm         [16]uint8
+	Cwd           [4096]uint8
+	Exepath       [4096]uint8
+	File          [4096]uint8
+	ParentExepath [4096]uint8
+	Args          [5120]uint8
 }
 
 // loadExecsnoop returns the embedded CollectionSpec for execsnoop.
@@ -88,6 +94,7 @@ type execsnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopMapSpecs struct {
+	Bufs                 *ebpf.MapSpec `ebpf:"bufs"`
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	Execs                *ebpf.MapSpec `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
@@ -122,6 +129,7 @@ func (o *execsnoopObjects) Close() error {
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopMaps struct {
+	Bufs                 *ebpf.Map `ebpf:"bufs"`
 	Events               *ebpf.Map `ebpf:"events"`
 	Execs                *ebpf.Map `ebpf:"execs"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
@@ -129,6 +137,7 @@ type execsnoopMaps struct {
 
 func (m *execsnoopMaps) Close() error {
 	return _ExecsnoopClose(
+		m.Bufs,
 		m.Events,
 		m.Execs,
 		m.GadgetMntnsFilterMap,

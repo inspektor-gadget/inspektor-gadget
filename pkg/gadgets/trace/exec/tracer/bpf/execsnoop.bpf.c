@@ -113,7 +113,8 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 #ifdef WITH_LONG_PATHS
 	fs = BPF_CORE_READ(task, fs);
 	cwd = get_path_str(&fs->pwd);
-	bpf_probe_read_kernel_str(event->cwd, GADGET_PATH_MAX, cwd);
+	int cwd_size = bpf_core_field_size(event->cwd);
+	bpf_probe_read_kernel_str(event->cwd, cwd_size, cwd);
 #endif
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
@@ -135,10 +136,11 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 		if (event->args_size > LAST_ARG)
 			return 0;
 
-		ret = bpf_probe_read_user_str(&event->args[event->args_size],
-					      ARGSIZE, argp);
-		if (ret > ARGSIZE)
-			return 0;
+		// TODO: This causes a verifier error
+		//ret = bpf_probe_read_user_str(&event->args[event->args_size],
+		//			      ARGSIZE, argp);
+		//if (ret > ARGSIZE)
+		//	return 0;
 
 		event->args_count++;
 		event->args_size += ret;
@@ -223,18 +225,21 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 #ifdef WITH_LONG_PATHS
 	exe_file = BPF_CORE_READ(task, mm, exe_file);
 	exepath = get_path_str(&exe_file->f_path);
-	bpf_probe_read_kernel_str(event->exepath, GADGET_PATH_MAX, exepath);
+	int exepath_size = bpf_core_field_size(event->exepath);
+	bpf_probe_read_kernel_str(event->exepath, exepath_size, exepath);
 
 	struct file *parent_exe_file =
 		BPF_CORE_READ(task, real_parent, mm, exe_file);
 	char *parent_exepath = get_path_str(&parent_exe_file->f_path);
-	bpf_probe_read_kernel_str(event->parent_exepath, GADGET_PATH_MAX,
+	int parent_exepath_size =
+		bpf_core_field_size(event->parent_exepath);
+	bpf_probe_read_kernel_str(event->parent_exepath, parent_exepath_size,
 				  parent_exepath);
 #endif
 
-	size_t len = EVENT_SIZE(event);
+	size_t len = event_size(event);
 	if (len <= sizeof(*event))
-		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
 				      len);
 
 	bpf_map_delete_elem(&execs, &execs_lookup_key);
@@ -273,10 +278,11 @@ static __always_inline int exit_execve(void *ctx, int retval)
 #ifdef WITH_LONG_PATHS
 	exe_file = BPF_CORE_READ(task, mm, exe_file);
 	exepath = get_path_str(&exe_file->f_path);
-	bpf_probe_read_kernel_str(event->exepath, GADGET_PATH_MAX, exepath);
+	int exepath_size = bpf_core_field_size(event->exepath);
+	bpf_probe_read_kernel_str(event->exepath, exepath_size, exepath);
 #endif
 
-	size_t len = EVENT_SIZE(event);
+	size_t len = event_size(event);
 	if (len <= sizeof(*event))
 		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
 				      len);
@@ -321,7 +327,8 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 
 	f_path = BPF_CORE_READ(bprm, file, f_path);
 	file = get_path_str(&f_path);
-	bpf_probe_read_kernel_str(event->file, GADGET_PATH_MAX, file);
+	int file_size = bpf_core_field_size(event->file);
+	bpf_probe_read_kernel_str(event->file, file_size, file);
 #endif
 
 	return 0;
