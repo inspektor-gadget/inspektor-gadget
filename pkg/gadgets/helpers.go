@@ -47,7 +47,7 @@ func CloseLink(l link.Link) link.Link {
 // like node, namespace, pod name and container name when the mount namespace
 // is available.
 type DataEnricherByMntNs interface {
-	EnrichByMntNs(event *types.CommonData, mountnsid uint64)
+	EnrichByMntNs(event *types.CommonData, mountnsid uint32)
 }
 
 // DataNodeEnricher is used to enrich events with Kubernetes node, without
@@ -60,7 +60,7 @@ type DataNodeEnricher interface {
 // like node, namespace, pod name and container name when the network namespace
 // is available.
 type DataEnricherByNetNs interface {
-	EnrichByNetNs(event *types.CommonData, netnsid uint64)
+	EnrichByNetNs(event *types.CommonData, netnsid uint32)
 }
 
 func Htonl(hl uint32) uint32 {

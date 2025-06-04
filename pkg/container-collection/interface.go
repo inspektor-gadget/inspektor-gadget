@@ -21,21 +21,21 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 type ContainerResolver interface {
 	// LookupMntnsByContainer returns the mount namespace inode of the container
 	// specified in arguments or zero if not found
-	LookupMntnsByContainer(namespace, pod, container string) uint64
+	LookupMntnsByContainer(namespace, pod, container string) uint32
 
 	// LookupContainerByMntns returns a container by its mount namespace
 	// inode id. If not found nil is returned.
-	LookupContainerByMntns(mntnsid uint64) *Container
+	LookupContainerByMntns(mntnsid uint32) *Container
 
 	// LookupContainersByNetns returns a slice of containers that run in a given
 	// network namespace. Or an empty slice if there are no containers running
 	// in that network namespace.
-	LookupContainersByNetns(netnsid uint64) []*Container
+	LookupContainersByNetns(netnsid uint32) []*Container
 
 	// LookupMntnsByPod returns the mount namespace inodes of all containers
 	// belonging to the pod specified in arguments, indexed by the name of the
 	// containers or an empty map if not found
-	LookupMntnsByPod(namespace, pod string) map[string]uint64
+	LookupMntnsByPod(namespace, pod string) map[string]uint32
 
 	// LookupPIDByContainer returns the PID of the container
 	// specified in arguments or zero if not found
@@ -48,7 +48,7 @@ type ContainerResolver interface {
 
 	// LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 	// container identified by the mount namespace, or nil if not found
-	LookupOwnerReferenceByMntns(mntns uint64) *metav1.OwnerReference
+	LookupOwnerReferenceByMntns(mntns uint32) *metav1.OwnerReference
 
 	// GetContainersBySelector returns a slice of containers that match
 	// the selector or an empty slice if there are not matches

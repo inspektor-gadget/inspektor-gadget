@@ -148,7 +148,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		// Enrich event but only with the fields required for the advise network-policy gadget.
 		event.K8s.Node = trace.Spec.Node
 		if t.helpers != nil {
-			t.helpers.EnrichByNetNs(&event.CommonData, event.NetNsID)
+			t.helpers.EnrichByNetNs(&event.CommonData, uint32(event.NetNsID))
 		}
 
 		// Use KubeIPResolver and KubeNameResolver to enrich event based on Namespace/Pod and IP.

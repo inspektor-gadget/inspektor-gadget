@@ -269,7 +269,7 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 				ContainerPID: pidOne,
 			},
 		},
-		Mntns: mntns,
+		Mntns: uint32(mntns),
 	}
 
 	additionalOpts := []containercollection.ContainerCollectionOption{}

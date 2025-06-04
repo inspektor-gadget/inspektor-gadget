@@ -167,7 +167,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 }
 
 func (t *Tracer) DetachContainer(container *containercollection.Container) error {
-	res, err := t.Peek(container.Mntns)
+	res, err := t.Peek(uint64(container.Mntns))
 	if err != nil {
 		t.containers[container] = []string{err.Error()}
 		return nil
