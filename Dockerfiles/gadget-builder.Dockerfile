@@ -26,6 +26,8 @@ RUN \
 	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
 	chmod +x /usr/local/bin/bpftool
 
+FROM rust:slim-bullseye@sha256:300ec56abce8cc9448ddea2172747d048ed902a3090e6b57babb2bf19f754081 AS rustbuilder
+
 FROM debian:bookworm-slim@sha256:90522eeb7e5923ee2b871c639059537b30521272f10ca86fdbbbb2b75a8c40cd
 ARG CLANG_LLVM_VERSION
 ARG GOLANG_VERSION
@@ -62,6 +64,13 @@ RUN ARCH=$(dpkg --print-architecture) \
 
 COPY --from=builder /usr/include/bpf /usr/include/bpf
 COPY --from=builder /usr/local/bin/bpftool /usr/local/bin/bpftool
+COPY --from=rustbuilder /usr/local/cargo /usr/local/.cargo
+COPY --from=rustbuilder /usr/local/cargo /usr/local/cargo
+
+
+# Add wasm target
+RUN /usr/local/cargo/bin/rustup default stable
+RUN /usr/local/cargo/bin/rustup target add wasm32-wasip1
 
 # To avoid hitting
 # 1. failed to initialize build cache at /.cache/go-build: mkdir /.cache: permission denied
