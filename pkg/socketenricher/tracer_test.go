@@ -25,6 +25,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
@@ -38,12 +39,8 @@ func TestSocketEnricherCreate(t *testing.T) {
 	utilstest.HostInit(t)
 
 	tracer, err := NewSocketEnricher()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tracer == nil {
-		t.Fatal("Returned tracer was nil")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, tracer, "Returned tracer was nil")
 }
 
 func TestSocketEnricherStopIdempotent(t *testing.T) {
@@ -52,7 +49,8 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, _ := NewSocketEnricher()
+	tracer, err := NewSocketEnricher()
+	require.NoError(t, err)
 
 	// Check that a double stop doesn't cause issues
 	tracer.Close()
@@ -77,13 +75,9 @@ func TestSocketEnricherBind(t *testing.T) {
 	utilstest.HostInit(t)
 
 	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Cannot get current working directory: %v", err)
-	}
+	require.NoError(t, err, "Cannot get current working directory")
 	exepath, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		t.Fatalf("Cannot get current executable path: %v", err)
-	}
+	require.NoError(t, err, "Cannot get current executable path")
 	ptask := host.GetProcComm(os.Getppid())
 
 	type testDefinition struct {
@@ -294,9 +288,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			// 1. earlyTracer will be started before the event is generated
 			// 2. lateTracer will be started after the event is generated
 			earlyTracer, err := NewSocketEnricher()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			t.Cleanup(earlyTracer.Close)
 
 			// Generate the event in the fake container
@@ -305,22 +297,18 @@ func TestSocketEnricherBind(t *testing.T) {
 			utilstest.RunWithRunner(t, runner, func() error {
 				var err error
 				port, fd, err = test.generateEvent()
-
 				t.Cleanup(func() {
 					// cleanup only if it has not been already closed
 					if fd != -1 {
 						unix.Close(fd)
 					}
 				})
-
 				return err
 			})
 
 			// Start the late tracer after the event has been generated
 			lateTracer, err := NewSocketEnricher()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			t.Cleanup(lateTracer.Close)
 
 			earlyNormalize := func(entry *socketEnricherMapEntry) {
@@ -371,15 +359,11 @@ func TestSocketEnricherBind(t *testing.T) {
 
 			t.Logf("Testing if entry is cleaned properly in early tracer")
 			entries = socketsMapEntries(t, earlyTracer, earlyNormalize, filter)
-			if len(entries) != 0 {
-				t.Fatalf("Entry not cleaned properly: %+v", entries)
-			}
+			require.Len(t, entries, 0, "Entry not cleaned properly: %+v", entries)
 
 			t.Logf("Testing if entry is cleaned properly in late tracer")
 			entries2 = socketsMapEntries(t, lateTracer, lateNormalize, filter)
-			if len(entries2) != 0 {
-				t.Fatalf("Entry for late tracer not cleaned properly: %+v", entries2)
-			}
+			require.Len(t, entries2, 0, "Entry for late tracer not cleaned properly: %+v", entries2)
 		})
 	}
 }
@@ -406,9 +390,7 @@ func socketsMapEntries(
 		}
 		entries = append(entries, entry)
 	}
-	if err := iter.Err(); err != nil {
-		t.Fatal("Cannot iterate over socket enricher map:", err)
-	}
+	require.NoError(t, iter.Err(), "Cannot iterate over socket enricher map")
 	return entries
 }
 
