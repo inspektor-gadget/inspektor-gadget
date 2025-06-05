@@ -1,0 +1,38 @@
+name: image_inspect
+description: Example gadget
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
+datasources:
+  open:
+    fields:
+      comm:
+        annotations:
+          description: Name of the process opening a file
+          template: comm
+      filename:
+        annotations:
+          columns.width: "64"
+          description: Path of the file being opened
+      pid:
+        annotations:
+          description: PID of the process opening a file
+          template: pid
+  qdisc:
+    fields:
+      latency:
+        annotations:
+          description: 'TODO: Fill field description'
+      unused:
+        annotations:
+          description: 'TODO: Fill field description'
+params:
+  ebpf:
+    ifindex:
+      key: ifindex
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
+    targ_ms:
+      key: targ_ms
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
