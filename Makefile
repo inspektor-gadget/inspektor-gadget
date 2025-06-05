@@ -271,14 +271,6 @@ test: generate-testdata
 	# skip gadgets tests
 	go test -exec sudo -v $$(go list ./... | grep -v 'github.com/inspektor-gadget/inspektor-gadget/gadgets')
 
-.PHONY: controller-tests
-controller-tests: kube-apiserver etcd kubectl
-	ACK_GINKGO_DEPRECATIONS=1.16.4 \
-	TEST_ASSET_KUBE_APISERVER=$(KUBE_APISERVER_BIN) \
-	TEST_ASSET_ETCD=$(ETCD_BIN) \
-	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
-	go test -test.v ./pkg/controllers/... -controller-test
-
 # Individual tests can be selected with a command such as:
 # go test -exec sudo -ldflags="-s=false" -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/snapshot-socket' -run=Benchmark ./internal/benchmarks/... -count 10
 .PHONY: gadgets-benchmarks
@@ -459,7 +451,6 @@ help:
 	@echo  ''
 	@echo  'Testing targets:'
 	@echo  '  test				- Run unit tests'
-	@echo  '  controller-tests		- Run controllers unit tests'
 	@echo  '  ig-tests			- Run ig manager unit tests'
 	@echo  '  integration-tests		- Run integration tests (deploy IG before running the tests)'
 	@echo  '  integration-test-gadgets	- Run gadgets integration test'

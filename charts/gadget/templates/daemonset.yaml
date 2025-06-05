@@ -46,7 +46,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: {{ .Values.image.repository }}:{{ include "gadget.image.tag" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: [ "/bin/gadgettracermanager", "-serve", "-controller" ]
+          command: [ "/bin/gadgettracermanager", "-serve" ]
           lifecycle:
             preStop:
               exec:

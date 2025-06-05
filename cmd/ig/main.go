@@ -37,11 +37,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 
-	// This is a blank include that actually imports all gadgets
-	// TODO: traceloop is imported separately because it is not in all-gadgets
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
-
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
