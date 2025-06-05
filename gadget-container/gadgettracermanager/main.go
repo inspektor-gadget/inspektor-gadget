@@ -44,8 +44,6 @@ import (
 	k8sconfigmapstore "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store/k8s-configmap-store"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
-	// This is a blank include that actually imports all gadgets
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -82,7 +80,6 @@ import (
 )
 
 var (
-	controller          bool
 	serve               bool
 	liveness            bool
 	fallbackPodInformer bool
@@ -108,7 +105,6 @@ func init() {
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
-	flag.BoolVar(&controller, "controller", false, "Enable the controller for custom resources")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
@@ -371,10 +367,6 @@ func main() {
 
 		log.Printf("Serving on gRPC socket %s", socketfile)
 		go grpcServer.Serve(lis)
-
-		if controller {
-			go startController(node, tracerManager)
-		}
 
 		stringBufferLength := config.Config.GetString(gadgettracermanagerconfig.EventsBufferLengthKey)
 		if stringBufferLength == "" {

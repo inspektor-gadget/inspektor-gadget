@@ -1153,9 +1153,6 @@ jobs:
     - name: Unit tests
       run: |
         sudo make test
-    - name: Controller unit tests
-      run: |
-        make controller-tests
 
   benchmarks:
     name: Benchmarks

@@ -28,14 +28,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	img "github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	igconfig "github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
-
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 )
 
 // common params for all gadgets
@@ -155,16 +152,11 @@ func main() {
 		img.NewInspectCmd(grpcRuntime),
 	}
 
-	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
-
 	hiddenColumnTags := []string{"runtime"}
 	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
 
 	common.AddInstanceCommands(rootCmd, grpcRuntime)
 
-	// Advise and traceloop category is still being handled by CRs for now
-	rootCmd.AddCommand(advise.NewAdviseCmd(gadgetNamespace))
-	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
 	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
