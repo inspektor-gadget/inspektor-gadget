@@ -32,6 +32,10 @@ datasources:
           columns.hidden: true
 params:
   ebpf:
+    accept_only:
+      key: accept-only
+      defaultValue: "false"
+      description: Show only accept events
     connect_only:
       key: connect-only
       defaultValue: "false"

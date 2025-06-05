@@ -101,9 +101,11 @@ __u8 ip_v6_zero[16] = {
 	0,
 };
 
+const volatile bool accept_only = false;
 const volatile bool connect_only = false;
 const volatile bool failure_only = false;
 
+GADGET_PARAM(accept_only);
 GADGET_PARAM(connect_only);
 GADGET_PARAM(failure_only);
 
@@ -122,6 +124,8 @@ static __always_inline bool filter_event(struct sock *sk, enum event_type type)
 {
 	u16 family;
 
+	if (accept_only && type != accept)
+		return true;
 	if (connect_only && type != connect)
 		return true;
 
