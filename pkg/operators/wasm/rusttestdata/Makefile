@@ -15,6 +15,7 @@ TEST_ARTIFACTS = \
 	kallsyms \
 	filtering \
 	baderrptr \
+	badguest \
 
 all: $(TEST_ARTIFACTS)
 

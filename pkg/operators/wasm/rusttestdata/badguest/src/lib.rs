@@ -202,7 +202,7 @@ fn assert_equal<T: std::cmp::PartialEq + std::fmt::Display>(v0: T, v1: T, msg: &
 #[no_mangle]
 #[allow(non_snake_case)]
 fn gadgetInit() -> i32 {
-    let ds_single_name = "myarrayds";
+    let ds_single_name = "mysingleds";
     let ds_array_name = "myarrayds";
     let field_name = "myfield";
 
