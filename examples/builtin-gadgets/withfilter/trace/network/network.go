@@ -96,7 +96,7 @@ func run() error {
 		defer kubeNameEnricher.PostGadgetRun()
 	}
 
-	socketEnricher, err := socketenricher.NewSocketEnricher()
+	socketEnricher, err := socketenricher.NewSocketEnricher(socketenricher.Config{})
 	if err != nil {
 		return err
 	}
