@@ -68,8 +68,7 @@ include tests.mk
 include minikube.mk
 
 LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=$(VERSION) \
--X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
--extldflags '-static'"
+-X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG)"
 
 .DEFAULT_GOAL := build
 .PHONY: build
@@ -121,8 +120,7 @@ ig-all: $(IG_TARGETS) ig
 ig:
 	CGO_ENABLED=0 go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
-        -extldflags '-static'" \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER}" \
         -tags "netgo" \
         ./cmd/ig
 
@@ -136,8 +134,7 @@ ig-on-docker: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 debug-ig:
 	CGO_ENABLED=0 go build \
 		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
-		-extldflags '-static'" \
+		-X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER}" \
 		-gcflags='all=-N -l' \
 		-o ig-debug \
 		./cmd/ig

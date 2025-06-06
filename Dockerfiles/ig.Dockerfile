@@ -23,8 +23,7 @@ RUN \
       --mount=type=cache,target=/go/pkg \
       CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
         -ldflags "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.version=${VERSION} \
-        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER} \
-        -extldflags '-static'" \
+        -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${GADGET_BUILDER}" \
         -tags "netgo" \
         -o ig-${TARGETOS}-${TARGETARCH} \
         github.com/inspektor-gadget/inspektor-gadget/cmd/ig
