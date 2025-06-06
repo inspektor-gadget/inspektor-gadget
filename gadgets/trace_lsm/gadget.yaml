@@ -1,4 +1,5 @@
 name: trace lsm
+category: observer
 description: a strace for LSM tracepoints
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_lsm

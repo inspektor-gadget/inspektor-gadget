@@ -17,7 +17,6 @@ package oci
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,60 +63,12 @@ func getAnySpec(opts *BuildGadgetImageOpts) (*ebpf.CollectionSpec, error) {
 	return loadSpec(progContent)
 }
 
-func validateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error {
-	metadataFile, err := os.Open(opts.MetadataPath)
-	if err != nil {
-		return fmt.Errorf("opening metadata file: %w", err)
-	}
-	defer metadataFile.Close()
-
-	metadata := &metadatav1.GadgetMetadata{}
-	if err := yaml.NewDecoder(metadataFile).Decode(metadata); err != nil {
-		return fmt.Errorf("decoding metadata file: %w", err)
-	}
-
-	spec, err := getAnySpec(opts)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("loading spec: %w", err)
-	}
-
-	return types.Validate(metadata, spec)
-}
-
-func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts) error {
-	spec, err := getAnySpec(opts)
-	if err != nil {
-		return fmt.Errorf("loading spec: %w", err)
-	}
-
-	_, statErr := os.Stat(opts.MetadataPath)
-	update := statErr == nil
-
-	metadata := &metadatav1.GadgetMetadata{}
-
-	if update {
-		// load metadata file
-		metadataFile, err := os.Open(opts.MetadataPath)
-		if err != nil {
-			return fmt.Errorf("opening metadata file: %w", err)
-		}
-		defer metadataFile.Close()
-
-		if err := yaml.NewDecoder(metadataFile).Decode(metadata); err != nil {
-			return fmt.Errorf("decoding metadata file: %w", err)
-		}
-
-		log.Debugf("Metadata file found, updating it")
-
-		// TODO: this validation could be softer, just printing warnings
-		if err := types.Validate(metadata, spec); err != nil {
-			return fmt.Errorf("metadata file is wrong, fix it before continuing: %w", err)
-		}
-	} else {
+func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts, spec *ebpf.CollectionSpec, metadata metadatav1.GadgetMetadata, hasMetadataFile bool) error {
+	if !hasMetadataFile {
 		log.Debug("Metadata file not found, generating it")
 	}
 
-	if err := types.Populate(metadata, spec); err != nil {
+	if err := types.Populate(&metadata, spec); err != nil {
 		return fmt.Errorf("populating metadata: %w", err)
 	}
 
@@ -131,7 +82,7 @@ func createOrUpdateMetadataFile(ctx context.Context, opts *BuildGadgetImageOpts)
 	}
 
 	// fix owner of created metadata file
-	if !update {
+	if !hasMetadataFile {
 		if err := copyFileOwner(filepath.Dir(opts.MetadataPath), opts.MetadataPath); err != nil {
 			log.Warnf("Failed to fix metadata file owner: %v", err)
 		}

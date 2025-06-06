@@ -1,4 +1,5 @@
 name: snapshot socket
+category: observer
 description: Show TCP and UDP sockets
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_socket

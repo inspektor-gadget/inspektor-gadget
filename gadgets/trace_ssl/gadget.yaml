@@ -1,4 +1,5 @@
 name: trace ssl
+category: observer
 description: Captures data on read/recv or write/send functions of OpenSSL, GnuTLS,
   NSS and Libcrypto
 homepageURL: https://inspektor-gadget.io/
