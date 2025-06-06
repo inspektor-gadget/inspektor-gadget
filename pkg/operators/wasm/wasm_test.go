@@ -54,11 +54,11 @@ func runGadget(t *testing.T, gadgetCtx *gadgetcontext.GadgetContext, params map[
 	return runtime.RunGadget(gadgetCtx, nil, params)
 }
 
-func createGadgetCtx(t *testing.T, name string, ops ...operators.DataOperator) *gadgetcontext.GadgetContext {
+func createGadgetCtx(t *testing.T, pathbase, name string, ops ...operators.DataOperator) *gadgetcontext.GadgetContext {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	t.Cleanup(cancel)
 
-	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("testdata/%s.tar", name))
+	ociStore, err := orasoci.NewFromTar(ctx, fmt.Sprintf("%s/%s.tar", pathbase, name))
 	require.NoError(t, err, "creating oci store")
 
 	dataOps := []operators.DataOperator{ocihandler.OciHandler}
@@ -73,7 +73,29 @@ func createGadgetCtx(t *testing.T, name string, ops ...operators.DataOperator) *
 	return gadgetCtx
 }
 
+type wasmTest struct {
+	name string
+	path string
+}
+
+var tests = []wasmTest{
+	{"go", "testdata"},
+	{"rust", "rusttestdata"},
+}
+
+func runTestForLanguages(t *testing.T, testFunc func(t *testing.T, path string)) {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testFunc(t, test.path)
+		})
+	}
+}
+
 func TestWasm(t *testing.T) {
+	runTestForLanguages(t, testWasm)
+}
+
+func testWasm(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -94,7 +116,7 @@ func TestWasm(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			gadgetCtx := createGadgetCtx(t, test.name)
+			gadgetCtx := createGadgetCtx(t, path, test.name)
 			err := runGadget(t, gadgetCtx, nil)
 			if test.errExpected {
 				require.Error(t, err)
@@ -106,6 +128,10 @@ func TestWasm(t *testing.T) {
 }
 
 func TestWasmFields(t *testing.T) {
+	runTestForLanguages(t, testWasmFields)
+}
+
+func testWasmFields(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -245,7 +271,7 @@ func TestWasmFields(t *testing.T) {
 		}),
 	)
 
-	gadgetCtx := createGadgetCtx(t, "fields", myOperator)
+	gadgetCtx := createGadgetCtx(t, path, "fields", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeSingle, "myds")
@@ -271,6 +297,10 @@ func TestWasmFields(t *testing.T) {
 }
 
 func TestWasmDataArray(t *testing.T) {
+	runTestForLanguages(t, testWasmDataArray)
+}
+
+func testWasmDataArray(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -329,7 +359,7 @@ func TestWasmDataArray(t *testing.T) {
 		}),
 	)
 
-	gadgetCtx := createGadgetCtx(t, "dataarray", myOperator)
+	gadgetCtx := createGadgetCtx(t, path, "dataarray", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "myds")
@@ -345,6 +375,10 @@ func TestWasmDataArray(t *testing.T) {
 }
 
 func TestWasmDataEmit(t *testing.T) {
+	runTestForLanguages(t, testWasmDataEmit)
+}
+
+func testWasmDataEmit(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -399,7 +433,7 @@ func TestWasmDataEmit(t *testing.T) {
 		}),
 	)
 
-	gadgetCtx := createGadgetCtx(t, "dataemit", myOperator)
+	gadgetCtx := createGadgetCtx(t, path, "dataemit", myOperator)
 
 	// Register data source that will be used by the wasm program to add fields
 	ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "old_ds")
@@ -415,6 +449,10 @@ func TestWasmDataEmit(t *testing.T) {
 }
 
 func TestWasmParams(t *testing.T) {
+	runTestForLanguages(t, testWasmParams)
+}
+
+func testWasmParams(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
@@ -442,7 +480,7 @@ func TestWasmParams(t *testing.T) {
 		}),
 	)
 
-	gadgetCtx := createGadgetCtx(t, "params", myOperator)
+	gadgetCtx := createGadgetCtx(t, path, "params", myOperator)
 	params := map[string]string{
 		"operator.oci.wasm.param-key": "param-value",
 	}
@@ -452,11 +490,15 @@ func TestWasmParams(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
+	runTestForLanguages(t, testConfig)
+}
+
+func testConfig(t *testing.T, path string) {
 	utilstest.RequireRoot(t)
 
 	t.Parallel()
 
-	gadgetCtx := createGadgetCtx(t, "config")
+	gadgetCtx := createGadgetCtx(t, path, "config")
 	err := runGadget(t, gadgetCtx, nil)
 	require.NoError(t, err, "running gadget")
 
@@ -469,7 +511,11 @@ func TestConfig(t *testing.T) {
 }
 
 func TestFiltering(t *testing.T) {
-	gadgetCtx := createGadgetCtx(t, "filtering")
+	runTestForLanguages(t, testFiltering)
+}
+
+func testFiltering(t *testing.T, path string) {
+	gadgetCtx := createGadgetCtx(t, path, "filtering")
 
 	// Keep in sync with testdata/filtering/program.go
 	mntNsMap := utilstest.CreateMntNsFilterMap(t, 777)
