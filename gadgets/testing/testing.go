@@ -18,12 +18,14 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
@@ -123,4 +125,38 @@ func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
 func InitUnitTest(t testing.TB) {
 	utilstest.RequireRoot(t)
 	RemoveMemlock(t)
+}
+
+type dummyGadgetOpts struct {
+	paramValues map[string]string
+}
+
+type DummyGadgetOpt func(d *dummyGadgetOpts)
+
+func WithParamValues(paramValues map[string]string) DummyGadgetOpt {
+	return func(d *dummyGadgetOpts) {
+		d.paramValues = paramValues
+	}
+}
+
+// DummyGadgetTest runs a dummy gadget test that only checks if the gadget
+// can be started without errors.
+func DummyGadgetTest(t *testing.T, gadgetName string, optsF ...DummyGadgetOpt) {
+	t.Helper()
+
+	opts := &dummyGadgetOpts{}
+	for _, opt := range optsF {
+		opt(opts)
+	}
+
+	InitUnitTest(t)
+
+	runnerOpts := gadgetrunner.GadgetRunnerOpts[any]{
+		Image:       gadgetName,
+		Timeout:     5 * time.Second,
+		ParamValues: opts.paramValues,
+	}
+
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, runnerOpts)
+	gadgetRunner.RunGadget()
 }
