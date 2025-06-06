@@ -120,3 +120,76 @@ func TestDatasourceContainers(t *testing.T) {
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }
+
+func TestDatasourceContainersPreCreate(t *testing.T) {
+	gadgettesting.RequireEnvironmentVariables(t)
+	utils.InitTest(t)
+
+	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
+	require.NoError(t, err, "new container factory")
+	containerName := "test-datasource-containers-precreate"
+	containerImage := gadgettesting.BusyBoxImage
+
+	var ns string
+	containerOpts := []containers.ContainerOption{
+		containers.WithContainerImage(containerImage),
+		containers.WithStartAndStop(),
+	}
+
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+		ns = utils.GenerateTestNamespaceName(t, "test-datasource-containers")
+		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
+	}
+
+	testContainer := containerFactory.NewContainer(
+		containerName,
+		"sleep inf",
+		containerOpts...,
+	)
+
+	var runnerOpts []igrunner.Option
+	var testingOpts []igtesting.Option
+
+	switch utils.CurrentTestComponent {
+	case utils.IgLocalTestComponent:
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime)))
+	case utils.KubectlGadgetTestComponent:
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns)))
+		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
+	}
+
+	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
+		func(t *testing.T, output string) {
+			expectedEntry := &DatasourceContainersEvent{
+				EventType:       "PRECREATE",
+				ContainerID:     utils.NormalizedStr,
+				ContainerConfig: utils.NormalizedStr,
+			}
+
+			normalize := func(e *DatasourceContainersEvent) {
+				utils.NormalizeString(&e.ContainerID)
+
+				// only validate the OCI config is not empty before normalizing it
+				var spec *ocispec.Spec
+				err = json.Unmarshal([]byte(e.ContainerConfig), &spec)
+				require.NoError(t, err, "unmarshalling OCI config")
+				require.NotNil(t, spec, "OCI spec is not empty")
+				require.NotEmpty(t, spec.Version, "OCI runtime spec version is not empty")
+				utils.NormalizeString(&e.ContainerConfig)
+			}
+
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
+		},
+	))
+
+	runnerOpts = append(runnerOpts, igrunner.WithStartAndStop())
+	datasourceContainersCmd := igrunner.New("ci/datasource-containers", runnerOpts...)
+
+	steps := []igtesting.TestStep{
+		datasourceContainersCmd,
+		// wait to ensure ig or kubectl-gadget has started
+		utils.Sleep(5 * time.Second),
+		testContainer,
+	}
+	igtesting.RunTestSteps(steps, t, testingOpts...)
+}
