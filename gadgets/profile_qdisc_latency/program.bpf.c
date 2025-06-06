@@ -75,7 +75,8 @@ static __always_inline void trace_stop(struct sk_buff *skb)
 		delta /= 1000000U;
 	else
 		delta /= 1000U;
-	slot = log2l(delta);
+        //get_slot_idx returns the index of the slot to display on the histogram.
+	slot = get_slot_idx(delta);
 	if (slot >= PROFILER_MAX_SLOTS)
 		slot = PROFILER_MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->latency[slot], 1);
