@@ -22,14 +22,13 @@ static __always_inline u64 log2(u32 v)
 	return r;
 }
 
-static __always_inline u64 log2l(u64 v)
+static __always_inline u64 get_slot_idx(u64 v)
 {
-	u32 hi = v >> 32;
+	if (v == 0)
+		return 0;
 
-	if (hi)
-		return log2(hi) + 32;
-	else
-		return log2(v);
+	u32 hi = v >> 32;
+	return hi ? log2(hi) + 33 : log2(v) + 1;
 }
 
 #endif /* __BITS_BPF_H */
