@@ -21,16 +21,12 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/giantswarm/crd-docs-generator/pkg/annotations"
 	"github.com/giantswarm/crd-docs-generator/pkg/config"
 	"github.com/giantswarm/crd-docs-generator/pkg/crd"
 	"github.com/giantswarm/crd-docs-generator/pkg/output"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
-	gadgetcollection "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 )
 
 var repo string
@@ -44,27 +40,12 @@ type GadgetData struct {
 	Description string
 	OutputModes []string
 	Operations  []GadgetOperation
-	Factory     gadgets.TraceFactory
 }
 
 type GadgetOperation struct {
 	Name  string
 	Doc   string
 	Order int
-}
-
-//go:embed gadget.template
-var gadgetTemplate string
-
-func getTraceFactories() (ret []GadgetData) {
-	for name, factory := range gadgetcollection.TraceFactories() {
-		ret = append(ret, GadgetData{
-			Name:        name,
-			Description: factory.(gadgets.TraceFactoryWithDocumentation).Description(),
-			Factory:     factory,
-		})
-	}
-	return ret
 }
 
 func getCrds() (ret []apiextensionsv1.CustomResourceDefinition) {
@@ -99,46 +80,6 @@ func main() {
 		return template.HTML(input)
 	}
 
-	tpl, err := template.New("gadget.template").Funcs(funcMap).Parse(gadgetTemplate)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, gadget := range getTraceFactories() {
-		outputModesSet := gadget.Factory.OutputModesSupported()
-		for k := range outputModesSet {
-			gadget.OutputModes = append(gadget.OutputModes, string(k))
-		}
-		sort.Strings(gadget.OutputModes)
-
-		for name, op := range gadget.Factory.Operations() {
-			gadget.Operations = append(gadget.Operations, GadgetOperation{
-				Name:  string(name),
-				Doc:   op.Doc,
-				Order: op.Order,
-			})
-		}
-		sort.Slice(gadget.Operations, func(i, j int) bool {
-			oi, oj := gadget.Operations[i], gadget.Operations[j]
-			switch {
-			case oi.Order != oj.Order:
-				return oi.Order < oj.Order
-			default:
-				return oi.Name < oj.Name
-			}
-		})
-
-		f, err := os.Create(filepath.Join(repo, "docs/legacy/crds/gadgets", gadget.Name+".md"))
-		if err != nil {
-			panic(err)
-		}
-
-		err = tpl.Execute(f, gadget)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	for _, c := range getCrds() {
 		exampleMap := make(map[string]string)
 		for _, v := range c.Spec.Versions {
@@ -152,6 +93,7 @@ func main() {
 			exampleMap[version] = string(example)
 		}
 
+		var err error
 		_, err = output.WritePage(
 			c,
 			[]annotations.CRDAnnotationSupport{},
