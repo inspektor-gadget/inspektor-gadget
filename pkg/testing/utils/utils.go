@@ -61,6 +61,13 @@ func WithK8sNamespace(namespace string) CommonDataOption {
 	}
 }
 
+// WithNode sets the node name in the common data
+func WithNode(nodeName string) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		commonData.K8s.Node = nodeName
+	}
+}
+
 func BuildCommonData(containerName string, options ...CommonDataOption) eventtypes.CommonData {
 	var e eventtypes.CommonData
 
@@ -82,8 +89,8 @@ func BuildCommonData(containerName string, options ...CommonDataOption) eventtyp
 					ContainerName: containerName,
 					PodLabels:     map[string]string{"run": containerName},
 				},
+				Node: "test-node",
 			},
-			// TODO: Include the Node
 		}
 	}
 
