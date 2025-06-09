@@ -161,11 +161,12 @@ func (i *ebpfInstance) runSnapshotters() error {
 			} else {
 				visitedNetNs := make(map[uint64]struct{})
 				for _, container := range i.containers {
-					_, visited := visitedNetNs[container.Netns]
+					netns := uint64(container.Netns)
+					_, visited := visitedNetNs[netns]
 					if visited {
 						continue
 					}
-					visitedNetNs[container.Netns] = struct{}{}
+					visitedNetNs[netns] = struct{}{}
 
 					err := nsenter.NetnsEnter(int(container.ContainerPid()), func() error {
 						reader, err := l.link.Open()

@@ -106,11 +106,11 @@ func parseNetEvent(sample []byte, netns uint64) (*types.Event, error) {
 			Version: 4,
 		},
 
-		Pid:           bpfEvent.Pid,
-		Tid:           bpfEvent.Tid,
-		Uid:           bpfEvent.Uid,
-		Gid:           bpfEvent.Gid,
-		WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
+		Pid:       bpfEvent.Pid,
+		Tid:       bpfEvent.Tid,
+		Uid:       bpfEvent.Uid,
+		Gid:       bpfEvent.Gid,
+		WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(bpfEvent.MountNsId)},
 		WithNetNsID:   eventtypes.WithNetNsID{NetNsID: netns},
 		Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 	}

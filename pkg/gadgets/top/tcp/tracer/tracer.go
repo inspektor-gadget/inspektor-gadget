@@ -170,7 +170,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		ipversion := gadgets.IPVerFromAF(key.Family)
 
 		stat := types.Stats{
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: key.Mntnsid},
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(key.Mntnsid)},
 			Pid:           int32(key.Pid),
 			Comm:          gadgets.FromCString(key.Name[:]),
 			SrcEndpoint: eventtypes.L4Endpoint{

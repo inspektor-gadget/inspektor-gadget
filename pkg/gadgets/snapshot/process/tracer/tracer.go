@@ -104,11 +104,11 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 			},
 			Pid:           int(entry.Tgid),
 			Tid:           int(entry.Pid),
-			Uid:           entry.Uid,
-			Gid:           entry.Gid,
-			Command:       gadgets.FromCString(entry.Comm[:]),
-			ParentPid:     int(entry.ParentPid),
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: entry.MntnsId},
+			Uid:       entry.Uid,
+			Gid:       entry.Gid,
+			Command:   gadgets.FromCString(entry.Comm[:]),
+			ParentPid: int(entry.ParentPid),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(entry.MntnsId)},
 		}
 
 		if enricher != nil {
@@ -152,11 +152,11 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 			Type: eventtypes.NORMAL,
 		},
 		Tid:           tid,
-		Pid:           pid,
-		Uid:           stat.Uid,
-		Gid:           stat.Gid,
-		Command:       comm,
-		WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
+		Pid:       pid,
+		Uid:       stat.Uid,
+		Gid:       stat.Gid,
+		Command:    comm,
+		WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(mntnsid)},
 	}
 
 	if enricher != nil {

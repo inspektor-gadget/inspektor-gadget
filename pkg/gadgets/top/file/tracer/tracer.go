@@ -175,11 +175,11 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			ReadBytes:     fileStat.ReadBytes,
 			WriteBytes:    fileStat.WriteBytes,
 			Pid:           fileStat.Pid,
-			Tid:           fileStat.Tid,
-			Filename:      gadgets.FromCString(fileStat.Filename[:]),
-			Comm:          gadgets.FromCString(fileStat.Comm[:]),
-			FileType:      byte(fileStat.Type),
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: fileStat.MntnsId},
+			Tid:      fileStat.Tid,
+			Filename: gadgets.FromCString(fileStat.Filename[:]),
+			Comm:     gadgets.FromCString(fileStat.Comm[:]),
+			FileType: byte(fileStat.Type),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: uint32(fileStat.MntnsId)},
 		}
 
 		if t.enricher != nil {

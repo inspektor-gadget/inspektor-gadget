@@ -93,7 +93,7 @@ func (publisher *ContainersPublisher) emitContainersDatasourceEvent(eventType co
 	publisher.eventTypeField.PutString(ev, eventType.String())
 	publisher.idField.PutString(ev, container.Runtime.ContainerID)
 	publisher.cgroupIDField.PutUint64(ev, container.CgroupID)
-	publisher.mountNsIDField.PutUint64(ev, container.Mntns)
+	publisher.mountNsIDField.PutUint64(ev, uint64(container.Mntns))
 	if k8s {
 		publisher.nameField.PutString(ev, container.K8s.ContainerName)
 	} else {

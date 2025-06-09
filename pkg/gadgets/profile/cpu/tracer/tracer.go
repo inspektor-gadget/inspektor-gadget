@@ -177,7 +177,7 @@ func getReport(t *Tracer, kAllSyms *kallsyms.KAllSyms, stack *ebpf.Map, keyCount
 	}
 
 	if t.enricher != nil {
-		t.enricher.EnrichByMntNs(&report.CommonData, k.MntnsId)
+		t.enricher.EnrichByMntNs(&report.CommonData, uint32(k.MntnsId))
 	}
 
 	return report, nil
@@ -344,10 +344,10 @@ func (t *TracerWrap) SetEventEnricher(enricher func(ev any) error) {
 	t.enricher = t
 }
 
-func (t *TracerWrap) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
+func (t *TracerWrap) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint32) {
 	// TODO: This is ugly as it temporarily wraps and unwraps the event; should be changed in the original gadget code
 	//  after full migration to NewInstance()
-	wrap := &types.Report{CommonData: *event, MntnsID: mountnsid}
+	wrap := &types.Report{CommonData: *event, MntnsID: uint64(mountnsid)}
 	t.enricherFunc(wrap)
 	*event = wrap.CommonData
 }
