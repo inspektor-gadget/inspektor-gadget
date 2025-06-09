@@ -585,7 +585,7 @@ gadget:
 #include <gadget/macros.h>
 
 // Inspektor Gadget filtering
-#include <gadget/mntns_filter.h>
+#include <gadget/filter.h>
 
 // Inspektor Gadget types
 #include <gadget/types.h>
