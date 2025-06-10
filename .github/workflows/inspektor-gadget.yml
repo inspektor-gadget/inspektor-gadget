@@ -1558,6 +1558,7 @@ jobs:
           BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
           GADGET_REPOSITORY: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
           GADGET_TAG: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+          CFLAGS: "-Werror"
         run: |
           make build-gadgets -o install/ig -j$(nproc)
 
