@@ -29,6 +29,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
+const snapshottersSecName = ".snapshotters"
+
 type linkSnapshotter struct {
 	link *link.Iter
 	typ  string
@@ -90,34 +92,87 @@ func (i *ebpfInstance) legacyPopulateSnapshotter(t btf.Type, varName string) err
 	name := parts[0]
 	structName := parts[1]
 
-	i.logger.Debugf("> name       : %q", name)
-	i.logger.Debugf("> struct name: %q", structName)
-
-	iterators, err := i.parseSnapshotterPrograms(parts[2:])
-	if err != nil {
-		return fmt.Errorf("parsing snapshotter %q programs: %w", name, err)
-	}
-
-	if _, ok := i.snapshotters[name]; ok {
-		i.logger.Debugf("snapshotter %q already defined, skipping", name)
-		return nil
-	}
-
 	var btfStruct *btf.Struct
 	if err := i.collectionSpec.Types.TypeByName(structName, &btfStruct); err != nil {
 		return fmt.Errorf("finding struct %q in eBPF object: %w", structName, err)
 	}
 
-	i.logger.Debugf("adding snapshotter %q", name)
 	i.logger.Warnf("this gadget uses a legacy way to register snapshotters, update it")
+
+	return i.doPopulateSnapshotter(name, btfStruct, parts[2:])
+}
+
+func (i *ebpfInstance) populateSnapshotter(vs *btf.VarSecinfo) error {
+	v, ok := vs.Type.(*btf.Var)
+	if !ok {
+		return fmt.Errorf("section %v: unexpected type %s", snapshottersSecName, vs.Type)
+	}
+
+	i.logger.Debugf("populating tracer %q", v.Name)
+
+	snapshotterStruct, ok := btf.UnderlyingType(v.Type).(*btf.Struct)
+	if !ok {
+		return fmt.Errorf("expected struct, got %s", v.Type)
+	}
+
+	name := string(v.Name)
+	var btfStruct *btf.Struct
+	programNames := []string{}
+
+	for _, member := range snapshotterStruct.Members {
+		switch member.Name {
+		case "type":
+			typ, err := typeFromBTF(member.Type)
+			if err != nil {
+				return fmt.Errorf("getting struct type from member %q: %w", member.Name, err)
+			}
+			btfStruct, ok = typ.(*btf.Struct)
+			if !ok {
+				return fmt.Errorf("expected struct, got %s for member %q", typ, member.Name)
+			}
+		}
+		if strings.HasPrefix(member.Name, "program") {
+			name, err := stringFromBTF(member.Type)
+			if err != nil {
+				return fmt.Errorf("getting program name from member %q: %w", member.Name, err)
+			}
+			programNames = append(programNames, name)
+		}
+	}
+
+	if btfStruct == nil {
+		return fmt.Errorf("tracer %q has no struct defined", name)
+	}
+	if err := i.doPopulateSnapshotter(name, btfStruct, programNames); err != nil {
+		return fmt.Errorf("populating tracer %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (i *ebpfInstance) doPopulateSnapshotter(name string, btfStruct *btf.Struct, progNames []string) error {
+	if _, ok := i.snapshotters[name]; ok {
+		i.logger.Debugf("snapshotter %q already defined, skipping", name)
+		return nil
+	}
+
+	i.logger.Debugf("populating snapshotter %q", name)
+	i.logger.Debugf("> name       : %q", name)
+	i.logger.Debugf("> struct name: %q", btfStruct.Name)
+
+	iterators := make(map[string]struct{})
+	for _, progName := range progNames {
+		iterators[progName] = struct{}{}
+	}
+
+	i.logger.Debugf("adding snapshotter %q", name)
 	i.snapshotters[name] = &Snapshotter{
 		structName: btfStruct.Name,
 		iterators:  iterators,
 		links:      make(map[string]*linkSnapshotter),
 	}
 
-	err = i.populateStructDirect(btfStruct)
-	if err != nil {
+	if err := i.populateStructDirect(btfStruct); err != nil {
 		return fmt.Errorf("populating struct %q for snapshotter %q: %w", btfStruct.Name, name, err)
 	}
 

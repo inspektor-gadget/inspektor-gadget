@@ -55,7 +55,11 @@ struct socket_entry {
 	gadget_netns_id netns_id;
 };
 
-GADGET_SNAPSHOTTER(sockets, socket_entry, ig_snap_tcp, ig_snap_udp);
+struct {
+	__type(type, struct socket_entry);
+	__string(program0, ig_snap_tcp);
+	__string(program1, ig_snap_udp);
+} sockets SEC(".snapshotters");
 
 /**
  * sock_i_ino - Returns the inode identifier associated to a socket.

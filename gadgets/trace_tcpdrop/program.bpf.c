@@ -84,7 +84,12 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(tcpdrop, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} tcpdrop SEC(".tracers");
 
 // This struct is the same as struct tcphdr in vmlinux.h but with flags defined as single field instead of bitfield
 struct tcphdr_with_flags {

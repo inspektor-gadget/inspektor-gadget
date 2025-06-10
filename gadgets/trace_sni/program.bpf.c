@@ -62,7 +62,13 @@ struct event_t {
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(sni, events, event_t);
+
+GADGET_GEN_TYPE_BTF(struct event_t);
+
+struct {
+	__type(type, struct event_t);
+	__type(map, events);
+} sni SEC(".tracers");
 
 // parse_sni() from:
 // https://github.com/gardener/connectivity-monitor/blob/4e924f50367c9fa02075b50b0ecd8c821b3a15f1/connectivity-exporter/packet/c/cap.c#L146-L149

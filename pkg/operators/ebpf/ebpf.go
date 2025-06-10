@@ -66,6 +66,8 @@ const (
 	kernelTypesVar = "kernelTypes"
 
 	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
+
+	mapsSecName = ".maps"
 )
 
 type gadgetObjects struct {
@@ -196,6 +198,8 @@ type ebpfInstance struct {
 	kernelStackMap *ebpf.Map
 	userStackMap   *ebpf.Map
 
+	mapNames map[btf.Type]string
+
 	gadgetCtx operators.GadgetContext
 	done      chan struct{}
 
@@ -233,7 +237,7 @@ func (i *ebpfInstance) analyze() error {
 		{
 			prefixFunc:   hasPrefix(paramPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateParam,
+			populateFunc: i.legacyPopulateParam,
 		},
 		{
 			prefixFunc:   hasPrefix(tracerMapPrefix),
@@ -256,7 +260,7 @@ func (i *ebpfInstance) analyze() error {
 				}
 				return "", false
 			},
-			populateFunc: i.populateMap,
+			populateFunc: i.legacyPopulateMap,
 		},
 		{
 			prefixFunc: func(s string) (string, bool) {
@@ -295,12 +299,6 @@ func (i *ebpfInstance) analyze() error {
 		}
 	}
 
-	// Fill param defaults
-	err := i.fillParamDefaults()
-	if err != nil {
-		i.logger.Debugf("error extracting default values for params: %v", err)
-	}
-
 	// Iterate over programs
 	for name, program := range i.collectionSpec.Programs {
 		i.logger.Debugf("program %q", name)
@@ -309,6 +307,62 @@ func (i *ebpfInstance) analyze() error {
 		i.logger.Debugf("> sectionName: %s", program.SectionName)
 		i.logger.Debugf("> license    : %s", program.License)
 	}
+
+	i.mapNames = make(map[btf.Type]string)
+
+	type dataSecPopulator struct {
+		name         string
+		populateFunc func(vs *btf.VarSecinfo) error
+	}
+
+	dsPopulators := []dataSecPopulator{
+		{
+			name:         ".maps",
+			populateFunc: i.populateMap,
+		},
+		{
+			name:         ".tracers",
+			populateFunc: i.populateTracer,
+		},
+		{
+			name:         ".snapshotters",
+			populateFunc: i.populateSnapshotter,
+		},
+		{
+			name:         ".mapiters",
+			populateFunc: i.populateMapIter,
+		},
+		{
+			name:         ".params",
+			populateFunc: i.populateParam,
+		},
+	}
+
+	for _, populator := range dsPopulators {
+		var sec *btf.Datasec
+		if err := i.collectionSpec.Types.TypeByName(populator.name, &sec); err != nil {
+			if errors.Is(err, btf.ErrNotFound) {
+				i.logger.Debugf("no %s section found in BTF, skipping", populator.name)
+				continue
+			}
+			return fmt.Errorf("finding section '%s' in BTF: %w", populator.name, err)
+		}
+
+		for _, vs := range sec.Vars {
+			if err := populator.populateFunc(&vs); err != nil {
+				return fmt.Errorf("populating %s: %w", populator.name, err)
+			}
+		}
+	}
+
+	i.mapNames = nil
+
+	// Fill param defaults
+	err := i.fillParamDefaults()
+	if err != nil {
+		i.logger.Debugf("error extracting default values for params: %v", err)
+	}
+
 	return nil
 }
 

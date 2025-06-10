@@ -102,7 +102,7 @@ Let's add it to the `gadgetInit` function like this:
 func gadgetInit() int32 {
 	api.Info("init: hello from wasm")
 
-	// Get the "open" datasource (name used in the GADGET_TRACER macro)
+	// Get the "open" datasource
 	ds, err := api.GetDataSource("open")
 	if err != nil {
 		api.Warnf("failed to get datasource: %s", err)
@@ -179,7 +179,7 @@ The `gadgetInit` functions now looks like:
 func gadgetInit() int32 {
 	api.Info("init: hello from wasm")
 
-	// Get the "open" datasource (name used in the GADGET_TRACER macro)
+	// Get the "open" datasource
 	ds, err := api.GetDataSource("open")
 	if err != nil {
 		api.Warnf("failed to get datasource: %s", err)

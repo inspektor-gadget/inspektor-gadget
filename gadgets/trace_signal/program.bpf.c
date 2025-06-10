@@ -42,7 +42,12 @@ struct {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(signal, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} signal SEC(".tracers");
 
 static int probe_entry(pid_t tpid, int sig)
 {

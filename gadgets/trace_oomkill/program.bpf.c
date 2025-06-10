@@ -32,7 +32,12 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(oomkill, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} oomkill SEC(".tracers");
 
 SEC("kprobe/oom_kill_process")
 int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)

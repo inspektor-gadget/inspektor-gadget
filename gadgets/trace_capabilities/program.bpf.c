@@ -162,7 +162,13 @@ struct {
 } current_syscall SEC(".maps");
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(capabilities, events, cap_event);
+
+GADGET_GEN_TYPE_BTF(struct cap_event);
+
+struct {
+	__type(type, struct cap_event);
+	__type(map, events);
+} capabilities SEC(".tracers");
 
 const volatile bool collect_kstack = true;
 GADGET_PARAM(collect_kstack);

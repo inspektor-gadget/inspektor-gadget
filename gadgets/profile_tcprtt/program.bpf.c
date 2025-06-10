@@ -74,7 +74,9 @@ struct {
 	__type(value, struct hist_value);
 } hists SEC(".maps");
 
-GADGET_MAPITER(tcprtt, hists);
+struct {
+	__type(map, hists);
+} tcprtt SEC(".mapiters");
 
 static struct hist_value zero;
 

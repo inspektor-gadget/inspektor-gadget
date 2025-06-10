@@ -44,7 +44,9 @@ struct {
 	__type(value, struct hist_value);
 } map1 SEC(".maps");
 
-GADGET_MAPITER(qdisc, map1);
+struct {
+	__type(map, map1);
+} qdisc SEC(".mapiters");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);

@@ -50,7 +50,12 @@ GADGET_PARAM(target_pid);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(fdpass, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} fdpass SEC(".tracers");
 
 static __always_inline int sys_sendmsg_e(struct syscall_trace_enter *ctx)
 {

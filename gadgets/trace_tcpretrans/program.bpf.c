@@ -60,7 +60,13 @@ struct event {
 #define AF_INET6 10
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(tcpretrans, events, event);
+
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} tcpretrans SEC(".tracers");
 
 static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 					       const struct sk_buff *skb,

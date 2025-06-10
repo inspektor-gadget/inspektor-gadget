@@ -502,7 +502,14 @@ The following snippet demonstrates how to use the code available in `<gadget/buf
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(exit, events, event);
+// Force the compiler to emit BTF information for the event structure
+GADGET_GEN_TYPE_BTF(struct event);
+
+// Define a tracer
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 /* ... */
 
@@ -537,7 +544,12 @@ Here is an example, taken from `trace_exec`, of using `gadget_output_buf()`:
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(exec, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 /* ... */
 
