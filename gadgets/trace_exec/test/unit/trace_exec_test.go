@@ -111,7 +111,8 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utilstest.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				require.Contains(t, events[0].Args, "/usr/bin/python3 -c")
+				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
+				require.Contains(t, events[0].Args, "/bin/python3 -c")
 				expectedArgs := strings.Join(inputArgs, " ")
 				require.Equal(t, expectedArgs, events[1].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
 			},
@@ -122,7 +123,8 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utilstest.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				require.Contains(t, events[0].Args, "/usr/bin/python3 -c")
+				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
+				require.Contains(t, events[0].Args, "/bin/python3 -c")
 				expectedArgs := strings.Join(inputArgs, " ")
 				require.Equal(t, expectedArgs, events[1].Args, "Expected Args %q, got %q", expectedArgs, events[1].Args)
 				require.Equal(t, "ENOENT", events[1].Error)
