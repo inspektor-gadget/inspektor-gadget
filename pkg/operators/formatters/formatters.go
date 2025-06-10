@@ -154,10 +154,7 @@ func handleL3Endpoint(in datasource.FieldAccessor) (func(entry datasource.Data) 
 
 	in.AddAnnotation(datasource.ColumnsReplaceAnnotation, addrF.FullName())
 
-	// Hide all subfields
-	in.SetHidden(true, true)
-	// Show only root field that will contain the pretty address
-	in.SetHidden(false, false)
+	annotations.SetFieldVisibility(false, in)
 
 	return func(entry datasource.Data) (string, error) {
 		addrStr, err := common.GetIPForVersion(entry, versions[0], ips[0])
@@ -205,7 +202,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				inBytes := in.Get(data)
@@ -246,7 +243,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				switch in.Type() {
@@ -280,7 +277,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				syscallNumber, err := in.Uint64(data)
@@ -325,7 +322,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				inBytes := in.Get(data)
@@ -369,7 +366,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				switch in.Type() {
@@ -408,7 +405,7 @@ var replacers = []replacer{
 				return nil, err
 			}
 
-			in.SetHidden(true, false)
+			annotations.SetFieldVisibility(true, in)
 
 			return func(data datasource.Data) error {
 				switch in.Type() {
