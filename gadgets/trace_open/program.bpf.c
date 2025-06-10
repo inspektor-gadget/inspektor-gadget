@@ -46,7 +46,14 @@ struct {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+// TODO: We need this for the compiler to emit BTF, without this, the compiler
+// emits a FWD declaration below that messes everything up. Why it doesn't
+// happen for map declarations?
+const struct event *__foo_var_foo __attribute__((unused));
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 static __always_inline int trace_enter(const char *filename, int flags,
 				       __u16 mode)

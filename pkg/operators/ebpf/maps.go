@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 	"unsafe"
 
@@ -252,19 +251,59 @@ func (i *ebpfInstance) runMapIterators() error {
 	return nil
 }
 
-func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
-	i.logger.Debugf("populating mapiter %q", varName)
+const mapItersSecName = ".mapiters"
 
-	info := strings.Split(varName, typeSplitter)
-	if len(info) != 2 {
-		return fmt.Errorf("invalid name for gadget_mapiter type: %q", varName)
+func (i *ebpfInstance) populateMapIters() error {
+	var mapItersDs *btf.Datasec
+	if err := i.collectionSpec.Types.TypeByName(mapItersSecName, &mapItersDs); err != nil {
+		if errors.Is(err, btf.ErrNotFound) {
+			i.logger.Debugf("no map iters section found in BTF, skipping")
+			return nil
+		}
+		return fmt.Errorf("cannot find section '%s' in BTF: %w", mapItersSecName, err)
 	}
 
-	name := info[0]
-	mapName := info[1]
+	for _, vs := range mapItersDs.Vars {
+		v, ok := vs.Type.(*btf.Var)
+		if !ok {
+			return fmt.Errorf("section %v: unexpected type %s", ".maps", vs.Type)
+		}
 
+		i.logger.Debugf("populating map iter %q", v.Name)
+
+		mapIterStruct, ok := btf.UnderlyingType(v.Type).(*btf.Struct)
+		if !ok {
+			return fmt.Errorf("expected struct, got %s", v.Type)
+		}
+
+		name := string(v.Name)
+		var mapName string
+
+		for _, member := range mapIterStruct.Members {
+			switch member.Name {
+			case "map":
+				mapBtfStruct, err := typeFromBTF(member.Type)
+				if err != nil {
+					return fmt.Errorf("getting map type from member %q: %w", member.Name, err)
+				}
+				mapName = i.mapNames[mapBtfStruct]
+			}
+		}
+
+		if mapName == "" {
+			return fmt.Errorf("map iterator %q does not have a map member", name)
+		}
+		if err := i.populateMapIter(name, mapName); err != nil {
+			return fmt.Errorf("populating map iterator %q: %w", name, err)
+		}
+	}
+
+	return nil
+}
+
+func (i *ebpfInstance) populateMapIter(name, mapName string) error {
 	if _, ok := i.mapIters[name]; ok {
-		return fmt.Errorf("duplicate map iterator %q", varName)
+		return fmt.Errorf("duplicate map iterator %q", name)
 	}
 
 	// Get types
@@ -293,12 +332,12 @@ func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
 
 	err := i.populateStructDirect(keyStruct)
 	if err != nil {
-		return fmt.Errorf("populating key struct for map iter %q: %w", varName, err)
+		return fmt.Errorf("populating key struct for map iter %q: %w", name, err)
 	}
 
 	err = i.populateStructDirect(valStruct)
 	if err != nil {
-		return fmt.Errorf("populating value struct for map iter %q: %w", varName, err)
+		return fmt.Errorf("populating value struct for map iter %q: %w", name, err)
 	}
 
 	iter := &mapIter{

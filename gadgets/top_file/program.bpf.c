@@ -57,7 +57,9 @@ struct {
 	__type(value, struct file_stat);
 } stats SEC(".maps");
 
-GADGET_MAPITER(file, stats);
+struct {
+	__type(map, stats);
+} file SEC(".mapiters");
 
 static void get_file_path(struct file *file, char *buf, size_t size)
 {
