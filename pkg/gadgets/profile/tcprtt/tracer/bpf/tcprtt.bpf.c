@@ -156,7 +156,7 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	srtt = BPF_CORE_READ(ts, srtt_us) >> 3;
 	if (targ_ms)
 		srtt /= 1000U;
-	slot = log2l(srtt);
+	slot = get_slot_idx(srtt);
 	if (slot >= MAX_SLOTS)
 		slot = MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->slots[slot], 1);
