@@ -53,6 +53,8 @@ const (
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
 	allowedGadgets          = "allowed-gadgets"
+
+	customParamsKey = "params.custom"
 )
 
 const (
@@ -455,9 +457,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 
 	// Extract custom params
-	customParams := viper.Sub("params.custom")
+	customParams := viper.Sub(customParamsKey)
 	if customParams != nil {
-		for k := range viper.GetStringMap("params.custom") {
+		for k := range viper.GetStringMap(customParamsKey) {
 			log.Debugf("evaluating custom param %q", k)
 			paramSub := customParams.Sub(k)
 			valuesSub := paramSub.Sub("values")
@@ -483,14 +485,14 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			// Evaluate, if set
 			if val, ok := o.paramValues["custom."+k]; ok {
 				valName := val
-				if !paramSub.IsSet("values."+valName+".applyConfig") && paramSub.IsSet("values.*.applyConfig") {
+				if !paramSub.IsSet("values."+valName+".patch") && paramSub.IsSet("values.*.patch") {
 					// Use wildcard fallback
 					valName = "*"
 				}
 
 				log.Debugf("applying custom param %q value %q", k, valName)
 
-				valSub := paramSub.Sub("values." + valName + ".applyConfig")
+				valSub := paramSub.Sub("values." + valName + ".patch")
 				if valSub == nil {
 					continue
 				}
@@ -506,29 +508,29 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 						}
 						out := bytes.NewBuffer(nil)
 						err = tpl.Execute(out, map[string]any{
-							"paramValues": o.paramValues,
+							"getParamValue": func(key string) string { return o.paramValues[key] },
 							"getConfig": func(key string) string {
-								return viper.GetString(key)
+								return viper.GetString(strings.ToLower(key))
 							},
 						})
 						if err != nil {
 							return fmt.Errorf("evaluating custom param %q value %q template for %q: %w", k, val, k1, err)
 						}
 						if tplOut := out.String(); tplOut != s {
+							log.Debugf("custom param %q value %q: replacing %q's value %q with %q", k, valName, k1, s, tplOut)
 							replacements[k1] = tplOut
 						}
 					}
 				}
 
 				for k1, v1 := range replacements {
-					log.Debugf("replacing %q with %q", k1, v1)
-					paramSub.Set("values."+valName+".applyConfig."+k1, v1)
+					paramSub.Set("values."+valName+".patch."+k1, v1)
 				}
 
-				applyMap := paramSub.GetStringMap("values." + valName + ".applyConfig")
+				applyMap := paramSub.GetStringMap("values." + valName + ".patch")
 
 				// Prevent recursive patching of customparams
-				delete(applyMap, "customparams")
+				delete(applyMap, customParamsKey)
 
 				// Merge with config
 				err = viper.MergeConfigMap(applyMap)

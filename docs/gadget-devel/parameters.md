@@ -49,7 +49,7 @@ params:
       defaultValue: "option1"
       values:
         option1:
-          applyConfig:
+          patch:
             datasources:
               myDataSource:
                 annotations:
@@ -57,7 +57,7 @@ params:
     mySecondParam:
       values:
         '*':
-          applyConfig:
+          patch:
             datasources:
               myDataSource:
                 annotations:
