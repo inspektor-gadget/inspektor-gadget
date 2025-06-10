@@ -62,6 +62,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/limiter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
