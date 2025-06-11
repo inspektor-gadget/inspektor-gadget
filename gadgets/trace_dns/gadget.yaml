@@ -44,6 +44,9 @@ datasources:
         annotations:
           description: DNS query/response ID, used to match queries with responses
           columns.hidden: "true"
+      latency_ns:
+        annotations:
+          description: DNS latency in nanoseconds, calculated as the difference between the DNS response and the corresponding query.
       latency_ns_raw:
         annotations:
           columns.hidden: "true"
