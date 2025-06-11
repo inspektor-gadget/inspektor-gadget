@@ -32,16 +32,10 @@ metadata:
       $ kubectl gadget deploy
       ```
 
-      ## Run built-in gadgets
-
-      ```bash
-      $ kubectl gadget trace exec
-      ```
-
       ## Run image-based gadgets
 
       ```bash
-      $ kubectl gadget deploy --experimental
+      $ kubectl gadget deploy
       $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:latest
       ```
     # artifacthub.io/changes:

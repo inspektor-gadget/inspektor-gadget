@@ -32,7 +32,6 @@ linters:
         text: Switch to image-based gadgets instead
     paths:
       - third_party$
-      - builtin$
       - examples$
 issues:
   max-issues-per-linter: 0
@@ -50,5 +49,4 @@ formatters:
     generated: lax
     paths:
       - third_party$
-      - builtin$
       - examples$

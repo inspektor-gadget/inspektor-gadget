@@ -61,7 +61,6 @@
 /gadgets/trace_tcpretrans/ @alban
 
 /integration/ @blanquicet @mqasimsarfraz
-/integration/inspektor-gadget/ @eiffel-fl
 /internal/benchmarks/ @alban
 /internal/test/ @mauriciovasquezbernal
 /pkg/amd64/ @eiffel-fl
@@ -75,27 +74,6 @@
 /pkg/gadget-context/ @flyth
 /pkg/gadget-registry/ @flyth
 /pkg/gadget-service/ @flyth
-/pkg/gadgets/advise/networkpolicy/ @alban
-/pkg/gadgets/advise/seccomp/ @alban
-/pkg/gadgets/audit/seccomp/ @alban
-/pkg/gadgets/common/ @mauriciovasquezbernal
-/pkg/gadgets/profile/tcprtt/ @blanquicet
-/pkg/gadgets/prometheus/ @mauriciovasquezbernal
-/pkg/gadgets/snapshot/process/ @alban @mauriciovasquezbernal
-/pkg/gadgets/snapshot/socket/ @alban @blanquicet
-/pkg/gadgets/test/ @mauriciovasquezbernal
-/pkg/gadgets/top/file/ @mauriciovasquezbernal
-/pkg/gadgets/trace/capabilities/ @alban
-/pkg/gadgets/trace/dns/ @alban @blanquicet
-/pkg/gadgets/trace/exec/ @mauriciovasquezbernal
-/pkg/gadgets/trace/network/ @alban @blanquicet
-/pkg/gadgets/trace/oomkill/ @eiffel-fl
-/pkg/gadgets/trace/open/ @mauriciovasquezbernal
-/pkg/gadgets/trace/signal/ @eiffel-fl
-/pkg/gadgets/trace/sni/ @alban @blanquicet
-/pkg/gadgets/trace/tcp/ @mauriciovasquezbernal
-/pkg/gadgets/trace/tcpconnect/ @mauriciovasquezbernal
-/pkg/gadgets/trace/tcpdrop/ @alban
 /pkg/gadgets/traceloop/ @eiffel-fl
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
 /pkg/histogram/ @blanquicet

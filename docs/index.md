@@ -42,16 +42,6 @@ directory and third-party Gadgets).
 
 See the [Gadget documentation](./gadgets/) for more information.
 
-:::warning
-
-Prior to v0.31.0, Inspektor Gadget only shipped gadgets embedded in its
-executable file. These built-in Gadgets are now deprecated and will be removed
-in v0.42.0 (July 2025). We encourage users to use [image-based](./gadgets/)
-Gadgets going forward, as they provide more features and decouple the eBPF
-programs from the Inspektor Gadget release process.
-
-:::
-
 ### What is enrichment?
 
 The data that eBPF collects from the kernel includes no knowledge about
