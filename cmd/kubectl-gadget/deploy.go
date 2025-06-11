@@ -508,12 +508,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	traceObjects, err := parseK8sYaml(resources.TracesCustomResource)
-	if err != nil {
-		return err
-	}
-	objects = append(objects, traceObjects...)
-
 	if seccompProfile != "" {
 		content, err := os.ReadFile(seccompProfile)
 		if err != nil {

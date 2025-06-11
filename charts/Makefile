@@ -18,7 +18,6 @@ build: clean
 	@echo "Building chart:"
 	mkdir -p $(BUILD_DIR)
 	cp -r gadget $(BUILD_DIR)
-	cp -r ../pkg/resources/crd/bases $(CHART_DIR)/crds
 	mv $(CHART_DIR)/Chart.yaml.tmpl $(CHART_DIR)/Chart.yaml
 ifeq ($(findstring GNU,$(SED_VERSION)),GNU)
 	@echo "Using GNU sed"
@@ -33,14 +32,11 @@ endif
 	docker run --user $(shell id -u):$(shell id -g) -v $(shell pwd)/$(CHART_DIR):/helm-docs $(HELM_DOCS_IMAGE) -s file
 	@echo "Charts available at: $(CHART_DIR)"
 
-# install uses 'helm upgrade --install' to make chart installation idempotent,
-# also helm upgrade does not update CRDs so we need to apply them separately
+# install uses 'helm upgrade --install' to make chart installation idempotent.
 install: build
 	$(HELM) upgrade --install gadget $(CHART_DIR) --namespace gadget --create-namespace
-	kubectl apply -f $(CHART_DIR)/crds/*
 
 uninstall:
-	kubectl delete -f $(CHART_DIR)/crds/*
 	$(HELM) uninstall gadget --namespace gadget
 
 lint: build
