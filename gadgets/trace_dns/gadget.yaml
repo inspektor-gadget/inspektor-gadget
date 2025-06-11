@@ -18,9 +18,12 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
-      anaddr:
+      addresses:
         annotations:
-          columns.width: "16"
+          description: >-
+            Comma-separated list of IP addresses returned in the DNS responses
+            (A and AAAA records, see qtype field). This field is populated only
+            on DNS response packets; it will be empty for pure queries.
       data:
         annotations:
           columns.hidden: "true"
