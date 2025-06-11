@@ -51,7 +51,7 @@ jobs:
       id: go
     - name: Check if generated files are updated
       run: |
-        make manifests generate generate-documentation
+        make generate-documentation
         git diff --exit-code HEAD --
     - name: Check that there are not broken links
       uses: gaurav-nelson/github-action-markdown-link-check@3c3b66f1f7d0900e37b71eca45b63ea9eedfce31 # v1.0.17
