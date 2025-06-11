@@ -153,7 +153,6 @@ func main() {
 	}
 
 	hiddenColumnTags := []string{"runtime"}
-	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
 
 	common.AddInstanceCommands(rootCmd, grpcRuntime)
 

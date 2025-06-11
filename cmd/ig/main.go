@@ -97,7 +97,6 @@ func main() {
 	}
 
 	hiddenColumnTags := []string{"kubernetes"}
-	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	operators.RegisterDataOperator(ocihandler.OciHandler)
 
