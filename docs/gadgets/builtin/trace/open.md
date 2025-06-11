@@ -14,6 +14,30 @@ image-based one.
 
 The trace open gadget streams events related to files opened inside pods.
 
+## Common Use Cases
+
+### Monitor sensitive file access
+```bash
+# Monitor access to sensitive files
+kubectl gadget trace open -f /etc/shadow -f /etc/passwd
+
+# Example output:
+# NAMESPACE  POD     CONTAINER  PID  COMM  FD  ERR  PATH
+# default    nginx   nginx      1234 nginx 5   0    /etc/nginx/nginx.conf
+```
+
+### Debug application issues
+```bash
+# Track all file opens in a specific pod
+kubectl gadget trace open -p my-pod
+```
+
+### Audit file access patterns
+```bash
+# Monitor files opened by a specific user
+kubectl gadget trace open -u root
+```
+
 ### On Kubernetes
 
 Here we deploy a small demo pod "mypod":

@@ -14,7 +14,31 @@ image-based one.
 
 ![Screencast of the trace exec gadget](exec.gif)
 
-The trace exec gadget streams new processes creation events.
+The trace exec gadget streams new process creation events.
+
+## Common Use Cases
+
+### Monitor process execution
+```bash
+# Monitor all process executions in the cluster
+kubectl gadget trace exec
+
+# Example output:
+# NAMESPACE  POD     CONTAINER  PID  PPID COMM  RET ARGS
+# default    nginx   nginx      1234 1    bash  0   /bin/bash -c sleep 10
+```
+
+### Track specific commands
+```bash
+# Monitor only specific commands (e.g., curl, wget, sh)
+kubectl gadget trace exec -c curl -c wget -c sh
+```
+
+### Detect modified binaries
+```bash
+# Show which binaries were modified in containers
+kubectl gadget trace exec --show-upper-layer
+```
 
 ### On Kubernetes
 
