@@ -53,8 +53,7 @@ datasources:
       latency_ns_raw:
         annotations:
           columns.hidden: "true"
-          columns.width: "8"
-          description: DNS request latency
+          description: Raw numeric latency_ns value
       name:
         annotations:
           description: Domain name being queried in the DNS request or response.
@@ -77,6 +76,8 @@ datasources:
           value.one-of: "HOST, BROADCAST, MULTICAST, OTHERHOST, OUTGOING, LOOPBACK, USER, KERNEL"
       pkt_type_raw:
         annotations:
+          description: Raw numeric pkt_type value (0=HOST, 1=BROADCAST, 2=MULTICAST, 3=OTHERHOST, 4=OUTGOING, 5=LOOPBACK, 6=USER, 7=KERNEL)
+          value.one-of: "0, 1, 2, 3, 4, 5, 6, 7"
           columns.hidden: "true"
       qr:
         annotations:
@@ -86,6 +87,8 @@ datasources:
           columns.width: "2"
       qr_raw:
         annotations:
+          description: Raw numeric qr value (0=Q, 1=R)
+          value.one-of: "0, 1"
           columns.hidden: "true"
       qtype:
         annotations:
@@ -93,6 +96,8 @@ datasources:
           value.one-of: "A, NS, CNAME, SOA, PTR, MX, TXT, AAAA, SRV, OPT, WKS, HINFO, MINFO, AXFR, ALL"
       qtype_raw:
         annotations:
+          description: Raw numeric qtype value (1=A, 2=NS, 5=CNAME, 6=SOA, 12=PTR, 15=MX, 16=TXT, 28=AAAA, 33=SRV, 41=OPT, 44=WKS, 13=HINFO, 14=MINFO, 252=AXFR, 255=ALL)
+          value.one-of: "1, 2, 5, 6, 12, 15, 16, 28, 33, 41, 44, 13, 14, 252, 255"
           columns.hidden: "true"
       rcode:
         annotations:
@@ -102,6 +107,8 @@ datasources:
           columns.width: "8"
       rcode_raw:
         annotations:
+          description: Raw numeric rcode value (0=Success, 1=FormatError, 2=ServerFailure, 3=NameError, 4=NotImplemented, 5=Refused)
+          value.one-of: "0, 1, 2, 3, 4, 5"
           columns.hidden: "true"
       src:
         annotations:
