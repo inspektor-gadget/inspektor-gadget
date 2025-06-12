@@ -98,7 +98,6 @@
 /pkg/operators/localmanager/ @mauriciovasquezbernal @flyth
 /pkg/operators/oci-handler/ @flyth
 /pkg/operators/otel-metrics/ @blanquicet @flyth
-/pkg/operators/prometheus/ @mauriciovasquezbernal
 /pkg/operators/simple/ @flyth
 /pkg/operators/socketenricher/ @alban
 /pkg/operators/sort/ @flyth
@@ -106,7 +105,6 @@
 /pkg/operators/wasm/ @flyth @mauriciovasquezbernal
 
 /pkg/params/ @flyth @mauriciovasquezbernal
-/pkg/prometheus/ @mauriciovasquezbernal
 /pkg/rawsock/ @alban
 /pkg/resources/manifests/ @eiffel-fl
 /pkg/resources/rbac/ @eiffel-fl
