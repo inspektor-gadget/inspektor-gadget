@@ -431,6 +431,20 @@ jobs:
         platform: [ arm64, amd64 ]
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+        path: tmp/test1
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        fetch-depth: 0
+        fetch-tags: false
+        path: tmp/test2
+    - run: |
+        echo 'main:' ; git describe --tags --always --dirty
+        (cd tmp/test1 ; echo 'test1:' ; git describe --tags --always --dirty)
+        (cd tmp/test2 ; echo 'test2:' ; git describe --tags --always --dirty)
     - name: Set up QEMU
       uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
     - name: Set up Docker Buildx
