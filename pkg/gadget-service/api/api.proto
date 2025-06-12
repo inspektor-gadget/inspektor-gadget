@@ -18,38 +18,6 @@ option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-ser
 
 package api;
 
-message BuiltInGadgetRunRequest {
-  // name of the gadget as returned by gadgetDesc.Name()
-  string gadgetName = 1;
-
-  // category of the gadget as returned by gadgetDesc.Category()
-  string gadgetCategory = 2;
-
-  // params is a combined map of all params a gadget could need (including those
-  // of runtime and operators, which need specific prefixes, see implementation in
-  // pkg/runtime/grpc)
-  map<string, string> params = 3;
-
-  // args are all parameters which were not specified with a flag
-  repeated string args = 4;
-
-  // a list of nodes the gadget should run on; if not specified, it should run
-  // on all nodes
-  repeated string nodes = 10;
-
-  // if set to true, the gadget service should forward the request to each node
-  // from the nodes list (or each node it knows, if the list is empty) and combine
-  // their output
-  bool fanOut = 11;
-
-  // sets the requested log level (see pkg/logger/logger.go)
-  uint32 logLevel = 12;
-
-  // time that a gadget should run; use 0, if the gadget should run until it's being
-  // stopped or done; time is in nanoseconds and directly converted to time.Duration
-  int64 timeout = 13;
-}
-
 message GadgetRunRequest {
   string imageName = 1;
 
@@ -80,9 +48,6 @@ message GadgetAttachRequest {
   uint32 version = 2;
 }
 
-message BuiltInGadgetStopRequest {
-}
-
 message GadgetEvent {
   // Types are specified in consts.go. Upper 16 bits are used for log severity levels
   uint32 type = 1;
@@ -91,12 +56,7 @@ message GadgetEvent {
   uint32 dataSourceID = 4;
 }
 
-message BuiltInGadgetControlRequest {
-  oneof Event {
-    BuiltInGadgetRunRequest runRequest = 1;
-    BuiltInGadgetStopRequest stopRequest = 2;
-  }
-}
+
 
 message GadgetStopRequest {
 }
@@ -270,11 +230,6 @@ message GetGadgetInfoResponse {
   GadgetInfo gadgetInfo = 1;
 }
 
-service BuiltInGadgetManager {
-  rpc GetInfo(InfoRequest) returns (InfoResponse) {}
-  rpc RunBuiltInGadget(stream BuiltInGadgetControlRequest) returns (stream GadgetEvent) {}
-}
-
 message CreateGadgetInstanceRequest {
   GadgetInstance gadgetInstance = 1;
   int32 eventBufferLength = 2;
@@ -317,6 +272,10 @@ message GadgetInstanceId {
 message StatusResponse {
   int32 result = 1;
   string message = 2;
+}
+
+service BuiltInGadgetManager {
+  rpc GetInfo(InfoRequest) returns (InfoResponse) {}
 }
 
 service GadgetManager {

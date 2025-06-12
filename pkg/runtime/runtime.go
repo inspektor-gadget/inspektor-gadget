@@ -123,7 +123,6 @@ type Runtime interface {
 	// from a cache
 	GetGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error)
 
-	RunBuiltInGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
 	RunGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)

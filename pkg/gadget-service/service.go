@@ -23,23 +23,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
-	"time"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
-	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
-	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -140,174 +134,6 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 		Experimental:  experimental.Enabled(),
 		ServerVersion: version.Version().String(),
 	}, nil
-}
-
-func (s *Service) RunBuiltInGadget(runGadget api.BuiltInGadgetManager_RunBuiltInGadgetServer) error {
-	ctrl, err := runGadget.Recv()
-	if err != nil {
-		return err
-	}
-
-	request := ctrl.GetRunRequest()
-	if request == nil {
-		return fmt.Errorf("expected first control message to be gadget run request")
-	}
-
-	// Create a new logger that logs to gRPC and falls back to the standard logger when it failed to send the message
-	logger := logger.NewFromGenericLogger(&Logger{
-		send:           runGadget.Send,
-		level:          logger.Level(request.LogLevel),
-		fallbackLogger: s.logger,
-	})
-
-	runtime := s.runtime
-
-	gadgetDesc := gadgetregistry.Get(request.GadgetCategory, request.GadgetName)
-	if gadgetDesc == nil {
-		return fmt.Errorf("gadget not found: %s/%s", request.GadgetCategory, request.GadgetName)
-	}
-
-	// Initialize Operators
-	err = operators.GetAll().Init(operators.GlobalParamsCollection())
-	if err != nil {
-		return fmt.Errorf("initialize operators: %w", err)
-	}
-
-	ops := operators.GetOperatorsForGadget(gadgetDesc)
-
-	operatorParams := ops.ParamCollection()
-
-	parser := gadgetDesc.Parser()
-
-	runtimeParams := runtime.ParamDescs().ToParams()
-	gType := gadgetDesc.Type()
-
-	gadgetParamDescs := gadgetDesc.ParamDescs()
-	// TODO: do we need to update gType before calling this?
-	gadgetParamDescs.Add(gadgets.GadgetParams(gadgetDesc, gType, parser)...)
-	gadgetParams := gadgetParamDescs.ToParams()
-	err = gadgets.ParamsFromMap(request.Params, gadgetParams, runtimeParams, operatorParams)
-	if err != nil {
-		return fmt.Errorf("setting parameters: %w", err)
-	}
-
-	// Create payload buffer
-	outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
-
-	seq := uint32(0)
-	var seqLock sync.Mutex
-
-	if parser != nil {
-		outputDone := make(chan bool)
-		defer func() {
-			outputDone <- true
-		}()
-
-		parser.SetLogCallback(logger.Logf)
-		parser.SetEventCallback(func(ev any) {
-			// Marshal messages to JSON
-			// Normally, it would be better to have this in the pump below rather than marshaling events that
-			// would be dropped anyway. However, we're optimistic that this occurs rarely and instead prevent using
-			// ev in another thread.
-			data, _ := json.Marshal(ev)
-			event := &api.GadgetEvent{
-				Type:    api.EventTypeGadgetPayload,
-				Payload: data,
-			}
-
-			seqLock.Lock()
-			seq++
-			event.Seq = seq
-
-			// Try to send event; if outputBuffer is full, it will be dropped by taking
-			// the default path.
-			select {
-			case outputBuffer <- event:
-			default:
-			}
-			seqLock.Unlock()
-		})
-
-		go func() {
-			// Message pump to handle slow readers
-			for {
-				select {
-				case ev := <-outputBuffer:
-					runGadget.Send(ev)
-				case <-outputDone:
-					return
-				}
-			}
-		}()
-	}
-
-	// Assign a unique ID - this will be used in the future
-	runID := uuid.New().String()
-
-	// Send Job ID to client
-	err = runGadget.Send(&api.GadgetEvent{
-		Type:    api.EventTypeGadgetJobID,
-		Payload: []byte(runID),
-	})
-	if err != nil {
-		logger.Warnf("sending JobID: %v", err)
-		return nil
-	}
-
-	// Create new Gadget Context
-	gadgetCtx := gadgetcontext.NewBuiltIn(
-		runGadget.Context(),
-		runID,
-		runtime,
-		runtimeParams,
-		gadgetDesc,
-		gadgetParams,
-		request.Args,
-		operatorParams,
-		parser,
-		logger,
-		time.Duration(request.Timeout),
-	)
-	defer gadgetCtx.Cancel()
-
-	// Handle commands sent by the client
-	go func() {
-		defer func() {
-			logger.Debugf("runner exited")
-		}()
-		for {
-			msg, err := runGadget.Recv()
-			if err != nil {
-				gadgetCtx.Cancel()
-				return
-			}
-			switch msg.Event.(type) {
-			case *api.BuiltInGadgetControlRequest_StopRequest:
-				gadgetCtx.Cancel()
-				return
-			default:
-				logger.Warn("unexpected request")
-			}
-		}
-	}()
-
-	// Hand over to runtime
-	results, err := runtime.RunBuiltInGadget(gadgetCtx)
-	if err != nil {
-		return fmt.Errorf("running gadget: %w", err)
-	}
-
-	// Send result, if any
-	for _, result := range results {
-		// TODO: when used with fan-out, we need to add the node in here
-		event := &api.GadgetEvent{
-			Type:    api.EventTypeGadgetResult,
-			Payload: result.Payload,
-		}
-		runGadget.Send(event)
-	}
-
-	return nil
 }
 
 func newUnixListener(address string, gid int) (net.Listener, error) {

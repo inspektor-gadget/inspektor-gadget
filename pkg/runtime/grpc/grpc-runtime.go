@@ -18,13 +18,10 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -37,9 +34,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
@@ -348,27 +342,6 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	return nil, fmt.Errorf("unsupported connection mode")
 }
 
-func (r *Runtime) RunBuiltInGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
-	paramMap := make(map[string]string)
-	gadgets.ParamsToMap(
-		paramMap,
-		gadgetCtx.GadgetParams(),
-		gadgetCtx.RuntimeParams(),
-		gadgetCtx.OperatorsParamCollection(),
-	)
-
-	gadgetCtx.Logger().Debugf("Params")
-	for k, v := range paramMap {
-		gadgetCtx.Logger().Debugf("- %s: %q", k, v)
-	}
-
-	targets, err := r.getTargets(gadgetCtx.Context(), gadgetCtx.RuntimeParams())
-	if err != nil {
-		return nil, fmt.Errorf("getting target nodes: %w", err)
-	}
-	return r.runBuiltInGadgetOnTargets(gadgetCtx, paramMap, targets)
-}
-
 func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *params.Params) (*grpc.ClientConn, error) {
 	targets, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
@@ -397,50 +370,6 @@ func (r *Runtime) getConnFromTarget(ctx context.Context, runtimeParams *params.P
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
 	return conn, nil
-}
-
-func (r *Runtime) runBuiltInGadgetOnTargets(
-	gadgetCtx runtime.GadgetContext,
-	paramMap map[string]string,
-	targets []target,
-) (runtime.CombinedGadgetResult, error) {
-	gType := gadgetCtx.GadgetDesc().Type()
-
-	if gType == gadgets.TypeTraceIntervals {
-		gadgetCtx.Parser().EnableSnapshots(
-			gadgetCtx.Context(),
-			time.Duration(gadgetCtx.GadgetParams().Get(gadgets.ParamInterval).AsInt32())*time.Second,
-			2,
-		)
-		defer gadgetCtx.Parser().Flush()
-	}
-
-	if gType == gadgets.TypeOneShot {
-		gadgetCtx.Parser().EnableCombiner()
-		defer gadgetCtx.Parser().Flush()
-	}
-
-	results := make(runtime.CombinedGadgetResult)
-	var resultsLock sync.Mutex
-
-	wg := sync.WaitGroup{}
-	for _, t := range targets {
-		wg.Add(1)
-		go func(target target) {
-			gadgetCtx.Logger().Debugf("running gadget on node %q", target.node)
-			res, err := r.runBuiltInGadget(gadgetCtx, target, paramMap)
-			resultsLock.Lock()
-			results[target.node] = &runtime.GadgetResult{
-				Payload: res,
-				Error:   err,
-			}
-			resultsLock.Unlock()
-			wg.Done()
-		}(t)
-	}
-
-	wg.Wait()
-	return results, results.Err()
 }
 
 func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
@@ -528,130 +457,6 @@ All these options should be set at the same time to enable TLS connection`,
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
 	return conn, nil
-}
-
-func (r *Runtime) runBuiltInGadget(gadgetCtx runtime.GadgetContext, target target, allParams map[string]string) ([]byte, error) {
-	// Notice that we cannot use gadgetCtx.Context() here, as that would - when cancelled by the user - also cancel the
-	// underlying gRPC connection. That would then lead to results not being received anymore (mostly for profile
-	// gadgets.)
-	connCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint16())
-	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
-	defer cancelDial()
-
-	conn, err := r.dialContext(dialCtx, target, timeout)
-	if err != nil {
-		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
-	}
-	defer conn.Close()
-	client := api.NewBuiltInGadgetManagerClient(conn)
-
-	runRequest := &api.BuiltInGadgetRunRequest{
-		GadgetName:     gadgetCtx.GadgetDesc().Name(),
-		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
-		Params:         allParams,
-		Args:           gadgetCtx.Args(),
-		Nodes:          nil,
-		FanOut:         false,
-		LogLevel:       uint32(gadgetCtx.Logger().GetLevel()),
-		Timeout:        int64(gadgetCtx.Timeout()),
-	}
-
-	runClient, err := client.RunBuiltInGadget(connCtx)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		return nil, err
-	}
-
-	controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_RunRequest{RunRequest: runRequest}}
-	err = runClient.Send(controlRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	parser := gadgetCtx.Parser()
-
-	jsonHandler := func([]byte) {}
-	jsonArrayHandler := func([]byte) {}
-
-	if parser != nil {
-		var enrichers []func(any) error
-		ev := gadgetCtx.GadgetDesc().EventPrototype()
-		if _, ok := ev.(operators.NodeSetter); ok {
-			enrichers = append(enrichers, func(ev any) error {
-				ev.(operators.NodeSetter).SetNode(target.node)
-				return nil
-			})
-		}
-
-		jsonHandler = parser.JSONHandlerFunc(enrichers...)
-		jsonArrayHandler = parser.JSONHandlerFuncArray(target.node, enrichers...)
-	}
-
-	doneChan := make(chan error)
-
-	var result []byte
-	expectedSeq := uint32(1)
-
-	go func() {
-		for {
-			ev, err := runClient.Recv()
-			if err != nil {
-				gadgetCtx.Logger().Debugf("%-20s | runClient returned with %v", target.node, err)
-				if !errors.Is(err, io.EOF) {
-					doneChan <- err
-					return
-				}
-				doneChan <- nil
-				return
-			}
-			switch ev.Type {
-			case api.EventTypeGadgetPayload:
-				if expectedSeq != ev.Seq {
-					gadgetCtx.Logger().Warnf("%-20s | expected seq %d, got %d, %d messages dropped", target.node, expectedSeq, ev.Seq, ev.Seq-expectedSeq)
-				}
-				expectedSeq = ev.Seq + 1
-				if len(ev.Payload) > 0 && ev.Payload[0] == '[' {
-					jsonArrayHandler(ev.Payload)
-					continue
-				}
-				jsonHandler(ev.Payload)
-			case api.EventTypeGadgetResult:
-				gadgetCtx.Logger().Debugf("%-20s | got result from server", target.node)
-				result = ev.Payload
-			case api.EventTypeGadgetJobID: // not needed right now
-			default:
-				if ev.Type >= 1<<api.EventLogShift {
-					gadgetCtx.Logger().Log(logger.Level(ev.Type>>api.EventLogShift), fmt.Sprintf("%-20s | %s", target.node, string(ev.Payload)))
-					continue
-				}
-				gadgetCtx.Logger().Warnf("unknown payload type %d: %s", ev.Type, ev.Payload)
-			}
-		}
-	}()
-
-	var runErr error
-	select {
-	case doneErr := <-doneChan:
-		gadgetCtx.Logger().Debugf("%-20s | done from server side (%v)", target.node, doneErr)
-		runErr = doneErr
-	case <-gadgetCtx.Context().Done():
-		// Send stop request
-		gadgetCtx.Logger().Debugf("%-20s | sending stop request", target.node)
-		controlRequest := &api.BuiltInGadgetControlRequest{Event: &api.BuiltInGadgetControlRequest_StopRequest{StopRequest: &api.BuiltInGadgetStopRequest{}}}
-		runClient.Send(controlRequest)
-
-		// Wait for done or timeout
-		select {
-		case doneErr := <-doneChan:
-			gadgetCtx.Logger().Debugf("%-20s | done after cancel request (%v)", target.node, doneErr)
-			runErr = doneErr
-		case <-time.After(ResultTimeout * time.Second):
-			return nil, fmt.Errorf("timed out while getting result")
-		}
-	}
-	return result, runErr
 }
 
 func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
