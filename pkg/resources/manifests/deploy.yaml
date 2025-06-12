@@ -27,6 +27,7 @@ data:
       crio-socketpath: /run/crio/crio.sock
       docker-socketpath: /run/docker.sock
       podman-socketpath: /run/podman/podman.sock
+      gadget-namespace: gadget
       operator:
         oci:
           verify-image: true
