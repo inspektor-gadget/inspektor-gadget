@@ -16,7 +16,6 @@ package gadgetservice
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -119,18 +118,8 @@ func (s *Service) SetStore(store store.Store) {
 }
 
 func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {
-	catalog, err := s.runtime.GetCatalog()
-	if err != nil {
-		return nil, fmt.Errorf("get catalog: %w", err)
-	}
-
-	catalogJSON, err := json.Marshal(catalog)
-	if err != nil {
-		return nil, fmt.Errorf("marshal catalog: %w", err)
-	}
 	return &api.InfoResponse{
 		Version:       "1.0", // TODO
-		Catalog:       catalogJSON,
 		Experimental:  experimental.Enabled(),
 		ServerVersion: version.Version().String(),
 	}, nil

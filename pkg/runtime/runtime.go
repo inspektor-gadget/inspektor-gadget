@@ -124,7 +124,6 @@ type Runtime interface {
 	GetGadgetInfo(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) (*api.GadgetInfo, error)
 
 	RunGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
-	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)
 }

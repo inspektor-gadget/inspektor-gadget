@@ -16,7 +16,6 @@ package grpcruntime
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -87,10 +86,5 @@ func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 		Experimental:  info.Experimental,
 		ServerVersion: info.ServerVersion,
 	}
-	err = json.Unmarshal(info.Catalog, &retInfo.Catalog)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshaling info: %w", err)
-	}
-
 	return retInfo, nil
 }

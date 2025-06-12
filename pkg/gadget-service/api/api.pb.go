@@ -516,7 +516,6 @@ func (x *InfoRequest) GetVersion() string {
 type InfoResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Catalog       []byte                 `protobuf:"bytes,2,opt,name=catalog,proto3" json:"catalog,omitempty"`
 	Experimental  bool                   `protobuf:"varint,3,opt,name=experimental,proto3" json:"experimental,omitempty"`
 	ServerVersion string                 `protobuf:"bytes,4,opt,name=serverVersion,proto3" json:"serverVersion,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -558,13 +557,6 @@ func (x *InfoResponse) GetVersion() string {
 		return x.Version
 	}
 	return ""
-}
-
-func (x *InfoResponse) GetCatalog() []byte {
-	if x != nil {
-		return x.Catalog
-	}
-	return nil
 }
 
 func (x *InfoResponse) GetExperimental() bool {
@@ -1841,10 +1833,9 @@ const file_api_api_proto_rawDesc = "" +
 	"\rattachRequest\x18\x03 \x01(\v2\x18.api.GadgetAttachRequestH\x00R\rattachRequestB\a\n" +
 	"\x05Event\"'\n" +
 	"\vInfoRequest\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\"\x8c\x01\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\"r\n" +
 	"\fInfoResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\x12\x18\n" +
-	"\acatalog\x18\x02 \x01(\fR\acatalog\x12\"\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\x12\"\n" +
 	"\fexperimental\x18\x03 \x01(\bR\fexperimental\x12$\n" +
 	"\rserverVersion\x18\x04 \x01(\tR\rserverVersion\"'\n" +
 	"\vDataElement\x12\x18\n" +

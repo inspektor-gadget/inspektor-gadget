@@ -19,36 +19,14 @@ import (
 	"os"
 	"path/filepath"
 
-	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-type Runtime struct {
-	catalog *runtime.Catalog
-}
+type Runtime struct{}
 
 func New() *Runtime {
-	return &Runtime{
-		catalog: prepareCatalog(),
-	}
-}
-
-func prepareCatalog() *runtime.Catalog {
-	gadgetInfos := make([]*runtime.GadgetInfo, 0)
-	for _, gadgetDesc := range gadgetregistry.GetAll() {
-		gadgetInfos = append(gadgetInfos, runtime.GadgetInfoFromGadgetDesc(gadgetDesc))
-	}
-	operatorInfos := make([]*runtime.OperatorInfo, 0)
-	for _, operator := range operators.GetAll() {
-		operatorInfos = append(operatorInfos, runtime.OperatorToOperatorInfo(operator))
-	}
-	return &runtime.Catalog{
-		Gadgets:   gadgetInfos,
-		Operators: operatorInfos,
-	}
+	return &Runtime{}
 }
 
 func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
@@ -74,10 +52,6 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
 	return nil
-}
-
-func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
-	return r.catalog, nil
 }
 
 func (r *Runtime) SetDefaultValue(key params.ValueHint, value string) {

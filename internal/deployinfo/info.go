@@ -20,12 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
 type DeployInfo struct {
-	Catalog       *runtime.Catalog
 	Experimental  bool
 	ServerVersion string
 }

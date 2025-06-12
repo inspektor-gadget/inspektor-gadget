@@ -35,7 +35,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
 )
 
@@ -457,13 +456,6 @@ All these options should be set at the same time to enable TLS connection`,
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
 	return conn, nil
-}
-
-func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
-	if r.info == nil {
-		return nil, nil
-	}
-	return r.info.Catalog, nil
 }
 
 func (r *Runtime) SetDefaultValue(key params.ValueHint, value string) {
