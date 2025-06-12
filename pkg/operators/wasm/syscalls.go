@@ -23,7 +23,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
 
-	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
@@ -60,7 +59,7 @@ func (i *wasmOperatorInstance) getSyscallName(ctx context.Context, m wapi.Module
 	syscallID := uint16(stack[0])
 	dstBuf := stack[1]
 
-	syscallName := syscallhelpers.SyscallGetName(syscallID)
+	syscallName := syscalls.SyscallGetName(syscallID)
 
 	if err := i.writeToDstBuffer([]byte(syscallName), dstBuf); err != nil {
 		i.logger.Warnf("getSyscallName: writing to guest memory for %s: %v", syscallName, err)
@@ -137,8 +136,8 @@ func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi
 	}
 
 	// This map can be big, so let's do it only once and if needed.
-	i.syscallsDeclarations, err = sync.OnceValues(func() (map[string]syscallhelpers.SyscallDeclaration, error) {
-		return syscallhelpers.GatherSyscallsDeclarations()
+	i.syscallsDeclarations, err = sync.OnceValues(func() (map[string]syscalls.SyscallDeclaration, error) {
+		return syscalls.GatherSyscallsDeclarations()
 	})()
 	if err != nil {
 		i.logger.Warnf("getSyscallDeclaration: gathering syscall declarations: %v", err)
@@ -146,7 +145,7 @@ func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi
 		return
 	}
 
-	declaration, err := syscallhelpers.GetSyscallDeclaration(i.syscallsDeclarations, syscallName)
+	declaration, err := syscalls.GetSyscallDeclaration(i.syscallsDeclarations, syscallName)
 	if err != nil {
 		i.logger.Warnf("getSyscallDeclaration: getting syscall declaration for %q: %v", syscallName, err)
 		stack[0] = 1
