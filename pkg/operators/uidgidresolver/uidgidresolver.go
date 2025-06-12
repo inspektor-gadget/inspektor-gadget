@@ -23,7 +23,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -72,16 +71,6 @@ func (k *UidGidResolver) ParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (k *UidGidResolver) Dependencies() []string {
-	return nil
-}
-
-func (k *UidGidResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	_, hasUidResolverInterface := gadget.EventPrototype().(UidResolverInterface)
-	_, hasGidResolverInterface := gadget.EventPrototype().(GidResolverInterface)
-	return hasUidResolverInterface || hasGidResolverInterface
-}
-
 func (k *UidGidResolver) Init(params *params.Params) error {
 	return nil
 }
@@ -92,16 +81,6 @@ func (k *UidGidResolver) Close() error {
 
 func (k *UidGidResolver) Priority() int {
 	return 5
-}
-
-func (k *UidGidResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	uidGidCache := GetUserGroupCache()
-
-	return &UidGidResolverInstance{
-		gadgetCtx:      gadgetCtx,
-		gadgetInstance: gadgetInstance,
-		uidGidCache:    uidGidCache,
-	}, nil
 }
 
 type fieldAccPair struct {
@@ -263,6 +242,5 @@ func (m *UidGidResolverInstance) EnrichEvent(ev any) error {
 }
 
 func init() {
-	operators.Register(&UidGidResolver{})
 	operators.RegisterDataOperator(&UidGidResolver{})
 }

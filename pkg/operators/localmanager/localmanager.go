@@ -85,10 +85,6 @@ func (l *localManager) Description() string {
 	return "Handles enrichment of container data and attaching/detaching to and from containers"
 }
 
-func (l *localManager) Dependencies() []string {
-	return nil
-}
-
 func (l *localManager) GlobalParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
@@ -158,36 +154,6 @@ func (l *localManager) ParamDescs() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 	}
-}
-
-func (l *localManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	// We need to be able to get MountNSID or NetNSID, and set ContainerInfo, so
-	// check for that first
-	_, canEnrichEventFromMountNs := gadget.EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadget.EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
-
-	// Secondly, we need to be able to inject the ebpf map onto the gadget instance
-	gi, ok := gadget.(gadgets.GadgetInstantiate)
-	if !ok {
-		return false
-	}
-
-	instance, err := gi.NewInstance()
-	if err != nil {
-		log.Warnf("failed to create dummy %s instance: %s", OperatorName, err)
-		return false
-	}
-	_, isMountNsMapSetter := instance.(MountNsMapSetter)
-	_, isAttacher := instance.(Attacher)
-
-	log.Debugf("> canEnrichEvent: %v", canEnrichEvent)
-	log.Debugf("\t> canEnrichEventFromMountNs: %v", canEnrichEventFromMountNs)
-	log.Debugf("\t> canEnrichEventFromNetNs: %v", canEnrichEventFromNetNs)
-	log.Debugf("> isMountNsMapSetter: %v", isMountNsMapSetter)
-	log.Debugf("> isAttacher: %v", isAttacher)
-
-	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
 func (l *localManager) Init(operatorParams *params.Params) error {
@@ -300,27 +266,6 @@ func (l *localManager) Close() error {
 		l.igManager.Close()
 	}
 	return nil
-}
-
-func (l *localManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
-
-	traceInstance := &localManagerTrace{
-		manager:            l,
-		enrichEvents:       canEnrichEvent,
-		attachedContainers: make(map[*containercollection.Container]struct{}),
-		params:             params,
-		gadgetInstance:     gadgetInstance,
-		gadgetCtx:          gadgetContext,
-	}
-
-	if l.igManager == nil {
-		traceInstance.enrichEvents = false
-	}
-
-	return traceInstance, nil
 }
 
 type localManagerTrace struct {
@@ -702,7 +647,6 @@ func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error
 
 func init() {
 	lm := &localManager{}
-	operators.Register(lm)
 	operators.RegisterDataOperator(lm)
 }
 

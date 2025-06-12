@@ -1,5 +1,13 @@
 # Prometheus support in Inspektor Gadget
 
+:::warning
+
+This document is outdated. An initial implementation of this proposal was done,
+but it was removed later on for an implementation focused on image-based gadgets
+and OpenTelemetry. Check the new implementation on pkg/operators/otel-metrics/.
+
+:::
+
 Inspektor Gadget has a lot of tools that hook into the kernel to capture different events like file
 opened, process created, DNS requests, etc. Currently it's mostly designed as a troubleshooting
 tool: it prints those events as they happen to the terminal. However, it's an easy win to provide
