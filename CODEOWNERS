@@ -71,7 +71,6 @@
 /pkg/container-utils/containerd/ @burak-ok
 /pkg/datasource/ @flyth
 /pkg/gadget-context/ @flyth
-/pkg/gadget-registry/ @flyth
 /pkg/gadget-service/ @flyth
 /pkg/gadgets/traceloop/ @eiffel-fl
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
