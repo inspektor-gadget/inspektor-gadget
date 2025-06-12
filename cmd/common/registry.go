@@ -170,12 +170,7 @@ func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
 	return outputFormatsHelp
 }
 
-const deprecationMessage = `
-This built-in Gadget is deprecated and will be removed on v0.42.0 (July 2025).
-Please check https://inspektor-gadget.io/docs/latest/gadgets/ to get more details on
-how to switch to image-based Gadgets.
-
-`
+const deprecationMessage = "This gadget is deprecated"
 
 func buildCommandFromGadget(
 	gadgetDesc gadgets.GadgetDesc,

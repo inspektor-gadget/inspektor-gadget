@@ -131,10 +131,6 @@ You can find a growing collection of Gadgets on [Artifact HUB](https://artifacth
 
 See the [Gadget documentation](https://www.inspektor-gadget.io/docs/latest/gadgets/) for more information.
 
-#### :warning: For versions prior to v0.31.0
-
-Prior to v0.31.0, Inspektor Gadget only shipped gadgets embedded in its executable file. As of v0.31.0 these ***built-in*** Gadgets are still available and work as before, but their use is discouraged as they will be deprecated at some point. We encourage users to use ***image-based*** Gadgets going forward, as they provide more features and decouple the eBPF programs from the Inspektor Gadget release process.
-
 ### What is enrichment?
 
 The data that eBPF collects from the kernel includes no knowledge about Kubernetes, container

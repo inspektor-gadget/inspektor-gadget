@@ -63,7 +63,6 @@ endif
 # export variables that are used in Makefile.btfgen as well.
 export BPFTOOL ARCH
 
-include crd.mk
 include tests.mk
 include minikube.mk
 
