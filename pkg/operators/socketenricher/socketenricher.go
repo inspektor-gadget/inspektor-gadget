@@ -23,10 +23,8 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	tracer "github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
@@ -62,26 +60,6 @@ func (s *SocketEnricher) ParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (s *SocketEnricher) Dependencies() []string {
-	return nil
-}
-
-func (s *SocketEnricher) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	gi, ok := gadget.(gadgets.GadgetInstantiate)
-	if !ok {
-		return false
-	}
-
-	instance, err := gi.NewInstance()
-	if err != nil {
-		log.Warnf("failed to create dummy %s instance: %s", OperatorName, err)
-		return false
-	}
-
-	_, hasSocketEnricherInterface := instance.(SocketEnricherInterface)
-	return hasSocketEnricherInterface
-}
-
 func (s *SocketEnricher) Init(params *params.Params) error {
 	return nil
 }
@@ -95,14 +73,6 @@ func (s *SocketEnricher) Close() error {
 		s.socketEnricher = nil
 	}
 	return nil
-}
-
-func (s *SocketEnricher) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	return &SocketEnricherInstance{
-		gadgetCtx:      gadgetCtx,
-		manager:        s,
-		gadgetInstance: gadgetInstance,
-	}, nil
 }
 
 type SocketEnricherInstance struct {
@@ -200,6 +170,5 @@ func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map) {
 
 func init() {
 	op := &SocketEnricher{}
-	operators.Register(op)
 	operators.RegisterDataOperator(op)
 }

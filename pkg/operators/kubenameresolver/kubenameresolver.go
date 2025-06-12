@@ -24,10 +24,8 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -58,38 +56,12 @@ func (k *KubeNameResolver) ParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (k *KubeNameResolver) Dependencies() []string {
-	return []string{kubemanager.OperatorName}
-}
-
-func (k *KubeNameResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	km := kubemanager.KubeManager{}
-	if !km.CanOperateOn(gadget) {
-		return false
-	}
-	_, hasNameResolverInterface := gadget.EventPrototype().(KubeNameResolverInterface)
-	return hasNameResolverInterface
-}
-
 func (k *KubeNameResolver) Init(params *params.Params) error {
 	return nil
 }
 
 func (k *KubeNameResolver) Close() error {
 	return nil
-}
-
-func (k *KubeNameResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	k8sInventory, err := common.GetK8sInventoryCache()
-	if err != nil {
-		return nil, fmt.Errorf("creating k8s inventory cache: %w", err)
-	}
-
-	return &KubeNameResolverInstance{
-		gadgetCtx:      gadgetCtx,
-		k8sInventory:   k8sInventory,
-		gadgetInstance: gadgetInstance,
-	}, nil
 }
 
 type KubeNameResolverInstance struct {
@@ -268,6 +240,5 @@ func (m *KubeNameResolverInstance) Stop(gadgetCtx operators.GadgetContext) error
 }
 
 func init() {
-	operators.Register(&KubeNameResolver{})
 	operators.RegisterDataOperator(&KubeNameResolver{})
 }

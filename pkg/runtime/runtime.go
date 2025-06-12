@@ -22,7 +22,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -38,14 +37,10 @@ type GadgetContext interface {
 	ID() string
 	Name() string
 	Parser() parser.Parser
-	GadgetDesc() gadgets.GadgetDesc
 	Context() context.Context
-	Operators() operators.Operators
 	Logger() logger.Logger
 	RuntimeParams() *params.Params
-	GadgetParams() *params.Params
 	Args() []string
-	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
 	UseInstance() bool
 	ExtraInfo() bool

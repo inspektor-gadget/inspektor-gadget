@@ -46,74 +46,33 @@ import (
 // GadgetContext handles running gadgets by the gadget interface; it orchestrates the whole lifecycle of the gadget
 // instance and communicates with gadget and runtime.
 type GadgetContext struct {
-	ctx                      context.Context
-	cancel                   context.CancelFunc
-	id                       string
-	name                     string
-	gadget                   gadgets.GadgetDesc
-	gadgetParams             *params.Params
-	args                     []string
-	runtime                  runtime.Runtime
-	runtimeParams            *params.Params
-	parser                   parser.Parser
-	operators                operators.Operators
-	operatorsParamCollection params.Collection
-	logger                   logger.Logger
-	result                   []byte
-	resultError              error
-	timeout                  time.Duration
+	ctx           context.Context
+	cancel        context.CancelFunc
+	id            string
+	name          string
+	args          []string
+	runtime       runtime.Runtime
+	runtimeParams *params.Params
+	parser        parser.Parser
+	logger        logger.Logger
+	result        []byte
+	resultError   error
+	timeout       time.Duration
 
 	// useInstance, if set, will try to work with existing gadget instances on the server
 	useInstance      bool
 	requestExtraInfo bool
 
-	lock             sync.Mutex
-	dataSources      map[string]datasource.DataSource
-	dataOperators    []operators.DataOperator
-	localOperators   []operators.DataOperatorInstance
-	vars             map[string]any
-	params           []*api.Param
-	prepareCallbacks []func()
-	loaded           bool
-	imageName        string
-	metadata         []byte
-	orasTarget       oras.ReadOnlyTarget
-}
-
-func NewBuiltIn(
-	ctx context.Context,
-	id string,
-	runtime runtime.Runtime,
-	runtimeParams *params.Params,
-	gadget gadgets.GadgetDesc,
-	gadgetParams *params.Params,
-	args []string,
-	operatorsParamCollection params.Collection,
-	parser parser.Parser,
-	logger logger.Logger,
-	timeout time.Duration,
-) *GadgetContext {
-	gCtx, cancel := context.WithCancel(ctx)
-
-	return &GadgetContext{
-		ctx:                      gCtx,
-		cancel:                   cancel,
-		id:                       id,
-		runtime:                  runtime,
-		runtimeParams:            runtimeParams,
-		gadget:                   gadget,
-		gadgetParams:             gadgetParams,
-		args:                     args,
-		parser:                   parser,
-		logger:                   logger,
-		operators:                operators.GetOperatorsForGadget(gadget),
-		operatorsParamCollection: operatorsParamCollection,
-		timeout:                  timeout,
-		requestExtraInfo:         false,
-
-		dataSources: make(map[string]datasource.DataSource),
-		vars:        make(map[string]any),
-	}
+	lock           sync.Mutex
+	dataSources    map[string]datasource.DataSource
+	dataOperators  []operators.DataOperator
+	localOperators []operators.DataOperatorInstance
+	vars           map[string]any
+	params         []*api.Param
+	loaded         bool
+	imageName      string
+	metadata       []byte
+	orasTarget     oras.ReadOnlyTarget
 }
 
 func New(
@@ -131,7 +90,6 @@ func New(
 		imageName:   imageName,
 		dataSources: make(map[string]datasource.DataSource),
 		vars:        make(map[string]any),
-		// dataOperators: operators.GetDataOperators(),
 	}
 	for _, option := range options {
 		option(gadgetContext)
@@ -171,28 +129,12 @@ func (c *GadgetContext) RuntimeParams() *params.Params {
 	return c.runtimeParams
 }
 
-func (c *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
-	return c.gadget
-}
-
-func (c *GadgetContext) Operators() operators.Operators {
-	return c.operators
-}
-
 func (c *GadgetContext) Logger() logger.Logger {
 	return c.logger
 }
 
-func (c *GadgetContext) GadgetParams() *params.Params {
-	return c.gadgetParams
-}
-
 func (c *GadgetContext) Args() []string {
 	return c.args
-}
-
-func (c *GadgetContext) OperatorsParamCollection() params.Collection {
-	return c.operatorsParamCollection
 }
 
 func (c *GadgetContext) Timeout() time.Duration {
