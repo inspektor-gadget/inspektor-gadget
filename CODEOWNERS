@@ -61,7 +61,6 @@
 /gadgets/trace_tcpretrans/ @alban
 
 /integration/ @blanquicet @mqasimsarfraz
-/internal/benchmarks/ @alban
 /internal/test/ @mauriciovasquezbernal
 /pkg/amd64/ @eiffel-fl
 /pkg/arm64/ @eiffel-fl
