@@ -390,7 +390,7 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 		if err := c.start(c.localOperators); err != nil {
 			return fmt.Errorf("starting local operators: %w", err)
 		}
-		c.Logger().Debugf("running...")
+		c.Logger().Infof("running...")
 	}
 
 	if c.ExtraInfo() && extraInfo != nil {
