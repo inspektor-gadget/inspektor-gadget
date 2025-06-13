@@ -246,6 +246,10 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 	case ebpf.CGroupSKB:
 		i.logger.Debugf("Attaching cgroup skb %q to %q", p.Name, attachTo)
 		cgroupPath := findCgroupPath()
+		if p.Name == "ig_trace_dns_ingress" {
+			cgroupPath = "/sys/fs/cgroup/system.slice/docker-d0c8450ca68e70a29ee4e6ed21ed1ea9ab189570e12acca552bd7b71c0555e02.scope"
+		}
+
 		if cgroupPath == "" {
 			return nil, fmt.Errorf("could not find cgroup path for attaching cgroup skb program %q", p.Name)
 		}

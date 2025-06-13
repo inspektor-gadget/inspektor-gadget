@@ -9,6 +9,7 @@
 #include <linux/tcp.h>
 #include <linux/types.h>
 #include <linux/udp.h>
+#include <linux/pkt_cls.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
@@ -20,15 +21,40 @@
 #include <gadget/sockets-map.h>
 #include <gadget/filter.h>
 
+#define SK_ALLOW 1
+
 // Don't include <gadget/filesystem.h> in networking gadgets
 #define GADGET_PATH_MAX 512
 
-unsigned long long load_byte(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.byte");
-unsigned long long load_half(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.half");
-unsigned long long load_word(const void *skb,
-			     unsigned long long off) asm("llvm.bpf.load.word");
+// TODO: This is only to implement an experiment, direct packet access should be used instead.
+static __always_inline __u8 load_byte(const struct __sk_buff *skb, __u32 offset)
+{
+	__u8 value;
+	if (bpf_skb_load_bytes(skb, offset, &value, sizeof(value)) < 0) {
+		return 0; // Return 0 on error
+	}
+	return value;
+}
+
+static __always_inline __u16 load_half(const struct __sk_buff *skb,
+				       __u32 offset)
+{
+	__u16 value;
+	if (bpf_skb_load_bytes(skb, offset, &value, sizeof(value)) < 0) {
+		return 0; // Return 0 on error
+	}
+	return bpf_ntohs(value); // Fix endianess before returning
+}
+
+static __always_inline __u32 load_word(const struct __sk_buff *skb,
+				       __u32 offset)
+{
+	__u32 value;
+	if (bpf_skb_load_bytes(skb, offset, &value, sizeof(value)) < 0) {
+		return 0; // Return 0 on error
+	}
+	return bpf_ntohl(value); // Fix endianess before returning
+}
 
 #ifndef NEXTHDR_HOP
 #define NEXTHDR_HOP 0 /* Hop-by-hop option header. */
@@ -190,7 +216,6 @@ struct {
 	__uint(max_entries, 1024);
 } query_map SEC(".maps");
 
-SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
 	struct event_header_t *event;
@@ -200,24 +225,23 @@ int ig_trace_dns(struct __sk_buff *skb)
 	int i;
 
 	// Do a first pass only to extract the port and drop the packet if it's not DNS
-	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
+	// TODO: Support IP only for know
+	h_proto = ETH_P_IP; // load_half(skb, offsetof(struct ethhdr, h_proto));
 	switch (h_proto) {
 	case ETH_P_IP:
-		proto = load_byte(skb,
-				  ETH_HLEN + offsetof(struct iphdr, protocol));
+		proto = load_byte(skb, offsetof(struct iphdr, protocol));
 		// An IPv4 header doesn't have a fixed size. The IHL field of a packet
 		// represents the size of the IP header in 32-bit words, so we need to
 		// multiply this value by 4 to get the header size in bytes.
-		__u8 ihl_byte = load_byte(skb, ETH_HLEN);
+		__u8 ihl_byte = load_byte(skb, 0);
 		struct iphdr *iph = (struct iphdr *)&ihl_byte;
 		__u8 ip_header_len = iph->ihl * 4;
-		l4_off = ETH_HLEN + ip_header_len;
+		l4_off = ip_header_len;
 		break;
 
 	case ETH_P_IPV6:
-		proto = load_byte(skb,
-				  ETH_HLEN + offsetof(struct ipv6hdr, nexthdr));
-		l4_off = ETH_HLEN + sizeof(struct ipv6hdr);
+		proto = load_byte(skb, offsetof(struct ipv6hdr, nexthdr));
+		l4_off = sizeof(struct ipv6hdr);
 
 // Parse IPv6 extension headers
 // Up to 6 extension headers can be chained. See ipv6_ext_hdr().
@@ -333,10 +357,10 @@ int ig_trace_dns(struct __sk_buff *skb)
 	switch (h_proto) {
 	case ETH_P_IP:
 		event->src.version = event->dst.version = 4;
-		event->dst.addr_raw.v4 = load_word(
-			skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-		event->src.addr_raw.v4 = load_word(
-			skb, ETH_HLEN + offsetof(struct iphdr, saddr));
+		event->dst.addr_raw.v4 =
+			load_word(skb, offsetof(struct iphdr, daddr));
+		event->src.addr_raw.v4 =
+			load_word(skb, offsetof(struct iphdr, saddr));
 		// load_word converts from network to host endianness. Convert back to
 		// network endianness because Inspektor Gadget needs this format for IP addresses.
 		event->src.addr_raw.v4 = bpf_htonl(event->src.addr_raw.v4);
@@ -344,15 +368,13 @@ int ig_trace_dns(struct __sk_buff *skb)
 		break;
 	case ETH_P_IPV6:
 		event->src.version = event->dst.version = 6;
-		if (bpf_skb_load_bytes(
-			    skb, ETH_HLEN + offsetof(struct ipv6hdr, saddr),
-			    &event->src.addr_raw.v6,
-			    sizeof(event->src.addr_raw.v6)))
+		if (bpf_skb_load_bytes(skb, offsetof(struct ipv6hdr, saddr),
+				       &event->src.addr_raw.v6,
+				       sizeof(event->src.addr_raw.v6)))
 			return 0;
-		if (bpf_skb_load_bytes(
-			    skb, ETH_HLEN + offsetof(struct ipv6hdr, daddr),
-			    &event->dst.addr_raw.v6,
-			    sizeof(event->dst.addr_raw.v6)))
+		if (bpf_skb_load_bytes(skb, offsetof(struct ipv6hdr, daddr),
+				       &event->dst.addr_raw.v6,
+				       sizeof(event->dst.addr_raw.v6)))
 			return 0;
 		break;
 	}
@@ -460,6 +482,20 @@ int ig_trace_dns(struct __sk_buff *skb)
 			      event, sizeof(*event));
 
 	return 0;
+}
+
+SEC("cgroup_skb/ingress")
+int ig_trace_dns_ingress(struct __sk_buff *skb)
+{
+	ig_trace_dns(skb);
+	return SK_ALLOW;
+}
+
+SEC("cgroup_skb/egress")
+int ig_trace_dns_egress(struct __sk_buff *skb)
+{
+	ig_trace_dns(skb);
+	return SK_ALLOW;
 }
 
 char _license[] SEC("license") = "GPL";
