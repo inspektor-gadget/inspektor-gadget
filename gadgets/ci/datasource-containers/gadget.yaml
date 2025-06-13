@@ -1,4 +1,5 @@
 name: mygadget
+category: observer
 description: Example gadget
 homepageURL: http://mygadget.com
 documentationURL: https://mygadget.com/docs

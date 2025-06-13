@@ -1,4 +1,5 @@
 name: snapshot process
+category: observer
 description: Show running processes
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_process

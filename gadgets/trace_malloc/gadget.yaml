@@ -1,4 +1,5 @@
 name: trace malloc
+category: observer
 description: use uprobe to trace malloc and free in libc.so
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_malloc
