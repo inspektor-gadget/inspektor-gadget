@@ -33,10 +33,10 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	syscallhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/syscall-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 const (
@@ -145,7 +145,7 @@ type wasmOperatorInstance struct {
 	createdMap      map[uint32]struct{}
 	createdMapMutex sync.RWMutex
 
-	syscallsDeclarations map[string]syscallhelpers.SyscallDeclaration
+	syscallsDeclarations map[string]syscalls.SyscallDeclaration
 
 	mntNsIDMap *ebpf.Map
 }
