@@ -160,11 +160,13 @@ func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInsta
 }
 
 func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
+	c.Logger().Info("preparing gadget info...")
 	_, err := c.initAndPrepareOperators(paramValues)
 	return err
 }
 
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
+	c.Logger().Info("starting gadget...")
 	defer c.cancel()
 
 	metricAttribs := attribute.NewSet(
@@ -183,7 +185,7 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 		return fmt.Errorf("starting operators: %w", err)
 	}
 
-	c.Logger().Debugf("running...")
+	c.Logger().Infof("running...")
 
 	WaitForTimeoutOrDone(c)
 	c.stop(dataOperatorInstances)

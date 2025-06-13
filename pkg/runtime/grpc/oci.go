@@ -55,6 +55,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 		in.Flags |= api.GadgetInfoRequestFlagUseInstance
 	}
 
+	gadgetCtx.Logger().Info("getting gadget info...")
 	out, err := client.GetGadgetInfo(gadgetCtx.Context(), in)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget info: %w", err)
@@ -94,6 +95,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *para
 
 	gadgetCtx.SetVar(runtime.NumRunTargets, len(targets))
 
+	gadgetCtx.Logger().Info("starting gadget...")
 	_, err = r.runGadgetOnTargets(gadgetCtx, paramValues, targets)
 	return err
 }
