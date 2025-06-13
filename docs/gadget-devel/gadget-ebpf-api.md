@@ -180,6 +180,25 @@ if (skb_val != NULL) {
 }
 ```
 
+### Optional Fields
+
+Some of the fields provided by the socket enricher are optional and their size
+is configurable, it means, the administrator configuring IG can disable them or
+change their max size to reduce the resource consumption. In order to use these
+fields, Gadgets MUST use `bpf_core_field_exists()` to check if a specific field
+is enabled and `bpf_core_field_size()` to get their size.
+
+```C
+...
+bool cwd_exists = bpf_core_field_exists(skb_val->cwd);
+int cwd_len = bpf_core_field_size(skb_val->cwd);
+
+if (cwd_exists) {
+	bpf_probe_read_kernel_str(&event->cwd, cwd_len, skb_val->cwd);
+}
+...
+```
+
 ## Enriched types
 
 When a gadget emits an event with one of the following fields, it will be
