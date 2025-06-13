@@ -15,10 +15,13 @@
 package filter
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 
+	"github.com/PaesslerAG/gval"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -30,9 +33,10 @@ import (
 type comparisonType int
 
 const (
-	name        = "filter"
-	ParamFilter = "filter"
-	Priority    = 9000
+	name            = "filter"
+	ParamFilter     = "filter"
+	ParamFilterExpr = "filter-expr"
+	Priority        = 9000
 )
 
 const (
@@ -78,7 +82,11 @@ func (f *filterOperator) InstanceParams() api.Params {
   Example: --filter 'field!~regex'
         `,
 		Alias: "F",
-	}}
+	},
+		&api.Param{
+			Key: ParamFilterExpr,
+		},
+	}
 }
 
 func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -100,6 +108,13 @@ func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 		}
 	}
 
+	filterExprCfg := instanceParamValues[ParamFilterExpr]
+	if filterExprCfg != "" {
+		err := fop.addFilterExpr(gadgetCtx, filterExprCfg)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return fop, nil
 }
 
@@ -108,7 +123,8 @@ func (f *filterOperator) Priority() int {
 }
 
 type filterOperatorInstance struct {
-	ffns map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool
+	ffns        map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool
+	filterExprs []func(datasource.DataSource, datasource.Data) bool
 }
 
 func (f *filterOperatorInstance) Name() string {
@@ -261,6 +277,72 @@ func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, fi
 	}
 
 	f.ffns[filterds] = append(f.ffns[filterds], ff)
+	return nil
+}
+
+type dataCustomSelector struct {
+	ds     datasource.DataSource
+	data   datasource.Data
+	parent datasource.FieldAccessor
+}
+
+func (s *dataCustomSelector) SelectGVal(_ context.Context, k string) (interface{}, error) {
+	var accessor datasource.FieldAccessor
+	if s.parent != nil {
+		k = s.parent.FullName() + "." + k
+	}
+	accessor = s.ds.GetField(k)
+	if accessor == nil {
+		return nil, fmt.Errorf("field %q not found in datasource %q", k, s.ds.Name())
+	}
+	if len(accessor.SubFields()) > 0 {
+		return &dataCustomSelector{
+			ds:     s.ds,
+			data:   s.data,
+			parent: accessor,
+		}, nil
+	}
+
+	ret, err := accessor.String(s.data)
+	if err != nil {
+		return nil, fmt.Errorf("selecting field %q from datasource %q: %w", k, s.ds.Name(), err)
+	}
+	return ret, nil
+}
+
+func (f *filterOperatorInstance) addFilterExpr(gadgetCtx operators.GadgetContext, filter string) error {
+	for _, ds := range gadgetCtx.GetDataSources() {
+		extensions := []gval.Language{gval.Constant("ds", ds.Name())}
+		extensions = append(extensions,
+			gval.Function("len", func(arguments ...interface{}) (interface{}, error) {
+				return len(arguments[0].(string)), nil
+			}),
+		)
+		eval, err := gval.Full(extensions...).
+			NewEvaluable(filter)
+		if err != nil {
+			log.Errorf("parsing filter expression %q: %v", filter, err)
+			return err
+		}
+
+		ff := func(ds datasource.DataSource, data datasource.Data) bool {
+			b, err := eval.EvalBool(
+				gadgetCtx.Context(),
+				map[string]interface{}{"data": &dataCustomSelector{
+					ds:     ds,
+					data:   data,
+					parent: nil,
+				}},
+			)
+			if err != nil {
+				log.Errorf("evaluating filter expression %q: %v", filter, err)
+				return true // if we cannot evaluate the expression, we do not filter out the data
+			}
+			return b
+		}
+		f.ffns[ds] = append(f.ffns[ds], ff)
+	}
+
 	return nil
 }
 
