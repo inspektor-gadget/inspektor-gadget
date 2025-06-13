@@ -19,6 +19,7 @@
 #include <gadget/types.h>
 #include <gadget/sockets-map.h>
 #include <gadget/filter.h>
+#include <linux/pkt_cls.h>
 
 #define SK_ALLOW 1
 
@@ -37,8 +38,8 @@ static inline void process(struct __sk_buff *skb)
 	};
 
 	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	if (gadget_should_discard_data_by_skb(skb_val))
-		return;
+	//if (gadget_should_discard_data_by_skb(skb_val))
+	//	return;
 
 	event.timestamp_raw = bpf_ktime_get_boot_ns();
 
@@ -48,18 +49,39 @@ static inline void process(struct __sk_buff *skb)
 	gadget_output_buf(skb, &events, &event, sizeof(event));
 }
 
-SEC("cgroup_skb/egress")
-int demo_egress(struct __sk_buff *skb)
+//SEC("cgroup_skb/egress")
+//int demo_egress(struct __sk_buff *skb)
+//{
+//	process(skb);
+//	return SK_ALLOW;
+//}
+//
+//SEC("cgroup_skb/ingress")
+//int demo_ingress(struct __sk_buff *skb)
+//{
+//	process(skb);
+//	return SK_ALLOW;
+//}
+
+
+//SEC("classifier/egress/drop")
+//int egress_drop(struct __sk_buff *skb) {
+//	process(skb);
+//	return TC_ACT_UNSPEC;
+//}
+//
+//SEC("classifier/ingress/drop")
+//int ingress_drop(struct __sk_buff *skb) {
+//	process(skb);
+//	return TC_ACT_UNSPEC;
+//}
+
+SEC("socket1")
+int ig_trace_dns(struct __sk_buff *skb)
 {
 	process(skb);
-	return SK_ALLOW;
+	return 0;
 }
 
-SEC("cgroup_skb/ingress")
-int demo_ingress(struct __sk_buff *skb)
-{
-	process(skb);
-	return SK_ALLOW;
-}
 
 char _license[] SEC("license") = "GPL";
