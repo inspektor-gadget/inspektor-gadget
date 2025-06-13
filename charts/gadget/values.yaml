@@ -27,6 +27,9 @@ config:
   # -- Daemon Log Level. Valid values are: "trace", "debug", "info", "warning", "error", "fatal", "panic"
   daemonLogLevel: "info"
 
+  # -- Namespace where Inspektor Gadget is running
+  gadgetNamespace: "gadget"
+
   # -- Verify image-based gadgets
   verifyGadgets: true
 
