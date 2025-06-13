@@ -35,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/otel/helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -45,6 +46,10 @@ const (
 
 	AnnotationLogsBody     = "logs.body"
 	AnnotationLogsSeverity = "logs.severity"
+
+	AnnotationAttributesPrefix      = "logs.attribute."
+	AnnotationAttributesValueSuffix = ".value"
+	AnnotationAttributesTypeSuffix  = ".type"
 
 	FieldNameBody      = "body"
 	FieldNameTimestamp = "timestamp"
@@ -233,6 +238,26 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 					return
 				}
 				record.SetBody(otellog.StringValue(s.(string)))
+			})
+		}
+
+		// Read additional static values from annotations
+		staticValFns, err := helpers.GetKeyValueFuncsFromAnnotations[string](
+			annotations,
+			AnnotationAttributesPrefix,
+			AnnotationAttributesValueSuffix,
+			AnnotationAttributesTypeSuffix,
+			otellog.Int64Value,
+			otellog.Float64Value,
+			otellog.StringValue,
+		)
+		if err != nil {
+			return fmt.Errorf("preparing static attributes: %w", err)
+		}
+		for _, fn := range staticValFns {
+			k, v := fn()
+			prep = append(prep, func(data datasource.Data) otellog.KeyValue {
+				return otellog.KeyValue{Key: k, Value: v}
 			})
 		}
 
