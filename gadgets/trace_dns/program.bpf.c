@@ -301,7 +301,16 @@ int ig_trace_dns(struct __sk_buff *skb)
 		if (skb->len <= dns_off)
 			return 0;
 
-		// DNS is after the TCP header and the 2 bytes of the length of the DNS packet
+		// DNS messages over TCP are prefixed with a two byte length field which
+		// gives the message length. Compare the calculated length to the actual
+		// length of the packet to avoid parsing fragmented packets.
+		// https://www.rfc-editor.org/rfc/rfc1035#section-4.2.2
+		// TODO: Remove this check if we can reassemble TCP packets
+		__u16 cal_len = load_half(skb, dns_off);
+		if (cal_len != skb->len - dns_off - 2)
+			return 0;
+
+		// Skip the length field
 		dns_off += 2;
 		break;
 	default:
