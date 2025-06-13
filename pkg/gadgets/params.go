@@ -16,10 +16,8 @@ package gadgets
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
 const (
@@ -41,60 +39,6 @@ const (
 // DefaultSort can be implemented in addition to the Gadget interface, to specify the default sorting columns
 type DefaultSort interface {
 	SortByDefault() []string
-}
-
-// GadgetParams returns params specific to the gadgets' type - for example, it returns
-// parameters for 'sort' and 'max-rows' for gadgets with sortable results, and 'interval'
-// for periodically called gadgets
-func GadgetParams(gadget GadgetDesc, gType GadgetType, parser parser.Parser) params.ParamDescs {
-	p := params.ParamDescs{}
-	if gType.IsPeriodic() {
-		p.Add(IntervalParams()...)
-	}
-	if gType.CanSort() {
-		p.Add(SortableParams(gadget, parser)...)
-	}
-	return p
-}
-
-func IntervalParams() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:          ParamInterval,
-			Title:        "Interval",
-			DefaultValue: "1",
-			TypeHint:     params.TypeUint32,
-			Description:  "Interval (in Seconds)",
-		},
-	}
-}
-
-func SortableParams(gadget GadgetDesc, parser parser.Parser) params.ParamDescs {
-	if parser == nil {
-		return nil
-	}
-
-	var defaultSort []string
-	if sortInterface, ok := gadget.(DefaultSort); ok {
-		defaultSort = sortInterface.SortByDefault()
-	}
-
-	return params.ParamDescs{
-		{
-			Key:          ParamMaxRows,
-			Title:        "Max Rows",
-			Alias:        "m",
-			DefaultValue: "50",
-			TypeHint:     params.TypeUint32,
-			Description:  "Maximum number of rows to return",
-		},
-		{
-			Key:          ParamSortBy,
-			Title:        "Sort By",
-			DefaultValue: strings.Join(defaultSort, ","),
-			Description:  "Sort by columns. Join multiple columns with ','. Prefix a column with '-' to sort in descending order.",
-		},
-	}
 }
 
 // ParamsFromMap fills the given params (gadget, runtime and operator) using values from `paramMap`. It looks up

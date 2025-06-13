@@ -925,7 +925,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	info("Retrieving Gadget Catalog...\n")
+	info("Retrieving Deploy Info...\n")
 	err = grpcRuntime.UpdateDeployInfo()
 	if err != nil {
 		fmt.Printf("> failed: %v\n", err)

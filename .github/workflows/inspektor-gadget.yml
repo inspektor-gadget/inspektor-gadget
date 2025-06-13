@@ -1166,7 +1166,7 @@ jobs:
         echo "github.event.pull_request.head.repo.full_name: $EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME"
         echo "github.repository: $REPOSITORY"
     - name: Run benchmarks
-      run: go test -exec sudo -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/... | tee output.txt
+      run: go test -exec sudo -bench=. -run=Benchmark ./... | tee output.txt
     #- name: Download previous benchmark data
     #  uses: actions/cache@v1
     #  with:
@@ -1313,7 +1313,7 @@ jobs:
           kubectl logs -n gadget daemonset/gadget
           exit 1
         fi
-        
+
         # Uninstall the chart
         helm uninstall gadget --namespace gadget
 

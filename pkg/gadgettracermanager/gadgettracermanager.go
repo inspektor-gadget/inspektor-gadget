@@ -308,9 +308,11 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 	}
 
 	// Dirty hack
-	op := operators.GetRaw("KubeManager")
-	if setter, ok := op.(SetGadgetTracerMgr); ok {
-		setter.SetGadgetTracerMgr(g)
+	allOps := operators.GetDataOperators()
+	if op, ok := allOps["KubeManager"]; ok {
+		if setter, ok := op.(SetGadgetTracerMgr); ok {
+			setter.SetGadgetTracerMgr(g)
+		}
 	}
 	return g, nil
 }

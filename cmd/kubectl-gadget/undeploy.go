@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -229,14 +228,8 @@ out:
 		fmt.Println("Inspektor Gadget is being removed")
 	}
 
-	// Cleanup state related to the deployment (everything but the catalog)
-	info, err := deployinfo.Load()
-	// It's a cleanup action, not needed to warn / error out
-	if err != nil {
-		log.Warnf("failed to load deploy info: %s", err)
-		return nil
-	}
-	deployinfo.Store(&deployinfo.DeployInfo{Catalog: info.Catalog})
+	// Cleanup state related to the deployment
+	deployinfo.Store(&deployinfo.DeployInfo{})
 
 	return nil
 }
