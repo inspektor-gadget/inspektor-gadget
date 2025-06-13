@@ -84,6 +84,10 @@ func (s *simpleOperator) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (s *simpleOperator) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func (s *simpleOperator) PreStart(gadgetCtx operators.GadgetContext) error {
 	if s.onPreStart != nil {
 		return s.onPreStart(gadgetCtx)

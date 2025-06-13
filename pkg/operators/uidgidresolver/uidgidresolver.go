@@ -245,7 +245,11 @@ func (m *UidGidResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 	// We need to start the cache here because it's too late to start it in
 	// Start() as other operators could be started before and generate events
 	// that need the cache
-	return m.uidGidCache.Start()
+	if err := m.uidGidCache.Start(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *UidGidResolverInstance) Start(gadgetCtx operators.GadgetContext) error {
@@ -254,6 +258,10 @@ func (m *UidGidResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 
 func (m *UidGidResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	m.uidGidCache.Stop()
+	return nil
+}
+
+func (m *UidGidResolverInstance) Close(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
