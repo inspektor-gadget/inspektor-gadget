@@ -89,3 +89,45 @@ func (i *ebpfInstance) validateGlobalConstVoidPtrVar(t btf.Type, varName string)
 
 	return nil
 }
+
+// uintFromBTF resolves the __uint macro, which is a pointer to a sized
+// array, e.g. for int (*foo)[10], this function will return 10.
+func uintFromBTF(typ btf.Type) (uint32, error) {
+	ptr, ok := typ.(*btf.Pointer)
+	if !ok {
+		return 0, fmt.Errorf("not a pointer: %v", typ)
+	}
+
+	arr, ok := ptr.Target.(*btf.Array)
+	if !ok {
+		return 0, fmt.Errorf("not a pointer to array: %v", typ)
+	}
+
+	return arr.Nelems, nil
+}
+
+// same as above for __type
+func typeFromBTF(typ btf.Type) (btf.Type, error) {
+	vk, ok := typ.(*btf.Pointer)
+	if !ok {
+		return nil, fmt.Errorf("value type is not a pointer: %T", typ)
+	}
+
+	return vk.Target, nil
+}
+
+// same as above for __string
+func stringFromBTF(typ btf.Type) (string, error) {
+	vk, ok := typ.(*btf.Pointer)
+	if !ok {
+		return "", fmt.Errorf("value type is not a pointer: %T", typ)
+	}
+
+	typ = btf.UnderlyingType(vk.Target)
+	fwd, ok := typ.(*btf.Fwd)
+	if !ok {
+		return "", fmt.Errorf("value type is not a forward declaration: %T", typ)
+	}
+
+	return fwd.Name, nil
+}

@@ -196,6 +196,8 @@ type ebpfInstance struct {
 	kernelStackMap *ebpf.Map
 	userStackMap   *ebpf.Map
 
+	mapNames map[btf.Type]string
+
 	gadgetCtx operators.GadgetContext
 	done      chan struct{}
 
@@ -221,16 +223,6 @@ func (i *ebpfInstance) loadSpec() error {
 func (i *ebpfInstance) analyze() error {
 	prefixLookups := []populateEntry{
 		{
-			prefixFunc:   hasPrefix(tracerInfoPrefix),
-			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateTracer,
-		},
-		{
-			prefixFunc:   hasPrefix(snapshottersPrefix),
-			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateSnapshotter,
-		},
-		{
 			prefixFunc:   hasPrefix(paramPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateParam,
@@ -239,11 +231,6 @@ func (i *ebpfInstance) analyze() error {
 			prefixFunc:   hasPrefix(tracerMapPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.fixTracerMap,
-		},
-		{
-			prefixFunc:   hasPrefix(mapIterPrefix),
-			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateMapIter,
 		},
 		{
 			prefixFunc: func(s string) (string, bool) {
@@ -309,6 +296,40 @@ func (i *ebpfInstance) analyze() error {
 		i.logger.Debugf("> sectionName: %s", program.SectionName)
 		i.logger.Debugf("> license    : %s", program.License)
 	}
+
+	i.mapNames = make(map[btf.Type]string)
+
+	var mapsDs *btf.Datasec
+	i.collectionSpec.Types.TypeByName(mapsSecName, &mapsDs)
+
+	if mapsDs != nil {
+		for _, vs := range mapsDs.Vars {
+			v, ok := vs.Type.(*btf.Var)
+			if !ok {
+				return fmt.Errorf("section %v: unexpected type %s", ".maps", vs.Type)
+			}
+			name := string(v.Name)
+
+			// Each Var representing a BTF map definition contains a Struct.
+			mapStruct, ok := btf.UnderlyingType(v.Type).(*btf.Struct)
+			if !ok {
+				return fmt.Errorf("expected struct, got %s", v.Type)
+			}
+			i.mapNames[mapStruct] = name
+		}
+	}
+
+	if err := i.populateTracers(); err != nil {
+		return fmt.Errorf("populating tracers: %w", err)
+	}
+	if err := i.populateMapIters(); err != nil {
+		return fmt.Errorf("populating map iters: %w", err)
+	}
+	if err := i.populateSnapshotters(); err != nil {
+		return fmt.Errorf("populating map iters: %w", err)
+	}
+
+	i.mapNames = nil
 	return nil
 }
 

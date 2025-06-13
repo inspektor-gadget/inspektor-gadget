@@ -67,4 +67,6 @@
 #define GADGET_MAPITER(name, mapname) \
 	const void *gadget_mapiter_##name##___##mapname __attribute__((unused));
 
+#define __string(name, val) struct val *name;
+
 #endif /* __MACROS_H */
