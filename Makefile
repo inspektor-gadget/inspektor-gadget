@@ -305,10 +305,6 @@ integration-tests: kubectl-gadget
 component-tests:
 	go test -exec sudo -v ./integration/components/... -integration -timeout 5m --builder-image $(GADGET_BUILDER)
 
-.PHONY: generate-documentation
-generate-documentation:
-	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
-
 .PHONY: website-local-update
 website-local-update:
 	# Check that the website repository is cloned in the parent directory
@@ -462,7 +458,6 @@ help:
 	@echo  'Development targets:'
 	@echo  '  clang-format			- Format ebpf source files'
 	@echo  '  lint				- Lint the Go code'
-	@echo  '  generate-documentation	- Generate documentation for gadgets and trace CRD'
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'

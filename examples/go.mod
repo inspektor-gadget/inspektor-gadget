@@ -3,7 +3,6 @@ module examples
 go 1.24.0
 
 require (
-	github.com/cilium/ebpf v0.18.0
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
 	github.com/opencontainers/runtime-spec v1.2.1
 	k8s.io/api v0.33.1
@@ -22,6 +21,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/cilium/ebpf v0.18.0 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
 	github.com/containerd/containerd v1.7.27 // indirect
 	github.com/containerd/containerd/api v1.8.0 // indirect
@@ -66,7 +66,6 @@ require (
 	github.com/google/go-containerregistry v0.20.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gopacket/gopacket v1.3.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

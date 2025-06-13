@@ -15,24 +15,13 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
-)
-
-// Gadget pod
-var (
-	ErrGadgetPodNotFound      = errors.New("gadget pod not found")
-	ErrMultipleGadgetPodFound = errors.New("multiple gadget pods found")
 )
 
 // Kubernetes client
 
 func WrapInErrSetupK8sClient(err error) error {
 	return fmt.Errorf("setting up Kubernetes client: %w", err)
-}
-
-func WrapInErrListNodes(err error) error {
-	return fmt.Errorf("listing nodes: %w", err)
 }
 
 func WrapInErrListPods(err error) error {
@@ -55,54 +44,10 @@ func WrapInErrParserCreate(err error) error {
 	return fmt.Errorf("creating parser: %w", err)
 }
 
-// Gadget Tracers
-
-func WrapInErrGadgetTracerCreateAndRun(err error) error {
-	return fmt.Errorf("creating and running gadget tracer: %w", err)
-}
-
-// Gadget operations
-
-func WrapInErrRunGadget(err error) error {
-	return fmt.Errorf("running gadget: %w", err)
-}
-
-func WrapInErrRunGadgetOnNode(node string, err error) error {
-	return fmt.Errorf("running gadget on node %q: %w", node, err)
-}
-
-func WrapInErrRunGadgetOnAllNode(err error) error {
-	return fmt.Errorf("running gadget on all nodes: %w", err)
-}
-
-func WrapInErrStopGadget(err error) error {
-	return fmt.Errorf("stopping gadget: %w", err)
-}
-
-func WrapInErrGenGadgetOutput(err error) error {
-	return fmt.Errorf("generating gadget's output: %w", err)
-}
-
-func WrapInErrGetGadgetOutput(err error) error {
-	return fmt.Errorf("getting gadget's output: %w", err)
-}
-
-func WrapInErrListGadgetTraces(err error) error {
-	return fmt.Errorf("listing the running traces: %w", err)
-}
-
 // Arguments
 
 func WrapInErrOutputModeNotSupported(mode string) error {
 	return fmt.Errorf("%q output mode is not supported", mode)
-}
-
-func WrapInErrArgsNotSupported(args string) error {
-	return fmt.Errorf("arguments not supported: %s", args)
-}
-
-func WrapInErrMissingArgs(args string) error {
-	return fmt.Errorf("missing required arguments: %s", args)
 }
 
 func WrapInErrInvalidArg(arg string, err error) error {

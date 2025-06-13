@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -72,11 +71,6 @@ func init() {
 }
 
 func runUndeploy(cmd *cobra.Command, args []string) error {
-	traceClient, err := utils.GetTraceClient()
-	if err != nil {
-		return fmt.Errorf("getting trace client: %w", err)
-	}
-
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		return commonutils.WrapInErrSetupK8sClient(err)
@@ -99,58 +93,13 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 
 	errs := []string{}
 
-	// 1. remove traces
-
-	// We need to wait a bit after removing the traces and before
-	// removing the daemon set to give the trace controller an
-	// opportunity to remove it. If there are still traces after
-	// waiting, we patch them removing the finalizers to let Kubernetes
-	// remove them.
-	// ref https://github.com/kubernetes/kubernetes/issues/60538#issuecomment-369099998
-	delay := 10
-	i := 0
-	n := 7
-
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 	imagePolicyName := fmt.Sprintf("%s-image-policy", gadgetNamespace)
 
-again:
-	fmt.Println("Removing traces...")
-	err = traceClient.GadgetV1alpha1().Traces(gadgetNamespace).DeleteCollection(
-		context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
-		errs = append(errs, fmt.Sprintf("failed to remove the traces: %s", err))
-	}
-
-	time.Sleep(time.Duration(delay) * time.Millisecond)
-
-	traces, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).List(
-		context.TODO(), metav1.ListOptions{},
-	)
-	if err == nil && len(traces.Items) != 0 {
-		i++
-		if i < n {
-			delay = 2 * delay
-			goto again
-		}
-
-		// It's taking too long to delete the traces. Remove the
-		// finalizers and let k8s remove them immediately.
-		for _, trace := range traces.Items {
-			data := []byte("{\"metadata\":{\"finalizers\":[]}}")
-			_, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Patch(
-				context.TODO(), trace.Name, types.MergePatchType, data, metav1.PatchOptions{},
-			)
-			if err != nil {
-				errs = append(
-					errs, fmt.Sprintf("failed to patch trace %q: %s", trace.Name, err),
-				)
-			}
-		}
-	}
-
 	// 2. remove crd
+	// Even if we're not using CRDs anymore, we keep this code here in case a
+	// user tries to undeploy and old IG instance with a newer kubectl-gadget
+	// binary.
 	fmt.Println("Removing CRD...")
 	err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
 		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
