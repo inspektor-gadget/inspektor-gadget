@@ -393,6 +393,13 @@ func (p *processOperatorInstance) NumCPU() int {
 func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetContext) {
 	defer p.wg.Done()
 
+	// Collect the first round without emitting to be able to calculate the CPU usage deltas in the
+	// second run after p.interval
+	err := p.collectProcessInfo(gadgetCtx, false)
+	if err != nil {
+		gadgetCtx.Logger().Errorf("Error collecting process info: %v", err)
+	}
+
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
@@ -401,7 +408,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 		case <-p.done:
 			return
 		case <-ticker.C:
-			err := p.collectAndEmitProcessInfo(gadgetCtx)
+			err := p.collectProcessInfo(gadgetCtx, true)
 			if err != nil {
 				gadgetCtx.Logger().Errorf("Error collecting process info: %v", err)
 			}
@@ -409,7 +416,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 	}
 }
 
-func (p *processOperatorInstance) collectAndEmitProcessInfo(gadgetCtx operators.GadgetContext) error {
+func (p *processOperatorInstance) collectProcessInfo(gadgetCtx operators.GadgetContext, emit bool) error {
 	// Get the current time for CPU usage calculation if needed
 	var timeDelta float64
 	if p.cpuField != nil {
@@ -553,13 +560,15 @@ func (p *processOperatorInstance) collectAndEmitProcessInfo(gadgetCtx operators.
 		packetArray.Append(packet)
 	}
 
-	// Emit the packet array with all processes
-	err = p.dataSource.EmitAndRelease(packetArray)
-	if err != nil {
-		return fmt.Errorf("emitting packet array: %w", err)
+	if emit {
+		// Emit the packet array with all processes
+		err = p.dataSource.EmitAndRelease(packetArray)
+		if err != nil {
+			return fmt.Errorf("emitting packet array: %w", err)
+		}
+	} else {
+		p.dataSource.Release(packetArray)
 	}
-	// Set to nil so it's not released again in the defer function
-	packetArray = nil
 
 	return nil
 }
