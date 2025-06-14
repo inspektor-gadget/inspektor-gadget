@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import (
 	"github.com/blang/semver"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -61,6 +63,8 @@ const (
 type ociHandler struct {
 	globalParams *params.Params
 }
+
+var trace = otel.Tracer("oci-handler")
 
 func (o *ociHandler) Name() string {
 	return "oci"
@@ -303,6 +307,9 @@ func constructTempConfig(ann string) (map[string]any, int, error) {
 }
 
 func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
+	ctx, span := trace.Start(gadgetCtx.Context(), "init")
+	defer span.End()
+
 	if len(gadgetCtx.ImageName()) == 0 {
 		return fmt.Errorf("imageName empty")
 	}
@@ -352,14 +359,14 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	if target == nil {
 		// Make sure the image is available, either through pulling or by just accessing a local copy
 		// TODO: add security constraints (e.g. don't allow pulling - add GlobalParams for that)
-		err := oci.EnsureImage(gadgetCtx.Context(), gadgetCtx.ImageName(),
+		err := oci.EnsureImage(ctx, gadgetCtx.ImageName(),
 			imgOpts, o.instanceParams.Get(pullParam).AsString())
 		if err != nil {
 			return fmt.Errorf("ensuring image: %w", err)
 		}
 	}
 
-	manifest, err := oci.GetManifestForHost(gadgetCtx.Context(), target, gadgetCtx.ImageName())
+	manifest, err := oci.GetManifestForHost(ctx, target, gadgetCtx.ImageName())
 	if err != nil {
 		return fmt.Errorf("getting manifest: %w", err)
 	}
@@ -367,7 +374,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	log := gadgetCtx.Logger()
 	checkBuilderVersion(manifest, log, version.Version())
 
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, manifest.Config)
+	r, err := oci.GetContentFromDescriptor(ctx, target, manifest.Config)
 	if err != nil {
 		return fmt.Errorf("getting metadata: %w", err)
 	}
@@ -412,6 +419,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	gadgetCtx.SetVar("config", viper)
 
+	imgOpCtx, imgOpSpan := trace.Start(ctx, "imageOperators")
+	defer imgOpSpan.End() // make sure this occurs after handling image operators (=> new func)
+
 	for _, layer := range manifest.Layers {
 		log.Debugf("layer > %+v", layer)
 		op, ok := operators.GetImageOperatorForMediaType(layer.MediaType)
@@ -420,14 +430,20 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 
 		log.Debugf("found image op %q", op.Name())
-		opInst, err := op.InstantiateImageOperator(gadgetCtx, target, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
+		opCtx, opSpan := trace.Start(imgOpCtx, "imageOperators.instantiate."+op.Name())
+		opInst, err := op.InstantiateImageOperator(gadgetCtx.WithContext(opCtx), target, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
 		}
 		if opInst == nil {
 			log.Debugf("> skipped %s", op.Name())
+			opSpan.AddEvent("skipped")
+			opSpan.End()
 			continue
 		}
+		opSpan.End()
 		o.imageOperatorInstances = append(o.imageOperatorInstances, opInst)
 	}
 
@@ -445,13 +461,19 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
-		err := opInst.Prepare(o.gadgetCtx)
+		opCtx, opSpan := trace.Start(imgOpCtx, "imageOperators.prepare."+opInst.Name())
+
+		err := opInst.Prepare(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("preparing operator %q: %w", opInst.Name(), err)
 		}
 
 		// Add gadget params prefixed with operators' name
 		extraParams = append(extraParams, opInst.ExtraParams(gadgetCtx).AddPrefix(opInst.Name())...)
+
+		opSpan.End()
 	}
 
 	o.extraParams = extraParams
@@ -459,6 +481,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
+	ctx, span := trace.Start(gadgetCtx.Context(), "start")
+	defer span.End()
+
 	started := []operators.ImageOperatorInstance{}
 
 	for _, opInst := range o.imageOperatorInstances {
@@ -466,24 +491,32 @@ func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if !ok {
 			continue
 		}
-		err := preStart.PreStart(gadgetCtx)
+		opCtx, opSpan := trace.Start(ctx, "imageOperators.preStart."+opInst.Name())
+		err := preStart.PreStart(gadgetCtx.WithContext(opCtx))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 
 	for _, opInst := range o.imageOperatorInstances {
-		err := opInst.Start(o.gadgetCtx)
+		opCtx, opSpan := trace.Start(ctx, "imageOperators.start."+opInst.Name())
+		err := opInst.Start(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
 			// Stop all started operators
 			for _, startedOp := range started {
 				startedOp.Stop(o.gadgetCtx)
 			}
 
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
 
 		started = append(started, opInst)
+		opSpan.End()
 	}
 	return nil
 }
@@ -503,11 +536,17 @@ func (o *OciHandlerInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	ctx, span := trace.Start(gadgetCtx.Context(), "stop")
+	defer span.End()
+
 	for _, opInst := range o.imageOperatorInstances {
-		err := opInst.Stop(o.gadgetCtx)
+		opCtx, opSpan := trace.Start(ctx, "imageOperators.stop."+opInst.Name())
+		err := opInst.Stop(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
 			o.gadgetCtx.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 
 	for _, opInst := range o.imageOperatorInstances {
@@ -515,10 +554,13 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		if !ok {
 			continue
 		}
-		err := postStop.PostStop(gadgetCtx)
+		opCtx, opSpan := trace.Start(ctx, "imageOperators.postStop."+opInst.Name())
+		err := postStop.PostStop(gadgetCtx.WithContext(opCtx))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
 			o.gadgetCtx.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 
 	return nil
