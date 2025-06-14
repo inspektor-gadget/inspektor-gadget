@@ -57,7 +57,7 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utilstest.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs, " ")
-				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", "INVALID-TEST"+expectedArgs, events[0].Args)
 			},
 		},
 		"large_argument_list": {

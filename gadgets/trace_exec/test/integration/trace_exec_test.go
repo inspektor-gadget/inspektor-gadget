@@ -170,7 +170,7 @@ int main(int argc, char *argv[], char **envp) {
 						PupperLayer: false,
 						UpperLayer:  false,
 						FupperLayer: false,
-						Exepath:     "/usr/bin/sh2",
+						Exepath:     "INVALID-TEST" + "/usr/bin/sh2",
 						File:        "/dev/script.sh",
 						Error:       "ENOEXEC",
 						DevMajor:    utils.NormalizedInt,
