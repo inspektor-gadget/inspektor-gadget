@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -433,4 +433,20 @@ func WaitForTimeoutOrDone(c gadgets.GadgetContext) {
 	ctx, cancel := WithTimeoutOrCancel(c.Context(), c.Timeout())
 	defer cancel()
 	<-ctx.Done()
+}
+
+type contextWrapper struct {
+	*GadgetContext
+	ctx context.Context
+}
+
+func (c *contextWrapper) Context() context.Context {
+	return c.ctx
+}
+
+func withNewContext(gadgetCtx *GadgetContext, ctx context.Context) *contextWrapper {
+	return &contextWrapper{
+		GadgetContext: gadgetCtx,
+		ctx:           ctx,
+	}
 }

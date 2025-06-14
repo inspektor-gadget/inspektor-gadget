@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"sort"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -28,7 +30,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
+var tracer = otel.Tracer("gadget-context")
+
 func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]operators.DataOperatorInstance, error) {
+	ctx, span := tracer.Start(c.ctx, "initAndPrepareOperators")
+	defer span.End()
+
 	log := c.Logger()
 
 	ops := c.DataOperators()
@@ -49,6 +56,7 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 	dataOperatorInstances := make([]operators.DataOperatorInstance, 0, len(ops))
 	for _, op := range ops {
+		opContext, opSpan := tracer.Start(ctx, "initAndPrepareOperators.instantiate."+op.Name())
 		log.Debugf("initializing data op %q", op.Name())
 		opParamPrefix := fmt.Sprintf("operator.%s", op.Name())
 
@@ -59,19 +67,27 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		// Ensure all params are present
 		err := apihelpers.NormalizeWithDefaults(instanceParams, opParamValues)
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return nil, fmt.Errorf("normalizing instance params for operator %q: %w", op.Name(), err)
 		}
 
 		err = apihelpers.Validate(instanceParams, opParamValues)
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return nil, fmt.Errorf("validating instance params for operator %q: %w", op.Name(), err)
 		}
 
-		opInst, err := op.InstantiateDataOperator(c, opParamValues)
+		opInst, err := op.InstantiateDataOperator(withNewContext(c, opContext), opParamValues)
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return nil, fmt.Errorf("instantiating operator %q: %w", op.Name(), err)
 		}
 		if opInst == nil {
+			opSpan.AddEvent("skipped")
+			opSpan.End()
 			log.Debugf("> skipped %s", op.Name())
 			continue
 		}
@@ -79,9 +95,13 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 
 		// Add instance params only if operator was actually instantiated (i.e., activated)
 		params = append(params, instanceParams...)
+
+		opSpan.End()
 	}
 
 	for _, opInst := range dataOperatorInstances {
+		opContext, opSpan := tracer.Start(ctx, "initAndPrepareOperators.instantiate."+opInst.Name())
+
 		log.Debugf("preparing op %q", opInst.Name())
 		opParamPrefix := fmt.Sprintf("operator.%s", opInst.Name())
 
@@ -89,9 +109,11 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		// this mainly is postponed to read default values that might differ from before; this second pass is
 		// what is handed over to the remote end
 		if extra, ok := opInst.(operators.DataOperatorExtraParams); ok {
-			pd := extra.ExtraParams(c)
+			pd := extra.ExtraParams(withNewContext(c, opContext))
 			params = append(params, pd.AddPrefix(opParamPrefix)...)
 		}
+
+		opSpan.End()
 	}
 
 	c.SetParams(params)
@@ -100,30 +122,44 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 }
 
 func (c *GadgetContext) start(dataOperatorInstances []operators.DataOperatorInstance) error {
+	ctx, span := tracer.Start(c.ctx, "start")
+	defer span.End()
+
 	for _, opInst := range dataOperatorInstances {
 		preStart, ok := opInst.(operators.PreStart)
 		if !ok {
 			continue
 		}
 		c.Logger().Debugf("pre-starting op %q", opInst.Name())
-		err := preStart.PreStart(c)
+		opContext, opSpan := tracer.Start(ctx, "start.preStart."+opInst.Name())
+		err := preStart.PreStart(withNewContext(c, opContext))
 		if err != nil {
 			c.cancel()
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("pre-starting operator %q: %w", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 	for _, opInst := range dataOperatorInstances {
 		c.Logger().Debugf("starting op %q", opInst.Name())
-		err := opInst.Start(c)
+		opContext, opSpan := tracer.Start(ctx, "start.start."+opInst.Name())
+		err := opInst.Start(withNewContext(c, opContext))
 		if err != nil {
 			c.cancel()
+			opSpan.SetStatus(codes.Error, err.Error())
+			opSpan.End()
 			return fmt.Errorf("starting operator %q: %w", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 	return nil
 }
 
 func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInstance) {
+	ctx, span := tracer.Start(c.ctx, "stop")
+	defer span.End()
+
 	// Stop/DeInit in reverse order
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
@@ -132,18 +168,24 @@ func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInsta
 			continue
 		}
 		c.Logger().Debugf("pre-stopping op %q", opInst.Name())
-		err := preStop.PreStop(c)
+		opContext, opSpan := tracer.Start(ctx, "stop.preStop."+opInst.Name())
+		err := preStop.PreStop(withNewContext(c, opContext))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
 			c.Logger().Errorf("pre-stopping operator %q: %v", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
 		c.Logger().Debugf("stopping op %q", opInst.Name())
-		err := opInst.Stop(c)
+		opContext, opSpan := tracer.Start(ctx, "stop.stop."+opInst.Name())
+		err := opInst.Stop(withNewContext(c, opContext))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
 			c.Logger().Errorf("stopping operator %q: %v", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 	for i := len(dataOperatorInstances) - 1; i >= 0; i-- {
 		opInst := dataOperatorInstances[i]
@@ -152,10 +194,13 @@ func (c *GadgetContext) stop(dataOperatorInstances []operators.DataOperatorInsta
 			continue
 		}
 		c.Logger().Debugf("post-stopping op %q", opInst.Name())
-		err := postStop.PostStop(c)
+		opContext, opSpan := tracer.Start(ctx, "stop.postStop."+opInst.Name())
+		err := postStop.PostStop(withNewContext(c, opContext))
 		if err != nil {
+			opSpan.SetStatus(codes.Error, err.Error())
 			c.Logger().Errorf("post-stopping operator %q: %v", opInst.Name(), err)
 		}
+		opSpan.End()
 	}
 }
 
