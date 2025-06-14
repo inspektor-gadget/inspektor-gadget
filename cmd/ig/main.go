@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -22,8 +23,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/trace"
+
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -92,6 +96,17 @@ func main() {
 	if err = common.InitConfig(rootFlags); err != nil {
 		log.Fatalf("initializing config: %v", err)
 	}
+
+	// initialize global tracer, if configured
+	err = trace.RegisterGlobalProvider(context.Background())
+	if err != nil {
+		log.Warnf("initializing tracing: %v", err)
+	}
+
+	tracer := otel.Tracer("process")
+	ctx, processSpan := tracer.Start(context.Background(), "process")
+	defer processSpan.End()
+
 	if err = common.SetFlagsForParams(rootCmd, runtime.GlobalParamDescs().ToParams(), config.RuntimeKey); err != nil {
 		log.Fatalf("setting runtime flags from config: %v", err)
 	}
@@ -116,7 +131,7 @@ func main() {
 			}
 		}()
 	}
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
