@@ -20,6 +20,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -57,7 +58,16 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
 )
 
+var startupTime = time.Now()
+
 func main() {
+	startupDuration := time.Since(startupTime)
+
+	if os.Getenv("IG_MEASURE_STARTUP") == "true" {
+		fmt.Printf("Startup time: %+v\n", startupDuration)
+		return
+	}
+
 	if experimental.Enabled() {
 		log.Info("Experimental features enabled")
 	}
