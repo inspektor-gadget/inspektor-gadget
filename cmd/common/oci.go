@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -123,6 +124,8 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 	initializedOperators := false
 
+	gadgetTracer := otel.Tracer("gadget")
+
 	preRun := func(cmd *cobra.Command, args []string) error {
 		err := runtime.Init(runtimeGlobalParams)
 		if err != nil {
@@ -164,16 +167,30 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			return fmt.Errorf("please only specify an image OR manifest")
 		}
 
+		optracer := otel.Tracer("operators")
+		opStartupCtx, opStartupSpan := optracer.Start(cmd.Context(), "operators.startup")
 		ops := make([]operators.DataOperator, 0)
 		for _, op := range operators.GetDataOperators() {
+			opCtx, curOpSpan := optracer.Start(opStartupCtx, "operators.startup."+op.Name())
+
 			// Initialize operator
-			err := op.Init(opGlobalParams[op.Name()])
+			var err error
+			if opWithContext, ok := op.(operators.DataOperatorInitContext); ok {
+				err = opWithContext.InitContext(opCtx, opGlobalParams[op.Name()])
+			} else {
+				err = op.Init(opGlobalParams[op.Name()])
+			}
 			if err != nil {
 				log.Warnf("error initializing operator %s: %v", op.Name(), err)
+				curOpSpan.RecordError(err)
+				curOpSpan.End()
 				continue
 			}
 			ops = append(ops, op)
+			curOpSpan.End()
 		}
+		opStartupSpan.End()
+
 		ops = append(ops, clioperator.CLIOperator, combiner.CombinerOperator, generate_networkpolicy.GNPOperator)
 		initializedOperators = true
 
@@ -210,8 +227,10 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 		}
 
+		gadgetInfoCtx, gadgetInfoSpan := gadgetTracer.Start(cmd.Context(), "GetGadgetInfo")
+		defer gadgetInfoSpan.End()
 		gadgetCtx := gadgetcontext.New(
-			context.Background(),
+			gadgetInfoCtx,
 			imageName,
 			gadgetcontext.WithDataOperators(ops...),
 			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
@@ -279,7 +298,9 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		fe := console.NewFrontend()
 		defer fe.Close()
 
-		ctx := fe.GetContext()
+		feCtx := fe.GetContext()
+		ctx, gadgetSpan := gadgetTracer.Start(feCtx, "RunGadget")
+		defer gadgetSpan.End()
 
 		ops := make([]operators.DataOperator, 0)
 		for _, op := range operators.GetDataOperators() {
