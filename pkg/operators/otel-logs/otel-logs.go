@@ -17,11 +17,13 @@ package otellogs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -34,6 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/expr"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	log2 "github.com/inspektor-gadget/inspektor-gadget/pkg/log"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -66,7 +69,8 @@ type logConfig struct {
 }
 
 type otelLogsOperator struct {
-	providers map[string]*sdklog.LoggerProvider
+	initialized bool
+	providers   map[string]*sdklog.LoggerProvider
 }
 
 func (o *otelLogsOperator) Name() string {
@@ -74,6 +78,10 @@ func (o *otelLogsOperator) Name() string {
 }
 
 func (o *otelLogsOperator) Init(params *params.Params) error {
+	if o.initialized {
+		return nil
+	}
+	o.initialized = true
 	o.providers = make(map[string]*sdklog.LoggerProvider)
 
 	res, _ := resource.New(context.Background(), resource.WithAttributes(
@@ -84,6 +92,8 @@ func (o *otelLogsOperator) Init(params *params.Params) error {
 	if config.Config == nil {
 		return nil
 	}
+
+	globalExporter := config.Config.GetString("otel.log.exporter")
 
 	configs := make(map[string]*logConfig, 0)
 	log.Debugf("loading log exporters")
@@ -117,6 +127,15 @@ func (o *otelLogsOperator) Init(params *params.Params) error {
 		processor := sdklog.NewBatchProcessor(exp)
 		provider := sdklog.NewLoggerProvider(sdklog.WithProcessor(processor), sdklog.WithResource(res))
 		o.providers[k] = provider
+
+		if k == globalExporter {
+			// Register this exporter as global exporter for slog
+			globalLogger := otelslog.NewLogger("inspektor-gadget", otelslog.WithLoggerProvider(provider))
+			slog.SetDefault(globalLogger)
+			log2.SetupLogrusWrapper(globalLogger)
+			slog.Info("global otel-logs exporter initialized")
+		}
+
 		log.Debugf("> log exporter %q with endpoint %q loaded", k, v.Endpoint)
 	}
 
