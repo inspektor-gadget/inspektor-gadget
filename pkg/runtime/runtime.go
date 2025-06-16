@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ type GadgetContext interface {
 	Parser() parser.Parser
 	GadgetDesc() gadgets.GadgetDesc
 	Context() context.Context
+	WithContext(ctx context.Context) operators.GadgetContext
 	Operators() operators.Operators
 	Logger() logger.Logger
 	RuntimeParams() *params.Params
