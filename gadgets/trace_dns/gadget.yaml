@@ -18,19 +18,25 @@ datasources:
           columns.width: 64
           columns.hidden: "true"
           columns.alignment: left
-      anaddr:
+      addresses:
         annotations:
-          columns.width: "16"
+          description: >-
+            Comma-separated list of IP addresses returned in the DNS responses
+            (A and AAAA records, see qtype field). This field is populated only
+            on DNS response packets; it will be empty for pure queries.
       data:
         annotations:
+          description: DNS packet data. It's only for internal use and not intended for user consumption.
           columns.hidden: "true"
           json.skip: "true"
       data_len:
         annotations:
+          description: Length of the DNS packet data. It's only for internal use and not intended for user consumption.
           columns.hidden: "true"
           json.skip: "true"
       dns_off:
         annotations:
+          description: Offset of the DNS packet data in the network packet. It's only for internal use and not intended for user consumption.
           columns.hidden: "true"
           json.skip: "true"
       dst:
@@ -41,25 +47,37 @@ datasources:
         annotations:
           description: DNS query/response ID, used to match queries with responses
           columns.hidden: "true"
+      latency_ns:
+        annotations:
+          description: DNS latency in nanoseconds, calculated as the difference between the DNS response and the corresponding query.
       latency_ns_raw:
         annotations:
           columns.hidden: "true"
-          columns.width: "8"
-          description: DNS request latency
+          description: Raw numeric latency_ns value
       name:
         annotations:
-          description: Domain name being queried
+          description: Domain name being queried in the DNS request or response.
           columns.width: "30"
       num_answers:
         annotations:
           columns.hidden: "true"
-          description: Number of answers
+          description: Number of answers in the DNS response. Empty for DNS queries.
       pkt_type:
         annotations:
+          description: >-
+            Packet direction as classified by the kernel's skb->pkt_type. For
+            DNS packets, the most common pkt_type values are HOST and OUTGOING.
+            HOST indicates a DNS query or response arriving at the container (or
+            host), while OUTGOING represents a DNS packet leaving the container
+            (or host). Other pkt_type values (e.g. BROADCAST, MULTICAST) may
+            appear when using mDNS or LLMNR.
           columns.hidden: "true"
           columns.width: "8"
+          value.one-of: "HOST, BROADCAST, MULTICAST, OTHERHOST, OUTGOING, LOOPBACK, USER, KERNEL"
       pkt_type_raw:
         annotations:
+          description: Raw numeric pkt_type value (0=HOST, 1=BROADCAST, 2=MULTICAST, 3=OTHERHOST, 4=OUTGOING, 5=LOOPBACK, 6=USER, 7=KERNEL)
+          value.one-of: "0, 1, 2, 3, 4, 5, 6, 7"
           columns.hidden: "true"
       qr:
         annotations:
@@ -69,6 +87,8 @@ datasources:
           columns.width: "2"
       qr_raw:
         annotations:
+          description: Raw numeric qr value (0=Q, 1=R)
+          value.one-of: "0, 1"
           columns.hidden: "true"
       qtype:
         annotations:
@@ -76,15 +96,19 @@ datasources:
           value.one-of: "A, NS, CNAME, SOA, PTR, MX, TXT, AAAA, SRV, OPT, WKS, HINFO, MINFO, AXFR, ALL"
       qtype_raw:
         annotations:
+          description: Raw numeric qtype value (1=A, 2=NS, 5=CNAME, 6=SOA, 12=PTR, 15=MX, 16=TXT, 28=AAAA, 33=SRV, 41=OPT, 44=WKS, 13=HINFO, 14=MINFO, 252=AXFR, 255=ALL)
+          value.one-of: "1, 2, 5, 6, 12, 15, 16, 28, 33, 41, 44, 13, 14, 252, 255"
           columns.hidden: "true"
       rcode:
         annotations:
-          description: Response code
+          description: Response code indicating the status of the DNS response. Empty for queries.
           value.one-of: "Success, FormatError, ServerFailure, NameError, NotImplemented, Refused"
           columns.minwidth: "8"
           columns.width: "8"
       rcode_raw:
         annotations:
+          description: Raw numeric rcode value (0=Success, 1=FormatError, 2=ServerFailure, 3=NameError, 4=NotImplemented, 5=Refused)
+          value.one-of: "0, 1, 2, 3, 4, 5"
           columns.hidden: "true"
       src:
         annotations:
