@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	otellogs "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/trace"
 
 	// Import this early to set the enrivonment variable before any other package is imported
@@ -59,6 +61,8 @@ import (
 )
 
 var startupTime = time.Now()
+
+var tracer = otel.Tracer("ig")
 
 func main() {
 	startupDuration := time.Since(startupTime)
@@ -107,15 +111,23 @@ func main() {
 		log.Fatalf("initializing config: %v", err)
 	}
 
+	// Pre-Initialize logger
+	err = otellogs.Operator.Init(nil)
+	if err != nil {
+		log.Fatalf("initializing otel logs: %v", err)
+	}
+
 	// initialize global tracer, if configured
-	err = trace.RegisterGlobalProvider(context.Background())
+	shutdownFunc, err := trace.RegisterGlobalProvider(context.Background())
 	if err != nil {
 		log.Warnf("initializing tracing: %v", err)
 	}
+	defer shutdownFunc(context.Background())
 
-	tracer := otel.Tracer("process")
-	ctx, processSpan := tracer.Start(context.Background(), "process")
+	ctx, processSpan := tracer.Start(context.Background(), "process.startup")
 	defer processSpan.End()
+
+	slog.DebugContext(ctx, "starting")
 
 	if err = common.SetFlagsForParams(rootCmd, runtime.GlobalParamDescs().ToParams(), config.RuntimeKey); err != nil {
 		log.Fatalf("setting runtime flags from config: %v", err)
