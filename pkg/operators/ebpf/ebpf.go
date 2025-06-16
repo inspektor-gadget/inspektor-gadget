@@ -786,6 +786,8 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("running map iterators: %w", err)
 	}
 
+	fmt.Printf("Gadget started successfully\n")
+
 	return nil
 }
 
