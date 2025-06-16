@@ -15,6 +15,7 @@
 package localmanager
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -61,6 +63,8 @@ const (
 	EnrichWithK8sApiserver = "enrich-with-k8s-apiserver"
 	KubeconfigPath         = "kubeconfig"
 )
+
+var tracer = otel.Tracer("operators.localmanager")
 
 type MountNsMapSetter interface {
 	SetMountNsMap(*ebpf.Map)
@@ -191,6 +195,13 @@ func (l *localManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (l *localManager) Init(operatorParams *params.Params) error {
+	return l.InitContext(context.Background(), operatorParams)
+}
+
+func (l *localManager) InitContext(ctx context.Context, operatorParams *params.Params) error {
+	ctx, span := tracer.Start(ctx, "init")
+	defer span.End()
+
 	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 
 	runtimesParam := operatorParams.Get(Runtimes)
@@ -286,7 +297,7 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
 
-	igManager, err := igmanager.NewManager(l.rc, additionalOpts)
+	igManager, err := igmanager.NewManagerContext(ctx, l.rc, additionalOpts)
 	if err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
