@@ -128,63 +128,12 @@ func (k *KubeManager) ParamDescs() params.ParamDescs {
 	}
 }
 
-func (k *KubeManager) Dependencies() []string {
-	return nil
-}
-
-func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	// We need to be able to get MountNSID or NetNSID, and set ContainerInfo, so
-	// check for that first
-	_, canEnrichEventFromMountNs := gadget.EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadget.EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
-
-	// Secondly, we need to be able to inject the ebpf map onto the tracer
-	gi, ok := gadget.(gadgets.GadgetInstantiate)
-	if !ok {
-		return false
-	}
-
-	instance, err := gi.NewInstance()
-	if err != nil {
-		log.Warnf("failed to create dummy %s instance: %s", OperatorName, err)
-		return false
-	}
-	_, isMountNsMapSetter := instance.(MountNsMapSetter)
-	_, isAttacher := instance.(Attacher)
-
-	log.Debugf("> canEnrichEvent: %v", canEnrichEvent)
-	log.Debugf(" > canEnrichEventFromMountNs: %v", canEnrichEventFromMountNs)
-	log.Debugf(" > canEnrichEventFromNetNs: %v", canEnrichEventFromNetNs)
-	log.Debugf("> isMountNsMapSetter: %v", isMountNsMapSetter)
-	log.Debugf("> isAttacher: %v", isAttacher)
-
-	return isMountNsMapSetter || canEnrichEvent || isAttacher
-}
-
 func (k *KubeManager) Init(params *params.Params) error {
 	return nil
 }
 
 func (k *KubeManager) Close() error {
 	return nil
-}
-
-func (k *KubeManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
-
-	traceInstance := &KubeManagerInstance{
-		id:             uuid.New().String(),
-		manager:        k,
-		enrichEvents:   canEnrichEvent,
-		params:         params,
-		gadgetInstance: gadgetInstance,
-		gadgetCtx:      gadgetContext,
-	}
-
-	return traceInstance, nil
 }
 
 type KubeManagerInstance struct {
@@ -553,8 +502,9 @@ func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+var KubeManagerOperator *KubeManager
+
 func init() {
-	km := &KubeManager{}
-	operators.Register(km)
-	operators.RegisterDataOperator(km)
+	KubeManagerOperator = &KubeManager{}
+	operators.RegisterDataOperator(KubeManagerOperator)
 }

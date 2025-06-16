@@ -23,7 +23,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -55,42 +54,12 @@ func (k *KubeIPResolver) Description() string {
 	return "KubeIPResolver resolves IP addresses to pod and service names"
 }
 
-func (k *KubeIPResolver) GlobalParamDescs() params.ParamDescs {
-	return nil
-}
-
-func (k *KubeIPResolver) ParamDescs() params.ParamDescs {
-	return nil
-}
-
-func (k *KubeIPResolver) Dependencies() []string {
-	return nil
-}
-
-func (k *KubeIPResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
-	_, hasIPResolverInterface := gadget.EventPrototype().(KubeIPResolverInterface)
-	return hasIPResolverInterface
-}
-
 func (k *KubeIPResolver) Init(params *params.Params) error {
 	return nil
 }
 
 func (k *KubeIPResolver) Close() error {
 	return nil
-}
-
-func (k *KubeIPResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	k8sInventory, err := common.GetK8sInventoryCache()
-	if err != nil {
-		return nil, fmt.Errorf("creating k8s inventory cache: %w", err)
-	}
-
-	return &KubeIPResolverInstance{
-		gadgetCtx:      gadgetCtx,
-		k8sInventory:   k8sInventory,
-		gadgetInstance: gadgetInstance,
-	}, nil
 }
 
 type KubeIPResolverInstance struct {
@@ -359,6 +328,5 @@ func (m *KubeIPResolverInstance) Stop(gadgetCtx operators.GadgetContext) error {
 }
 
 func init() {
-	operators.Register(&KubeIPResolver{})
 	operators.RegisterDataOperator(&KubeIPResolver{})
 }

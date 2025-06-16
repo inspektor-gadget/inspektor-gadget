@@ -61,7 +61,6 @@
 /gadgets/trace_tcpretrans/ @alban
 
 /integration/ @blanquicet @mqasimsarfraz
-/internal/benchmarks/ @alban
 /internal/test/ @mauriciovasquezbernal
 /pkg/amd64/ @eiffel-fl
 /pkg/arm64/ @eiffel-fl
@@ -72,7 +71,6 @@
 /pkg/container-utils/containerd/ @burak-ok
 /pkg/datasource/ @flyth
 /pkg/gadget-context/ @flyth
-/pkg/gadget-registry/ @flyth
 /pkg/gadget-service/ @flyth
 /pkg/gadgets/traceloop/ @eiffel-fl
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
@@ -98,7 +96,6 @@
 /pkg/operators/localmanager/ @mauriciovasquezbernal @flyth
 /pkg/operators/oci-handler/ @flyth
 /pkg/operators/otel-metrics/ @blanquicet @flyth
-/pkg/operators/prometheus/ @mauriciovasquezbernal
 /pkg/operators/simple/ @flyth
 /pkg/operators/socketenricher/ @alban
 /pkg/operators/sort/ @flyth
@@ -106,7 +103,6 @@
 /pkg/operators/wasm/ @flyth @mauriciovasquezbernal
 
 /pkg/params/ @flyth @mauriciovasquezbernal
-/pkg/prometheus/ @mauriciovasquezbernal
 /pkg/rawsock/ @alban
 /pkg/resources/manifests/ @eiffel-fl
 /pkg/resources/rbac/ @eiffel-fl

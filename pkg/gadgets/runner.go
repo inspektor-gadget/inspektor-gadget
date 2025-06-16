@@ -25,7 +25,6 @@ import (
 type GadgetContext interface {
 	ID() string
 	Context() context.Context
-	GadgetParams() *params.Params
 	RuntimeParams() *params.Params
 	Args() []string
 	Logger() logger.Logger
