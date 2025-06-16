@@ -47,6 +47,9 @@ const (
 )
 
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
+	_, span := tracer.Start(gadgetCtx.Context(), "attachProgram")
+	defer span.End()
+
 	attachTo := p.AttachTo
 
 	if attachToCfg := i.config.GetString("programs." + p.Name + ".attach_to"); attachToCfg != "" {

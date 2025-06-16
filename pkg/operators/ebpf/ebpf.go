@@ -34,6 +34,10 @@ import (
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sys/unix"
 	"oras.land/oras-go/v2"
 
@@ -68,6 +72,8 @@ const (
 	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
 )
 
+var tracer = otel.Tracer("operators.ebpf")
+
 type gadgetObjects struct {
 	programIDs []ebpf.ProgramID
 	mapIDs     []ebpf.MapID
@@ -95,7 +101,10 @@ func (o *ebpfOperator) InstantiateImageOperator(
 ) (
 	operators.ImageOperatorInstance, error,
 ) {
-	r, err := oci.GetContentFromDescriptor(gadgetCtx.Context(), target, desc)
+	ctx, span := tracer.Start(gadgetCtx.Context(), "instantiateImageOperator")
+	defer span.End()
+
+	r, err := oci.GetContentFromDescriptor(ctx, target, desc)
 	if err != nil {
 		return nil, fmt.Errorf("getting ebpf binary: %w", err)
 	}
@@ -147,7 +156,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 	}
 	newInstance.config = v
 
-	err = newInstance.init(gadgetCtx)
+	err = newInstance.init(gadgetCtx.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("initializing ebpf gadget: %w", err)
 	}
@@ -313,6 +322,9 @@ func (i *ebpfInstance) analyze() error {
 }
 
 func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
+	ctx, span := tracer.Start(gadgetCtx.Context(), "init")
+	defer span.End()
+
 	// hack for backward-compability and until we have nicer interfaces available
 	gadgetCtx.SetVar("ebpfInstance", i)
 
@@ -324,7 +336,7 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	// add extra info to gadgetcontext if requested
 	if gadgetCtx.ExtraInfo() {
-		err = i.addExtraInfo(gadgetCtx)
+		err = i.addExtraInfo(gadgetCtx.WithContext(ctx))
 		if err != nil {
 			return fmt.Errorf("adding extra info: %w", err)
 		}
@@ -335,12 +347,12 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("analyzing: %w", err)
 	}
 
-	err = i.register(gadgetCtx)
+	err = i.register(gadgetCtx.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("registering datasources: %w", err)
 	}
 
-	err = i.initFormatters(gadgetCtx)
+	err = i.initFormatters(gadgetCtx.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("initializing formatters: %w", err)
 	}
@@ -357,8 +369,14 @@ func (i *ebpfInstance) addDataSource(
 ) (
 	datasource.DataSource, datasource.FieldAccessor, error,
 ) {
+	_, span := tracer.Start(gadgetCtx.Context(), "addDataSource")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("datasource", name))
+
 	ds, err := gadgetCtx.RegisterDataSource(dsType, name)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, fmt.Errorf("adding tracer datasource: %w", err)
 	}
 	staticFields := make([]datasource.StaticField, 0, len(fields))
@@ -367,15 +385,19 @@ func (i *ebpfInstance) addDataSource(
 	}
 	accessor, err := ds.AddStaticFields(size, staticFields)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, fmt.Errorf("adding fields for datasource: %w", err)
 	}
 	return ds, accessor, nil
 }
 
 func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
+	ctx, span := tracer.Start(gadgetCtx.Context(), "register")
+	defer span.End()
+
 	// register datasources
 	for name, m := range i.tracers {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeSingle, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx.WithContext(ctx), datasource.TypeSingle, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
@@ -383,7 +405,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.ds = ds
 	}
 	for name, m := range i.snapshotters {
-		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
+		ds, accessor, err := i.addDataSource(gadgetCtx.WithContext(ctx), datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
@@ -454,6 +476,9 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 }
 
 func (i *ebpfInstance) Prepare(gadgetCtx operators.GadgetContext) error {
+	_, span := tracer.Start(gadgetCtx.Context(), "prepare")
+	defer span.End()
+
 	for ds, formatters := range i.formatters {
 		for _, formatter := range formatters {
 			formatter := formatter
@@ -560,9 +585,16 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
+	ctx, span := tracer.Start(gadgetCtx.Context(), "start", trace.WithAttributes(
+		attribute.String("unit", "ebpf"),
+	))
+	defer span.End()
+
 	i.logger.Debugf("starting ebpfInstance")
 
+	span.AddEvent("FixBpfKtimeGetBootNs.start")
 	gadgets.FixBpfKtimeGetBootNs(i.collectionSpec.Programs)
+	span.AddEvent("FixBpfKtimeGetBootNs.done")
 
 	parameters := params.Params{}              // used to CopyFromMap
 	paramMap := make(map[string]*params.Param) // used for second iteration
@@ -584,6 +616,8 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 
 	mapReplacements := make(map[string]*ebpf.Map)
+
+	span.AddEvent("params.start")
 
 	// Set gadget params
 	for name, p := range i.params {
@@ -628,6 +662,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	span.AddEvent("params.done")
+	span.AddEvent("vars.start")
+
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
 		if !ok {
@@ -659,6 +696,8 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	span.AddEvent("vars.done")
+
 	i.logger.Debugf("creating ebpf collection")
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
@@ -673,7 +712,10 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 		opts.Programs.KernelTypes = btfSpec
 	}
+	span.AddEvent("createCollection.start")
 	collection, err := ebpf.NewCollectionWithOptions(i.collectionSpec, opts)
+	span.RecordError(err)
+	span.AddEvent("createCollection.done")
 	if err != nil {
 		var verifierErr *ebpf.VerifierError
 		if errors.As(err, &verifierErr) {
@@ -728,7 +770,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	for _, tracer := range i.tracers {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
-		err := i.runTracer(gadgetCtx, tracer)
+		err := i.runTracer(gadgetCtx.WithContext(ctx), tracer)
 		if err != nil {
 			i.Close()
 			return fmt.Errorf("running tracer %q: %w", tracer.mapName, err)
@@ -737,7 +779,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	// Attach programs
 	for progName, p := range i.collectionSpec.Programs {
-		l, err := i.attachProgram(gadgetCtx, p, i.collection.Programs[progName])
+		l, err := i.attachProgram(gadgetCtx.WithContext(ctx), p, i.collection.Programs[progName])
 		if err != nil {
 			i.Close()
 			return fmt.Errorf("attaching eBPF program %q: %w", progName, err)
@@ -795,6 +837,9 @@ func (i *ebpfInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	_, span := tracer.Start(gadgetCtx.Context(), "stop")
+	defer span.End()
+
 	i.bpfOperator.mu.Lock()
 	delete(i.bpfOperator.gadgetObjs, gadgetCtx)
 	i.bpfOperator.mu.Unlock()

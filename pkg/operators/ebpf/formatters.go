@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf/btf"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -65,6 +66,9 @@ func byteSliceAsUint64(in []byte, signed bool, ds datasource.DataSource) uint64 
 }
 
 func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) error {
+	_, span := tracer.Start(gadgetCtx.Context(), "initEnumFormatters")
+	defer span.End()
+
 	btfSpec, err := btf.LoadKernelSpec()
 	if err != nil {
 		i.logger.Warnf("Kernel BTF information not available. Enums won't be resolved to strings")
@@ -156,6 +160,9 @@ func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf
 }
 
 func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
+	_, span := tracer.Start(gadgetCtx.Context(), "initStackConverter")
+	defer span.End()
+
 	var kernelSymbolResolver *kallsyms.KAllSyms = nil
 	for _, ds := range gadgetCtx.GetDataSources() {
 		for _, in := range ds.GetFieldsWithTag("type:" + ebpftypes.KernelStackTypeName) {
@@ -222,11 +229,15 @@ func fetchAndFormatStackTrace(stackId uint32, stackLookup func(interface{}, inte
 }
 
 func (i *ebpfInstance) initFormatters(gadgetCtx operators.GadgetContext) error {
-	if err := i.initEnumFormatter(gadgetCtx); err != nil {
+	ctx, span := tracer.Start(gadgetCtx.Context(), "initFormatters")
+	defer span.End()
+
+	if err := i.initEnumFormatter(gadgetCtx.WithContext(ctx)); err != nil {
 		return fmt.Errorf("initializing enum formatter: %w", err)
 	}
 
-	if err := i.initStackConverter(gadgetCtx); err != nil {
+	if err := i.initStackConverter(gadgetCtx.WithContext(ctx)); err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("initializing stack converters: %w", err)
 	}
 

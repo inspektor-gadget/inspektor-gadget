@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -234,28 +234,31 @@ func (t *Tracer) close() {
 	}
 }
 
-func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Tracer) error {
-	if tracer.mapName == "" {
+func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, ebpfTracer *Tracer) error {
+	_, span := tracer.Start(gadgetCtx.Context(), "runTracer")
+	defer span.End()
+
+	if ebpfTracer.mapName == "" {
 		return fmt.Errorf("tracer map name empty")
 	}
 
-	m, ok := i.collection.Maps[tracer.mapName]
+	m, ok := i.collection.Maps[ebpfTracer.mapName]
 	if !ok {
-		return fmt.Errorf("looking up tracer map %q: not found", tracer.mapName)
+		return fmt.Errorf("looking up tracer map %q: not found", ebpfTracer.mapName)
 	}
 
-	tracer.mapType = m.Type()
+	ebpfTracer.mapType = m.Type()
 
 	var err error
 	switch m.Type() {
 	case ebpf.RingBuf:
-		i.logger.Debugf("creating ringbuf reader for map %q", tracer.mapName)
-		tracer.ringbufReader, err = ringbuf.NewReader(m)
+		i.logger.Debugf("creating ringbuf reader for map %q", ebpfTracer.mapName)
+		ebpfTracer.ringbufReader, err = ringbuf.NewReader(m)
 	case ebpf.PerfEventArray:
-		i.logger.Debugf("creating perf reader for map %q", tracer.mapName)
-		tracer.perfReader, err = perf.NewReader(m, gadgets.PerfBufferPages*os.Getpagesize())
+		i.logger.Debugf("creating perf reader for map %q", ebpfTracer.mapName)
+		ebpfTracer.perfReader, err = perf.NewReader(m, gadgets.PerfBufferPages*os.Getpagesize())
 	default:
-		return fmt.Errorf("unknown type for tracer map %q", tracer.mapName)
+		return fmt.Errorf("unknown type for tracer map %q", ebpfTracer.mapName)
 	}
 	if err != nil {
 		return fmt.Errorf("creating BPF map reader: %w", err)
@@ -269,7 +272,7 @@ func (i *ebpfInstance) runTracer(gadgetCtx operators.GadgetContext, tracer *Trac
 	}
 
 	i.wg.Add(1)
-	go tracer.receiveEvents(gadgetCtx, &i.wg)
+	go ebpfTracer.receiveEvents(gadgetCtx, &i.wg)
 
 	return nil
 }
