@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,11 @@ type frontend struct {
 }
 
 func NewFrontend() frontends.Frontend {
-	ctx, cancel := context.WithCancel(context.Background())
+	return NewFrontendContext(context.Background())
+}
+
+func NewFrontendContext(ctx context.Context) frontends.Frontend {
+	ctx, cancel := context.WithCancel(ctx)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
