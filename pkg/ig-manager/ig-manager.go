@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 package igmanager
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -30,6 +32,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+var tracer = otel.Tracer("ig-manager")
+
 type IGManager struct {
 	containercollection.ContainerCollection
 
@@ -38,6 +42,8 @@ type IGManager struct {
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
 	containersMap *containersmap.ContainersMap
+
+	context context.Context
 }
 
 func (l *IGManager) ContainersMap() *ebpf.Map {
@@ -75,7 +81,14 @@ func (l *IGManager) RemoveMountNsMap(id string) error {
 }
 
 func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []containercollection.ContainerCollectionOption) (*IGManager, error) {
-	l := &IGManager{}
+	return NewManagerContext(context.TODO(), runtimes, additionalOpts)
+}
+
+func NewManagerContext(ctx context.Context, runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []containercollection.ContainerCollectionOption) (*IGManager, error) {
+	ctx, span := tracer.Start(ctx, "NewManagerContext")
+	defer span.End()
+
+	l := &IGManager{context: ctx}
 
 	var err error
 	l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
@@ -87,7 +100,9 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []
 		return nil, err
 	}
 
+	_, span = tracer.Start(ctx, "NewContainersMap")
 	l.containersMap, err = containersmap.NewContainersMap("")
+	span.End()
 	if err != nil {
 		return nil, fmt.Errorf("creating containers map: %w", err)
 	}
@@ -110,7 +125,7 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []
 		opts = append(warnings, opts...)
 	}
 
-	err = l.Initialize(opts...)
+	err = l.InitializeContext(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
