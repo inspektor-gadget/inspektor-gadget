@@ -64,7 +64,7 @@ type ociHandler struct {
 	globalParams *params.Params
 }
 
-var trace = otel.Tracer("oci-handler")
+var tracer = otel.Tracer("operators.oci-handler")
 
 func (o *ociHandler) Name() string {
 	return "oci"
@@ -307,7 +307,7 @@ func constructTempConfig(ann string) (map[string]any, int, error) {
 }
 
 func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
-	ctx, span := trace.Start(gadgetCtx.Context(), "init")
+	ctx, span := tracer.Start(gadgetCtx.Context(), "init")
 	defer span.End()
 
 	if len(gadgetCtx.ImageName()) == 0 {
@@ -419,7 +419,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	gadgetCtx.SetVar("config", viper)
 
-	imgOpCtx, imgOpSpan := trace.Start(ctx, "imageOperators")
+	imgOpCtx, imgOpSpan := tracer.Start(ctx, "imageOperators")
 	defer imgOpSpan.End() // make sure this occurs after handling image operators (=> new func)
 
 	for _, layer := range manifest.Layers {
@@ -430,7 +430,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 
 		log.Debugf("found image op %q", op.Name())
-		opCtx, opSpan := trace.Start(imgOpCtx, "imageOperators.instantiate."+op.Name())
+		opCtx, opSpan := tracer.Start(imgOpCtx, "imageOperators.instantiate."+op.Name())
 		opInst, err := op.InstantiateImageOperator(gadgetCtx.WithContext(opCtx), target, layer, o.paramValues.ExtractPrefixedValues(op.Name()))
 		if err != nil {
 			opSpan.SetStatus(codes.Error, err.Error())
@@ -461,7 +461,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 
 	extraParams := make([]*api.Param, 0)
 	for _, opInst := range o.imageOperatorInstances {
-		opCtx, opSpan := trace.Start(imgOpCtx, "imageOperators.prepare."+opInst.Name())
+		opCtx, opSpan := tracer.Start(imgOpCtx, "imageOperators.prepare."+opInst.Name())
 
 		err := opInst.Prepare(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
@@ -481,7 +481,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
-	ctx, span := trace.Start(gadgetCtx.Context(), "start")
+	ctx, span := tracer.Start(gadgetCtx.Context(), "start")
 	defer span.End()
 
 	started := []operators.ImageOperatorInstance{}
@@ -491,7 +491,7 @@ func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
 		if !ok {
 			continue
 		}
-		opCtx, opSpan := trace.Start(ctx, "imageOperators.preStart."+opInst.Name())
+		opCtx, opSpan := tracer.Start(ctx, "imageOperators.preStart."+opInst.Name())
 		err := preStart.PreStart(gadgetCtx.WithContext(opCtx))
 		if err != nil {
 			opSpan.SetStatus(codes.Error, err.Error())
@@ -502,7 +502,7 @@ func (o *OciHandlerInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 
 	for _, opInst := range o.imageOperatorInstances {
-		opCtx, opSpan := trace.Start(ctx, "imageOperators.start."+opInst.Name())
+		opCtx, opSpan := tracer.Start(ctx, "imageOperators.start."+opInst.Name())
 		err := opInst.Start(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
 			// Stop all started operators
@@ -536,11 +536,11 @@ func (o *OciHandlerInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	ctx, span := trace.Start(gadgetCtx.Context(), "stop")
+	ctx, span := tracer.Start(gadgetCtx.Context(), "stop")
 	defer span.End()
 
 	for _, opInst := range o.imageOperatorInstances {
-		opCtx, opSpan := trace.Start(ctx, "imageOperators.stop."+opInst.Name())
+		opCtx, opSpan := tracer.Start(ctx, "imageOperators.stop."+opInst.Name())
 		err := opInst.Stop(o.gadgetCtx.WithContext(opCtx))
 		if err != nil {
 			opSpan.SetStatus(codes.Error, err.Error())
@@ -554,7 +554,7 @@ func (o *OciHandlerInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		if !ok {
 			continue
 		}
-		opCtx, opSpan := trace.Start(ctx, "imageOperators.postStop."+opInst.Name())
+		opCtx, opSpan := tracer.Start(ctx, "imageOperators.postStop."+opInst.Name())
 		err := postStop.PostStop(gadgetCtx.WithContext(opCtx))
 		if err != nil {
 			opSpan.SetStatus(codes.Error, err.Error())
