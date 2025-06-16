@@ -60,7 +60,6 @@ require (
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
 	golang.org/x/text v0.26.0
-	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
@@ -70,7 +69,6 @@ require (
 	k8s.io/apimachinery v0.33.1
 	k8s.io/cli-runtime v0.33.1
 	k8s.io/client-go v0.33.1
-	k8s.io/code-generator v0.33.1
 	k8s.io/cri-api v0.33.1
 	k8s.io/kubelet v0.33.1
 	oras.land/oras-go/v2 v2.6.0
@@ -185,7 +183,6 @@ require (
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
@@ -194,7 +191,6 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-base v0.33.1 // indirect
-	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e // indirect
@@ -214,4 +210,5 @@ replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20
 // - https://github.com/cilium/ebpf/pull/1763
 // - https://github.com/cilium/ebpf/pull/1772
 // - https://github.com/cilium/ebpf/pull/1778
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250521101936-dd4d949f2f7b
+// - https://github.com/alban/ebpf/commit/86d34fa085960946fedf504a6a3154c09d2685a0
+replace github.com/cilium/ebpf => github.com/alban/ebpf v0.0.0-20250616155344-86d34fa08596
