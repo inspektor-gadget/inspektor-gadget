@@ -42,6 +42,8 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
@@ -51,6 +53,8 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
+
+var tracer = otel.Tracer("oci")
 
 type AuthOptions struct {
 	AuthFile    string
@@ -116,6 +120,9 @@ func getTimeFromAnnotations(annotations map[string]string) string {
 
 // PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
 func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "PullGadgetImage")
+	defer span.End()
+
 	var desc *GadgetImageDesc
 	err := retry("PullGadgetImage", func() error {
 		var err error
@@ -127,6 +134,9 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 }
 
 func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "pullGadgetImage")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -146,6 +156,9 @@ func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // pullGadgetImageToStore pulls the gadget image into the given store and returns its descriptor.
 func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "pullGadgetImageToStore")
+	defer span.End()
+
 	targetImage, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
@@ -169,6 +182,9 @@ func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image s
 }
 
 func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthOptions, image string) error {
+	ctx, span := tracer.Start(ctx, "pullIfNotExist")
+	defer span.End()
+
 	targetImage, err := normalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image: %w", err)
@@ -191,6 +207,9 @@ func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthO
 }
 
 func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras.Target, authOpts *AuthOptions) (*ocispec.Descriptor, error) {
+	ctx, span := tracer.Start(ctx, "pullImage")
+	defer span.End()
+
 	if authOpts.DisallowPulling {
 		return nil, errors.New("pulling is disallowed")
 	}
@@ -221,6 +240,9 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 
 // PushGadgetImage pushes the gadget image and returns its descriptor.
 func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "PushGadgetImage")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -253,6 +275,9 @@ func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 
 // TagGadgetImage tags the src image with the dst image.
 func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "TagGadgetImage")
+	defer span.End()
+
 	var desc *GadgetImageDesc
 	err := retry("TagGadgetImage", func() error {
 		var err error
@@ -264,6 +289,9 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 }
 
 func tagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
+	_, span := tracer.Start(ctx, "tagGadgetImage")
+	defer span.End()
+
 	src, err := normalizeImageName(srcImage)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing src image: %w", err)
@@ -334,6 +362,9 @@ func sortIndex(indexPath string) (*ocispec.Index, error) {
 }
 
 func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) error {
+	ctx, span := tracer.Start(ctx, "ExportGadgetImages")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
@@ -386,6 +417,9 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 
 // ImportGadgetImages imports all the tagged gadget images from the src file.
 func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
+	ctx, span := tracer.Start(ctx, "ImportGadgetImages")
+	defer span.End()
+
 	src, err := oci.NewFromTar(ctx, srcFile)
 	if err != nil {
 		return nil, fmt.Errorf("loading src bundle: %w", err)
@@ -468,6 +502,9 @@ func tarFolderToFile(src, filePath string, headerTime time.Time) error {
 }
 
 func getGadgetImageDescriptor(ctx context.Context, store *oci.Store, fullTag string) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "getGadgetImageDescriptor")
+	defer span.End()
+
 	parsed, err := reference.Parse(fullTag)
 	if err != nil {
 		return nil, fmt.Errorf("parsing image %q: %w", fullTag, err)
@@ -505,6 +542,9 @@ func getGadgetImageDescriptor(ctx context.Context, store *oci.Store, fullTag str
 }
 
 func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "getGadgetImages")
+	defer span.End()
+
 	images := []*GadgetImageDesc{}
 	err := store.Tags(ctx, "", func(tags []string) error {
 		for _, fullTag := range tags {
@@ -524,6 +564,9 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 
 // GetGadgetImages gets all the gadget images.
 func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "GetGadgetImages")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -542,6 +585,9 @@ func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 }
 
 func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, error) {
+	ctx, span := tracer.Start(ctx, "GetGadgetImageDesc")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
@@ -563,12 +609,18 @@ func GetGadgetImageDesc(ctx context.Context, image string) (*GadgetImageDesc, er
 
 // DeleteGadgetImage removes the given image.
 func DeleteGadgetImage(ctx context.Context, image string) error {
+	ctx, span := tracer.Start(ctx, "DeleteGadgetImage")
+	defer span.End()
+
 	return retry("DeleteGadgetImage", func() error {
 		return deleteGadgetImage(ctx, image)
 	})
 }
 
 func deleteGadgetImage(ctx context.Context, image string) error {
+	ctx, span := tracer.Start(ctx, "deleteGadgetImage")
+	defer span.End()
+
 	ociStore, err := newLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("getting oci store: %w", err)
@@ -732,6 +784,9 @@ func craftSignatureTag(digest string) (string, error) {
 }
 
 func getSignature(ctx context.Context, repo *remote.Repository, signatureTag string) ([]byte, string, error) {
+	ctx, span := tracer.Start(ctx, "getSignature")
+	defer span.End()
+
 	_, signatureManifestBytes, err := oras.FetchBytes(ctx, repo, signatureTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return nil, "", fmt.Errorf("getting signature bytes: %w", err)
@@ -774,6 +829,9 @@ func getSignature(ctx context.Context, repo *remote.Repository, signatureTag str
 }
 
 func getPayload(ctx context.Context, repo *remote.Repository, payloadTag string) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "getPayload")
+	defer span.End()
+
 	// The payload is stored as a blob, so we fetch bytes from the blob store and
 	// not the manifest one.
 	_, payloadBytes, err := oras.FetchBytes(ctx, repo.Blobs(), payloadTag, oras.DefaultFetchBytesOptions)
@@ -785,6 +843,9 @@ func getPayload(ctx context.Context, repo *remote.Repository, payloadTag string)
 }
 
 func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
+	ctx, span := tracer.Start(ctx, "getImageDigest")
+	defer span.End()
+
 	desc, err := store.Resolve(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
@@ -794,6 +855,9 @@ func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (st
 }
 
 func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
+	ctx, span := tracer.Start(ctx, "getSigningInformation")
+	defer span.End()
+
 	signatureTag, err := craftSignatureTag(imageDigest)
 	if err != nil {
 		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
@@ -813,6 +877,9 @@ func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDi
 }
 
 func cacheSigningInformation(ctx context.Context, signature, payload []byte, imageDigest string) error {
+	ctx, span := tracer.Start(ctx, "cacheSigningInformation")
+	defer span.End()
+
 	signaturePath := path.Join(defaultOciStore, imageDigest+".sig")
 	payloadPath := path.Join(defaultOciStore, imageDigest+".payload")
 
@@ -828,6 +895,9 @@ func cacheSigningInformation(ctx context.Context, signature, payload []byte, ima
 }
 
 func loadSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
+	_, span := tracer.Start(ctx, "loadSigningInformation")
+	defer span.End()
+
 	signagturePath := path.Join(defaultOciStore, imageDigest+".sig")
 	signatureBytes, err := os.ReadFile(signagturePath)
 	if err != nil {
@@ -877,6 +947,9 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 }
 
 func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
+	ctx, span := tracer.Start(ctx, "verifyImage")
+	defer span.End()
+
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image name: %w", err)
@@ -963,6 +1036,9 @@ func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Reposi
 }
 
 func getImageListDescriptor(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	ctx, span := tracer.Start(ctx, "getImageListDescriptor")
+	defer span.End()
+
 	imageListDescriptor, err := target.Resolve(ctx, reference)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("resolving image %q: %w", reference, err)
@@ -985,6 +1061,9 @@ func getImageListDescriptor(ctx context.Context, target oras.ReadOnlyTarget, ref
 }
 
 func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "getContentBytesFromDescriptor")
+	defer span.End()
+
 	reader, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
@@ -998,6 +1077,9 @@ func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher,
 }
 
 func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions, pullPolicy string) error {
+	ctx, span := tracer.Start(ctx, "ensureImage")
+	defer span.End()
+
 	switch pullPolicy {
 	case PullImageAlways:
 		_, err := pullGadgetImageToStore(ctx, imageStore, image, &imgOpts.AuthOptions)
@@ -1072,6 +1154,11 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 
 // EnsureImage ensures the image is present in the local store
 func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullPolicy string) error {
+	ctx, span := tracer.Start(ctx, "EnsureImage")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("image", image), attribute.String("pullPolicy", pullPolicy))
+
 	return retry("EnsureImage", func() error {
 		imageStore, err := newLocalOciStore()
 		if err != nil {
@@ -1087,6 +1174,9 @@ func EnsureImage(ctx context.Context, image string, imgOpts *ImageOptions, pullP
 }
 
 func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
+	ctx, span := tracer.Start(ctx, "getManifestForHost")
+	defer span.End()
+
 	index, err := getIndex(ctx, target, image)
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)
@@ -1118,6 +1208,9 @@ func getManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 }
 
 func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Manifest, error) {
+	ctx, span := tracer.Start(ctx, "GetManifestForHost")
+	defer span.End()
+
 	if target == nil {
 		var err error
 		target, err = newLocalOciStore()
@@ -1130,6 +1223,9 @@ func GetManifestForHost(ctx context.Context, target oras.ReadOnlyTarget, image s
 
 // getIndex gets an index for the given image
 func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*ocispec.Index, error) {
+	ctx, span := tracer.Start(ctx, "getIndex")
+	defer span.End()
+
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
@@ -1144,6 +1240,9 @@ func getIndex(ctx context.Context, target oras.ReadOnlyTarget, image string) (*o
 }
 
 func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	ctx, span := tracer.Start(ctx, "GetContentFromDescriptor")
+	defer span.End()
+
 	if target == nil {
 		var err error
 		target, err = newLocalOciStore()
