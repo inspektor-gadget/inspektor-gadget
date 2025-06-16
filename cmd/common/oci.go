@@ -27,6 +27,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -182,7 +183,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			}
 			if err != nil {
 				log.Warnf("error initializing operator %s: %v", op.Name(), err)
-				curOpSpan.RecordError(err)
+				curOpSpan.SetStatus(codes.Error, err.Error())
 				curOpSpan.End()
 				continue
 			}
@@ -295,7 +296,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		// the flags
 		checkVerboseFlag()
 
-		fe := console.NewFrontend()
+		fe := console.NewFrontendContext(cmd.Context())
 		defer fe.Close()
 
 		feCtx := fe.GetContext()
