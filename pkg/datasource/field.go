@@ -106,6 +106,15 @@ func WithSameParentAs(otherField FieldAccessor) FieldOption {
 	}
 }
 
+func WithSameOrderAs(otherField FieldAccessor) FieldOption {
+	return func(f *field) {
+		if otherField == nil {
+			return
+		}
+		f.Order = otherField.(*fieldAccessor).f.Order
+	}
+}
+
 func WithTags(tags ...string) FieldOption {
 	return func(f *field) {
 		f.Tags = append(f.Tags, tags...)
