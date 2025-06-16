@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package common
 
 import (
+	"log/slog"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +26,7 @@ var Verbose bool
 func checkVerboseFlag() {
 	if Verbose {
 		log.SetLevel(log.DebugLevel)
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 }
 
