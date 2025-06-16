@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sys/unix"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +135,7 @@ func containerRuntimeEnricher(
 
 // WithDisableContainerRuntimeWarnings disables the warnings about container runtime.
 func WithDisableContainerRuntimeWarnings() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.disableContainerRuntimeWarnings = true
 		return nil
 	}
@@ -152,9 +153,9 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutilsTypes.Run
 		opts = append(opts, WithContainerRuntimeEnrichment(r))
 	}
 
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		for _, o := range opts {
-			err := o(cc)
+			err := o(ctx, cc)
 			if err != nil {
 				return err
 			}
@@ -174,7 +175,12 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutilsTypes.Run
 //
 // ContainerCollection.Initialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
 func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithContainerRuntimeEnrichment")
+		defer span.End()
+
+		span.SetAttributes(attribute.String("runtime", string(runtime.Name)))
+
 		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
 		if err != nil {
 			if !cc.disableContainerRuntimeWarnings {
@@ -275,7 +281,13 @@ func WithFallbackPodInformer(nodeName string) ContainerCollectionOption {
 }
 
 func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithPodInformer")
+		defer span.End()
+
+		span.SetAttributes(attribute.String("nodeName", nodeName))
+		span.SetAttributes(attribute.Bool("fallbackMode", fallbackMode))
+
 		k8sClient, err := NewK8sClient(nodeName, cc.kubeconfigPath, "WithPodInformer")
 		if err != nil {
 			return fmt.Errorf("creating Kubernetes client: %w", err)
@@ -366,7 +378,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 
 // WithHost adds the host as a virtual/fake container; TODO: Just for testing
 func WithHost() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		newContainer := Container{}
 		newContainer.K8s.ContainerName = "host"
 		newContainer.CgroupID = 1
@@ -383,7 +395,12 @@ func WithHost() ContainerCollectionOption {
 // This cannot be used together with WithPodInformer() since the pod informer
 // already gets initial containers.
 func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithInitialKubernetesContainers")
+		defer span.End()
+
+		span.SetAttributes(attribute.String("nodeName", nodeName))
+
 		k8sClient, err := NewK8sClient(nodeName, cc.kubeconfigPath, "WithInitialKubernetesContainers")
 		if err != nil {
 			return fmt.Errorf("creating Kubernetes client: %w", err)
@@ -411,7 +428,7 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 // Optionally, a list of callbacks can be registered from the beginning, so
 // they would get called for initial containers too.
 func WithPubSub(funcs ...FuncNotify) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		if cc.pubsub == nil {
 			cc.pubsub = NewGadgetPubSub()
 		}
@@ -522,7 +539,12 @@ func getPodByCgroups(clientset *kubernetes.Clientset, nodeName string, container
 //
 // ContainerCollection.Initialize(WithKubernetesEnrichment())
 func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithKubernetesEnrichment")
+		defer span.End()
+
+		span.SetAttributes(attribute.String("nodeName", nodeName))
+
 		clientset, err := k8sutil.NewClientset(cc.kubeconfigPath, "container-collection/WithKubernetesEnrichment")
 		if err != nil {
 			return fmt.Errorf("getting Kubernetes client: %w", err)
@@ -613,8 +635,11 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 //
 // ContainerCollection.Initialize(WithContainerFanotifyEbpf())
 func WithContainerFanotifyEbpf() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
-		containerNotifier, err := containerhook.NewContainerNotifier(func(notif containerhook.ContainerEvent) {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		ctx, span := tracer.Start(ctx, "WithContainerFanotifyEbpf")
+		defer span.End()
+
+		containerNotifier, err := containerhook.NewContainerNotifierContext(ctx, func(notif containerhook.ContainerEvent) {
 			switch notif.Type {
 			case containerhook.EventTypeAddContainer:
 				container := &Container{
@@ -655,7 +680,7 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 
 // WithCgroupEnrichment enables an enricher to add the cgroup metadata
 func WithCgroupEnrichment() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.ContainerPid())
 			if pid == 0 {
@@ -683,7 +708,10 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 
 // WithLinuxNamespaceEnrichment enables an enricher to add the namespaces metadata
 func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithLinuxNamespaceEnrichment")
+		defer span.End()
+
 		// GetNetNs() needs a pid in the host pid namespace: it uses $HOST_ROOT/proc/$pid/ns/net
 		// This needs CAP_SYS_PTRACE.
 		netnsHost, err := containerutils.GetNetNs(1)
@@ -736,7 +764,7 @@ func isEnrichedWithOCIConfigInfo(container *Container) bool {
 // Since this enricher is performant compared to the runtime client, it
 // should be used as a first step in the enrichment pipeline.
 func WithOCIConfigEnrichment() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			if container.OciConfig == "" || isEnrichedWithOCIConfigInfo(container) {
 				return true
@@ -795,7 +823,10 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 // WithOCIConfigForInitialContainer enriches initial containers with the OCI config.
 // It assumes that the initial containers are already populated in the ContainerCollection
 func WithOCIConfigForInitialContainer() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithOCIConfigForInitialContainer")
+		defer span.End()
+
 		for _, container := range cc.initialContainers {
 			info, err := processhelpers.GetProcessInfo(int(container.ContainerPid()), 0, &procOpts{})
 			if err != nil {
@@ -844,7 +875,7 @@ func readOciConfigFromPath(cfgPath string) (string, error) {
 }
 
 func WithNodeName(nodeName string) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.nodeName = nodeName
 		return nil
 	}
@@ -860,7 +891,10 @@ type TracerCollection interface {
 // - The tracer collection TracerMapsUpdater() receives notifications from containers created /
 // removed.
 func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
+		_, span := tracer.Start(ctx, "WithTracerCollection")
+		defer span.End()
+
 		// 2 seconds should enough time for the tracer to read the event from the perf ring
 		// buffer and enrich it after the container has been terminated.
 		cc.cacheDelay = 2 * time.Second
@@ -949,7 +983,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 
 // WithProcEnrichment enables an enricher to add process metadata
 func WithProcEnrichment() ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.ContainerPid())
 			if pid == 0 {
@@ -973,7 +1007,7 @@ func WithProcEnrichment() ContainerCollectionOption {
 // WithKubeconfigPath sets the kubeconfig path for the Kubernetes client.
 // Some options like WithPodInformer or WithKubernetesEnrichment will use it.
 func WithKubeconfigPath(kubeconfigPath string) ContainerCollectionOption {
-	return func(cc *ContainerCollection) error {
+	return func(ctx context.Context, cc *ContainerCollection) error {
 		cc.kubeconfigPath = kubeconfigPath
 		return nil
 	}

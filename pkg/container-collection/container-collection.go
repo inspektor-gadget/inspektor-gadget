@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,14 +22,18 @@
 package containercollection
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
+
+var tracer = otel.Tracer("container-collection")
 
 // ContainerCollection holds a set of containers. It can be embedded as an
 // anonymous struct to help other structs implement the ContainerResolver
@@ -90,12 +94,17 @@ type ContainerCollection struct {
 
 // ContainerCollectionOption are options to pass to
 // Initialize using the functional option code pattern.
-type ContainerCollectionOption func(*ContainerCollection) error
+type ContainerCollectionOption func(context.Context, *ContainerCollection) error
 
 // Initialize initializes a ContainerCollection. It is
 // useful when ContainerCollection is embedded as an anonymous struct because
-// we don't use a contructor in that case.
+// we don't use a constructor in that case.
+// Deprecated: Please use InitializeContext
 func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) error {
+	return cc.InitializeContext(context.TODO(), options...)
+}
+
+func (cc *ContainerCollection) InitializeContext(ctx context.Context, options ...ContainerCollectionOption) error {
 	cc.done = make(chan struct{})
 
 	if cc.initialized {
@@ -104,7 +113,7 @@ func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) 
 
 	// Call functional options. This might fetch initial containers.
 	for _, o := range options {
-		err := o(cc)
+		err := o(ctx, cc)
 		if err != nil {
 			return err
 		}
