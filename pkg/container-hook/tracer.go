@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@
 package containerhook
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,6 +50,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
@@ -60,6 +62,8 @@ import (
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/
+
+var tracer = otel.Tracer("containerhook")
 
 type EventType int
 
@@ -141,6 +145,8 @@ type futureContainer struct {
 }
 
 type ContainerNotifier struct {
+	ctx context.Context
+
 	runtimeBinaryNotify *fanotify.NotifyFD
 	pidFileDirNotify    *fanotify.NotifyFD
 	callback            ContainerNotifyFunc
@@ -229,7 +235,12 @@ func Supported() bool {
 // Limitations:
 // - the container runtime must be installed in one of the paths listed by runtimePaths
 func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, error) {
+	return NewContainerNotifierContext(context.TODO(), callback)
+}
+
+func NewContainerNotifierContext(ctx context.Context, callback ContainerNotifyFunc) (*ContainerNotifier, error) {
 	n := &ContainerNotifier{
+		ctx:               ctx,
 		callback:          callback,
 		containers:        make(map[string]*watchedContainer),
 		futureContainers:  make(map[string]*futureContainer),
@@ -246,10 +257,15 @@ func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, err
 }
 
 func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
+	_, span := tracer.Start(n.ctx, "installEbpf")
+	defer span.End()
+
 	spec, err := loadExecruntime()
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
+
+	span.AddEvent("loaded execruntime spec")
 
 	fanotifyPrivateData, err := kfilefields.ReadPrivateDataFromFd(fanotifyFd)
 	if err != nil {
@@ -274,6 +290,8 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	if err := spec.LoadAndAssign(&n.objs, &opts); err != nil {
 		return fmt.Errorf("loading maps and programs: %w", err)
 	}
+
+	span.AddEvent("loaded and assigned spec")
 
 	// Attach ebpf programs
 	l, err := link.Kprobe("fsnotify_remove_first_event", n.objs.IgFaPickE, nil)
@@ -310,6 +328,9 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 }
 
 func (n *ContainerNotifier) install() error {
+	_, span := tracer.Start(n.ctx, "install")
+	defer span.End()
+
 	// Start fanotify
 	runtimeBinaryNotify, err := initFanotify()
 	if err != nil {
