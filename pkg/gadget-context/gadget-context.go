@@ -450,3 +450,7 @@ func withNewContext(gadgetCtx *GadgetContext, ctx context.Context) *contextWrapp
 		ctx:           ctx,
 	}
 }
+
+func (c *GadgetContext) WithContext(ctx context.Context) operators.GadgetContext {
+	return withNewContext(c, ctx)
+}
