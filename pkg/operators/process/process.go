@@ -199,18 +199,24 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 			}
 			requireCPUInfo = true
 		case fieldMemoryRSS:
-			instance.memoryRSSField, err = ds.AddField(fieldMemoryRSS, api.Kind_Uint64, datasource.WithAnnotations(map[string]string{
-				metadatav1.ColumnsAlignmentAnnotation: "right",
-				metadatav1.DescriptionAnnotation:      "The Resident Set Size (RSS) of the process in bytes. This represents the portion of memory occupied by a process that is held in main memory (RAM).",
-			}))
+			instance.memoryRSSField, err = ds.AddField(fieldMemoryRSS+"_raw", api.Kind_Uint64,
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.ColumnsAlignmentAnnotation: "right",
+					metadatav1.DescriptionAnnotation:      "The Resident Set Size (RSS) of the process in bytes. This represents the portion of memory occupied by a process that is held in main memory (RAM).",
+				}),
+				datasource.WithTags("type:gadget_bytes"),
+			)
 			if err != nil {
 				return nil, fmt.Errorf("adding memoryRSS field: %w", err)
 			}
 		case fieldMemoryVirtual:
-			instance.memoryVirtualField, err = ds.AddField(fieldMemoryVirtual, api.Kind_Uint64, datasource.WithAnnotations(map[string]string{
-				metadatav1.ColumnsAlignmentAnnotation: "right",
-				metadatav1.DescriptionAnnotation:      "The Virtual Memory Size of the process in bytes. This represents the total amount of virtual memory used by the process.",
-			}))
+			instance.memoryVirtualField, err = ds.AddField(fieldMemoryVirtual+"_raw", api.Kind_Uint64,
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.ColumnsAlignmentAnnotation: "right",
+					metadatav1.DescriptionAnnotation:      "The Virtual Memory Size of the process in bytes. This represents the total amount of virtual memory used by the process.",
+				}),
+				datasource.WithTags("type:gadget_bytes"),
+			)
 			if err != nil {
 				return nil, fmt.Errorf("adding memoryVirtual field: %w", err)
 			}
