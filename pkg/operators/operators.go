@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,10 @@ type GadgetContext interface {
 	ID() string
 	Name() string
 	Context() context.Context
+
+	// WithContext returns a new GadgetContext with the new ctx as base context; ctx MUST be a descendant of the root
+	// context of the gadget.
+	WithContext(ctx context.Context) GadgetContext
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
 	ExtraInfo() bool
@@ -119,7 +123,7 @@ type ImageOperatorInstance interface {
 type DataOperator interface {
 	Name() string
 
-	// Init allows the operator to initialize itself
+	// Deprecated: Init allows the operator to initialize itself. Please use InitContext().
 	Init(params *params.Params) error
 
 	// GlobalParams should return global params (required) for this operator; these are valid globally for the process
@@ -134,6 +138,10 @@ type DataOperator interface {
 	InstantiateDataOperator(gadgetCtx GadgetContext, instanceParamValues api.ParamValues) (DataOperatorInstance, error)
 
 	Priority() int
+}
+
+type DataOperatorInitContext interface {
+	InitContext(ctx context.Context, params *params.Params) error
 }
 
 type DataOperatorInstance interface {
