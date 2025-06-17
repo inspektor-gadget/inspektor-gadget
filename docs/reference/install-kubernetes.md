@@ -223,7 +223,7 @@ You can also decide to not verify the image, using `--verify-image=false`.
 However, we definitely recommend enabling this security feature.
 
 ```bash
-$ kubectl gadget deploy --verify-image=false
+$ kubectl gadget deploy --set-daemon-config=operator.oci.verify-image=false
 WARN[0000] You used --verify-image=false, the container image will not be verified
 ...
 Inspektor Gadget successfully deployed
