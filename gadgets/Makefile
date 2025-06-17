@@ -6,6 +6,17 @@ GADGET_TAG ?= $(shell ../tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/gadget-builder:main
 KERNEL_REPOSITORY ?= ghcr.io/inspektor-gadget/ci-kernels
+
+# GetGadgetImageName returns the full image name to be used in the tests.
+# If running locally, it returns $GADGET_REPOSITORY/<gadget>:$GADGET_TAG
+# If running on github actions, it returns <JUNK_REPOSITORY>:<GITHUB_RUN_ID>-<gadget>.
+# The whole purpose of this is to be able to push gadgets testing to the junk
+# repository, as the repository name can't contain any slash because github will
+# create a new repository, we use the tag to push multiple gadgets to the same
+# one.
+# keep aligned with GetGadgetImageName in pkg/testing/gadgetrunner/gadgetrunner.go
+get_gadget_image_name = $(if $(filter pull_request,$(GITHUB_EVENT_NAME)),$(JUNK_REPOSITORY):$(GITHUB_RUN_ID)-$(subst /,-,$(1)),$(GADGET_REPOSITORY)/$(1):$(GADGET_TAG))
+
 IG ?= ig
 KUBECTL_GADGET ?= kubectl-gadget
 IG_RUNTIME ?= docker
@@ -87,7 +98,7 @@ $(GADGETS): pull-builder-image
 		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
 		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
-		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) \
+		-t $(call get_gadget_image_name,$@) \
 		--builder-image-pull=never \
 		$$GADGET_BUILD_PARAMS \
 		$@
@@ -127,51 +138,44 @@ $(GADGETS_README_DEV):
 
 %-push: %-build
 	@echo "Pushing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@sudo -E $(IG) image push $(call get_gadget_image_name,$*)
 
 .PHONY:
 push: $(addsuffix -push,$(GADGETS))
 
 %-push-existing: %
 	@echo "Pushing existing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@sudo -E $(IG) image push $(call get_gadget_image_name,$*)
 
 .PHONY:
 push-existing: $(addsuffix -push-existing,$(GADGETS))
 
 %-sign: %-push
 	@echo "Signing $*"
-	digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	digest=$$(sudo -E $(IG) image inspect $(call get_gadget_image_name,$*) -o json | jq -r .Digest) ; \
+	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(call get_gadget_image_name,$*)@$$digest
 
 sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing:
 	@echo "Signing existing $*"
 	digest=$$(sudo -E $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(call get_gadget_image_name,$*)@$$digest
 
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
 %-clean:
-	sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	sudo -E $(IG) image remove $(call get_gadget_image_name,$*)
 
 .PHONY:
 clean: $(addsuffix -clean,$(GADGETS))
 
 .PHONY:
-pull:
-	GADGET_TAG=$(GADGET_TAG) \
-	GADGET_REPOSITORY=$(GADGET_REPOSITORY) && \
-	for GADGET in $(GADGETS); do \
-		sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
-	done
+pull: $(addsuffix -pull,$(GADGETS))
 
 .PHONY:
-%/pull:
-	GADGET_TAG=$(GADGET_TAG) \
-	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+%-pull:
+	sudo -E $(IG) image pull $(call get_gadget_image_name,$*)
 
 .PHONY:
 test-unit: build
@@ -229,7 +233,7 @@ test-k8s: test-integration
 
 .PHONY:
 %-update-latest-tag:
-	$(CRANE) copy $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(GADGET_REPOSITORY)/$*:latest
+	$(CRANE) copy $(call get_gadget_image_name,$*) $(GADGET_REPOSITORY)/$*:latest
 
 .PHONY:
 update-latest-tag: $(addsuffix -update-latest-tag,$(GADGETS))

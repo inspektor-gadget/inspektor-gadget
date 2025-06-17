@@ -242,11 +242,19 @@ func splitIGDomain(name string) (domain, remainder string) {
 	return
 }
 
+// GetGadgetImageName returns the full image name to be used in the tests.
+// If running locally, it returns $GADGET_REPOSITORY/<gadget>:$GADGET_TAG
+// If running on github actions, it returns <JUNK_REPOSITORY>:<GITHUB_RUN_ID>-<gadget>.
 func GetGadgetImageName(gadget string) string {
 	// if the image already specifies a domain, don't append GADGET_REPOSITORY
 	domain, _ := splitIGDomain(gadget)
 	if domain != defaultDomain {
 		return gadget
+	}
+
+	if os.Getenv("GITHUB_EVENT_NAME") == "pull_request" {
+		gadget = strings.ReplaceAll(gadget, "/", "-")
+		return fmt.Sprintf("%s:%s-%s", os.Getenv("JUNK_REPOSITORY"), os.Getenv("GITHUB_RUN_ID"), gadget)
 	}
 
 	repository := os.Getenv("GADGET_REPOSITORY")

@@ -63,9 +63,6 @@ runs:
         fi
 
         gadget_repository=${{ inputs.registry }}/${{ github.repository_owner }}/gadget
-        if [ ${{ github.event_name }} == 'pull_request' ]; then
-          gadget_repository=ttl.sh/${{ github.sha }}
-        fi
 
         echo "gadget-repository=${gadget_repository}" >> $GITHUB_OUTPUT
     - name: Output gadgets image tag

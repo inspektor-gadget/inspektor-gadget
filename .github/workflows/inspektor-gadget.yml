@@ -14,6 +14,7 @@ env:
   # release job as they seem to not be downloadable.
   # So, for now, let's deactivate this feature.
   DOCKER_BUILD_NO_SUMMARY: true
+  JUNK_REPOSITORY: ghcr.io/${{ github.repository_owner }}/junk
 concurrency:
   group: ${{ github.ref }}
   # We do not want to cancel job in progress on main to be sure to catch new
