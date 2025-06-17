@@ -143,6 +143,8 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 		return nil, fmt.Errorf("registering processes data source: %w", err)
 	}
 
+	ds.AddAnnotation(api.FetchIntervalAnnotation, interval.String())
+
 	instance := &processOperatorInstance{
 		interval:   interval,
 		done:       make(chan struct{}),

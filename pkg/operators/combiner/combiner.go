@@ -22,7 +22,6 @@
 package combiner
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -63,22 +62,24 @@ func (o *combinerOperator) InstanceParams() api.Params {
 }
 
 func getFetchAnnotations(ds datasource.DataSource) (time.Duration, int, error) {
-	intervalAnn, ok := ds.Annotations()[api.FetchIntervalAnnotation]
-	if !ok {
-		return 0, 0, errors.New("missing fetch interval annotation")
+	fetchInterval := time.Duration(0)
+	fetchCount := 0
+	var err error
+
+	if intervalAnn, ok := ds.Annotations()[api.FetchIntervalAnnotation]; ok {
+		fetchInterval, err = time.ParseDuration(intervalAnn)
+		if err != nil {
+			return 0, 0, fmt.Errorf("parsing fetch interval annotation to duration: %w", err)
+		}
 	}
-	fetchInterval, err := time.ParseDuration(intervalAnn)
-	if err != nil {
-		return 0, 0, fmt.Errorf("parsing fetch interval annotation to duration: %w", err)
+
+	if countAnn, ok := ds.Annotations()[api.FetchCountAnnotation]; ok {
+		fetchCount, err = strconv.Atoi(countAnn)
+		if err != nil {
+			return 0, 0, fmt.Errorf("parsing fetch count annotation to int: %w", err)
+		}
 	}
-	countAnn, ok := ds.Annotations()[api.FetchCountAnnotation]
-	if !ok {
-		return 0, 0, errors.New("missing fetch count annotation")
-	}
-	fetchCount, err := strconv.Atoi(countAnn)
-	if err != nil {
-		return 0, 0, fmt.Errorf("parsing fetch count annotation to int: %w", err)
-	}
+
 	return fetchInterval, fetchCount, nil
 }
 
