@@ -523,6 +523,10 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	for _, opt := range opts {
 		opt(nf)
 	}
+	if nf.Order == 0 {
+		// If no order is set, use the current index as the order
+		nf.Order = int32(nf.Index)
+	}
 
 	if FieldFlagHasParent.In(nf.Flags) {
 		// resolve fullname

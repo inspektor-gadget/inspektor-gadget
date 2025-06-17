@@ -196,6 +196,7 @@ var replacers = []replacer{
 					metadatav1.ValueOneOfAnnotation: strings.Join(signalNames, ", "),
 				}),
 				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
 			}
 			signalField, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
@@ -237,6 +238,7 @@ var replacers = []replacer{
 					metadatav1.ValueOneOfAnnotation: strings.Join(errnoNames, ", "),
 				}),
 				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
 			}
 			errnoField, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
@@ -272,7 +274,12 @@ var replacers = []replacer{
 			if err != nil {
 				return nil, err
 			}
-			syscallField, err := ds.AddField(outName, api.Kind_String, datasource.WithSameParentAs(in))
+
+			opts := []datasource.FieldOption{
+				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
+			}
+			syscallField, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
 				return nil, err
 			}
@@ -316,6 +323,7 @@ var replacers = []replacer{
 					metadatav1.TemplateAnnotation: "timestamp",
 				}),
 				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
 			}
 			out, err := ds.AddField(outName, api.Kind_String, opts...)
 			if err != nil {
@@ -359,6 +367,7 @@ var replacers = []replacer{
 					metadatav1.TemplateAnnotation: "bytes",
 				}),
 				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
 			}
 
 			bytesField, err := ds.AddField(outName, api.Kind_String, opts...)
@@ -398,6 +407,7 @@ var replacers = []replacer{
 					metadatav1.TemplateAnnotation: "duration",
 				}),
 				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
 			}
 
 			durationField, err := ds.AddField(outName, api.Kind_String, opts...)

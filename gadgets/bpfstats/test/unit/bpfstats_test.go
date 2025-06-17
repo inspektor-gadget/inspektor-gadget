@@ -35,12 +35,12 @@ type ExpectedBpfstatsEvent struct {
 	GadgetImage string `json:"gadgetImage"`
 	GadgetName  string `json:"gadgetName"`
 	MapCount    int    `json:"mapCount"`
-	MapMemory   int    `json:"mapMemory"`
+	MapMemory   string `json:"mapMemory"`
 	ProgID      int    `json:"progID"`
 	ProgName    string `json:"progName"`
 	ProgType    string `json:"progType"`
 	Runcount    int    `json:"runcount"`
-	Runtime     int    `json:"runtime"`
+	Runtime     string `json:"runtime"`
 	Comms       string `json:"comms"`
 	Pids        string `json:"pids"`
 }
@@ -83,7 +83,7 @@ func TestBpfstatsGadget(t *testing.T) {
 			allPrograms:   true,
 			expectedEvents: []ExpectedBpfstatsEvent{
 				// programs from trace_open gadget. This introduces a dependency
-				// on the trace_open gadget, but it's almost guranteed that this
+				// on the trace_open gadget, but it's almost guaranteed that this
 				// gadget will have these two programs
 				{
 					GadgetImage: gadgetrunner.GetGadgetImageName(testGadgetImage),
@@ -113,13 +113,13 @@ func TestBpfstatsGadget(t *testing.T) {
 
 			normalizeEvent := func(event *ExpectedBpfstatsEvent) {
 				utils.NormalizeInt(&event.MapCount)
-				utils.NormalizeInt(&event.MapMemory)
 				utils.NormalizeInt(&event.ProgID)
+				utils.NormalizeString(&event.MapMemory)
+				utils.NormalizeString(&event.Runtime)
 
 				// Manually set the values to the normalized values because the
 				// function doesn't modify the value when is 0
 				event.Runcount = utils.NormalizedInt
-				event.Runtime = utils.NormalizedInt
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utilstest.RunWithRunner(t, runner, func() error {
@@ -147,9 +147,9 @@ func TestBpfstatsGadget(t *testing.T) {
 
 			for _, expectedEvent := range testCase.expectedEvents {
 				expectedEvent.MapCount = utils.NormalizedInt
-				expectedEvent.MapMemory = utils.NormalizedInt
+				expectedEvent.MapMemory = utils.NormalizedStr
 				expectedEvent.Runcount = utils.NormalizedInt
-				expectedEvent.Runtime = utils.NormalizedInt
+				expectedEvent.Runtime = utils.NormalizedStr
 
 				require.Contains(t, gadgetRunner.CapturedEvents, expectedEvent)
 			}

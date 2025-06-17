@@ -170,14 +170,14 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	}
 
 	// stats fields
-	instance.runtimeField, err = instance.ds.AddField("runtime", api.Kind_Uint64,
+	instance.runtimeField, err = instance.ds.AddField("runtime_raw", api.Kind_Uint64,
 		datasource.WithAnnotations(map[string]string{
-			// TODO: provide human readable format
 			metadatav1.ColumnsWidthAnnotation:     "12",
 			metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 			metadatav1.DescriptionAnnotation:      "Time that the eBPF program or Gadget has run in nanoseconds",
 			"metrics.type":                        "counter",
 		}),
+		datasource.WithTags("type:gadget_duration"),
 	)
 	if err != nil {
 		return nil, err
@@ -193,14 +193,14 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	if err != nil {
 		return nil, err
 	}
-	instance.mapMemoryField, err = instance.ds.AddField("mapMemory", api.Kind_Uint64,
+	instance.mapMemoryField, err = instance.ds.AddField("mapMemory_raw", api.Kind_Uint64,
 		datasource.WithAnnotations(map[string]string{
-			// TODO provide human readable format
 			metadatav1.ColumnsWidthAnnotation:     "12",
 			metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
 			metadatav1.DescriptionAnnotation:      "Memory used by maps in bytes",
 			"metrics.type":                        "gauge",
 		}),
+		datasource.WithTags("type:gadget_bytes"),
 	)
 	if err != nil {
 		return nil, err
