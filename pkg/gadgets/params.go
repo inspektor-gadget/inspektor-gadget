@@ -14,17 +14,7 @@
 
 package gadgets
 
-import (
-	"fmt"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-)
-
-const (
-	ParamInterval = "interval"
-	ParamSortBy   = "sort"
-	ParamMaxRows  = "max-rows"
-)
+import "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 const (
 	LocalContainer   params.ValueHint = "local:container"
@@ -35,45 +25,3 @@ const (
 	K8SContainerName params.ValueHint = "k8s:container"
 	K8SLabels        params.ValueHint = "k8s:labels"
 )
-
-// DefaultSort can be implemented in addition to the Gadget interface, to specify the default sorting columns
-type DefaultSort interface {
-	SortByDefault() []string
-}
-
-// ParamsFromMap fills the given params (gadget, runtime and operator) using values from `paramMap`. It looks up
-// values using prefixes (see also `ParamsToMap`) and applies verification. If verification for a field fails, an
-// error will be returned.
-func ParamsFromMap(
-	paramMap map[string]string,
-	gadgetParams *params.Params,
-	runtimeParams *params.Params,
-	operatorParams params.Collection,
-) error {
-	err := gadgetParams.CopyFromMap(paramMap, "")
-	if err != nil {
-		return fmt.Errorf("setting gadget parameters: %w", err)
-	}
-	err = runtimeParams.CopyFromMap(paramMap, "runtime.")
-	if err != nil {
-		return fmt.Errorf("setting runtime parameters: %w", err)
-	}
-	err = operatorParams.CopyFromMap(paramMap, "operator.")
-	if err != nil {
-		return fmt.Errorf("setting operator parameters: %w", err)
-	}
-	return nil
-}
-
-// ParamsToMap adds the given params (gadget, runtime and operator) to the paramMap. It uses prefixes to ensure
-// the keys remain unique.
-func ParamsToMap(
-	paramMap map[string]string,
-	gadgetParams *params.Params,
-	runtimeParams *params.Params,
-	operatorParams params.Collection,
-) {
-	gadgetParams.CopyToMap(paramMap, "")
-	runtimeParams.CopyToMap(paramMap, "runtime.")
-	operatorParams.CopyToMap(paramMap, "operator.")
-}
