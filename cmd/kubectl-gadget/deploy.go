@@ -15,8 +15,8 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -32,6 +32,8 @@ import (
 	"github.com/distribution/reference"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -112,6 +114,8 @@ var (
 	disallowGadgetsPull   bool
 	otelMetricsListen     bool
 	otelMetricsListenAddr string
+	daemonConfig          string
+	setDaemonConfig       []string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify+ebpf"}
@@ -158,6 +162,7 @@ func init() {
 		"hook-mode", "",
 		"auto",
 		fmt.Sprintf("how to get containers start/stop notifications (%s)", strings.Join(supportedHooks, ", ")))
+	deployCmd.PersistentFlags().MarkDeprecated("hook-mode", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVarP(
 		&livenessProbe,
 		"liveness-probe", "",
@@ -168,6 +173,7 @@ func init() {
 		"fallback-podinformer", "",
 		true,
 		"use pod informer as a fallback for the main hook")
+	deployCmd.PersistentFlags().MarkDeprecated("fallback-podinformer", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVarP(
 		&printOnly,
 		"print-only", "",
@@ -219,6 +225,7 @@ func init() {
 		"events-buffer-length", "",
 		16384,
 		"The events buffer length. A low value could impact horizontal scaling.")
+	deployCmd.PersistentFlags().MarkDeprecated("events-buffer-length", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringVarP(
 		&daemonLogLevel,
 		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
@@ -236,30 +243,43 @@ func init() {
 	deployCmd.PersistentFlags().BoolVar(
 		&verifyGadgets,
 		"verify-gadgets", true, "Verify gadgets using the provided public keys")
+	deployCmd.PersistentFlags().MarkDeprecated("verify-gadgets", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	// WARNING For now, use StringVar() instead of StringSliceVar() as only the
 	// first line of the file will be taken when used with
 	// --gadgets-public-keys="$(cat inspektor-gadget.pub),$(cat your-key.pub)"
 	deployCmd.PersistentFlags().StringVar(
 		&gadgetsPublicKeys,
 		"gadgets-public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets")
+	deployCmd.PersistentFlags().MarkDeprecated("gadgets-public-keys", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringSliceVar(
 		&allowedGadgets,
 		"allowed-gadgets", []string{}, "List of allowed gadgets, if gadget is not part of it, execution will be denied. By default, all gadgets are allowed.")
+	deployCmd.PersistentFlags().MarkDeprecated("allowed-gadgets", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringSliceVar(
 		&insecureRegistries,
 		"insecure-registries",
 		[]string{},
 		"List of registries to access over plain HTTP",
 	)
+	deployCmd.PersistentFlags().MarkDeprecated("insecure-registries", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVar(
 		&disallowGadgetsPull,
 		"disallow-gadgets-pulling", false, "Disallow pulling gadgets from registries")
+	deployCmd.PersistentFlags().MarkDeprecated("disallow-gadgets-pulling", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVar(
 		&otelMetricsListen,
 		"otel-metrics-listen", false, "Enable OpenTelemetry metrics listener (Prometheus compatible) endpoint")
+	deployCmd.PersistentFlags().MarkDeprecated("otel-metrics-listen", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringVar(
 		&otelMetricsListenAddr,
 		"otel-metrics-listen-address", "0.0.0.0:2224", "Address and port to create the OpenTelemetry metrics listener (Prometheus compatible) on")
+	deployCmd.PersistentFlags().MarkDeprecated("otel-metrics-listen-address", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
+	deployCmd.PersistentFlags().StringSliceVar(
+		&setDaemonConfig,
+		"set-daemon-config", []string{}, "Set a key-value pair in the daemon configuration. The format is key=value. This flag can be used multiple times to set multiple values. Only recommended for primitive values (string, int, bool). For complex values, use --daemon-config flag with a YAML file.")
+	deployCmd.PersistentFlags().StringVar(
+		&daemonConfig,
+		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -471,6 +491,135 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 	}
 
 	return affinity, nil
+}
+
+// applyConfigToConfigMap overrides the ConfigMap using the following order of precedence (highest to lowest):
+// 1. Flags (--gadgets-public-keys, --disallow-gadgets-pulling, etc.) [Deprecated]
+// 2. --set-daemon-config flag
+// 3. ConfigFile passed through `daemon-config`
+// 4. Flags default values [Deprecated]
+// 5. ConfigMap default values
+func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.FlagSet) error {
+	if cm == nil {
+		return fmt.Errorf("ConfigMap is nil")
+	}
+	cfgData, ok := cm.Data[configYamlKey]
+	if !ok {
+		return fmt.Errorf("%q not found in ConfigMap %q", configYamlKey, cm.Name)
+	}
+
+	v := viper.New()
+	v.SetConfigType("yaml")
+
+	// Set the default values from the ConfigMap
+	err := v.ReadConfig(strings.NewReader(cfgData))
+	if err != nil {
+		return fmt.Errorf("reading config file %q: %w", configPath, err)
+	}
+
+	// Set default value from flags
+	flags.VisitAll(func(flag *pflag.Flag) {
+		ck, ok := flagToConfigKey(flag.Name)
+		if !ok {
+			return
+		}
+		val := flagToConfigValue(ck, flag.Value)
+		v.SetDefault(ck, val)
+	})
+
+	// Set the values from a config file
+	if configPath != "" {
+		f, err := os.Open(configPath)
+		if err != nil {
+			return fmt.Errorf("opening daemon config file %q: %w", configPath, err)
+		}
+		defer f.Close()
+		err = v.MergeConfig(f)
+		if err != nil {
+			return fmt.Errorf("merging config file %q: %w", configPath, err)
+		}
+	}
+
+	// Set values from --set-daemon-config flag
+	for _, set := range setDaemonConfig {
+		parts := strings.SplitN(set, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid format for --set-daemon-config: %q, expected key=value", set)
+		}
+		key := parts[0]
+		value := parts[1]
+
+		// best effort: type is inferred from the flag value or values read from the ConfigMap
+		if v.IsSet(key) {
+			existingValue := v.Get(key)
+			switch reflect.TypeOf(existingValue).Kind() {
+			case reflect.Int:
+				intValue, err := strconv.Atoi(value)
+				if err != nil {
+					return fmt.Errorf("invalid integer value for %q: %q", key, value)
+				}
+				v.Set(key, intValue)
+			case reflect.Bool:
+				boolValue, err := strconv.ParseBool(value)
+				if err != nil {
+					return fmt.Errorf("invalid boolean value for %q: %q", key, value)
+				}
+				v.Set(key, boolValue)
+			case reflect.String:
+				v.Set(key, value)
+			default:
+				return fmt.Errorf("setting %q with --set-daemon-config is only supported for primitive values (string, int, bool), got %T. For complex values, use --daemon-config flag with a YAML file", key, existingValue)
+			}
+			continue
+		}
+		v.Set(key, value)
+	}
+
+	// Set values from flags if changed
+	flags.VisitAll(func(flag *pflag.Flag) {
+		fn, ok := flagToConfigKey(flag.Name)
+		if !ok || !flag.Changed {
+			return
+		}
+		val := flagToConfigValue(fn, flag.Value)
+		v.Set(fn, val)
+	})
+
+	var buf bytes.Buffer
+	err = v.WriteConfigTo(&buf)
+	if err != nil {
+		return fmt.Errorf("writing config to buffer: %w", err)
+	}
+	cm.Data[configYamlKey] = buf.String()
+
+	return nil
+}
+
+// flagToConfigKey converts a flag name to the corresponding config key
+// since some flags have different names in the config file.
+func flagToConfigKey(flagName string) (string, bool) {
+	key := flagName
+	switch flagName {
+	case "gadgets-public-keys":
+		key = gadgettracermanagerconfig.PublicKeys
+	case "disallow-gadgets-pulling":
+		key = gadgettracermanagerconfig.DisallowPulling
+	case "verify-gadgets":
+		key = gadgettracermanagerconfig.VerifyImage
+	}
+	if !gadgettracermanagerconfig.IsValidKey(key) {
+		return "", false
+	}
+
+	return gadgettracermanagerconfig.FullKeyPath(key), true
+}
+
+// flagToConfigValue converts a flag value to the corresponding config value.
+func flagToConfigValue(flagName string, value pflag.Value) any {
+	if flagName == gadgettracermanagerconfig.PublicKeys {
+		return strings.Split(value.String(), ",")
+	}
+	return value
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -781,54 +930,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		if cm, isCm := object.(*v1.ConfigMap); isCm {
 			cm.Namespace = gadgetNamespace
-			cfgData, ok := cm.Data[configYamlKey]
-			if !ok {
-				return fmt.Errorf("%q not found in ConfigMap %q", configYamlKey, cm.Name)
-			}
-			cfg := make(map[string]interface{}, len(cm.Data))
-			err = yaml.Unmarshal([]byte(cfgData), &cfg)
+			err = applyConfigToConfigMap(cm, daemonConfig, cmd.PersistentFlags())
 			if err != nil {
-				return fmt.Errorf("unmarshaling config.yaml: %w", err)
+				return fmt.Errorf("merging config with %q: %w", daemonConfig, err)
 			}
-
-			cfg[gadgettracermanagerconfig.HookModeKey] = hookMode
-			cfg[gadgettracermanagerconfig.FallbackPodInformerKey] = fallbackPodInformer
-			cfg[gadgettracermanagerconfig.EventsBufferLengthKey] = eventBufferLength
-			cfg[gadgettracermanagerconfig.ContainerdSocketPath] = runtimesConfig.Containerd
-			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
-			cfg[gadgettracermanagerconfig.DockerSocketPath] = runtimesConfig.Docker
-			cfg[gadgettracermanagerconfig.PodmanSocketPath] = runtimesConfig.Podman
-			cfg[gadgettracermanagerconfig.GadgetNamespace] = gadgetNamespace
-
-			opCfg, ok := cfg[gadgettracermanagerconfig.Operator].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("%s not found in config.yaml", gadgettracermanagerconfig.Operator)
-			}
-
-			opOciCfg, ok := opCfg[gadgettracermanagerconfig.Oci].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("%s.%s not found in config.yaml", gadgettracermanagerconfig.Operator, gadgettracermanagerconfig.Oci)
-			}
-
-			opOciCfg[gadgettracermanagerconfig.VerifyImage] = verifyGadgets
-			opOciCfg[gadgettracermanagerconfig.PublicKeys] = strings.Split(gadgetsPublicKeys, ",")
-			opOciCfg[gadgettracermanagerconfig.AllowedGadgets] = allowedGadgets
-			opOciCfg[gadgettracermanagerconfig.InsecureRegistries] = insecureRegistries
-			opOciCfg[gadgettracermanagerconfig.DisallowPulling] = disallowGadgetsPull
-
-			if otelMetricsListen {
-				otelMetricsConfig := map[string]interface{}{
-					gadgettracermanagerconfig.OtelMetricsListen:        otelMetricsListen,
-					gadgettracermanagerconfig.OtelMetricsListenAddress: otelMetricsListenAddr,
-				}
-				opCfg[gadgettracermanagerconfig.OtelMetrics] = otelMetricsConfig
-			}
-
-			data, err := yaml.Marshal(cfg)
-			if err != nil {
-				return fmt.Errorf("marshaling config.yaml: %w", err)
-			}
-			cm.Data[configYamlKey] = string(data)
 		}
 
 		if printOnly {
