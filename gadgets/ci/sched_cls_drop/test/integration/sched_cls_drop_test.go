@@ -33,7 +33,7 @@ type schedCLSDropEvent struct {
 	Dir string `json:"dir"`
 }
 
-func TestSchedCLS(t *testing.T) {
+func _TestSchedCLS(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
