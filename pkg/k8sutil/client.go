@@ -16,6 +16,7 @@ package k8sutil
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -48,7 +49,12 @@ func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error
 					return nil, err
 				}
 			}
+		} else if err != nil {
+			return nil, fmt.Errorf("creating in-cluster config: %w", err)
 		}
+	}
+	if config == nil {
+		return nil, errors.New("no kubeconfig found, please set the KUBECONFIG environment variable or use the --kubeconfig flag")
 	}
 	config.UserAgent = version.UserAgent()
 	if userAgentComment != "" {
