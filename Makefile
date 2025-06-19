@@ -72,7 +72,7 @@ LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/internal/version.ver
 
 .DEFAULT_GOAL := build
 .PHONY: build
-build: manifests generate kubectl-gadget gadget-container
+build: kubectl-gadget gadget-container
 
 .PHONY: all
 all: build ig
@@ -429,8 +429,6 @@ help:
 	@echo  '  ig-all	  		- Build the ig cli tool for all architectures'
 	@echo  '  ig-on-docker                  - Build the ig cli tool using docker'
 	@echo  '* build		  		- Build all targets marked with [o]'
-	@echo  'o manifests			- Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects'
-	@echo  'o generate			- Generate client API code and DeepCopy related code'
 	@echo  '  go-mod-tidy			- Run go mod tidy for all go modules in the repo'
 	@echo  'o kubectl-gadget		- Build the kubectl plugin'
 	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'

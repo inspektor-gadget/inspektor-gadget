@@ -18,22 +18,7 @@ package gadgets
 
 import (
 	"bytes"
-	"fmt"
-	"syscall"
 )
-
-func ProtoString(proto int) string {
-	// proto definitions:
-	// https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
-	protoStr := fmt.Sprintf("UNKNOWN#%d", proto)
-	switch proto {
-	case syscall.IPPROTO_TCP:
-		protoStr = "TCP"
-	case syscall.IPPROTO_UDP:
-		protoStr = "UDP"
-	}
-	return protoStr
-}
 
 func FromCString(in []byte) string {
 	idx := bytes.IndexByte(in, 0)
