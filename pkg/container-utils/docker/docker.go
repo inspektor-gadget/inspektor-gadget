@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
@@ -39,6 +40,8 @@ const (
 	DefaultTimeout = 2 * time.Second
 )
 
+var tracer = otel.Tracer("docker")
+
 // DockerClient implements the ContainerRuntimeClient interface but using the
 // Docker Engine API instead of the CRI plugin interface (Dockershim). It was
 // necessary because Dockershim does not always use the same approach of CRI-O
@@ -50,6 +53,13 @@ type DockerClient struct {
 }
 
 func NewDockerClient(socketPath string, protocol string) (runtimeclient.ContainerRuntimeClient, error) {
+	return NewDockerClientContext(context.Background(), socketPath, protocol)
+}
+
+func NewDockerClientContext(ctx context.Context, socketPath string, protocol string) (runtimeclient.ContainerRuntimeClient, error) {
+	ctx, span := tracer.Start(ctx, "NewDockerClientContext")
+	defer span.End()
+
 	switch protocol {
 	// Empty string falls back to "internal". Used by unit tests.
 	case "", containerutilsTypes.RuntimeProtocolInternal:
@@ -86,7 +96,7 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 	}, nil
 }
 
-func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Summary, error) {
+func listContainers(ctx context.Context, c *DockerClient, filter *dockerfilters.Args) ([]container.Summary, error) {
 	opts := container.ListOptions{
 		// We need to request for all containers (also non-running) because
 		// when we are enriching a container that is being created, it is
@@ -97,7 +107,7 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Su
 		opts.Filters = *filter
 	}
 
-	containers, err := c.client.ContainerList(context.Background(), opts)
+	containers, err := c.client.ContainerList(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("listing containers with options %+v: %w",
 			opts, err)
@@ -122,7 +132,11 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Su
 }
 
 func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
-	containers, err := listContainers(c, nil)
+	return c.GetContainersContext(context.Background())
+}
+
+func (c *DockerClient) GetContainersContext(ctx context.Context) ([]*runtimeclient.ContainerData, error) {
+	containers, err := listContainers(ctx, c, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +151,14 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 }
 
 func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.ContainerData, error) {
+	return c.GetContainerContext(context.Background(), containerID)
+}
+
+func (c *DockerClient) GetContainerContext(ctx context.Context, containerID string) (*runtimeclient.ContainerData, error) {
 	filter := dockerfilters.NewArgs()
 	filter.Add("id", containerID)
 
-	containers, err := listContainers(c, &filter)
+	containers, err := listContainers(ctx, c, &filter)
 	if err != nil {
 		return nil, err
 	}
@@ -157,12 +175,16 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 }
 
 func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.ContainerDetailsData, error) {
+	return c.GetContainerDetailsContext(context.Background(), containerID)
+}
+
+func (c *DockerClient) GetContainerDetailsContext(ctx context.Context, containerID string) (*runtimeclient.ContainerDetailsData, error) {
 	containerID, err := runtimeclient.ParseContainerID(types.RuntimeNameDocker, containerID)
 	if err != nil {
 		return nil, err
 	}
 
-	containerJSON, err := c.client.ContainerInspect(context.Background(), containerID)
+	containerJSON, err := c.client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +206,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		containerJSON.ID,
 		containerJSON.Name,
 		containerJSON.Config.Image,
-		c.getContainerImageDigest(containerJSON.Image),
+		c.getContainerImageDigest(ctx, containerJSON.Image),
 		containerJSON.State.Status,
 		containerJSON.Config.Labels)
 
@@ -238,8 +260,8 @@ func (c *DockerClient) Close() error {
 // Gets the image digest for the given image ID, if the digest exists.
 // The digest is usually only available if the image was either pulled from a registry, or if the image was pushed to a registry, which is when the manifest is generated and its digest calculated.
 // Note: This function only works for already running containers and not for containers that are being created.
-func (c *DockerClient) getContainerImageDigest(imageId string) string {
-	imageInspect, err := c.client.ImageInspect(context.Background(), imageId)
+func (c *DockerClient) getContainerImageDigest(ctx context.Context, imageId string) string {
+	imageInspect, err := c.client.ImageInspect(ctx, imageId)
 	if err != nil {
 		log.Warnf("Failed to get image digest for image %s: %s", imageId, err)
 		return ""
