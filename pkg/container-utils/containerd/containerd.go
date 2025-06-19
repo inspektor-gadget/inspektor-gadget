@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/errdefs"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -43,12 +44,21 @@ const (
 
 var log = logrus.WithField("container-client", "containerd")
 
+var tracer = otel.Tracer("containerd")
+
 type ContainerdClient struct {
 	client *containerd.Client
 	ctx    context.Context
 }
 
 func NewContainerdClient(socketPath string, protocol string, config *containerutilsTypes.ExtraConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	return NewContainerdClientContext(context.Background(), socketPath, protocol, config)
+}
+
+func NewContainerdClientContext(ctx context.Context, socketPath string, protocol string, config *containerutilsTypes.ExtraConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	ctx, span := tracer.Start(ctx, "NewContainerdClientContext")
+	defer span.End()
+
 	if socketPath == "" {
 		socketPath = runtimeclient.ContainerdDefaultSocketPath
 	}
@@ -70,7 +80,7 @@ func NewContainerdClient(socketPath string, protocol string, config *containerut
 		namespace = config.Namespace
 	}
 
-	dialCtx, cancelFunc := context.WithTimeout(context.TODO(), DefaultTimeout)
+	dialCtx, cancelFunc := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancelFunc()
 	//nolint:staticcheck
 	grpcConn, err := grpc.DialContext(
@@ -88,7 +98,7 @@ func NewContainerdClient(socketPath string, protocol string, config *containerut
 	}
 
 	containerdCtx := namespaces.WithNamespace(
-		context.TODO(),
+		ctx,
 		namespace,
 	)
 
