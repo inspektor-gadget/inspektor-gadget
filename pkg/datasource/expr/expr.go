@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,70 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
-
-type wrap struct {
-	d datasource.Data
-}
-
-func (w wrap) GetString(f datasource.FieldAccessor) string {
-	d, _ := f.String(w.d)
-	return d
-}
-
-func (w wrap) GetUint8(f datasource.FieldAccessor) uint8 {
-	d, _ := f.Uint8(w.d)
-	return d
-}
-
-func (w wrap) GetUint16(f datasource.FieldAccessor) uint16 {
-	d, _ := f.Uint16(w.d)
-	return d
-}
-
-func (w wrap) GetUint32(f datasource.FieldAccessor) uint32 {
-	d, _ := f.Uint32(w.d)
-	return d
-}
-
-func (w wrap) GetUint64(f datasource.FieldAccessor) uint64 {
-	d, _ := f.Uint64(w.d)
-	return d
-}
-
-func (w wrap) GetInt8(f datasource.FieldAccessor) int8 {
-	d, _ := f.Int8(w.d)
-	return d
-}
-
-func (w wrap) GetInt16(f datasource.FieldAccessor) int16 {
-	d, _ := f.Int16(w.d)
-	return d
-}
-
-func (w wrap) GetInt32(f datasource.FieldAccessor) int32 {
-	d, _ := f.Int32(w.d)
-	return d
-}
-
-func (w wrap) GetInt64(f datasource.FieldAccessor) int64 {
-	d, _ := f.Int64(w.d)
-	return d
-}
-
-func (w wrap) GetFloat32(f datasource.FieldAccessor) float32 {
-	d, _ := f.Float32(w.d)
-	return d
-}
-
-func (w wrap) GetFloat64(f datasource.FieldAccessor) float64 {
-	d, _ := f.Float64(w.d)
-	return d
-}
-
-func (w wrap) GetBool(f datasource.FieldAccessor) bool {
-	d, _ := f.Bool(w.d)
-	return d
-}
 
 type dsPatcher struct {
 	ds datasource.DataSource
@@ -145,7 +81,7 @@ func replaceNode(node *ast.Node, f datasource.FieldAccessor) {
 
 	callNode := &ast.CallNode{
 		Callee:    &ast.IdentifierNode{Value: fn},
-		Arguments: []ast.Node{&ast.ConstantNode{Value: f}},
+		Arguments: []ast.Node{&ast.ConstantNode{Value: f}, &ast.IdentifierNode{Value: "$env"}},
 	}
 	ast.Patch(node, callNode)
 	(*node).SetType(ft)
@@ -182,11 +118,91 @@ func getFnAndReflectType(f datasource.FieldAccessor) (string, reflect.Type) {
 	}
 }
 
+func getBuiltInExpressions() []expr.Option {
+	return []expr.Option{
+		expr.Function("GetString",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).String(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) string),
+		),
+		expr.Function("GetUint8",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Uint8(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) uint8),
+		),
+		expr.Function("GetUint16",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Uint16(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) uint16),
+		),
+		expr.Function("GetUint32",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Uint32(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) uint32),
+		),
+		expr.Function("GetUint64",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Uint64(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) uint64),
+		),
+		expr.Function("GetInt8",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Int8(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) int8),
+		),
+		expr.Function("GetInt16",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Int16(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) int16),
+		),
+		expr.Function("GetInt32",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Int32(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) int32),
+		),
+		expr.Function("GetInt64",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Int64(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) int64),
+		),
+		expr.Function("GetFloat32",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Float32(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) float32),
+		),
+		expr.Function("GetFloat64",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Float64(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) float64),
+		),
+		expr.Function("GetBool",
+			func(params ...any) (any, error) {
+				return params[0].(datasource.FieldAccessor).Bool(params[1].(datasource.Data))
+			},
+			new(func(datasource.FieldAccessor, datasource.Data) bool),
+		),
+	}
+}
+
 func CompileStringProgram(ds datasource.DataSource, expression string) (*vm.Program, error) {
 	dsp := dsPatcher{
 		ds: ds,
 	}
-	prog, err := expr.Compile(expression, expr.AsKind(reflect.String), expr.Patch(dsp), expr.Env(&wrap{}))
+
+	options := append(getBuiltInExpressions(), expr.AsKind(reflect.String), expr.Patch(dsp))
+
+	prog, err := expr.Compile(expression, options...)
 	if err != nil {
 		return nil, fmt.Errorf("compiling string expression: %w", err)
 	}
@@ -197,7 +213,10 @@ func CompileFilterProgram(ds datasource.DataSource, expression string) (*vm.Prog
 	dsp := dsPatcher{
 		ds: ds,
 	}
-	prog, err := expr.Compile(expression, expr.AsBool(), expr.Patch(dsp), expr.Env(&wrap{}))
+
+	options := append(getBuiltInExpressions(), expr.AsBool(), expr.Patch(dsp), expr.Env(datasource.Data(nil)))
+
+	prog, err := expr.Compile(expression, options...)
 	if err != nil {
 		return nil, fmt.Errorf("compiling filter expression: %w", err)
 	}
@@ -205,5 +224,5 @@ func CompileFilterProgram(ds datasource.DataSource, expression string) (*vm.Prog
 }
 
 func Run(program *vm.Program, data datasource.Data) (any, error) {
-	return expr.Run(program, wrap{data})
+	return expr.Run(program, data)
 }
