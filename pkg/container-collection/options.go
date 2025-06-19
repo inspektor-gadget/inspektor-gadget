@@ -176,12 +176,12 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutilsTypes.Run
 // ContainerCollection.Initialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
 func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) ContainerCollectionOption {
 	return func(ctx context.Context, cc *ContainerCollection) error {
-		_, span := tracer.Start(ctx, "WithContainerRuntimeEnrichment")
+		ctx, span := tracer.Start(ctx, "WithContainerRuntimeEnrichment")
 		defer span.End()
 
 		span.SetAttributes(attribute.String("runtime", string(runtime.Name)))
 
-		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
+		runtimeClient, err := containerutils.NewContainerRuntimeClientContext(ctx, runtime)
 		if err != nil {
 			if !cc.disableContainerRuntimeWarnings {
 				log.Warnf("Runtime enricher (%s): failed to initialize container runtime: %s",
@@ -212,8 +212,14 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 			}
 		})
 
+		var containers []*runtimeclient.ContainerData
 		// Enrich already running containers
-		containers, err := runtimeClient.GetContainers()
+		if t, ok := runtimeClient.(runtimeclient.ContainerRuntimeClientContext); ok {
+			containers, err = t.GetContainersContext(ctx)
+		} else {
+			containers, err = runtimeClient.GetContainers()
+		}
+
 		if err != nil {
 			if !cc.disableContainerRuntimeWarnings {
 				log.Warnf("Runtime enricher (%s): couldn't get current containers: %s",
