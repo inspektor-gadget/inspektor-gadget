@@ -209,4 +209,5 @@ replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20
 // - https://github.com/cilium/ebpf/pull/1763
 // - https://github.com/cilium/ebpf/pull/1772
 // - https://github.com/cilium/ebpf/pull/1778
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250521101936-dd4d949f2f7b
+// - https://github.com/alban/ebpf/commit/86d34fa085960946fedf504a6a3154c09d2685a0
+replace github.com/cilium/ebpf => github.com/alban/ebpf v0.0.0-20250616155344-86d34fa08596

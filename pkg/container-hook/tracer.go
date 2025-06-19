@@ -247,11 +247,27 @@ func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, err
 }
 
 func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
+	// Warm the kallsyms cache so we don't have to read /proc/kallsyms 3 times
+	ebpf.KallsymsPreLoad([]string{
+		// kfilefields
+		"__scm_send",
+		"fget_raw",
+		// container-hook
+		"fsnotify_remove_first_event",
+		// socket enricher
+		"inet6_bind",
+		"inet6_release",
+		"inet_bind",
+		"inet_release",
+		"tcp_connect",
+		"udp_sendmsg",
+		"udpv6_sendmsg",
+	})
+
 	spec, err := loadExecruntime()
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
-
 	fanotifyPrivateData, err := kfilefields.ReadPrivateDataFromFd(fanotifyFd)
 	if err != nil {
 		return fmt.Errorf("reading private data from fanotify fd: %w", err)
