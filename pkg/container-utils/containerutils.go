@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package containerutils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ import (
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vishvananda/netlink"
+	"go.opentelemetry.io/otel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
@@ -51,7 +53,16 @@ var AvailableRuntimeProtocols = []string{
 	containerutilsTypes.RuntimeProtocolCRI,
 }
 
+var tracer = otel.Tracer("container-utils")
+
 func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	return NewContainerRuntimeClientContext(context.TODO(), runtime)
+}
+
+func NewContainerRuntimeClientContext(ctx context.Context, runtime *containerutilsTypes.RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	ctx, span := tracer.Start(ctx, "NewContainerRuntimeClientContext")
+	defer span.End()
+
 	switch runtime.Name {
 	case types.RuntimeNameDocker:
 		socketPath := runtime.SocketPath
@@ -64,7 +75,7 @@ func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runt
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
-		return containerd.NewContainerdClient(socketPath, runtime.RuntimeProtocol, &runtime.Extra)
+		return containerd.NewContainerdClientContext(ctx, socketPath, runtime.RuntimeProtocol, &runtime.Extra)
 	case types.RuntimeNameCrio:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {

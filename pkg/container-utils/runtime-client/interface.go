@@ -15,6 +15,7 @@
 package runtimeclient
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -129,6 +130,24 @@ type ContainerRuntimeClient interface {
 
 	// Close tears down the connection with the container runtime.
 	Close() error
+}
+
+type ContainerRuntimeClientContext interface {
+	// GetContainersContext returns a slice with the information of all the containers.
+	GetContainersContext(ctx context.Context) ([]*ContainerData, error)
+
+	// GetContainerContext returns the information of the container identified by the
+	// provided ID.
+	GetContainerContext(ctx context.Context, containerID string) (*ContainerData, error)
+
+	// GetContainerDetailsContext returns the detailed information of the container
+	// identified by the provided ID.
+	// The container details cannot be provided prior to container being in
+	// running state.
+	GetContainerDetailsContext(ctx context.Context, containerID string) (*ContainerDetailsData, error)
+
+	// Close tears down the connection with the container runtime.
+	Close() error // TODO
 }
 
 func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {
