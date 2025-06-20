@@ -569,10 +569,6 @@ func (l *localManagerTrace) ParamDescs() params.ParamDescs {
 	}
 }
 
-func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
-	return l.localManagerTrace.ParamDescs()
-}
-
 func (l *localManager) Priority() int {
 	return -1
 }

@@ -415,10 +415,6 @@ func (k *KubeManager) Priority() int {
 	return -1
 }
 
-func (m *KubeManagerInstance) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
-	return m.manager.ParamDescs()
-}
-
 func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	m.gadgetInstance, _ = gadgetCtx.GetVar("ebpfInstance")
 
