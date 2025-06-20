@@ -16,8 +16,6 @@ package gadgettracermanager
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -66,57 +64,6 @@ func (g *GadgetTracerManager) RemoveTracer(tracerID string) error {
 	defer g.mu.Unlock()
 
 	return g.tracerCollection.RemoveTracer(tracerID)
-}
-
-func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.GadgetTracerManager_ReceiveStreamServer) error {
-	if tracerID.Id == "" {
-		return fmt.Errorf("tracer Id not set")
-	}
-
-	g.mu.Lock()
-
-	gadgetStream, err := g.tracerCollection.Stream(tracerID.Id)
-	if err != nil {
-		g.mu.Unlock()
-		return fmt.Errorf("stream for tracer %q not found", tracerID.Id)
-	}
-
-	ch := gadgetStream.Subscribe()
-	defer gadgetStream.Unsubscribe(ch)
-
-	g.mu.Unlock()
-
-	if ch == nil {
-		return errors.New("tracer was removed before we could subscribe to its stream")
-	}
-
-	for l := range ch {
-		if l.EventLost {
-			ev := eventtypes.Event{
-				Type: eventtypes.ERR,
-				CommonData: eventtypes.CommonData{
-					K8s: eventtypes.K8sMetadata{
-						Node: g.nodeName,
-					},
-				},
-				Message: "events lost in gadget tracer manager",
-			}
-			line, _ := json.Marshal(ev)
-			err := stream.Send(&pb.StreamData{Line: string(line)})
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		line := &pb.StreamData{Line: l.Line}
-		if err := stream.Send(line); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (g *GadgetTracerManager) TracerMountNsMap(tracerID string) (*ebpf.Map, error) {

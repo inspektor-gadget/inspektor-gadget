@@ -19,9 +19,6 @@ option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettrac
 package gadgettracermanager;
 
 service GadgetTracerManager {
-  // Methods called via kubectl-exec
-  rpc ReceiveStream(TracerID) returns (stream StreamData) {}
-
   // Methods called by OCI Hooks
   rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
   rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
@@ -45,10 +42,6 @@ message RemoveContainerResponse {
 
 message TracerID {
   string id = 1;
-}
-
-message StreamData {
-  string line = 1;
 }
 
 message OwnerReference {
