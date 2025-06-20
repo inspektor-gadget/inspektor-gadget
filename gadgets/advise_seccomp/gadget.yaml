@@ -12,3 +12,5 @@ datasources:
     annotations:
       cli.supported-output-modes: advise
       cli.default-output-mode: advise
+paramDefaults:
+  operator.oci.ebpf.map-fetch-interval: "0"
