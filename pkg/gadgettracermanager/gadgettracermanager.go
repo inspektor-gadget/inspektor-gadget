@@ -119,20 +119,6 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 	return nil
 }
 
-func (g *GadgetTracerManager) PublishEvent(tracerID string, line string) error {
-	// TODO: reentrant locking :/
-	// g.mu.Lock()
-	// defer g.mu.Unlock()
-
-	stream, err := g.tracerCollection.Stream(tracerID)
-	if err != nil {
-		return fmt.Errorf("stream for tracer %q not found", tracerID)
-	}
-
-	stream.Publish(line)
-	return nil
-}
-
 func (g *GadgetTracerManager) TracerMountNsMap(tracerID string) (*ebpf.Map, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
