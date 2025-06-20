@@ -25,6 +25,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
@@ -37,13 +38,9 @@ func TestSocketEnricherCreate(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, err := NewSocketEnricher()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tracer == nil {
-		t.Fatal("Returned tracer was nil")
-	}
+	tracer, err := NewSocketEnricher(Config{})
+	require.NoError(t, err)
+	require.NotNil(t, tracer, "Returned tracer was nil")
 }
 
 func TestSocketEnricherStopIdempotent(t *testing.T) {
@@ -52,11 +49,72 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 	utilstest.RequireRoot(t)
 	utilstest.HostInit(t)
 
-	tracer, _ := NewSocketEnricher()
+	tracer, err := NewSocketEnricher(Config{})
+	require.NoError(t, err)
 
 	// Check that a double stop doesn't cause issues
 	tracer.Close()
 	tracer.Close()
+}
+
+func TestSocketEnricherBadConfig(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
+
+	type testDefinition struct {
+		config Config
+	}
+
+	for name, test := range map[string]testDefinition{
+		"invalid_cwd_size": {
+			config: Config{
+				Cwd: FieldConfig{
+					Enabled: true,
+					Size:    3, // Invalid size, must be power of 2
+				},
+			},
+		},
+		"cwd_zero_size": {
+			config: Config{
+				Cwd: FieldConfig{
+					Enabled: true,
+					Size:    0, // Invalid size, must be power of 2 and greater than 0
+				},
+			},
+		},
+		"invalid_exepath_size": {
+			config: Config{
+				Exepath: FieldConfig{
+					Enabled: true,
+					Size:    3, // Invalid size, must be power of 2
+				},
+			},
+		},
+		"too_big_cwd_size": {
+			config: Config{
+				Cwd: FieldConfig{
+					Enabled: true,
+					Size:    4096 * 2, // Too big, max is 4096
+				},
+			},
+		},
+		"too_big_exepath_size": {
+			config: Config{
+				Exepath: FieldConfig{
+					Enabled: true,
+					Size:    4096 * 2, // Too big, max is 4096
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := NewSocketEnricher(test.config)
+			require.Error(t, err)
+		})
+	}
 }
 
 type sockOpt struct {
@@ -77,13 +135,9 @@ func TestSocketEnricherBind(t *testing.T) {
 	utilstest.HostInit(t)
 
 	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Cannot get current working directory: %v", err)
-	}
+	require.NoError(t, err, "Cannot get current working directory")
 	exepath, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		t.Fatalf("Cannot get current executable path: %v", err)
-	}
+	require.NoError(t, err, "Cannot get current executable path")
 	ptask := host.GetProcComm(os.Getppid())
 
 	type testDefinition struct {
@@ -103,8 +157,8 @@ func TestSocketEnricherBind(t *testing.T) {
 		}
 		return
 	}
-	stringToSlice512 := func(s string) (ret [512]int8) {
-		for i := 0; i < 512; i++ {
+	stringToSlice4096 := func(s string) (ret [4096]int8) {
+		for i := 0; i < 4096; i++ {
 			if i >= len(s) {
 				break
 			}
@@ -130,8 +184,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -152,8 +206,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -180,8 +234,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice512(cwd),
-						Exepath:  stringToSlice512(exepath),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -202,8 +256,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -224,8 +278,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Ppid:    uint32(os.Getppid()),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -252,8 +306,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:     stringToSlice("socketenricher."),
 						Ptask:    stringToSlice(ptask),
 						Ipv6only: int8(1),
-						Cwd:      stringToSlice512(cwd),
-						Exepath:  stringToSlice512(exepath),
+						Cwd:      stringToSlice4096(cwd),
+						Exepath:  stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -276,8 +330,8 @@ func TestSocketEnricherBind(t *testing.T) {
 						UidGid:  uint64(1111)<<32 + uint64(1000),
 						Task:    stringToSlice("socketenricher."),
 						Ptask:   stringToSlice(ptask),
-						Cwd:     stringToSlice512(cwd),
-						Exepath: stringToSlice512(exepath),
+						Cwd:     stringToSlice4096(cwd),
+						Exepath: stringToSlice4096(exepath),
 					},
 				}
 			},
@@ -288,15 +342,23 @@ func TestSocketEnricherBind(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			seConfig := Config{
+				Cwd: FieldConfig{
+					Enabled: true,
+					Size:    4096,
+				},
+				Exepath: FieldConfig{
+					Enabled: true,
+					Size:    4096,
+				},
+			}
 			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
 
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
 			// 2. lateTracer will be started after the event is generated
-			earlyTracer, err := NewSocketEnricher()
-			if err != nil {
-				t.Fatal(err)
-			}
+			earlyTracer, err := NewSocketEnricher(seConfig)
+			require.NoError(t, err)
 			t.Cleanup(earlyTracer.Close)
 
 			// Generate the event in the fake container
@@ -305,22 +367,18 @@ func TestSocketEnricherBind(t *testing.T) {
 			utilstest.RunWithRunner(t, runner, func() error {
 				var err error
 				port, fd, err = test.generateEvent()
-
 				t.Cleanup(func() {
 					// cleanup only if it has not been already closed
 					if fd != -1 {
 						unix.Close(fd)
 					}
 				})
-
 				return err
 			})
 
 			// Start the late tracer after the event has been generated
-			lateTracer, err := NewSocketEnricher()
-			if err != nil {
-				t.Fatal(err)
-			}
+			lateTracer, err := NewSocketEnricher(seConfig)
+			require.NoError(t, err)
 			t.Cleanup(lateTracer.Close)
 
 			earlyNormalize := func(entry *socketEnricherMapEntry) {
@@ -371,15 +429,11 @@ func TestSocketEnricherBind(t *testing.T) {
 
 			t.Logf("Testing if entry is cleaned properly in early tracer")
 			entries = socketsMapEntries(t, earlyTracer, earlyNormalize, filter)
-			if len(entries) != 0 {
-				t.Fatalf("Entry not cleaned properly: %+v", entries)
-			}
+			require.Len(t, entries, 0, "Entry not cleaned properly: %+v", entries)
 
 			t.Logf("Testing if entry is cleaned properly in late tracer")
 			entries2 = socketsMapEntries(t, lateTracer, lateNormalize, filter)
-			if len(entries2) != 0 {
-				t.Fatalf("Entry for late tracer not cleaned properly: %+v", entries2)
-			}
+			require.Len(t, entries2, 0, "Entry for late tracer not cleaned properly: %+v", entries2)
 		})
 	}
 }
@@ -406,9 +460,7 @@ func socketsMapEntries(
 		}
 		entries = append(entries, entry)
 	}
-	if err := iter.Err(); err != nil {
-		t.Fatal("Cannot iterate over socket enricher map:", err)
-	}
+	require.NoError(t, iter.Err(), "Cannot iterate over socket enricher map")
 	return entries
 }
 
