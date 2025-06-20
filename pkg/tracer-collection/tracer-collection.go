@@ -22,7 +22,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/stream"
 )
 
 const (
@@ -42,8 +41,6 @@ type tracer struct {
 	containerSelector containercollection.ContainerSelector
 
 	mntnsSetMap *ebpf.Map
-
-	gadgetStream *stream.GadgetStream
 }
 
 func NewTracerCollection(cc *containercollection.ContainerCollection) (*TracerCollection, error) {
@@ -129,7 +126,6 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector containercoll
 		tracerID:          id,
 		containerSelector: containerSelector,
 		mntnsSetMap:       mntnsSetMap,
-		gadgetStream:      stream.NewGadgetStream(),
 	}
 	return nil
 }
@@ -148,18 +144,8 @@ func (tc *TracerCollection) RemoveTracer(id string) error {
 		t.mntnsSetMap.Close()
 	}
 
-	t.gadgetStream.Close()
-
 	delete(tc.tracers, id)
 	return nil
-}
-
-func (tc *TracerCollection) Stream(id string) (*stream.GadgetStream, error) {
-	t, ok := tc.tracers[id]
-	if !ok {
-		return nil, fmt.Errorf("unknown tracer %q", id)
-	}
-	return t.gadgetStream, nil
 }
 
 func (tc *TracerCollection) TracerCount() int {
