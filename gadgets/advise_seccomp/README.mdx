@@ -44,7 +44,7 @@ able to capture all the syscalls the container uses.
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 
 ```bash
-$ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --podname default-pod
+$ kubectl gadget run advise_seccomp:%IG_TAG% --podname default-pod
 ```
 
 </TabItem>
@@ -52,14 +52,11 @@ $ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-int
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo ig run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --containername mycontainer
+$ sudo ig run advise_seccomp:%IG_TAG% --containername mycontainer
 ```
 
 </TabItem>
 </Tabs>
-
-The --map-fetch-count=0 --map-fetch-interval=0 parameters indicate the policy
-will be generated once and only when the gadget is stopped.
 
 Then, start our application and interact with it to be sure it generates all the
 syscalls it needs to work.
@@ -150,7 +147,7 @@ for all container running on the system:
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 
 ```bash
-$ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --podname default-pod
+$ kubectl gadget run advise_seccomp:%IG_TAG% --podname default-pod
 ^C
 // test-container
 {
@@ -263,7 +260,7 @@ $ kubectl gadget run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-int
 <TabItem value="ig" label="ig">
 
 ```bash
-$ sudo ig run advise_seccomp:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0 --containername mycontainer
+$ sudo ig run advise_seccomp:%IG_TAG% --containername mycontainer
 // mycontainer
 {
   "defaultAction": "SCMP_ACT_ERRNO",
