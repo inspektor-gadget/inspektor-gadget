@@ -89,3 +89,13 @@ additionalLabels:
 
 # -- RuntimeClassName used by daemonset
 runtimeClassName: ""
+
+# -- Extra environment variables to add to the gadget container
+extraEnv: []
+  # - name: EXAMPLE_VAR
+  #   value: "example_value"
+  # - name: EXAMPLE_SECRET_VAR
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: secret-name
+  #       key: secret-key
