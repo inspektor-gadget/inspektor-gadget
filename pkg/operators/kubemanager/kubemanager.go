@@ -30,7 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
+	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -57,12 +57,12 @@ type Attacher interface {
 }
 
 type KubeManager struct {
-	gadgetTracerManager *gadgettracermanager.GadgetTracerManager
+	igManager *igmanager.IGManager
 }
 
-func (k *KubeManager) SetGadgetTracerMgr(g *gadgettracermanager.GadgetTracerManager) {
-	log.Infof("gadget tracermgr set in kubemanager")
-	k.gadgetTracerManager = g
+func (k *KubeManager) SetGadgetTracerMgr(ig *igmanager.IGManager) {
+	log.Infof("ig-manager set in kubemanager")
+	k.igManager = ig
 }
 
 func (k *KubeManager) Name() string {
@@ -138,7 +138,7 @@ func (k *KubeManager) Close() error {
 
 type KubeManagerInstance struct {
 	id           string
-	manager      *gadgettracermanager.GadgetTracerManager
+	manager      *igmanager.IGManager
 	enrichEvents bool
 	mountnsmap   *ebpf.Map
 	subscribed   bool
@@ -206,16 +206,10 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 	)
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
-		err := m.manager.AddTracer(m.id, containerSelector)
-		if err != nil {
-			return fmt.Errorf("adding tracer: %w", err)
-		}
-
 		// Create mount namespace map to filter by containers
-		mountnsmap, err := m.manager.TracerMountNsMap(m.id)
+		mountnsmap, err := m.manager.CreateMountNsMap(m.id, containerSelector)
 		if err != nil {
-			m.manager.RemoveTracer(m.id)
-			return fmt.Errorf("creating mountns map: %w", err)
+			return err
 		}
 
 		log.Debugf("set mountnsmap for gadget")
@@ -294,8 +288,8 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 
 func (m *KubeManagerInstance) PostGadgetRun() error {
 	if m.mountnsmap != nil {
-		m.gadgetCtx.Logger().Debugf("calling RemoveTracer()")
-		m.manager.RemoveTracer(m.id)
+		m.gadgetCtx.Logger().Debugf("calling RemoveMountNsMap()")
+		m.manager.RemoveMountNsMap(m.id)
 	}
 
 	if m.subscribed {
@@ -358,14 +352,14 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 
 	var containersPublisher *common.ContainersPublisher
 	if enableContainersDs {
-		containersPublisher, err = common.NewContainersPublisher(gadgetCtx, &k.gadgetTracerManager.ContainerCollection)
+		containersPublisher, err = common.NewContainersPublisher(gadgetCtx, &k.igManager.ContainerCollection)
 		if err != nil {
 			return nil, fmt.Errorf("creating containers publisher: %w", err)
 		}
 	}
 
 	traceInstance := &KubeManagerInstance{
-		manager:            k.gadgetTracerManager,
+		manager:            k.igManager,
 		enrichEvents:       false,
 		attachedContainers: make(map[string]*containercollection.Container),
 		params:             params,
@@ -452,15 +446,9 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	}
 
 	// Create mount namespace map to filter by containers
-	err := m.manager.AddTracer(m.id, containerSelector)
+	mountnsmap, err := m.manager.CreateMountNsMap(m.id, containerSelector)
 	if err != nil {
-		return fmt.Errorf("adding tracer: %w", err)
-	}
-
-	mountnsmap, err := m.manager.TracerMountNsMap(m.id)
-	if err != nil {
-		m.manager.RemoveTracer(m.id)
-		return fmt.Errorf("creating mountnsmap: %w", err)
+		return err
 	}
 
 	gadgetCtx.Logger().Debugf("set mountnsmap for gadget")
@@ -489,7 +477,10 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	m.manager.RemoveTracer(m.id)
+	if m.mountnsmap != nil {
+		m.gadgetCtx.Logger().Debugf("calling RemoveMountNsMap()")
+		m.manager.RemoveMountNsMap(m.id)
+	}
 
 	if m.containersPublisher != nil {
 		m.containersPublisher.Unsubscribe()
