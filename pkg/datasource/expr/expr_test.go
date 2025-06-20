@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package expr
 import (
 	"testing"
 
-	"github.com/expr-lang/expr"
 	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -104,7 +103,7 @@ func TestExpressionString(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			res, err := expr.Run(filter, wrap{d: data})
+			res, err := Run(filter, data)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.result, res.(string), tc.name)
@@ -380,7 +379,7 @@ func TestExpressionFilter(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			res, err := expr.Run(filter, wrap{d: data})
+			res, err := Run(filter, data)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.match, res.(bool), tc.name)
