@@ -138,7 +138,7 @@ func (k *KubeManager) Close() error {
 
 type KubeManagerInstance struct {
 	id           string
-	manager      *KubeManager
+	manager      *gadgettracermanager.GadgetTracerManager
 	enrichEvents bool
 	mountnsmap   *ebpf.Map
 	subscribed   bool
@@ -206,15 +206,15 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 	)
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
-		err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
+		err := m.manager.AddTracer(m.id, containerSelector)
 		if err != nil {
 			return fmt.Errorf("adding tracer: %w", err)
 		}
 
 		// Create mount namespace map to filter by containers
-		mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
+		mountnsmap, err := m.manager.TracerMountNsMap(m.id)
 		if err != nil {
-			m.manager.gadgetTracerManager.RemoveTracer(m.id)
+			m.manager.RemoveTracer(m.id)
 			return fmt.Errorf("creating mountns map: %w", err)
 		}
 
@@ -263,7 +263,7 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 		m.subscribed = true
 
 		log.Debugf("add subscription to gadgetTracerManager")
-		containers := m.manager.gadgetTracerManager.Subscribe(
+		containers := m.manager.Subscribe(
 			m.id,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
@@ -295,12 +295,12 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 func (m *KubeManagerInstance) PostGadgetRun() error {
 	if m.mountnsmap != nil {
 		m.gadgetCtx.Logger().Debugf("calling RemoveTracer()")
-		m.manager.gadgetTracerManager.RemoveTracer(m.id)
+		m.manager.RemoveTracer(m.id)
 	}
 
 	if m.subscribed {
 		m.gadgetCtx.Logger().Debugf("calling Unsubscribe()")
-		m.manager.gadgetTracerManager.Unsubscribe(m.id)
+		m.manager.Unsubscribe(m.id)
 
 		// emit detach for all remaining containers
 		for _, container := range m.attachedContainers {
@@ -313,10 +313,10 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 
 func (m *KubeManagerInstance) enrich(ev any) {
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		m.manager.gadgetTracerManager.EnrichEventByMntNs(event)
+		m.manager.EnrichEventByMntNs(event)
 	}
 	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		m.manager.gadgetTracerManager.EnrichEventByNetNs(event)
+		m.manager.EnrichEventByNetNs(event)
 	}
 }
 
@@ -365,7 +365,7 @@ func (k *KubeManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 	}
 
 	traceInstance := &KubeManagerInstance{
-		manager:            k,
+		manager:            k.gadgetTracerManager,
 		enrichEvents:       false,
 		attachedContainers: make(map[string]*containercollection.Container),
 		params:             params,
@@ -420,8 +420,8 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 
 	compat.Subscribe(
 		m.eventWrappers,
-		m.manager.gadgetTracerManager.EnrichEventByMntNs,
-		m.manager.gadgetTracerManager.EnrichEventByNetNs,
+		m.manager.EnrichEventByMntNs,
+		m.manager.EnrichEventByNetNs,
 		0,
 	)
 
@@ -447,19 +447,19 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		containerSelector.K8s.Namespace = ""
 	}
 
-	if m.manager.gadgetTracerManager == nil {
+	if m.manager == nil {
 		return fmt.Errorf("container-collection isn't available")
 	}
 
 	// Create mount namespace map to filter by containers
-	err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
+	err := m.manager.AddTracer(m.id, containerSelector)
 	if err != nil {
 		return fmt.Errorf("adding tracer: %w", err)
 	}
 
-	mountnsmap, err := m.manager.gadgetTracerManager.TracerMountNsMap(m.id)
+	mountnsmap, err := m.manager.TracerMountNsMap(m.id)
 	if err != nil {
-		m.manager.gadgetTracerManager.RemoveTracer(m.id)
+		m.manager.RemoveTracer(m.id)
 		return fmt.Errorf("creating mountnsmap: %w", err)
 	}
 
@@ -489,7 +489,7 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 }
 
 func (m *KubeManagerInstance) Stop(gadgetCtx operators.GadgetContext) error {
-	m.manager.gadgetTracerManager.RemoveTracer(m.id)
+	m.manager.RemoveTracer(m.id)
 
 	if m.containersPublisher != nil {
 		m.containersPublisher.Unsubscribe()
