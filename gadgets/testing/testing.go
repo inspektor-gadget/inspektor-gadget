@@ -43,6 +43,7 @@ const (
 	NginxImage            = "ghcr.io/inspektor-gadget/ci/nginx:latest"
 	GccImage              = "ghcr.io/inspektor-gadget/ci/gcc:latest"
 	NetworkMultitoolImage = "ghcr.io/inspektor-gadget/ci/network-multitool:latest"
+	RegistryImage         = "ghcr.io/inspektor-gadget/ci/registry:2"
 )
 
 func SkipK8sDistros(t testing.TB, distros ...string) {
