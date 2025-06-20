@@ -2354,12 +2354,18 @@ jobs:
           rm -r archive_output
           rm nfpm.yaml
         done
+    - name : Generate go mod vendor archive
+      shell: bash
+      run: |
+        go mod vendor
+        tar --create --auto-compress --file inspektor-gadget-vendor.tar.gz vendor
+        rm -rf vendor
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       env:
         REF_NAME: ${{ github.ref_name }}
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-vendor.tar.gz; do
           mv $i $(dirname $i)/$(basename $i .tar.gz)-$REF_NAME.tar.gz
         done
     - name: Install cyclonedx-gomod
@@ -2386,7 +2392,7 @@ jobs:
       env:
         REF_NAME: ${{ github.ref_name }}
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/* sbom/*.bom.json; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/* sbom/*.bom.json inspektor-gadget-vendor-*.tar.gz; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
@@ -2477,5 +2483,11 @@ jobs:
       uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
       with:
         pattern: "sbom/*.bom.json"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload go mod vendor archive
+      uses: csexton/release-asset-action@3567794e918fa3068116688122a76cdeb57b5f09 # v3
+      with:
+        pattern: "inspektor-gadget-vendor-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
