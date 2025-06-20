@@ -234,6 +234,16 @@ func (c *GadgetContext) SetParams(params []*api.Param) {
 
 func (c *GadgetContext) SetMetadata(m []byte) {
 	c.metadata = m
+
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(bytes.NewReader(c.metadata))
+	if err != nil {
+		c.logger.Warn("unmarshalling metadata: %w", err)
+		return
+	}
+	c.logger.Debugf("loaded metadata as config")
+	c.SetVar("config", v)
 }
 
 func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
@@ -309,17 +319,6 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 	c.lock.Unlock()
 
 	c.Logger().Debug("loaded gadget info")
-
-	if c.metadata != nil {
-		v := viper.New()
-		v.SetConfigType("yaml")
-		err := v.ReadConfig(bytes.NewReader(c.metadata))
-		if err != nil {
-			return fmt.Errorf("unmarshalling metadata: %w", err)
-		}
-		c.logger.Debugf("loaded metadata as config")
-		c.SetVar("config", v)
-	}
 
 	var err error
 	// After loading gadget info, get local operators params as well

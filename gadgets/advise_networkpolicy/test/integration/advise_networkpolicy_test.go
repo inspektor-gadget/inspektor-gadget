@@ -130,7 +130,7 @@ func TestAdviseNetworkpolicyGadget(t *testing.T) {
 	var testingOpts []igtesting.Option
 
 	runnerOpts = append(runnerOpts,
-		igrunner.WithFlags(fmt.Sprintf("-n=%s,%s", serverNs, clientNs), "--timeout=5", "--map-fetch-count=0", "--map-fetch-interval=0"),
+		igrunner.WithFlags(fmt.Sprintf("-n=%s,%s", serverNs, clientNs), "--timeout=5"),
 		igrunner.WithOutputMode("advise"))
 	testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(serverNs, clientNs)))
 
