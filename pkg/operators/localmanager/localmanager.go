@@ -15,6 +15,7 @@
 package localmanager
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -238,7 +239,10 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		Mntns: mntns,
 	}
 
-	additionalOpts := []containercollection.ContainerCollectionOption{}
+	additionalOpts := []containercollection.ContainerCollectionOption{
+		containercollection.WithOCIConfigForInitialContainer(),
+		containercollection.WithContainerFanotifyEbpf(),
+	}
 	if kubeconfig := operatorParams.Get(KubeconfigPath).AsString(); kubeconfig != "" {
 		additionalOpts = append(additionalOpts, containercollection.WithKubeconfigPath(kubeconfig))
 	}
@@ -252,7 +256,11 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
 
-	igManager, err := igmanager.NewManager(l.rc, additionalOpts)
+	igManager, err := igmanager.NewManager(context.TODO(), &igmanager.Config{
+		TestOnly:               false,
+		PinPath:                "",
+		ContainerRuntimeConfig: l.rc,
+	}, additionalOpts)
 	if err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
@@ -567,10 +575,6 @@ func (l *localManagerTrace) ParamDescs() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 	}
-}
-
-func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
-	return l.localManagerTrace.ParamDescs()
 }
 
 func (l *localManager) Priority() int {

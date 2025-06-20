@@ -15,6 +15,7 @@
 package containers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -49,7 +50,16 @@ func NewListContainersCmd() *cobra.Command {
 				return err
 			}
 
-			igmanager, err := igmanager.NewManager(commonFlags.RuntimeConfigs, nil)
+			additionalOpts := []containercollection.ContainerCollectionOption{
+				containercollection.WithOCIConfigForInitialContainer(),
+				containercollection.WithContainerFanotifyEbpf(),
+			}
+
+			igmanager, err := igmanager.NewManager(context.TODO(), &igmanager.Config{
+				TestOnly:               false,
+				PinPath:                "",
+				ContainerRuntimeConfig: commonFlags.RuntimeConfigs,
+			}, additionalOpts)
 			if err != nil {
 				return commonutils.WrapInErrManagerInit(err)
 			}

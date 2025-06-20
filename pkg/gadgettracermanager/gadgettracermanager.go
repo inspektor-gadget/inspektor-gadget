@@ -20,65 +20,27 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
-	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
+	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
-	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type GadgetTracerManager struct {
 	pb.UnimplementedGadgetTracerManagerServer
-	containercollection.ContainerCollection
+
+	igManager *igmanager.IGManager
 
 	// mu protects the tracers map from concurrent access
 	mu sync.Mutex
 
 	// node where this instance is running
 	nodeName string
-
-	// tracers
-	tracerCollection *tracercollection.TracerCollection
-
-	// containersMap is the global map at /sys/fs/bpf/gadget/containers
-	// exposing container details for each mount namespace.
-	containersMap *containersmap.ContainersMap
-}
-
-func (g *GadgetTracerManager) AddTracer(tracerID string, containerSelector containercollection.ContainerSelector) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	return g.tracerCollection.AddTracer(tracerID, containerSelector)
-}
-
-func (g *GadgetTracerManager) RemoveTracer(tracerID string) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	return g.tracerCollection.RemoveTracer(tracerID)
-}
-
-func (g *GadgetTracerManager) TracerMountNsMap(tracerID string) (*ebpf.Map, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	return g.tracerCollection.TracerMountNsMap(tracerID)
-}
-
-func (g *GadgetTracerManager) ContainersMap() *ebpf.Map {
-	if g.containersMap == nil {
-		return nil
-	}
-
-	return g.containersMap.ContainersMap()
 }
 
 func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
@@ -88,7 +50,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	if containerDefinition.Id == "" {
 		return nil, fmt.Errorf("container id not set")
 	}
-	if g.GetContainer(containerDefinition.Id) != nil {
+	if g.igManager.GetContainer(containerDefinition.Id) != nil {
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
 	}
 
@@ -115,7 +77,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		}
 	}
 
-	g.ContainerCollection.AddContainer(&container)
+	g.igManager.AddContainer(&container)
 
 	return &pb.AddContainerResponse{}, nil
 }
@@ -128,12 +90,12 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 		return nil, fmt.Errorf("container Id not set")
 	}
 
-	c := g.GetContainer(containerDefinition.Id)
+	c := g.igManager.GetContainer(containerDefinition.Id)
 	if c == nil {
 		return nil, fmt.Errorf("unknown container %q", containerDefinition.Id)
 	}
 
-	g.ContainerCollection.RemoveContainer(containerDefinition.Id)
+	g.igManager.RemoveContainer(containerDefinition.Id)
 	return &pb.RemoveContainerResponse{}, nil
 }
 
@@ -142,12 +104,12 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	defer g.mu.Unlock()
 
 	containers := "List of containers:\n"
-	g.ContainerRange(func(c *containercollection.Container) {
+	g.igManager.ContainerRange(func(c *containercollection.Container) {
 		containers += fmt.Sprintf("%+v\n", c)
 	})
 
 	traces := "List of tracers:\n"
-	traces += g.tracerCollection.TracerDump()
+	traces += g.igManager.TracerDump()
 
 	stacks := "List of stacks:\n"
 	buf := make([]byte, 1<<20)
@@ -163,37 +125,13 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 	}
 
 	eventtypes.Init(conf.NodeName)
-	var err error
-	if conf.TestOnly {
-		g.tracerCollection, err = tracercollection.NewTracerCollectionTest(&g.ContainerCollection)
-	} else {
-		g.tracerCollection, err = tracercollection.NewTracerCollection(&g.ContainerCollection)
-	}
-	if err != nil {
-		return nil, err
-	}
 
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithNodeName(conf.NodeName),
 	}
 
 	if !conf.TestOnly {
-		if err := rlimit.RemoveMemlock(); err != nil {
-			return nil, err
-		}
-
-		var err error
-		if g.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath); err != nil {
-			return nil, fmt.Errorf("creating containers map: %w", err)
-		}
-
-		opts = append(opts, containercollection.WithPubSub(g.containersMap.ContainersMapUpdater()))
-		opts = append(opts, containercollection.WithOCIConfigEnrichment())
-		opts = append(opts, containercollection.WithCgroupEnrichment())
-		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
 		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName))
-		opts = append(opts, containercollection.WithTracerCollection(g.tracerCollection))
-		opts = append(opts, containercollection.WithProcEnrichment())
 	}
 
 	podInformerUsed := false
@@ -235,16 +173,20 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
 	}
 
-	err = g.Initialize(opts...)
+	var err error
+	g.igManager, err = igmanager.NewManager(context.TODO(), &igmanager.Config{
+		PinPath:  gadgets.PinPath,
+		TestOnly: conf.TestOnly,
+	}, opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating ig manager: %w", err)
 	}
 
 	// Dirty hack
 	allOps := operators.GetDataOperators()
 	if op, ok := allOps["KubeManager"]; ok {
 		if setter, ok := op.(SetGadgetTracerMgr); ok {
-			setter.SetGadgetTracerMgr(g)
+			setter.SetGadgetTracerMgr(g.igManager)
 		}
 	}
 	return g, nil
@@ -253,7 +195,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 // SetGadgetTracerMgr is an interface that is implemented by KubeManager to be able
 // to set a reference to GadgetTracerManager
 type SetGadgetTracerMgr interface {
-	SetGadgetTracerMgr(*GadgetTracerManager)
+	SetGadgetTracerMgr(*igmanager.IGManager)
 }
 
 type Conf struct {
@@ -266,11 +208,7 @@ type Conf struct {
 // Close releases any resource that could be in use by the tracer manager, like
 // ebpf maps.
 func (g *GadgetTracerManager) Close() {
-	if g.containersMap != nil {
-		g.containersMap.Close()
+	if g.igManager != nil {
+		g.igManager.Close()
 	}
-	if g.tracerCollection != nil {
-		g.tracerCollection.Close()
-	}
-	g.ContainerCollection.Close()
 }

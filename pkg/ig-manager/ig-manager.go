@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package igmanager
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cilium/ebpf"
@@ -40,31 +41,31 @@ type IGManager struct {
 	containersMap *containersmap.ContainersMap
 }
 
-func (l *IGManager) ContainersMap() *ebpf.Map {
-	if l.containersMap == nil {
-		return nil
-	}
-
-	return l.containersMap.ContainersMap()
+func (l *IGManager) TracerDump() string {
+	return l.tracerCollection.TracerDump()
 }
 
-func (l *IGManager) Dump() string {
-	out := "List of containers:\n"
-	l.ContainerRange(func(c *containercollection.Container) {
-		out += fmt.Sprintf("%+v\n", c)
-	})
-	return out
+// TracerCount returns the number of tracers currently registered in the IGManager.
+// Only for testing purposes.
+func (l *IGManager) TracerCount() int {
+	return l.tracerCollection.TracerCount()
+}
+
+// TracerExists checks if a tracer with the given ID exists in the IGManager.
+// Only for testing purposes.
+func (l *IGManager) TracerExists(id string) bool {
+	return l.tracerCollection.TracerExists(id)
 }
 
 func (l *IGManager) CreateMountNsMap(id string, containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
 	if err := l.tracerCollection.AddTracer(id, containerSelector); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("adding tracer %q: %w", id, err)
 	}
 
 	mountnsmap, err := l.tracerCollection.TracerMountNsMap(id)
 	if err != nil {
 		l.tracerCollection.RemoveTracer(id)
-		return nil, err
+		return nil, fmt.Errorf("getting mount namespace map for tracer %q: %w", id, err)
 	}
 
 	return mountnsmap, nil
@@ -72,50 +73,6 @@ func (l *IGManager) CreateMountNsMap(id string, containerSelector containercolle
 
 func (l *IGManager) RemoveMountNsMap(id string) error {
 	return l.tracerCollection.RemoveTracer(id)
-}
-
-func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []containercollection.ContainerCollectionOption) (*IGManager, error) {
-	l := &IGManager{}
-
-	var err error
-	l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := rlimit.RemoveMemlock(); err != nil {
-		return nil, err
-	}
-
-	l.containersMap, err = containersmap.NewContainersMap("")
-	if err != nil {
-		return nil, fmt.Errorf("creating containers map: %w", err)
-	}
-
-	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
-		containercollection.WithOCIConfigEnrichment(),
-		containercollection.WithCgroupEnrichment(),
-		containercollection.WithLinuxNamespaceEnrichment(),
-		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
-		containercollection.WithOCIConfigForInitialContainer(),
-		containercollection.WithContainerFanotifyEbpf(),
-		containercollection.WithTracerCollection(l.tracerCollection),
-		containercollection.WithProcEnrichment(),
-	}
-	opts = append(opts, additionalOpts...)
-
-	if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(runtimes) {
-		warnings := []containercollection.ContainerCollectionOption{containercollection.WithDisableContainerRuntimeWarnings()}
-		opts = append(warnings, opts...)
-	}
-
-	err = l.Initialize(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return l, nil
 }
 
 func (l *IGManager) Close() {
@@ -126,6 +83,76 @@ func (l *IGManager) Close() {
 	if l.containersMap != nil {
 		l.containersMap.Close()
 	}
+}
+
+type Config struct {
+	// PinPath is the path where the containers BPF maps will be pinned.
+	PinPath string
+	// TestOnly indicates whether the manager is running in test mode.
+	TestOnly bool
+	// ContainerRuntimeConfig is the configuration for the container runtime.
+	ContainerRuntimeConfig []*containerutilsTypes.RuntimeConfig
+}
+
+func NewManager(
+	ctx context.Context,
+	config *Config,
+	additionalOpts []containercollection.ContainerCollectionOption,
+) (*IGManager, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
+	l := &IGManager{}
+
+	var err error
+	opts := []containercollection.ContainerCollectionOption{}
+	if !config.TestOnly {
+		if err = rlimit.RemoveMemlock(); err != nil {
+			return nil, err
+		}
+
+		l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
+		if err != nil {
+			return nil, fmt.Errorf("creating tracer collection: %w", err)
+		}
+
+		// TODO: Do we still need the containers map?
+		l.containersMap, err = containersmap.NewContainersMap(config.PinPath)
+		if err != nil {
+			return nil, fmt.Errorf("creating containers map: %w", err)
+		}
+
+		if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(config.ContainerRuntimeConfig) {
+			warnings := []containercollection.ContainerCollectionOption{containercollection.WithDisableContainerRuntimeWarnings()}
+			opts = append(warnings, opts...)
+		}
+	} else {
+		l.tracerCollection, err = tracercollection.NewTracerCollectionTest(&l.ContainerCollection)
+		if err != nil {
+			return nil, fmt.Errorf("creating tracer collection: %w", err)
+		}
+	}
+
+	opts = append(opts, []containercollection.ContainerCollectionOption{
+		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
+		containercollection.WithOCIConfigEnrichment(),
+		containercollection.WithCgroupEnrichment(),
+		containercollection.WithLinuxNamespaceEnrichment(),
+		containercollection.WithTracerCollection(l.tracerCollection),
+		containercollection.WithProcEnrichment(),
+	}...)
+
+	if config.ContainerRuntimeConfig != nil {
+		opts = append(opts, containercollection.WithMultipleContainerRuntimesEnrichment(config.ContainerRuntimeConfig))
+	}
+
+	err = l.Initialize(append(opts, additionalOpts...)...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l, nil
 }
 
 func isDefaultContainerRuntimeConfig(runtimes []*containerutilsTypes.RuntimeConfig) bool {
