@@ -49,6 +49,7 @@ const volatile __u16 ports[MAX_PORTS] = { 53, 5353 };
 const volatile __u16 ports_len = 2;
 const volatile bool paths = false;
 GADGET_PARAM(paths);
+GADGET_CATEGORY_OBSERVER();
 
 static __always_inline bool is_dns_port(__u16 port)
 {

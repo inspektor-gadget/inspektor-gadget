@@ -1,4 +1,5 @@
 name: audit seccomp
+category: observer
 description: Audit syscalls according to the seccomp profile
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/audit_seccomp
