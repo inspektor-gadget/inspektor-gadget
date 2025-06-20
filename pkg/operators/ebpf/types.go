@@ -16,9 +16,6 @@ package ebpfoperator
 
 // Keep this aligned with include/gadget/macros.h
 const (
-	// Prefix used to mark trace maps
-	tracerInfoPrefix = "gadget_tracer_"
-
 	// Prefix used to mark eBPF params
 	paramPrefix = "gadget_param_"
 
