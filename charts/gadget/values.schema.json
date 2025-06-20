@@ -44,6 +44,45 @@
         },
         "eventsBufferLength": {
           "type": "string"
+        },
+        "verifyGadgets": {
+          "type": "boolean",
+          "deprecated": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "gadgetsPublicKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "allowedGadgets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "disallowGadgetsPulling": {
+          "type": "boolean",
+          "deprecated": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "otelMetricsListen": {
+          "type": "boolean",
+          "deprecatred": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "otelMetricsAddress": {
+          "type": "string",
+          "deprecated": true,
+          "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
+        },
+        "operator": {
+          "type": "object"
         }
       }
     },

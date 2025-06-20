@@ -2,6 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# -- Inspektor Gadget configuration.
 config:
   # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify+ebpf")
   hookMode: auto
@@ -30,35 +31,24 @@ config:
   # -- Namespace where Inspektor Gadget is running
   gadgetNamespace: "gadget"
 
-  # -- Verify image-based gadgets
-  verifyGadgets: true
+  # -- Operator configuration, this will only be used if deprecated values are not set.
+  operator:
+    oci:
+      verify-image: true
+      public-keys:
+        - |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+          Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+          -----END PUBLIC KEY-----
+      allowed-gadgets: [ ]
+      disallow-pulling: false
+      insecure-registries: [ ]
+    otel-metrics:
+      otel-metrics-listen: false
+      otel-metrics-listen-address: "0.0.0.0:2224"
 
-  # -- Public keys used to verify image-based gadgets
-  gadgetsPublicKeys:
-    - |
-      -----BEGIN PUBLIC KEY-----
-      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
-      Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
-      -----END PUBLIC KEY-----
-
-  # -- List of allowed gadgets.
-  allowedGadgets: []
-
-  # -- Disallow pulling gadgets.
-  disallowGadgetsPulling: false
-
-  # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
-  mountPullSecret: false
-
-  # -- Set AppArmor profile.
-  appArmorProfile: "unconfined"
-
-  # -- Enable OpenTelemetry metrics listener
-  otelMetricsListen: false
-
-  # -- Address to listen for OpenTelemetry metrics
-  otelMetricsAddress: "0.0.0.0:2224"
-
+# -- All configurations below are specific to Kubernetes resources created by the gadget chart.
 image:
   # -- Container repository for the container image
   repository: ghcr.io/inspektor-gadget/inspektor-gadget
@@ -89,3 +79,9 @@ additionalLabels:
 
 # -- RuntimeClassName used by daemonset
 runtimeClassName: ""
+
+# -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
+mountPullSecret: false
+
+# -- Set AppArmor profile.
+appArmorProfile: "unconfined"
