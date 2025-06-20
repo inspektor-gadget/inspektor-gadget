@@ -15,10 +15,17 @@
 package filter
 
 import (
+	"context"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strconv"
+	"strings"
+	"sync"
 
+	"github.com/PaesslerAG/gval"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -30,9 +37,10 @@ import (
 type comparisonType int
 
 const (
-	name        = "filter"
-	ParamFilter = "filter"
-	Priority    = 9000
+	name            = "filter"
+	ParamFilter     = "filter"
+	ParamFilterExpr = "filter-expr"
+	Priority        = 9000
 )
 
 const (
@@ -60,9 +68,10 @@ func (f *filterOperator) GlobalParams() api.Params {
 }
 
 func (f *filterOperator) InstanceParams() api.Params {
-	return api.Params{&api.Param{
-		Key: ParamFilter,
-		Description: `Filter rules
+	return api.Params{
+		&api.Param{
+			Key: ParamFilter,
+			Description: `Filter rules
   A filter can match any field using the following syntax:
     field==value     - matches, if the content of field equals exactly value
     field!=value     - matches, if the content of field does not equal exactly value
@@ -77,8 +86,20 @@ func (f *filterOperator) InstanceParams() api.Params {
   It is recommended to use single quotes to escape the filter string, especially if using regular expressions.
   Example: --filter 'field!~regex'
         `,
-		Alias: "F",
-	}}
+			Alias: "F",
+		},
+		&api.Param{
+			Key: ParamFilterExpr,
+			Description: `Filter rules with an expression language.
+  The datasource must be specified as the first part of the expression, followed by a colon, e.g.:
+	dsname:field==value
+  If there are only one datasource, it can be omitted, but the colon is still required:
+    :field==value
+                 see [https://github.com/PaesslerAG/gval] for more information on the syntax
+`,
+			Alias: "E",
+		},
+	}
 }
 
 func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -100,6 +121,13 @@ func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 		}
 	}
 
+	filterExprCfg := instanceParamValues[ParamFilterExpr]
+	if filterExprCfg != "" {
+		err := fop.addFilterExpr(gadgetCtx, filterExprCfg)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return fop, nil
 }
 
@@ -108,7 +136,8 @@ func (f *filterOperator) Priority() int {
 }
 
 type filterOperatorInstance struct {
-	ffns map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool
+	ffns        map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool
+	filterExprs []func(datasource.DataSource, datasource.Data) bool
 }
 
 func (f *filterOperatorInstance) Name() string {
@@ -261,6 +290,117 @@ func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, fi
 	}
 
 	f.ffns[filterds] = append(f.ffns[filterds], ff)
+	return nil
+}
+
+func GetFilterExprFunc(ctx context.Context, ds datasource.DataSource, filter string) (func(ds datasource.DataSource, data datasource.Data) bool, error) {
+	extensions := []gval.Language{}
+	extensions = append(extensions,
+		gval.VariableSelector(func(path gval.Evaluables) gval.Evaluable {
+			return func(c context.Context, v interface{}) (interface{}, error) {
+				keys, err := path.EvalStrings(c, v)
+				if err != nil {
+					return nil, err
+				}
+				accessor := ds.GetField(strings.Join(keys, "."))
+				if accessor == nil {
+					return nil, err
+				}
+				data := v.(datasource.Data)
+				return accessor.Any(data)
+			}
+		}),
+	)
+
+	var regexpCache sync.Map
+
+	extensions = append(extensions,
+		gval.Function("len", func(arguments ...interface{}) (interface{}, error) {
+			if len(arguments) != 1 {
+				return nil, fmt.Errorf("len function expects exactly one argument, got %d", len(arguments))
+			}
+			str, ok := arguments[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("len function expects a string argument, got %T", arguments[0])
+			}
+			return len(str), nil
+		}),
+		gval.InfixOperator("matches", func(strI, patternI interface{}) (interface{}, error) {
+			str, ok := strI.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected type string for matches operator but got %T", strI)
+			}
+			pattern, ok := patternI.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected type string for matches operator but got %T", patternI)
+			}
+			var r *regexp.Regexp
+			var regexpAny interface{}
+			regexpAny, ok = regexpCache.Load(pattern)
+			if ok {
+				r = regexpAny.(*regexp.Regexp)
+			} else {
+				var err error
+				r, err = regexp.Compile(pattern)
+				if err != nil {
+					return nil, fmt.Errorf("invalid regular expression: %q", pattern)
+				}
+				regexpCache.Store(pattern, r)
+			}
+			matched := r.MatchString(str)
+			return matched, nil
+		}),
+	)
+	eval, err := gval.Full(extensions...).
+		NewEvaluable(filter)
+	if err != nil {
+		log.Errorf("parsing filter expression %q: %v", filter, err)
+		return nil, err
+	}
+
+	return func(ds datasource.DataSource, data datasource.Data) bool {
+		b, err := eval.EvalBool(ctx, data)
+		if err != nil {
+			log.Errorf("evaluating filter expression %q: %v", filter, err)
+			return true // if we cannot evaluate the expression, we do not filter out the data
+		}
+		return b
+	}, nil
+}
+
+func (f *filterOperatorInstance) addFilterExpr(gadgetCtx operators.GadgetContext, filter string) error {
+	datasources := gadgetCtx.GetDataSources()
+	filterParts := strings.SplitN(filter, ":", 2)
+	var dsPart, filterPart string
+	if len(filterParts) != 2 {
+		return fmt.Errorf("missing datasource, please specify the datasource")
+	}
+	dsPart = filterParts[0]
+	filterPart = filterParts[1]
+	if dsPart == "" && len(datasources) != 1 {
+		return fmt.Errorf("ambiguous datasource, please specify the datasource")
+	}
+
+	var ds datasource.DataSource
+	for name, dsI := range datasources {
+		if dsPart == "" || dsPart == name {
+			ds = dsI
+			dsPart = name
+			break
+		}
+	}
+	if ds == nil {
+		return fmt.Errorf("datasource %q not found (available datasources: %s)",
+			dsPart,
+			strings.Join(slices.Collect(maps.Keys(datasources)), ", "))
+	}
+
+	ff, err := GetFilterExprFunc(gadgetCtx.Context(), ds, filterPart)
+	if err != nil {
+		return err
+	}
+	f.ffns[ds] = append(f.ffns[ds], ff)
+
 	return nil
 }
 
