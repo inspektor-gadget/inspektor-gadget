@@ -239,6 +239,10 @@ func (m *KubeNameResolverInstance) Stop(gadgetCtx operators.GadgetContext) error
 	return nil
 }
 
+func (m *KubeNameResolverInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func init() {
 	operators.RegisterDataOperator(&KubeNameResolver{})
 }

@@ -313,6 +313,10 @@ func (o *otelLogsOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error
 	return nil
 }
 
+func (o *otelLogsOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var Operator = &otelLogsOperator{}
 
 func init() {

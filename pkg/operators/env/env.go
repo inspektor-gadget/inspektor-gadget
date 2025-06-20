@@ -142,6 +142,10 @@ func (e *envOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (e *envOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 func init() {
 	operators.RegisterDataOperator(&envOperator{})
 }
