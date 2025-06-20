@@ -44,6 +44,38 @@
         },
         "eventsBufferLength": {
           "type": "string"
+        },
+        "verifyGadgets": {
+          "type": "boolean",
+          "deprecated": true
+        },
+        "gadgetsPublicKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true
+        },
+        "allowedGadgets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true
+        },
+        "disallowGadgetsPulling": {
+          "type": "boolean"
+        },
+        "otelMetricsListen": {
+          "type": "boolean",
+          "deprecatred": true
+        },
+        "otelMetricsAddress": {
+          "type": "string",
+          "deprecated": true
+        },
+        "operator": {
+          "type": "object"
         }
       }
     },

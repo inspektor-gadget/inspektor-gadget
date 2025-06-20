@@ -140,10 +140,24 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0  
 ...
 ```
 
-You can specify a custom public key at deploy time using `--gadgets-public-keys`:
+You can specify a custom public key at deploy time using `--config`. Start by creating configuration file `~/.ig/deploy.yaml` with the following content:
+
+```yaml
+operator:
+  oci:
+    public-keys:
+    - |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+        Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+        -----END PUBLIC KEY-----
+```
+
+Then, you can deploy Inspektor Gadget with your public key:
 
 ```bash
-$ kubectl gadget deploy --gadgets-public-keys="$(cat your-key.pub)"
+
+$ kubectl gadget deploy --daemon-config=$HOME/.ig/deploy.yaml
 ...
 Inspektor Gadget successfully deployed
 # Without the official public key, official gadgets will be rejected.
@@ -160,7 +174,7 @@ You can also instruct Inspektor Gadget to skip the verification by disabling it 
 Please note that we do not recommend doing so and that it should only be used for development purposes.
 
 ```bash
-$ kubectl gadget deploy --verify-gadgets=false
+$ kubectl gadget deploy --set-daemon-config=operator.oci.verify-image=false
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A
