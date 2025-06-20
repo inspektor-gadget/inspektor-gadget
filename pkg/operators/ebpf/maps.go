@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -141,11 +142,29 @@ func (i *ebpfInstance) evaluateMapParams(paramValues api.ParamValues) error {
 	}
 
 	for _, iter := range i.mapIters {
+		// set default values based on annotations.
+		// TODO: Currently we don't have a way to check if a parameter was set
+		// or if it was set to the default value, so we're assuming that if the
+		// parameter has the default value, it was not set by the user.
+		ann := iter.ds.Annotations()
 		if iter.interval == 0 {
-			iter.interval = globalDuration
+			if interval, ok := ann[AnnotationDefaultFetchInterval]; ok && globalDuration == time.Second {
+				iter.interval, err = time.ParseDuration(interval)
+				if err != nil {
+					return fmt.Errorf("parsing fetch interval for map iterator %q: %w", iter.name, err)
+				}
+			} else {
+				iter.interval = globalDuration
+			}
 		}
 		if iter.count == 0 {
-			iter.count = globalCount
+			if count, ok := ann[AnnotationDefaultFetchCount]; ok && globalCount == 0 {
+				iter.count, err = strconv.Atoi(count)
+				if err != nil {
+					return fmt.Errorf("parsing fetch count for map iterator %q: %w", iter.name, err)
+				}
+				iter.count = globalCount
+			}
 		}
 		iter.ds.AddAnnotation(api.FetchCountAnnotation, fmt.Sprintf("%d", iter.count))
 		iter.ds.AddAnnotation(api.FetchIntervalAnnotation, iter.interval.String())

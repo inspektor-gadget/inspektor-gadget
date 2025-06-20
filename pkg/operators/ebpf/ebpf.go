@@ -65,7 +65,9 @@ const (
 
 	kernelTypesVar = "kernelTypes"
 
-	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
+	AnnotationFlushOnStop          = "ebpf.map.flush-on-stop"
+	AnnotationDefaultFetchCount    = "ebpf.map.default-fetch-count"
+	AnnotationDefaultFetchInterval = "ebpf.map.default-fetch-interval"
 )
 
 type gadgetObjects struct {

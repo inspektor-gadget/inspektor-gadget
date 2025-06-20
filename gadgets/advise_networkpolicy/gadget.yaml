@@ -8,5 +8,6 @@ datasources:
     annotations:
       cli.supported-output-modes: none
       ebpf.map.flush-on-stop: true
+      ebpf.map.default-fetch-interval: 0
       generate_networkpolicy.enable: true
       kubenameresolver.enable: true
