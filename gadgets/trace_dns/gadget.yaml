@@ -7,6 +7,7 @@ tags:
   - event-generator-dns
   - event-generator-environment-host
   - event-generator-environment-k8s-node
+  - event-generator-environment-k8s-pod
 datasources:
   dns:
     fields:

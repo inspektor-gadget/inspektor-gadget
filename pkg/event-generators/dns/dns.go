@@ -17,6 +17,7 @@ package dnsgenerator
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -25,8 +26,12 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	generators "github.com/inspektor-gadget/inspektor-gadget/pkg/event-generators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
@@ -98,6 +103,8 @@ func New(
 		if err := generators.VerifyManifestDir(); err != nil {
 			return nil, fmt.Errorf("verifying manifest directory %s: %w", generators.ManifestDir, err)
 		}
+	case generators.EnvK8sPod:
+		// Nothing to do here, we will use the kubelet's DNS configuration
 	default:
 		return nil, fmt.Errorf("unsupported environment %q", env)
 	}
@@ -128,6 +135,8 @@ func (d dnsGenerator) Generate() error {
 	case generators.EnvHost:
 		d.generateFromHost(d.name, d.qt, d.nameserver)
 		return nil
+	case generators.EnvK8sPod:
+		return d.generateFromK8sPod(d.name, d.qt, d.nameserver)
 	default:
 		return fmt.Errorf("unsupported environment %q", d.env)
 	}
@@ -308,6 +317,136 @@ func nameserverFromResolvConf() ([]string, error) {
 		return nil, fmt.Errorf("no nameservers found in %s", rcPath)
 	}
 	return ns, nil
+}
+
+func (d *dnsGenerator) generateFromK8sPod(name, qt, ns string) error {
+	const namespace = "gadget"
+	const prefix = "dns-test"
+
+	// Ensure unique pod name and container name
+	podName, err := generators.GenerateRandomPodName(prefix + "-pod")
+	if err != nil {
+		return fmt.Errorf("could not generate pod name: %w", err)
+	}
+	containerName, err := generators.GenerateRandomContainerName(prefix + "-container")
+	if err != nil {
+		return fmt.Errorf("could not generate container name: %w", err)
+	}
+
+	secs := fmt.Sprintf("%g", d.interval.Seconds())
+
+	// Static Pod manifest for DNS event generation
+	manifest := fmt.Sprintf(`apiVersion: v1
+kind: Pod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  restartPolicy: Never
+  containers:
+  - name: %s
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        i=0
+        while true; do
+          nslookup -debug -type=%s %s %s || exit 1
+          i=$(expr $i + 1)
+          if [ %d -gt 0 ] && [ "$i" -ge %d ]; then
+            exit 0
+          fi
+          sleep %s
+        done
+`, podName, namespace, containerName, qt, name, ns, d.count, d.count, secs)
+
+	d.logger.Debugf("K8sNode mode: DNS %q type=%q ns %s every %s (max %d)",
+		name, qt, ns, secs, d.count)
+
+	k8sClient, err := k8sutil.NewClientset("", "event-generator-dns")
+	if err != nil {
+		return fmt.Errorf("creating Kubernetes clientset: %w", err)
+	}
+
+	// Decode manifest YAML into a Pod object
+	var pod corev1.Pod
+	if err := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096).Decode(&pod); err != nil {
+		return fmt.Errorf("decoding pod manifest: %w", err)
+	}
+
+	// Create the pod in the cluster
+	_, err = k8sClient.CoreV1().Pods(namespace).Create(context.TODO(), &pod, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("creating pod: %w", err)
+	}
+
+	d.logger.Debugf("Pod %q created in namespace %q", podName, namespace)
+
+	go func() {
+		defer func() {
+			// Delete the pod so that Kubernetes cleans it up
+			deletePolicy := metav1.DeletePropagationForeground
+			err := k8sClient.CoreV1().Pods(namespace).Delete(
+				context.TODO(),
+				podName,
+				metav1.DeleteOptions{
+					PropagationPolicy: &deletePolicy,
+				},
+			)
+			if err != nil {
+				d.errs <- fmt.Errorf("deleting pod: %w", err)
+				// Still close doneCh to avoid deadlock
+			}
+
+			// Signal that the goroutine is done
+			close(d.doneCh)
+		}()
+
+		// wait for Cleanup() to signal stop
+		<-d.stopCh
+
+		// Capture the pod's exit code and logs.
+		// Wait for the pod to complete and get its exit code and logs
+		var exitCode int32 = -1
+		var logs string
+		for {
+			pod, err := k8sClient.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+			if err != nil {
+				d.errs <- fmt.Errorf("getting pod: %w", err)
+				return
+			}
+			if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+				// Find the container status
+				for _, cs := range pod.Status.ContainerStatuses {
+					if cs.Name == containerName && cs.State.Terminated != nil {
+						exitCode = cs.State.Terminated.ExitCode
+						break
+					}
+				}
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		// Get pod logs
+		req := k8sClient.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{Container: containerName})
+		logBytes, err := req.Do(context.TODO()).Raw()
+		if err != nil {
+			logs = fmt.Sprintf("error fetching logs: %v", err)
+		} else {
+			logs = string(logBytes)
+		}
+
+		if exitCode != 0 {
+			d.errs <- fmt.Errorf("%q container exited with code %d and logs:\n==== container logs ====\n%s\n==== container logs ====", containerName, exitCode, logs)
+		}
+		d.logger.Debugf("%q container exited with code %d and logs:\n%s", containerName, exitCode, logs)
+
+		// d.logger.Debugf("%q container exited with code %d and logs:\n%s", containerName, exitCode, logs)
+	}()
+
+	return nil
 }
 
 func init() {

@@ -35,6 +35,8 @@ const (
 	// EnvHost is the environment for the host. It will generate the events
 	// directly from the IG process thus without any containerization.
 	EnvHost Environment = "host"
+
+	EnvK8sPod Environment = "k8s-pod"
 )
 
 func (e Environment) String() string {
@@ -43,6 +45,8 @@ func (e Environment) String() string {
 		return "k8s-node"
 	case EnvHost:
 		return "host"
+	case EnvK8sPod:
+		return "k8s-pod"
 	default:
 		return "unknown"
 	}
@@ -55,13 +59,15 @@ func EnvironmentFromString(env string) (Environment, error) {
 		return EnvK8sNode, nil
 	case "host":
 		return EnvHost, nil
+	case "k8s-pod":
+		return EnvK8sPod, nil
 	default:
 		return "", fmt.Errorf("unknown environment %q; valid environments: %v", env, []Environment{EnvK8sNode, EnvHost})
 	}
 }
 
 func Environments() []string {
-	return []string{EnvK8sNode.String(), EnvHost.String()}
+	return []string{EnvK8sNode.String(), EnvHost.String(), EnvK8sPod.String()}
 }
 
 // Generator is the interface each generator must implement.
