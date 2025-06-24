@@ -205,8 +205,9 @@ require (
 // - https://github.com/gopacket/gopacket/pull/101
 replace github.com/gopacket/gopacket => github.com/gopacket/gopacket v1.3.2-0.20241202175635-b43272ae1eb8
 
-// ebpf-go with some memory optimizations like
+// ebpf-go with some memory & cpu optimizations like
 // - https://github.com/cilium/ebpf/pull/1763
 // - https://github.com/cilium/ebpf/pull/1772
 // - https://github.com/cilium/ebpf/pull/1778
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250521101936-dd4d949f2f7b
+// - https://github.com/cilium/ebpf/pull/1794
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.18.1-0.20250623141833-9958a4f58fb4
