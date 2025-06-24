@@ -26,12 +26,27 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} socketenricher ./bpf/socket-enricher.bpf.c -- -I./bpf/
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} socketsiter ./bpf/sockets-iter.bpf.c -- -I./bpf/
+
+func init() {
+	spec, err := loadSocketsiter()
+	if err != nil {
+		panic(err)
+	}
+	symscache.RegisterSymbolsFromSpec(spec)
+
+	spec, err = loadSocketenricher()
+	if err != nil {
+		panic(err)
+	}
+	symscache.RegisterSymbolsFromSpec(spec)
+}
 
 const (
 	SocketsMapName = "gadget_sockets"
@@ -67,6 +82,7 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 }
 
 func (se *SocketEnricher) start() error {
+	symscache.PopulateKallsymsCache()
 	specIter, err := loadSocketsiter()
 	if err != nil {
 		return fmt.Errorf("loading socketsiter asset: %w", err)

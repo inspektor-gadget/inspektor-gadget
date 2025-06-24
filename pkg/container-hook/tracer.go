@@ -55,11 +55,20 @@ import (
 	runtimefinder "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook/runtime-finder"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/
+
+func init() {
+	spec, err := loadExecruntime()
+	if err != nil {
+		panic(err)
+	}
+	symscache.RegisterSymbolsFromSpec(spec)
+}
 
 type EventType int
 
@@ -247,6 +256,7 @@ func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, err
 }
 
 func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
+	symscache.PopulateKallsymsCache()
 	spec, err := loadExecruntime()
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
