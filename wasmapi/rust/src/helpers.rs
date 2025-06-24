@@ -74,6 +74,12 @@ pub fn from_c_string(input: &[u8]) -> String {
     String::from_utf8_lossy(&input[..end]).into_owned()
 }
 
+pub fn from_c_string_n(input: &[u8], length: usize) -> String {
+    let size = if length < input.len() { length } else { input.len() };
+    let end = input.iter().position(|&b| b == 0).unwrap_or(size);
+    String::from_utf8_lossy(&input[..end]).into_owned()
+}
+
 impl BufPtr {
     pub fn bytes(&self) -> Option<Vec<u8>> {
         if self.0 == 0 {
