@@ -16,10 +16,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -89,7 +87,6 @@ var (
 	gadgetServiceHost   string
 	method              string
 	label               string
-	tracerid            string
 	containerID         string
 	namespace           string
 	podname             string
@@ -106,9 +103,8 @@ func init() {
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
 
-	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
+	flag.StringVar(&method, "call", "", "Call a method (add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
-	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in receive-stream")
 	flag.StringVar(&containerID, "containerid", "", "container id to use in add-container or remove-container")
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
@@ -175,26 +171,6 @@ func main() {
 	switch method {
 	case "":
 		// break
-
-	case "receive-stream":
-		stream, err := client.ReceiveStream(context.Background(), &pb.TracerID{
-			Id: tracerid,
-		})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		for {
-			line, err := stream.Recv()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			if err != nil {
-				log.Fatalf("%v.ReceiveStream(_) = _, %v", client, err)
-			}
-			fmt.Println(line.Line)
-		}
-
-		os.Exit(0)
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
