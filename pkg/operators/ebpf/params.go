@@ -179,12 +179,15 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 		i.logger.Debugf(" filling additional information from metadata")
 		if s := paramInfo.GetString("key"); s != "" {
 			newParam.Key = s
+			i.logger.Debugf(" param key set to %q", s)
 		}
 		if s := paramInfo.GetString("defaultValue"); s != "" {
 			newParam.DefaultValue = s
+			i.logger.Debugf(" param default value set to %q", s)
 		}
 		if s := paramInfo.GetString("description"); s != "" {
 			newParam.Description = s
+			i.logger.Debugf(" param description set to %q", s)
 		}
 	}
 

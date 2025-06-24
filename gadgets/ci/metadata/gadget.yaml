@@ -1,0 +1,20 @@
+name: test-metadata
+description: Example gadget to test features operating on metadata files
+homepageURL: http://mygadget.com
+documentationURL: https://mygadget.com/docs
+sourceURL: https://github.com/my-org/mygadget/
+params:
+  ebpf:
+    iface:
+      key: iface
+      description: Network interface to attach to
+    ppid:
+      key: ppid
+      defaultValue: "123"
+      description: Parent process ID
+    pid:
+      key: pid
+      description: Process ID
+paramDefaults:
+  operator.oci.ebpf.iface: "ifaceFromParamsDefaults"
+  operator.oci.pull: "pullFromParamsDefaults"
