@@ -11,13 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, LazyLock, Mutex
     },
 };
 
@@ -138,8 +136,7 @@ extern "C" {
 }
 
 static DS_SUBSCRIPTION_CTR: AtomicU64 = AtomicU64::new(0);
-static DS_SUBCRIPTION: Lazy<Mutex<HashMap<u64, CallBack>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static DS_SUBCRIPTION: LazyLock<Mutex<HashMap<u64, CallBack>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Copy, Debug)]
 pub struct DataSource(pub u32);
