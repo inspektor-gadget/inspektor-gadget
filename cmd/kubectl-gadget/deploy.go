@@ -35,7 +35,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -287,8 +286,6 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 		seccompprofileapi.AddToScheme(sch)
 	}
 
-	// For CustomResourceDefinition kind.
-	apiextv1.AddToScheme(sch)
 	// For ClusterImagePolicy kind, this avoid including all sigstore dependencies.
 	sch.AddKnownTypeWithName(clusterImagePolicyKind, &unstructured.Unstructured{})
 	// For all the other kinds (e.g. Namespace).
