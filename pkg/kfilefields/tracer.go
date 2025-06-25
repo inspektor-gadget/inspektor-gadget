@@ -26,9 +26,18 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types filefields ./bpf/filefields.bpf.c -- -I./bpf/
+
+func init() {
+	spec, err := loadFilefields()
+	if err != nil {
+		panic(err)
+	}
+	symscache.RegisterSymbolsFromSpec(spec)
+}
 
 type FdType int
 
@@ -108,6 +117,7 @@ func (t *Tracer) install() error {
 	}
 
 	// Load ebpf program configured with the socket inode
+	symscache.PopulateKallsymsCache()
 	spec, err := loadFilefields()
 	if err != nil {
 		return fmt.Errorf("load ebpf program to read file fields: %w", err)
