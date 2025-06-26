@@ -84,16 +84,10 @@ spec:
                   fieldPath: metadata.uid
             - name: GADGET_IMAGE
               value: "{{ .Values.image.repository }}"
-            - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
-              value: {{ .Values.config.hookMode | quote }}
-            - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
-              value: {{ .Values.config.fallbackPodInformer | quote }}
             - name: HOST_ROOT
               value: "/host"
             - name: IG_EXPERIMENTAL
               value: {{ .Values.config.experimental | quote }}
-            - name: EVENTS_BUFFER_LENGTH
-              value: {{ .Values.config.eventsBufferLength | quote }}
             - name: GADGET_TRACER_MANAGER_LOG_LEVEL
               value: {{ .Values.config.daemonLogLevel | quote }}
           securityContext:
