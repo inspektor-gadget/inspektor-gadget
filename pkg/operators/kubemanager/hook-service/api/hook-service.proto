@@ -1,0 +1,50 @@
+// Copyright 2025 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service;hook_service";
+
+package hookservice;
+
+service HookService {
+  // Methods called by OCI Hooks
+  rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
+  rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
+}
+
+message AddContainerResponse {
+  string debug = 1;
+}
+
+message RemoveContainerResponse {
+  string debug = 1;
+}
+
+message Label {
+  string key = 1;
+  string value = 2;
+}
+
+message ContainerDefinition {
+  string id = 1;
+  uint32 pid = 2;
+  string oci_config = 3;
+
+  // NRI and OCI hooks don't give the OCI config but give pod details
+  string namespace = 4;
+  string podname = 5;
+  string name = 6;
+  repeated Label labels = 7;
+}
