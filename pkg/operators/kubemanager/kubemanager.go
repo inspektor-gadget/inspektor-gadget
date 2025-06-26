@@ -78,6 +78,7 @@ const (
 	HookModeFanotifyEbpf = "fanotify+ebpf"
 
 	// Defaults for parameters
+	// TODO: Place this somewhere else, so that it can be used by the gadget-container hooks and gadgettracermanager
 	defaultSocketFile = "/run/hook-service.socket"
 	defaultHookMode   = HookModeAuto
 )

@@ -69,7 +69,7 @@ import (
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -92,7 +92,7 @@ var (
 var clientTimeout = 2 * time.Second
 
 func init() {
-	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&socketfile, "socketfile", "/run/hook-service.socket", "Socket file for hook service")
 	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -134,7 +134,7 @@ func main() {
 		}
 	}
 
-	var client pb.GadgetTracerManagerClient
+	var client pb.HookServiceClient
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var conn *grpc.ClientConn
@@ -146,7 +146,7 @@ func main() {
 			log.Fatalf("fail to dial: %v", err)
 		}
 		defer conn.Close()
-		client = pb.NewGadgetTracerManagerClient(conn)
+		client = pb.NewHookServiceClient(conn)
 
 		if liveness {
 			// Let's cover the cases where timeoutSeconds is not respected. See
