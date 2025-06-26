@@ -278,14 +278,6 @@ test: generate-testdata
 gadgets-benchmarks:
 	go test -exec sudo -ldflags="-s=false" -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/...
 
-.PHONY: ig-tests
-ig-tests:
-	# Compile and execute in separate commands because Go might not be
-	# available in the root environment
-	go test -c ./pkg/ig-manager
-	sudo ./ig-manager.test -test.v $$IG_TESTS_PARAMS
-	rm -f ./ig-manager.test
-
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
 # INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-spo" make integration-tests
 .PHONY: integration-tests
@@ -466,7 +458,6 @@ help:
 	@echo  ''
 	@echo  'Testing targets:'
 	@echo  '  test				- Run unit tests'
-	@echo  '  ig-tests			- Run ig manager unit tests'
 	@echo  '  integration-tests		- Run integration tests (deploy IG before running the tests)'
 	@echo  '  integration-test-gadgets	- Run gadgets integration test'
 	@echo  '  unit-test-gadgets		- Run gadgets unit test'

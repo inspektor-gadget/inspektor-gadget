@@ -75,7 +75,6 @@
 /pkg/gadgets/traceloop/ @eiffel-fl
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
 /pkg/histogram/ @blanquicet
-/pkg/ig-manager/ @blanquicet
 /pkg/kallsyms/ @alban
 /pkg/kfilefields/ @alban @mqasimsarfraz
 /pkg/networktracer/ @alban @blanquicet
