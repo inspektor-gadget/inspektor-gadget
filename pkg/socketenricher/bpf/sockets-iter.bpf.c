@@ -53,16 +53,22 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 				      sizeof(socket_value.ptask), parent->comm);
 		socket_value.ppid = (__u32)BPF_CORE_READ(parent, tgid);
 	}
-	char *cwd = get_path_str(&fs->pwd);
-	bpf_probe_read_kernel_str(socket_value.cwd, sizeof(socket_value.cwd),
-				  cwd);
-	char *exepath = get_path_str(&exe_file->f_path);
-	bpf_probe_read_kernel_str(socket_value.exepath,
-				  sizeof(socket_value.exepath), exepath);
 
 	socket_value.sock = (__u64)sock;
 	socket_value.ipv6only =
 		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
+
+	if (bpf_core_field_exists(socket_value.cwd)) {
+		int cwd_size = bpf_core_field_size(socket_value.cwd);
+		char *cwd = get_path_str(&fs->pwd);
+		bpf_probe_read_kernel_str(socket_value.cwd, cwd_size, cwd);
+	}
+	if (bpf_core_field_exists(socket_value.exepath)) {
+		int exepath_size = bpf_core_field_size(socket_value.exepath);
+		char *exepath = get_path_str(&exe_file->f_path);
+		bpf_probe_read_kernel_str(socket_value.exepath, exepath_size,
+					  exepath);
+	}
 
 	// If the endpoint was not present, add it and we're done.
 	struct sockets_value *old_socket_value =

@@ -29,19 +29,20 @@ type socketsiterSocketsKey struct {
 }
 
 type socketsiterSocketsValue struct {
-	_                 structs.HostLayout
-	Mntns             uint64
-	PidTgid           uint64
-	UidGid            uint64
-	Task              [16]int8
-	Ptask             [16]int8
-	Sock              uint64
-	DeletionTimestamp uint64
-	Cwd               [512]int8
-	Exepath           [512]int8
-	Ppid              uint32
-	Ipv6only          int8
-	_                 [3]byte
+	_                   structs.HostLayout
+	Mntns               uint64
+	PidTgid             uint64
+	UidGid              uint64
+	Task                [16]int8
+	Ptask               [16]int8
+	Sock                uint64
+	DeletionTimestamp   uint64
+	Ppid                uint32
+	Ipv6only            int8
+	_                   [3]byte
+	OptionalFieldsStart [0]int8
+	Cwd                 [4096]int8
+	Exepath             [4096]int8
 }
 
 // loadSocketsiter returns the embedded CollectionSpec for socketsiter.

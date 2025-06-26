@@ -5,8 +5,9 @@
 #define __COMMON_FILESYSTEM_H__
 
 // clang-format off
-#define MAX_PERCPU_BUFSIZE (1 << 15)  // set by the kernel as an upper bound
-#define GADGET_PATH_MAX    512        // smaller than PATH_MAX to reduce memory consumption
+#define MAX_PERCPU_BUFSIZE  (1 << 15)  // set by the kernel as an upper bound
+#define GADGET_PATH_MAX     512        // smaller than PATH_MAX to reduce memory consumption
+#define PATH_MAX            4096
 #define MAX_STR_FILTER_SIZE 16        // bounded to size of the compared values (comm)
 #define MAX_BIN_PATH_SIZE   256       // max binary path size
 #define FILE_MAGIC_HDR_SIZE 32        // magic_write: bytes to save from a file's header
@@ -124,7 +125,7 @@ static __always_inline void *get_path_str(struct path *path)
 		}
 		// Add this dentry name to path
 		d_name = get_d_name_from_dentry(dentry);
-		len = (d_name.len + 1) & (GADGET_PATH_MAX - 1);
+		len = (d_name.len + 1) & (PATH_MAX - 1);
 		off = buf_off - len;
 
 		// Is string buffer big enough for dentry name?
@@ -150,7 +151,7 @@ static __always_inline void *get_path_str(struct path *path)
 		// memfd files have no path in the filesystem -> extract their name
 		buf_off = 0;
 		d_name = get_d_name_from_dentry(dentry);
-		bpf_probe_read_str(&(string_p->buf[0]), GADGET_PATH_MAX, (void *) d_name.name);
+		bpf_probe_read_str(&(string_p->buf[0]), PATH_MAX, (void *) d_name.name);
 	} else {
 		// Add leading slash
 		buf_off -= 1;

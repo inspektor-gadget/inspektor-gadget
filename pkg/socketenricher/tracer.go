@@ -15,15 +15,18 @@
 package socketenricher
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
@@ -49,7 +52,9 @@ func init() {
 }
 
 const (
-	SocketsMapName = "gadget_sockets"
+	SocketsMapName          = "gadget_sockets"
+	SocketsValueName        = "sockets_value"
+	optionalFieldsStartName = "optional_fields_start"
 )
 
 // SocketEnricher creates a map exposing processes owning each socket.
@@ -58,20 +63,60 @@ const (
 // display it directly from the BPF code. Example of such code in the dns and
 // sni gadgets.
 type SocketEnricher struct {
+	spec     *ebpf.CollectionSpec
 	objs     socketenricherObjects
 	objsIter socketsiterObjects
 	links    []link.Link
 
 	closeOnce sync.Once
 	done      chan bool
+	config    Config
+
+	valueBtfStruct *btf.Struct
+	btfSpec        *btf.Spec
 }
 
 func (se *SocketEnricher) SocketsMap() *ebpf.Map {
 	return se.objs.GadgetSockets
 }
 
-func NewSocketEnricher() (*SocketEnricher, error) {
-	se := &SocketEnricher{}
+type FieldConfig struct {
+	Enabled bool
+	Size    uint32
+}
+
+type Config struct {
+	Cwd     FieldConfig
+	Exepath FieldConfig
+}
+
+func isPowerOfTwo(n uint32) bool {
+	return n > 0 && (n&(n-1)) == 0
+}
+
+func validateFieldConfig(config FieldConfig) error {
+	if config.Enabled {
+		if !isPowerOfTwo(config.Size) {
+			return fmt.Errorf("size must be a power of two, got %d", config.Size)
+		}
+		if config.Size > 4096 {
+			return fmt.Errorf("size must be <= 4096, got %d", config.Size)
+		}
+	}
+	return nil
+}
+
+func NewSocketEnricher(config Config) (*SocketEnricher, error) {
+	var errs []error
+	errs = append(errs, validateFieldConfig(config.Cwd))
+	errs = append(errs, validateFieldConfig(config.Exepath))
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("invalid field configuration: %w", err)
+	}
+
+	se := &SocketEnricher{
+		config: config,
+	}
 
 	if err := se.start(); err != nil {
 		se.Close()
@@ -79,6 +124,86 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 	}
 
 	return se, nil
+}
+
+// BTFSpec returns the BTF Spec and the BTF struct for the sockets_value map
+func (se *SocketEnricher) BTFSpec() (*btf.Spec, *btf.Struct, error) {
+	return se.btfSpec, se.valueBtfStruct, nil
+}
+
+func (se *SocketEnricher) generateBTFSpec() error {
+	uint32T := &btf.Int{
+		Size:     4,
+		Encoding: btf.Unsigned,
+	}
+	charT := &btf.Int{
+		Size:     1,
+		Encoding: btf.Char,
+	}
+
+	types := []btf.Type{uint32T, charT}
+
+	// Look for the sockets_val btf structure to fill fixed members
+	srcBtfStruct := &btf.Struct{}
+	if err := se.spec.Types.TypeByName(SocketsValueName, &srcBtfStruct); err != nil {
+		return fmt.Errorf("getting BTF struct %q: %w", SocketsValueName, err)
+	}
+
+	members := []btf.Member{}
+	currentOffset := uint32(0)
+	for _, member := range srcBtfStruct.Members {
+		// stop when we find the optional fields
+		if member.Name == optionalFieldsStartName {
+			currentOffset = member.Offset.Bytes()
+			break
+		}
+		members = append(members, member)
+	}
+
+	addMember := func(name string, size uint32, typ btf.Type) {
+		member := btf.Member{
+			Name:   name,
+			Type:   typ,
+			Offset: btf.Bits(currentOffset * 8),
+		}
+		members = append(members, member)
+		types = append(types, typ)
+		currentOffset += size
+	}
+
+	if se.config.Cwd.Enabled {
+		typ := &btf.Array{
+			Index:  uint32T,
+			Type:   charT,
+			Nelems: se.config.Cwd.Size,
+		}
+		addMember("cwd", se.config.Cwd.Size, typ)
+	}
+	if se.config.Exepath.Enabled {
+		typ := &btf.Array{
+			Index:  uint32T,
+			Type:   charT,
+			Nelems: se.config.Exepath.Size,
+		}
+		addMember("exepath", se.config.Exepath.Size, typ)
+	}
+
+	btfStruct := &btf.Struct{
+		Name:    SocketsValueName,
+		Size:    currentOffset,
+		Members: members,
+	}
+	types = append(types, btfStruct)
+
+	btfSpec, err := btfhelpers.BuildSpec(types)
+	if err != nil {
+		return fmt.Errorf("creating socket enricher BTF spec: %w", err)
+	}
+
+	se.btfSpec = btfSpec
+	se.valueBtfStruct = btfStruct
+
+	return nil
 }
 
 func (se *SocketEnricher) start() error {
@@ -95,26 +220,41 @@ func (se *SocketEnricher) start() error {
 		log.Warnf("updating socket_file_ops address with ksyms: %v\nEither you cannot access /proc/kallsyms or this file does not contain socket_file_ops", err)
 	}
 
-	opts := ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
-		},
-	}
-
-	disableBPFIterators := false
-	if err := specIter.LoadAndAssign(&se.objsIter, nil); err != nil {
-		disableBPFIterators = true
-		log.Warnf("Socket enricher: skip loading iterators: %v", err)
-	}
-
-	spec, err := loadSocketenricher()
+	se.spec, err = loadSocketenricher()
 	if err != nil {
 		return fmt.Errorf("loading socket enricher asset: %w", err)
 	}
 
+	if err := se.generateBTFSpec(); err != nil {
+		return fmt.Errorf("getting BTF spec: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes:            btfgen.GetBTFSpec(),
+			ExtraRelocationTargets: []*btf.Spec{se.btfSpec},
+		},
+	}
+
+	// update size of the sockets_map according to the fields configured by the
+	// user. This works because CO-RE ensures programs will access the optional
+	// fields at the right offset in this structure.
+	mapSpecIter := specIter.Maps[SocketsMapName]
+	mapSpecIter.ValueSize = se.valueBtfStruct.Size
+	mapSpecIter.Value = se.valueBtfStruct
+	mapSpec := se.spec.Maps[SocketsMapName]
+	mapSpec.ValueSize = se.valueBtfStruct.Size
+	mapSpec.Value = se.valueBtfStruct
+
+	disableBPFIterators := false
+	if err := specIter.LoadAndAssign(&se.objsIter, &opts); err != nil {
+		disableBPFIterators = true
+		log.Warnf("Socket enricher: skip loading iterators: %v", err)
+	}
+
 	if disableBPFIterators {
 		socketSpec := &socketenricherSpecs{}
-		if err := spec.Assign(socketSpec); err != nil {
+		if err := se.spec.Assign(socketSpec); err != nil {
 			return err
 		}
 		if err := socketSpec.DisableBpfIterators.Set(true); err != nil {
@@ -126,7 +266,7 @@ func (se *SocketEnricher) start() error {
 		}
 	}
 
-	if err := spec.LoadAndAssign(&se.objs, &opts); err != nil {
+	if err := se.spec.LoadAndAssign(&se.objs, &opts); err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
