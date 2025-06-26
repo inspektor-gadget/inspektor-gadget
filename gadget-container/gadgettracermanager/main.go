@@ -69,14 +69,14 @@ import (
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
+	kubemanagertypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
 	serve             bool
 	liveness          bool
-	dump              string
 	socketfile        string
 	gadgetServiceHost string
 	method            string
@@ -91,7 +91,7 @@ var (
 var clientTimeout = 2 * time.Second
 
 func init() {
-	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&socketfile, "socketfile", kubemanagertypes.DefaultSocketFile, "Socket file for hook service and liveness probe")
 	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -103,8 +103,6 @@ func init() {
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
 	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
-
-	flag.StringVar(&dump, "dump", "", "Dump state for debugging specifying the items to print: containers, traces, stacks, all")
 
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
 }
@@ -143,11 +141,11 @@ func main() {
 		}
 	}
 
-	var client pb.GadgetTracerManagerClient
+	var client pb.HookServiceClient
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var conn *grpc.ClientConn
-	if liveness || dump != "" || method != "" {
+	if liveness || method != "" {
 		var err error
 		//nolint:staticcheck
 		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -155,7 +153,7 @@ func main() {
 			log.Fatalf("fail to dial: %v", err)
 		}
 		defer conn.Close()
-		client = pb.NewGadgetTracerManagerClient(conn)
+		client = pb.NewHookServiceClient(conn)
 
 		if liveness {
 			// Let's cover the cases where timeoutSeconds is not respected. See
@@ -203,39 +201,6 @@ func main() {
 		fmt.Printf("invalid method %q\n", method)
 		flag.PrintDefaults()
 		os.Exit(1)
-	}
-
-	if dump != "" {
-		out, err := client.DumpState(ctx, &pb.DumpStateRequest{})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		switch dump {
-		case "":
-			// break
-
-		case "containers":
-			fmt.Println(out.Containers)
-			os.Exit(0)
-
-		case "traces":
-			fmt.Println(out.Traces)
-			os.Exit(0)
-
-		case "stacks":
-			fmt.Println(out.Stacks)
-			os.Exit(0)
-
-		case "all":
-			fmt.Println(out.Containers, out.Traces, out.Stacks)
-			os.Exit(0)
-
-		default:
-			fmt.Printf("invalid method %q\n", method)
-			flag.PrintDefaults()
-			os.Exit(1)
-		}
-
 	}
 
 	if liveness {
