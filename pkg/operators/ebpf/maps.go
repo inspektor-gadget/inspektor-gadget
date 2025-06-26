@@ -252,7 +252,7 @@ func (i *ebpfInstance) runMapIterators() error {
 	return nil
 }
 
-func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
+func (i *ebpfInstance) legacyPopulateMapIter(t btf.Type, varName string) error {
 	i.logger.Debugf("populating mapiter %q", varName)
 
 	info := strings.Split(varName, typeSplitter)
@@ -300,6 +300,9 @@ func (i *ebpfInstance) populateMapIter(t btf.Type, varName string) error {
 	if err != nil {
 		return fmt.Errorf("populating value struct for map iter %q: %w", varName, err)
 	}
+
+	i.logger.Debugf("adding map iterator %q", name)
+	i.logger.Warnf("this gadget uses a legacy way to register map iterators, update it")
 
 	iter := &mapIter{
 		name:          name,

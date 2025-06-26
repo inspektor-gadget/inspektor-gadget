@@ -68,7 +68,7 @@ func (i *ebpfInstance) fixTracerMap(t btf.Type, varName string) error {
 	return nil
 }
 
-func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
+func (i *ebpfInstance) legacyPopulateTracer(t btf.Type, varName string) error {
 	i.logger.Debugf("populating tracer %q", varName)
 
 	parts := strings.Split(varName, typeSplitter)
@@ -99,6 +99,7 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	}
 
 	i.logger.Debugf("adding tracer %q", name)
+	i.logger.Warnf("this gadget uses a legacy way to register tracers, update it")
 	i.tracers[name] = &Tracer{
 		mapName:    mapName,
 		structName: btfStruct.Name,

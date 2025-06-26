@@ -77,7 +77,7 @@ func (i *ebpfInstance) parseSnapshotterPrograms(programs []string) (map[string]s
 	return iterators, nil
 }
 
-func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
+func (i *ebpfInstance) legacyPopulateSnapshotter(t btf.Type, varName string) error {
 	i.logger.Debugf("populating snapshotter %q", varName)
 
 	parts := strings.Split(varName, typeSplitter)
@@ -109,6 +109,7 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	}
 
 	i.logger.Debugf("adding snapshotter %q", name)
+	i.logger.Warnf("this gadget uses a legacy way to register snapshotters, update it")
 	i.snapshotters[name] = &Snapshotter{
 		structName: btfStruct.Name,
 		iterators:  iterators,

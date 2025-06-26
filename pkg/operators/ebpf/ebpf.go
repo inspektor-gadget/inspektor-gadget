@@ -223,12 +223,12 @@ func (i *ebpfInstance) analyze() error {
 		{
 			prefixFunc:   hasPrefix(tracerInfoPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateTracer,
+			populateFunc: i.legacyPopulateTracer,
 		},
 		{
 			prefixFunc:   hasPrefix(snapshottersPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateSnapshotter,
+			populateFunc: i.legacyPopulateSnapshotter,
 		},
 		{
 			prefixFunc:   hasPrefix(paramPrefix),
@@ -243,7 +243,7 @@ func (i *ebpfInstance) analyze() error {
 		{
 			prefixFunc:   hasPrefix(mapIterPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateMapIter,
+			populateFunc: i.legacyPopulateMapIter,
 		},
 		{
 			prefixFunc: func(s string) (string, bool) {
