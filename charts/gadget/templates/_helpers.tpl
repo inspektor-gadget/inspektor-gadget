@@ -67,6 +67,20 @@ Operator configuration
 */}}
 {{- define "gadget.operatorConfig" -}}
 {{- $operator := deepCopy .Values.config.operator | default (dict) -}}
+{{- if hasKey .Values.config "hookMode" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "kubemanager" | default dict)
+      (dict "hook-mode" .Values.config.hookMode)
+    }}
+  {{- $operator = set $operator "kubemanager" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "fallbackPodInformer" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "kubemanager" | default dict)
+      (dict "fallback-podinformer" .Values.config.fallbackPodInformer)
+    }}
+  {{- $operator = set $operator "kubemanager" $merged }}
+{{- end }}
 {{- if hasKey .Values.config "verifyGadgets" }}
   {{- $merged := mergeOverwrite
       (get $operator "oci" | default dict)

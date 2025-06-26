@@ -18,7 +18,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -31,7 +30,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
@@ -71,15 +69,14 @@ import (
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
+	kubemanagertypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
 	serve             bool
 	liveness          bool
-	dump              string
 	socketfile        string
 	gadgetServiceHost string
 	method            string
@@ -94,7 +91,7 @@ var (
 var clientTimeout = 2 * time.Second
 
 func init() {
-	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&socketfile, "hook-liveness-socketfile", kubemanagertypes.DefaultHookAndLivenessSocketFile, "Path to socket file for sending hook's requests for adding/removing containers and for liveness checks")
 	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -106,8 +103,6 @@ func init() {
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
 	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
-
-	flag.StringVar(&dump, "dump", "", "Dump state for debugging specifying the items to print: containers, traces, stacks, all")
 
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
 }
@@ -146,11 +141,11 @@ func main() {
 		}
 	}
 
-	var client pb.GadgetTracerManagerClient
+	var client pb.HookServiceClient
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var conn *grpc.ClientConn
-	if liveness || dump != "" || method != "" {
+	if liveness || method != "" {
 		var err error
 		//nolint:staticcheck
 		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -158,7 +153,7 @@ func main() {
 			log.Fatalf("fail to dial: %v", err)
 		}
 		defer conn.Close()
-		client = pb.NewGadgetTracerManagerClient(conn)
+		client = pb.NewHookServiceClient(conn)
 
 		if liveness {
 			// Let's cover the cases where timeoutSeconds is not respected. See
@@ -186,7 +181,6 @@ func main() {
 			Podname:   podname,
 			Name:      containername,
 			Labels:    labels,
-			LabelsSet: label != "",
 		})
 		if err != nil {
 			log.Fatalf("%v", err)
@@ -206,39 +200,6 @@ func main() {
 		fmt.Printf("invalid method %q\n", method)
 		flag.PrintDefaults()
 		os.Exit(1)
-	}
-
-	if dump != "" {
-		out, err := client.DumpState(ctx, &pb.DumpStateRequest{})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		switch dump {
-		case "":
-			// break
-
-		case "containers":
-			fmt.Println(out.Containers)
-			os.Exit(0)
-
-		case "traces":
-			fmt.Println(out.Traces)
-			os.Exit(0)
-
-		case "stacks":
-			fmt.Println(out.Stacks)
-			os.Exit(0)
-
-		case "all":
-			fmt.Println(out.Containers, out.Traces, out.Stacks)
-			os.Exit(0)
-
-		default:
-			fmt.Printf("invalid method %q\n", method)
-			flag.PrintDefaults()
-			os.Exit(1)
-		}
-
 	}
 
 	if liveness {
@@ -298,49 +259,9 @@ func main() {
 		}
 		log.Infof("HostCgroup=%t", hostCgroupNs)
 
-		node := os.Getenv("NODE_NAME")
-		if node == "" {
-			log.Fatalf("Environment variable NODE_NAME not set")
-		}
-
-		var opts []grpc.ServerOption
-		grpcServer := grpc.NewServer(opts...)
-
-		var tracerManager *gadgettracermanager.GadgetTracerManager
-		hookMode := config.Config.GetString(gadgettracermanagerconfig.HookModeKey)
-		log.Infof("Config: %s=%s", gadgettracermanagerconfig.HookModeKey, hookMode)
-		hookMode, err = entrypoint.Init(hookMode, logLevel)
-		if err != nil {
+		if err = entrypoint.Init(); err != nil {
 			log.Fatalf("entrypoint.Init() failed: %v", err)
 		}
-		fallbackPodInformerStr := config.Config.GetString(gadgettracermanagerconfig.FallbackPodInformerKey)
-		log.Infof("Config: %s=%s", gadgettracermanagerconfig.FallbackPodInformerKey, fallbackPodInformerStr)
-		fallbackPodInformer, err := strconv.ParseBool(fallbackPodInformerStr)
-		if err != nil {
-			log.Fatalf("Parsing FallbackPodInformer %q: %v", fallbackPodInformerStr, err)
-		}
-
-		lis, err := net.Listen("unix", socketfile)
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-
-		tracerManager, err = gadgettracermanager.NewServer(&gadgettracermanager.Conf{
-			NodeName:            node,
-			HookMode:            hookMode,
-			FallbackPodInformer: fallbackPodInformer,
-		})
-		if err != nil {
-			log.Fatalf("failed to create Gadget Tracer Manager server: %v", err)
-		}
-
-		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)
-
-		healthserver := health.NewServer()
-		healthpb.RegisterHealthServer(grpcServer, healthserver)
-
-		log.Printf("Serving on gRPC socket %s", socketfile)
-		go grpcServer.Serve(lis)
 
 		stringBufferLength := config.Config.GetString(gadgettracermanagerconfig.EventsBufferLengthKey)
 		log.Infof("Config: %s=%s", gadgettracermanagerconfig.EventsBufferLengthKey, stringBufferLength)
@@ -389,6 +310,5 @@ func main() {
 		<-exitSignal
 
 		service.Close()
-		tracerManager.Close()
 	}
 }

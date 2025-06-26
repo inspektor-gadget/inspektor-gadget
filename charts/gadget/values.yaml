@@ -4,12 +4,6 @@
 
 # -- Inspektor Gadget configuration.
 config:
-  # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify+ebpf")
-  hookMode: auto
-
-  # -- Whether to use the fallback pod informer
-  fallbackPodInformer: true
-
   # -- Containerd CRI Unix socket path
   containerdSocketPath: "/run/containerd/containerd.sock"
   # -- CRI-O CRI Unix socket path
@@ -33,6 +27,11 @@ config:
 
   # -- Operator configuration, this will only be used if deprecated values are not set.
   operator:
+    kubemanager:
+      # -- Whether to use the fallback to pod informer
+      fallback-podinformer: true
+      # -- How to get containers start/stop notifications. Valid values are: "auto", "crio", "podinformer", "nri", "fanotify+ebpf"
+      hook-mode: "auto"
     oci:
       verify-image: true
       public-keys:

@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgettracermanager
+package tracercollection
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestTracer(t *testing.T) {
-	g, err := NewServer(&Conf{NodeName: "fake-node", HookMode: "none", TestOnly: true})
-	if err != nil {
-		t.Fatalf("Failed to create new server: %v", err)
-	}
+	var cc containercollection.ContainerCollection
+	cc.Initialize([]containercollection.ContainerCollectionOption{}...)
+
+	tc, err := NewTracerCollectionTest(&cc)
+	require.NoError(t, err, "Failed to create tracer collection")
+	require.NotNil(t, tc, "Tracer collection is nil")
 
 	// Add 3 Tracers
-	for i := 0; i < 3; i++ {
-		err := g.AddTracer(
+	for i := range 3 {
+		err := tc.AddTracer(
 			fmt.Sprintf("my_tracer_id%d", i),
 			containercollection.ContainerSelector{
 				K8s: containercollection.K8sSelector{
@@ -40,17 +44,14 @@ func TestTracer(t *testing.T) {
 				},
 			},
 		)
-		if err != nil {
-			t.Fatalf("Failed to add tracer: %v", err)
-		}
+		require.NoError(t, err, "Failed to add tracer")
 	}
 
-	if g.tracerCollection.TracerCount() != 3 {
-		t.Fatalf("Error while checking tracers: len %d", g.tracerCollection.TracerCount())
-	}
+	// Check Tracer count
+	require.Equal(t, 3, tc.TracerCount(), "Tracer count mismatch after adding tracers")
 
 	// Check error on duplicate tracer
-	err = g.AddTracer(
+	err = tc.AddTracer(
 		fmt.Sprintf("my_tracer_id%d", 0),
 		containercollection.ContainerSelector{
 			K8s: containercollection.K8sSelector{
@@ -60,30 +61,16 @@ func TestTracer(t *testing.T) {
 			},
 		},
 	)
-	if err == nil {
-		t.Fatal("Error while trying to add a duplicate tracer: duplicate not detected")
-	}
+	require.Error(t, err, "Expected error when adding duplicate tracer")
 
 	// Remove 1 Tracer
-	err = g.RemoveTracer(fmt.Sprintf("my_tracer_id%d", 1))
-	if err != nil {
-		t.Fatalf("Failed to remove tracer: %v", err)
-	}
+	require.NoError(t, tc.RemoveTracer(fmt.Sprintf("my_tracer_id%d", 1)), "Failed to remove tracer")
 
 	// Remove non-existent Tracer
-	err = g.RemoveTracer(fmt.Sprintf("my_tracer_id%d", 99))
-	if err == nil {
-		t.Fatal("Error while removing non-existent tracer: no error detected")
-	}
+	require.Error(t, tc.RemoveTracer(fmt.Sprintf("my_tracer_id%d", 99)), "Expected error when removing non-existent tracer")
 
 	// Check content
-	if g.tracerCollection.TracerCount() != 2 {
-		t.Fatalf("Error while checking tracers: len %d", g.tracerCollection.TracerCount())
-	}
-	if !g.tracerCollection.TracerExists("my_tracer_id0") {
-		t.Fatalf("Error while checking tracer %s: not found", "my_tracer_id0")
-	}
-	if !g.tracerCollection.TracerExists("my_tracer_id2") {
-		t.Fatalf("Error while checking tracer %s: not found", "my_tracer_id2")
-	}
+	require.Equal(t, 2, tc.TracerCount(), "Error while checking tracers")
+	require.True(t, tc.TracerExists("my_tracer_id0"), "Error while checking tracer my_tracer_id0: not found")
+	require.True(t, tc.TracerExists("my_tracer_id2"), "Error while checking tracer my_tracer_id2: not found")
 }
