@@ -29,7 +29,7 @@ No flags.
 
 ## Guide
 
-First, we need to create an nginx deployment which can respond to our test requests. 
+First, we need to create an nginx deployment which can respond to our test requests.
 
 ```bash
 $ kubectl create service nodeport nginx --tcp=80:80
@@ -41,13 +41,13 @@ deployment.apps/nginx created
 Then, start the advise_networkpolicy gadget in another terminal.
 
 ```bash
-$ kubectl gadget run advise_networkpolicy:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0
+$ kubectl gadget run advise_networkpolicy:%IG_TAG%
 ```
 
 Now we can deploy our client pod, send a request to our nginx deployment and `1.1.1.1` and then quit.
 
 ```bash
-$ kubectl run --rm -ti --image busybox test-pod          
+$ kubectl run --rm -ti --image busybox test-pod
 If you don't see a command prompt, try pressing enter.
 / # wget nginx
 Connecting to nginx (10.105.129.249:80)
@@ -68,7 +68,7 @@ pod "test-pod" deleted
 Let's switch back to the gadget terminal, stop our gadget. The policy will then be printed:
 
 ```bash
-$ kubectl gadget run advise_networkpolicy:%IG_TAG% --map-fetch-count=0 --map-fetch-interval=0
+$ kubectl gadget run advise_networkpolicy:%IG_TAG%
 ...
 ^C
 apiVersion: networking.k8s.io/v1

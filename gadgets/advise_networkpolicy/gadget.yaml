@@ -10,3 +10,5 @@ datasources:
       ebpf.map.flush-on-stop: true
       generate_networkpolicy.enable: true
       kubenameresolver.enable: true
+paramDefaults:
+  operator.oci.ebpf.map-fetch-interval: "0"

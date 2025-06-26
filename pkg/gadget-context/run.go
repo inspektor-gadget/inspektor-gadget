@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -91,6 +92,19 @@ func (c *GadgetContext) initAndPrepareOperators(paramValues api.ParamValues) ([]
 		if extra, ok := opInst.(operators.DataOperatorExtraParams); ok {
 			pd := extra.ExtraParams(c)
 			params = append(params, pd.AddPrefix(opParamPrefix)...)
+		}
+	}
+
+	// set defaults for params according to gadget's config
+	if cfg, ok := c.GetVar("config"); ok {
+		if v, ok := cfg.(*viper.Viper); ok {
+			defaults := v.GetStringMapString("paramDefaults")
+			for _, p := range params {
+				fullName := p.Prefix + p.Key
+				if val, ok := defaults[fullName]; ok {
+					p.DefaultValue = val
+				}
+			}
 		}
 	}
 

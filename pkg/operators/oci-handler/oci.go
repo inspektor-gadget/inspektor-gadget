@@ -15,7 +15,6 @@
 package ocihandler
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -381,11 +380,13 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	// Store metadata for serialization
 	gadgetCtx.SetMetadata(metadata)
 
-	viper := viper.New()
-	viper.SetConfigType("yaml")
-	err = viper.ReadConfig(bytes.NewReader(metadata))
-	if err != nil {
-		return fmt.Errorf("unmarshalling metadata: %w", err)
+	cfg, ok := gadgetCtx.GetVar("config")
+	if !ok {
+		return fmt.Errorf("missing configuration")
+	}
+	viper, ok := cfg.(*viper.Viper)
+	if !ok {
+		return fmt.Errorf("invalid configuration format")
 	}
 
 	for _, ann := range o.instanceParams.Get(annotate).AsStringSlice() {
