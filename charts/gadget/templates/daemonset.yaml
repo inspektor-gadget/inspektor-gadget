@@ -29,7 +29,6 @@ spec:
         # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
         # (For reference, see: https://github.com/inspektor-gadget/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
         container.apparmor.security.beta.kubernetes.io/gadget: {{ default .Values.appArmorProfile .Values.config.appArmorProfile | quote }}
-        inspektor-gadget.kinvolk.io/option-hook-mode: "auto"
         # keep aligned with values in pkg/operators/prometheus/prometheus.go
         prometheus.io/scrape: "true"
         prometheus.io/port: "2223"

@@ -5,8 +5,6 @@
     "config": {
       "type": "object",
       "required": [
-        "hookMode",
-        "fallbackPodInformer",
         "containerdSocketPath",
         "crioSocketPath",
         "dockerSocketPath",
@@ -14,19 +12,6 @@
         "eventsBufferLength"
       ],
       "properties": {
-        "hookMode": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "crio",
-            "podinformer",
-            "nri",
-            "fanotify+ebpf"
-          ]
-        },
-        "fallbackPodInformer": {
-          "type": "boolean"
-        },
         "containerdSocketPath": {
           "type": "string"
         },
