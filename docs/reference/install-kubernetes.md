@@ -136,6 +136,8 @@ The different supported modes can be set by using the `hook-mode` option:
   eBPF module. It works with both runc and crun. It works regardless of the
   pid namespace configuration.
 
+It is configurable using the daemon-config file ...
+
 #### Deploying with an AppArmor profile
 
 By default, Inspektor Gadget runs as unconfined because it needs to write to different files under `/sys`.
