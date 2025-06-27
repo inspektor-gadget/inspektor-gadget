@@ -270,8 +270,7 @@ Inspektor Gadget can also be installed using our [official Helm chart](https://g
 #### From OCI registry
 
 ```bash
-CHART_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name | sed 's/^v//')
-helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=$CHART_VERSION
+helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=%IG_CHART%
 ```
 
 #### From HTTP(s) repository
@@ -283,7 +282,47 @@ helm install gadget gadget/gadget --namespace=gadget --create-namespace
 
 For more information on the Helm chart, please refer to the [Helm Chart documentation](https://artifacthub.io/packages/helm/gadget/gadget).
 
-Also, all the above configurations options can be passed as [values](https://artifacthub.io/packages/helm/gadget/gadget#values) to the Helm chart.
+#### Configuration options
+
+Inspektor Gadget Helm chart provides a set of configuration options that can be used to customize the installation. You can pass these options using the `--set` flag or by creating a `values.yaml` file.
+These options are divided into a couple of sections:
+
+- Kubernetes Resources (`values`): The root section contains the configuration options for the Kubernetes resources, such as `image`, `nodeSelector`, `tolerations`, `mountPullSecret`, etc.
+- Inspektor Gadget Configuration (`values.config`): This section contains the configuration options for the Inspektor Gadget, such as `hookMode`, `containerdSocketPath`, `operator`, etc.
+
+Let's go through a example of how to configure the Helm chart using a `values.yaml` file. Suppose we want to configure the following options:
+
+- Change the `eventsBufferLength` to `32768`.
+- Change the `operator.otel-metrics.otel-metrics-listen` to `true`.
+- Include `otel-logs` exporter in `operator` configuration.
+- Using a custom  `image.tag` for the Inspektor Gadget DaemonSet.
+
+You can create a `values.yaml` file with the following content:
+
+```yaml
+config:
+  eventsBufferLength: 32768
+  operator:
+    otel-logs:
+      exporters:
+        my-log-exporter:
+          exporter: otlp-grpc
+          compression: gzip
+          endpoint: '127.0.0.1:4317'
+          insecure: true
+    otel-metrics:
+      otel-metrics-listen: true
+image:
+  tag: my-custom-tag
+```
+
+Then, you can install the Helm chart using the following command:
+
+```bash
+helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=%IG_CHART% -f values.yaml
+```
+
+For more information you can check the [values.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/charts/gadget/values.yaml) file for full list of options available in the Helm chart.
 
 ### Installation on Minikube with the Inspektor Gadget Addon
 
@@ -384,7 +423,7 @@ $ kubectl gadget undeploy
 ```
 
 ```bash
-$ helm uninstall inspektor-gadget
+$ helm uninstall -n gadget gadget
 ```
 
 ```bash
