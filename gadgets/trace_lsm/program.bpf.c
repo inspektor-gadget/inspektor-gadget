@@ -176,7 +176,12 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(lsm, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} lsm SEC(".tracers");
 
 #define DECLARE_LSM_PARAMETER(name)               \
 	const volatile bool trace_##name = false; \

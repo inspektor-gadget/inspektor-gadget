@@ -63,7 +63,9 @@ struct {
 	__type(value, struct val_t);
 } counts SEC(".maps");
 
-GADGET_MAPITER(blockio, counts);
+struct {
+	__type(map, counts);
+} blockio SEC(".mapiters");
 
 static __always_inline int trace_start(struct request *req)
 {

@@ -38,7 +38,12 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(seccomp, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} seccomp SEC(".tracers");
 
 SEC("kprobe/audit_seccomp")
 int ig_audit_secc(struct pt_regs *ctx)

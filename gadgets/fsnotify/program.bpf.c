@@ -222,7 +222,12 @@ struct gadget_event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(fsnotify, events, gadget_event);
+GADGET_GEN_TYPE_BTF(struct gadget_event);
+
+struct {
+	__type(type, struct gadget_event);
+	__type(map, events);
+} fsnotify SEC(".tracers");
 
 static __always_inline void process_init(struct process *p, __u64 pid_tgid,
 					 struct task_struct *task)
