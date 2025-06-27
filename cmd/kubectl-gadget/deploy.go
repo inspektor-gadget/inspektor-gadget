@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,10 +85,8 @@ var gadgetimage = "undefined"
 var (
 	image                 string
 	imagePullPolicy       string
-	hookMode              string
 	livenessProbe         bool
 	deployTimeout         time.Duration
-	fallbackPodInformer   bool
 	printOnly             bool
 	quiet                 bool
 	debug                 bool
@@ -152,21 +150,11 @@ func init() {
 		"image-pull-policy", "",
 		"Always",
 		"pull policy for the container image")
-	deployCmd.PersistentFlags().StringVarP(
-		&hookMode,
-		"hook-mode", "",
-		"auto",
-		fmt.Sprintf("how to get containers start/stop notifications (%s)", strings.Join(supportedHooks, ", ")))
 	deployCmd.PersistentFlags().BoolVarP(
 		&livenessProbe,
 		"liveness-probe", "",
 		true,
 		"enable liveness probes")
-	deployCmd.PersistentFlags().BoolVarP(
-		&fallbackPodInformer,
-		"fallback-podinformer", "",
-		true,
-		"use pod informer as a fallback for the main hook")
 	deployCmd.PersistentFlags().BoolVarP(
 		&printOnly,
 		"print-only", "",
@@ -484,18 +472,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	found := false
-	for _, supportedHook := range supportedHooks {
-		if hookMode == supportedHook {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("invalid argument %q for --hook-mode=[%s]", hookMode, strings.Join(supportedHooks, ","))
-	}
-
 	if quiet && debug {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
@@ -615,8 +591,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				daemonSet.Spec.Template.Annotations["prometheus.io/port"] = otelListenPort
 			}
 
-			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
-
 			daemonSet.Namespace = gadgetNamespace
 
 			if seccompProfile != "" {
@@ -683,10 +657,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
-				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
-					gadgetContainer.Env[i].Value = hookMode
-				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
-					gadgetContainer.Env[i].Value = strconv.FormatBool(fallbackPodInformer)
 				case utils.GadgetEnvironmentContainerdSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Containerd
 				case utils.GadgetEnvironmentCRIOSocketpath:
@@ -788,8 +758,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("unmarshaling config.yaml: %w", err)
 			}
 
-			cfg[gadgettracermanagerconfig.HookModeKey] = hookMode
-			cfg[gadgettracermanagerconfig.FallbackPodInformerKey] = fallbackPodInformer
 			cfg[gadgettracermanagerconfig.EventsBufferLengthKey] = eventBufferLength
 			cfg[gadgettracermanagerconfig.ContainerdSocketPath] = runtimesConfig.Containerd
 			cfg[gadgettracermanagerconfig.CrioSocketPath] = runtimesConfig.Crio
