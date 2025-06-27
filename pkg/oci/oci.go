@@ -38,6 +38,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
@@ -207,13 +208,10 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 	}
 
 	imageDigest := desc.Digest.String()
-	signature, payload, err := getSigningInformation(ctx, repo, imageDigest)
-	if err != nil {
+	if err := pullSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
+		log.Warnf("error pulling signature: %v", err)
 		// it's not a requirement to have a signature for pulling the image
 		return &desc, nil
-	}
-	if err := cacheSigningInformation(ctx, signature, payload, imageDigest); err != nil {
-		return nil, fmt.Errorf("caching signing information: %w", err)
 	}
 
 	return &desc, nil
@@ -731,7 +729,7 @@ func craftSignatureTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
 }
 
-func getSignature(ctx context.Context, repo *remote.Repository, signatureTag string) ([]byte, string, error) {
+func loadSignature(ctx context.Context, repo oras.Target, signatureTag string) ([]byte, string, error) {
 	_, signatureManifestBytes, err := oras.FetchBytes(ctx, repo, signatureTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return nil, "", fmt.Errorf("getting signature bytes: %w", err)
@@ -773,10 +771,17 @@ func getSignature(ctx context.Context, repo *remote.Repository, signatureTag str
 	return signatureBytes, payloadTag, nil
 }
 
-func getPayload(ctx context.Context, repo *remote.Repository, payloadTag string) ([]byte, error) {
-	// The payload is stored as a blob, so we fetch bytes from the blob store and
-	// not the manifest one.
-	_, payloadBytes, err := oras.FetchBytes(ctx, repo.Blobs(), payloadTag, oras.DefaultFetchBytesOptions)
+func loadPayload(ctx context.Context, repo oras.Target, payloadTag string) ([]byte, error) {
+	desc := ocispec.Descriptor{
+		Digest: digest.Digest(payloadTag),
+	}
+	rc, err := repo.Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching payload content: %w", err)
+	}
+	defer rc.Close()
+
+	payloadBytes, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, fmt.Errorf("getting payload bytes: %w", err)
 	}
@@ -793,54 +798,61 @@ func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (st
 	return desc.Digest.String(), nil
 }
 
-func getSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
+func pullSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string, imageStore oras.Target) error {
 	signatureTag, err := craftSignatureTag(imageDigest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
+		return fmt.Errorf("crafting signature tag: %w", err)
 	}
-
-	signature, payloadTag, err := getSignature(ctx, repo, signatureTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting signature: %w", err)
-	}
-
-	payload, err := getPayload(ctx, repo, payloadTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting payload: %w", err)
-	}
-
-	return signature, payload, nil
-}
-
-func cacheSigningInformation(ctx context.Context, signature, payload []byte, imageDigest string) error {
-	signaturePath := path.Join(defaultOciStore, imageDigest+".sig")
-	payloadPath := path.Join(defaultOciStore, imageDigest+".payload")
-
-	if err := os.WriteFile(signaturePath, []byte(signature), 0o600); err != nil {
-		return fmt.Errorf("writing signature file %q: %w", signaturePath, err)
-	}
-
-	if err := os.WriteFile(payloadPath, []byte(payload), 0o600); err != nil {
-		return fmt.Errorf("writing payload file %q: %w", payloadPath, err)
+	// copy the signature and payload from repo:signatureTag to imageStore
+	if _, err = oras.Copy(ctx, repo, signatureTag, imageStore, signatureTag, oras.DefaultCopyOptions); err != nil {
+		return fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
 	}
 
 	return nil
 }
 
-func loadSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string) ([]byte, []byte, error) {
-	signagturePath := path.Join(defaultOciStore, imageDigest+".sig")
-	signatureBytes, err := os.ReadFile(signagturePath)
+func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.Target, authOpts *AuthOptions) ([]byte, []byte, error) {
+	imageDigest, err := getImageDigest(ctx, imageStore, imageRef.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("reading signature file %q: %w", signagturePath, err)
+		return nil, nil, fmt.Errorf("getting image digest: %w", err)
 	}
 
-	payloadPath := path.Join(defaultOciStore, imageDigest+".payload")
-	payloadBytes, err := os.ReadFile(payloadPath)
+	signatureTag, err := craftSignatureTag(imageDigest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("reading payload file %q: %w", payloadPath, err)
+		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
 	}
 
-	return signatureBytes, payloadBytes, nil
+	if _, err := imageStore.Resolve(ctx, signatureTag); err != nil {
+		// it's possible that users pulled the image with an ig version
+		// that doesn't pulls the signature too, so we need to pull it here to
+		// avoid breaking them.
+		// TODO: This code could be removed in v0.45.0
+		if !errors.Is(err, errdef.ErrNotFound) {
+			return nil, nil, fmt.Errorf("resolving signature tag %q: %w", signatureTag, err)
+		}
+
+		repo, err := newRepository(imageRef, authOpts)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating remote repository: %w", err)
+		}
+
+		log.Debugf("Signature tag %q not found in local store, pulling it", signatureTag)
+		if err := pullSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
+			return nil, nil, fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
+		}
+	}
+
+	signature, payloadTag, err := loadSignature(ctx, imageStore, signatureTag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getting signature: %w", err)
+	}
+
+	payload, err := loadPayload(ctx, imageStore, payloadTag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getting payload: %w", err)
+	}
+
+	return signature, payload, nil
 }
 
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
@@ -887,23 +899,9 @@ func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
+	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
 	if err != nil {
-		return fmt.Errorf("creating repository: %w", err)
-	}
-
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, repo, imageDigest)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("getting signing information: %w", err)
-		}
-		signatureBytes, payloadBytes, err = getSigningInformation(ctx, repo, imageDigest)
-		if err != nil {
-			return fmt.Errorf("getting signing information from registry: %w", err)
-		}
-		if err := cacheSigningInformation(ctx, signatureBytes, payloadBytes, imageDigest); err != nil {
-			return fmt.Errorf("caching signing information: %w", err)
-		}
+		return fmt.Errorf("getting signing information: %w", err)
 	}
 
 	verified := false
