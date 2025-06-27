@@ -11,4 +11,6 @@ datasources:
       generate_networkpolicy.enable: true
       kubenameresolver.enable: true
 paramDefaults:
-  operator.oci.ebpf.map-fetch-interval: "0"
+  oci:
+    ebpf:
+      map-fetch-interval: "0"
