@@ -200,16 +200,10 @@ spec:
                   fieldPath: metadata.uid
             - name: GADGET_IMAGE
               value: "ghcr.io/inspektor-gadget/inspektor-gadget"
-            - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
-              value: "auto"
-            - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
-              value: "true"
             - name: HOST_ROOT
               value: "/host"
             - name: IG_EXPERIMENTAL
               value: "false"
-            - name: EVENTS_BUFFER_LENGTH
-              value: "16384"
             - name: GADGET_TRACER_MANAGER_LOG_LEVEL
               value: "info"
           securityContext:

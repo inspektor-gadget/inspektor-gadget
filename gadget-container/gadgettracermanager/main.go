@@ -78,20 +78,18 @@ import (
 )
 
 var (
-	serve               bool
-	liveness            bool
-	fallbackPodInformer bool
-	dump                string
-	hookMode            string
-	socketfile          string
-	gadgetServiceHost   string
-	method              string
-	label               string
-	containerID         string
-	namespace           string
-	podname             string
-	containername       string
-	containerPid        uint
+	serve             bool
+	liveness          bool
+	dump              string
+	socketfile        string
+	gadgetServiceHost string
+	method            string
+	label             string
+	containerID       string
+	namespace         string
+	podname           string
+	containername     string
+	containerPid      uint
 )
 
 var clientTimeout = 2 * time.Second
@@ -99,7 +97,6 @@ var clientTimeout = 2 * time.Second
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
-	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
 
@@ -114,7 +111,6 @@ func init() {
 	flag.StringVar(&dump, "dump", "", "Dump state for debugging specifying the items to print: containers, traces, stacks, all")
 
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
-	flag.BoolVar(&fallbackPodInformer, "fallback-podinformer", true, "Use pod informer as a fallback for main hook")
 }
 
 func main() {
@@ -272,6 +268,11 @@ func main() {
 			log.Warnf("reading config: %v", err)
 		}
 
+		// Set default values for config options
+		config.Config.SetDefault(gadgettracermanagerconfig.HookModeKey, "auto")
+		config.Config.SetDefault(gadgettracermanagerconfig.FallbackPodInformerKey, "true")
+		config.Config.SetDefault(gadgettracermanagerconfig.EventsBufferLengthKey, 16384)
+
 		operators.RegisterDataOperator(ocihandler.OciHandler)
 
 		hostConfig := host.Config{
@@ -308,15 +309,13 @@ func main() {
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 		hookMode := config.Config.GetString(gadgettracermanagerconfig.HookModeKey)
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.HookModeKey, hookMode)
 		hookMode, err = entrypoint.Init(hookMode)
 		if err != nil {
 			log.Fatalf("entrypoint.Init() failed: %v", err)
 		}
 		fallbackPodInformerStr := config.Config.GetString(gadgettracermanagerconfig.FallbackPodInformerKey)
-		if fallbackPodInformerStr == "" {
-			log.Warnf("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.FallbackPodInformerKey)
-			fallbackPodInformerStr = os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")
-		}
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.FallbackPodInformerKey, fallbackPodInformerStr)
 		fallbackPodInformer, err := strconv.ParseBool(fallbackPodInformerStr)
 		if err != nil {
 			log.Fatalf("Parsing FallbackPodInformer %q: %v", fallbackPodInformerStr, err)
@@ -345,17 +344,10 @@ func main() {
 		go grpcServer.Serve(lis)
 
 		stringBufferLength := config.Config.GetString(gadgettracermanagerconfig.EventsBufferLengthKey)
-		if stringBufferLength == "" {
-			log.Warnf("EVENTS_BUFFER_LENGTH is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.EventsBufferLengthKey)
-			stringBufferLength = os.Getenv("EVENTS_BUFFER_LENGTH")
-		}
-		if stringBufferLength == "" {
-			log.Fatalf("Environment variable EVENTS_BUFFER_LENGTH or config not set")
-		}
-
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.EventsBufferLengthKey, stringBufferLength)
 		bufferLength, err := strconv.ParseUint(stringBufferLength, 10, 64)
 		if err != nil {
-			log.Fatalf("Parsing EVENTS_BUFFER_LENGTH %q: %v", stringBufferLength, err)
+			log.Fatalf("Parsing events-buffer-length %q: %v", stringBufferLength, err)
 		}
 		service := gadgetservice.NewService(log.StandardLogger())
 		service.SetEventBufferLength(bufferLength)
@@ -366,6 +358,7 @@ func main() {
 		}
 
 		gadgetNs := config.Config.GetString(gadgettracermanagerconfig.GadgetNamespace)
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.GadgetNamespace, gadgetNs)
 		if gadgetNs == "" {
 			log.Fatalf("gadget namespace must not be empty")
 		}

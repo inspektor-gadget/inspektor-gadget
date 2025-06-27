@@ -29,7 +29,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -241,12 +240,6 @@ func Init(hookMode string) (string, error) {
 
 	log.Infof("Gadget Image: %s", os.Getenv("GADGET_IMAGE"))
 
-	log.Info("Deployment options:")
-	for _, variable := range os.Environ() {
-		if strings.HasPrefix(variable, "INSPEKTOR_GADGET_OPTION_") {
-			log.Infof("[DEPRECATED] %s", variable)
-		}
-	}
 	if hasGadgetPullSecret() {
 		err = prepareGadgetPullSecret()
 		if err != nil {
@@ -266,10 +259,6 @@ func Init(hookMode string) (string, error) {
 		crio = true
 	}
 
-	if hookMode == "" {
-		log.Warnf("INSPEKTOR_GADGET_OPTION_HOOK_MODE is deprecated. Use %q instead in configmap", gadgettracermanagerconfig.HookModeKey)
-		hookMode = os.Getenv("INSPEKTOR_GADGET_OPTION_HOOK_MODE")
-	}
 	if (hookMode == "auto" || hookMode == "") && crio {
 		log.Info("Hook mode CRI-O detected")
 		hookMode = "crio"

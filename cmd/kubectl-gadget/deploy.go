@@ -832,10 +832,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
-				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
-					gadgetContainer.Env[i].Value = hookMode
-				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
-					gadgetContainer.Env[i].Value = strconv.FormatBool(fallbackPodInformer)
 				case utils.GadgetEnvironmentContainerdSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Containerd
 				case utils.GadgetEnvironmentCRIOSocketpath:
@@ -847,8 +843,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case experimental.EnvName:
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
-				case "EVENTS_BUFFER_LENGTH":
-					gadgetContainer.Env[i].Value = strconv.FormatUint(eventBufferLength, 10)
 				case "GADGET_TRACER_MANAGER_LOG_LEVEL":
 					if !slices.Contains(strLevels, daemonLogLevel) {
 						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
