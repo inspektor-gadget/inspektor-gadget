@@ -17,8 +17,6 @@ package gadgettracermanagerconfig
 const ConfigPath = "/etc/ig/config.yaml"
 
 const (
-	HookModeKey              = "hook-mode"
-	FallbackPodInformerKey   = "fallback-pod-informer"
 	EventsBufferLengthKey    = "events-buffer-length"
 	ContainerdSocketPath     = "containerd-socketpath"
 	CrioSocketPath           = "crio-socketpath"

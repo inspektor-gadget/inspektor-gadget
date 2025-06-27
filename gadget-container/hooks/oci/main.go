@@ -35,7 +35,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
 )
 
 var (
@@ -44,7 +44,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&socketfile, "socketfile", "/run/hook-service.socket", "Socket file")
 	flag.StringVar(&hook, "hook", "", "OCI hook: prestart or poststop")
 }
 
@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// Connect to the Gadget Tracer Manager
-	var client pb.GadgetTracerManagerClient
+	var client pb.HookServiceClient
 	var ctx context.Context
 	var cancel context.CancelFunc
 	//nolint:staticcheck
@@ -86,7 +86,7 @@ func main() {
 		panic(err)
 	}
 	defer conn.Close()
-	client = pb.NewGadgetTracerManagerClient(conn)
+	client = pb.NewHookServiceClient(conn)
 	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/rlimit"
 	"github.com/containerd/containerd/pkg/cri/constants"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
@@ -38,11 +39,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
+	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -72,7 +74,12 @@ type Attacher interface {
 }
 
 type localManager struct {
-	igManager     *igmanager.IGManager
+	containerCollection *containercollection.ContainerCollection
+	tracerCollection    *tracercollection.TracerCollection
+	// containersMap is the global map at /sys/fs/bpf/gadget/containers
+	// exposing container details for each mount namespace.
+	containersMap *containersmap.ContainersMap
+
 	rc            []*containerutilsTypes.RuntimeConfig
 	fakeContainer *containercollection.Container
 }
@@ -238,9 +245,48 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		Mntns: mntns,
 	}
 
-	additionalOpts := []containercollection.ContainerCollectionOption{}
+	if err = l.initCollections(operatorParams); err != nil {
+		log.Warnf("Failed to create container-collection")
+		log.Debugf("Failed to create container-collection: %s", err)
+	}
+	return nil
+}
+
+// initCollections initializes the container collection and tracer collection.
+func (l *localManager) initCollections(operatorParams *params.Params) error {
+	var cc containercollection.ContainerCollection
+
+	if err := rlimit.RemoveMemlock(); err != nil {
+		return fmt.Errorf("removing memlock rlimit: %w", err)
+	}
+
+	var err error
+	l.tracerCollection, err = tracercollection.NewTracerCollection(&cc)
+	if err != nil {
+		return fmt.Errorf("creating tracer collection: %w", err)
+	}
+
+	// TODO: Do we still need the containers map?
+	l.containersMap, err = containersmap.NewContainersMap("")
+	if err != nil {
+		return fmt.Errorf("creating containers map: %w", err)
+	}
+
+	// Initialize ContainerCollection with the options
+	containercollectionOpts := []containercollection.ContainerCollectionOption{
+		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
+		containercollection.WithOCIConfigEnrichment(),
+		containercollection.WithCgroupEnrichment(),
+		containercollection.WithLinuxNamespaceEnrichment(),
+		containercollection.WithMultipleContainerRuntimesEnrichment(l.rc),
+		containercollection.WithOCIConfigForInitialContainer(),
+		containercollection.WithContainerFanotifyEbpf(),
+		containercollection.WithTracerCollection(l.tracerCollection),
+		containercollection.WithProcEnrichment(),
+	}
+
 	if kubeconfig := operatorParams.Get(KubeconfigPath).AsString(); kubeconfig != "" {
-		additionalOpts = append(additionalOpts, containercollection.WithKubeconfigPath(kubeconfig))
+		containercollectionOpts = append(containercollectionOpts, containercollection.WithKubeconfigPath(kubeconfig))
 	}
 
 	if operatorParams.Get(EnrichWithK8sApiserver).AsBool() {
@@ -248,22 +294,34 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 		if nodeName == "" {
 			return errors.New("NODE_NAME environment variable is not set, cannot enrich with K8s API server")
 		}
-		additionalOpts = append(additionalOpts, containercollection.WithNodeName(nodeName))
-		additionalOpts = append(additionalOpts, containercollection.WithKubernetesEnrichment(nodeName))
+		containercollectionOpts = append(containercollectionOpts, containercollection.WithNodeName(nodeName))
+		containercollectionOpts = append(containercollectionOpts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
 
-	igManager, err := igmanager.NewManager(l.rc, additionalOpts)
-	if err != nil {
-		log.Warnf("Failed to create container-collection")
-		log.Debugf("Failed to create container-collection: %s", err)
+	if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(l.rc) {
+		warnings := []containercollection.ContainerCollectionOption{containercollection.WithDisableContainerRuntimeWarnings()}
+		containercollectionOpts = append(warnings, containercollectionOpts...)
 	}
-	l.igManager = igManager
+
+	err = cc.Initialize(containercollectionOpts...)
+	if err != nil {
+		return fmt.Errorf("initializing container collection: %w", err)
+	}
+
+	l.containerCollection = &cc
+
 	return nil
 }
 
 func (l *localManager) Close() error {
-	if l.igManager != nil {
-		l.igManager.Close()
+	if l.containerCollection != nil {
+		l.containerCollection.Close()
+	}
+	if l.tracerCollection != nil {
+		l.tracerCollection.Close()
+	}
+	if l.containersMap != nil {
+		l.containersMap.Close()
 	}
 	return nil
 }
@@ -319,27 +377,33 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 	// want any filtering.
 	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
 		if !host {
-			if l.manager.igManager == nil {
+			if l.manager.containerCollection == nil {
 				return fmt.Errorf("container-collection isn't available")
 			}
 
+			id := id.String()
+			if err := l.manager.tracerCollection.AddTracer(id, containerSelector); err != nil {
+				return fmt.Errorf("adding tracer %q: %w", id, err)
+			}
+
 			// Create mount namespace map to filter by containers
-			mountnsmap, err := l.manager.igManager.CreateMountNsMap(id.String(), containerSelector)
+			mountnsmap, err := l.manager.tracerCollection.TracerMountNsMap(id)
 			if err != nil {
-				return commonutils.WrapInErrManagerCreateMountNsMap(err)
+				l.manager.tracerCollection.RemoveTracer(id)
+				return fmt.Errorf("getting mount namespace map for tracer %q: %w", id, err)
 			}
 
 			log.Debugf("set mountnsmap for gadget")
 			setter.SetMountNsMap(mountnsmap)
 
 			l.mountnsmap = mountnsmap
-		} else if l.manager.igManager == nil {
+		} else if l.manager.containerCollection == nil {
 			log.Warn("container-collection isn't available: container enrichment and filtering won't work")
 		}
 	}
 
 	if attacher, ok := l.gadgetInstance.(Attacher); ok {
-		if l.manager.igManager == nil {
+		if l.manager.containerCollection == nil {
 			if !host {
 				return fmt.Errorf("container-collection isn't available")
 			}
@@ -380,10 +444,10 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
-		if l.manager.igManager != nil {
+		if l.manager.containerCollection != nil {
 			l.subscriptionKey = id.String()
-			log.Debugf("add subscription to igManager")
-			containers = l.manager.igManager.Subscribe(
+			log.Debugf("add subscription to containerCollection")
+			containers = l.manager.containerCollection.Subscribe(
 				l.subscriptionKey,
 				containerSelector,
 				func(event containercollection.PubSubEvent) {
@@ -420,13 +484,13 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 func (l *localManagerTrace) PostGadgetRun() error {
 	if l.mountnsmap != nil {
 		log.Debugf("calling RemoveMountNsMap()")
-		l.manager.igManager.RemoveMountNsMap(l.subscriptionKey)
+		l.manager.tracerCollection.RemoveTracer(l.subscriptionKey)
 	}
 	if l.subscriptionKey != "" {
 		host := l.params.Get(Host).AsBool()
 
 		log.Debugf("calling Unsubscribe()")
-		l.manager.igManager.Unsubscribe(l.subscriptionKey)
+		l.manager.containerCollection.Unsubscribe(l.subscriptionKey)
 
 		if l.attacher != nil {
 			// emit detach for all remaining containers
@@ -444,10 +508,10 @@ func (l *localManagerTrace) PostGadgetRun() error {
 
 func (l *localManagerTrace) enrich(ev any) {
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		l.manager.igManager.EnrichEventByMntNs(event)
+		l.manager.containerCollection.EnrichEventByMntNs(event)
 	}
 	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		l.manager.igManager.EnrichEventByNetNs(event)
+		l.manager.containerCollection.EnrichEventByNetNs(event)
 	}
 }
 
@@ -494,11 +558,11 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 
 	var containersPublisher *common.ContainersPublisher
 	if enableContainersDs {
-		if l.igManager == nil {
+		if l.containerCollection == nil {
 			return nil, fmt.Errorf("container-collection isn't available, but containers datasource is enabled")
 		}
 
-		containersPublisher, err = common.NewContainersPublisher(gadgetCtx, &l.igManager.ContainerCollection)
+		containersPublisher, err = common.NewContainersPublisher(gadgetCtx, l.containerCollection)
 		if err != nil {
 			return nil, fmt.Errorf("creating containers publisher: %w", err)
 		}
@@ -569,10 +633,6 @@ func (l *localManagerTrace) ParamDescs() params.ParamDescs {
 	}
 }
 
-func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
-	return l.localManagerTrace.ParamDescs()
-}
-
 func (l *localManager) Priority() int {
 	return -1
 }
@@ -580,11 +640,11 @@ func (l *localManager) Priority() int {
 func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) error {
 	l.gadgetInstance, _ = gadgetCtx.GetVar("ebpfInstance")
 
-	if l.manager.igManager != nil {
+	if l.manager.containerCollection != nil {
 		compat.Subscribe(
 			l.eventWrappers,
-			l.manager.igManager.EnrichEventByMntNs,
-			l.manager.igManager.EnrichEventByNetNs,
+			l.manager.containerCollection.EnrichEventByMntNs,
+			l.manager.containerCollection.EnrichEventByNetNs,
 			0,
 		)
 	}
@@ -600,14 +660,20 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 
 	// mountnsmap will be handled differently than above
 	if !host {
-		if l.manager.igManager == nil {
+		if l.manager.containerCollection == nil {
 			return fmt.Errorf("container-collection isn't available")
 		}
 
+		id := id.String()
+		if err := l.manager.tracerCollection.AddTracer(id, containerSelector); err != nil {
+			return fmt.Errorf("adding tracer %q: %w", id, err)
+		}
+
 		// Create mount namespace map to filter by containers
-		mountnsmap, err := l.manager.igManager.CreateMountNsMap(id.String(), containerSelector)
+		mountnsmap, err := l.manager.tracerCollection.TracerMountNsMap(id)
 		if err != nil {
-			return commonutils.WrapInErrManagerCreateMountNsMap(err)
+			l.manager.tracerCollection.RemoveTracer(id)
+			return fmt.Errorf("getting mount namespace map for tracer %q: %w", id, err)
 		}
 
 		gadgetCtx.Logger().Debugf("set mountnsmap for gadget")
@@ -615,7 +681,7 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 		gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
 
 		l.mountnsmap = mountnsmap
-	} else if l.manager.igManager == nil {
+	} else if l.manager.containerCollection == nil {
 		log.Warn("container-collection isn't available: container enrichment and filtering won't work")
 	}
 
@@ -648,6 +714,33 @@ func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error
 	}
 
 	return l.PostGadgetRun()
+}
+
+func isDefaultContainerRuntimeConfig(runtimes []*containerutilsTypes.RuntimeConfig) bool {
+	if len(runtimes) != len(containerutils.AvailableRuntimes) {
+		return false
+	}
+
+	var customSocketPath bool
+	for _, runtime := range runtimes {
+		switch runtime.Name {
+		case types.RuntimeNameDocker:
+			customSocketPath = runtime.SocketPath != runtimeclient.DockerDefaultSocketPath
+		case types.RuntimeNameContainerd:
+			customSocketPath = runtime.SocketPath != runtimeclient.ContainerdDefaultSocketPath
+		case types.RuntimeNameCrio:
+			customSocketPath = runtime.SocketPath != runtimeclient.CrioDefaultSocketPath
+		case types.RuntimeNamePodman:
+			customSocketPath = runtime.SocketPath != runtimeclient.PodmanDefaultSocketPath
+		default:
+			customSocketPath = true
+		}
+		if customSocketPath {
+			return false
+		}
+	}
+
+	return true
 }
 
 func init() {
