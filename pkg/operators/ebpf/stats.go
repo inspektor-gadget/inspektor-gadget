@@ -566,15 +566,14 @@ func (i *ebpfOperatorDataInstance) Start(gadgetCtx operators.GadgetContext) erro
 }
 
 func (i *ebpfOperatorDataInstance) Stop(gadgetCtx operators.GadgetContext) error {
+	if err := bpfstats.DisableBPFStats(); err != nil {
+		return fmt.Errorf("disabling bpf stats: %w", err)
+	}
+
 	return nil
 }
 
 func (i *ebpfOperatorDataInstance) Close(gadgetCtx operators.GadgetContext) error {
 	defer close(i.done)
-
-	if err := bpfstats.DisableBPFStats(); err != nil {
-		return fmt.Errorf("disabling bpf stats: %w", err)
-	}
-
 	return nil
 }
