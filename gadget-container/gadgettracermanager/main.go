@@ -73,7 +73,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -121,8 +120,18 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
-	log.SetLevel(tracerManLogLvl)
+
+	if err := gadgettracermanagerconfig.Init(); err != nil {
+		log.Fatalf("Initializing config: %v", err)
+	}
+
+	logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
+	if err != nil {
+		log.Fatalf("Parsing log level %q: %v", logLevel, err)
+	}
+	log.SetLevel(logLevel)
+	log.Infof("Config: %s=%s", gadgettracermanagerconfig.DaemonLogLevel, logLevel)
+
 	labels := []*pb.Label{}
 	if label != "" {
 		pairs := strings.Split(label, ",")
@@ -263,22 +272,12 @@ func main() {
 			log.Info("Experimental features enabled")
 		}
 
-		config.Config = config.NewWithPath(gadgettracermanagerconfig.ConfigPath)
-		if err := config.Config.ReadInConfig(); err != nil {
-			log.Warnf("reading config: %v", err)
-		}
-
-		// Set default values for config options
-		config.Config.SetDefault(gadgettracermanagerconfig.HookModeKey, "auto")
-		config.Config.SetDefault(gadgettracermanagerconfig.FallbackPodInformerKey, "true")
-		config.Config.SetDefault(gadgettracermanagerconfig.EventsBufferLengthKey, 16384)
-
 		operators.RegisterDataOperator(ocihandler.OciHandler)
 
 		hostConfig := host.Config{
 			AutoMountFilesystems: true,
 		}
-		err := host.Init(hostConfig)
+		err = host.Init(hostConfig)
 		if err != nil {
 			log.Fatalf("host.Init() failed: %v", err)
 		}
@@ -310,7 +309,7 @@ func main() {
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 		hookMode := config.Config.GetString(gadgettracermanagerconfig.HookModeKey)
 		log.Infof("Config: %s=%s", gadgettracermanagerconfig.HookModeKey, hookMode)
-		hookMode, err = entrypoint.Init(hookMode)
+		hookMode, err = entrypoint.Init(hookMode, logLevel)
 		if err != nil {
 			log.Fatalf("entrypoint.Init() failed: %v", err)
 		}

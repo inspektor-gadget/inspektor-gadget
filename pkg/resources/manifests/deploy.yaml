@@ -28,6 +28,7 @@ data:
       docker-socketpath: /run/docker.sock
       podman-socketpath: /run/podman/podman.sock
       gadget-namespace: gadget
+      daemon-log-level: info
       operator:
         oci:
           allowed-gadgets: []
@@ -204,8 +205,6 @@ spec:
               value: "/host"
             - name: IG_EXPERIMENTAL
               value: "false"
-            - name: GADGET_TRACER_MANAGER_LOG_LEVEL
-              value: "info"
           securityContext:
             readOnlyRootFilesystem: true
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate

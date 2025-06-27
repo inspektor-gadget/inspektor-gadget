@@ -14,6 +14,12 @@
 
 package gadgettracermanagerconfig
 
+import (
+	"fmt"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+)
+
 const ConfigPath = "/etc/ig/config.yaml"
 
 const (
@@ -25,6 +31,7 @@ const (
 	DockerSocketPath       = "docker-socketpath"
 	PodmanSocketPath       = "podman-socketpath"
 	GadgetNamespace        = "gadget-namespace"
+	DaemonLogLevel         = "daemon-log-level"
 
 	VerifyImage        = "verify-image"
 	PublicKeys         = "public-keys"
@@ -35,6 +42,21 @@ const (
 	OtelMetricsListen        = "otel-metrics-listen"
 	OtelMetricsListenAddress = "otel-metrics-listen-address"
 )
+
+func Init() error {
+	config.Config = config.NewWithPath(ConfigPath)
+
+	config.Config.SetDefault(HookModeKey, "auto")
+	config.Config.SetDefault(FallbackPodInformerKey, "true")
+	config.Config.SetDefault(EventsBufferLengthKey, 16384)
+	config.Config.SetDefault(DaemonLogLevel, "info")
+
+	err := config.Config.ReadInConfig()
+	if err != nil {
+		return fmt.Errorf("reading config: %w", err)
+	}
+	return nil
+}
 
 // IsValidKey checks if the given key is a valid configuration key for the GadgetTracerManager.
 // TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
@@ -60,7 +82,7 @@ func isRootKey(key string) bool {
 	switch key {
 	case HookModeKey, FallbackPodInformerKey, EventsBufferLengthKey,
 		ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
-		PodmanSocketPath, GadgetNamespace:
+		PodmanSocketPath, GadgetNamespace, DaemonLogLevel:
 		return true
 	default:
 		return false

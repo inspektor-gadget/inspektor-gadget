@@ -24,7 +24,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -228,6 +227,7 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&daemonLogLevel,
 		"daemon-log-level", "", "info", fmt.Sprintf("Set the ig-k8s log level, valid values are: %v", strings.Join(strLevels, ", ")))
+	deployCmd.PersistentFlags().MarkDeprecated("daemon-log-level", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().StringVarP(
 		&appArmorprofile,
 		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
@@ -843,11 +843,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case experimental.EnvName:
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
-				case "GADGET_TRACER_MANAGER_LOG_LEVEL":
-					if !slices.Contains(strLevels, daemonLogLevel) {
-						return fmt.Errorf("invalid log level %q, valid levels are: %v", daemonLogLevel, strings.Join(strLevels, ", "))
-					}
-					gadgetContainer.Env[i].Value = daemonLogLevel
 				}
 			}
 
