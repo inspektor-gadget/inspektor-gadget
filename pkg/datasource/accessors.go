@@ -126,6 +126,7 @@ type FieldAccessor interface {
 	// Rename changes the name of the field. Currently it's not supported for subfields.
 	Rename(string) error
 
+	Any(Data) (any, error)
 	Uint8(Data) (uint8, error)
 	Uint16(Data) (uint16, error)
 	Uint32(Data) (uint32, error)
@@ -433,6 +434,37 @@ func (a *fieldAccessor) AddAnnotation(key, value string) {
 		a.f.Annotations = map[string]string{}
 	}
 	a.f.Annotations[key] = value
+}
+
+func (a *fieldAccessor) Any(data Data) (any, error) {
+	switch a.Type() {
+	default:
+		fallthrough // anything can be read as string
+	case api.Kind_CString, api.Kind_String:
+		return a.String(data)
+	case api.Kind_Uint8:
+		return a.Uint8(data)
+	case api.Kind_Uint16:
+		return a.Uint16(data)
+	case api.Kind_Uint32:
+		return a.Uint32(data)
+	case api.Kind_Uint64:
+		return a.Uint64(data)
+	case api.Kind_Int8:
+		return a.Int8(data)
+	case api.Kind_Int16:
+		return a.Int16(data)
+	case api.Kind_Int32:
+		return a.Int32(data)
+	case api.Kind_Int64:
+		return a.Int64(data)
+	case api.Kind_Float32:
+		return a.Float32(data)
+	case api.Kind_Float64:
+		return a.Float64(data)
+	case api.Kind_Bool:
+		return a.Bool(data)
+	}
 }
 
 func (a *fieldAccessor) Uint8(data Data) (uint8, error) {
