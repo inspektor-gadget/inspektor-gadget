@@ -140,15 +140,36 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0  
 ...
 ```
 
-You can specify a custom public key at deploy time using `--gadgets-public-keys`:
+You can specify a custom public key at deployment time using `--daemon-config`. Start by creating daemon config file:
 
 ```bash
-$ kubectl gadget deploy --gadgets-public-keys="$(cat your-key.pub)"
+cat <<EOF > daemon-config.yaml
+operator:
+    oci:
+        public-keys:
+        - |
+            -----BEGIN PUBLIC KEY-----
+            MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp3pbyFZOnEz4ZtkXY0Zm
+            Q78zbdZ9Pyhgje+oD1T49r7HYeUdf2vKyc1ObcCwT3EZyzv48IC6cBcdNu4RjbS8
+            snpzFVK5P9szolYJfuMJyLkMTGOAc6AjA0YY8b3wJtV8F3N3IjzA0HtJ3vIqDxIb
+            e8rm52uh4RV7SooxMyh5SAdPi06/kAV2ZClQK1z5Vob9zM2U8w2M8Ib4h/cHBY4e
+            7W9IuQZTvwlAEyEZng7GUPf/dke69/9I3/N9UoKXIJ8cHg0pxtWKPmCGoFqFT9qR
+            ehd9nJdWmLfFT7y1KmfkxknC0TAl3lA4ArZqYYzRmX8cUFz2mGNzNnWgkxN7qVMS
+            LQIDAQAB
+            -----END PUBLIC KEY-----
+EOF
+```
+
+Then, you can deploy Inspektor Gadget with this configuration:
+
+```bash
+
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ...
 Inspektor Gadget successfully deployed
 # Without the official public key, official gadgets will be rejected.
 $ kubectl gadget run trace_exec -A
-Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "trace_exec": verifying signature: invalid signature when validating ASN.1 encoded signature
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "trace_exec": the image was not signed by the provided keys: crypto/rsa: verification error
 $ kubectl-gadget run ghcr.io/your_repo/trace_exec -A
 K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
 gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
@@ -158,9 +179,20 @@ gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0  
 
 You can also instruct Inspektor Gadget to skip the verification by disabling it at deploy time.
 Please note that we do not recommend doing so and that it should only be used for development purposes.
+Again start by creating a daemon config file:
 
 ```bash
-$ kubectl gadget deploy --verify-gadgets=false
+cat <<EOF > daemon-config.yaml
+operator:
+    oci:
+        verify-image: false
+EOF
+```
+
+Then, you can deploy Inspektor Gadget with this configuration:
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec -A

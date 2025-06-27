@@ -12,10 +12,18 @@ By default, pulling is allowed.
 
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
-You can specify this option only at deploy time:
+You can specify this option only at deploy time. Start by creating a daemon configuration file, for example `daemon-config.yaml`:
 
 ```bash
-$ kubectl gadget deploy --disallow-gadgets-pulling
+cat <<EOF > daemon-config.yaml
+operator:
+  oci:
+    disallow-pulling: true
+EOF
+```
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ...
 Inspektor Gadget successfully deployed
 $ kubectl gadget run trace_exec

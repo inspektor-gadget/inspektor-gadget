@@ -61,3 +61,53 @@ Image tag
 {{- .Chart.AppVersion }}
 {{- end }}
 {{- end }}
+
+{{/*
+Operator configuration
+*/}}
+{{- define "gadget.operatorConfig" -}}
+{{- $operator := deepCopy .Values.config.operator | default (dict) -}}
+{{- if hasKey .Values.config "verifyGadgets" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "oci" | default dict)
+      (dict "verify-image" .Values.config.verifyGadgets)
+    }}
+  {{- $operator = set $operator "oci" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "gadgetsPublicKeys" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "oci" | default dict)
+      (dict "public-keys" .Values.config.gadgetsPublicKeys)
+    }}
+  {{- $operator = set $operator "oci" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "allowedGadgets" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "oci" | default dict)
+      (dict "allowed-gadgets" .Values.config.allowedGadgets)
+    }}
+  {{- $operator = set $operator "oci" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "disallowGadgetsPulling" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "oci" | default dict)
+      (dict "disallow-pulling" .Values.config.disallowGadgetsPulling)
+    }}
+  {{- $operator = set $operator "oci" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "otelMetricsListen" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "otel-metrics" | default dict)
+      (dict "otel-metrics-listen" .Values.config.otelMetricsListen)
+    }}
+  {{- $operator = set $operator "otel-metrics" $merged }}
+{{- end }}
+{{- if hasKey .Values.config "otelMetricsAddress" }}
+  {{- $merged := mergeOverwrite
+      (get $operator "otel-metrics" | default dict)
+      (dict "otel-metrics-listen-address" .Values.config.otelMetricsAddress)
+    }}
+  {{- $operator = set $operator "otel-metrics" $merged }}
+{{- end }}
+{{- toYaml $operator }}
+{{- end }}

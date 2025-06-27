@@ -19,13 +19,4 @@ data:
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       gadget-namespace: {{ .Values.config.gadgetNamespace }}
       operator:
-        oci:
-          verify-image: {{ .Values.config.verifyGadgets }}
-          public-keys:{{ toYaml $.Values.config.gadgetsPublicKeys | nindent 12 }}
-          allowed-gadgets:{{ toYaml .Values.config.allowedGadgets | nindent 12 }}
-          disallow-pulling: {{ .Values.config.disallowGadgetsPulling }}
-      {{- if .Values.config.otelMetricsListen }}
-        otel-metrics:
-            otel-metrics-listen: {{ .Values.config.otelMetricsListen }}
-            otel-metrics-listen-address: {{ .Values.config.otelMetricsAddress }}
-      {{- end }}
+        {{- include "gadget.operatorConfig" . | nindent 8 -}}

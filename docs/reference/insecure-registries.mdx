@@ -14,10 +14,20 @@ Inspektor Gadget allows pulling, pushing and running Gadget images from insecure
 <Tabs groupId="env">
 <TabItem value="kubectl-gadget" label="kubectl gadget">
 
-For `kubectl gadget`, it can only be configured at deploy time:
+For `kubectl gadget`, it can only be configured at deploy time. Start by creating a daemon config file:
 
 ```bash
-$ kubectl gadget deploy --insecure-registries=192.168.1.16:5000
+cat <<EOF > daemon-config.yaml
+operator:
+  oci:
+    insecure-registries:
+    - 192.168.1.16:5000
+    - localhost:5000
+EOF
+```
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ...
 
 $ kubectl gadget run 192.168.1.16:5000/trace_exec:latest
