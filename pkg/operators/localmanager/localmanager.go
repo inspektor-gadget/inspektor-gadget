@@ -647,6 +647,10 @@ func (l *localManagerTraceWrapper) Stop(gadgetCtx operators.GadgetContext) error
 		l.containersPublisher.Unsubscribe()
 	}
 
+	return nil
+}
+
+func (l *localManagerTraceWrapper) Close(gadgetCtx operators.GadgetContext) error {
 	return l.PostGadgetRun()
 }
 

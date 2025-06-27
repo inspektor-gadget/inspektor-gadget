@@ -320,15 +320,17 @@ func (c *GadgetContext) LoadGadgetInfo(info *api.GadgetInfo, paramValues api.Par
 
 	c.Logger().Debug("loaded gadget info")
 
-	var err error
-	// After loading gadget info, get local operators params as well
-	c.localOperators, err = c.initAndPrepareOperators(paramValues)
+	// After loading gadget info, start local operators as well
+	err := c.instantiateOperators(paramValues)
 	if err != nil {
 		return fmt.Errorf("initializing local operators: %w", err)
 	}
 
 	if run {
-		if err := c.start(c.localOperators); err != nil {
+		if err := c.preStart(); err != nil {
+			return fmt.Errorf("pre-starting operators: %w", err)
+		}
+		if err := c.start(); err != nil {
 			return fmt.Errorf("starting local operators: %w", err)
 		}
 		c.Logger().Debugf("running...")
@@ -355,7 +357,8 @@ func (c *GadgetContext) StopLocalOperators() {
 	if c.localOperators == nil {
 		return
 	}
-	c.stop(c.localOperators)
+	c.stop()
+	c.postStop()
 	c.localOperators = nil
 }
 

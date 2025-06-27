@@ -296,4 +296,8 @@ func (s *gnpOperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (s *gnpOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
+	return nil
+}
+
 var GNPOperator = &gnpOperator{}
