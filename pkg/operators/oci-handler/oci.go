@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"text/template"
 
 	"github.com/blang/semver"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -52,6 +53,8 @@ const (
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
 	allowedGadgets          = "allowed-gadgets"
+
+	customParamsKey = "params.custom"
 )
 
 const (
@@ -279,7 +282,6 @@ func constructTempConfig(ann string) (map[string]any, int, error) {
 				},
 			},
 		}
-		viper.Set("a", "b")
 		return tmpConfig, 1, nil
 
 	case 2:
@@ -450,6 +452,91 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		if extra, ok := opInst.(operators.ExtraParams); ok {
 			params := extra.ExtraParams(gadgetCtx)
 			extraParams = append(extraParams, params.AddPrefix(opInst.Name())...)
+		}
+	}
+
+	// Extract custom params
+	customParams := viper.Sub(customParamsKey)
+	if customParams != nil {
+		for k := range viper.GetStringMap(customParamsKey) {
+			log.Debugf("evaluating custom param %q", k)
+			paramSub := customParams.Sub(k)
+			valuesSub := paramSub.Sub("values")
+			if valuesSub == nil {
+				log.Debugf("custom param %q has no values", k)
+				continue
+			}
+			p := &api.Param{
+				Key:          k,
+				Description:  paramSub.GetString("description"),
+				Prefix:       "custom.",
+				DefaultValue: paramSub.GetString("defaultValue"),
+			}
+			for value := range paramSub.GetStringMap("values") {
+				// Skip wildcard param
+				if value == "*" {
+					continue
+				}
+				p.PossibleValues = append(p.PossibleValues, value)
+			}
+			extraParams = append(extraParams, p)
+
+			// Evaluate, if set
+			if val, ok := o.paramValues["custom."+k]; ok {
+				valSubPath := "values." + val
+				if !paramSub.IsSet(valSubPath+".patch") && paramSub.IsSet("patch") {
+					// Use generic patch fallback
+					valSubPath = ""
+				}
+
+				log.Debugf("applying custom param %q value %q", k, valSubPath)
+
+				valSub := paramSub.Sub(valSubPath + ".patch")
+				if valSub == nil {
+					continue
+				}
+
+				// Apply templates
+				replacements := make(map[string]string)
+				for _, k1 := range valSub.AllKeys() {
+					v1 := valSub.Get(k1)
+					if s, ok := v1.(string); ok {
+						tpl, err := template.New(k1).Parse(s)
+						if err != nil {
+							return fmt.Errorf("parsing custom param %q value %q: %q cannot be parsed as template: %w", k, val, k1, err)
+						}
+						out := bytes.NewBuffer(nil)
+						err = tpl.Execute(out, map[string]any{
+							"getParamValue": func(key string) string { return o.paramValues[key] },
+							"getConfig": func(key string) string {
+								return viper.GetString(strings.ToLower(key))
+							},
+						})
+						if err != nil {
+							return fmt.Errorf("evaluating custom param %q value %q template for %q: %w", k, val, k1, err)
+						}
+						if tplOut := out.String(); tplOut != s {
+							log.Debugf("custom param %q value %q: replacing %q's value %q with %q", k, valSubPath, k1, s, tplOut)
+							replacements[k1] = tplOut
+						}
+					}
+				}
+
+				for k1, v1 := range replacements {
+					paramSub.Set(valSubPath+".patch."+k1, v1)
+				}
+
+				applyMap := paramSub.GetStringMap(valSubPath + ".patch")
+
+				// Prevent recursive patching of customparams
+				delete(applyMap, customParamsKey)
+
+				// Merge with config
+				err = viper.MergeConfigMap(applyMap)
+				if err != nil {
+					return fmt.Errorf("merging custom param %q value %q: %w", k, valSubPath, err)
+				}
+			}
 		}
 	}
 
