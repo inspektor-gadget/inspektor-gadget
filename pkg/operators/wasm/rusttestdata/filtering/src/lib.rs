@@ -14,7 +14,7 @@
 
 use api::{
     errorf,
-    {filter::should_discard_mntns_id, log::LogLevel},
+    filter::should_discard_mntns_id,
 };
 
 const MNTNS_DISCARDED: u64 = 555;

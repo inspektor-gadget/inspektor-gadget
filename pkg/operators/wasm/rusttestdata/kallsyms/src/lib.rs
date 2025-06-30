@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use api::errorf;
-use api::{kallsyms, log::LogLevel};
+use api::{
+    errorf,
+    kallsyms,
+};
 
 #[no_mangle]
 #[allow(non_snake_case)]

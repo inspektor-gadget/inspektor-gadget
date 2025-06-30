@@ -1,7 +1,6 @@
 use api::{
     datasources::{DataSource, Field, FieldKind},
     errorf,
-    log::LogLevel,
 };
 use std::{any::Any, sync::Arc};
 

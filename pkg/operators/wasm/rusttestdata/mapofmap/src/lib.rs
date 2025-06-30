@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use api::errorf;
 use api::{
-    log::LogLevel,
+    errorf,
     map::{Map, MapSpec, MapType},
 };
 

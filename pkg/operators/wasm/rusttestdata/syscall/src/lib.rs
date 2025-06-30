@@ -14,10 +14,7 @@
 
 use api::{
     errorf,
-    {
-        log::LogLevel,
-        syscall::{get_syscall_declaration, get_syscall_id, get_syscall_name},
-    },
+    syscall::{get_syscall_declaration, get_syscall_id, get_syscall_name},
 };
 
 const UNKNOWN_SYSCALL_ID: u16 = 1337;

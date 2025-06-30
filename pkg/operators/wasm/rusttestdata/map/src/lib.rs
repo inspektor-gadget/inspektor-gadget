@@ -14,10 +14,7 @@
 
 use api::{
     errorf,
-    {
-        log::LogLevel,
-        map::{Map, MapSpec, MapType, MapUpdateFlags},
-    },
+    map::{Map, MapSpec, MapType, MapUpdateFlags},
 };
 
 #[no_mangle]

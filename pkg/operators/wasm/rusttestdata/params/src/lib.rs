@@ -1,6 +1,6 @@
 use api::{
     errorf,
-    {log::LogLevel, params::get_param_value},
+    params::get_param_value,
 };
 
 #[no_mangle]

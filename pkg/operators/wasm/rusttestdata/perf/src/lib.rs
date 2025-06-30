@@ -14,7 +14,7 @@
 
 use api::{
     errorf, info,
-    {log::LogLevel, map::Map, perf::PerfReader},
+    map::Map, perf::PerfReader,
 };
 
 #[repr(C)]
