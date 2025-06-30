@@ -85,3 +85,13 @@ mountPullSecret: false
 
 # -- Set AppArmor profile.
 appArmorProfile: "unconfined"
+
+# -- Additional environment variables to add to the gadget container
+additionalEnv: []
+  # - name: EXAMPLE_VAR
+  #   value: "example_value"
+  # - name: EXAMPLE_SECRET_VAR
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: secret-name
+  #       key: secret-key
