@@ -16,6 +16,7 @@ package expr
 
 import (
 	"fmt"
+	"net"
 	"reflect"
 
 	"github.com/expr-lang/expr"
@@ -192,6 +193,41 @@ func getBuiltInExpressions() []expr.Option {
 			},
 			new(func(datasource.FieldAccessor, datasource.Data) bool),
 		),
+		expr.Function("cidr",
+			func(args ...any) (any, error) {
+				var cidrs []net.IPNet
+				for _, arg := range args {
+					_, cidr, err := net.ParseCIDR(arg.(string))
+					if err != nil {
+						return nil, fmt.Errorf("parsing CIDR %q: %w", args[0], err)
+					}
+					cidrs = append(cidrs, *cidr)
+				}
+				return cidrs, nil
+			},
+			new(func(...string) []net.IPNet),
+		),
+		// Example: CidrMatches(dst.addr, cidr("1.1.1.1/32"))
+		expr.Function("CidrMatches",
+			func(args ...any) (any, error) {
+				ipStr := args[0].(string)
+				ip := net.ParseIP(ipStr)
+				if ip == nil {
+					return nil, fmt.Errorf("parsing IP address %q: invalid format", ipStr)
+				}
+
+				cidrs := args[1].([]net.IPNet)
+				for _, cidr := range cidrs {
+					if cidr.Contains(ip) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+			new(func(string, []net.IPNet) bool),
+		),
+		// Example: src.addr in cidr("172.17.0.0/16")
+		expr.Operator("in", "CidrMatches"),
 	}
 }
 
