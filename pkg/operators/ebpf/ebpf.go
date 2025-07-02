@@ -48,6 +48,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
+	seop "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -170,6 +171,9 @@ type ebpfInstance struct {
 	logger         logger.Logger
 	collectionSpec *ebpf.CollectionSpec
 	collection     *ebpf.Collection
+	btfTypes       *btf.Spec
+
+	seSizes map[string]uint32
 
 	tracers      map[string]*Tracer
 	structs      map[string]*Struct
@@ -272,7 +276,7 @@ func (i *ebpfInstance) analyze() error {
 	}
 
 	// Iterate over types and populate the gadget
-	for typ, err := range i.collectionSpec.Types.All() {
+	for typ, err := range i.btfTypes.All() {
 		if err != nil {
 			return fmt.Errorf("iterating over types: %w", err)
 		}
@@ -320,6 +324,26 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	err := i.loadSpec()
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
+	}
+
+	// create copy of BTF information we'll modify before loading the programs.
+	// This has to be used for registering structures
+	i.btfTypes = i.collectionSpec.Types.Copy()
+
+	// TODO: it's a very hacky way to get information from other operator. The
+	// gadget context doesn't work as the socketenricher hasn't run when this
+	// method is invoked. The socket enricher depends on the ebpf operator, and
+	// the ebpf operator depends on the socket enricher, so this is a way to
+	// break that loop
+	seI, ok := operators.GetDataOperators()[seop.OperatorName]
+	if ok {
+		if se, ok := seI.(*seop.SocketEnricher); ok {
+			i.seSizes = se.Sizes()
+		}
+	}
+
+	if _, err := i.fixBTFStructs(i.btfTypes); err != nil {
+		return fmt.Errorf("fixing structs: %w", err)
 	}
 
 	// add extra info to gadgetcontext if requested
@@ -654,7 +678,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("invalid socket enricher BTF spec: expected *btf.Spec, got %T", seBtfSpecI)
 		}
 
-		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seBTFSpec}
+		opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, seBTFSpec)
 
 		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
 		if !ok {
@@ -668,6 +692,12 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 		mapSpec.ValueSize = btfStruct.Size
 	}
+
+	spec, err := i.fixBTFStructs(i.collectionSpec.Types.Copy())
+	if err != nil {
+		return fmt.Errorf("fixing structs: %w", err)
+	}
+	opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, spec)
 
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
