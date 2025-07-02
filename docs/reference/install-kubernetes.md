@@ -79,7 +79,15 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 
 ![Screencast of the deploy command](../install.gif)
 
-#### Choosing the gadget image
+#### Customizing the deployment
+
+The customization is divided into **two** main sections: one for configuring **Kubernetes resources** and another for **configuring Inspektor Gadget** itself.
+
+Kubernetes resources are configured using flags e.g `--image`, `--node-selector`, etc. and Inspektor Gadget configuration is done by passing the path of YAML file using the `--daemon-config` flag.
+
+#### Customizing Kubernetes Resources
+
+##### Choosing the gadget image
 
 If you wish to install an alternative gadget image, you could use the following commands:
 
@@ -87,7 +95,7 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=ghcr.io/myfork/inspektor-gadget:tag
 ```
 
-#### Deploy to specific nodes
+##### Deploy to specific nodes
 
 The `--node-selector` flag accepts a [label
 selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
@@ -104,39 +112,14 @@ $ kubectl gadget deploy --node-selector kubernetes.io/hostname!=minikube
 $ kubectl gadget deploy --node-selector 'kubernetes.io/hostname in (minikube, minikube-m03)'
 ```
 
-#### Deploying into a custom namespace
+##### Deploying into a custom namespace
 
 By default Inspektor Gadget is deployed to the namespace `gadget`.
 This can be changed with the `--gadget-namespace` flag.
 When using gadgets (e.g. `kubectl gadget trace exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
 For `undeploy` the `--gadget-namespace` flag is mandatory.
 
-#### Hook Mode
-
-Inspektor Gadget needs to detect when containers are started and stopped.
-The different supported modes can be set by using the `hook-mode` option:
-
-- `auto`(default): Inspektor Gadget will try to find the best option based on
-  the system it is running on.
-- `crio`: Use the [CRIO
-  hooks](https://github.com/containers/podman/blob/v3.4.4/pkg/hooks/docs/oci-hooks.5.md)
-  support. Inspektor Gadget installs the required hooks in
-  `/etc/containers/oci/hooks.d`, be sure that path is part of the `hooks_dir`
-  option on
-  [crio.conf](https://github.com/cri-o/cri-o/blob/v1.20.0/docs/crio.conf.5.md#crioruntime-table).
-  If `hooks_dir` is not declared at all, that path is considered by default.
-- `podinformer`: Use a Kubernetes controller to get information about new pods.
-  This option is racy and the first events produced by a container could be
-  lost. This mode is selected when `auto` is used and the above modes are not
-  available.
-- `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri).
-  It requires containerd v1.5 and it's not considered when `auto` is used.
-- `fanotify+ebpf`:  Uses the Linux
-  [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
-  eBPF module. It works with both runc and crun. It works regardless of the
-  pid namespace configuration.
-
-#### Deploying with an AppArmor profile
+##### Deploying with an AppArmor profile
 
 By default, Inspektor Gadget runs as unconfined because it needs to write to different files under `/sys`.
 It is nonetheless possible to deploy Inspektor Gadget using a custom AppArmor profile with the `--apparmor-profile` flag:
@@ -147,7 +130,7 @@ $ kubectl gadget deploy --apparmor-profile 'localhost/inspektor-gadget-profile'
 
 Note that, the AppArmor profile should already exists in the cluster to be used.
 
-#### Deploying with a seccomp profile
+##### Deploying with a seccomp profile
 
 By default, Inspektor Gadget syscalls are not restricted.
 If the seccomp profile operator is [installed](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#install-operator), you can use the `--seccomp-profile` flag to deploy Inspektor Gadget with a custom seccomp profile.
@@ -173,7 +156,7 @@ spec:
 $ kubectl gadget deploy --seccomp-profile 'gadget-profile.yaml'
 ```
 
-#### Verifying the Inspektor Gadget Image
+##### Verifying the Inspektor Gadget Image
 
 When deploying Inspektor Gadget using `kubectl gadget deploy`, the image will be automatically verified if the `policy-controller` is deployed on your Kubernetes cluster.
 To do so, you first need to [install](https://docs.sigstore.dev/policy-controller/installation/) this component.
@@ -237,14 +220,7 @@ To verify the image with a specific key, you can use the `--public-key` flag:
 $ kubectl gadget deploy --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
 ```
 
-### Other Deploy Options
-
-Please check the following documents to learn more about different options:
-- [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
-- [Using Insecure Registries](./insecure-registries.mdx)
-- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
-
-### Experimental features
+##### Experimental features
 
 Inspektor Gadget has some experimental features disabled by default. Users can enable those
 features, however they don't provide any stability and could be removed at any time.
@@ -262,6 +238,83 @@ $ kubectl gadget run trace_exec
 INFO[0000] Experimental features enabled
 ...
 ```
+
+#### Customizing Inspektor Gadget
+
+##### Hook Mode
+
+Inspektor Gadget needs to detect when containers are started and stopped.
+The different supported modes can be set by using the `hook-mode` option:
+
+- `auto`(default): Inspektor Gadget will try to find the best option based on
+  the system it is running on.
+- `crio`: Use the [CRIO
+  hooks](https://github.com/containers/podman/blob/v3.4.4/pkg/hooks/docs/oci-hooks.5.md)
+  support. Inspektor Gadget installs the required hooks in
+  `/etc/containers/oci/hooks.d`, be sure that path is part of the `hooks_dir`
+  option on
+  [crio.conf](https://github.com/cri-o/cri-o/blob/v1.20.0/docs/crio.conf.5.md#crioruntime-table).
+  If `hooks_dir` is not declared at all, that path is considered by default.
+- `podinformer`: Use a Kubernetes controller to get information about new pods.
+  This option is racy and the first events produced by a container could be
+  lost. This mode is selected when `auto` is used and the above modes are not
+  available.
+- `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri).
+  It requires containerd v1.5 and it's not considered when `auto` is used.
+- `fanotify+ebpf`:  Uses the Linux
+  [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
+  eBPF module. It works with both runc and crun. It works regardless of the
+  pid namespace configuration.
+
+In order to set the hook mode start by creating daemon configuration file, for example `daemon-config.yaml`:
+
+```bash
+cat <<EOF > daemon-config.yaml
+hook-mode: fanotify+ebpf
+EOF
+```
+
+Then, deploy Inspektor Gadget with the following command:
+
+```
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+```
+
+Following is a sample `daemon-config.yaml` file to showcase the different options:
+
+```yaml
+containerd-socketpath: /run/containerd/containerd.sock
+crio-socketpath: /run/crio/crio.sock
+daemon-log-level: info
+docker-socketpath: /run/docker.sock
+events-buffer-length: 16384
+fallback-pod-informer: true
+gadget-namespace: gadget
+hook-mode: auto
+operator:
+  oci:
+    allowed-gadgets: []
+    disallow-pulling: false
+    insecure-registries: []
+    public-keys:
+      - |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+        Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+        -----END PUBLIC KEY-----
+    verify-image: true
+  otel-metrics:
+    otel-metrics-listen: false
+    otel-metrics-listen-address: 0.0.0.0:2224
+podman-socketpath: /run/podman/podman.sock
+```
+
+##### Other Deploy Options
+
+Please check the following documents to learn more about different options:
+- [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
+- [Using Insecure Registries](./insecure-registries.mdx)
+- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
 
 ### Installation with the Helm chart
 
@@ -290,7 +343,7 @@ These options are divided into a couple of sections:
 - Kubernetes Resources (`values`): The root section contains the configuration options for the Kubernetes resources, such as `image`, `nodeSelector`, `tolerations`, `mountPullSecret`, etc.
 - Inspektor Gadget Configuration (`values.config`): This section contains the configuration options for the Inspektor Gadget, such as `hookMode`, `containerdSocketPath`, `operator`, etc.
 
-Let's go through a example of how to configure the Helm chart using a `values.yaml` file. Suppose we want to configure the following options:
+Let's go through an example of how to configure the Helm chart using a `values.yaml` file. Suppose we want to configure the following options:
 
 - Change the `eventsBufferLength` to `32768`.
 - Change the `operator.otel-metrics.otel-metrics-listen` to `true`.
