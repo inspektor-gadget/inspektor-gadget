@@ -50,6 +50,19 @@ type SocketEnricher struct {
 	seConfig       *tracer.Config
 }
 
+func (s *SocketEnricher) Sizes() map[string]uint32 {
+	sizes := make(map[string]uint32)
+	cfg := s.seConfig
+	if cfg.Cwd.Enabled {
+		sizes["cwd"] = cfg.Cwd.Size
+	}
+	if cfg.Exepath.Enabled {
+		sizes["exepath"] = cfg.Exepath.Size
+	}
+
+	return sizes
+}
+
 func (s *SocketEnricher) Name() string {
 	return OperatorName
 }
@@ -96,7 +109,6 @@ func (s *SocketEnricher) Init(params *params.Params) error {
 			return fmt.Errorf("unsupported field: %s", field)
 		}
 	}
-
 	return nil
 }
 
@@ -210,6 +222,7 @@ func (i *SocketEnricherInstance) PreStart(gadgetCtx operators.GadgetContext) err
 
 	gadgetCtx.SetVar(BTFSpecKey, btfSpec)
 	gadgetCtx.SetVar(BTFStructKey, btfStruct)
+
 	return nil
 }
 
