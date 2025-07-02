@@ -53,6 +53,7 @@ GADGETS ?= \
 	top_file \
 	top_process \
 	top_tcp \
+	ttysnoop \
 	snapshot_process \
 	snapshot_socket \
 	ci/datasource-containers \
