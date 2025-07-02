@@ -20,9 +20,6 @@
 #include <gadget/sockets-map.h>
 #include <gadget/filter.h>
 
-// Use a custom size for these fields until their size can be configured
-#define TRACE_DNS_PATH_MAX 512
-
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
 unsigned long long load_half(const void *skb,
@@ -70,6 +67,10 @@ enum pkt_type_t : __u8 {
 	KERNEL,
 };
 
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute push(__attribute__((preserve_access_index)), \
+			     apply_to = record)
+#endif
 struct event_t {
 	gadget_timestamp timestamp_raw;
 	struct gadget_l4endpoint_t src;
@@ -77,8 +78,8 @@ struct event_t {
 	struct gadget_l3endpoint_t nameserver;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
-	char cwd[TRACE_DNS_PATH_MAX];
-	char exepath[TRACE_DNS_PATH_MAX];
+	gadget_se_cwd cwd[GADGET_SE_PATH_MAX];
+	gadget_se_exepath exepath[GADGET_SE_PATH_MAX];
 
 	enum pkt_type_t pkt_type_raw;
 	gadget_duration
@@ -87,6 +88,10 @@ struct event_t {
 	__u16 dns_off; // DNS offset in the packet
 	__u32 data_len;
 };
+
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute pop
+#endif
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
@@ -159,11 +164,6 @@ struct {
 	__type(value, __u64); // timestamp of the query
 	__uint(max_entries, 1024);
 } query_map SEC(".maps");
-
-static __always_inline unsigned int min(unsigned int a, unsigned int b)
-{
-	return a < b ? a : b;
-}
 
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
@@ -291,8 +291,10 @@ int ig_trace_dns(struct __sk_buff *skb)
 	event->latency_ns_raw = 0;
 	event->proc = empty_proc;
 	if (paths) {
-		event->cwd[0] = '\0';
-		event->exepath[0] = '\0';
+		if (bpf_core_field_exists(event->cwd))
+			event->cwd[0] = '\0';
+		if (bpf_core_field_exists(event->exepath))
+			event->exepath[0] = '\0';
 	}
 
 	event->timestamp_raw = bpf_ktime_get_boot_ns();
@@ -340,11 +342,6 @@ int ig_trace_dns(struct __sk_buff *skb)
 	gadget_process_populate_from_socket(skb_val, &event->proc);
 
 	if (paths && skb_val != NULL) {
-		unsigned int cwd_len = min(bpf_core_field_size(skb_val->cwd),
-					   TRACE_DNS_PATH_MAX);
-		unsigned int exepath_len =
-			min(bpf_core_field_size(skb_val->exepath),
-			    TRACE_DNS_PATH_MAX);
 		bool cwd_exists = bpf_core_field_exists(skb_val->cwd);
 		bool exepath_exists = bpf_core_field_exists(skb_val->exepath);
 		bool probe_read_kernel_str_exists = bpf_core_enum_value_exists(
@@ -352,11 +349,15 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 		if (probe_read_kernel_str_exists) {
 			if (cwd_exists) {
+				unsigned int cwd_len =
+					bpf_core_field_size(event->cwd);
 				bpf_probe_read_kernel_str(&event->cwd, cwd_len,
 							  skb_val->cwd);
 			}
 
 			if (exepath_exists) {
+				unsigned int exepath_len =
+					bpf_core_field_size(event->exepath);
 				bpf_probe_read_kernel_str(&event->exepath,
 							  exepath_len,
 							  skb_val->exepath);
@@ -423,8 +424,9 @@ int ig_trace_dns(struct __sk_buff *skb)
 	}
 
 	__u64 skb_len = skb->len;
+	unsigned int headersize = bpf_core_type_size(struct event_t);
 	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
-			      event, sizeof(*event));
+			      event, headersize);
 
 	return 0;
 }
