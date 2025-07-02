@@ -1,0 +1,5 @@
+name: flex_string
+description: gadget used by the CI
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs/latest/
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
