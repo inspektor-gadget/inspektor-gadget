@@ -62,6 +62,7 @@ func EnableBPFStats() error {
 	defer mutex.Unlock()
 
 	if refCnt != 0 {
+		refCnt++
 		return nil
 	}
 

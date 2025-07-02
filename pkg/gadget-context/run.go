@@ -212,13 +212,19 @@ func (c *GadgetContext) close() error {
 
 func (c *GadgetContext) PrepareGadgetInfo(paramValues api.ParamValues) error {
 	err := c.instantiateOperators(paramValues)
-	c.close()
+	if err := c.close(); err != nil {
+		c.logger.Warn("error closing operators after preparing gadget info:", err)
+	}
 	return err
 }
 
 func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 	defer c.cancel()
-	defer c.close()
+	defer func() {
+		if err := c.close(); err != nil {
+			c.logger.Warn("error closing operators after run gadget:", err)
+		}
+	}()
 
 	metricAttribs := attribute.NewSet(
 		attribute.KeyValue{Key: "gadget_image", Value: attribute.StringValue(c.imageName)},
