@@ -171,10 +171,12 @@ type ebpfInstance struct {
 
 	config *viper.Viper
 
-	program        []byte
-	logger         logger.Logger
-	collectionSpec *ebpf.CollectionSpec
-	collection     *ebpf.Collection
+	program          []byte
+	logger           logger.Logger
+	collectionSpec   *ebpf.CollectionSpec
+	collection       *ebpf.Collection
+	btfTypes         *btf.Spec
+	extraRelocations []*btf.Spec
 
 	tracers     map[string]*Tracer
 	structs     map[string]*Struct
@@ -285,7 +287,7 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 	}
 
 	// Iterate over types and populate the gadget
-	for typ, err := range i.collectionSpec.Types.All() {
+	for typ, err := range i.btfTypes.All() {
 		if err != nil {
 			return fmt.Errorf("iterating over types: %w", err)
 		}
@@ -334,6 +336,23 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// create copy of BTF information we'll modify before loading the programs.
+	// This has to be used for registering structures
+	i.btfTypes = i.collectionSpec.Types.Copy()
+
+	// we need to populate the variable size params before fixing the flex
+	// strings, otherwise it won't be able to fill the params
+	err = i.populateVariableSizeParams()
+	if err != nil {
+		return fmt.Errorf("populating variable size params: %w", err)
+	}
+
+	spec, err := i.fixFlexStrings(i.btfTypes)
+	if err != nil {
+		return fmt.Errorf("fixing flex strings: %w", err)
+	}
+	i.extraRelocations = append(i.extraRelocations, spec)
 
 	// add extra info to gadgetcontext if requested
 	if gadgetCtx.ExtraInfo() {
@@ -746,6 +765,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Programs: ebpf.ProgramOptions{
+			ExtraRelocationTargets: i.extraRelocations,
+		},
 	}
 
 	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
@@ -757,7 +779,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("invalid socket enricher BTF spec: expected *btf.Spec, got %T", seBtfSpecI)
 		}
 
-		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seBTFSpec}
+		opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, seBTFSpec)
 
 		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
 		if !ok {

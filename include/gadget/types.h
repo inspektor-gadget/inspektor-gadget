@@ -73,6 +73,16 @@ typedef __u32 gadget_file_flags;
 
 typedef __u32 gadget_kernel_stack;
 
+// gadget_flex_string is used to define c strings which max size can be set by
+// the user at runtime. This is done by the bpf operator by exposing a
+// <fieldName>-size parameter to the user.
+typedef char gadget_flex_string;
+
+// gadget_flex_bytes is used to define byte arrays which max size can be set by
+// the user at runtime. This is done by the bpf operator by exposing a
+// <fieldName>-size parameter to the user.
+typedef __u8 gadget_flex_bytes;
+
 struct gadget_user_stack {
 	// Leave fields as 0 to disable user stacks.
 

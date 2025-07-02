@@ -23,7 +23,7 @@
 
 #define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
-#define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
+#define LAST_ARG (bpf_core_field_size(((struct event *)0)->args) - ARGSIZE)
 
 // Macros from https://github.com/torvalds/linux/blob/v6.12/include/linux/kdev_t.h#L7-L12
 #define MINORBITS 20
@@ -31,6 +31,11 @@
 #define MAJOR(dev) ((unsigned int)((dev) >> MINORBITS))
 #define MINOR(dev) ((unsigned int)((dev) & MINORMASK))
 #define MKDEV(ma, mi) (((ma) << MINORBITS) | (mi))
+
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute push(__attribute__((preserve_access_index)), \
+			     apply_to = record)
+#endif
 
 struct event {
 	gadget_timestamp timestamp_raw;
@@ -45,15 +50,19 @@ struct event {
 	bool fupper_layer;
 	bool pupper_layer;
 	unsigned int args_size;
-	char cwd[GADGET_PATH_MAX];
-	char file[GADGET_PATH_MAX];
+	gadget_flex_string cwd[PATH_MAX];
+	gadget_flex_string file[PATH_MAX];
 	unsigned int dev_major;
 	unsigned int dev_minor;
 	unsigned long inode;
-	char exepath[GADGET_PATH_MAX];
-	char parent_exepath[GADGET_PATH_MAX];
-	char args[FULL_MAX_ARGS_ARR];
+	gadget_flex_string exepath[PATH_MAX];
+	gadget_flex_string parent_exepath[PATH_MAX];
+	gadget_flex_string args[FULL_MAX_ARGS_ARR];
 };
+
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute pop
+#endif
 
 const volatile bool ignore_failed = true;
 const volatile bool paths = false;
@@ -137,10 +146,12 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 
 	event->tty = BPF_CORE_READ(task, signal, tty, index);
 
-	if (paths) {
+	bool cwd_exists = bpf_core_field_exists(event->cwd);
+	if (paths && cwd_exists) {
 		struct fs_struct *fs = BPF_CORE_READ(task, fs);
 		char *cwd = get_path_str(&fs->pwd);
-		bpf_probe_read_kernel_str(event->cwd, sizeof(event->cwd), cwd);
+		bpf_probe_read_kernel_str(event->cwd,
+					  bpf_core_field_size(event->cwd), cwd);
 	}
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
@@ -159,11 +170,13 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 		if (!argp)
 			return 0;
 
-		if (event->args_size > LAST_ARG)
+		unsigned int index = event->args_size;
+
+		if (index > LAST_ARG)
 			return 0;
 
-		ret = bpf_probe_read_user_str(&event->args[event->args_size],
-					      ARGSIZE, argp);
+		ret = bpf_probe_read_user_str(&event->args[index], ARGSIZE,
+					      argp);
 		if (ret > ARGSIZE)
 			return 0;
 
@@ -243,21 +256,35 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	event->error_raw = 0;
 
 	if (paths) {
-		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
-		char *exepath = get_path_str(&exe_file->f_path);
-		bpf_probe_read_kernel_str(event->exepath,
-					  sizeof(event->exepath), exepath);
+		bool exepath_exists = bpf_core_field_exists(event->exepath);
+		if (exepath_exists) {
+			struct file *exe_file =
+				BPF_CORE_READ(task, mm, exe_file);
+			char *exepath = get_path_str(&exe_file->f_path);
+			unsigned int exepath_len =
+				bpf_core_field_size(event->exepath);
+			bpf_probe_read_kernel_str(event->exepath, exepath_len,
+						  exepath);
+		}
 
-		struct file *parent_exe_file =
-			BPF_CORE_READ(parent, mm, exe_file);
-		char *parent_exepath = get_path_str(&parent_exe_file->f_path);
-		bpf_probe_read_kernel_str(event->parent_exepath,
-					  sizeof(event->parent_exepath),
-					  parent_exepath);
+		bool parent_exepath_exists =
+			bpf_core_field_exists(event->parent_exepath);
+		if (parent_exepath_exists) {
+			struct file *parent_exe_file =
+				BPF_CORE_READ(parent, mm, exe_file);
+			char *parent_exepath =
+				get_path_str(&parent_exe_file->f_path);
+			unsigned int parent_exepath_len =
+				bpf_core_field_size(event->parent_exepath);
+			bpf_probe_read_kernel_str(event->parent_exepath,
+						  parent_exepath_len,
+						  parent_exepath);
+		}
 	}
 
 	size_t len = EVENT_SIZE(event);
-	if (len <= sizeof(*event))
+	unsigned int event_size = bpf_core_type_size(struct event);
+	if (len <= event_size)
 		gadget_output_buf(ctx, &events, event, len);
 
 	bpf_map_delete_elem(&execs, &pre_sched_pid);
@@ -284,13 +311,14 @@ static __always_inline int exit_execve(void *ctx, int retval)
 	gadget_process_populate(&event->proc);
 	event->error_raw = -retval;
 
-	if (paths) {
+	bool exepath_exists = bpf_core_field_exists(event->exepath);
+	if (paths && exepath_exists) {
 		struct task_struct *task =
 			(struct task_struct *)bpf_get_current_task();
 		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 		char *exepath = get_path_str(&exe_file->f_path);
-		bpf_probe_read_kernel_str(event->exepath,
-					  sizeof(event->exepath), exepath);
+		unsigned int exepath_len = bpf_core_field_size(event->exepath);
+		bpf_probe_read_kernel_str(event->exepath, exepath_len, exepath);
 	}
 
 	size_t len = EVENT_SIZE(event);
@@ -343,19 +371,20 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	}
 
 	struct inode *inode = BPF_CORE_READ(bprm, file, f_inode);
-	if (inode)
+	if (inode) {
 		event->fupper_layer = has_upper_layer(inode);
-
-	if (paths) {
-		f_path = BPF_CORE_READ(bprm, file, f_path);
-		file = get_path_str(&f_path);
-		bpf_probe_read_kernel_str(event->file, sizeof(event->file),
-					  file);
-
 		dev_no = BPF_CORE_READ(inode, i_sb, s_dev);
 		event->dev_major = MAJOR(dev_no);
 		event->dev_minor = MINOR(dev_no);
 		event->inode = BPF_CORE_READ(inode, i_ino);
+	}
+
+	bool file_exists = bpf_core_field_exists(event->file);
+	if (paths && file_exists) {
+		unsigned int file_len = bpf_core_field_size(event->file);
+		f_path = BPF_CORE_READ(bprm, file, f_path);
+		file = get_path_str(&f_path);
+		bpf_probe_read_kernel_str(event->file, file_len, file);
 	}
 
 	return 0;
