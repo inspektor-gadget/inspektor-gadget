@@ -56,6 +56,9 @@ const (
 	// Keep in sync with `include/gadget/user_stack_map.h`
 	UserStackMapName      = "ig_ustack"
 	UserPerfMaxStackDepth = 127
+
+	GadgetSeCwdName     = "gadget_se_cwd"
+	GadgetSeExepathName = "gadget_se_exepath"
 )
 
 // L3Endpoint is the Golang representation of struct gadget_l3endpoint_t

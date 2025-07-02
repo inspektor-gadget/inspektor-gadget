@@ -155,4 +155,7 @@ struct gadget_socket_value {
 	char exepath[GADGET_SE_PATH_MAX];
 } __attribute__((preserve_access_index));
 
+typedef char gadget_se_cwd;
+typedef char gadget_se_exepath;
+
 #endif /* __TYPES_H */
