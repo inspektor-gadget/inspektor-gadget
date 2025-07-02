@@ -155,4 +155,9 @@ struct gadget_socket_value {
 	char exepath[GADGET_SE_PATH_MAX];
 } __attribute__((preserve_access_index));
 
+// gadget_configurable_array is used to define arrays which size can be set by
+// the user at runtime. The ebpf operator automatically creates a
+// <fieldName>-size parameter used to set the size of the array.
+typedef char gadget_configurable_array;
+
 #endif /* __TYPES_H */

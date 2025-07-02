@@ -231,6 +231,8 @@ func (i *SocketEnricherInstance) SetSocketEnricherMap(m *ebpf.Map) {
 }
 
 func init() {
-	op := &SocketEnricher{}
+	op := &SocketEnricher{
+		seConfig: &tracer.Config{},
+	}
 	operators.RegisterDataOperator(op)
 }
