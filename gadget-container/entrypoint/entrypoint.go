@@ -30,7 +30,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -217,9 +216,8 @@ func prepareGadgetPullSecret() error {
 	return nil
 }
 
-func Init(hookMode string) (string, error) {
-	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
-	log.SetLevel(tracerManLogLvl)
+func Init(hookMode string, logLevel log.Level) (string, error) {
+	log.SetLevel(logLevel)
 	if _, err := os.Stat(filepath.Join(host.HostRoot, "/bin")); os.IsNotExist(err) {
 		return "", fmt.Errorf("%s must be executed in a pod with access to the host via %s", os.Args[0], host.HostRoot)
 	}

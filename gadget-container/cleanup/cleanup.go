@@ -19,11 +19,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/gadgettracermanagerloglevel"
-
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/config/gadgettracermanagerconfig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -87,8 +87,16 @@ func removeNRIHooks() {
 }
 
 func main() {
-	tracerManLogLvl := gadgettracermanagerloglevel.LogLevel()
-	log.SetLevel(tracerManLogLvl)
+	if err := gadgettracermanagerconfig.Init(); err != nil {
+		log.Fatalf("Initializing config: %v", err)
+	}
+	logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
+	if err != nil {
+		log.Fatalf("Parsing log level %q: %v", logLevel, err)
+	}
+
+	log.SetLevel(logLevel)
+	log.Infof("Cleanup started")
 	removeCRIOHooks()
 	removeNRIHooks()
 

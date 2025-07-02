@@ -88,8 +88,6 @@ spec:
               value: "/host"
             - name: IG_EXPERIMENTAL
               value: {{ .Values.config.experimental | quote }}
-            - name: GADGET_TRACER_MANAGER_LOG_LEVEL
-              value: {{ .Values.config.daemonLogLevel | quote }}
             {{- if .Values.additionalEnv }}
             {{- toYaml .Values.additionalEnv | nindent 12 }}
             {{- end }}

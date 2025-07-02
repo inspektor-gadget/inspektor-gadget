@@ -18,5 +18,6 @@ data:
       docker-socketpath: {{ .Values.config.dockerSocketPath }}
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       gadget-namespace: {{ .Values.config.gadgetNamespace }}
+      daemon-log-level: {{ .Values.config.daemonLogLevel }}
       operator:
         {{- include "gadget.operatorConfig" . | nindent 8 -}}
