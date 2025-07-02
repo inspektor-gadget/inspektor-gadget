@@ -14,7 +14,7 @@
 
 use api::{
     errorf,
-    {config::set_config, log::LogLevel},
+    config::set_config,
 };
 
 #[no_mangle]

@@ -34,7 +34,7 @@ pub fn log(level: LogLevel, message: &str) {
     }
 }
 
-// Rust doesn't support default vardiac, but similar functionality are provided by macros allow for multiple arguments
+// Rust doesn't support default variadic, but similar functionality are provided by macros allow for multiple arguments
 #[macro_export]
 macro_rules! log {
     ($level:expr, $($arg:expr),+ $(,)?) => {{
@@ -61,62 +61,62 @@ macro_rules! error {
 #[macro_export]
 macro_rules! errorf {
     ($fmt:literal $(, $arg:tt)* ) => {
-        $crate::logf!(LogLevel::Error, $fmt $(, $arg)*);
+        $crate::logf!($crate::log::LogLevel::Error, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => {
-        $crate::log!(LogLevel::Warn, $($arg)*);
+        $crate::log!($crate::log::LogLevel::Warn, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! warnf {
     ($fmt:literal $(, $arg:tt)* ) => {
-        $crate::logf!(LogLevel::Warn, $fmt $(, $arg)*);
+        $crate::logf!($crate::log::LogLevel::Warn, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {
-        $crate::log!(LogLevel::Info, $($arg)*);
+        $crate::log!($crate::log::LogLevel::Info, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! infof {
     ($fmt:literal $(, $arg:tt)* ) => {
-        $crate::logf!(LogLevel::Info, $fmt $(, $arg)*);
+        $crate::logf!($crate::log::LogLevel::Info, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => {
-        $crate::log!(LogLevel::Debug, $($arg)*);
+        $crate::log!($crate::log::LogLevel::Debug, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! debugf {
     ($fmt:literal $(, $arg:tt)* ) => {
-        $crate::logf!(LogLevel::Debug, $fmt $(, $arg)*);
+        $crate::logf!($crate::log::LogLevel::Debug, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)*) => {
-        $crate::log!(LogLevel::Trace, $($arg)*);
+        $crate::log!($crate::log::LogLevel::Trace, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! tracef {
     ($fmt:literal $(, $arg:tt)* ) => {
-        $crate::logf!(LogLevel::Trace, $fmt $(, $arg)*);
+        $crate::logf!($crate::log::LogLevel::Trace, $fmt $(, $arg)*);
     };
 }

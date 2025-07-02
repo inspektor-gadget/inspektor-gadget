@@ -15,7 +15,6 @@
 use api::{
     datasources::{Data, DataSource, DataSourceType, FieldKind, Packet},
     fields::FieldData,
-    log::LogLevel,
     warnf,
 };
 
