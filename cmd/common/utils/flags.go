@@ -34,6 +34,7 @@ const (
 	OutputModeJSON       = "json"
 	OutputModeJSONPretty = "jsonpretty"
 	OutputModeYAML       = "yaml"
+	OutputModeRaw        = "raw"
 )
 
 var SupportedOutputModes = []string{OutputModeJSON, OutputModeColumns}
