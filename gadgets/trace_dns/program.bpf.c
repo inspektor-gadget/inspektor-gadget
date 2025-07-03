@@ -70,37 +70,7 @@ enum pkt_type_t : __u8 {
 	KERNEL,
 };
 
-// TODO: what's a reasonable value for this?
-// Or can we remove this altogether?
-#define MAX_PACKET (1024 * 9) // 9KB
-
 struct event_t {
-	gadget_timestamp timestamp_raw;
-	struct gadget_l4endpoint_t src;
-	struct gadget_l4endpoint_t dst;
-	struct gadget_l3endpoint_t nameserver;
-	gadget_netns_id netns_id;
-	struct gadget_process proc;
-	char cwd[GADGET_PATH_MAX];
-	char exepath[GADGET_PATH_MAX];
-
-	enum pkt_type_t pkt_type_raw;
-	gadget_duration
-		latency_ns_raw; // Set only if the packet is a response and pkt_type is 0 (Host).
-
-	__u16 dns_off; // DNS offset in the packet
-	__u32 data_len;
-
-	// Only on this structure
-	__u8 data[MAX_PACKET];
-};
-
-// TODO: We need this header structure as the packet itself is appended by
-// bpf_perf_event_output(). Hence the event we send over the perf ring buffer is
-// only the header without the packet. We can use the full structure above as
-// it exceeds the stack limit of 512 bytes in bpf.
-// TODO: We'll need to find a clearer way to implement this
-struct event_header_t {
 	gadget_timestamp timestamp_raw;
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
@@ -134,7 +104,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(struct event_header_t));
+	__uint(value_size, sizeof(struct event_t));
 } tmp_events SEC(".maps");
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
@@ -198,7 +168,7 @@ static __always_inline unsigned int min(unsigned int a, unsigned int b)
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
-	struct event_header_t *event;
+	struct event_t *event;
 	int zero = 0;
 	__u16 sport, dport, l4_off, dns_off, h_proto, id;
 	__u8 proto;
@@ -452,8 +422,6 @@ int ig_trace_dns(struct __sk_buff *skb)
 	}
 
 	__u64 skb_len = skb->len;
-	if (skb_len > MAX_PACKET)
-		skb_len = MAX_PACKET;
 	bpf_perf_event_output(skb, &events, skb_len << 32 | BPF_F_CURRENT_CPU,
 			      event, sizeof(*event));
 
