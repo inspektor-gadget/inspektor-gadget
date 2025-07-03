@@ -685,6 +685,16 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, spec)
 
+	/***/
+	var eventHeaderStruct *btf.Struct
+
+	spec.TypeByName("event_header_t", &eventHeaderStruct)
+
+	tmpMap := i.collectionSpec.Maps["tmp_events"]
+	tmpMap.ValueSize = eventHeaderStruct.Size
+
+	/***/
+
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
 		if !ok {
