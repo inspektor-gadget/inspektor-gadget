@@ -10,6 +10,28 @@ import TabItem from '@theme/TabItem';
 
 The trace_open gadget emits events when files are opened.
 
+## Description 
+
+This gadget shows which processes open which particular files. It provides visibility into file access patterns by processes running in your containers or hosts.
+
+## Use Cases
+
+### Security Monitoring
+- Detect unauthorized access to critical system files (e.g., `/etc/shadow`, `/var/log/auth.log`).
+- Identify potential data exfiltration attempts.
+
+### Malware Detection
+- Catch cryptojacking scripts dropping malicious binaries into directories.
+- Detect ransomware attempting to encrypt user files.
+
+### Compliance Auditing
+- Ensure sensitive files are accessed only by authorized applications.
+- Help organizations meet security compliance requirements (e.g., **GDPR, HIPAA, PCI DSS**).
+
+### Debugging & Troubleshooting
+- Debug application errors caused by missing or restricted files.
+- Investigate unexpected file access patterns.
+
 ## Requirements
 
 - Minimum Kernel Version : 5.4
@@ -20,15 +42,19 @@ Running the gadget:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
+
 ```bash
 $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_open:%IG_TAG% [flags]
 ```
+
   </TabItem>
 
   <TabItem value="ig" label="ig">
+
 ```bash
 $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:%IG_TAG% [flags]
 ```
+
   </TabItem>
 </Tabs>
 ## Flags
@@ -65,16 +91,20 @@ First, we need to run an application that generates some events.
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
+
 ```bash
 $ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
 pod/mypod created
 ```
+
   </TabItem>
 
   <TabItem value="ig" label="ig">
+
 ```bash
 $ docker run --name test-trace-open -d busybox /bin/sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
 ```
+
   </TabItem>
 </Tabs>
 
@@ -115,6 +145,7 @@ We can stop the gadget by hitting Ctrl-C.
   </TabItem>
 
   <TabItem value="ig" label="ig">
+
 ```bash
 $ sudo ig run trace_open:%IG_TAG% --containername test-trace-open
 RUNTIME.CONTAINERNA… COMM                PID         TID         FD FNAME                    MODE       ERROR
@@ -140,6 +171,7 @@ test-trace-open      whoami           515459      515459          3 /lib/libc.so
 test-trace-open      whoami           515459      515459          3 /etc/passwd              ----------
 ^C
 ```
+
   </TabItem>
 </Tabs>
 
@@ -147,14 +179,18 @@ Finally, clean the system:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
+
 ```bash
 $ kubectl delete pod mypod
 ```
+
   </TabItem>
 
   <TabItem value="ig" label="ig">
+
 ```bash
 $ docker rm -f test-trace-open
 ```
+
   </TabItem>
 </Tabs>
