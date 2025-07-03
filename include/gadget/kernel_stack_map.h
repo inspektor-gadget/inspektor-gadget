@@ -8,14 +8,14 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
-#define KERNEL_MAX_STACK_DEPTH 127
-#define KERNEL_STACK_MAP_MAX_ENTRIES 10000
+#define GADGET_KERNEL_MAX_STACK_DEPTH 127
+#define GADGET_KERNEL_STACK_MAP_MAX_ENTRIES 10000
 
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
-	__uint(value_size, KERNEL_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, KERNEL_STACK_MAP_MAX_ENTRIES);
+	__uint(value_size, GADGET_KERNEL_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, GADGET_KERNEL_STACK_MAP_MAX_ENTRIES);
 } ig_kstack SEC(".maps");
 
 /* Returns the kernel stack id, positive or zero on success, negative on failure */

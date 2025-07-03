@@ -14,14 +14,14 @@
 const volatile bool collect_ustack = false;
 GADGET_PARAM(collect_ustack);
 
-#define USER_MAX_STACK_DEPTH 127
-#define USER_STACK_MAP_MAX_ENTRIES 10000
+#define GADGET_USER_MAX_STACK_DEPTH 127
+#define GADGET_USER_STACK_MAP_MAX_ENTRIES 10000
 
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
-	__uint(value_size, USER_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, USER_STACK_MAP_MAX_ENTRIES);
+	__uint(value_size, GADGET_USER_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, GADGET_USER_STACK_MAP_MAX_ENTRIES);
 } ig_ustack SEC(".maps");
 
 // Linux v4.0 - v4.17
