@@ -10,6 +10,12 @@ import TabItem from '@theme/TabItem';
 
 Use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so and detect potential deadlocks.
 
+## Description 
+
+A [deadlock](https://en.wikipedia.org/wiki/Deadlock_(computer_science)) in a system occurs when a process becomes stuck, unable to proceed because each thread (sub-process) is waiting for a resource that another thread is holding. Since none of the threads can continue, the system remains in a state of permanent lock-up unless some external action is taken.
+
+You can read more about the development of this gadget on our [blog](https://www.inspektor-gadget.io/blog/2024/12/deadlock-gadget-lfx-mentorship)
+
 ## Getting started
 
 Running the gadget:
