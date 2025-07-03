@@ -10,6 +10,30 @@ import TabItem from '@theme/TabItem';
 
 The trace_exec gadget notifies when new processes are executed.
 
+## Description 
+
+This gadget tracks all executed binaries on a node or within containers. It helps monitor process execution events in real-time, providing details like process name, arguments, and whether the binary was modified (using the Upper_Layer field).
+
+## Use Cases
+
+### Security Monitoring
+- Detect unfamiliar or unauthorized binaries.
+- Flags modified programs via the Upper_Layer field (e.g.. injected malware).
+
+### Threat Detection
+- Spot unexpected or suspicious execution patterns inside containers.
+
+### Compliance Auditing
+- Maintain execution logs for auditing;
+- Verify binaries are from trusted container layer
+
+### DevSecOps
+- Detect accidental debug tools (e.g., gdb, strace) in production and enforce runtime policies.
+
+### Debugging & Troubleshooting
+- Debug application errors caused by missing or restricted files.
+- Investigate unexpected file access patterns.
+
 ## Requirements
 
 - Minimum Kernel Version : 5.4
