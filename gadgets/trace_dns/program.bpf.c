@@ -20,8 +20,8 @@
 #include <gadget/sockets-map.h>
 #include <gadget/filter.h>
 
-// Don't include <gadget/filesystem.h> in networking gadgets
-#define GADGET_PATH_MAX 512
+// Use a custom size for these fields until their size can be configured
+#define TRACE_DNS_PATH_MAX 512
 
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
@@ -77,8 +77,8 @@ struct event_t {
 	struct gadget_l3endpoint_t nameserver;
 	gadget_netns_id netns_id;
 	struct gadget_process proc;
-	char cwd[GADGET_PATH_MAX];
-	char exepath[GADGET_PATH_MAX];
+	char cwd[TRACE_DNS_PATH_MAX];
+	char exepath[TRACE_DNS_PATH_MAX];
 
 	enum pkt_type_t pkt_type_raw;
 	gadget_duration
@@ -332,7 +332,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 		break;
 	}
 
-	struct sockets_value *skb_val = gadget_socket_lookup(skb);
+	struct gadget_socket_value *skb_val = gadget_socket_lookup(skb);
 	if (gadget_should_discard_data_by_skb(skb_val))
 		return 0;
 
@@ -340,10 +340,11 @@ int ig_trace_dns(struct __sk_buff *skb)
 	gadget_process_populate_from_socket(skb_val, &event->proc);
 
 	if (paths && skb_val != NULL) {
-		unsigned int cwd_len =
-			min(bpf_core_field_size(skb_val->cwd), GADGET_PATH_MAX);
-		unsigned int exepath_len = min(
-			bpf_core_field_size(skb_val->exepath), GADGET_PATH_MAX);
+		unsigned int cwd_len = min(bpf_core_field_size(skb_val->cwd),
+					   TRACE_DNS_PATH_MAX);
+		unsigned int exepath_len =
+			min(bpf_core_field_size(skb_val->exepath),
+			    TRACE_DNS_PATH_MAX);
 		bool cwd_exists = bpf_core_field_exists(skb_val->cwd);
 		bool exepath_exists = bpf_core_field_exists(skb_val->exepath);
 		bool probe_read_kernel_str_exists = bpf_core_enum_value_exists(

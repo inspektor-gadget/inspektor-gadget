@@ -12,7 +12,7 @@
 #include <bpf/bpf_endian.h>
 
 #define GADGET_NO_BUF_RESERVE
-#define MAX_EVENT_SIZE 512
+#define GADGET_MAX_EVENT_SIZE 512
 #define GADGET_TYPE_NETWORKING
 #include <gadget/macros.h>
 #include <gadget/buffer.h>
@@ -208,7 +208,7 @@ int ig_trace_sni(struct __sk_buff *skb)
 	if (read == 0)
 		return 0;
 
-	struct sockets_value *skb_val = gadget_socket_lookup(skb);
+	struct gadget_socket_value *skb_val = gadget_socket_lookup(skb);
 	if (gadget_should_discard_data_by_skb(skb_val))
 		return 0;
 

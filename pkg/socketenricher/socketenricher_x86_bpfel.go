@@ -18,7 +18,7 @@ type socketenricherBufT struct {
 	Buf [32768]uint8
 }
 
-type socketenricherSocketsKey struct {
+type socketenricherGadgetSocketKey struct {
 	_      structs.HostLayout
 	Netns  uint32
 	Family uint16
@@ -28,7 +28,7 @@ type socketenricherSocketsKey struct {
 	_      [2]byte
 }
 
-type socketenricherSocketsValue struct {
+type socketenricherGadgetSocketValue struct {
 	_                   structs.HostLayout
 	Mntns               uint64
 	PidTgid             uint64

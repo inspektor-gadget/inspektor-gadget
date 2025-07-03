@@ -53,7 +53,7 @@ func init() {
 
 const (
 	SocketsMapName          = "gadget_sockets"
-	SocketsValueName        = "sockets_value"
+	SocketsValueName        = "gadget_socket_value"
 	optionalFieldsStartName = "optional_fields_start"
 )
 

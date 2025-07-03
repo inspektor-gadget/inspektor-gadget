@@ -18,14 +18,14 @@
 
 const volatile __u64 socket_file_ops_addr = 0;
 
-static const struct sockets_value empty_sockets_value = {};
+static const struct gadget_socket_value empty_sockets_value = {};
 // The iterator is called one time, we don't need BPF per-cpu array map.
-static struct sockets_value socket_value = {};
+static struct gadget_socket_value socket_value = {};
 
 static __always_inline void insert_socket_from_iter(struct sock *sock,
 						    struct task_struct *task)
 {
-	struct sockets_key socket_key = {
+	struct gadget_socket_key socket_key = {
 		0,
 	};
 	prepare_socket_key(&socket_key, sock);
@@ -71,9 +71,9 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 	}
 
 	// If the endpoint was not present, add it and we're done.
-	struct sockets_value *old_socket_value =
-		(struct sockets_value *)bpf_map_lookup_elem(&gadget_sockets,
-							    &socket_key);
+	struct gadget_socket_value *old_socket_value =
+		(struct gadget_socket_value *)bpf_map_lookup_elem(
+			&gadget_sockets, &socket_key);
 	if (!old_socket_value) {
 		// Use BPF_NOEXIST: if an entry was inserted just after the check, this
 		// is because the bpf iterator for initial sockets runs in
@@ -141,9 +141,9 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 	struct seq_file *seq = ctx->meta->seq;
 	__u32 seq_num = ctx->meta->seq_num;
 	struct bpf_map *map = ctx->map;
-	struct sockets_key *socket_key = ctx->key;
-	struct sockets_key tmp_key;
-	struct sockets_value *socket_value = ctx->value;
+	struct gadget_socket_key *socket_key = ctx->key;
+	struct gadget_socket_key tmp_key;
+	struct gadget_socket_value *socket_value = ctx->value;
 
 	if (!socket_key || !socket_value)
 		return 0;
@@ -157,7 +157,7 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 	    deletion_timestamp + socket_expiration_ns < now) {
 		// The socket is expired, remove it from the map.
 		__builtin_memcpy(&tmp_key, socket_key,
-				 sizeof(struct sockets_key));
+				 sizeof(struct gadget_socket_key));
 		bpf_map_delete_elem(&gadget_sockets, &tmp_key);
 		return 0;
 	}

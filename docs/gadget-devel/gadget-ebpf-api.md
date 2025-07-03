@@ -147,7 +147,7 @@ This will define the following struct:
 
 ```C
 #define TASK_COMM_LEN 16
-struct sockets_value {
+struct gadget_socket_value {
 	__u64 mntns;
 	__u64 pid_tgid;
 	__u64 uid_gid;
@@ -165,7 +165,7 @@ can return NULL if the socket is not found.
 For eBPF programs of type socket filter:
 
 ```C
-struct sockets_value *skb_val = gadget_socket_lookup(skb);
+struct gadget_socket_value *skb_val = gadget_socket_lookup(skb);
 if (skb_val != NULL) {
 	/* Access skb_val->mntns and other fields */
 }
@@ -174,7 +174,7 @@ if (skb_val != NULL) {
 For eBPF programs of other kinds:
 
 ```C
-struct sockets_value *skb_val = gadget_socket_lookup(sk, netns);
+struct gadget_socket_value *skb_val = gadget_socket_lookup(sk, netns);
 if (skb_val != NULL) {
 	/* Access skb_val->mntns and other fields */
 }
@@ -576,13 +576,14 @@ To make use of kernel stack traces, gadgets must include
 This will define the following struct:
 
 ```C
-#define KERNEL_MAX_STACK_DEPTH 127
-#define KERNEL_STACK_MAP_MAX_ENTRIES 10000
+#define GADGET_KERNEL_MAX_STACK_DEPTH 127
+#define GADGET_KERNEL_STACK_MAP_MAX_ENTRIES 10000
+
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
-	__uint(value_size, KERNEL_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, KERNEL_STACK_MAP_MAX_ENTRIES);
+	__uint(value_size, GADGET_KERNEL_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, GADGET_KERNEL_STACK_MAP_MAX_ENTRIES);
 } ig_kstack SEC(".maps");
 ```
 
@@ -622,13 +623,14 @@ To make use of user stack traces, gadgets must include
 This will define the following struct:
 
 ```C
-#define USER_MAX_STACK_DEPTH 127
-#define USER_STACK_MAP_MAX_ENTRIES 10000
+#define GADGET_USER_MAX_STACK_DEPTH 127
+#define GADGET_USER_STACK_MAP_MAX_ENTRIES 10000
+
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
-	__uint(value_size, USER_MAX_STACK_DEPTH * sizeof(u64));
-	__uint(max_entries, USER_STACK_MAP_MAX_ENTRIES);
+	__uint(value_size, GADGET_USER_MAX_STACK_DEPTH * sizeof(u64));
+	__uint(max_entries, GADGET_USER_STACK_MAP_MAX_ENTRIES);
 } ig_ustack SEC(".maps");
 ```
 
@@ -678,7 +680,7 @@ common information.
 
 - `void gadget_process_populate(struct gadget_process *p)`: Fill `p` with
   the current process information
-- `void gadget_process_populate_from_socket(const struct sockets_value *skb_val, struct gadget_process *p)`:
+- `void gadget_process_populate_from_socket(const struct gadget_socket_value *skb_val, struct gadget_process *p)`:
   Fill `p` with the information on `skb_val` returned by `gadget_socket_lookup()`.
 
 ### Trailing Data

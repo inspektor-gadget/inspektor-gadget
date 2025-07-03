@@ -124,8 +124,8 @@ type sockOpt struct {
 }
 
 type socketEnricherMapEntry struct {
-	Key   socketenricherSocketsKey
-	Value socketenricherSocketsValue
+	Key   socketenricherGadgetSocketKey
+	Value socketenricherGadgetSocketValue
 }
 
 func TestSocketEnricherBind(t *testing.T) {
@@ -172,13 +172,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_DGRAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET,
 						Proto:  unix.IPPROTO_UDP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:    uint32(os.Getppid()),
@@ -194,13 +194,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_DGRAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_UDP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:    uint32(os.Getppid()),
@@ -221,13 +221,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			},
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_UDP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:    info.MountNsID,
 						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:     uint32(os.Getppid()),
@@ -244,13 +244,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:    uint32(os.Getppid()),
@@ -266,13 +266,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_STREAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:    uint32(os.Getppid()),
@@ -293,13 +293,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			},
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:    info.MountNsID,
 						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:     uint32(os.Getppid()),
@@ -317,13 +317,13 @@ func TestSocketEnricherBind(t *testing.T) {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
-					Key: socketenricherSocketsKey{
+					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,
 					},
-					Value: socketenricherSocketsValue{
+					Value: socketenricherGadgetSocketValue{
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Ppid:    uint32(os.Getppid()),
@@ -445,8 +445,8 @@ func socketsMapEntries(
 	filter func(*socketEnricherMapEntry) bool,
 ) (entries []socketEnricherMapEntry) {
 	iter := tracer.SocketsMap().Iterate()
-	var key socketenricherSocketsKey
-	var value socketenricherSocketsValue
+	var key socketenricherGadgetSocketKey
+	var value socketenricherGadgetSocketValue
 	for iter.Next(&key, &value) {
 		entry := socketEnricherMapEntry{
 			Key:   key,

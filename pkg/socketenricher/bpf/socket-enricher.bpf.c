@@ -36,22 +36,22 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, int);
-	__type(value, struct sockets_value);
+	__type(value, struct gadget_socket_value);
 } ig_tmp_sockets_value SEC(".maps");
 
-static const struct sockets_value empty_sockets_value = {};
+static const struct gadget_socket_value empty_sockets_value = {};
 
 static __always_inline void insert_current_socket(struct sock *sock)
 {
 	int zero = 0;
-	struct sockets_key socket_key = {
+	struct gadget_socket_key socket_key = {
 		0,
 	};
 	prepare_socket_key(&socket_key, sock);
 
 	// insert_current_socket is called for each udp packed emitted. To improve
 	// performance, don't add a socket if it is already in the map.
-	struct sockets_value *already_exists =
+	struct gadget_socket_value *already_exists =
 		bpf_map_lookup_elem(&gadget_sockets, &socket_key);
 	if (already_exists && already_exists->deletion_timestamp == 0)
 		return;
@@ -60,7 +60,7 @@ static __always_inline void insert_current_socket(struct sock *sock)
 				&empty_sockets_value, BPF_ANY))
 		return;
 
-	struct sockets_value *socket_value =
+	struct gadget_socket_value *socket_value =
 		bpf_map_lookup_elem(&ig_tmp_sockets_value, &zero);
 	if (!socket_value)
 		return;
@@ -106,7 +106,7 @@ static __always_inline void insert_current_socket(struct sock *sock)
 static __always_inline int remove_socket(struct sock *sock)
 {
 	struct inet_sock *inet_sock = (struct inet_sock *)sock;
-	struct sockets_key socket_key = {
+	struct gadget_socket_key socket_key = {
 		0,
 	};
 
@@ -117,7 +117,7 @@ static __always_inline int remove_socket(struct sock *sock)
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
-	struct sockets_value *socket_value =
+	struct gadget_socket_value *socket_value =
 		bpf_map_lookup_elem(&gadget_sockets, &socket_key);
 	if (socket_value == NULL)
 		return 0;
