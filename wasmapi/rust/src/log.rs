@@ -53,70 +53,70 @@ macro_rules! logf {
 
 #[macro_export]
 macro_rules! error {
-    ($($arg:tt)*) => {
+    ($($arg:expr)*) => {
         $crate::log!($crate::log::LogLevel::Error, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! errorf {
-    ($fmt:literal $(, $arg:tt)* ) => {
+    ($fmt:literal $(, $arg:expr)* ) => {
         $crate::logf!($crate::log::LogLevel::Error, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! warn {
-    ($($arg:tt)*) => {
+    ($($arg:expr)*) => {
         $crate::log!($crate::log::LogLevel::Warn, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! warnf {
-    ($fmt:literal $(, $arg:tt)* ) => {
+    ($fmt:literal $(, $arg:expr)* ) => {
         $crate::logf!($crate::log::LogLevel::Warn, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! info {
-    ($($arg:tt)*) => {
+    ($($arg:expr)*) => {
         $crate::log!($crate::log::LogLevel::Info, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! infof {
-    ($fmt:literal $(, $arg:tt)* ) => {
+    ($fmt:literal $(, $arg:expr)* ) => {
         $crate::logf!($crate::log::LogLevel::Info, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! debug {
-    ($($arg:tt)*) => {
+    ($($arg:expr)*) => {
         $crate::log!($crate::log::LogLevel::Debug, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! debugf {
-    ($fmt:literal $(, $arg:tt)* ) => {
+    ($fmt:literal $(, $arg:expr)* ) => {
         $crate::logf!($crate::log::LogLevel::Debug, $fmt $(, $arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! trace {
-    ($($arg:tt)*) => {
+    ($($arg:expr)*) => {
         $crate::log!($crate::log::LogLevel::Trace, $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! tracef {
-    ($fmt:literal $(, $arg:tt)* ) => {
+    ($fmt:literal $(, $arg:expr)* ) => {
         $crate::logf!($crate::log::LogLevel::Trace, $fmt $(, $arg)*);
     };
 }
