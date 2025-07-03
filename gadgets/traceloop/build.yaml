@@ -1,4 +1,4 @@
-wasm: go/program.go
+wasm: rust/src/lib.rs
 # To print debug messages:
 # cflags: '-DSHOW_DEBUG'
 # To print error messages:
