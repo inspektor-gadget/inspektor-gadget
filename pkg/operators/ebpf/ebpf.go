@@ -38,6 +38,7 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfhelpers"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -48,6 +49,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
+	seop "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -168,6 +170,9 @@ type ebpfInstance struct {
 	logger         logger.Logger
 	collectionSpec *ebpf.CollectionSpec
 	collection     *ebpf.Collection
+	btfTypes       *btf.Spec
+
+	seSizes map[string]uint32
 
 	tracers      map[string]*Tracer
 	structs      map[string]*Struct
@@ -270,7 +275,7 @@ func (i *ebpfInstance) analyze() error {
 	}
 
 	// Iterate over types and populate the gadget
-	for typ, err := range i.collectionSpec.Types.All() {
+	for typ, err := range i.btfTypes.All() {
 		if err != nil {
 			return fmt.Errorf("iterating over types: %w", err)
 		}
@@ -318,6 +323,26 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	err := i.loadSpec()
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
+	}
+
+	// create copy of BTF information we'll modify before loading the programs.
+	// This has to be used for registering structures
+	i.btfTypes = i.collectionSpec.Types.Copy()
+
+	// TODO: it's a very hacky way to get information from other operator. The
+	// gadget context doesn't work as the socketenricher hasn't run when this
+	// method is invoked. The socket enricher depends on the ebpf operator, and
+	// the ebpf operator depends on the socket enricher, so this is a way to
+	// break that loop
+	seI, ok := operators.GetDataOperators()[seop.OperatorName]
+	if ok {
+		if se, ok := seI.(*seop.SocketEnricher); ok {
+			i.seSizes = se.Sizes()
+		}
+	}
+
+	if _, err := i.fixStructs(i.btfTypes); err != nil {
+		return fmt.Errorf("fixing structs: %w", err)
 	}
 
 	// add extra info to gadgetcontext if requested
@@ -639,7 +664,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("invalid socket enricher BTF spec: expected *btf.Spec, got %T", seBtfSpecI)
 		}
 
-		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seBTFSpec}
+		opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, seBTFSpec)
 
 		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
 		if !ok {
@@ -653,6 +678,22 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 		mapSpec.ValueSize = btfStruct.Size
 	}
+
+	spec, err := i.fixStructs(i.collectionSpec.Types.Copy())
+	if err != nil {
+		return fmt.Errorf("fixing structs: %w", err)
+	}
+	opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, spec)
+
+	/***/
+	var eventHeaderStruct *btf.Struct
+
+	spec.TypeByName("event_header_t", &eventHeaderStruct)
+
+	tmpMap := i.collectionSpec.Maps["tmp_events"]
+	tmpMap.ValueSize = eventHeaderStruct.Size
+
+	/***/
 
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
@@ -916,6 +957,171 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 		if err := uTracer.DetachContainer(container); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (i *ebpfInstance) fixStructs(typesCpy *btf.Spec) (*btf.Spec, error) {
+	types := []btf.Type{}
+
+	uint32T := &btf.Int{
+		Size:     4,
+		Encoding: btf.Unsigned,
+	}
+	charT := &btf.Int{
+		Name:     "char",
+		Size:     1,
+		Encoding: btf.Signed, // TODO: Why ebpf operator requires signed for char?
+	}
+
+	types = append(types, uint32T, charT)
+
+	for typ, err := range typesCpy.All() {
+		if err != nil {
+			return nil, fmt.Errorf("getting type: %w", err)
+		}
+		eventStructure, ok := typ.(*btf.Struct)
+		if !ok {
+			continue
+		}
+
+		found := false
+
+		for _, member := range eventStructure.Members {
+			_, typeNames := btfhelpers.GetType(member.Type)
+
+			switch {
+			case slices.Contains(typeNames, "gadget_se_cwd"):
+				cwdSize := i.seSizes["cwd"]
+				if cwdSize == 0 {
+					// If the size is 0, we remove the member
+					err := removeStructMember(eventStructure, member.Name)
+					if err != nil {
+						return nil, fmt.Errorf("removing cwd member: %w", err)
+					}
+				} else {
+					cwdType := &btf.Array{
+						Index:  uint32T,
+						Type:   charT,
+						Nelems: uint32(cwdSize),
+					}
+					err := resizeStructMember(eventStructure, member.Name, cwdType)
+					if err != nil {
+						return nil, fmt.Errorf("resizing cwd member: %w", err)
+					}
+					types = append(types, cwdType)
+				}
+
+				found = true
+			case slices.Contains(typeNames, "gadget_se_exepath"):
+				exePathSize := i.seSizes["exepath"]
+				if exePathSize == 0 {
+					// If the size is 0, we remove the member
+					err := removeStructMember(eventStructure, member.Name)
+					if err != nil {
+						return nil, fmt.Errorf("removing exePath member: %w", err)
+					}
+				} else {
+					exePathType := &btf.Array{
+						Index:  uint32T,
+						Type:   charT,
+						Nelems: uint32(exePathSize),
+					}
+					resizeStructMember(eventStructure, member.Name, exePathType)
+					types = append(types, exePathType)
+				}
+				found = true
+			}
+		}
+
+		if found {
+			types = append(types, eventStructure)
+		}
+	}
+
+	ret, err := btfhelpers.BuildSpec(types)
+	if err != nil {
+		return nil, fmt.Errorf("building BTF spec for event structure: %w", err)
+	}
+
+	return ret, nil
+}
+
+func removeStructMember(s *btf.Struct, memberName string) error {
+	memberIdx := -1
+	for i, m := range s.Members {
+		if m.Name == memberName {
+			memberIdx = i
+			break
+		}
+	}
+	if memberIdx == -1 {
+		return fmt.Errorf("member %q not found in struct %q", memberName, s.Name)
+	}
+
+	member := &s.Members[memberIdx]
+
+	memberSize, err := btf.Sizeof(member.Type)
+	if err != nil {
+		return fmt.Errorf("getting size of member %q in struct %q: %w",
+			memberName, s.Name, err)
+	}
+
+	sizeDiff := memberSize
+	s.Size -= uint32(sizeDiff)
+
+	// shift all members after the removed one
+	for i := memberIdx + 1; i < len(s.Members); i++ {
+		s.Members[i].Offset -= btf.Bits(sizeDiff * 8)
+	}
+
+	// remove the member
+	s.Members = append(s.Members[:memberIdx], s.Members[memberIdx+1:]...)
+	return nil
+}
+
+func resizeStructMember(s *btf.Struct, memberName string, typ btf.Type) error {
+	memberIdx := -1
+
+	for i, m := range s.Members {
+		if m.Name == memberName {
+			memberIdx = i
+			break
+		}
+	}
+
+	if memberIdx == -1 {
+		return fmt.Errorf("member %q not found in struct %q", memberName, s.Name)
+	}
+
+	member := &s.Members[memberIdx]
+
+	memberSize, err := btf.Sizeof(member.Type)
+	if err != nil {
+		return fmt.Errorf("getting size of member %q in struct %q: %w",
+			memberName, s.Name, err)
+	}
+
+	newSize, err := btf.Sizeof(typ)
+	if err != nil {
+		return fmt.Errorf("getting size of new type for member %q in struct %q: %w",
+			memberName, s.Name, err)
+	}
+
+	if newSize > memberSize {
+		return fmt.Errorf("new size %d is bigger than current size %d for member %q in struct %q",
+			newSize, memberSize, memberName, s.Name)
+	}
+
+	member.Type = typ
+
+	sizeDiff := memberSize - newSize
+	s.Size -= uint32(sizeDiff)
+
+	// shift all members after the resized one
+	for i := memberIdx + 1; i < len(s.Members); i++ {
+		s.Members[i].Offset -= btf.Bits(sizeDiff * 8)
 	}
 
 	return nil
