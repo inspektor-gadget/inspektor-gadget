@@ -5,6 +5,9 @@ documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_dns
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_dns
 datasources:
   dns:
+    annotations:
+      ebpf.rest.name: data
+      ebpf.rest.len: data_len
     fields:
       cwd:
         annotations:
