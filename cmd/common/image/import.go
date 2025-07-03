@@ -16,14 +16,20 @@ package image
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
 func NewImportCmd() *cobra.Command {
+	var outputMode string
+	supportedOutputModes := []string{utils.OutputModeJSON, utils.OutputModeJSONPretty}
+
 	cmd := &cobra.Command{
 		Use:          "import SRC_FILE",
 		Short:        "Import images from SRC_FILE",
@@ -35,13 +41,40 @@ func NewImportCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("importing images: %w", err)
 			}
-			cmd.Printf("Successfully imported images:\n")
-			for _, tag := range tags {
-				cmd.Printf("  %s\n", tag)
+
+			switch outputMode {
+			case utils.OutputModeJSON:
+				bytes, err := json.Marshal(tags)
+				if err != nil {
+					return fmt.Errorf("marshalling tags to JSON: %w", err)
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(bytes))
+			case utils.OutputModeJSONPretty:
+				bytes, err := json.MarshalIndent(tags, "", "  ")
+				if err != nil {
+					return fmt.Errorf("marshalling tags to JSON: %w", err)
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(bytes))
+			case "":
+				fmt.Fprintln(cmd.OutOrStdout(), "Successfully imported images:")
+				for _, tag := range tags {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", tag)
+				}
+			default:
+				return fmt.Errorf("invalid output mode %q, valid values are: %s", outputMode, strings.Join(supportedOutputModes, ", "))
 			}
+
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(
+		&outputMode,
+		"output",
+		"o",
+		"",
+		fmt.Sprintf("Output mode, possible values are: %s", strings.Join(supportedOutputModes, ", ")),
+	)
 
 	return cmd
 }
