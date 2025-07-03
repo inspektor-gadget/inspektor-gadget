@@ -134,7 +134,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__uint(key_size, sizeof(__u32));
-	__uint(value_size, sizeof(struct event_t));
+	__uint(value_size, sizeof(struct event_header_t));
 } tmp_events SEC(".maps");
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
