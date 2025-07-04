@@ -73,7 +73,13 @@ int trace_sched_process_exit(void *ctx)
 }
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(malloc, events, event);
+
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} mallocs SEC(".tracers");
 
 static __always_inline int gen_alloc_enter(size_t size)
 {

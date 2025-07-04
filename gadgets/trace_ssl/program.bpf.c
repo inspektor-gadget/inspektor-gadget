@@ -61,7 +61,13 @@ struct event {
 #define EVENT_SIZE(X) (BASE_EVENT_SIZE + ((size_t)(X)))
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(ssl, events, event);
+
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} ssl SEC(".tracers");
 
 const volatile bool record_data = true;
 GADGET_PARAM(record_data);

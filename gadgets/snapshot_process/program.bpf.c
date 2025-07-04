@@ -19,7 +19,10 @@ const volatile bool show_threads = false;
 
 GADGET_PARAM(show_threads);
 
-GADGET_SNAPSHOTTER(processes, gadget_process, ig_snap_proc);
+struct {
+	__type(type, struct gadget_process);
+	__string(program0, ig_snap_proc);
+} processes SEC(".snapshotters");
 
 SEC("iter/task")
 int ig_snap_proc(struct bpf_iter__task *ctx)

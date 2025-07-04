@@ -75,8 +75,16 @@ struct {
 	__type(value, struct edges_value);
 } edges SEC(".maps");
 
-GADGET_MAPITER(mutex, edges);
-GADGET_TRACER(process_exit, dead_pids, dead_pid);
+struct {
+	__type(map, edges);
+} mutex SEC(".mapiters");
+
+GADGET_GEN_TYPE_BTF(struct dead_pid);
+
+struct {
+	__type(type, struct dead_pid);
+	__type(map, dead_pids);
+} open SEC(".tracers");
 
 /*
  * Creates edges in the mutex wait graph from each mutex

@@ -95,7 +95,12 @@ struct {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(exec, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} exec SEC(".tracers");
 
 static __always_inline int enter_execve(const char *pathname, const char **args)
 {

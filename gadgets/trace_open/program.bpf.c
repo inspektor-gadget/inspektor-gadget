@@ -46,7 +46,12 @@ struct {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 static __always_inline int trace_enter(const char *filename, int flags,
 				       __u16 mode)

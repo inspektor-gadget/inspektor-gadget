@@ -45,13 +45,22 @@ struct event {
 };
 ```
 
-Tracers are marked by using the `GADGET_TRACER()` macro. It accepts the following parameters:
+Tracers are registed by using the `.tracers` section:
 
 ```c
-GADGET_TRACER(name, mapname, structname);
+// Force the compiler to emit BTF information for the event structure
+GADGET_GEN_TYPE_BTF(struct structname);
+
+struct {
+	__type(type, struct structname);
+	__type(map, mapname);
+} name SEC(".tracers");
 ```
 
-- name: Name of the data source
+`GADGET_GEN_TYPE_BTF` macro is needed to ensure that the BTF information for
+the event structure is generated.
+
+- name: Name of the tracer data source
 - mapname: Name of the perf ring buffer of BPF ring buffer used by the program
 - structname: Name of the structure defining the gadget's event
 
@@ -85,10 +94,12 @@ struct {
 } stats SEC(".maps");
 ```
 
-and then mark the data source with the `GADGET_MAPITER()` macro:
+and then register the data source by using the `.mapiters` section:
 
 ```c
-GADGET_MAPITER(name, mapname)
+struct {
+	__type(map, mapname);
+} name SEC(".mapiters");
 ```
 
 - name: Name of the data source

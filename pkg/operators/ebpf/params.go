@@ -16,6 +16,7 @@ package ebpfoperator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cilium/ebpf/btf"
 
@@ -24,6 +25,8 @@ import (
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
+
+const paramsDsName = ".params"
 
 type param struct {
 	*api.Param
@@ -137,21 +140,46 @@ func handleWellKnownParam(btfVar *btf.Var, p *param) {
 	}
 }
 
-func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
-	if _, found := i.params[varName]; found {
-		i.logger.Debugf("param %q already defined, skipping", varName)
-		return nil
-	}
-
+func (i *ebpfInstance) legacyPopulateParam(t btf.Type, varName string) error {
 	var btfVar *btf.Var
 	err := i.collectionSpec.Types.TypeByName(varName, &btfVar)
 	if err != nil {
 		return fmt.Errorf("no BTF type found for: %s: %w", varName, err)
 	}
 
+	return i.doPopulateParam(varName, btfVar)
+}
+
+func (i *ebpfInstance) populateParam(vs *btf.VarSecinfo) error {
+	v, ok := vs.Type.(*btf.Var)
+	if !ok {
+		return fmt.Errorf("section %v: unexpected type %s", paramsDsName, vs.Type)
+	}
+
+	paramName := strings.TrimPrefix(v.Name, paramPrefix)
+
+	var btfVar *btf.Var
+	err := i.collectionSpec.Types.TypeByName(paramName, &btfVar)
+	if err != nil {
+		return fmt.Errorf("no BTF type found for: %s: %w", paramName, err)
+	}
+
+	if err := i.doPopulateParam(paramName, btfVar); err != nil {
+		return fmt.Errorf("populating param %q: %w", paramName, err)
+	}
+
+	return nil
+}
+
+func (i *ebpfInstance) doPopulateParam(name string, btfVar *btf.Var) error {
+	if _, found := i.params[name]; found {
+		i.logger.Debugf("param %q already defined, skipping", name)
+		return nil
+	}
+
 	newParam := &param{
 		Param: &api.Param{
-			Key: varName,
+			Key: name,
 		},
 		fromEbpf: true,
 	}
@@ -170,10 +198,10 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 	handleWellKnownParam(btfVar, newParam)
 
 	// Fill additional information from metadata
-	paramInfo := i.config.Sub("params.ebpf." + varName)
+	paramInfo := i.config.Sub("params.ebpf." + name)
 	if paramInfo == nil {
 		// Backward compatibility
-		paramInfo = i.config.Sub("ebpfParams." + varName)
+		paramInfo = i.config.Sub("ebpfParams." + name)
 	}
 	if paramInfo != nil {
 		i.logger.Debugf(" filling additional information from metadata")
@@ -188,6 +216,6 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 		}
 	}
 
-	i.params[varName] = newParam
+	i.params[name] = newParam
 	return nil
 }

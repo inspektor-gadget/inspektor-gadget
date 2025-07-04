@@ -88,7 +88,12 @@ struct {
 // Roughly 30 events
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(mount, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} mount SEC(".tracers");
 
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args

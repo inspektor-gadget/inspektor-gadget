@@ -4,7 +4,7 @@ homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_malloc
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_malloc
 datasources:
-  malloc:
+  mallocs:
     fields:
       operation_raw:
         annotations:
