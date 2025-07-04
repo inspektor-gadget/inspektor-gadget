@@ -353,10 +353,24 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 		if err != nil {
 			return fmt.Errorf("normalizing image: %w", err)
 		}
-		_, err = oras.Copy(ctx, ociStore, targetImage.String(), dstStore,
+		desc, err := oras.Copy(ctx, ociStore, targetImage.String(), dstStore,
 			targetImage.String(), oras.DefaultCopyOptions)
 		if err != nil {
-			return fmt.Errorf("copying to remote repository: %w", err)
+			return fmt.Errorf("copying image to remote repository: %w", err)
+		}
+
+		signatureTag, err := craftSignatureTag(desc.Digest.String())
+		if err != nil {
+			return fmt.Errorf("crafting signature tag: %w", err)
+		}
+
+		_, err = oras.Copy(ctx, ociStore, signatureTag, dstStore,
+			signatureTag, oras.DefaultCopyOptions)
+		if err != nil {
+			if errors.Is(err, errdef.ErrNotFound) {
+				continue
+			}
+			return fmt.Errorf("copying signature to remote repository: %w", err)
 		}
 	}
 
@@ -403,7 +417,9 @@ func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
 				return fmt.Errorf("copying to local repository: %w", err)
 			}
 
-			ret = append(ret, tag)
+			if !strings.HasSuffix(tag, ".sig") {
+				ret = append(ret, tag)
+			}
 		}
 		return nil
 	})
@@ -508,7 +524,10 @@ func getGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc,
 		for _, fullTag := range tags {
 			image, err := getGadgetImageDescriptor(ctx, store, fullTag)
 			if err != nil {
-				log.Warnf("getting gadget image descriptor for %s: %v", fullTag, err)
+				// avoid printing warnings if the manifest is not found, it could be a signature tag
+				if !errors.Is(err, errdef.ErrNotFound) {
+					log.Warnf("getting gadget image descriptor for %s: %v", fullTag, err)
+				}
 				continue
 			}
 
