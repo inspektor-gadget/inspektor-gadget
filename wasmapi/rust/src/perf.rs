@@ -49,7 +49,7 @@ impl Drop for PerfReader {
 impl PerfReader {
     pub fn new(map: Map, size: u32, is_overwritable: bool) -> Result<Self> {
         let flag = if is_overwritable { 1 } else { 0 };
-        let handle = unsafe { _perfreader_new(map.0, size, flag) };
+        let handle = unsafe { _perfreader_new(map.handle, size, flag) };
         if handle == 0 {
             Err(String::from("failed to create perf reader"))
         } else {
