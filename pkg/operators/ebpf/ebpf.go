@@ -452,6 +452,19 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("adding datasource: %w", err)
 		}
 		m.accessor = accessor
+		if restName, ok := ds.Annotations()["ebpf.rest.name"]; ok {
+			m.restAccessor, err = ds.AddField(restName, api.Kind_Bytes)
+			if err != nil {
+				return fmt.Errorf("adding rest accessor: %w", err)
+			}
+			if restLenName, ok := ds.Annotations()["ebpf.rest.len"]; ok {
+				field := ds.GetField(restLenName)
+				if field == nil {
+					return fmt.Errorf("rest length accessor field %q not found", restLenName)
+				}
+				m.restLenAccessor = field
+			}
+		}
 		m.ds = ds
 	}
 	for name, m := range i.snapshotters {
