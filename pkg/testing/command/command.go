@@ -18,6 +18,7 @@ package command
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os/exec"
 	"syscall"
 	"testing"
@@ -65,6 +66,10 @@ func (c *Command) Running() bool {
 func (c *Command) initExecCmd() {
 	c.Cmd.Stdout = &c.stdout
 	c.Cmd.Stderr = &c.stderr
+
+	// TODO: this should be configurable!
+	c.Cmd.Stdout = io.Discard
+	c.Cmd.Stderr = io.Discard
 
 	// To be able to kill the process of /bin/sh and its child (the process of
 	// c.Cmd), we need to send the termination signal to their process group ID
