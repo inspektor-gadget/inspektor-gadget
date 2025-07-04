@@ -138,6 +138,16 @@ extern "C" {
 static DS_SUBSCRIPTION_CTR: AtomicU64 = AtomicU64::new(0);
 static DS_SUBCRIPTION: LazyLock<Mutex<HashMap<u64, CallBack>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
+// Well known data sources
+pub const DATA_SOURCE_CONTAINERS: &str = "containers";
+
+// Data source "containers" has a field EventType with the following possible values:
+// - PRECREATE
+// - CREATED
+// - DELETED
+// The maximum length is 9. Keeping more for future compatibility.
+pub const DATA_SOURCE_CONTAINERS_EVENT_TYPE_MAX_SIZE: usize = 16;
+
 #[derive(Clone, Copy, Debug)]
 pub struct DataSource(pub u32);
 #[derive(Clone, Copy, Debug)]
