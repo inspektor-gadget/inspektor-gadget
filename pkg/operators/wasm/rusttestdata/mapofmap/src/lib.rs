@@ -30,7 +30,7 @@ struct MapTestStruct {
 #[allow(non_snake_case)]
 fn gadgetStart() -> i32 {
     let map_of_map_name = "map_of_map";
-    let mut inner_map: Map = Map(0);
+    let mut inner_map = Map::default();
     let key = MapTestStruct {
         a: 42,
         b: 42,
@@ -72,12 +72,12 @@ fn gadgetStart() -> i32 {
         return 1;
     }
 
-    if inner_map.0 == 0 {
+    if inner_map.handle == 0 {
         errorf!("expected handle to be different than 0");
         return 1;
     }
 
-    if inner_map.0 == hash_map.0 {
+    if inner_map.handle == hash_map.handle {
         errorf!("expected handle to be different than hashMap");
         return 1;
     }

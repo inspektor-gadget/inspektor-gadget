@@ -83,8 +83,11 @@ pub enum MapUpdateFlags {
     UpdateLock = 4,
 }
 
-#[derive(Debug)]
-pub struct Map(pub u32);
+#[derive(Debug, Default)]
+pub struct Map {
+    pub handle: u32,
+    created: bool,
+}
 
 #[derive(Clone)]
 pub struct MapSpec {
@@ -97,7 +100,11 @@ pub struct MapSpec {
 
 impl Drop for Map {
     fn drop(&mut self) {
-        let ret = unsafe { _map_release(self.0) };
+        if !self.created {
+            return;
+        }
+
+        let ret = unsafe { _map_release(self.handle) };
         if ret != 0 {
             error!("Failed to release map");
         }
@@ -119,7 +126,7 @@ impl Map {
         if ret == 0 {
             Err(format!("Failed to create map {}", spec.name))
         } else {
-            Ok(Map(ret))
+            Ok(Map{ handle: ret, created: true })
         }
     }
 
@@ -128,7 +135,7 @@ impl Map {
         if ret == 0 {
             Err(format!("Map {} not found", name))
         } else {
-            Ok(Map(ret))
+            Ok(Map{ handle: ret, created: false })
         }
     }
     // Only allows pointers to key and value
@@ -136,7 +143,7 @@ impl Map {
         let key_ptr = any_to_buf_ptr(key)?;
         let value_ptr = any_to_buf_ptr(value)?;
 
-        let ret = unsafe { _map_lookup(self.0, key_ptr.0, value_ptr.0) };
+        let ret = unsafe { _map_lookup(self.handle, key_ptr.0, value_ptr.0) };
         if ret != 0 {
             return Err(String::from("Error looking up map"));
         }
@@ -157,7 +164,7 @@ impl Map {
         let key_ptr = any_to_buf_ptr(key)?;
         let value_ptr = any_to_buf_ptr(value)?;
 
-        let ret = unsafe { _map_update(self.0, key_ptr.0, value_ptr.0, flags as u64) };
+        let ret = unsafe { _map_update(self.handle, key_ptr.0, value_ptr.0, flags as u64) };
         if ret != 0 {
             return Err(String::from("Failed to update map"));
         }
@@ -166,7 +173,7 @@ impl Map {
 
     pub fn delete<T>(&self, key: &T) -> Result<()> {
         let key_ptr = any_to_buf_ptr(key)?;
-        let ret = unsafe { _map_delete(self.0, key_ptr.0) };
+        let ret = unsafe { _map_delete(self.handle, key_ptr.0) };
         if ret != 0 {
             return Err(String::from("Failed to delete key"));
         }
