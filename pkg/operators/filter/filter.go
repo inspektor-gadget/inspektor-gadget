@@ -22,6 +22,7 @@ import (
 	"golang.org/x/exp/constraints"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/expr"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -30,9 +31,10 @@ import (
 type comparisonType int
 
 const (
-	name        = "filter"
-	ParamFilter = "filter"
-	Priority    = 9000
+	name            = "filter"
+	ParamFilter     = "filter"
+	ParamFilterExpr = "filter-expr"
+	Priority        = 9000
 )
 
 const (
@@ -81,11 +83,22 @@ func (f *filterOperator) InstanceParams() api.Params {
 	}}
 }
 
+func keyForDataSource(datasources map[string]datasource.DataSource, ds datasource.DataSource) (string, string) {
+	key := ParamFilterExpr
+	alias := "E"
+	if len(datasources) != 1 {
+		key += fmt.Sprintf("-%s", ds.Name())
+		alias = ""
+	}
+	return key, alias
+}
+
 func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
 	filterCfg := instanceParamValues[ParamFilter]
 
 	fop := &filterOperatorInstance{
-		ffns: map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
+		gadgetCtx: gadgetCtx,
+		ffns:      map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
 	}
 
 	filters := api.SplitStringWithEscape(filterCfg, ',')
@@ -100,7 +113,39 @@ func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 		}
 	}
 
+	for _, ds := range gadgetCtx.GetDataSources() {
+		key, _ := keyForDataSource(gadgetCtx.GetDataSources(), ds)
+		if filterExpr := instanceParamValues[key]; filterExpr != "" {
+			err := fop.addFilterExpr(gadgetCtx, ds, filterExpr)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return fop, nil
+}
+
+func (f *filterOperatorInstance) addFilterExpr(gadgetCtx operators.GadgetContext, ds datasource.DataSource, filterExpr string) error {
+	prog, err := expr.CompileFilterProgram(ds, filterExpr)
+	if err != nil {
+		return fmt.Errorf("compiling filter expression %q for datasource %s: %w", filterExpr, ds.Name(), err)
+	}
+	ff := func(ds datasource.DataSource, data datasource.Data) bool {
+		ret, err := expr.Run(prog, data)
+		if err != nil {
+			gadgetCtx.Logger().Errorf("running filter expression %q for datasource %s: %v", filterExpr, ds.Name(), err)
+			return false
+		}
+		retB, ok := ret.(bool)
+		if !ok {
+			gadgetCtx.Logger().Errorf("filter expression %q for datasource %s returned non-bool value: %T", filterExpr, ds.Name(), ret)
+			return false
+		}
+		return retB
+	}
+	f.ffns[ds] = append(f.ffns[ds], ff)
+	return nil
 }
 
 func (f *filterOperator) Priority() int {
@@ -108,11 +153,31 @@ func (f *filterOperator) Priority() int {
 }
 
 type filterOperatorInstance struct {
+	gadgetCtx operators.GadgetContext
+
 	ffns map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool
 }
 
 func (f *filterOperatorInstance) Name() string {
 	return name
+}
+
+func (f *filterOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
+	description := `Filter rules with an expression language for the datasource %q.
+                 see [https://expr-lang.org/] for more information on the syntax`
+
+	var filtersParam []*api.Param
+	dataSources := gadgetCtx.GetDataSources()
+	for dsName, ds := range f.gadgetCtx.GetDataSources() {
+		key, alias := keyForDataSource(dataSources, ds)
+		filtersParam = append(filtersParam, &api.Param{
+			Key:         key,
+			Description: fmt.Sprintf(description, dsName),
+			Alias:       alias,
+		})
+	}
+
+	return filtersParam
 }
 
 func (f *filterOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
