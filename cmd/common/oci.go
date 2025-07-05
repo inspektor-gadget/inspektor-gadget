@@ -483,9 +483,19 @@ nextParam:
 			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"
 		}
 
-		flag := cmd.PersistentFlags().VarPF(&Param{p}, p.Key, p.Alias, desc)
+		if strings.Contains(p.Key, ".") {
+			p.Key = strings.ReplaceAll(p.Key, ".", "-")
+		}
+
+		pa := Param{p}
+		flag := cmd.PersistentFlags().VarPF(&pa, p.Key, p.Alias, desc)
 		if p.IsMandatory {
 			cmd.MarkPersistentFlagRequired(p.Key)
+		}
+
+		if p.AliasLong != "" {
+			desc += " (alias: " + p.Key + ")"
+			cmd.PersistentFlags().Var(&pa, p.AliasLong, desc)
 		}
 
 		// Allow passing a boolean flag as --foo instead of having to use --foo=true

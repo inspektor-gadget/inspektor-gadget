@@ -54,6 +54,9 @@ type ParamDesc struct {
 	// interfaces
 	Alias string `json:"alias" yaml:"alias,omitempty"`
 
+	// AliasLong is a longer alias for this parameter, usually used in command line interfaces
+	AliasLong string `json:"aliasLong" yaml:"aliasLong,omitempty"`
+
 	// Title is an optional (pretty) alternative to key and used in user interfaces
 	Title string `json:"title" yaml:"title,omitempty"`
 

@@ -38,6 +38,7 @@ func ParamDescsToParams(descs params.ParamDescs) (res api.Params) {
 			TypeHint:       string(desc.TypeHint),
 			Title:          desc.Title,
 			Alias:          desc.Alias,
+			AliasLong:      desc.AliasLong,
 			Tags:           desc.Tags,
 			ValueHint:      string(desc.ValueHint),
 			PossibleValues: desc.PossibleValues,
@@ -51,6 +52,7 @@ func ParamToParamDesc(p *api.Param) *params.ParamDesc {
 	return &params.ParamDesc{
 		Key:            p.Key,
 		Alias:          p.Alias,
+		AliasLong:      p.AliasLong,
 		Title:          p.Title,
 		DefaultValue:   p.DefaultValue,
 		Description:    p.Description,
