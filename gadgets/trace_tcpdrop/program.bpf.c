@@ -171,7 +171,7 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk,
 
 	BPF_CORE_READ_INTO(&event->netns_id, sk, __sk_common.skc_net.net,
 			   ns.inum);
-	struct sockets_value *skb_val =
+	struct gadget_socket_value *skb_val =
 		gadget_socket_lookup(sk, event->netns_id);
 	if (skb_val != NULL) {
 		// Use the mount namespace of the socket to filter by container

@@ -7,8 +7,8 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 
-#ifndef MAX_EVENT_SIZE
-#define MAX_EVENT_SIZE 10240
+#ifndef GADGET_MAX_EVENT_SIZE
+#define GADGET_MAX_EVENT_SIZE 10240
 #endif
 
 #define GADGET_TRACER_MAP(name, size)               \
@@ -23,7 +23,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__uint(key_size, sizeof(__u32));
-	__uint(value_size, MAX_EVENT_SIZE);
+	__uint(value_size, GADGET_MAX_EVENT_SIZE);
 } gadget_heap SEC(".maps");
 
 static __always_inline void *gadget_reserve_buf(void *map, __u64 size)

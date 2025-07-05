@@ -18,7 +18,7 @@ type socketsiterBufT struct {
 	Buf [32768]uint8
 }
 
-type socketsiterSocketsKey struct {
+type socketsiterGadgetSocketKey struct {
 	_      structs.HostLayout
 	Netns  uint32
 	Family uint16
@@ -28,7 +28,7 @@ type socketsiterSocketsKey struct {
 	_      [2]byte
 }
 
-type socketsiterSocketsValue struct {
+type socketsiterGadgetSocketValue struct {
 	_                   structs.HostLayout
 	Mntns               uint64
 	PidTgid             uint64
