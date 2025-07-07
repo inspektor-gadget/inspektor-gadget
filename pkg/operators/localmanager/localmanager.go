@@ -51,6 +51,10 @@ const (
 	OperatorName           = "LocalManager"
 	Runtimes               = "runtimes"
 	ContainerName          = "containername"
+	K8sPodName             = "k8s-podname"
+	K8sNamespace           = "k8s-namespace"
+	K8sSelector            = "k8s-selector"
+	K8sContainerName       = "k8s-containername"
 	Host                   = "host"
 	DockerSocketPath       = "docker-socketpath"
 	ContainerdSocketPath   = "containerd-socketpath"
@@ -140,18 +144,61 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 }
 
 func (l *localManager) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.LocalContainer,
-		},
-		{
+	return append(getContainerSelectorParams(),
+		&params.ParamDesc{
 			Key:          Host,
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+		})
+}
+
+func getContainerSelectorParams() params.ParamDescs {
+	return params.ParamDescs{
+		{
+			Key:            ContainerName,
+			AlternativeKey: "runtime-containername",
+			Description:    "Show only data from containers with that name",
+			Alias:          "c",
+			ValueHint:      gadgets.LocalContainer,
+		},
+		{
+			Key:         K8sContainerName,
+			Description: "Show only data from containers with that kubernetes container name",
+			ValueHint:   gadgets.K8SContainerName,
+		},
+		{
+			Key:         K8sPodName,
+			Alias:       "p",
+			Description: "Show only data from containers in that kubernetes pod",
+			ValueHint:   gadgets.K8SPodName,
+		},
+		{
+			Key:         K8sNamespace,
+			Alias:       "n",
+			Description: "Show only data from containers in that kubernetes namespace",
+			ValueHint:   gadgets.K8SNamespace,
+		},
+		{
+			Key:         K8sSelector,
+			Alias:       "l",
+			Description: "Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2), Only works with --enrich-with-k8s-apiserver",
+			ValueHint:   gadgets.K8SLabels,
+			Validator: func(value string) error {
+				if value == "" {
+					return nil
+				}
+
+				pairs := strings.Split(value, ",")
+				for _, pair := range pairs {
+					kv := strings.Split(pair, "=")
+					if len(kv) != 2 {
+						return fmt.Errorf("should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
+					}
+				}
+
+				return nil
+			},
 		},
 	}
 }
@@ -303,17 +350,39 @@ func (l *localManagerTrace) PreGadgetRun() error {
 	return nil
 }
 
+func (l *localManagerTrace) newContainerSelector() containercollection.ContainerSelector {
+	labels := make(map[string]string)
+	for _, label := range l.params.Get(K8sSelector).AsStringSlice() {
+		kv := strings.SplitN(label, "=", 2)
+		labels[kv[0]] = kv[1]
+	}
+
+	return containercollection.ContainerSelector{
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: l.params.Get(ContainerName).AsString(),
+		},
+		K8s: containercollection.K8sSelector{
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				PodName:       l.params.Get(K8sPodName).AsString(),
+				Namespace:     l.params.Get(K8sNamespace).AsString(),
+				ContainerName: l.params.Get(K8sContainerName).AsString(),
+				PodLabels:     labels,
+			},
+		},
+	}
+}
+
 func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
 
-	// TODO: Improve filtering, see further details in
-	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
-	containerSelector := containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: l.params.Get(ContainerName).AsString(),
-		},
+	labels := make(map[string]string)
+	for _, label := range l.params.Get(K8sSelector).AsStringSlice() {
+		kv := strings.SplitN(label, "=", 2)
+		labels[kv[0]] = kv[1]
 	}
+
+	containerSelector := l.newContainerSelector()
 
 	// If --host is set, we do not want to create the below map because we do not
 	// want any filtering.
@@ -553,20 +622,13 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 }
 
 func (l *localManagerTrace) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.LocalContainer,
-		},
-		{
+	return append(getContainerSelectorParams(),
+		&params.ParamDesc{
 			Key:          Host,
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
-		},
-	}
+		})
 }
 
 func (l *localManagerTraceWrapper) ParamDescs(gadgetCtx operators.GadgetContext) params.ParamDescs {
@@ -592,11 +654,7 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
 
-	containerSelector := containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: l.params.Get(ContainerName).AsString(),
-		},
-	}
+	containerSelector := l.newContainerSelector()
 
 	// mountnsmap will be handled differently than above
 	if !host {

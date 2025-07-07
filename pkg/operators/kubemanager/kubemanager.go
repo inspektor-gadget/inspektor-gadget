@@ -39,12 +39,13 @@ import (
 )
 
 const (
-	OperatorName       = "KubeManager"
-	ParamContainerName = "containername"
-	ParamSelector      = "selector"
-	ParamAllNamespaces = "all-namespaces"
-	ParamPodName       = "podname"
-	ParamNamespace     = "namespace"
+	OperatorName              = "KubeManager"
+	ParamContainerName        = "containername"
+	ParamSelector             = "selector"
+	ParamAllNamespaces        = "all-namespaces"
+	ParamPodName              = "podname"
+	ParamNamespace            = "namespace"
+	ParamRuntimeContainerName = "runtime-containername"
 )
 
 type MountNsMapSetter interface {
@@ -80,16 +81,23 @@ func (k *KubeManager) GlobalParamDescs() params.ParamDescs {
 func (k *KubeManager) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
-			Key:         ParamContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.K8SContainerName,
+			Key:            ParamContainerName,
+			AlternativeKey: "k8s-containername",
+			Alias:          "c",
+			Description:    "Show only data from containers with that name",
+			ValueHint:      gadgets.K8SContainerName,
 		},
 		{
-			Key:         ParamSelector,
-			Alias:       "l",
-			Description: "Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
-			ValueHint:   gadgets.K8SLabels,
+			Key:         ParamRuntimeContainerName,
+			Description: "Show only data from containers with that runtime container name",
+			ValueHint:   gadgets.LocalContainer,
+		},
+		{
+			Key:            ParamSelector,
+			AlternativeKey: "k8s-selector",
+			Alias:          "l",
+			Description:    "Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
+			ValueHint:      gadgets.K8SLabels,
 			Validator: func(value string) error {
 				if value == "" {
 					return nil
@@ -107,10 +115,11 @@ func (k *KubeManager) ParamDescs() params.ParamDescs {
 			},
 		},
 		{
-			Key:         ParamPodName,
-			Alias:       "p",
-			Description: "Show only data from pods with that name",
-			ValueHint:   gadgets.K8SPodName,
+			Key:            ParamPodName,
+			AlternativeKey: "k8s-podname",
+			Alias:          "p",
+			Description:    "Show only data from pods with that name",
+			ValueHint:      gadgets.K8SPodName,
 		},
 		{
 			Key:          ParamAllNamespaces,
@@ -120,10 +129,11 @@ func (k *KubeManager) ParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 		},
 		{
-			Key:         ParamNamespace,
-			Alias:       "n",
-			Description: "Show only data from pods in a given namespace",
-			ValueHint:   gadgets.K8SNamespace,
+			Key:            ParamNamespace,
+			AlternativeKey: "k8s-namespace",
+			Alias:          "n",
+			Description:    "Show only data from pods in a given namespace",
+			ValueHint:      gadgets.K8SNamespace,
 		},
 	}
 }
@@ -158,7 +168,7 @@ func (m *KubeManagerInstance) Name() string {
 	return OperatorName
 }
 
-func newContainerSelector(selectorSlice []string, namespace, podName, containerName string, useAllNamespace bool) containercollection.ContainerSelector {
+func newContainerSelector(selectorSlice []string, namespace, podName, containerName, runtimeContainerName string, useAllNamespace bool) containercollection.ContainerSelector {
 	labels := make(map[string]string)
 	for _, pair := range selectorSlice {
 		kv := strings.Split(pair, "=")
@@ -166,6 +176,9 @@ func newContainerSelector(selectorSlice []string, namespace, podName, containerN
 	}
 
 	containerSelector := containercollection.ContainerSelector{
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: runtimeContainerName,
+		},
 		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     namespace,
@@ -202,6 +215,7 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 		m.params.Get(ParamNamespace).AsString(),
 		m.params.Get(ParamPodName).AsString(),
 		m.params.Get(ParamContainerName).AsString(),
+		m.params.Get(ParamRuntimeContainerName).AsString(),
 		m.params.Get(ParamAllNamespaces).AsBool(),
 	)
 
@@ -486,8 +500,8 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 		m.params.Get(ParamNamespace).AsString(),
 		m.params.Get(ParamPodName).AsString(),
 		m.params.Get(ParamContainerName).AsString(),
-		m.params.Get(ParamAllNamespaces).AsBool(),
-	)
+		m.params.Get(ParamRuntimeContainerName).AsString(),
+		m.params.Get(ParamAllNamespaces).AsBool())
 
 	return m.containersPublisher.PublishContainers(true, []*containercollection.Container{}, containerSelector)
 }
