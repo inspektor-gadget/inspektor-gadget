@@ -88,9 +88,12 @@ const (
 	PullImageNever   = "never"
 )
 
-const (
+var (
 	defaultDomain      = "ghcr.io"
 	officialRepoPrefix = "inspektor-gadget/gadget/"
+)
+
+const (
 	// localhost is treated as a special value for domain-name. Any other
 	// domain-name without a "." or a ":port" are considered a path component.
 	localhost = "localhost"
