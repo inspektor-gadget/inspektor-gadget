@@ -58,6 +58,8 @@ func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error 
 		instanceParams := op.InstanceParams().AddPrefix(opParamPrefix)
 		opParamValues := paramValues.ExtractPrefixedValues(opParamPrefix)
 
+		apihelpers.MergeWithAlternativeKeys(instanceParams, opParamValues)
+
 		// Ensure all params are present
 		err := apihelpers.NormalizeWithDefaults(instanceParams, opParamValues)
 		if err != nil {

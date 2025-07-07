@@ -7,6 +7,7 @@ as a DaemonSet. This operator keeps track of the pods running on the node by
 talking to the kube-apiserver and to the different container runtimes. This
 operator uses the pod informer and/or fanotify mechanisms to detect when
 containers are created. This information is used to:
+
 - Update the eBPF maps used to filter events in eBPF by Kubernetes concepts like
   pod and container names, namespace, labels, etc.
 - Enrich events with container information (see below).
@@ -17,19 +18,19 @@ This operator uses the mount or network namespace inode IDs to enrich events
 with the following fields:
 
 - k8s
-  - node name
-  - container name
-  - pod name
-  - namespace
-  - pod labels
-  - owner
+    - node name
+    - container name
+    - pod name
+    - namespace
+    - pod labels
+    - owner
 - runtime
-  - runtime name
-  - container name
-  - container ID
-  - container image name
-  - container image digest
-  - container started time
+    - runtime name
+    - container name
+    - container ID
+    - container image name
+    - container image digest
+    - container started time
 
 ## Priority
 
@@ -37,32 +38,38 @@ with the following fields:
 
 ## Instance Parameters
 
-### `containername`
+### `containername` / `k8s-containername`
 
 Show only data from containers with that name
 
-Fully qualified name: `operator.KubeManager.containername`
+Fully qualified name: `operator.KubeManager.containername` or `operator.KubeManager.k8s-containername`
 
-### `podname`
+### `podname` / `k8s-podname`
 
 Show only data from pods with that name
 
-Fully qualified name: `operator.KubeManager.podname`
+Fully qualified name: `operator.KubeManager.podname` or `operator.KubeManager.k8s-podname`
 
-### `selector`
+### `selector` / `k8s-selector`
 
-Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)
+Kubernetes Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)
 
-Fully qualified name: `operator.KubeManager.selector`
+Fully qualified name: `operator.KubeManager.selector` / `operator.KubeManager.k8s-selector`
 
-### `namespace`
+### `namespace` / `k8s-namespace`
 
 Show only data from pods in a given namespace
 
-Fully qualified name: `operator.KubeManager.namespace`
+Fully qualified name: `operator.KubeManager.namespace` / `operator.KubeManager.k8s-namespace`
 
 ### `all-namespaces`
 
 Show data from pods in all namespaces
 
 Fully qualified name: `operator.KubeManager.all-namespaces`
+
+### `runtime-containername`
+
+Show data only from containers with the runtime-assigned name (not the name defined in the pod spec)
+
+Fully qualified name: `operator.KubeManager.runtime-containername`

@@ -50,6 +50,9 @@ type ParamDesc struct {
 	// getting a key/value map
 	Key string `json:"key" yaml:"key"`
 
+	// AlternativeKey is an optional alternative key for this parameter
+	AlternativeKey string `json:"alternativeKey" yaml:"alternativeKey,omitempty"`
+
 	// Alias is a shortcut for this parameter, usually a single character used for command line
 	// interfaces
 	Alias string `json:"alias" yaml:"alias,omitempty"`
@@ -172,7 +175,7 @@ func (p *ParamDescs) Add(other ...*ParamDesc) {
 // Get returns the parameter with the given key or nil
 func (p *ParamDescs) Get(key string) *ParamDesc {
 	for _, param := range *p {
-		if key == param.Key {
+		if key == param.Key || key == param.AlternativeKey {
 			return param
 		}
 	}
@@ -205,7 +208,7 @@ func (p *Params) AddKeyValuePair(key, value string) {
 // Get returns the parameter with the given key or nil
 func (p *Params) Get(key string) *Param {
 	for _, param := range *p {
-		if key == param.Key {
+		if key == param.Key || key == param.AlternativeKey {
 			return param
 		}
 	}
@@ -214,7 +217,7 @@ func (p *Params) Get(key string) *Param {
 
 func (p *Params) Set(key, val string) error {
 	for _, e := range *p {
-		if e.Key == key {
+		if e.Key == key || e.AlternativeKey == key {
 			return e.Set(val)
 		}
 	}

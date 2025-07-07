@@ -107,6 +107,7 @@ message Param {
   repeated string possibleValues = 9;
   bool isMandatory = 10;
   string prefix = 11;
+  string alternativeKey = 12;
 }
 
 message GadgetInfo {

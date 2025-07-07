@@ -750,6 +750,7 @@ type Param struct {
 	PossibleValues []string               `protobuf:"bytes,9,rep,name=possibleValues,proto3" json:"possibleValues,omitempty"`
 	IsMandatory    bool                   `protobuf:"varint,10,opt,name=isMandatory,proto3" json:"isMandatory,omitempty"`
 	Prefix         string                 `protobuf:"bytes,11,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	AlternativeKey string                 `protobuf:"bytes,12,opt,name=alternativeKey,proto3" json:"alternativeKey,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -857,6 +858,13 @@ func (x *Param) GetIsMandatory() bool {
 func (x *Param) GetPrefix() string {
 	if x != nil {
 		return x.Prefix
+	}
+	return ""
+}
+
+func (x *Param) GetAlternativeKey() string {
+	if x != nil {
+		return x.AlternativeKey
 	}
 	return ""
 }
@@ -1848,7 +1856,7 @@ const file_api_api_proto_rawDesc = "" +
 	"\x0fGadgetDataArray\x12\x12\n" +
 	"\x04node\x18\x01 \x01(\tR\x04node\x12\x10\n" +
 	"\x03seq\x18\x02 \x01(\rR\x03seq\x12.\n" +
-	"\tdataArray\x18\x03 \x03(\v2\x10.api.DataElementR\tdataArray\"\xbb\x02\n" +
+	"\tdataArray\x18\x03 \x03(\v2\x10.api.DataElementR\tdataArray\"\xe3\x02\n" +
 	"\x05Param\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\"\n" +
@@ -1861,7 +1869,8 @@ const file_api_api_proto_rawDesc = "" +
 	"\x0epossibleValues\x18\t \x03(\tR\x0epossibleValues\x12 \n" +
 	"\visMandatory\x18\n" +
 	" \x01(\bR\visMandatory\x12\x16\n" +
-	"\x06prefix\x18\v \x01(\tR\x06prefix\"\xf3\x02\n" +
+	"\x06prefix\x18\v \x01(\tR\x06prefix\x12&\n" +
+	"\x0ealternativeKey\x18\f \x01(\tR\x0ealternativeKey\"\xf3\x02\n" +
 	"\n" +
 	"GadgetInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
