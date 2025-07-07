@@ -513,3 +513,17 @@ func TestIsDefault(t *testing.T) {
 	p.Set("bar")
 	require.False(t, p.IsDefault())
 }
+
+func TestAlternativeKey(t *testing.T) {
+	pd := &ParamDesc{
+		Key:            "foo",
+		AlternativeKey: "bar",
+	}
+	params := Params{pd.ToParam()}
+	require.Equal(t, "foo", params[0].Key)
+	require.Equal(t, "bar", params[0].AlternativeKey)
+	params.Set("foo", "baz")
+	require.Equal(t, "baz", params.Get("bar").AsString())
+	params.Set("bar", "quux")
+	require.Equal(t, "quux", params.Get("foo").AsString())
+}
