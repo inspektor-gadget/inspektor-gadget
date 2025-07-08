@@ -247,10 +247,10 @@ struct fsnotify_group___with_prio_int {
 // Linux >= 6.10
 // https://github.com/torvalds/linux/commit/477cf917dd02853ba78a73cdeb6548889e5f8cd7
 enum fsnotify_group_prio___new {
-	FSNOTIFY_PRIO_NORMAL = 0, /* normal notifiers, no permissions */
-	FSNOTIFY_PRIO_CONTENT, /* fanotify permission events */
-	FSNOTIFY_PRIO_PRE_CONTENT, /* fanotify pre-content events */
-	__FSNOTIFY_PRIO_NUM
+	FSNOTIFY_PRIO_NORMAL___new = 0, /* normal notifiers, no permissions */
+	FSNOTIFY_PRIO_CONTENT___new, /* fanotify permission events */
+	FSNOTIFY_PRIO_PRE_CONTENT___new, /* fanotify pre-content events */
+	__FSNOTIFY_PRIO_NUM___new
 };
 struct fsnotify_group___with_prio_enum {
 	enum fsnotify_group_prio___new priority;
