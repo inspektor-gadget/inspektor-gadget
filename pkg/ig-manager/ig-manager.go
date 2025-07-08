@@ -25,7 +25,6 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
-	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -34,18 +33,6 @@ type IGManager struct {
 	containercollection.ContainerCollection
 
 	tracerCollection *tracercollection.TracerCollection
-
-	// containersMap is the global map at /sys/fs/bpf/gadget/containers
-	// exposing container details for each mount namespace.
-	containersMap *containersmap.ContainersMap
-}
-
-func (l *IGManager) ContainersMap() *ebpf.Map {
-	if l.containersMap == nil {
-		return nil
-	}
-
-	return l.containersMap.ContainersMap()
 }
 
 func (l *IGManager) Dump() string {
@@ -87,13 +74,7 @@ func NewManager(runtimes []*containerutilsTypes.RuntimeConfig, additionalOpts []
 		return nil, err
 	}
 
-	l.containersMap, err = containersmap.NewContainersMap("")
-	if err != nil {
-		return nil, fmt.Errorf("creating containers map: %w", err)
-	}
-
 	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
 		containercollection.WithOCIConfigEnrichment(),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
@@ -122,9 +103,6 @@ func (l *IGManager) Close() {
 	l.ContainerCollection.Close()
 	if l.tracerCollection != nil {
 		l.tracerCollection.Close()
-	}
-	if l.containersMap != nil {
-		l.containersMap.Close()
 	}
 }
 

@@ -50,20 +50,6 @@ func TestBasic(t *testing.T) {
 	igManager.Close()
 }
 
-func TestContainersMap(t *testing.T) {
-	utilstest.RequireRoot(t)
-
-	igManager, err := NewManager(nil, nil)
-	if err != nil {
-		t.Fatalf("Failed to start ig manager: %s", err)
-	}
-	defer igManager.Close()
-
-	if m := igManager.ContainersMap(); m == nil {
-		t.Fatal("container map is nil")
-	}
-}
-
 func TestMountNsMap(t *testing.T) {
 	utilstest.RequireRoot(t)
 
