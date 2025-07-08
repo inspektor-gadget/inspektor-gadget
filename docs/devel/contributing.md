@@ -71,7 +71,6 @@ $ make ebpf-objects
 ...
 go: downloading github.com/giantswarm/crd-docs-generator v0.7.1
 ...
-Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 ```
 
 ### Building `ig`
