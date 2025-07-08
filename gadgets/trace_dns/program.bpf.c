@@ -124,7 +124,12 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-GADGET_TRACER(dns, events, event_t);
+GADGET_GEN_TYPE_BTF(struct event_t);
+
+struct {
+	__type(type, struct event_t);
+	__type(map, events);
+} dns SEC(".tracers");
 
 // Cannot use gadget_reserve_buf() because this does not support
 // bpf_perf_event_output with packet appended

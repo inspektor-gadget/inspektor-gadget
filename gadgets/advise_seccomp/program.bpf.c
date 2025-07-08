@@ -75,8 +75,9 @@ struct {
 	__type(value, struct val_t);
 	__uint(max_entries, 1024);
 } syscalls_per_mntns SEC(".maps");
-
-GADGET_MAPITER(syscalls, syscalls_per_mntns);
+struct {
+	__type(map, syscalls_per_mntns);
+} syscalls SEC(".mapiters");
 
 const struct val_t blank_bitmap = {};
 

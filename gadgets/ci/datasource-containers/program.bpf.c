@@ -15,7 +15,12 @@ struct event {
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(open, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 /* Needed to trigger the localmanager operator. */
 SEC("tracepoint/syscalls/sys_enter_openat")

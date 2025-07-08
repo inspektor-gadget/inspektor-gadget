@@ -42,7 +42,9 @@ struct {
 	__uint(max_entries, MAX_ENTRIES);
 } counts SEC(".maps");
 
-GADGET_MAPITER(samples, counts);
+struct {
+	__type(map, counts);
+} samples SEC(".mapiters");
 
 /*
  * If PAGE_OFFSET macro is not available in vmlinux.h, determine ip whose MSB

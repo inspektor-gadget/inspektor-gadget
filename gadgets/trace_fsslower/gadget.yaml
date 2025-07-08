@@ -4,7 +4,7 @@ homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_fsslower
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_fsslower
 datasources:
-  malloc:
+  fsslower:
     fields:
       delta_us:
         annotations:

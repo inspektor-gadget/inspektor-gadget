@@ -39,7 +39,9 @@ struct {
 	__type(value, struct traffic_t);
 } ip_map SEC(".maps");
 
-GADGET_MAPITER(tcp, ip_map);
+struct {
+	__type(map, ip_map);
+} tcp SEC(".mapiters");
 
 static int probe_ip(bool receiving, struct sock *sk, size_t size)
 {

@@ -30,7 +30,13 @@ struct event {
 };
 
 GADGET_TRACER_MAP(open_events, 1024 * 256);
-GADGET_TRACER(open, open_events, event);
+
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, open_events);
+} open SEC(".tracers");
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct trace_event_raw_sys_enter *ctx)

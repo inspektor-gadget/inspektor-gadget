@@ -72,7 +72,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 This macro will automatically create a ring buffer if the kernel supports it.
 Otherwise, a perf array will be created.
 
-And define a tracer by using the `GADGET_TRACER` macro with the following
+And register a tracer by using the `.tracers` section with the following
 parameters:
 
 - Tracer's Name: `open`
@@ -80,8 +80,14 @@ parameters:
 - Event Structure Name: `event`
 
 ```c
+// Force the compiler to emit BTF information for the event structure
+GADGET_GEN_TYPE_BTF(struct event);
+
 // Define a tracer
-GADGET_TRACER(open, events, event);
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 ```
 
 After that, we need to define a program that is attached to a hook that provides the information we
@@ -142,8 +148,14 @@ struct event {
 // events is the name of the buffer map and 1024 * 256 is its size.
 GADGET_TRACER_MAP(events, 1024 * 256);
 
+// Force the compiler to emit BTF information for the event structure
+GADGET_GEN_TYPE_BTF(struct event);
+
 // Define a tracer
-GADGET_TRACER(open, events, event);
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct syscall_trace_enter *ctx)
@@ -601,8 +613,14 @@ struct event {
 // events is the name of the buffer map and 1024 * 256 is its size.
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-// [Optional] Define a tracer
-GADGET_TRACER(open, events, event);
+// Force the compiler to emit BTF information for the event structure
+GADGET_GEN_TYPE_BTF(struct event);
+
+// Define a tracer
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} open SEC(".tracers");
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct syscall_trace_enter *ctx)

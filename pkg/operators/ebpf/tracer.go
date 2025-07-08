@@ -31,6 +31,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
+const tracersSecName = ".tracers"
+
 type Tracer struct {
 	mapName    string
 	structName string
@@ -68,7 +70,7 @@ func (i *ebpfInstance) fixTracerMap(t btf.Type, varName string) error {
 	return nil
 }
 
-func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
+func (i *ebpfInstance) legacyPopulateTracer(t btf.Type, varName string) error {
 	i.logger.Debugf("populating tracer %q", varName)
 
 	parts := strings.Split(varName, typeSplitter)
@@ -80,34 +82,94 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 	mapName := parts[1]
 	structName := parts[2]
 
-	i.logger.Debugf("> name       : %q", name)
-	i.logger.Debugf("> map name   : %q", mapName)
-	i.logger.Debugf("> struct name: %q", structName)
-
-	tracerMap, ok := i.collectionSpec.Maps[mapName]
-	if !ok {
-		return fmt.Errorf("map %q not found in eBPF object", mapName)
-	}
-
-	if err := validateTracerMap(tracerMap); err != nil {
-		return fmt.Errorf("trace map is invalid: %w", err)
-	}
-
 	var btfStruct *btf.Struct
 	if err := i.collectionSpec.Types.TypeByName(structName, &btfStruct); err != nil {
 		return fmt.Errorf("finding struct %q in eBPF object: %w", structName, err)
 	}
 
-	i.logger.Debugf("adding tracer %q", name)
-	i.tracers[name] = &Tracer{
-		mapName:    mapName,
-		structName: btfStruct.Name,
-		eventSize:  btfStruct.Size,
+	i.logger.Warnf("this gadget uses a legacy way to register tracers, update it")
+
+	return i.doPopulateTracer(name, mapName, btfStruct)
+}
+
+func (i *ebpfInstance) populateTracer(vs *btf.VarSecinfo) error {
+	v, ok := vs.Type.(*btf.Var)
+	if !ok {
+		return fmt.Errorf("section %v: unexpected type %s", tracersSecName, vs.Type)
+	}
+
+	i.logger.Debugf("populating tracer %q", v.Name)
+
+	tracerStruct, ok := btf.UnderlyingType(v.Type).(*btf.Struct)
+	if !ok {
+		return fmt.Errorf("expected struct, got %s", v.Type)
+	}
+
+	name := string(v.Name)
+	var mapName string
+	var btfStruct *btf.Struct
+
+	for _, member := range tracerStruct.Members {
+		switch member.Name {
+		case "map":
+			mapBtfStruct, err := typeFromBTF(member.Type)
+			if err != nil {
+				return fmt.Errorf("getting map type from member %q: %w", member.Name, err)
+			}
+			mapName = i.mapNames[mapBtfStruct]
+		case "type":
+			typ, err := typeFromBTF(member.Type)
+			if err != nil {
+				return fmt.Errorf("getting struct type from member %q: %w", member.Name, err)
+			}
+			btfStruct, ok = typ.(*btf.Struct)
+			if !ok {
+				return fmt.Errorf("expected struct, got %s for member %q", typ, member.Name)
+			}
+		}
+	}
+
+	if mapName == "" {
+		return fmt.Errorf("tracer %q has no map defined", name)
+	}
+	if btfStruct == nil {
+		return fmt.Errorf("tracer %q has no struct defined", name)
+	}
+	if err := i.doPopulateTracer(name, mapName, btfStruct); err != nil {
+		return fmt.Errorf("populating tracer %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (i *ebpfInstance) doPopulateTracer(name, mapName string, btfStruct *btf.Struct) error {
+	if i.tracers[name] != nil {
+		return fmt.Errorf("tracer %q already exists, skipping", name)
 	}
 
 	err := i.populateStructDirect(btfStruct)
 	if err != nil {
 		return fmt.Errorf("populating struct %q for tracer %q: %w", btfStruct.Name, name, err)
+	}
+
+	tracerMap, ok := i.collectionSpec.Maps[mapName]
+	if !ok {
+		return fmt.Errorf("map %q not found in eBPF object", mapName)
+	}
+	if err := validateTracerMap(tracerMap); err != nil {
+		return fmt.Errorf("trace map is invalid: %w", err)
+	}
+
+	structName := btfStruct.Name
+
+	i.logger.Debugf("adding tracer %q", name)
+	i.logger.Debugf("> name       : %q", name)
+	i.logger.Debugf("> map name   : %q", mapName)
+	i.logger.Debugf("> struct name: %q", structName)
+
+	i.tracers[name] = &Tracer{
+		mapName:    mapName,
+		structName: structName,
 	}
 
 	return nil

@@ -40,7 +40,13 @@ const volatile __u64 min_lat_ms = 0;
 GADGET_PARAM(min_lat_ms);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(malloc, events, event);
+
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} fsslower SEC(".tracers");
 
 struct data_key {
 	gadget_tid tid;

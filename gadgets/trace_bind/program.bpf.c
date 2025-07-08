@@ -109,7 +109,12 @@ static __always_inline __u8 get_inet_sock_bind_address_no_port(void *inet_sock)
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 
-GADGET_TRACER(bind, events, event);
+GADGET_GEN_TYPE_BTF(struct event);
+
+struct {
+	__type(type, struct event);
+	__type(map, events);
+} bind SEC(".tracers");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);

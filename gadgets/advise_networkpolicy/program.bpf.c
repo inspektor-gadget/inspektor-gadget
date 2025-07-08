@@ -36,7 +36,7 @@ struct empty_t {
 
 const struct empty_t zero = {};
 
-// When using GADGET_MAPITER, both the key and value has to be structs
+// For map iters, both the key and value have to be structs
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
@@ -44,7 +44,9 @@ struct {
 	__type(value, struct empty_t);
 } packets SEC(".maps");
 
-GADGET_MAPITER(network_connections, packets);
+struct {
+	__type(map, packets);
+} network_connections SEC(".mapiters");
 
 SEC("socket1")
 int ig_trace_net(struct __sk_buff *skb)
