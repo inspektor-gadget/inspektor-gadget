@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/cilium/ebpf"
@@ -196,9 +197,9 @@ func (i *ebpfInstance) runSnapshotters() error {
 
 						return nil
 					})
-					if err != nil {
+					if err != nil && !errors.Is(err, os.ErrNotExist) {
 						return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
-							container.Runtime.RuntimeName, pName, err)
+							container.Runtime.ContainerName, pName, err)
 					}
 				}
 			}
