@@ -442,7 +442,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		gadgetSourcePath = filepath.Join("/work", gadgetRelativePath)
 
 		// use in-tree headers too
-		conf.CFlags += " -I /work/include/"
+		conf.CFlags += " -I /work/include/ -I /work/include/gadget/@ARCH@/ "
 	}
 
 	wasmFullPath := ""
