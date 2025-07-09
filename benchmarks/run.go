@@ -71,10 +71,10 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 	tName := fmt.Sprintf("test-%s", c.Gadget)
 
 	// TODO: make all of this configurable
-	const timeoutParam = "--timeout=15"
-	const sleepTimeout = 15 * time.Second
-	const warmUpTimeout = 5 * time.Second
-	const cpuAndMemoryInitialDelay = 5 * time.Second
+	const timeoutParam = "--timeout=60"
+	const sleepTimeout = 60 * time.Second
+	const warmUpTimeout = 20 * time.Second
+	const cpuAndMemoryInitialDelay = 15 * time.Second
 
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)

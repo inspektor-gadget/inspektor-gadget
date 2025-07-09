@@ -26,7 +26,7 @@ const (
 )
 
 func TestTraceExec(t *testing.T) {
-	rps := []any{ /*16*1024,*/ 32 * 1024}
+	rps := []any{16 * 1024, 32 * 1024}
 
 	c := &bench.GadgetBenchTest{
 		Gadget: "trace_exec",
