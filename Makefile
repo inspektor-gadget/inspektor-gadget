@@ -14,6 +14,7 @@ CONTAINER_IMAGES = \
 
 GADGET_BUILDER ?= $(CONTAINER_REPO_NAMESPACE)/gadget-builder:main
 DNSTESTER_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/dnstester:main
+CI_KERNELS_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/ci-kernels:6.15.5-debug
 
 MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
@@ -413,6 +414,26 @@ testdata:
 go-mod-tidy:
 	find ./ -type f -name go.mod -execdir go mod tidy \;
 
+.PHONY: update-vmlinux
+update-vmlinux:
+	# https://github.com/google/go-containerregistry/tree/main/cmd/crane
+	TMP=$$(mktemp -d btfs-tmp.XXXXXXXXXX) && \
+	pushd $$TMP && \
+	crane pull --format oci $(CI_KERNELS_IMAGE) . && \
+	MANIFEST_PATH=$$(cat index.json |jq -r '.manifests[0].digest'|sed 's|:|/|g') && \
+	cat blobs/$$MANIFEST_PATH \
+		| jq -r '.manifests[] | .platform.os + ";" + .platform.architecture + ";" + .digest' \
+		| while IFS=';' read -r OS ARCH DIGEST; do \
+		mkdir -p $$OS/$$ARCH/rootfs && \
+		ROOTFS_DIGEST=$$(cat blobs/$${DIGEST//:/\/} | jq -r '.layers[1].digest') && \
+		ROOTFS_DIGEST=$${ROOTFS_DIGEST//:/\/} && \
+		tar -C $$OS/$$ARCH/rootfs -xf blobs/$$ROOTFS_DIGEST boot/vmlinux && \
+		bpftool btf dump file $$OS/$$ARCH/rootfs/boot/vmlinux format c \
+		> ../include/gadget/$$ARCH/vmlinux.h ; \
+	done && \
+	popd && \
+	rm -rf $$TMP
+
 .PHONY:
 %-update-latest-tag:
 	$(CRANE) copy $(CONTAINER_REPO_NAMESPACE)/$*:$(IMAGE_TAG) $(CONTAINER_REPO_NAMESPACE)/$*:latest
@@ -465,3 +486,4 @@ help:
 	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'
 	@echo  '  testdata			- Build testdata'
 	@echo  '  website-local-update		- Update the documentation in the website repository for testing locally'
+	@echo  '  update-vmlinux		- Update vmlinux.h'
