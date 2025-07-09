@@ -57,6 +57,8 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 	tName := fmt.Sprintf("test-%s", c.Gadget)
 	const timeoutParam = "--timeout=15"
 	const sleepTimeout = 15 * time.Second
+	const warmUpTimeout = 5 * time.Second
+	const cpuAndMemoryInitialDelay = 5 * time.Second
 
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
@@ -131,7 +133,7 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 		gadgetCmd = utils.Sleep(sleepTimeout)
 	}
 
-	initialDelay := time.Second * 5 // Start capturing CPU and memory after an initial delay to avoid initial spikes
+	initialDelay := cpuAndMemoryInitialDelay // Start capturing CPU and memory after an initial delay to avoid initial spikes
 	if !usetracer {
 		// If not using tracer, we can start capturing immediately
 		initialDelay = 0
@@ -141,7 +143,7 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 
 	steps := []igtesting.TestStep{
 		// warm up
-		utils.Sleep(5 * time.Second),
+		utils.Sleep(warmUpTimeout),
 
 		cpu,
 		mem,
@@ -167,11 +169,6 @@ func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bo
 			result := testGadgetSingle(t, c, comb, usetracer)
 			cpuValues = append(cpuValues, result.cpu)
 			memValues = append(memValues, result.mem)
-
-			// Add a small delay between runs to avoid resource contention
-			if i < NumRuns-1 {
-				time.Sleep(2 * time.Second)
-			}
 		})
 	}
 
