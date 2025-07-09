@@ -220,7 +220,7 @@ bench: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
-	go test -v -exec 'sudo -E' -p 1 ./$*/$(BENCH_DIR)/...
+	go test -v -exec 'sudo -E' -p 1 --timeout 120m ./$*/$(BENCH_DIR)/...
 
 .PHONY:
 %/test-integration: %
