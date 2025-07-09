@@ -15,6 +15,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -49,6 +50,12 @@ const (
 	SkipFieldAnnotation = "json.skip"
 )
 
+type encodeState struct {
+	bytes.Buffer
+	scratch [64]byte
+	err     error
+}
+
 type Formatter struct {
 	ds                datasource.DataSource
 	fns               []func(e *encodeState, data datasource.Data)
@@ -64,6 +71,7 @@ type Formatter struct {
 	opener            []byte
 	openerArray       []byte
 	fieldSep          []byte
+	buf               encodeState
 }
 
 func New(ds datasource.DataSource, options ...Option) (*Formatter, error) {
@@ -393,16 +401,20 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 	return
 }
 
+// Marshal formats the given data into a JSON byte slice.
+// The returned slice is only valid until another call to Marshal or MarshalArray
+// on the same Formatter instance.
 func (f *Formatter) Marshal(data datasource.Data) []byte {
-	e := bufpool.Get().(*encodeState)
-	e.Reset()
-	defer bufpool.Put(e)
+	f.buf.Reset()
 	for _, fn := range f.fns {
-		fn(e, data)
+		fn(&f.buf, data)
 	}
-	return e.Bytes()
+	return f.buf.Bytes()
 }
 
+// MarshalArray formats the given data array into a JSON byte slice.
+// The returned slice is only valid until another call to Marshal or MarshalArray
+// on the same Formatter instance.
 func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
 	// If the array is empty, return an empty one-line array (no matter if
 	// pretty is enabled or not)
@@ -411,9 +423,7 @@ func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
 		return append(openerArray, closerArray...)
 	}
 
-	e := bufpool.Get().(*encodeState)
-	e.Reset()
-	defer bufpool.Put(e)
+	f.buf.Reset()
 
 	oArray := openerArray
 	cArray := closerArray
@@ -424,19 +434,18 @@ func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
 		fieldSepArray = fieldSepPretty
 	}
 
-	e.Write([]byte(oArray))
+	f.buf.Write([]byte(oArray))
 	for i := 0; i < len; i++ {
 		for _, fn := range f.fns {
-			fn(e, a.Get(i))
+			fn(&f.buf, a.Get(i))
 		}
 		// Don't add a separator after the last array element
 		if i < len-1 {
-			e.Write([]byte(fieldSepArray))
+			f.buf.Write([]byte(fieldSepArray))
 		}
 	}
-	e.Write([]byte(cArray))
-
-	return e.Bytes()
+	f.buf.Write([]byte(cArray))
+	return f.buf.Bytes()
 }
 
 type floatEncoder int // number of bits
