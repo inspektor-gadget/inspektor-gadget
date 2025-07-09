@@ -26,9 +26,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
-	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -46,10 +44,6 @@ type GadgetTracerManager struct {
 
 	// tracers
 	tracerCollection *tracercollection.TracerCollection
-
-	// containersMap is the global map at /sys/fs/bpf/gadget/containers
-	// exposing container details for each mount namespace.
-	containersMap *containersmap.ContainersMap
 }
 
 func (g *GadgetTracerManager) AddTracer(tracerID string, containerSelector containercollection.ContainerSelector) error {
@@ -71,14 +65,6 @@ func (g *GadgetTracerManager) TracerMountNsMap(tracerID string) (*ebpf.Map, erro
 	defer g.mu.Unlock()
 
 	return g.tracerCollection.TracerMountNsMap(tracerID)
-}
-
-func (g *GadgetTracerManager) ContainersMap() *ebpf.Map {
-	if g.containersMap == nil {
-		return nil
-	}
-
-	return g.containersMap.ContainersMap()
 }
 
 func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
@@ -182,12 +168,6 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 			return nil, err
 		}
 
-		var err error
-		if g.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath); err != nil {
-			return nil, fmt.Errorf("creating containers map: %w", err)
-		}
-
-		opts = append(opts, containercollection.WithPubSub(g.containersMap.ContainersMapUpdater()))
 		opts = append(opts, containercollection.WithOCIConfigEnrichment())
 		opts = append(opts, containercollection.WithCgroupEnrichment())
 		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
@@ -266,9 +246,6 @@ type Conf struct {
 // Close releases any resource that could be in use by the tracer manager, like
 // ebpf maps.
 func (g *GadgetTracerManager) Close() {
-	if g.containersMap != nil {
-		g.containersMap.Close()
-	}
 	if g.tracerCollection != nil {
 		g.tracerCollection.Close()
 	}
