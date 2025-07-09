@@ -19,6 +19,7 @@ package ig
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -73,6 +74,19 @@ func WithStartAndStop() Option {
 func WithValidateOutput(validateOutput func(t *testing.T, output string)) Option {
 	return func(ig *runner) {
 		ig.ValidateOutput = validateOutput
+	}
+}
+
+// WithValidateStderrOutput used to compare the actual output with expected output.
+func WithValidateStderrOutput(validateOutput func(t *testing.T, output string)) Option {
+	return func(ig *runner) {
+		ig.ValidateStdErrOutput = validateOutput
+	}
+}
+
+func WithStdWriter(writer io.Writer) Option {
+	return func(ig *runner) {
+		ig.StdWriter = writer
 	}
 }
 

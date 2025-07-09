@@ -34,6 +34,12 @@ type Command struct {
 	// case of error.
 	ValidateOutput func(t *testing.T, output string)
 
+	// ValidateStdErrOutput is a function used to verify the output. It must make the test fail in
+	// case of error.
+	ValidateStdErrOutput func(t *testing.T, output string)
+
+	StdWriter io.Writer
+
 	// StartAndStop indicates this command should first be started then stopped.
 	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
 	StartAndStop bool
@@ -67,9 +73,9 @@ func (c *Command) initExecCmd() {
 	c.Cmd.Stdout = &c.stdout
 	c.Cmd.Stderr = &c.stderr
 
-	// TODO: this should be configurable!
-	c.Cmd.Stdout = io.Discard
-	c.Cmd.Stderr = io.Discard
+	if c.StdWriter != nil {
+		c.Cmd.Stdout = c.StdWriter
+	}
 
 	// To be able to kill the process of /bin/sh and its child (the process of
 	// c.Cmd), we need to send the termination signal to their process group ID
@@ -90,6 +96,14 @@ func (c *Command) verifyOutput(t *testing.T) {
 	}
 }
 
+// verifyStderrOutput verifies the output of the command by using the
+// ValidateStdErrOutput callback function provided by the user.
+func (c *Command) verifyStderrOutput(t *testing.T) {
+	if c.ValidateStdErrOutput != nil {
+		c.ValidateStdErrOutput(t, c.stderr.String())
+	}
+}
+
 // Run runs the Command on the given as parameter test.
 func (c *Command) Run(t *testing.T) {
 	c.initExecCmd()
@@ -100,6 +114,7 @@ func (c *Command) Run(t *testing.T) {
 		c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
+	c.verifyStderrOutput(t)
 	c.verifyOutput(t)
 }
 

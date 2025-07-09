@@ -20,8 +20,22 @@ import (
 )
 
 const (
-	NumRuns = 5 // Number of times to run each test configuration
+	DefaultNRuns = 5
 )
+
+type linesCounter struct {
+	lines uint64
+}
+
+func (c *linesCounter) Write(p []byte) (n int, err error) {
+	// Count the number of lines in the input
+	for _, b := range p {
+		if b == '\n' {
+			c.lines++
+		}
+	}
+	return len(p), nil
+}
 
 type stat struct {
 	cpu float64
@@ -55,6 +69,8 @@ type GadgetBenchTest struct {
 
 func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool) stat {
 	tName := fmt.Sprintf("test-%s", c.Gadget)
+
+	// TODO: make all of this configurable
 	const timeoutParam = "--timeout=15"
 	const sleepTimeout = 15 * time.Second
 	const warmUpTimeout = 5 * time.Second
@@ -127,7 +143,16 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 	runnerOpts = append(runnerOpts, igrunner.WithFlags(c.GadgetParams...))
 
 	var gadgetCmd igtesting.TestStep
+	var lWriter *linesCounter
 	if usetracer {
+		// Check the gadget didn't drop any sample.
+		runnerOpts = append(runnerOpts, igrunner.WithValidateStderrOutput(func(t *testing.T, output string) {
+			require.NotContains(t, output, "lost", "Gadget output should not contain 'dropped' messages")
+		}))
+
+		// check that the gadget captured data
+		lWriter = &linesCounter{}
+		runnerOpts = append(runnerOpts, igrunner.WithStdWriter(lWriter))
 		gadgetCmd = igrunner.New(c.Gadget, runnerOpts...)
 	} else {
 		gadgetCmd = utils.Sleep(sleepTimeout)
@@ -153,19 +178,24 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 
+	// TODO: how to associate to the number of generated events?
+	if lWriter != nil {
+		require.Greater(t, lWriter.lines, uint64(0), "Gadget %s should have captured some data", c.Gadget)
+	}
+
 	return stat{
 		cpu: cpu.Avg(),
 		mem: mem.Avg(),
 	}
 }
 
-func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bool) statResult {
-	cpuValues := make([]float64, 0, NumRuns)
-	memValues := make([]float64, 0, NumRuns)
+func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bool, nRuns int) statResult {
+	cpuValues := make([]float64, 0, nRuns)
+	memValues := make([]float64, 0, nRuns)
 
-	for i := 0; i < NumRuns; i++ {
+	for i := 0; i < nRuns; i++ {
 		t.Run(fmt.Sprintf("comb=%v_usetracer=%t_run=%d", comb, usetracer, i+1), func(t *testing.T) {
-			t.Logf("Running test %d/%d for comb=%d, usetracer=%t", i+1, NumRuns, comb, usetracer)
+			t.Logf("Running test %d/%d for comb=%d, usetracer=%t", i+1, nRuns, comb, usetracer)
 			result := testGadgetSingle(t, c, comb, usetracer)
 			cpuValues = append(cpuValues, result.cpu)
 			memValues = append(memValues, result.mem)
@@ -185,8 +215,15 @@ func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bo
 	}
 }
 
-func RunGadgetTest(t *testing.T, c *GadgetBenchTest) {
+func RunGadgetBenchmark(t *testing.T, c *GadgetBenchTest) {
 	t.Helper()
+
+	nRums := DefaultNRuns
+	if os.Getenv("IG_N_RUNS") != "" {
+		var err error
+		nRums, err = strconv.Atoi(os.Getenv("IG_N_RUNS"))
+		require.NoError(t, err, "failed to parse IG_N_RUNS environment variable")
+	}
 
 	file, err := os.Create(fmt.Sprintf("test_results_%s.csv", c.Gadget))
 	require.NoError(t, err)
@@ -203,9 +240,9 @@ func RunGadgetTest(t *testing.T, c *GadgetBenchTest) {
 				tName = "ig"
 			}
 
-			t.Logf("Starting test series for %s at %d RPS (%d runs)", tName, comb, NumRuns)
+			t.Logf("Starting test series for %s at %d RPS (%d runs)", tName, comb, nRums)
 
-			result := testGadgetMultiple(t, c, comb, useTracer)
+			result := testGadgetMultiple(t, c, comb, useTracer, nRums)
 
 			writer.Write([]string{
 				tName,
@@ -215,7 +252,7 @@ func RunGadgetTest(t *testing.T, c *GadgetBenchTest) {
 				strconv.FormatFloat(result.memMean, 'f', 2, 64),
 				strconv.FormatFloat(result.cpuCI, 'f', 2, 64),
 				strconv.FormatFloat(result.memCI, 'f', 2, 64),
-				strconv.Itoa(NumRuns),
+				strconv.Itoa(nRums),
 			})
 
 			// Flush after each test to ensure data is written

@@ -42,5 +42,5 @@ func TestTraceDNS(t *testing.T) {
 		},
 	}
 
-	bench.RunGadgetTest(t, c)
+	bench.RunGadgetBenchmark(t, c)
 }

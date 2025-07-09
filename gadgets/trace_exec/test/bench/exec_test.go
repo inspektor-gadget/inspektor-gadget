@@ -38,5 +38,5 @@ func TestTraceExec(t *testing.T) {
 		},
 	}
 
-	bench.RunGadgetTest(t, c)
+	bench.RunGadgetBenchmark(t, c)
 }
