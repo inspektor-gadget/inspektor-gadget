@@ -2358,8 +2358,7 @@ jobs:
       shell: bash
       run: |
         go mod vendor
-        tar --create --auto-compress --file inspektor-gadget-vendor.tar.gz vendor
-        rm -rf vendor
+        tar --create --remove-files --auto-compress --file inspektor-gadget-vendor.tar.gz --transform="s:^:inspektor-gadget-${GITHUB_REF_NAME#v}/:" vendor
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       env:
