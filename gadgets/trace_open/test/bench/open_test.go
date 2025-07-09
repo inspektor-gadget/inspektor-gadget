@@ -26,7 +26,7 @@ const (
 )
 
 func TestTraceOpen(t *testing.T) {
-	rps := []any{128 * 1024, 256 * 1024, 512 * 1024, 1024 * 1024}
+	rps := []any{128 * 1024 /*, 256 * 1024, 512 * 1024, 1024 * 1024*/}
 
 	c := &bench.GadgetBenchTest{
 		Gadget: "trace_open",

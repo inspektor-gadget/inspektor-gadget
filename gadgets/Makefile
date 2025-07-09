@@ -19,6 +19,7 @@ DOCKER ?= docker
 
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
+BENCH_DIR = test/bench
 
 GADGETS ?= \
 	advise_networkpolicy \
@@ -198,6 +199,28 @@ test-unit: build
 		sudo -E $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
 		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
+
+.PHONY:
+bench: build
+	mkdir test_results ; \
+	IG_OUTPUT_FOLDER=$(realpath ./test_results) \
+	IG_PATH=$(IG_PATH) \
+	CGO_ENABLED=0 \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	GADGET_TAG=$(GADGET_TAG) \
+	IG_FLAGS=$(IG_FLAGS) \
+	go test -v -exec 'sudo -E' ./.../$(BENCH_DIR)/...
+
+.PHONY:
+%/bench: %
+	mkdir test_results; \
+	IG_OUTPUT_FOLDER=./test_results \
+	IG_PATH=$(IG_PATH) \
+	CGO_ENABLED=0 \
+	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
+	GADGET_TAG=$(GADGET_TAG) \
+	IG_FLAGS=$(IG_FLAGS) \
+	go test -v -exec 'sudo -E' ./$*/$(BENCH_DIR)/...
 
 .PHONY:
 %/test-integration: %

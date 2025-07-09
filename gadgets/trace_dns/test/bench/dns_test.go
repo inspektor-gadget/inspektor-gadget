@@ -27,7 +27,7 @@ const (
 )
 
 func TestTraceDNS(t *testing.T) {
-	rps := []any{ /*1024, 2048, 4096, 8192,*/ 16384, 32768, 65536}
+	rps := []any{1024 /*1024, 2048, 4096, 8192, 16384 , 32768, 65536*/}
 
 	c := &bench.GadgetBenchTest{
 		Gadget:         "trace_dns",

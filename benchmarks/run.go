@@ -225,7 +225,12 @@ func RunGadgetBenchmark(t *testing.T, c *GadgetBenchTest) {
 		require.NoError(t, err, "failed to parse IG_N_RUNS environment variable")
 	}
 
-	file, err := os.Create(fmt.Sprintf("test_results_%s.csv", c.Gadget))
+	filePath := fmt.Sprintf("test_results_%s.csv", c.Gadget)
+	if os.Getenv("IG_OUTPUT_FOLDER") != "" {
+		filePath = fmt.Sprintf("%s/%s", os.Getenv("IG_OUTPUT_FOLDER"), filePath)
+	}
+
+	file, err := os.Create(filePath)
 	require.NoError(t, err)
 	defer file.Close()
 
