@@ -11,13 +11,15 @@ import (
 )
 
 type memory struct {
-	usage []*MemoryUsage
-	done  chan struct{}
+	usage        []*MemoryUsage
+	done         chan struct{}
+	initialDelay time.Duration
 }
 
-func Memory() *memory {
+func Memory(initialDelay time.Duration) *memory {
 	return &memory{
-		done: make(chan struct{}),
+		done:         make(chan struct{}),
+		initialDelay: initialDelay,
 	}
 }
 
@@ -27,6 +29,10 @@ func (m *memory) Run(t *testing.T) {
 
 func (m *memory) Start(t *testing.T) {
 	go func() {
+		if m.initialDelay > 0 {
+			time.Sleep(m.initialDelay)
+		}
+
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 

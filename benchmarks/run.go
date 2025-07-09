@@ -55,8 +55,8 @@ type GadgetBenchTest struct {
 
 func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool) stat {
 	tName := fmt.Sprintf("test-%s", c.Gadget)
-	const timeoutParam = "--timeout=10"
-	const sleepTimeout = 10 * time.Second
+	const timeoutParam = "--timeout=15"
+	const sleepTimeout = 15 * time.Second
 
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
@@ -131,15 +131,18 @@ func testGadgetSingle(t *testing.T, c *GadgetBenchTest, conf any, usetracer bool
 		gadgetCmd = utils.Sleep(sleepTimeout)
 	}
 
-	cpu := utils.Cpu()
-	mem := utils.Memory()
+	initialDelay := time.Second * 5 // Start capturing CPU and memory after an initial delay to avoid initial spikes
+	if !usetracer {
+		// If not using tracer, we can start capturing immediately
+		initialDelay = 0
+	}
+	cpu := utils.Cpu(initialDelay)
+	mem := utils.Memory(initialDelay)
 
 	steps := []igtesting.TestStep{
 		// warm up
 		utils.Sleep(5 * time.Second),
 
-		// start capturing cpu and memory
-		// TODO: is it right to start captuing here?
 		cpu,
 		mem,
 

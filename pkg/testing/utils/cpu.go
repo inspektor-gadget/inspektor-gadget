@@ -11,14 +11,16 @@ import (
 )
 
 type cpu struct {
-	usage     []*CPUUsage
-	prevStats *CPUStats
-	done      chan struct{}
+	usage        []*CPUUsage
+	prevStats    *CPUStats
+	done         chan struct{}
+	initialDelay time.Duration
 }
 
-func Cpu( /*duraration time.Duration*/ ) *cpu {
+func Cpu(initialDelay time.Duration) *cpu {
 	return &cpu{
-		done: make(chan struct{}),
+		done:         make(chan struct{}),
+		initialDelay: initialDelay,
 	}
 }
 
@@ -27,14 +29,19 @@ func (c *cpu) Run(t *testing.T) {
 }
 
 func (c *cpu) Start(t *testing.T) {
-	// Get initial CPU stats
-	var err error
-	c.prevStats, err = readCPUStats()
-	if err != nil {
-		t.Fatalf("failed to read initial CPU stats: %v", err)
-	}
-
 	go func() {
+		if c.initialDelay > 0 {
+			time.Sleep(c.initialDelay)
+		}
+
+		// Get initial CPU stats
+		var err error
+		c.prevStats, err = readCPUStats()
+		if err != nil {
+			t.Errorf("failed to read initial CPU stats: %v", err)
+			return
+		}
+
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
