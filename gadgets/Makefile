@@ -209,12 +209,12 @@ bench: build
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
-	go test -v -exec 'sudo -E' -p 1 ./.../$(BENCH_DIR)/...
+	go test -v -exec 'sudo -E' -p 1 --timeout 120m ./.../$(BENCH_DIR)/...
 
 .PHONY:
 %/bench: %
 	mkdir test_results; \
-	IG_OUTPUT_FOLDER=./test_results \
+	IG_OUTPUT_FOLDER=$(realpath ./test_results) \
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
