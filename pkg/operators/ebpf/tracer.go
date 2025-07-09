@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,13 +35,16 @@ type Tracer struct {
 	mapName    string
 	structName string
 
-	ds       datasource.DataSource
-	accessor datasource.FieldAccessor
+	ds              datasource.DataSource
+	accessor        datasource.FieldAccessor
+	restAccessor    datasource.FieldAccessor
+	restLenAccessor datasource.FieldAccessor
 
 	mapType       ebpf.MapType
 	eventSize     uint32 // needed to trim trailing bytes when reading for perf event array
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
+	slowBuf       []byte
 }
 
 func validateTracerMap(traceMap *ebpf.MapSpec) error {
@@ -115,114 +118,99 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 
 func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitGroup) error {
 	defer wg.Done()
+
+	var readCb func() (data []byte, lost uint64, err error)
+
 	switch t.mapType {
 	case ebpf.RingBuf:
-		return t.receiveEventsFromRingReader(gadgetCtx)
+		readCb = func() ([]byte, uint64, error) {
+			rec, err := t.ringbufReader.Read()
+			return rec.RawSample, 0, err
+		}
 	case ebpf.PerfEventArray:
-		return t.receiveEventsFromPerfReader(gadgetCtx)
+		readCb = func() ([]byte, uint64, error) {
+			rec, err := t.perfReader.Read()
+			return rec.RawSample, rec.LostSamples, err
+		}
 	default:
 		return fmt.Errorf("invalid map type")
 	}
-}
 
-func (t *Tracer) receiveEventsFromRingReader(gadgetCtx operators.GadgetContext) error {
-	slowBuf := make([]byte, t.eventSize)
-	lastSlowLen := 0
+	t.slowBuf = make([]byte, t.eventSize)
 	for {
-		rec, err := t.ringbufReader.Read()
+		sample, lost, err := readCb()
 		if err != nil {
-			if errors.Is(err, ringbuf.ErrClosed) {
+			if errors.Is(err, os.ErrClosed) {
 				return err
 			}
-			gadgetCtx.Logger().Warnf("error reading ringbuf event: %v", err)
+			gadgetCtx.Logger().Warnf("error reading event: %v", err)
 			continue
 		}
-		pSingle, err := t.ds.NewPacketSingle()
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error creating new packet: %v", err)
-			continue
-		}
-		sample := rec.RawSample
-		if uint32(len(rec.RawSample)) < t.eventSize {
-			// event is truncated; we need to copy
-			copy(slowBuf, rec.RawSample)
 
-			// zero difference; TODO: improve
-			if len(rec.RawSample) < lastSlowLen {
-				for i := len(rec.RawSample); i < lastSlowLen; i++ {
-					slowBuf[i] = 0
-				}
-			}
-			lastSlowLen = len(rec.RawSample)
-			sample = slowBuf
-		}
-		err = t.accessor.Set(pSingle, sample)
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
-			t.ds.Release(pSingle)
+		if lost > 0 {
+			gadgetCtx.Logger().Warnf("reading event: lost %d samples", lost)
+			t.ds.ReportLostData(lost)
 			continue
 		}
-		err = t.ds.EmitAndRelease(pSingle)
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
+
+		if err := t.processEvent(gadgetCtx, sample); err != nil {
+			gadgetCtx.Logger().Warnf("error processing event: %v", err)
+			continue
 		}
 	}
 }
 
-func (t *Tracer) receiveEventsFromPerfReader(gadgetCtx operators.GadgetContext) error {
-	slowBuf := make([]byte, t.eventSize)
-	lastSlowLen := 0
-	for {
-		rec, err := t.perfReader.Read()
-		if err != nil {
-			if errors.Is(err, perf.ErrClosed) {
-				return nil
-			}
-			gadgetCtx.Logger().Warnf("error reading perf event: %v", err)
-			continue
-		}
-		if rec.LostSamples > 0 {
-			gadgetCtx.Logger().Warnf("reading perf ring buffer: lost %d samples", rec.LostSamples)
-			t.ds.ReportLostData(rec.LostSamples)
-			// if we lose samples, we don't get the raw sample,
-			// so we shouldn't emit anything
-			continue
-		}
-
-		pSingle, err := t.ds.NewPacketSingle()
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error creating new packet: %v", err)
-			continue
-		}
-		sample := rec.RawSample
-		sampleLen := len(rec.RawSample)
-		if uint32(sampleLen) < t.eventSize {
-			// event is truncated; we need to copy
-			copy(slowBuf, rec.RawSample)
-
-			// zero difference; TODO: improve
-			if sampleLen < lastSlowLen {
-				for i := sampleLen; i < lastSlowLen; i++ {
-					slowBuf[i] = 0
-				}
-			}
-			lastSlowLen = sampleLen
-			sample = slowBuf
-		} else if uint32(sampleLen) > t.eventSize {
-			// event has trailing garbage, remove it
-			sample = sample[:t.eventSize]
-		}
-		err = t.accessor.Set(pSingle, sample)
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error setting buffer: %v", err)
-			t.ds.Release(pSingle)
-			continue
-		}
-		err = t.ds.EmitAndRelease(pSingle)
-		if err != nil {
-			gadgetCtx.Logger().Warnf("error emitting data: %v", err)
-		}
+func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []byte) error {
+	pSingle, err := t.ds.NewPacketSingle()
+	if err != nil {
+		return fmt.Errorf("creating new packet: %w", err)
 	}
+
+	sample := fullSample
+	sampleLen := uint32(len(fullSample))
+	if sampleLen < t.eventSize {
+		// event is truncated; we need to copy
+		copy(t.slowBuf, fullSample)
+
+		// zero difference; TODO: improve
+		for i := len(fullSample); i < int(t.eventSize); i++ {
+			t.slowBuf[i] = 0
+		}
+		sample = t.slowBuf
+	} else if sampleLen > t.eventSize {
+		// event has trailing garbage, remove it
+		sample = sample[:t.eventSize]
+	}
+
+	if err := t.accessor.Set(pSingle, sample); err != nil {
+		t.ds.Release(pSingle)
+		return fmt.Errorf("setting buffer: %w", err)
+	}
+
+	if t.restAccessor != nil && sampleLen > t.eventSize {
+		xlen := sampleLen - t.eventSize
+
+		if t.restLenAccessor != nil {
+			// Read length
+			xlen, err = t.restLenAccessor.Uint32(pSingle)
+			if err != nil {
+				return fmt.Errorf("getting rest length: %w", err)
+			}
+
+			if t.eventSize+xlen > sampleLen {
+				return fmt.Errorf("rest length %d is larger than data length %d - event size %d",
+					xlen, sampleLen, t.eventSize)
+			}
+		}
+
+		t.restAccessor.Set(pSingle, fullSample[t.eventSize:t.eventSize+xlen])
+	}
+
+	if err := t.ds.EmitAndRelease(pSingle); err != nil {
+		return fmt.Errorf("emitting data: %w", err)
+	}
+
+	return nil
 }
 
 func (t *Tracer) close() {
