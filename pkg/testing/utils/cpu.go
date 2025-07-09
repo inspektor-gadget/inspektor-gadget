@@ -73,25 +73,6 @@ func (c *cpu) Running() bool {
 	return false
 }
 
-func (c *cpu) String() string {
-	if len(c.usage) == 0 {
-		return "No CPU usage data collected"
-	}
-
-	sum := 0.0
-
-	var sb strings.Builder
-	for _, usage := range c.usage {
-		// sb.WriteString(fmt.Sprintf("CPU Usage: %.2f%% at %s\n", usage.Percentage, usage.Timestamp.Format(time.RFC3339)))
-		sum += usage.Percentage
-	}
-	average := sum / float64(len(c.usage))
-
-	sb.WriteString(fmt.Sprintf("Average CPU Usage: %.2f%%\n", average))
-
-	return sb.String()
-}
-
 func (c *cpu) Avg() float64 {
 	if len(c.usage) == 0 {
 		return 0.0
@@ -188,7 +169,7 @@ func calculateCPUUsage(prev, curr *CPUStats) float64 {
 func (c *cpu) getCpuUsage() (*CPUUsage, error) {
 	currStats, err := readCPUStats()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CPU stats %w", err)
+		return nil, fmt.Errorf("read CPU stats %w", err)
 	}
 
 	usage := calculateCPUUsage(c.prevStats, currStats)

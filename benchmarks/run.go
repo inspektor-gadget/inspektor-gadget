@@ -188,12 +188,10 @@ func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bo
 func RunGadgetTest(t *testing.T, c *GadgetBenchTest) {
 	t.Helper()
 
-	// Create CSV file
-	file, err := os.Create("test_results.csv")
+	file, err := os.Create(fmt.Sprintf("test_results_%s.csv", c.Gadget))
 	require.NoError(t, err)
 	defer file.Close()
 
-	// Write CSV header
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 	writer.Write([]string{"Name", "rps", "%cpu", "mem(MB)", "cpu_ci", "mem_ci", "runs"})
