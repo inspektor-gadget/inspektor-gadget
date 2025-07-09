@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
-
-	processhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/process-helpers"
 )
 
 type memory struct {
@@ -75,23 +77,108 @@ func (m *memory) Avg() float64 {
 	return totalSum / float64(len(m.usage))
 }
 
+// MemoryStats represents memory statistics at a point in time
+type MemoryStats struct {
+	MemTotal     uint64 // Total usable RAM (in kB)
+	MemFree      uint64 // Amount of free RAM (in kB)
+	MemAvailable uint64 // Available memory for new processes (in kB)
+	Buffers      uint64 // Temporary storage for raw disk blocks (in kB)
+	Cached       uint64 // In-memory cache for files read from disk (in kB)
+	SReclaimable uint64 // Reclaimable slab memory (in kB)
+}
+
 // MemoryUsage represents memory usage percentage and absolute values
 type MemoryUsage struct {
-	// TODO
 	Percentage float64
 	UsedMB     float64
-	// TODO
-	TotalMB   float64
-	Timestamp time.Time
+	TotalMB    float64
+	Timestamp  time.Time
+}
+
+// readMemoryStats reads memory statistics from /proc/meminfo
+func readMemoryStats() (*MemoryStats, error) {
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	stats := &MemoryStats{}
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		key := strings.TrimSuffix(fields[0], ":")
+		value, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			continue
+		}
+
+		switch key {
+		case "MemTotal":
+			stats.MemTotal = value
+		case "MemFree":
+			stats.MemFree = value
+		case "MemAvailable":
+			stats.MemAvailable = value
+		case "Buffers":
+			stats.Buffers = value
+		case "Cached":
+			stats.Cached = value
+		case "SReclaimable":
+			stats.SReclaimable = value
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if stats.MemTotal == 0 {
+		return nil, fmt.Errorf("failed to read MemTotal from /proc/meminfo")
+	}
+
+	return stats, nil
+}
+
+// calculateMemoryUsage calculates memory usage percentage and absolute values
+func calculateMemoryUsage(stats *MemoryStats) *MemoryUsage {
+	totalMB := float64(stats.MemTotal) / 1024.0
+
+	// Calculate used memory more accurately
+	// Available memory is a better indicator than just Free memory
+	// as it accounts for reclaimable memory (buffers, cached, etc.)
+	availableKB := stats.MemAvailable
+	if availableKB == 0 {
+		// Fallback calculation if MemAvailable is not available
+		availableKB = stats.MemFree + stats.Buffers + stats.Cached + stats.SReclaimable
+	}
+
+	usedKB := stats.MemTotal - availableKB
+	usedMB := float64(usedKB) / 1024.0
+
+	percentage := (float64(usedKB) / float64(stats.MemTotal)) * 100.0
+
+	return &MemoryUsage{
+		Percentage: percentage,
+		UsedMB:     usedMB,
+		TotalMB:    totalMB,
+		Timestamp:  time.Now(),
+	}
 }
 
 func (m *memory) getMemoryUsage() (*MemoryUsage, error) {
-	total, err := processhelpers.GetTotalMemory()
+	stats, err := readMemoryStats()
 	if err != nil {
-		return nil, fmt.Errorf("get total memory: %w", err)
+		return nil, fmt.Errorf("failed to read memory stats: %w", err)
 	}
-	return &MemoryUsage{
-		UsedMB:    float64(total) / 1024.0,
-		Timestamp: time.Now(),
-	}, nil
+
+	usage := calculateMemoryUsage(stats)
+
+	return usage, nil
 }

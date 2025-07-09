@@ -206,6 +206,7 @@ func testGadgetMultiple(t *testing.T, c *GadgetBenchTest, comb any, usetracer bo
 	fmt.Printf("CPU Mean: %.2f, CPU CI: %.2f\n", cpuMean, cpuCI)
 
 	memMean, memCI := CalculateStats(memValues)
+	fmt.Printf("Memory Mean: %.2f, Memory CI: %.2f\n", memMean, memCI)
 
 	return statResult{
 		cpuMean: cpuMean,
