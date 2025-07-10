@@ -317,7 +317,7 @@ impl Tracelooper {
                 };
 
                 let parameters_number = syscall_declaration.params.len();
-                api::debugf!("\tevent parametersNumber: {}", parameters_number);
+                // api::debugf!("\tevent parametersNumber: {}", parameters_number);
 
                 let mut event = Event {
                     ts: timestamp_from_event(enter_event),
@@ -332,7 +332,7 @@ impl Tracelooper {
 
                 for i in 0..parameters_number {
                     let param_name = &syscall_declaration.params[i].name;
-                    api::debugf!("\t\tevent paramName: {}", param_name);
+                    // api::debugf!("\t\tevent paramName: {}", param_name);
 
                     let is_pointer = syscall_declaration.params[i].is_pointer;
                     let param_value = if is_pointer {
@@ -340,7 +340,7 @@ impl Tracelooper {
                     } else {
                         enter_event.args[i].to_string()
                     };
-                    api::debugf!("\t\tevent paramValue: {}", param_value);
+                    // api::debugf!("\t\tevent paramValue: {}", param_value);
 
                     let mut syscall_param = SyscallParam {
                         name: param_name.to_string(),
@@ -374,14 +374,14 @@ impl Tracelooper {
 
                     event.retval = "X".to_string();
 
-                    api::debugf!("{:?}", event);
+                    // api::debugf!("{:?}", event);
                     events.push(event);
 
                     continue;
                 }
 
                 let Some(exit_ts_events) = syscall_exit_events_map.get(enter_ts) else {
-                    api::debugf!("no exit event for timestamp {}", enter_ts);
+                    // api::debugf!("no exit event for timestamp {}", enter_ts);
 
                     continue;
                 };
@@ -396,7 +396,7 @@ impl Tracelooper {
                     to_delete.insert(*enter_ts);
                     syscall_exit_events_map.remove(enter_ts);
 
-                    api::debugf!("{:?}", event);
+                    // api::debugf!("{:?}", event);
                     events.push(event);
 
                     break;
@@ -406,7 +406,7 @@ impl Tracelooper {
 
         syscall_enter_events_map.retain(|k, _| !to_delete.contains(k));
 
-        api::debugf!("len(events): {}; len(syscallEnterEventsMap): {}; len(syscallExitEventsMap): {}; len(syscallContinuedEventsMap): {}\n", events.len(), syscall_enter_events_map.len(), syscall_exit_events_map.len(), syscall_continued_events_map.len());
+        // api::debugf!("len(events): {}; len(syscallEnterEventsMap): {}; len(syscallExitEventsMap): {}; len(syscallContinuedEventsMap): {}\n", events.len(), syscall_enter_events_map.len(), syscall_exit_events_map.len(), syscall_continued_events_map.len());
 
         // It is possible there are some incomplete events for several reasons:
         // 1. Traceloop was started in the middle of a syscall, then we will only get
@@ -567,11 +567,11 @@ fn gather_incomplete_events(
                 }
             };
 
-            api::debugf!(
-                "incomplete_event({}): {:?}\n",
-                &incomplete_event.syscall,
-                &incomplete_event
-            );
+            // api::debugf!(
+            //     "incomplete_event({}): {:?}\n",
+            //     &incomplete_event.syscall,
+            //     &incomplete_event
+            // );
 
             events.push(incomplete_event);
         }
@@ -894,13 +894,13 @@ fn gadgetStart() -> i32 {
             let mut tracelooper = TRACELOOPER.lock().unwrap();
             match event_type.as_str() {
                 "CREATED" => {
-                    api::debugf!("attaching {}", name);
+                    // api::debugf!("attaching {}", name);
                     if let Err(err) = tracelooper.attach(mount_ns_id) {
                         api::errorf!("attaching container {}: {}", name, err);
                     }
                 }
                 "DELETED" => {
-                    api::debugf!("attaching {}", name);
+                    // api::debugf!("attaching {}", name);
                     if let Err(err) = tracelooper.detach(mount_ns_id) {
                         api::errorf!("detaching container {}: {}", name, err);
                     }
