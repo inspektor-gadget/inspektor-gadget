@@ -7,9 +7,9 @@ require (
 	github.com/cilium/ebpf v0.19.1-0.20250729164112-d994daa25101
 	github.com/containerd/containerd v1.7.28
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.9.0
-	github.com/containers/common v0.64.0
-	github.com/containers/image/v5 v5.36.1
+	github.com/containerd/nri v0.8.0
+	github.com/containers/common v0.63.1
+	github.com/containers/image/v5 v5.35.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -39,7 +39,7 @@ require (
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tetratelabs/wazero v1.9.0
+	github.com/tetratelabs/wazero v1.5.0
 	github.com/tklauser/numcpus v0.10.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
@@ -202,7 +202,11 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
 
+require github.com/stealthrocket/wzprof v0.2.0
+
 require (
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
+	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/prometheus/otlptranslator v0.0.0-20250717125610-8549f4ab4f8f // indirect
 )
