@@ -1158,13 +1158,11 @@ jobs:
       id: go
     - name: Show repository setup
       env:
-        EVENT_NAME: ${{ github.event_name }}
         EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
-        REPOSITORY: ${{ github.repository }}
       run: |
-        echo "github.event_name: $EVENT_NAME"
+        echo "github.event_name: $GITHUB_EVENT_NAME"
         echo "github.event.pull_request.head.repo.full_name: $EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME"
-        echo "github.repository: $REPOSITORY"
+        echo "github.repository: $GITHUB_REPOSITORY"
     - name: Run benchmarks
       run: go test -exec sudo -bench=. -run=Benchmark ./... | tee output.txt
     #- name: Download previous benchmark data
@@ -2308,11 +2306,10 @@ jobs:
     - name: Build release YAML
       env:
         IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        REF_NAME: ${{ github.ref_name }}
       run: |
         export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
-        cp pkg/resources/manifests/deploy.yaml "inspektor-gadget-${REF_NAME}.yaml"
-        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${REF_NAME}.yaml"
+        cp pkg/resources/manifests/deploy.yaml "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
+        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
     - name: Create Draft Release
       id: create_release
       uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
@@ -2329,8 +2326,6 @@ jobs:
         cache: true
       id: go
     - name: Build ig distributions packages
-      env:
-        REF_NAME: ${{ github.ref_name }}
       run: |
         go install github.com/goreleaser/nfpm/v2/cmd/nfpm@d33a9233bb7acf04621b78114114476196d7977 # v2.38.0
 
@@ -2344,7 +2339,7 @@ jobs:
 
           # Fill the template file with corresponding information.
           export arch=$(echo "$ig_archive" | cut -d'-' -f3)
-          perl -pi -e 's/IG_ARCH/$ENV{arch}/; s/IG_VERSION/$ENV{REF_NAME}/; s/IG_PATH/$ENV{path}/' nfpm.yaml
+          perl -pi -e 's/IG_ARCH/$ENV{arch}/; s/IG_VERSION/$ENV{GITHUB_REF_NAME}/; s/IG_PATH/$ENV{path}/' nfpm.yaml
 
           # Build the packages
           for distro in apk deb rpm archlinux; do
@@ -2361,18 +2356,14 @@ jobs:
         tar --create --remove-files --auto-compress --file inspektor-gadget-vendor.tar.gz --transform="s:^:inspektor-gadget-${GITHUB_REF_NAME#v}/:" vendor
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
-      env:
-        REF_NAME: ${{ github.ref_name }}
       run: |
         for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-vendor.tar.gz; do
-          mv $i $(dirname $i)/$(basename $i .tar.gz)-$REF_NAME.tar.gz
+          mv $i $(dirname $i)/$(basename $i .tar.gz)-$GITHUB_REF_NAME.tar.gz
         done
     - name: Install cyclonedx-gomod
       uses: CycloneDX/gh-gomod-generate-sbom@efc74245d6802c8cefd925620515442756c70d8f # v2.0.0
     - name: Compute SBOM for all binary artifacts
       shell: bash
-      env:
-        REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir sbom
 
@@ -2382,16 +2373,14 @@ jobs:
 
           exe=$(find "$temp_dir" -type f -executable)
 
-          cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version "$REF_NAME" $exe
+          cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version "$GITHUB_REF_NAME" $exe
 
           rm -fr "$temp_dir"
         done
     - name: Compute checksums for all artifacts
       shell: bash
-      env:
-        REF_NAME: ${{ github.ref_name }}
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$REF_NAME.yaml ig_packages/* sbom/*.bom.json inspektor-gadget-vendor-*.tar.gz; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-$GITHUB_REF_NAME.yaml ig_packages/* sbom/*.bom.json inspektor-gadget-vendor-*.tar.gz; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
