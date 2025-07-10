@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"runtime"
 	"unsafe"
-	_ "unsafe"
 )
 
 //go:wasmimport ig getSyscallName
