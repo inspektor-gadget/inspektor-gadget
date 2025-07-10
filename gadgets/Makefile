@@ -201,28 +201,6 @@ test-unit: build
 		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
 
 .PHONY:
-bench: build
-	mkdir test_results ; \
-	IG_OUTPUT_FOLDER=$(realpath ./test_results) \
-	IG_PATH=$(IG_PATH) \
-	CGO_ENABLED=0 \
-	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	GADGET_TAG=$(GADGET_TAG) \
-	IG_FLAGS=$(IG_FLAGS) \
-	go test -v -exec 'sudo -E' -p 1 --timeout 120m ./.../$(BENCH_DIR)/...
-
-.PHONY:
-%/bench: %
-	mkdir test_results; \
-	IG_OUTPUT_FOLDER=$(realpath ./test_results) \
-	IG_PATH=$(IG_PATH) \
-	CGO_ENABLED=0 \
-	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	GADGET_TAG=$(GADGET_TAG) \
-	IG_FLAGS=$(IG_FLAGS) \
-	go test -v -exec 'sudo -E' -p 1 --timeout 120m ./$*/$(BENCH_DIR)/...
-
-.PHONY:
 %/test-integration: %
 	IG_PATH=$(IG_PATH) \
 	CGO_ENABLED=0 \
