@@ -471,13 +471,41 @@ For more information about the configuration file, check the [configuration guid
 Depending on your installation method, use one of the following command to
 remove all the resources created by Inspektor Gadget on the cluster:
 
+### Using kubectl gadget undeploy
+
 ```bash
 $ kubectl gadget undeploy
 ```
 
+This command removes all Inspektor Gadget resources while preserving the namespace and any user-deployed resources within it. The following resources are removed:
+
+- DaemonSet (gadget)
+- ServiceAccount (gadget)
+- ConfigMap (gadget)
+- Role (gadget-role)
+- RoleBinding (gadget-role-binding)
+- ClusterRole (gadget-cluster-role)
+- ClusterRoleBinding (gadget-cluster-role-binding)
+- ClusterImagePolicy (if image verification was enabled)
+- CRD (for backward compatibility with older versions)
+
+**Note**: SeccompProfile resources are not automatically removed as they are user-provided content. If you deployed Inspektor Gadget with a custom seccomp profile using the `--seccomp-profile` flag, you will need to manually remove the SeccompProfile resource after undeploying.
+
+To also remove the namespace and all resources within it, use:
+
+```bash
+$ kubectl gadget undeploy --delete-namespace
+```
+
+**Warning**: The `--delete-namespace` flag will remove ALL resources in the namespace, not just those created by Inspektor Gadget.
+
+### Using Helm
+
 ```bash
 $ helm uninstall -n gadget gadget
 ```
+
+### Using Minikube addon
 
 ```bash
 $ minikube addons disable inspektor-gadget
