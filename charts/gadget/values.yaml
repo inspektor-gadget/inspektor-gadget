@@ -57,7 +57,7 @@ image:
   # -- Tag for the container image
   tag: ""
   # -- Pull secrets for the daemonset image
-  imagePullSecrets: []
+  pullSecrets: []
 
 # -- Node selector used by `gadget` container
 nodeSelector:

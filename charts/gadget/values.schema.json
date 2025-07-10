@@ -99,7 +99,7 @@
         "pullPolicy": {
           "type": "string"
         },
-        "imagePullSecrets": {
+        "pullSecrets": {
           "type": "array",
           "items": {
             "type": "object",
