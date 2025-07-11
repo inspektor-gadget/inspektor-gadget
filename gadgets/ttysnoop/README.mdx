@@ -1,0 +1,105 @@
+---
+title: ttysnoop
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# ttysnoop
+
+The ttysnoop gadget watches the output from a tty or pts device.
+
+## Requirements
+
+- Minimum Kernel Version : 6.4
+
+The current implementation relies on:
+* The enum value `ITER_UBUF` in `enum iter_type` introduced in Linux v6.0 in [commit fcb14cb1bdac](https://github.com/torvalds/linux/commit/fcb14cb1bdacec5b4374fe161e83fb8208164a85).
+* The field `__ubuf_iovec` in `struct iov_iter` introduced in Linux v6.4 in [commit 747b1f65d39a](https://github.com/torvalds/linux/commit/747b1f65d39ae729b7914075899b0c82d7f667db).
+
+The BCC ttysnoop tool has implementations for earlier kernels that could be reused for this gadget.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/ttysnoop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/ttysnoop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+No flags.
+
+## Guide
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run -ti mypod --restart=Never --image=busybox -- sh -c 'while /bin/true ; do echo foo ; sleep 3 ; done'
+        pod/mypod created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-ttysnoop -ti busybox /bin/sh -c 'while /bin/true ; do echo foo ; sleep 3 ; done'
+        ```
+    </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ttysnoop:%IG_TAG% --podname mypod
+        K8S.NODE          K8S.NAMESPACE  K8S.PODNAME  K8S.CONTAINERNAME  COMM     PID     TID LEN  BUF
+        minikube-docker   default        mypod        mypod              sh    542352  542352 4    foo
+        minikube-docker   default        mypod        mypod              sh    542352  542352 4    foo
+        ^C
+        ```
+
+        We can stop the gadget by hitting Ctrl-C.
+
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ttysnoop:%IG_TAG% --containername test-ttysnoop
+        RUNTIME.CONTAINERNAME  COMM     PID     TID LEN  BUF
+        test-ttysnoop          sh    542352  542352 4    foo
+        test-ttysnoop          sh    542352  542352 4    foo
+        ^C
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod mypod
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-ttysnoop
+        ```
+    </TabItem>
+</Tabs>
