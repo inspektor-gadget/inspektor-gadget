@@ -75,6 +75,7 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	gadgetCategory   string
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -116,6 +117,7 @@ func NewBuildCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
+	cmd.Flags().StringVar(&opts.gadgetCategory, "gadget-category", "", "Category of the gadget [observer, generator, mutator]")
 
 	return cmd
 }
@@ -324,6 +326,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
+		GadgetCategory:   opts.gadgetCategory,
 	}
 
 	if sourceDateEpoch, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {

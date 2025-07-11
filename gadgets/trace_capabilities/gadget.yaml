@@ -1,4 +1,5 @@
 name: trace capabilities
+category: observer
 description: trace security capability checks
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_capabilities
