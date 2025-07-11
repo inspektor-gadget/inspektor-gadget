@@ -129,16 +129,16 @@ func TestBenchmarks(t *testing.T) {
 					writer.Write([]string{
 						tName,
 						fmt.Sprintf("%v", eventsPerSecond),
-						strconv.FormatFloat(result.cpuMean, 'f', 2, 64),
-						strconv.FormatFloat(result.memMean, 'f', 2, 64),
-						strconv.FormatFloat(result.cpuCI, 'f', 2, 64),
-						strconv.FormatFloat(result.memCI, 'f', 2, 64),
+						strconv.FormatFloat(result.cpu.mean, 'f', 2, 64),
+						strconv.FormatFloat(result.mem.mean, 'f', 2, 64),
+						strconv.FormatFloat(result.cpu.ci, 'f', 2, 64),
+						strconv.FormatFloat(result.mem.ci, 'f', 2, 64),
 						strconv.Itoa(config.Ntimes),
-						strconv.FormatFloat(result.lostMean, 'f', 2, 64),
-						strconv.FormatFloat(result.igCpuMean, 'f', 2, 64),
-						strconv.FormatFloat(result.igCpuCI, 'f', 2, 64),
-						strconv.FormatFloat(result.igMemMean, 'f', 2, 64),
-						strconv.FormatFloat(result.igMemCI, 'f', 2, 64),
+						strconv.FormatFloat(result.lost.mean, 'f', 2, 64),
+						strconv.FormatFloat(result.igCpu.mean, 'f', 2, 64),
+						strconv.FormatFloat(result.igCpu.ci, 'f', 2, 64),
+						strconv.FormatFloat(result.igMem.mean, 'f', 2, 64),
+						strconv.FormatFloat(result.igMem.ci, 'f', 2, 64),
 					})
 
 					// Flush after each test to ensure data is written
@@ -163,7 +163,8 @@ func (c *linesCounter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type stat struct {
+// singleRunResult holds the results of a single run of a gadget test
+type singleRunResult struct {
 	cpu   float64
 	mem   float64
 	igCpu float64
@@ -171,19 +172,20 @@ type stat struct {
 	lost  uint64
 }
 
-type statResult struct {
-	cpuMean   float64
-	cpuCI     float64
-	memMean   float64
-	memCI     float64
-	igCpuMean float64
-	igCpuCI   float64
-	igMemMean float64
-	igMemCI   float64
-	lostMean  float64
+type stat struct {
+	mean float64
+	ci   float64
 }
 
-func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf any, usetracer bool) stat {
+type testResult struct {
+	cpu   stat
+	mem   stat
+	igCpu stat
+	igMem stat
+	lost  stat
+}
+
+func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf any, usetracer bool) singleRunResult {
 	tName := fmt.Sprintf("test-%s", tc.GadgetName)
 
 	runDuration := bc.GadgetRunDuration
@@ -321,7 +323,7 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 		require.Greater(t, lWriter.lines, uint64(0), "Gadget %s should have captured some data", tc.GadgetName)
 	}
 
-	return stat{
+	return singleRunResult{
 		cpu:   cpu.Avg(),
 		mem:   mem.Avg(),
 		igCpu: igCpu.Avg(),
@@ -330,51 +332,46 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 	}
 }
 
-func testGadgetMultiple(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, comb any, usetracer bool, nRuns int) statResult {
-	cpuValues := make([]float64, 0, nRuns)
-	memValues := make([]float64, 0, nRuns)
-	igMemValues := make([]float64, 0, nRuns)
-	igCpuValues := make([]float64, 0, nRuns)
-	lostValues := make([]uint64, 0, nRuns)
+func testGadgetMultiple(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, comb any, usetracer bool, nRuns int) testResult {
+	results := make([]singleRunResult, 0, nRuns)
 
 	for i := 0; i < nRuns; i++ {
 		t.Run(fmt.Sprintf("comb=%v_usetracer=%t_run=%d", comb, usetracer, i+1), func(t *testing.T) {
 			t.Logf("Running test %d/%d for comb=%d, usetracer=%t", i+1, nRuns, comb, usetracer)
 			result := testGadgetSingle(t, bc, tc, comb, usetracer)
-			cpuValues = append(cpuValues, result.cpu)
-			memValues = append(memValues, result.mem)
-			igCpuValues = append(igCpuValues, result.igCpu)
-			igMemValues = append(igMemValues, result.igMem)
-			lostValues = append(lostValues, result.lost)
+			results = append(results, result)
 		})
 	}
 
-	cpuMean, cpuCI := CalculateStats(cpuValues)
-	fmt.Printf("CPU Mean: %.2f, CPU CI: %.2f\n", cpuMean, cpuCI)
+	cpuValues := make([]float64, 0, nRuns)
+	memValues := make([]float64, 0, nRuns)
+	igCpuValues := make([]float64, 0, nRuns)
+	igMemValues := make([]float64, 0, nRuns)
+	lostValues := make([]float64, 0, nRuns)
 
-	memMean, memCI := CalculateStats(memValues)
-	fmt.Printf("Memory Mean: %.2f, Memory CI: %.2f\n", memMean, memCI)
-
-	igCpuMean, igCpuCI := CalculateStats(igCpuValues)
-	fmt.Printf("IG CPU Mean: %.2f, IG CPU CI: %.2f\n", igCpuMean, igCpuCI)
-
-	igMemMean, igMemCI := CalculateStats(igMemValues)
-	fmt.Printf("IG Memory Mean: %.2f, IG Memory CI: %.2f\n", igMemMean, igMemCI)
-
-	lostMean, _ := CalculateStats(lostValues)
-	fmt.Printf("Lost Mean: %.2f\n", lostMean)
-
-	return statResult{
-		cpuMean:   cpuMean,
-		cpuCI:     cpuCI,
-		memMean:   memMean,
-		memCI:     memCI,
-		igMemMean: igMemMean,
-		igMemCI:   igMemCI,
-		igCpuMean: igCpuMean,
-		igCpuCI:   igCpuCI,
-		lostMean:  lostMean,
+	for _, result := range results {
+		cpuValues = append(cpuValues, result.cpu)
+		memValues = append(memValues, result.mem)
+		igCpuValues = append(igCpuValues, result.igCpu)
+		igMemValues = append(igMemValues, result.igMem)
+		lostValues = append(lostValues, float64(result.lost))
 	}
+
+	ret := testResult{
+		cpu:   CalculateStats(cpuValues),
+		mem:   CalculateStats(memValues),
+		igCpu: CalculateStats(igCpuValues),
+		igMem: CalculateStats(igMemValues),
+		lost:  CalculateStats(lostValues),
+	}
+
+	fmt.Printf("CPU Mean: %.2f, CPU CI: %.2f\n", ret.cpu.mean, ret.cpu.mean)
+	fmt.Printf("Memory Mean: %.2f, Memory CI: %.2f\n", ret.mem.mean, ret.mem.ci)
+	fmt.Printf("IG CPU Mean: %.2f, IG CPU CI: %.2f\n", ret.igCpu.mean, ret.igCpu.ci)
+	fmt.Printf("IG Memory Mean: %.2f, IG Memory CI: %.2f\n", ret.igMem.mean, ret.igMem.ci)
+	fmt.Printf("Lost Mean: %.2f, Lost CI: %.2f\n", ret.lost.mean, ret.lost.ci)
+
+	return ret
 }
 
 // Numeric is a constraint for numeric types
@@ -385,9 +382,12 @@ type Numeric interface {
 }
 
 // calculateStats calculates mean and 95% confidence interval for a slice of values
-func CalculateStats[T Numeric](values []T) (mean, ci float64) {
+func CalculateStats[T Numeric](values []T) stat {
 	if len(values) == 0 {
-		return 0, 0
+		return stat{
+			mean: 0.0,
+			ci:   0.0,
+		}
 	}
 
 	// Calculate mean
@@ -395,11 +395,14 @@ func CalculateStats[T Numeric](values []T) (mean, ci float64) {
 	for _, v := range values {
 		sum += float64(v)
 	}
-	mean = sum / float64(len(values))
+	mean := sum / float64(len(values))
 
 	if len(values) == 1 {
 		// If only one value, confidence interval is not defined
-		return mean, 0
+		return stat{
+			mean: mean,
+			ci:   0.0,
+		}
 	}
 
 	// Calculate standard deviation
@@ -420,7 +423,10 @@ func CalculateStats[T Numeric](values []T) (mean, ci float64) {
 	}
 
 	standardError := stddev / math.Sqrt(float64(len(values)))
-	ci = tValue * standardError
+	ci := tValue * standardError
 
-	return mean, ci
+	return stat{
+		mean: mean,
+		ci:   ci,
+	}
 }
