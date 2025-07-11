@@ -64,8 +64,6 @@ func (g *baseGenerator) Start() error {
 }
 
 func (g *baseGenerator) Stop() error {
-	fmt.Printf("Stopping DNS client generator...\n")
-
 	close(g.done)
 	g.rateLimiter.Close()
 
