@@ -10,11 +10,31 @@ import TabItem from '@theme/TabItem';
 
 The fsnotify gadget detects applications using inotify or fanotify and enriches the events with the process-related metadata.
 
-This gadget requires Linux >= 5.4. Additionally, the field `i_ino` is only available in Linux >= 5.11.
+## Description 
+
+This gadget monitors filesystem events such as file creation, deletion, modification, or access in real time. It leverages Linux’s inotify interface to report these events across containers and hosts, providing deep visibility into file-level activity for both debugging and security purposes.
+
+## Use Cases
+
+### File Integrity Monitoring
+- Detect unauthorized or unexpected changes to critical files or directories
+
+### Cross-Container Visibility
+- Monitor file access even when the accessing process is in a different container (e.g., shared volumes).
+
+### Security Auditing
+- Detect suspicious file activity such as tampering with binaries, config files, or secrets.
+
+### Debugging & Troubleshooting
+- Track which processes are modifying or reading specific files during runtime issues.
+
+### Compliance
+- Ensure sensitive files are not modified or accessed outside of approved workflows.
 
 ## Requirements
 
 - Minimum Kernel Version : 5.4
+- Minimum Kernel Version for the field 'i_ino' : 5.11.
 
 ## Getting started
 
