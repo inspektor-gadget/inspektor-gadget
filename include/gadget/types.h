@@ -127,15 +127,12 @@ struct gadget_process {
 	struct gadget_parent parent;
 };
 
-#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
-#pragma clang attribute push(__attribute__((preserve_access_index)), \
-			     apply_to = record)
-#endif
+#define GADGET_SE_PATH_MAX 4096
 
-#define SE_PATH_MAX 4096
-
-// Keep aligned with the ValueBtf function in pkg/socketenricher/tracer.go
-struct sockets_value {
+// Keep aligned with the BTFSpec function in pkg/socketenricher/tracer.go. We
+// need to use preserve_access_index to ensure gadgets using this structure can
+// use CO-RE to access its fields.
+struct gadget_socket_value {
 	// Fields that are always present must go at the beginning. Ideally these
 	// fields aren't never changed, however it's possible to change their order,
 	// type, etc. as CO-RE will produce relocations for the gadgets using them.
@@ -154,12 +151,8 @@ struct sockets_value {
 	// These fields are optional and can be disabled in the socket enricher
 	// operator. Gadgets using these fields MUST check if they exist by using
 	// bpf_core_field_exists() and get their size with bpf_core_field_size().
-	char cwd[SE_PATH_MAX];
-	char exepath[SE_PATH_MAX];
-};
-
-#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
-#pragma clang attribute pop
-#endif
+	char cwd[GADGET_SE_PATH_MAX];
+	char exepath[GADGET_SE_PATH_MAX];
+} __attribute__((preserve_access_index));
 
 #endif /* __TYPES_H */

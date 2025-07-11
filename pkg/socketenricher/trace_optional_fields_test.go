@@ -30,7 +30,7 @@ import (
 )
 
 type socketEnricherMapEntryBytes struct {
-	Key   socketenricherSocketsKey
+	Key   socketenricherGadgetSocketKey
 	Value []byte
 }
 
@@ -62,7 +62,7 @@ func TestSocketEnricherOptionalFields(t *testing.T) {
 	exepath, err := os.Readlink("/proc/self/exe")
 	require.NoError(t, err, "Cannot get current executable path")
 
-	optionalFieldsStart := unsafe.Offsetof(socketenricherSocketsValue{}.OptionalFieldsStart)
+	optionalFieldsStart := unsafe.Offsetof(socketenricherGadgetSocketValue{}.OptionalFieldsStart)
 
 	type expectedEvent struct {
 		cwd     string
@@ -246,15 +246,15 @@ func socketsMapEntriesBytes(
 	tracer *SocketEnricher,
 ) (entries []socketEnricherMapEntryBytes) {
 	iter := tracer.SocketsMap().Iterate()
-	var key socketenricherSocketsKey
-	value := make([]byte, unsafe.Sizeof(socketenricherSocketsValue{}))
+	var key socketenricherGadgetSocketKey
+	value := make([]byte, unsafe.Sizeof(socketenricherGadgetSocketValue{}))
 	for iter.Next(&key, &value) {
 		entry := socketEnricherMapEntryBytes{
 			Key:   key,
 			Value: value,
 		}
 		entries = append(entries, entry)
-		value = make([]byte, unsafe.Sizeof(socketenricherSocketsValue{}))
+		value = make([]byte, unsafe.Sizeof(socketenricherGadgetSocketValue{}))
 	}
 	require.NoError(t, iter.Err(), "Cannot iterate over socket enricher map")
 	return entries

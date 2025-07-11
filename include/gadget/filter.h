@@ -128,7 +128,7 @@ static __always_inline bool gadget_should_discard_data_current()
 // gadget_should_discard_data_by_skb returns true if the gadget should skip this
 // event based on the fields of the skb_val struct.
 static __always_inline bool
-gadget_should_discard_data_by_skb(struct sockets_value *skb_val)
+gadget_should_discard_data_by_skb(struct gadget_socket_value *skb_val)
 {
 	if (!skb_val) {
 		// drop the packet if any filtering is specified

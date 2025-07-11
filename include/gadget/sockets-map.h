@@ -17,33 +17,33 @@
 // This file is shared between the networking and tracing programs.
 // Therefore, avoid includes that are specific to one of these types of programs.
 // For example, don't include <linux/ip.h> nor <vmlinux.h> here.
-// Redefine the constants we need but namespaced (SE_) so we don't pollute gadgets.
+// Redefine the constants we need but namespaced (GADGET_SE_) so we don't pollute gadgets.
 
-#define SE_PACKET_HOST 0
-#define SE_ETH_HLEN 14
-#define SE_ETH_P_IP 0x0800 /* Internet Protocol packet     */
-#define SE_ETH_P_IPV6 0x86DD /* IPv6 over bluebook           */
-#define SE_AF_INET 2 /* Internet IP Protocol 	*/
-#define SE_AF_INET6 10 /* IP version 6                 */
+#define GADGET_SE_PACKET_HOST 0
+#define GADGET_SE_ETH_HLEN 14
+#define GADGET_SE_ETH_P_IP 0x0800 /* Internet Protocol packet     */
+#define GADGET_SE_ETH_P_IPV6 0x86DD /* IPv6 over bluebook           */
+#define GADGET_SE_AF_INET 2 /* Internet IP Protocol 	*/
+#define GADGET_SE_AF_INET6 10 /* IP version 6                 */
 
-#define SE_IPV6_HLEN 40
-#define SE_IPV6_NEXTHDR_OFFSET 6 // offsetof(struct ipv6hdr, nexthdr)
+#define GADGET_SE_IPV6_HLEN 40
+#define GADGET_SE_IPV6_NEXTHDR_OFFSET 6 // offsetof(struct ipv6hdr, nexthdr)
 
-#define SE_TCPHDR_DEST_OFFSET 2 // offsetof(struct tcphdr, dest);
-#define SE_TCPHDR_SOURCE_OFFSET 0 // offsetof(struct tcphdr, source);
-#define SE_UDPHDR_DEST_OFFSET 2 // offsetof(struct udphdr, dest);
-#define SE_UDPHDR_SOURCE_OFFSET 0 // offsetof(struct udphdr, source);
+#define GADGET_SE_TCPHDR_DEST_OFFSET 2 // offsetof(struct tcphdr, dest);
+#define GADGET_SE_TCPHDR_SOURCE_OFFSET 0 // offsetof(struct tcphdr, source);
+#define GADGET_SE_UDPHDR_DEST_OFFSET 2 // offsetof(struct udphdr, dest);
+#define GADGET_SE_UDPHDR_SOURCE_OFFSET 0 // offsetof(struct udphdr, source);
 
-#define SE_NEXTHDR_HOP 0 /* Hop-by-hop option header. */
-#define SE_NEXTHDR_TCP 6 /* TCP segment. */
-#define SE_NEXTHDR_UDP 17 /* UDP message. */
-#define SE_NEXTHDR_ROUTING 43 /* Routing header. */
-#define SE_NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
-#define SE_NEXTHDR_AUTH 51 /* Authentication header. */
-#define SE_NEXTHDR_NONE 59 /* No next header */
-#define SE_NEXTHDR_DEST 60 /* Destination options header. */
+#define GADGET_SE_NEXTHDR_HOP 0 /* Hop-by-hop option header. */
+#define GADGET_SE_NEXTHDR_TCP 6 /* TCP segment. */
+#define GADGET_SE_NEXTHDR_UDP 17 /* UDP message. */
+#define GADGET_SE_NEXTHDR_ROUTING 43 /* Routing header. */
+#define GADGET_SE_NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
+#define GADGET_SE_NEXTHDR_AUTH 51 /* Authentication header. */
+#define GADGET_SE_NEXTHDR_NONE 59 /* No next header */
+#define GADGET_SE_NEXTHDR_DEST 60 /* Destination options header. */
 
-struct sockets_key {
+struct gadget_socket_key {
 	__u32 netns;
 	__u16 family;
 
@@ -52,20 +52,20 @@ struct sockets_key {
 	__u16 port;
 };
 
-#define MAX_SOCKETS 16384
+#define GADGET_MAX_SOCKETS 16384
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, MAX_SOCKETS);
-	__type(key, struct sockets_key);
-	__type(value, struct sockets_value);
+	__uint(max_entries, GADGET_MAX_SOCKETS);
+	__type(key, struct gadget_socket_key);
+	__type(value, struct gadget_socket_value);
 } gadget_sockets SEC(".maps");
 
 #ifdef GADGET_TYPE_NETWORKING
-static __always_inline struct sockets_value *
+static __always_inline struct gadget_socket_value *
 gadget_socket_lookup(const struct __sk_buff *skb)
 {
-	struct sockets_value *ret;
-	struct sockets_key key = {
+	struct gadget_socket_value *ret;
+	struct gadget_socket_key key = {
 		0,
 	};
 	int l4_off;
@@ -80,10 +80,11 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return 0;
 
 	switch (h_proto) {
-	case bpf_htons(SE_ETH_P_IP):
-		key.family = SE_AF_INET;
+	case bpf_htons(GADGET_SE_ETH_P_IP):
+		key.family = GADGET_SE_AF_INET;
 		err = bpf_skb_load_bytes(
-			skb, SE_ETH_HLEN + offsetof(struct iphdr, protocol),
+			skb,
+			GADGET_SE_ETH_HLEN + offsetof(struct iphdr, protocol),
 			&key.proto, sizeof(key.proto));
 		if (err < 0)
 			return 0;
@@ -92,23 +93,23 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		// represents the size of the IP header in 32-bit words, so we need to
 		// multiply this value by 4 to get the header size in bytes.
 		__u8 ihl_byte;
-		err = bpf_skb_load_bytes(skb, SE_ETH_HLEN, &ihl_byte,
+		err = bpf_skb_load_bytes(skb, GADGET_SE_ETH_HLEN, &ihl_byte,
 					 sizeof(ihl_byte));
 		if (err < 0)
 			return 0;
 		struct iphdr *iph = (struct iphdr *)&ihl_byte;
 		__u8 ip_header_len = iph->ihl * 4;
-		l4_off = SE_ETH_HLEN + ip_header_len;
+		l4_off = GADGET_SE_ETH_HLEN + ip_header_len;
 		break;
 
-	case bpf_htons(SE_ETH_P_IPV6):
-		key.family = SE_AF_INET6;
-		err = bpf_skb_load_bytes(skb,
-					 SE_ETH_HLEN + SE_IPV6_NEXTHDR_OFFSET,
-					 &key.proto, sizeof(key.proto));
+	case bpf_htons(GADGET_SE_ETH_P_IPV6):
+		key.family = GADGET_SE_AF_INET6;
+		err = bpf_skb_load_bytes(
+			skb, GADGET_SE_ETH_HLEN + GADGET_SE_IPV6_NEXTHDR_OFFSET,
+			&key.proto, sizeof(key.proto));
 		if (err < 0)
 			return 0;
-		l4_off = SE_ETH_HLEN + SE_IPV6_HLEN;
+		l4_off = GADGET_SE_ETH_HLEN + GADGET_SE_IPV6_HLEN;
 
 // Parse IPv6 extension headers
 // Up to 6 extension headers can be chained. See ipv6_ext_hdr().
@@ -118,8 +119,8 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 			__u8 off;
 
 			// TCP or UDP found
-			if (key.proto == SE_NEXTHDR_TCP ||
-			    key.proto == SE_NEXTHDR_UDP)
+			if (key.proto == GADGET_SE_NEXTHDR_TCP ||
+			    key.proto == GADGET_SE_NEXTHDR_UDP)
 				break;
 
 			err = bpf_skb_load_bytes(skb, l4_off, &nextproto,
@@ -130,11 +131,11 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 			// Unfortunately, each extension header has a different way to calculate the header length.
 			// Support the ones defined in ipv6_ext_hdr(). See ipv6_skip_exthdr().
 			switch (key.proto) {
-			case SE_NEXTHDR_FRAGMENT:
+			case GADGET_SE_NEXTHDR_FRAGMENT:
 				// No hdrlen in the fragment header
 				l4_off += 8;
 				break;
-			case SE_NEXTHDR_AUTH:
+			case GADGET_SE_NEXTHDR_AUTH:
 				// See ipv6_authlen()
 				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
 							 sizeof(off));
@@ -142,9 +143,9 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 					return 0;
 				l4_off += 4 * (off + 2);
 				break;
-			case SE_NEXTHDR_HOP:
-			case SE_NEXTHDR_ROUTING:
-			case SE_NEXTHDR_DEST:
+			case GADGET_SE_NEXTHDR_HOP:
+			case GADGET_SE_NEXTHDR_ROUTING:
+			case GADGET_SE_NEXTHDR_DEST:
 				// See ipv6_optlen()
 				err = bpf_skb_load_bytes(skb, l4_off + 1, &off,
 							 sizeof(off));
@@ -152,7 +153,7 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 					return 0;
 				l4_off += 8 * (off + 1);
 				break;
-			case SE_NEXTHDR_NONE:
+			case GADGET_SE_NEXTHDR_NONE:
 				// Nothing more in the packet. Not even TCP or UDP.
 				return 0;
 			default:
@@ -170,16 +171,16 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	int off = l4_off;
 	switch (key.proto) {
 	case IPPROTO_TCP:
-		if (skb->pkt_type == SE_PACKET_HOST)
-			off += SE_TCPHDR_DEST_OFFSET;
+		if (skb->pkt_type == GADGET_SE_PACKET_HOST)
+			off += GADGET_SE_TCPHDR_DEST_OFFSET;
 		else
-			off += SE_TCPHDR_SOURCE_OFFSET;
+			off += GADGET_SE_TCPHDR_SOURCE_OFFSET;
 		break;
 	case IPPROTO_UDP:
-		if (skb->pkt_type == SE_PACKET_HOST)
-			off += SE_UDPHDR_DEST_OFFSET;
+		if (skb->pkt_type == GADGET_SE_PACKET_HOST)
+			off += GADGET_SE_UDPHDR_DEST_OFFSET;
 		else
-			off += SE_UDPHDR_SOURCE_OFFSET;
+			off += GADGET_SE_UDPHDR_SOURCE_OFFSET;
 		break;
 	default:
 		return 0;
@@ -195,8 +196,8 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return ret;
 
 	// If a native socket was not found, try to find a dual-stack socket.
-	if (key.family == SE_AF_INET) {
-		key.family = SE_AF_INET6;
+	if (key.family == GADGET_SE_AF_INET) {
+		key.family = GADGET_SE_AF_INET6;
 		ret = bpf_map_lookup_elem(&gadget_sockets, &key);
 		if (ret && ret->ipv6only == 0)
 			return ret;
@@ -207,10 +208,10 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 #endif
 
 #ifdef GADGET_TYPE_TRACING
-static __always_inline struct sockets_value *
+static __always_inline struct gadget_socket_value *
 gadget_socket_lookup(const struct sock *sk, __u32 netns)
 {
-	struct sockets_key key = {
+	struct gadget_socket_key key = {
 		0,
 	};
 	key.netns = netns;
@@ -230,7 +231,7 @@ gadget_socket_lookup(const struct sock *sk, __u32 netns)
 #endif
 
 static __always_inline void
-gadget_process_populate_from_socket(const struct sockets_value *skb_val,
+gadget_process_populate_from_socket(const struct gadget_socket_value *skb_val,
 				    struct gadget_process *p)
 {
 	if (!skb_val)
