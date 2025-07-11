@@ -147,23 +147,20 @@ fn gadgetStart() -> i32 {
         max_entries: 1,
     };
 
-    let Ok(new_map) = Map::new(map_spec.clone()) else {
-        let name = map_spec.name.clone();
-        api::errorf!("creating map {:?}", name);
+    let Ok(new_map) = Map::new(&map_spec) else {
+        api::errorf!("creating map {:?}", &map_spec.name);
         return 1;
     };
 
     let k: i32 = 42;
     val = 43;
     if let Err(_) = new_map.put(&k, &val) {
-        let name = map_spec.name.clone();
-        api::errorf!("setting {} value for key {} in {:?}", val, k, name);
+        api::errorf!("setting {} value for key {} in {:?}", val, k, &map_spec.name);
         return 1;
     }
 
     if let Err(_) = new_map.lookup(&k, &mut val) {
-        let name = map_spec.name.clone();
-        api::errorf!("no value found for key {} in {:?}", k, name);
+        api::errorf!("no value found for key {} in {:?}", k, &map_spec.name);
         return 1;
     }
 
@@ -176,8 +173,7 @@ fn gadgetStart() -> i32 {
     let k2 = 0xdead;
     val = 0xcafe;
     if let Ok(_) = new_map.put(&k2, &val) {
-        let name = map_spec.name.clone();
-        api::errorf!("map {:?} has one max entry, trying to put two", name);
+        api::errorf!("map {:?} has one max entry, trying to put two", &map_spec.name);
         return 1;
     }
 
