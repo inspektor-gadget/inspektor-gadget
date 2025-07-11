@@ -111,7 +111,7 @@ func TestBenchmarks(t *testing.T) {
 
 			writer := csv.NewWriter(file)
 			defer writer.Flush()
-			writer.Write([]string{"Name", "rps", "%cpu", "mem(MB)", "cpu_ci", "mem_ci", "runs", "lost"})
+			writer.Write([]string{"Name", "rps", "%cpu", "mem(MB)", "cpu_ci", "mem_ci", "runs", "lost", "ig_cpu_mean", "ig_cpu_ci", "ig_mem_mean", "ig_mem_ci"})
 
 			for _, eventsPerSecond := range testConfig.EventsPerSecond {
 				// TODO: another t.run for each RPS value?
@@ -135,6 +135,10 @@ func TestBenchmarks(t *testing.T) {
 						strconv.FormatFloat(result.memCI, 'f', 2, 64),
 						strconv.Itoa(config.Ntimes),
 						strconv.FormatFloat(result.lostMean, 'f', 2, 64),
+						strconv.FormatFloat(result.igCpuMean, 'f', 2, 64),
+						strconv.FormatFloat(result.igCpuCI, 'f', 2, 64),
+						strconv.FormatFloat(result.igMemMean, 'f', 2, 64),
+						strconv.FormatFloat(result.igMemCI, 'f', 2, 64),
 					})
 
 					// Flush after each test to ensure data is written
@@ -160,17 +164,23 @@ func (c *linesCounter) Write(p []byte) (n int, err error) {
 }
 
 type stat struct {
-	cpu  float64
-	mem  float64
-	lost uint64
+	cpu   float64
+	mem   float64
+	igCpu float64
+	igMem float64
+	lost  uint64
 }
 
 type statResult struct {
-	cpuMean  float64
-	cpuCI    float64
-	memMean  float64
-	memCI    float64
-	lostMean float64
+	cpuMean   float64
+	cpuCI     float64
+	memMean   float64
+	memCI     float64
+	igCpuMean float64
+	igCpuCI   float64
+	igMemMean float64
+	igMemCI   float64
+	lostMean  float64
 }
 
 func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf any, usetracer bool) stat {
@@ -289,12 +299,17 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 	cpu := utils.Cpu(initialDelay)
 	mem := utils.Memory(initialDelay)
 
+	igMem := utils.ProcessMemory("ig", initialDelay)
+	igCpu := utils.ProcessCpu("ig", initialDelay)
+
 	steps := []igtesting.TestStep{
 		// warm up
 		utils.Sleep(warmUpTimeout),
 
 		cpu,
 		mem,
+		igCpu,
+		igMem,
 
 		gadgetCmd,
 	}
@@ -307,15 +322,19 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 	}
 
 	return stat{
-		cpu:  cpu.Avg(),
-		mem:  mem.Avg(),
-		lost: lost / uint64(runDuration), // Convert lost events to per second
+		cpu:   cpu.Avg(),
+		mem:   mem.Avg(),
+		igCpu: igCpu.Avg(),
+		igMem: igMem.Avg(),
+		lost:  lost / uint64(runDuration), // Convert lost events to per second
 	}
 }
 
 func testGadgetMultiple(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, comb any, usetracer bool, nRuns int) statResult {
 	cpuValues := make([]float64, 0, nRuns)
 	memValues := make([]float64, 0, nRuns)
+	igMemValues := make([]float64, 0, nRuns)
+	igCpuValues := make([]float64, 0, nRuns)
 	lostValues := make([]uint64, 0, nRuns)
 
 	for i := 0; i < nRuns; i++ {
@@ -324,6 +343,8 @@ func testGadgetMultiple(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, comb 
 			result := testGadgetSingle(t, bc, tc, comb, usetracer)
 			cpuValues = append(cpuValues, result.cpu)
 			memValues = append(memValues, result.mem)
+			igCpuValues = append(igCpuValues, result.igCpu)
+			igMemValues = append(igMemValues, result.igMem)
 			lostValues = append(lostValues, result.lost)
 		})
 	}
@@ -334,15 +355,25 @@ func testGadgetMultiple(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, comb 
 	memMean, memCI := CalculateStats(memValues)
 	fmt.Printf("Memory Mean: %.2f, Memory CI: %.2f\n", memMean, memCI)
 
+	igCpuMean, igCpuCI := CalculateStats(igCpuValues)
+	fmt.Printf("IG CPU Mean: %.2f, IG CPU CI: %.2f\n", igCpuMean, igCpuCI)
+
+	igMemMean, igMemCI := CalculateStats(igMemValues)
+	fmt.Printf("IG Memory Mean: %.2f, IG Memory CI: %.2f\n", igMemMean, igMemCI)
+
 	lostMean, _ := CalculateStats(lostValues)
 	fmt.Printf("Lost Mean: %.2f\n", lostMean)
 
 	return statResult{
-		cpuMean:  cpuMean,
-		cpuCI:    cpuCI,
-		memMean:  memMean,
-		memCI:    memCI,
-		lostMean: lostMean,
+		cpuMean:   cpuMean,
+		cpuCI:     cpuCI,
+		memMean:   memMean,
+		memCI:     memCI,
+		igMemMean: igMemMean,
+		igMemCI:   igMemCI,
+		igCpuMean: igCpuMean,
+		igCpuCI:   igCpuCI,
+		lostMean:  lostMean,
 	}
 }
 
