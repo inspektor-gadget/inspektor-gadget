@@ -42,7 +42,7 @@ func TestConsts(t *testing.T) {
 
 	// logLevel
 	assert.EqualValues(t, wasmapi.ErrorLevel, errorLevel)
-	assert.EqualValues(t, wasmapi.WarnLevel, arnLevel)
+	assert.EqualValues(t, wasmapi.WarnLevel, warnLevel)
 	assert.EqualValues(t, wasmapi.InfoLevel, infoLevel)
 	assert.EqualValues(t, wasmapi.DebugLevel, debugLevel)
 	assert.EqualValues(t, wasmapi.TraceLevel, traceLevel)

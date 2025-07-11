@@ -24,6 +24,10 @@ import (
 //go:linkname gadgetLog gadgetLog
 func gadgetLog(level uint32, str uint64)
 
+//go:wasmimport ig gadgetShouldLog
+//go:linkname gadgetShouldLog gadgetShouldLog
+func gadgetShouldLog(level uint32) uint32
+
 type logLevel uint32
 
 const (
@@ -40,11 +44,15 @@ func log(level logLevel, message string) {
 }
 
 func Log(level logLevel, args ...any) {
-	log(level, fmt.Sprint(args...))
+	if gadgetShouldLog(uint32(level)) == 1 {
+		log(level, fmt.Sprint(args...))
+	}
 }
 
 func Logf(level logLevel, format string, args ...any) {
-	log(level, fmt.Sprintf(format, args...))
+	if gadgetShouldLog(uint32(level)) == 1 {
+		log(level, fmt.Sprintf(format, args...))
+	}
 }
 
 func Error(params ...any) {
