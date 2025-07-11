@@ -24,8 +24,10 @@ import (
 // Log levels for gadgetLog
 // Keep in sync with pkg/apis/wasm/log.go
 const (
-	errorLevel uint32 = iota
-	arnLevel
+	panicLevel uint32 = iota
+	fatalLevel
+	errorLevel
+	warnLevel
 	infoLevel
 	debugLevel
 	traceLevel
@@ -43,9 +45,10 @@ func (i *wasmOperatorInstance) addLogFuncs(env wazero.HostModuleBuilder) {
 		}
 
 		switch logLevel {
+		case panicLevel|fatalLevel:
 		case errorLevel:
 			i.logger.Error(str)
-		case arnLevel:
+		case warnLevel:
 			i.logger.Warn(str)
 		case infoLevel:
 			i.logger.Info(str)
@@ -58,11 +61,21 @@ func (i *wasmOperatorInstance) addLogFuncs(env wazero.HostModuleBuilder) {
 		}
 	}
 
+	getLogLevelFn := func(ctx context.Context, m wapi.Module, stack []uint64) {
+		stack[0] = wapi.EncodeU32(uint32(i.logger.GetLevel()))
+	}
+
 	exportFunction(env, "gadgetLog", logFn,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // log level
 			wapi.ValueTypeI64, // message
 		},
 		[]wapi.ValueType{},
+	)
+	exportFunction(env, "gadgetGetLogLevel", getLogLevelFn,
+		[]wapi.ValueType{},
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // log level
+		},
 	)
 }

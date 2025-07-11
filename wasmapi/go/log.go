@@ -24,10 +24,17 @@ import (
 //go:linkname gadgetLog gadgetLog
 func gadgetLog(level uint32, str uint64)
 
+//go:wasmimport ig gadgetGetLogLevel
+//go:linkname gadgetGetLogLevel gadgetGetLogLevel
+func gadgetGetLogLevel() uint32
+
 type logLevel uint32
 
+// Same as logrus
 const (
-	ErrorLevel logLevel = iota
+	Paniclevel logLevel = iota
+	FatalLevel
+	ErrorLevel
 	WarnLevel
 	InfoLevel
 	DebugLevel
@@ -40,11 +47,15 @@ func log(level logLevel, message string) {
 }
 
 func Log(level logLevel, args ...any) {
-	log(level, fmt.Sprint(args...))
+	if gadgetGetLogLevel() >= uint32(level) {
+		log(level, fmt.Sprint(args...))
+	}
 }
 
 func Logf(level logLevel, format string, args ...any) {
-	log(level, fmt.Sprintf(format, args...))
+	if gadgetGetLogLevel() >= uint32(level) {
+		log(level, fmt.Sprintf(format, args...))
+	}
 }
 
 func Error(params ...any) {
