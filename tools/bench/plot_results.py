@@ -63,11 +63,17 @@ def create_performance_table(ax, baseline_data, ig_data):
     ig_mem_ci = ig_data['mem_ci'].values
     ig_lost = ig_data['lost'].values
 
+    # Get IG process specific data
+    ig_process_cpu = ig_data['ig_cpu_mean'].values
+    ig_process_cpu_ci = ig_data['ig_cpu_ci'].values
+    ig_process_mem = ig_data['ig_mem_mean'].values
+    ig_process_mem_ci = ig_data['ig_mem_ci'].values
+
     # Prepare table data
     table_data = []
 
     # Header row
-    table_data.append(['RPS', 'CPU Usage (avg)', 'Confidence Interval', 'Overhead (%)', 'Mem Usage (avg)', 'Confidence Interval', 'Overhead (MB)', 'Lost Events'])
+    table_data.append(['RPS', 'Total CPU (avg)', 'Confidence Interval', 'Overhead (%)', 'IG Process CPU', 'CI', 'Total Mem (avg)', 'CI', 'Overhead (MB)', 'IG Process Mem', 'CI', 'Lost Events'])
 
     # Data rows for each RPS configuration
     for i, rps in enumerate(rps_values):
@@ -79,9 +85,13 @@ def create_performance_table(ax, baseline_data, ig_data):
             f'{ig_cpu[i]:.2f}%',
             f'±{ig_cpu_ci[i]:.2f}%',
             f'{cpu_overhead_pct:.1f}%',
+            f'{ig_process_cpu[i]:.2f}%',
+            f'±{ig_process_cpu_ci[i]:.2f}%',
             f'{ig_mem[i]:.0f}MB',
             f'±{ig_mem_ci[i]:.0f}MB',
             f'{mem_overhead_mb:.0f}MB',
+            f'{ig_process_mem[i]:.0f}MB',
+            f'±{ig_process_mem_ci[i]:.0f}MB',
             f'{int(ig_lost[i])}'
         ])
 
@@ -89,9 +99,13 @@ def create_performance_table(ax, baseline_data, ig_data):
     avg_ig_cpu = np.mean(ig_cpu)
     avg_ig_cpu_ci = np.mean(ig_cpu_ci)
     avg_cpu_overhead_pct = np.mean(((ig_cpu - baseline_cpu) / baseline_cpu) * 100)
+    avg_ig_process_cpu = np.mean(ig_process_cpu)
+    avg_ig_process_cpu_ci = np.mean(ig_process_cpu_ci)
     avg_ig_mem = np.mean(ig_mem)
     avg_ig_mem_ci = np.mean(ig_mem_ci)
     avg_mem_overhead_mb = np.mean(ig_mem - baseline_mem)
+    avg_ig_process_mem = np.mean(ig_process_mem)
+    avg_ig_process_mem_ci = np.mean(ig_process_mem_ci)
     avg_lost = np.mean(ig_lost)
 
     table_data.append([
@@ -99,9 +113,13 @@ def create_performance_table(ax, baseline_data, ig_data):
         f'{avg_ig_cpu:.2f}%',
         f'±{avg_ig_cpu_ci:.2f}%',
         f'{avg_cpu_overhead_pct:.1f}%',
+        f'{avg_ig_process_cpu:.2f}%',
+        f'±{avg_ig_process_cpu_ci:.2f}%',
         f'{avg_ig_mem:.0f}MB',
         f'±{avg_ig_mem_ci:.0f}MB',
         f'{avg_mem_overhead_mb:.0f}MB',
+        f'{avg_ig_process_mem:.0f}MB',
+        f'±{avg_ig_process_mem_ci:.0f}MB',
         f'{int(avg_lost)}'
     ])
 
@@ -111,7 +129,7 @@ def create_performance_table(ax, baseline_data, ig_data):
 
     # Style the table
     table.auto_set_font_size(False)
-    table.set_fontsize(9)
+    table.set_fontsize(8)  # Reduced font size to fit more columns
     table.scale(1, 1.5)
 
     # Color the header row
@@ -165,13 +183,19 @@ def create_plots_for_file(filepath):
     baseline_cpu_ci = baseline_data['cpu_ci'].values
     ig_cpu_ci = ig_data['cpu_ci'].values
 
-    x = np.arange(len(rps_values))
-    width = 0.35
+    # Get IG process specific CPU data
+    ig_process_cpu = ig_data['ig_cpu_mean'].values
+    ig_process_cpu_ci = ig_data['ig_cpu_ci'].values
 
-    bars1 = ax1.bar(x - width/2, baseline_cpu, width, label='Baseline', alpha=0.8,
+    x = np.arange(len(rps_values))
+    width = 0.25  # Reduced width to fit 3 bars
+
+    bars1 = ax1.bar(x - width, baseline_cpu, width, label='Baseline', alpha=0.8,
                     yerr=baseline_cpu_ci, capsize=5)
-    bars2 = ax1.bar(x + width/2, ig_cpu, width, label='IG (with tracer)', alpha=0.8,
+    bars2 = ax1.bar(x, ig_cpu, width, label='IG Total', alpha=0.8,
                     yerr=ig_cpu_ci, capsize=5)
+    bars2_ig = ax1.bar(x + width, ig_process_cpu, width, label='IG Process Only', alpha=0.8,
+                       yerr=ig_process_cpu_ci, capsize=5, color='orange')
 
     ax1.set_xlabel('RPS (Requests per Second)', fontsize=11)
     ax1.set_ylabel('CPU Usage (%)', fontsize=11)
@@ -185,12 +209,17 @@ def create_plots_for_file(filepath):
     for bar in bars1:
         height = bar.get_height()
         ax1.text(bar.get_x() + bar.get_width()/2., height,
-                 f'{height:.2f}%', ha='center', va='bottom', fontsize=9)
+                 f'{height:.2f}%', ha='center', va='bottom', fontsize=8)
 
     for bar in bars2:
         height = bar.get_height()
         ax1.text(bar.get_x() + bar.get_width()/2., height,
-                 f'{height:.2f}%', ha='center', va='bottom', fontsize=9)
+                 f'{height:.2f}%', ha='center', va='bottom', fontsize=8)
+
+    for bar in bars2_ig:
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width()/2., height,
+                 f'{height:.2f}%', ha='center', va='bottom', fontsize=8)
 
     # Plot 2: Bar chart showing Memory overhead with error bars
     baseline_mem = baseline_data['mem(MB)'].values
@@ -198,10 +227,16 @@ def create_plots_for_file(filepath):
     baseline_mem_ci = baseline_data['mem_ci'].values
     ig_mem_ci = ig_data['mem_ci'].values
 
-    bars3 = ax2.bar(x - width/2, baseline_mem, width, label='Baseline', alpha=0.8,
+    # Get IG process specific memory data
+    ig_process_mem = ig_data['ig_mem_mean'].values
+    ig_process_mem_ci = ig_data['ig_mem_ci'].values
+
+    bars3 = ax2.bar(x - width, baseline_mem, width, label='Baseline', alpha=0.8,
                     yerr=baseline_mem_ci, capsize=5)
-    bars4 = ax2.bar(x + width/2, ig_mem, width, label='IG (with tracer)', alpha=0.8,
+    bars4 = ax2.bar(x, ig_mem, width, label='IG Total', alpha=0.8,
                     yerr=ig_mem_ci, capsize=5)
+    bars4_ig = ax2.bar(x + width, ig_process_mem, width, label='IG Process Only', alpha=0.8,
+                       yerr=ig_process_mem_ci, capsize=5, color='orange')
 
     ax2.set_xlabel('RPS (Requests per Second)', fontsize=11)
     ax2.set_ylabel('Memory Usage (MB)', fontsize=11)
@@ -212,7 +247,7 @@ def create_plots_for_file(filepath):
     ax2.grid(True, alpha=0.3, axis='y')
 
     # Adjust Y-axis range to show differences more clearly
-    all_mem_values = np.concatenate([baseline_mem, ig_mem])
+    all_mem_values = np.concatenate([baseline_mem, ig_mem, ig_process_mem])
     mem_min, mem_max = np.min(all_mem_values), np.max(all_mem_values)
     mem_range = mem_max - mem_min
     # Add some padding and focus on the range of variation
@@ -224,12 +259,17 @@ def create_plots_for_file(filepath):
     for bar in bars3:
         height = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width()/2., height,
-                 f'{height:.0f}MB', ha='center', va='bottom', fontsize=9)
+                 f'{height:.0f}MB', ha='center', va='bottom', fontsize=8)
 
     for bar in bars4:
         height = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width()/2., height,
-                 f'{height:.0f}MB', ha='center', va='bottom', fontsize=9)
+                 f'{height:.0f}MB', ha='center', va='bottom', fontsize=8)
+
+    for bar in bars4_ig:
+        height = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width()/2., height,
+                 f'{height:.0f}MB', ha='center', va='bottom', fontsize=8)
 
     # Plot 3: Bar chart showing Lost events (only for IG)
     ig_lost = ig_data['lost'].values
