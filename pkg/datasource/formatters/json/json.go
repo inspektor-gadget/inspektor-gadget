@@ -400,7 +400,11 @@ func (f *Formatter) Marshal(data datasource.Data) []byte {
 	for _, fn := range f.fns {
 		fn(e, data)
 	}
-	return e.Bytes()
+	// Make a copy of the bytes to avoid race conditions when the buffer
+	// is returned to the pool and reused by other goroutines
+	result := make([]byte, e.Len())
+	copy(result, e.Bytes())
+	return result
 }
 
 func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
@@ -436,7 +440,11 @@ func (f *Formatter) MarshalArray(a datasource.DataArray) []byte {
 	}
 	e.Write([]byte(cArray))
 
-	return e.Bytes()
+	// Make a copy of the bytes to avoid race conditions when the buffer
+	// is returned to the pool and reused by other goroutines
+	result := make([]byte, e.Len())
+	copy(result, e.Bytes())
+	return result
 }
 
 type floatEncoder int // number of bits
