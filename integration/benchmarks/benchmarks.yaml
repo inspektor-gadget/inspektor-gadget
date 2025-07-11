@@ -39,3 +39,9 @@ tests:
       image: ghcr.io/mqasimsarfraz/bench
       cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
     eventsPerSecond: [ 1024, 2048, 4096, 8192, 16384 ]
+  top_process:
+    gadgetName: top_process
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=processes --events-per-second={eventsPerSecond}
+    eventsPerSecond: [ 8192, 16384, 32768, 65536, 131072 ]
