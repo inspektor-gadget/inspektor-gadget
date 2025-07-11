@@ -215,7 +215,40 @@ func (g *GadgetRunner[T]) RunGadget() {
 	require.NoError(g.testCtx, err, "running gadget error")
 }
 
+const (
+	defaultDomain      = "ghcr.io"
+	officialRepoPrefix = "inspektor-gadget/gadget/"
+	// localhost is treated as a special value for domain-name. Any other
+	// domain-name without a "." or a ":port" are considered a path component.
+	localhost = "localhost"
+)
+
+// splitIGDomain splits a repository name to domain and remote-name.
+// If no valid domain is found, the default domain is used. Repository name
+// needs to be already validated before.
+// Inspired on https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L126
+// TODO: Ideally we should use the upstream function but docker.io is hardcoded there
+// https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L31
+func splitIGDomain(name string) (domain, remainder string) {
+	i := strings.IndexRune(name, '/')
+	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != localhost && strings.ToLower(name[:i]) == name[:i]) {
+		domain, remainder = defaultDomain, name
+	} else {
+		domain, remainder = name[:i], name[i+1:]
+	}
+	if domain == defaultDomain && !strings.ContainsRune(remainder, '/') {
+		remainder = officialRepoPrefix + remainder
+	}
+	return
+}
+
 func GetGadgetImageName(gadget string) string {
+	// if the image already specifies a domain, don't append GADGET_REPOSITORY
+	domain, _ := splitIGDomain(gadget)
+	if domain != defaultDomain {
+		return gadget
+	}
+
 	repository := os.Getenv("GADGET_REPOSITORY")
 	tag := os.Getenv("GADGET_TAG")
 	if repository != "" {
