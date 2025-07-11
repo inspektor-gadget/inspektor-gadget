@@ -7,7 +7,7 @@ require (
 	github.com/cilium/ebpf v0.18.0
 	github.com/containerd/containerd v1.7.27
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.9.0
+	github.com/containerd/nri v0.8.0
 	github.com/containers/common v0.63.1
 	github.com/containers/image/v5 v5.35.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -39,7 +39,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tetratelabs/wazero v1.9.0
+	github.com/tetratelabs/wazero v1.5.0
 	github.com/tklauser/numcpus v0.10.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
@@ -202,6 +202,10 @@ require (
 	sigs.k8s.io/release-utils v0.11.1 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
+
+require github.com/stealthrocket/wzprof v0.2.0
+
+require github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 
 // ebpf-go with some memory & cpu optimizations like
 // - https://github.com/cilium/ebpf/pull/1763
