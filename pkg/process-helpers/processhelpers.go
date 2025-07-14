@@ -175,11 +175,11 @@ func GetTotalMemory() (uint64, error) {
 		if !ok {
 			continue
 		}
-		memBytes, ok := bytes.CutSuffix(bytes.TrimSpace(suffix), []byte(" kB"))
+		memKBytes, ok := bytes.CutSuffix(bytes.TrimSpace(suffix), []byte(" kB"))
 		if !ok {
 			return 0, fmt.Errorf("unexpected contents of total memory field: %q", suffix)
 		}
-		b, err := strconv.ParseUint(string(memBytes), 10, 64)
+		b, err := strconv.ParseUint(string(memKBytes), 10, 64)
 		if err != nil {
 			return 0, fmt.Errorf("parsing total memory field: %w", err)
 		}
