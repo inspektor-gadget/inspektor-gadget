@@ -39,6 +39,7 @@ func newTCPClient(confStr string) (Generator, error) {
 	cb := func() error {
 		conn, err := net.DialTimeout("tcp", conf.server, 5*time.Second)
 		if err != nil {
+			fmt.Printf("Dial error: %v\n", err)
 			return err
 		}
 		defer conn.Close()
@@ -46,12 +47,16 @@ func newTCPClient(confStr string) (Generator, error) {
 		// Send a simple message to the server
 		_, err = conn.Write([]byte("Ping\n"))
 		if err != nil {
+			fmt.Printf("Write error: %v\n", err)
 			return err
 		}
 
 		// Optional: read response
 		buffer := make([]byte, 1024)
 		_, err = conn.Read(buffer)
+		if err != nil {
+			fmt.Printf("Read error: %v\n", err)
+		}
 		return err
 	}
 

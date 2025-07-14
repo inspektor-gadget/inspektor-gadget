@@ -160,7 +160,42 @@ runtime installed. Currently supported runtime is `docker` only, You can run the
 $ make -C integration/ig/non-k8s test-docker
 ```
 
-#### Explaining performance improvements in a PR
+### Benchmarks
+
+#### Running the benchmarks
+
+1. Make sure you have the `integration/benchmarks/benchmarks.yaml` file
+   configured correctly.
+2. Run the benchmarks using the following command:
+
+```bash
+$ make benchmarks-test
+```
+
+It'll generate a `test_results_<date>.csv` file with the results of the
+benchmarks.
+
+#### Analyzing the results
+
+You can analyze the results using the Jupyter notebook
+`integration/benchmarks/benchmarks_analysis.ipynb`. You can run it in different
+applications supporting Jupyter notebooks, such as VS Code with the Jupyter
+extension, JupyterLab, or Jupyter Notebook. Or you can generate an HTML report
+from the notebook using the following command:
+
+```bash
+# Create a virtual environment
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+
+# Install the requirements
+$ pip install -r requirements.txt
+
+# Generate the HTML report
+$ INTPUT_FILE=path_to_csv_file make make gen-html
+```
+
+### Explaining performance improvements in a PR
 
 If you want to contribute a performance improvement, it is useful to use benchmarks to explain the impact on
 performances. I will use the example of an improvement on the networking gadgets from

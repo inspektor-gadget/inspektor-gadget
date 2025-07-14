@@ -80,6 +80,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if d.options.privileged {
 		hostConfig.Privileged = true
 	}
+	if d.options.sysctls != nil {
+		hostConfig.Sysctls = d.options.sysctls
+	}
 
 	if d.options.portBindings != nil {
 		hostConfig.PortBindings = d.options.portBindings
