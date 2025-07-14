@@ -43,6 +43,7 @@ type containerOptions struct {
 	portBindings         nat.PortMap
 	privileged           bool
 	limits               map[string]string
+	sysctls              map[string]string
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -162,5 +163,12 @@ func WithForceDelete() Option {
 func WithLimits(limits map[string]string) Option {
 	return func(opts *containerOptions) {
 		opts.limits = limits
+	}
+}
+
+// WithSysctls sets the sysctls of the container
+func WithSysctls(sysctls map[string]string) Option {
+	return func(opts *containerOptions) {
+		opts.sysctls = sysctls
 	}
 }
