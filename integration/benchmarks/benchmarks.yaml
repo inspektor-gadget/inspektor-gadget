@@ -1,0 +1,63 @@
+# How many times to run each test
+ntimes: 10
+# Path of the ig binary
+ig_path: ig
+# Extra flags to pass to ig
+# ig_flags: [ "foo", "bar" ]
+# Container runtime to use. Only docker is supported for now
+ig_runtime: "docker"
+# Version of the gadgets to use.
+# TODO: Make this more generic
+gadget_tag: "v0.43.0"
+# Time each gadget runs for
+gadget_run_duration: 20
+# Time we wait to run the gadget after the generator starts
+warm_up_duration: 5
+tests:
+  - name: trace_dns
+    gadgetName: trace_dns
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=dns-server
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=dns:server={serverIP}:5353 --events-per-second={eventsPerSecond}
+    # at 16384 IG starts to drop packets
+    eventsPerSecond: [ 1024, 2048, 4096, 8192, 16384 ]
+  - name: trace_exec
+    gadgetName: trace_exec
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=exec --events-per-second={eventsPerSecond}
+    eventsPerSecond: [ 4096, 8192, 16384, 32768, 65536 ]
+  - name: trace_open
+    gadgetName: trace_open
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=open --events-per-second={eventsPerSecond}
+    eventsPerSecond: [ 32768, 65536, 131072, 262144, 524288 ]
+  - name: trace_tcp
+    gadgetName: trace_tcp
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp-server
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
+    eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
+  - name: top_tcp
+    gadgetName: top_tcp
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp-server
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
+    eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
+  - name: top_process
+    gadgetName: top_process
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=processes --events-per-second={eventsPerSecond}
+    # limit to 32768 as 32GB of memory aren't enough to run more processes
+    eventsPerSecond: [ 2048, 4096, 8192, 16384, 32768 ]
