@@ -65,6 +65,8 @@ type AuthOptions struct {
 type VerifyOptions struct {
 	VerifyPublicKey bool
 	PublicKeys      []string
+	Signature       string
+	Payload         string
 }
 
 type AllowedGadgetsOptions struct {
@@ -921,9 +923,25 @@ func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
-	if err != nil {
-		return fmt.Errorf("getting signing information: %w", err)
+	if (imgOpts.Signature == "" && imgOpts.Payload != "") || (imgOpts.Signature != "" && imgOpts.Payload == "") {
+		return fmt.Errorf("signature and payload should be give together, one of them is empty: %q and %q", imgOpts.Signature, imgOpts.Payload)
+	}
+
+	var signatureBytes []byte
+	var payloadBytes []byte
+
+	if imgOpts.Signature != "" {
+		signatureBytes, err = base64.StdEncoding.DecodeString(imgOpts.Signature)
+		if err != nil {
+			return fmt.Errorf("decoding signature: %w", err)
+		}
+
+		payloadBytes = []byte(imgOpts.Payload)
+	} else {
+		signatureBytes, payloadBytes, err = loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
+		if err != nil {
+			return fmt.Errorf("getting signing information: %w", err)
+		}
 	}
 
 	verified := false
