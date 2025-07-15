@@ -52,7 +52,7 @@ fn gadgetStart() -> i32 {
         max_entries: 1,
     };
 
-    let Ok(hash_map) = Map::new(inner_map_spec.clone()) else {
+    let Ok(hash_map) = Map::new(&inner_map_spec) else {
         errorf!("creating map {}", hash_map_name);
         return 1;
     };
