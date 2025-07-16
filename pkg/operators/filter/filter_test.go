@@ -33,7 +33,6 @@ import (
 func TestFilterRuleExtractor(t *testing.T) {
 	type testCase struct {
 		filter    string
-		dsName    string
 		fieldName string
 		op        comparisonType
 		negate    bool
@@ -43,7 +42,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 	testCases := []testCase{
 		{
 			filter:    "abc==def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeMatch,
 			negate:    false,
@@ -51,7 +49,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc!=def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeMatch,
 			negate:    true,
@@ -59,7 +56,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc<=def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeLte,
 			negate:    false,
@@ -67,7 +63,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc<def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeLt,
 			negate:    false,
@@ -75,7 +70,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc>=def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeGte,
 			negate:    false,
@@ -83,7 +77,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc>def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeGt,
 			negate:    false,
@@ -91,7 +84,6 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc~def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeRegex,
 			negate:    false,
@@ -99,18 +91,9 @@ func TestFilterRuleExtractor(t *testing.T) {
 		},
 		{
 			filter:    "abc!~def",
-			dsName:    "",
 			fieldName: "abc",
 			op:        comparisonTypeRegex,
 			negate:    true,
-			value:     "def",
-		},
-		{
-			filter:    "dsname:abc==def",
-			dsName:    "dsname",
-			fieldName: "abc",
-			op:        comparisonTypeMatch,
-			negate:    false,
 			value:     "def",
 		},
 		{
@@ -149,13 +132,12 @@ func TestFilterRuleExtractor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.filter, func(t *testing.T) {
-			dsName, fieldName, op, negate, value, err := extractFilter(tc.filter)
+			fieldName, op, negate, value, err := extractFilter(tc.filter)
 			if tc.error {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}
-			assert.Equal(t, tc.dsName, dsName)
 			assert.Equal(t, tc.fieldName, fieldName)
 			assert.Equal(t, tc.op, op)
 			assert.Equal(t, tc.negate, negate)
