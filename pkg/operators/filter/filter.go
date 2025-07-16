@@ -62,54 +62,36 @@ func (f *filterOperator) GlobalParams() api.Params {
 }
 
 func (f *filterOperator) InstanceParams() api.Params {
-	return api.Params{&api.Param{
-		Key: ParamFilter,
-		Description: `Filter rules
-  A filter can match any field using the following syntax:
-    field==value     - matches, if the content of field equals exactly value
-    field!=value     - matches, if the content of field does not equal exactly value
-    field>=value     - matches, if the content of field is greater than or equal to the value
-    field>value      - matches, if the content of field is greater than the value
-    field<=value     - matches, if the content of field is less than or equal to the value
-    field<value      - matches, if the content of field is less than the value
-    field~value      - matches, if the content of field matches the regular expression 'value'
-    field!~value     - matches, if the content of field does not match the regular expression 'value'
-                 see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
-  Multiple filters can be combined using a comma: field1==value1,field2==value2
-  It is recommended to use single quotes to escape the filter string, especially if using regular expressions.
-  Example: --filter 'field!~regex'
-        `,
-		Alias: "F",
-	}}
+	return api.Params{}
 }
 
-func keyForDataSource(ds datasource.DataSource) string {
-	return fmt.Sprintf("%s.%s", ParamFilterExpr, ds.Name())
+func keyForDataSource(param string, ds datasource.DataSource) string {
+	return fmt.Sprintf("%s.%s", param, ds.Name())
 }
 
 func (f *filterOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
-	filterCfg := instanceParamValues[ParamFilter]
-
 	fop := &filterOperatorInstance{
 		gadgetCtx: gadgetCtx,
 		ffns:      map[datasource.DataSource][]func(datasource.DataSource, datasource.Data) bool{},
 	}
 
-	filters := api.SplitStringWithEscape(filterCfg, ',')
-	for _, filter := range filters {
-		if filter == "" {
-			continue
-		}
-		gadgetCtx.Logger().Debugf("adding filter %q", filter)
-		err := fop.addFilter(gadgetCtx, filter)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	datasources := gadgetCtx.GetDataSources()
 	for _, ds := range datasources {
-		key := keyForDataSource(ds)
+		key := keyForDataSource(ParamFilter, ds)
+		if filterStr := instanceParamValues[key]; filterStr != "" {
+			err := fop.addFilters(gadgetCtx, ds, filterStr)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if filterStr := instanceParamValues[ParamFilter]; filterStr != "" {
+			err := fop.addFilters(gadgetCtx, ds, filterStr)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		key = keyForDataSource(ParamFilterExpr, ds)
 		if filterExpr := instanceParamValues[key]; filterExpr != "" {
 			err := fop.addFilterExpr(gadgetCtx, ds, filterExpr)
 			if err != nil {
@@ -164,24 +146,51 @@ func (f *filterOperatorInstance) Name() string {
 }
 
 func (f *filterOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
-	description := `Filter rules with an expression language for the datasource %q.
+	descriptionFilter := `Filter rules
+  A filter can match any field using the following syntax:
+    field==value     - matches, if the content of field equals exactly value
+    field!=value     - matches, if the content of field does not equal exactly value
+    field>=value     - matches, if the content of field is greater than or equal to the value
+    field>value      - matches, if the content of field is greater than the value
+    field<=value     - matches, if the content of field is less than or equal to the value
+    field<value      - matches, if the content of field is less than the value
+    field~value      - matches, if the content of field matches the regular expression 'value'
+    field!~value     - matches, if the content of field does not match the regular expression 'value'
+                 see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+  Multiple filters can be combined using a comma: field1==value1,field2==value2
+  It is recommended to use single quotes to escape the filter string, especially if using regular expressions.
+  Example: --filter 'field!~regex'
+        `
+	descriptionFilterExp := `Filter rules with an expression language for the datasource %q.
                  See [https://expr-lang.org/] for more information on the syntax`
 
 	var filtersParam []*api.Param
 	dataSources := gadgetCtx.GetDataSources()
 	for dsName, ds := range dataSources {
-		key := keyForDataSource(ds)
+		keyFilter := keyForDataSource(ParamFilter, ds)
 		filtersParam = append(filtersParam, &api.Param{
-			Key:         key,
-			Description: fmt.Sprintf(description, dsName),
+			Key:         keyFilter,
+			Description: descriptionFilter,
 		})
+
+		keyFilterExpr := keyForDataSource(ParamFilterExpr, ds)
+		filtersParam = append(filtersParam, &api.Param{
+			Key:         keyFilterExpr,
+			Description: fmt.Sprintf(descriptionFilterExp, dsName),
+		})
+
 		if len(dataSources) == 1 {
 			filtersParam = append(filtersParam, &api.Param{
-				Key:         ParamFilterExpr,
-				Description: fmt.Sprintf("Same as --%s", key),
-				Alias:       "E",
+				Key:         ParamFilter,
+				Description: fmt.Sprintf("Synonym for --%s", keyFilter),
+				Alias:       "F",
 			})
 
+			filtersParam = append(filtersParam, &api.Param{
+				Key:         ParamFilterExpr,
+				Description: fmt.Sprintf("Synonym for --%s", keyFilterExpr),
+				Alias:       "E",
+			})
 		}
 	}
 
@@ -244,7 +253,7 @@ func getCompareFunc[T constraints.Ordered](op comparisonType) func(a, b T) bool 
 	}
 }
 
-func extractFilter(filter string) (dsName string, fieldName string, op comparisonType, negate bool, value string, err error) {
+func extractFilter(filter string) (fieldName string, op comparisonType, negate bool, value string, err error) {
 	// State machine to get filter
 	var opString string
 
@@ -255,11 +264,6 @@ nextChar:
 		switch stage {
 		case 0:
 			switch filter[pos] {
-			case ':':
-				dsName = fieldName
-				fieldName = ""
-				pos++
-				continue nextChar
 			case '!', '~', '>', '<', '=':
 				stage = 1
 				continue nextChar
@@ -292,7 +296,7 @@ nextChar:
 					op = comparisonTypeRegex
 					negate = true
 				default:
-					return "", "", comparisonTypeUnknown, false, "",
+					return "", comparisonTypeUnknown, false, "",
 						fmt.Errorf("invalid operation: %q", opString)
 				}
 				stage = 2
@@ -302,34 +306,33 @@ nextChar:
 			return
 		}
 	}
-	return "", "", comparisonTypeUnknown, false, "", fmt.Errorf("incomplete filter rule")
+	return "", comparisonTypeUnknown, false, "", fmt.Errorf("incomplete filter rule: %q", filter)
 }
 
-func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, filter string) error {
-	dsName, fieldName, op, negate, value, err := extractFilter(filter)
+func (f *filterOperatorInstance) addFilters(gadgetCtx operators.GadgetContext, ds datasource.DataSource, filterStr string) error {
+	filters := api.SplitStringWithEscape(filterStr, ',')
+	for _, filter := range filters {
+		if filter == "" {
+			continue
+		}
+		gadgetCtx.Logger().Debugf("adding filter %q", filter)
+		err := f.addFilter(gadgetCtx, ds, filter)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, ds datasource.DataSource, filter string) error {
+	fieldName, op, negate, value, err := extractFilter(filter)
 	if err != nil {
 		return fmt.Errorf("extracting filter rule %q: %w", filter, err)
 	}
 
-	var filterds datasource.DataSource
-	var field datasource.FieldAccessor
-	for _, ds := range gadgetCtx.GetDataSources() {
-		if dsName != "" && ds.Name() != dsName {
-			continue
-		}
-		nf := ds.GetField(fieldName)
-		if nf == nil {
-			continue
-		}
-		if field != nil {
-			return fmt.Errorf("ambiguous field name, please specify the datasource")
-		}
-		field = nf
-		filterds = ds
-	}
-
+	field := ds.GetField(fieldName)
 	if field == nil {
-		return fmt.Errorf("field %q not found", fieldName)
+		return fmt.Errorf("field %q not found in datasource %s", fieldName, ds.Name())
 	}
 
 	ff, err := getFilterFunc(field, op, negate, value)
@@ -337,7 +340,7 @@ func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, fi
 		return err
 	}
 
-	f.ffns[filterds] = append(f.ffns[filterds], ff)
+	f.ffns[ds] = append(f.ffns[ds], ff)
 	return nil
 }
 
