@@ -138,13 +138,13 @@ func TestCliOperators(t *testing.T) {
 						json.WithShowAll(true),
 						json.WithArray(true),
 					)
-					yamlDataFn(ds, data, jsonFormatter, &buf)
+					yamlDataFn(data, jsonFormatter, &buf)
 					assert.Equal(t, strings.ReplaceAll(tc.expectedYaml, "\t", ""), buf.String())
 				case "json":
 					jsonFormatter, _ := json.New(ds,
 						json.WithShowAll(true),
 					)
-					jsonSingleDataFn(ds, data, jsonFormatter, &buf)
+					jsonSingleDataFn(data, jsonFormatter, &buf)
 					assert.Equal(t, removeNewLineAndTabs(tc.expectedJson), buf.String())
 
 				default:
@@ -247,13 +247,13 @@ func TestNestedValues(t *testing.T) {
 						json.WithShowAll(true),
 						json.WithArray(true),
 					)
-					yamlDataFn(ds, data, jsonFormatter, &buf)
+					yamlDataFn(data, jsonFormatter, &buf)
 					assert.Equal(t, strings.ReplaceAll(tc.expectedYaml, "\t", ""), buf.String())
 				case "json":
 					jsonFormatter, _ := json.New(ds,
 						json.WithShowAll(true),
 					)
-					jsonSingleDataFn(ds, data, jsonFormatter, &buf)
+					jsonSingleDataFn(data, jsonFormatter, &buf)
 					assert.Equal(t, removeNewLineAndTabs(tc.expectedJson), buf.String())
 				}
 			})
@@ -471,7 +471,7 @@ func TestJsonArray(t *testing.T) {
 				json.WithShowAll(true),
 				json.WithArray(true),
 			)
-			jsonArrayDataFn(ds, data, jsonFormatter, &buf)
+			jsonArrayDataFn(data, jsonFormatter, &buf)
 			assert.Equal(t, removeNewLineAndTabs(tc.expected), buf.String())
 		})
 	}

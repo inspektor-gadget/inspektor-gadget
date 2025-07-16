@@ -438,7 +438,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				// For the time being, this uses a slow approach to marshal to YAML, by first
 				// converting to JSON and then to YAML. This should get a dedicated formatter sooner or later.
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					return yamlDataFn(ds, data, jsonFormatter, os.Stdout)
+					return yamlDataFn(data, jsonFormatter, os.Stdout)
 				}, Priority)
 				continue
 			}
@@ -446,12 +446,12 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			switch ds.Type() {
 			case datasource.TypeSingle:
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
-					jsonSingleDataFn(ds, data, jsonFormatter, os.Stdout)
+					jsonSingleDataFn(data, jsonFormatter, os.Stdout)
 					return nil
 				}, Priority)
 			case datasource.TypeArray:
 				ds.SubscribeArray(func(ds datasource.DataSource, dataArray datasource.DataArray) error {
-					jsonArrayDataFn(ds, dataArray, jsonFormatter, os.Stdout)
+					jsonArrayDataFn(dataArray, jsonFormatter, os.Stdout)
 					return nil
 				}, Priority)
 			}
@@ -469,7 +469,7 @@ func defaultDataFn(ds datasource.DataSource, data datasource.Data, w io.Writer) 
 	}
 }
 
-func yamlDataFn(ds datasource.DataSource, data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) error {
+func yamlDataFn(data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) error {
 	yml, err := yaml.JSONToYAML(jsonFormatter.Marshal(data))
 	if err != nil {
 		return fmt.Errorf("serializing yaml: %w", err)
@@ -479,11 +479,11 @@ func yamlDataFn(ds datasource.DataSource, data datasource.Data, jsonFormatter *j
 	return nil
 }
 
-func jsonSingleDataFn(ds datasource.DataSource, data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) {
+func jsonSingleDataFn(data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) {
 	fmt.Fprintln(w, string(jsonFormatter.Marshal(data)))
 }
 
-func jsonArrayDataFn(ds datasource.DataSource, dataArray datasource.DataArray, jsonFormatter *json.Formatter, w io.Writer) {
+func jsonArrayDataFn(dataArray datasource.DataArray, jsonFormatter *json.Formatter, w io.Writer) {
 	fmt.Fprintln(w, string(jsonFormatter.MarshalArray(dataArray)))
 }
 
