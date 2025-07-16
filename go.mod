@@ -9,7 +9,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
 	github.com/containers/common v0.63.1
-	github.com/containers/image/v5 v5.35.0
+	github.com/containers/image/v5 v5.36.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -82,7 +82,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/Microsoft/hcsshim v0.12.9 // indirect
+	github.com/Microsoft/hcsshim v0.13.0 // indirect
 	github.com/PaesslerAG/gval v1.0.0 // indirect
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
-	github.com/containers/storage v1.58.0 // indirect
+	github.com/containers/storage v1.59.0 // indirect
 	github.com/creack/pty v1.1.20 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
@@ -141,7 +141,6 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
-	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -177,7 +176,7 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
