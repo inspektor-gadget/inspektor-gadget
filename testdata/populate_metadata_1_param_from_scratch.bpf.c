@@ -11,6 +11,7 @@ const volatile int param;
 const volatile int param2;
 
 GADGET_PARAM(param);
+GADGET_CATEGORY_OBSERVER();
 // GADGET_PARAM(param2); intentionally ommited
 
 char LICENSE[] SEC("license") = "GPL";
