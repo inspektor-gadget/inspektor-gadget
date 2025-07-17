@@ -221,6 +221,11 @@ spec:
             - mountPath: /etc/ig
               name: config
               readOnly: true
+            # We need a dedicated volume to store the wasm cache
+            # otherwise it will fail as the container root filesystem is read only.
+            - mountPath: /var/run/ig/wasm-cache
+              name: wasm-cache
+              readOnly: false
       nodeSelector:
         {{- .Values.nodeSelector | toYaml | nindent 8 }}
       affinity:
@@ -290,3 +295,5 @@ spec:
           configMap:
             name: {{ include "gadget.fullname" . }}
             defaultMode: 0o400
+        - name: wasm-cache
+          emptyDir: {}
