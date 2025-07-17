@@ -21,6 +21,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
@@ -63,7 +64,10 @@ const (
 	AnnotationDefaultOutputMode = "cli.default-output-mode"
 )
 
-var DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
+var (
+	DefaultSupportedOutputModes = []string{ModeColumns, ModeJSON, ModeJSONPretty, ModeNone, ModeYAML}
+	cliWriteMutex               = sync.Mutex{}
+)
 
 type cliOperator struct{}
 
@@ -474,16 +478,22 @@ func yamlDataFn(data datasource.Data, jsonFormatter *json.Formatter, w io.Writer
 	if err != nil {
 		return fmt.Errorf("serializing yaml: %w", err)
 	}
+	cliWriteMutex.Lock()
+	defer cliWriteMutex.Unlock()
 	fmt.Fprintln(w, "---")
 	fmt.Fprint(w, string(yml))
 	return nil
 }
 
 func jsonSingleDataFn(data datasource.Data, jsonFormatter *json.Formatter, w io.Writer) {
+	cliWriteMutex.Lock()
+	defer cliWriteMutex.Unlock()
 	fmt.Fprintln(w, string(jsonFormatter.Marshal(data)))
 }
 
 func jsonArrayDataFn(dataArray datasource.DataArray, jsonFormatter *json.Formatter, w io.Writer) {
+	cliWriteMutex.Lock()
+	defer cliWriteMutex.Unlock()
 	fmt.Fprintln(w, string(jsonFormatter.MarshalArray(dataArray)))
 }
 
