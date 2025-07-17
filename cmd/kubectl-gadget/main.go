@@ -140,7 +140,7 @@ func main() {
 		}
 	}
 
-	info, err := grpcRuntime.InitDeployInfo()
+	info, err := grpcRuntime.GetInfo()
 	if err != nil {
 		log.Warnf("Failed to load deploy info: %s", err)
 	} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
@@ -156,7 +156,6 @@ func main() {
 
 	common.AddInstanceCommands(rootCmd, grpcRuntime)
 
-	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, grpcRuntime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(grpcRuntime, rootFlags))

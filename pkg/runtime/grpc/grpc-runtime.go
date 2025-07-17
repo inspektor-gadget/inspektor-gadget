@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	gadgettls "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/tls"
@@ -83,7 +82,7 @@ const (
 )
 
 type Runtime struct {
-	info           *deployinfo.DeployInfo
+	info           *Info
 	defaultValues  map[string]string
 	globalParams   *params.Params
 	restConfig     *rest.Config
