@@ -39,7 +39,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
@@ -136,8 +135,6 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 			errs = append(errs, fmt.Sprintf("failed removing image policy: %v", err))
 		}
 	}
-
-	deployinfo.Store(&deployinfo.DeployInfo{})
 
 	if len(errs) > 0 {
 		return fmt.Errorf("removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))

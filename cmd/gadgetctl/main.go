@@ -72,7 +72,7 @@ func main() {
 	if !skipInfo {
 		// evaluate flags early for runtimeGlobalFlags; this will make
 		// sure that --remote-address has already been parsed when calling
-		// InitDeployInfo(), so it can target the specified address
+		// GetInfo(), so it can target the specified address
 
 		err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
 		if err != nil {
@@ -80,7 +80,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		info, err := runtime.InitDeployInfo()
+
+		info, err := runtime.GetInfo()
 		if err != nil {
 			log.Warnf("Failed to load deploy info: %s", err)
 		} else if err := commonutils.CheckServerVersionSkew(info.ServerVersion); err != nil {
@@ -104,7 +105,6 @@ func main() {
 	hiddenColumnTags := []string{"kubernetes"}
 
 	common.AddInstanceCommands(rootCmd, runtime)
-	rootCmd.AddCommand(common.NewSyncCommand(runtime))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
