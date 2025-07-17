@@ -8,7 +8,7 @@ require (
 	github.com/containerd/containerd v1.7.27
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
-	github.com/containers/common v0.63.1
+	github.com/containers/common v0.64.0
 	github.com/containers/image/v5 v5.36.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1
@@ -32,7 +32,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.2.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
-	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
+	github.com/seccomp/libseccomp-golang v0.11.0 // indirect
 	github.com/sigstore/sigstore v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
