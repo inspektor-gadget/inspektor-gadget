@@ -65,7 +65,7 @@ var versionCmd = &cobra.Command{
 		if len(gadgetNamespaces) == 1 {
 			// Exactly one running gadget instance found, use it
 			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
-			info, err := grpcRuntime.InitDeployInfo()
+			info, err := grpcRuntime.GetInfo()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
 			} else {

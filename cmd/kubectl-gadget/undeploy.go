@@ -35,7 +35,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
@@ -227,9 +226,6 @@ out:
 	} else {
 		fmt.Println("Inspektor Gadget is being removed")
 	}
-
-	// Cleanup state related to the deployment
-	deployinfo.Store(&deployinfo.DeployInfo{})
 
 	return nil
 }
