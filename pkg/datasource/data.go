@@ -225,7 +225,7 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 	for _, f := range in.Fields {
 		ds.fields = append(ds.fields, (*field)(f))
 		if !FieldFlagUnreferenced.In(f.Flags) {
-			ds.fieldMap[f.FullName] = (*field)(f)
+			ds.fieldMap[strings.ToLower(f.FullName)] = (*field)(f)
 		}
 	}
 	if in.Flags&api.DataSourceFlagsBigEndian != 0 {
@@ -372,7 +372,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 
 	for _, f := range fields {
 		fieldName := f.FieldName()
-		if _, ok := ds.fieldMap[fieldName]; ok {
+		if _, ok := ds.fieldMap[strings.ToLower(fieldName)]; ok {
 			return nil, fmt.Errorf("field %q already exists", fieldName)
 		}
 		nf := &field{
@@ -434,7 +434,7 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 	ds.fields = append(ds.fields, newFields...)
 
 	for _, f := range newFields {
-		ds.fieldMap[f.FullName] = f
+		ds.fieldMap[strings.ToLower(f.FullName)] = f
 	}
 
 	ds.payloadCount++
@@ -537,7 +537,7 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 		nf.FullName = resolved + "." + name
 	}
 
-	if _, ok := ds.fieldMap[nf.FullName]; ok {
+	if _, ok := ds.fieldMap[strings.ToLower(nf.FullName)]; ok {
 		return nil, fmt.Errorf("field %q already exists", name)
 	}
 
@@ -550,7 +550,7 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	ds.applyFieldConfig(nf)
 
 	ds.fields = append(ds.fields, nf)
-	ds.fieldMap[nf.FullName] = nf
+	ds.fieldMap[strings.ToLower(nf.FullName)] = nf
 	return &fieldAccessor{ds: ds, f: nf}, nil
 }
 
@@ -558,7 +558,7 @@ func (ds *dataSource) GetField(name string) FieldAccessor {
 	ds.lock.RLock()
 	defer ds.lock.RUnlock()
 
-	f, ok := ds.fieldMap[name]
+	f, ok := ds.fieldMap[strings.ToLower(name)]
 	if !ok {
 		return nil
 	}
@@ -748,7 +748,7 @@ func (ds *dataSource) CopyFieldsTo(out DataSource) error {
 		nf, _ := msg.(*api.Field)
 		outDs.fields = append(outDs.fields, (*field)(nf))
 		if !FieldFlagUnreferenced.In(f.Flags) {
-			outDs.fieldMap[nf.FullName] = (*field)(nf)
+			outDs.fieldMap[strings.ToLower(nf.FullName)] = (*field)(nf)
 		}
 	}
 
