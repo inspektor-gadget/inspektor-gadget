@@ -1719,8 +1719,14 @@ jobs:
         sudo apt-get install -y qemu-system-x86
         sudo chmod 666 /dev/kvm
     - name: Install vimto
+      # Instead of lmb.io/vimto@latest
+      # Use github.com/alban/vimto@alban_devpts
+      # Because of https://github.com/lmb/vimto/pull/26
       run: |
-        CGO_ENABLED=0 GOBIN=$(go env GOPATH)/bin go install lmb.io/vimto@latest
+        git clone https://github.com/alban/vimto.git
+        cd vimto
+        git checkout alban_devpts
+        CGO_ENABLED=0 GOBIN=$(go env GOPATH)/bin go install .
         ls $(go env GOPATH)/bin | grep vimto
     - name: Run gadget unit tests for kernel ${{ matrix.kernel }}
       id: gadgets-kernel-tests
