@@ -2,10 +2,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  {{- if not .Values.skipLabels }}
   labels:
+    {{- if not .Values.skipLabels }}
     {{- include "gadget.labels" . | nindent 4 }}
-  {{- end }}
+    {{- end }}
+    k8s-app: {{ include "gadget.fullname" . }}
   name: {{ include "gadget.fullname" . }}
   namespace: {{ include "gadget.namespace" . }}
 data:

@@ -9,6 +9,8 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  labels:
+    k8s-app: gadget
   name: gadget
   namespace: gadget
 ---
@@ -16,6 +18,8 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  labels:
+    k8s-app: gadget
   name: gadget
   namespace: gadget
 data:
@@ -50,6 +54,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: gadget-cluster-role
+  labels:
+    k8s-app: gadget
 rules:
   - apiGroups: [""]
     resources: ["nodes/proxy"]
@@ -88,6 +94,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: gadget-cluster-role-binding
+  labels:
+    k8s-app: gadget
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -101,6 +109,8 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    k8s-app: gadget
   name: gadget-role
   namespace: gadget
 rules:
@@ -116,6 +126,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  labels:
+    k8s-app: gadget
   name: gadget-role-binding
   namespace: gadget
 roleRef:
