@@ -121,17 +121,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := gadgettracermanagerconfig.Init(); err != nil {
-		log.Fatalf("Initializing config: %v", err)
-	}
-
-	logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
-	if err != nil {
-		log.Fatalf("Parsing log level %q: %v", logLevel, err)
-	}
-	log.SetLevel(logLevel)
-	log.Infof("Config: %s=%s", gadgettracermanagerconfig.DaemonLogLevel, logLevel)
-
 	labels := []*pb.Label{}
 	if label != "" {
 		pairs := strings.Split(label, ",")
@@ -265,6 +254,16 @@ func main() {
 	}
 
 	if serve {
+		if err := gadgettracermanagerconfig.Init(); err != nil {
+			log.Fatalf("Initializing config: %v", err)
+		}
+
+		logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
+		if err != nil {
+			log.Fatalf("Parsing log level %q: %v", logLevel, err)
+		}
+		log.SetLevel(logLevel)
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.DaemonLogLevel, logLevel)
 		log.Infof("Inspektor Gadget version: %s", version.Version().String())
 		log.Infof("Inspektor Gadget User Agent: %s", version.UserAgent())
 
