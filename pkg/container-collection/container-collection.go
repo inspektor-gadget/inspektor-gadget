@@ -16,9 +16,9 @@
 // track of the set of running containers and primitives to query that set with
 // various criteria.
 //
-// It is used by the Gadget Tracer Manager to keep track of containers part of
-// Kubernetes pods and by IG Manager to keep track of containers on a
-// Linux system.
+// It is used by the kube manager operator to keep track of containers part of
+// Kubernetes pods and by local manager to keep track of containers on a Linux
+// system (no matter they were created through Kubernetes or not).
 package containercollection
 
 import (

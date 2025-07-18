@@ -10,8 +10,6 @@ metadata:
   namespace: {{ include "gadget.namespace" . }}
 data:
     config.yaml: |-
-      hook-mode: {{ .Values.config.hookMode }}
-      fallback-pod-informer: {{ .Values.config.fallbackPodInformer }}
       events-buffer-length: {{ .Values.config.eventsBufferLength }}
       containerd-socketpath: {{ .Values.config.containerdSocketPath }}
       crio-socketpath: {{ .Values.config.crioSocketPath }}
