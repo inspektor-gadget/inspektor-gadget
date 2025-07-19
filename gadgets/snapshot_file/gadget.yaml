@@ -18,6 +18,15 @@ datasources:
       inode:
         annotations:
           columns.hidden: true
+      flags_raw:
+        annotations:
+          columns.hidden: true
+      mode_raw:
+        annotations:
+          columns.hidden: true
+      mode:
+        annotations:
+          description: File access mode
 params:
   ebpf:
     paths:
@@ -26,5 +35,5 @@ params:
       description: Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
     file_type_mask:
       key: type-mask
-      defaultValue: "0xFFFFFFF"
-      description: File type mask to filter files by type (default is 0x7f, which includes regular files, directories, symlinks, sockets, and FIFOs)
+      defaultValue: "100010"
+      description: File type mask to filter files by type (default includes regular files and directories)
