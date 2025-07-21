@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -69,7 +68,6 @@ import (
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
 	kubemanagertypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -79,31 +77,15 @@ var (
 	liveness          bool
 	socketfile        string
 	gadgetServiceHost string
-	method            string
-	label             string
-	containerID       string
-	namespace         string
-	podname           string
-	containername     string
-	containerPid      uint
 )
 
 var clientTimeout = 2 * time.Second
 
 func init() {
-	flag.StringVar(&socketfile, "hook-liveness-socketfile", kubemanagertypes.DefaultHookAndLivenessSocketFile, "Path to socket file for sending hook's requests for adding/removing containers and for liveness checks")
+	flag.StringVar(&socketfile, "liveness-socketfile", kubemanagertypes.DefaultHookAndLivenessSocketFile, "Path to socket file for liveness checks")
 	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
-
-	flag.StringVar(&method, "call", "", "Call a method (add-container, remove-container)")
-	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
-	flag.StringVar(&containerID, "containerid", "", "container id to use in add-container or remove-container")
-	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
-	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
-	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
-	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
-
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
 }
 
@@ -116,93 +98,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := gadgettracermanagerconfig.Init(); err != nil {
-		log.Fatalf("Initializing config: %v", err)
-	}
+	if liveness {
+		var ctx context.Context
+		var cancel context.CancelFunc
+		var conn *grpc.ClientConn
 
-	logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
-	if err != nil {
-		log.Fatalf("Parsing log level %q: %v", logLevel, err)
-	}
-	log.SetLevel(logLevel)
-	log.Infof("Config: %s=%s", gadgettracermanagerconfig.DaemonLogLevel, logLevel)
-
-	labels := []*pb.Label{}
-	if label != "" {
-		pairs := strings.Split(label, ",")
-		for _, pair := range pairs {
-			kv := strings.Split(pair, "=")
-			if len(kv) != 2 {
-				fmt.Printf("invalid key=value[,key=value,...] %q\n", label)
-				flag.PrintDefaults()
-				os.Exit(1)
-			}
-			labels = append(labels, &pb.Label{Key: kv[0], Value: kv[1]})
-		}
-	}
-
-	var client pb.HookServiceClient
-	var ctx context.Context
-	var cancel context.CancelFunc
-	var conn *grpc.ClientConn
-	if liveness || method != "" {
 		var err error
 		//nolint:staticcheck
 		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Fatalf("fail to dial: %v", err)
+			fmt.Printf("Gadget Tracer Manager health check failed to dial: %v", err)
+			os.Exit(1)
 		}
 		defer conn.Close()
-		client = pb.NewHookServiceClient(conn)
 
-		if liveness {
-			// Let's cover the cases where timeoutSeconds is not respected. See
-			// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes.
-			// IMPORTANT: Consider that setting timeoutSeconds to a value larger
-			// than clientTimeout will have no effect. Check further details in
-			// https://github.com/inspektor-gadget/inspektor-gadget/issues/940.
-			clientTimeout = time.Minute
-		}
-
+		// Let's cover the cases where timeoutSeconds is not respected. See
+		// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes.
+		// IMPORTANT: Consider that setting timeoutSeconds to a value larger
+		// than clientTimeout will have no effect. Check further details in
+		// https://github.com/inspektor-gadget/inspektor-gadget/issues/940.
+		clientTimeout = time.Minute
 		ctx, cancel = context.WithTimeout(context.Background(), clientTimeout)
 		defer cancel()
-	}
 
-	switch method {
-	case "":
-		// break
-
-	case "add-container":
-		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			Id:        containerID,
-			Pid:       uint32(containerPid),
-			OciConfig: "",
-			Namespace: namespace,
-			Podname:   podname,
-			Name:      containername,
-			Labels:    labels,
-		})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		os.Exit(0)
-
-	case "remove-container":
-		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			Id: containerID,
-		})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		os.Exit(0)
-
-	default:
-		fmt.Printf("invalid method %q\n", method)
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
-	if liveness {
 		resp, err := healthpb.NewHealthClient(conn).Check(ctx, &healthpb.HealthCheckRequest{Service: ""})
 		if err != nil {
 			stat := status.Convert(err)
@@ -226,8 +144,19 @@ func main() {
 	}
 
 	if serve {
+		if err := gadgettracermanagerconfig.Init(); err != nil {
+			log.Fatalf("Initializing config: %v", err)
+		}
+
 		log.Infof("Inspektor Gadget version: %s", version.Version().String())
 		log.Infof("Inspektor Gadget User Agent: %s", version.UserAgent())
+
+		logLevel, err := log.ParseLevel(config.Config.GetString(gadgettracermanagerconfig.DaemonLogLevel))
+		if err != nil {
+			log.Fatalf("Parsing log level %q: %v", logLevel, err)
+		}
+		log.SetLevel(logLevel)
+		log.Infof("Config: %s=%s", gadgettracermanagerconfig.DaemonLogLevel, logLevel)
 
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
