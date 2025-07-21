@@ -257,24 +257,6 @@ func fromCString(in []byte) string {
 	}
 }
 
-func fromCStringN(in []byte, length int) string {
-	l := len(in)
-	if length < l {
-		l = length
-	}
-
-	buf := in[:l]
-	idx := bytes.IndexByte(buf, 0)
-	switch {
-	case idx == -1:
-		return string(in)
-	case idx < l:
-		return string(in[:idx])
-	default:
-		return string(in)
-	}
-}
-
 func timestampFromEvent(event *syscallEvent) int64 {
 	return time.Unix(0, int64(event.bootTimestamp)).Add(0).UnixNano()
 }
@@ -431,7 +413,11 @@ func (t *tracelooper) read(mntnsID uint64, reader *containerRingReader) ([]*even
 				// 0 byte at [C.PARAM_LENGTH - 1] is enforced in BPF code
 				event.param = fromCString(sysEventCont.Param[:])
 			} else {
-				event.param = fromCStringN(sysEventCont.Param[:], int(sysEventCont.Length))
+				if sysEventCont.Length < uint64(len(sysEventCont.Param[:])) {
+					event.param = string(sysEventCont.Param[:sysEventCont.Length])
+				} else {
+					event.param = string(sysEventCont.Param[:])
+				}
 			}
 
 			// Remove all non unicode character from the string.
