@@ -342,6 +342,26 @@ func TestExpressionFilter(t *testing.T) {
 			filterString: "boolValue!=true",
 			match:        false,
 		},
+		{
+			name:         "cidr match positive",
+			filterString: "'1.1.1.1' in cidr('1.0.0.0/8')",
+			match:        true,
+		},
+		{
+			name:         "cidr match negative",
+			filterString: "'127.0.0.1' in cidr('1.0.0.0/8')",
+			match:        false,
+		},
+		{
+			name:         "multiple cidr match positive",
+			filterString: "'20.21.22.23' in cidr('10.0.0.0/8', '20.0.0.0/8', '30.0.0.0/8')",
+			match:        true,
+		},
+		{
+			name:         "multiple cidr match negative",
+			filterString: "'25.26.27.28' in cidr('10.0.0.0/8', '20.0.0.0/8', '30.0.0.0/8')",
+			match:        false,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
