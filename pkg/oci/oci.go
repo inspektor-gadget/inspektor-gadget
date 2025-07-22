@@ -89,7 +89,7 @@ const (
 )
 
 var (
-	defaultDomain      = "ghcr.io"
+	DefaultDomain      = "ghcr.io"
 	officialRepoPrefix = "inspektor-gadget/gadget/"
 )
 
@@ -555,7 +555,7 @@ func GetGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 	}
 
 	for _, image := range images {
-		image.Repository = strings.TrimPrefix(image.Repository, defaultDomain+"/"+officialRepoPrefix)
+		image.Repository = strings.TrimPrefix(image.Repository, DefaultDomain+"/"+officialRepoPrefix)
 	}
 
 	return images, nil
@@ -643,20 +643,20 @@ func deleteGadgetImage(ctx context.Context, image string) error {
 	return ociStore.GC(ctx)
 }
 
-// splitIGDomain splits a repository name to domain and remote-name.
+// SplitIGDomain splits a repository name to domain and remote-name.
 // If no valid domain is found, the default domain is used. Repository name
 // needs to be already validated before.
 // Inspired on https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L126
 // TODO: Ideally we should use the upstream function but docker.io is hardcoded there
 // https://github.com/distribution/reference/blob/v0.5.0/normalize.go#L31
-func splitIGDomain(name string) (domain, remainder string) {
+func SplitIGDomain(name string) (domain, remainder string) {
 	i := strings.IndexRune(name, '/')
 	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != localhost && strings.ToLower(name[:i]) == name[:i]) {
-		domain, remainder = defaultDomain, name
+		domain, remainder = DefaultDomain, name
 	} else {
 		domain, remainder = name[:i], name[i+1:]
 	}
-	if domain == defaultDomain && !strings.ContainsRune(remainder, '/') {
+	if domain == DefaultDomain && !strings.ContainsRune(remainder, '/') {
 		remainder = officialRepoPrefix + remainder
 	}
 	return
@@ -664,7 +664,7 @@ func splitIGDomain(name string) (domain, remainder string) {
 
 func normalizeImageName(image string) (reference.Named, error) {
 	// Use the default gadget's registry if no domain is specified.
-	domain, remainer := splitIGDomain(image)
+	domain, remainer := SplitIGDomain(image)
 
 	name, err := reference.ParseNormalizedNamed(domain + "/" + remainer)
 	if err != nil {
