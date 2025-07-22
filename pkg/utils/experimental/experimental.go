@@ -17,9 +17,6 @@ package experimental
 import (
 	"os"
 	"sync"
-
-	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 )
 
 var (
@@ -35,16 +32,6 @@ func Enabled() bool {
 		if val, ok := os.LookupEnv(EnvName); ok {
 			experimental = val == "true"
 			return
-		}
-
-		// Only check the deployinfo file if this is running in Kubernetes
-		if environment.Environment == environment.Kubernetes {
-			info, err := deployinfo.Load()
-			if err != nil {
-				return
-			}
-
-			experimental = info.Experimental
 		}
 	})
 
