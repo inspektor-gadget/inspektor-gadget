@@ -36,7 +36,7 @@ fn gadgetStart() -> i32 {
         return 1;
     };
 
-    let Ok(perf_reader) = PerfReader::new(perf_array, 4096, true) else {
+    let Ok(perf_reader) = PerfReader::new(&perf_array, 4096, true) else {
         errorf!("creating perf reader");
         return 1;
     };
