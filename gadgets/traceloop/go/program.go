@@ -16,8 +16,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -28,6 +30,15 @@ import (
 	"unsafe"
 
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
+)
+
+// Constants from https://pkg.go.dev/syscall
+// The WASM architecture redefine these constants in a different way,
+// so we can't use the syscall package directly.
+const (
+	AF_UNIX  = 1
+	AF_INET  = 2
+	AF_INET6 = 10
 )
 
 type eventType uint32
@@ -80,6 +91,7 @@ var syscallDefs = map[string][6]uint64{
 	"write":       {0, useArgIndexAsParamLength + 2, 0, 0, 0, 0},
 	"getcwd":      {useNullByteLength | paramProbeAtExitMask, 0, 0, 0, 0, 0},
 	"pread64":     {0, useRetAsParamLength | paramProbeAtExitMask, 0, 0, 0, 0},
+	"connect":     {0, useArgIndexAsParamLength + 2, 0, 0, 0, 0},
 }
 
 // Used as cache for getSyscallDeclaration().
@@ -157,7 +169,8 @@ type syscallEvent struct {
 type syscallEventContinued struct {
 	monotonicTimestamp uint64
 	index              uint8
-	param              string
+	param              []byte
+	paramQuote         string
 }
 
 type syscallParam struct {
@@ -342,6 +355,116 @@ func getSyscallDeclaration(name string) (api.SyscallDeclaration, error) {
 	return declaration, nil
 }
 
+// sockaddrFromBytes attempts to convert a byte slice representing a sockaddr
+// into a human-readable IP address and port string.
+// It handles AF_INET (IPv4), AF_INET6 (IPv6) and AF_UNIX (Unix sockets).
+func sockaddrFromBytes(data []byte) (string, error) {
+	if len(data) < 2 {
+		return "", fmt.Errorf("sockaddr byte slice too short to determine family")
+	}
+
+	// The first two bytes of any sockaddr struct typically contain the address family.
+	// This is a uint16 in native endianness. We can't use binary.NativeEndian because
+	// it would be the WASM endianness. IG supports both amd64 and arm64, which are
+	// both Little Endian.
+	family := binary.LittleEndian.Uint16(data[0:2])
+
+	switch family {
+	case AF_INET:
+		// IPv4: struct sockaddr_in
+		// struct sockaddr_in {
+		//     sa_family_t    sin_family; // address family: AF_INET
+		//     in_port_t      sin_port;   // port in network byte order
+		//     struct in_addr sin_addr;   // internet address
+		// };
+		// struct in_addr {
+		//     uint32_t s_addr; // address in network byte order
+		// };
+
+		if len(data) < 8 {
+			return "", fmt.Errorf("IPv4 sockaddr byte slice too short (%d)", len(data))
+		}
+
+		// Port is in network byte order (big-endian). Convert to host byte order.
+		port := int(binary.BigEndian.Uint16(data[2:4]))
+
+		// IP address is 4 bytes, also in network byte order.
+		ip := net.IPv4(data[4], data[5], data[6], data[7])
+
+		return fmt.Sprintf("%s:%d", ip.String(), port), nil
+
+	case AF_INET6:
+		// IPv6: struct sockaddr_in6
+		// struct sockaddr_in6 {
+		//     sa_family_t     sin6_family;   // AF_INET6
+		//     in_port_t       sin6_port;     // port number
+		//     uint32_t        sin6_flowinfo; // IPv6 flow-info
+		//     struct in6_addr sin6_addr;     // IPv6 address
+		//     uint32_t        sin6_scope_id; // Scope ID (for link-local addresses)
+		// };
+		// struct in6_addr {
+		//     unsigned char   s6_addr[16];   // IPv6 address in network byte order
+		// };
+
+		if len(data) < 28 {
+			return "", fmt.Errorf("IPv6 sockaddr byte slice too short (%d)", len(data))
+		}
+
+		// Port is in network byte order (big-endian). Convert to host byte order.
+		port := int(binary.BigEndian.Uint16(data[2:4]))
+
+		// IP address is 16 bytes.
+		ip := net.IP(data[8 : 8+16]) // [16]byte array
+
+		// Extract the scope ID (bytes 24-27). On amd64 and arm64, this is little-endian.
+		scopeID := binary.LittleEndian.Uint32(data[24:28])
+
+		addrStr := ip.String()
+		if scopeID != 0 {
+			addrStr = fmt.Sprintf("%s%%%d", addrStr, scopeID)
+		}
+
+		return fmt.Sprintf("[%s]:%d", addrStr, port), nil
+
+	case AF_UNIX:
+		// Unix domain socket: struct sockaddr_un
+		// struct sockaddr_un {
+		//     sa_family_t sun_family; // AF_UNIX
+		//     char        sun_path[108]; // Pathname
+		// };
+		// The path can be abstract (starts with NUL byte) or filesystem path.
+
+		// The path can be shorter than 108 bytes but at least 1 byte
+		if len(data) < 3 {
+			return "", fmt.Errorf("Unix sockaddr byte slice too short (%d)", len(data))
+		}
+		pathBytes := data[2:]
+		path := ""
+		if pathBytes[0] == 0 {
+			// Abstract Unix socket: the path starts with a null byte.
+			// `strace` often represents this with an "@" prefix (e.g., `unix:@/tmp/my_socket`).
+			quoted := strconv.Quote(string(pathBytes[1:]))
+			path = "@" + quoted[1:len(quoted)-1] // Remove double quotes
+		} else {
+			nullTerminator := bytes.IndexByte(pathBytes, 0)
+			if nullTerminator != -1 {
+				// If a null terminator is found, the path is up to that point.
+				path = string(pathBytes[:nullTerminator])
+			} else {
+				// If no null terminator, treat the rest of the slice as the path.
+				// This can happen if the buffer is exactly the size of the path.
+				path = string(pathBytes)
+			}
+		}
+
+		// Format as "unix:path".
+		return fmt.Sprintf("unix:%s", path), nil
+
+	default:
+		return "", fmt.Errorf("unsupported address family: %d", family)
+	}
+}
+
 func (t *tracelooper) read(mntnsID uint64, reader *containerRingReader) ([]*event, error) {
 	syscallContinuedEventsMap := make(map[uint64][]*syscallEventContinued)
 	syscallEnterEventsMap := make(map[uint64][]*syscallEvent)
@@ -405,23 +528,26 @@ func (t *tracelooper) read(mntnsID uint64, reader *containerRingReader) ([]*even
 			event := &syscallEventContinued{
 				monotonicTimestamp: sysEventCont.MonotonicTimestamp,
 				index:              sysEventCont.Index,
+				param:              sysEventCont.Param[:],
 			}
 
 			if sysEventCont.Failed != 0 {
-				event.param = "(Failed to dereference pointer)"
+				event.paramQuote = "(Failed to dereference pointer)"
 			} else if sysEventCont.Length == useNullByteLength {
 				// 0 byte at [C.PARAM_LENGTH - 1] is enforced in BPF code
-				event.param = fromCString(sysEventCont.Param[:])
+				event.paramQuote = fromCString(sysEventCont.Param[:])
+				event.param = event.param[:len(event.paramQuote)]
 			} else {
 				if sysEventCont.Length < uint64(len(sysEventCont.Param[:])) {
-					event.param = string(sysEventCont.Param[:sysEventCont.Length])
+					event.paramQuote = string(sysEventCont.Param[:sysEventCont.Length])
+					event.param = event.param[:sysEventCont.Length]
 				} else {
-					event.param = string(sysEventCont.Param[:])
+					event.paramQuote = string(sysEventCont.Param[:])
 				}
 			}
 
 			// Remove all non unicode character from the string.
-			event.param = strconv.Quote(event.param)
+			event.paramQuote = strconv.Quote(event.paramQuote)
 
 			syscallContinuedEventsMap[event.monotonicTimestamp] = append(syscallContinuedEventsMap[event.monotonicTimestamp], event)
 		default:
@@ -477,8 +603,18 @@ func (t *tracelooper) read(mntnsID uint64, reader *containerRingReader) ([]*even
 
 				for _, syscallContEvent := range syscallContinuedEventsMap[enterTimestamp] {
 					if syscallContEvent.index == uint8(i) {
-						paramContent = &syscallContEvent.param
-						api.Debugf("\t\t\tevent paramContent: %q", *paramContent)
+						paramContent = &syscallContEvent.paramQuote
+						if syscallName == "connect" && paramName == "uservaddr" {
+							addrStr, err := sockaddrFromBytes(syscallContEvent.param)
+							if err != nil {
+								errStr := err.Error() + fmt.Sprintf(" (failed to parse %v %q)", syscallContEvent.param, syscallContEvent.paramQuote)
+								paramContent = &errStr
+							} else {
+								paramContent = &addrStr
+
+							}
+						}
+						api.Debugf("\t\t\tevent paramContent: %q", paramContent)
 
 						break
 					}
