@@ -34,13 +34,9 @@
 package networktracer
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"sync"
 	"syscall"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
@@ -48,10 +44,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} dispatcher ./bpf/dispatcher.bpf.c -- -I./bpf/ -I../socketenricher/bpf
@@ -156,102 +149,6 @@ func NewTracer[Event any]() (_ *Tracer[Event], err error) {
 	return t, nil
 }
 
-func (t *Tracer[Event]) SetSocketEnricherMap(m *ebpf.Map) {
-	t.socketEnricherMap = m
-}
-
-func (t *Tracer[Event]) Run(
-	spec *ebpf.CollectionSpec,
-	baseEvent func(ev types.Event) *Event,
-	processEvent func(rawSample []byte, netns uint64) (*Event, error),
-) (err error) {
-	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
-
-	defer func() {
-		if err != nil {
-			if t.perfRd != nil {
-				t.perfRd.Close()
-			}
-			if t.collection != nil {
-				t.collection.Close()
-			}
-		}
-	}()
-
-	var opts ebpf.CollectionOptions
-
-	// Automatically find the socket program
-	bpfProgName := ""
-	for progName, p := range spec.Programs {
-		if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
-			if bpfProgName != "" {
-				return fmt.Errorf("multiple socket programs found: %s, %s", bpfProgName, progName)
-			}
-			bpfProgName = progName
-		}
-	}
-	if bpfProgName == "" {
-		return fmt.Errorf("no socket program found")
-	}
-
-	// Automatically find the perf map
-	bpfPerfMapName := ""
-	for mapName, m := range spec.Maps {
-		if m.Type == ebpf.PerfEventArray {
-			if bpfPerfMapName != "" {
-				return fmt.Errorf("multiple perf maps found: %s, %s", bpfPerfMapName, mapName)
-			}
-			bpfPerfMapName = mapName
-		}
-	}
-	if bpfPerfMapName == "" {
-		return fmt.Errorf("no perf map found")
-	}
-
-	usesSocketEnricher := false
-	for _, m := range spec.Maps {
-		if m.Name == socketenricher.SocketsMapName {
-			usesSocketEnricher = true
-			break
-		}
-	}
-
-	if usesSocketEnricher && t.socketEnricherMap != nil {
-		mapReplacements := map[string]*ebpf.Map{}
-		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricherMap
-		opts.MapReplacements = mapReplacements
-	}
-
-	t.collection, err = ebpf.NewCollectionWithOptions(spec, opts)
-	if err != nil {
-		return fmt.Errorf("creating BPF collection: %w", err)
-	}
-
-	t.perfRd, err = perf.NewReader(t.collection.Maps[bpfPerfMapName], gadgets.PerfBufferPages*os.Getpagesize())
-	if err != nil {
-		return fmt.Errorf("getting a perf reader: %w", err)
-	}
-
-	if err := gadgets.FreezeMaps(t.collection.Maps[bpfPerfMapName]); err != nil {
-		return err
-	}
-
-	var ok bool
-	t.prog, ok = t.collection.Programs[bpfProgName]
-	if !ok {
-		return fmt.Errorf("BPF program %q not found", bpfProgName)
-	}
-
-	err = t.AttachProg(t.prog)
-	if err != nil {
-		return fmt.Errorf("updating tail call map: %w", err)
-	}
-
-	go t.listen(baseEvent, processEvent)
-
-	return nil
-}
-
 // AttachProg is used directly by containerized gadgets
 func (t *Tracer[Event]) AttachProg(prog *ebpf.Program) error {
 	return t.dispatcherMap.Update(uint32(0), uint32(prog.FD()), ebpf.UpdateAny)
@@ -279,81 +176,12 @@ func (t *Tracer[Event]) Attach(pid uint32) error {
 	return nil
 }
 
-func (t *Tracer[Event]) SetEventHandler(handler any) {
-	if t.eventHandler != nil {
-		panic("handler already set")
-	}
-
-	nh, ok := handler.(func(ev *Event))
-	if !ok {
-		panic("event handler invalid")
-	}
-	t.eventHandler = nh
-}
-
-// EventCallback provides support for legacy pkg/gadget-collection
-func (t *Tracer[Event]) EventCallback(event any) {
-	e, ok := event.(*Event)
-	if !ok {
-		panic("event handler argument invalid")
-	}
-	if t.eventHandler == nil {
-		return
-	}
-	t.eventHandler(e)
-}
-
 func (t *Tracer[Event]) AttachContainer(container *containercollection.Container) error {
 	return t.Attach(container.ContainerPid())
 }
 
 func (t *Tracer[Event]) DetachContainer(container *containercollection.Container) error {
 	return t.Detach(container.ContainerPid())
-}
-
-func (t *Tracer[Event]) GetMap(name string) *ebpf.Map {
-	return t.collection.Maps[name]
-}
-
-func (t *Tracer[Event]) listen(
-	baseEvent func(ev types.Event) *Event,
-	processEvent func(rawSample []byte, netns uint64) (*Event, error),
-) {
-	for {
-		record, err := t.perfRd.Read()
-		if err != nil {
-			if errors.Is(err, perf.ErrClosed) {
-				return
-			}
-
-			msg := fmt.Sprintf("reading perf ring buffer: %s", err)
-			t.eventHandler(baseEvent(types.Warn(msg)))
-			continue
-		}
-
-		if record.LostSamples != 0 {
-			msg := fmt.Sprintf("lost %d samples", record.LostSamples)
-			t.eventHandler(baseEvent(types.Warn(msg)))
-			continue
-		}
-
-		if len(record.RawSample) < 4 {
-			t.eventHandler(baseEvent(types.Err("record too small")))
-			continue
-		}
-
-		// all networking gadgets have netns as first field
-		netns := *(*uint32)(unsafe.Pointer(&record.RawSample[0]))
-		event, err := processEvent(record.RawSample, uint64(netns))
-		if err != nil {
-			t.eventHandler(baseEvent(types.Err(err.Error())))
-			continue
-		}
-		if event == nil {
-			continue
-		}
-		t.eventHandler(event)
-	}
 }
 
 func (t *Tracer[Event]) releaseAttachment(netns uint64, a *attachment) {
