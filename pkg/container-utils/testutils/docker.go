@@ -41,6 +41,7 @@ func NewDockerContainer(name, cmd string, options ...Option) Container {
 	for _, o := range options {
 		o(c.options)
 	}
+
 	return c
 }
 
