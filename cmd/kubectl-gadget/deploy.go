@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,10 +86,8 @@ var gadgetimage = "undefined"
 var (
 	image                 string
 	imagePullPolicy       string
-	hookMode              string
 	livenessProbe         bool
 	deployTimeout         time.Duration
-	fallbackPodInformer   bool
 	printOnly             bool
 	quiet                 bool
 	debug                 bool
@@ -115,8 +113,6 @@ var (
 	daemonConfig          string
 	setDaemonConfig       []string
 )
-
-var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify+ebpf"}
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
 	Group:   "policy.sigstore.dev",
@@ -155,23 +151,11 @@ func init() {
 		"image-pull-policy", "",
 		"Always",
 		"pull policy for the container image")
-	deployCmd.PersistentFlags().StringVarP(
-		&hookMode,
-		"hook-mode", "",
-		"auto",
-		fmt.Sprintf("how to get containers start/stop notifications (%s)", strings.Join(supportedHooks, ", ")))
-	deployCmd.PersistentFlags().MarkDeprecated("hook-mode", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVarP(
 		&livenessProbe,
 		"liveness-probe", "",
 		true,
 		"enable liveness probes")
-	deployCmd.PersistentFlags().BoolVarP(
-		&fallbackPodInformer,
-		"fallback-podinformer", "",
-		true,
-		"use pod informer as a fallback for the main hook")
-	deployCmd.PersistentFlags().MarkDeprecated("fallback-podinformer", "This flag is deprecated and will be removed in v0.43.0+ release. Use --daemon-config instead")
 	deployCmd.PersistentFlags().BoolVarP(
 		&printOnly,
 		"print-only", "",
@@ -633,18 +617,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	found := false
-	for _, supportedHook := range supportedHooks {
-		if hookMode == supportedHook {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("invalid argument %q for --hook-mode=[%s]", hookMode, strings.Join(supportedHooks, ","))
-	}
-
 	if quiet && debug {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
@@ -763,8 +735,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 				daemonSet.Spec.Template.Annotations["prometheus.io/port"] = otelListenPort
 			}
-
-			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
 
 			daemonSet.Namespace = gadgetNamespace
 

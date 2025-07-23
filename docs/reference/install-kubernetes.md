@@ -243,8 +243,9 @@ INFO[0000] Experimental features enabled
 
 ##### Hook Mode
 
-Inspektor Gadget needs to detect when containers are started and stopped.
-The different supported modes can be set by using the `hook-mode` option:
+Inspektor Gadget needs to detect when containers are started and stopped. The
+different supported modes can be set by using the
+`operator.kubemanager.hook-mode` parameter:
 
 - `auto`(default): Inspektor Gadget will try to find the best option based on
   the system it is running on.
@@ -270,13 +271,15 @@ In order to set the hook mode start by creating daemon configuration file, for e
 
 ```bash
 cat <<EOF > daemon-config.yaml
-hook-mode: fanotify+ebpf
+operator:
+  kubemanager:
+    hook-mode: fanotify+ebpf
 EOF
 ```
 
 Then, deploy Inspektor Gadget with the following command:
 
-```
+```bash
 $ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ```
 
@@ -288,10 +291,11 @@ crio-socketpath: /run/crio/crio.sock
 daemon-log-level: info
 docker-socketpath: /run/docker.sock
 events-buffer-length: 16384
-fallback-pod-informer: true
 gadget-namespace: gadget
-hook-mode: auto
 operator:
+  kubemanager:
+    fallback-podinformer: true
+    hook-mode: auto
   oci:
     allowed-gadgets: []
     disallow-pulling: false

@@ -23,15 +23,13 @@ import (
 const ConfigPath = "/etc/ig/config.yaml"
 
 const (
-	HookModeKey            = "hook-mode"
-	FallbackPodInformerKey = "fallback-pod-informer"
-	EventsBufferLengthKey  = "events-buffer-length"
-	ContainerdSocketPath   = "containerd-socketpath"
-	CrioSocketPath         = "crio-socketpath"
-	DockerSocketPath       = "docker-socketpath"
-	PodmanSocketPath       = "podman-socketpath"
-	GadgetNamespace        = "gadget-namespace"
-	DaemonLogLevel         = "daemon-log-level"
+	EventsBufferLengthKey = "events-buffer-length"
+	ContainerdSocketPath  = "containerd-socketpath"
+	CrioSocketPath        = "crio-socketpath"
+	DockerSocketPath      = "docker-socketpath"
+	PodmanSocketPath      = "podman-socketpath"
+	GadgetNamespace       = "gadget-namespace"
+	DaemonLogLevel        = "daemon-log-level"
 
 	VerifyImage        = "verify-image"
 	PublicKeys         = "public-keys"
@@ -46,8 +44,6 @@ const (
 func Init() error {
 	config.Config = config.NewWithPath(ConfigPath)
 
-	config.Config.SetDefault(HookModeKey, "auto")
-	config.Config.SetDefault(FallbackPodInformerKey, "true")
 	config.Config.SetDefault(EventsBufferLengthKey, 16384)
 	config.Config.SetDefault(DaemonLogLevel, "info")
 
@@ -80,8 +76,7 @@ func FullKeyPath(key string) string {
 // TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
 func isRootKey(key string) bool {
 	switch key {
-	case HookModeKey, FallbackPodInformerKey, EventsBufferLengthKey,
-		ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
+	case EventsBufferLengthKey, ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
 		PodmanSocketPath, GadgetNamespace, DaemonLogLevel:
 		return true
 	default:

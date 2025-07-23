@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,14 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager";
+option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service;hook_service";
 
-package gadgettracermanager;
+package hookservice;
 
-service GadgetTracerManager {
+service HookService {
   // Methods called by OCI Hooks
   rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
   rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
-
-  // Methods called for debugging
-  rpc DumpState(DumpStateRequest) returns (Dump) {}
-}
-
-message Label {
-  string key = 1;
-  string value = 2;
 }
 
 message AddContainerResponse {
@@ -40,15 +32,9 @@ message RemoveContainerResponse {
   string debug = 1;
 }
 
-message TracerID {
-  string id = 1;
-}
-
-message OwnerReference {
-  string apiversion = 1;
-  string kind = 2;
-  string name = 3;
-  string uid = 4;
+message Label {
+  string key = 1;
+  string value = 2;
 }
 
 message ContainerDefinition {
@@ -61,15 +47,4 @@ message ContainerDefinition {
   string podname = 5;
   string name = 6;
   repeated Label labels = 7;
-  // Some hooks do not have information about the pod labels
-  bool labels_set = 8;
-}
-
-message DumpStateRequest {
-}
-
-message Dump {
-  string containers = 1;
-  string traces = 2;
-  string stacks = 3;
 }

@@ -28,16 +28,6 @@ func WrapInErrListPods(err error) error {
 	return fmt.Errorf("listing pods: %w", err)
 }
 
-// Manager
-
-func WrapInErrManagerInit(err error) error {
-	return fmt.Errorf("initializing manager: %w", err)
-}
-
-func WrapInErrManagerCreateMountNsMap(err error) error {
-	return fmt.Errorf("creating mountns map: %w", err)
-}
-
 // Parser
 
 func WrapInErrParserCreate(err error) error {

@@ -4,7 +4,7 @@
         {
             "type": "nrigadget",
             "conf": {
-                "socketFile": "/run/gadgettracermanager.socket"
+                "socketFile": "/run/hook-liveness.socket"
             }
         }
     ]

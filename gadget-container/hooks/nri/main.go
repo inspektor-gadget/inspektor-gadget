@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/hook-service/api"
 )
 
 // TODO: Understand why using github.com/containerd/pkg/cri/annonations
@@ -90,8 +90,8 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 		return fmt.Errorf("invalid OCI state: %v %v", r.ID, r.Pid)
 	}
 
-	// Connect to the Gadget Tracer Manager
-	var client pb.GadgetTracerManagerClient
+	// Connect to the Hook Service
+	var client pb.HookServiceClient
 	var ctx context.Context
 	var cancel context.CancelFunc
 	//nolint:staticcheck
@@ -100,7 +100,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 		return err
 	}
 	defer conn.Close()
-	client = pb.NewGadgetTracerManagerClient(conn)
+	client = pb.NewHookServiceClient(conn)
 	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -138,7 +138,6 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
 		Id:        r.ID,
 		Labels:    labels,
-		LabelsSet: true,
 		Namespace: namespace,
 		Podname:   podName,
 		Name:      containerName,

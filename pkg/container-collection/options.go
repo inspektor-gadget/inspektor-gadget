@@ -133,6 +133,7 @@ func containerRuntimeEnricher(
 }
 
 // WithDisableContainerRuntimeWarnings disables the warnings about container runtime.
+// Notice that this option must be set before WithMultipleContainerRuntimesEnrichment.
 func WithDisableContainerRuntimeWarnings() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.disableContainerRuntimeWarnings = true
