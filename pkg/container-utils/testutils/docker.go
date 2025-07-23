@@ -201,6 +201,34 @@ func (d *DockerContainer) Stop(t *testing.T) {
 		}
 	}
 
+	if !d.options.expectStartError {
+		// kill the container
+		err := d.client.ContainerKill(d.options.ctx, d.id, "SIGINT")
+		if err != nil {
+			t.Fatalf("killing container: %s", err)
+		}
+
+		// wait for the container to exit
+		statusCh, errCh := d.client.ContainerWait(d.options.ctx, d.id, container.WaitConditionNotRunning)
+		select {
+		case err := <-errCh:
+			if err != nil {
+				t.Fatalf("Failed to wait for container: %s", err)
+			}
+		case <-statusCh:
+		}
+
+		// check if exited with code 0
+		inspect, err := d.client.ContainerInspect(d.options.ctx, d.id)
+		if err != nil {
+			t.Fatalf("inspecting container: %s", err)
+		}
+
+		if inspect.State.ExitCode != 0 {
+			t.Fatalf("Container %q exited with code %d", d.name, inspect.State.ExitCode)
+		}
+	}
+
 	if err := d.removeAndClose(); err != nil {
 		t.Fatalf("Failed to stop container: %s", err)
 	}
