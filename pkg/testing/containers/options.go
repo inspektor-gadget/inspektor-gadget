@@ -89,3 +89,9 @@ func WithWaitOrOomKilled() ContainerOption {
 		opts.options = append(opts.options, testutils.WithWaitOrOomKilled())
 	}
 }
+
+func WithExpectedExitCode(code int) ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithExpectedExitCode(code))
+	}
+}
