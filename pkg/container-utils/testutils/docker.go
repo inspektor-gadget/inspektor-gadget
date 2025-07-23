@@ -201,6 +201,13 @@ func (d *DockerContainer) Stop(t *testing.T) {
 		}
 	}
 
+	if !d.options.expectStartError {
+		err := d.client.ContainerKill(d.options.ctx, d.id, "SIGINT")
+		if err != nil {
+			t.Fatalf("killing container: %s", err)
+		}
+	}
+
 	if err := d.removeAndClose(); err != nil {
 		t.Fatalf("Failed to stop container: %s", err)
 	}
