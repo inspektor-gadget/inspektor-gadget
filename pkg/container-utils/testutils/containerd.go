@@ -119,6 +119,9 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.expectStartError {
 		t.Fatalf("testutils/containerd: ExpectStartError is not supported yet")
 	}
+	if c.options.expectedExitCode != nil {
+		t.Fatalf("testutils/containerd: ExpectedExitCode is not supported yet")
+	}
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,
