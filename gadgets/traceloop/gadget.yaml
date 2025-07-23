@@ -17,6 +17,7 @@ datasources:
         annotations:
           description: CPU number where the syscall was executed
           columns.maxwidth: 4
+          columns.hidden: true
       pid:
         annotations:
           template: pid
@@ -29,7 +30,7 @@ datasources:
       parameters:
         annotations:
           description: Syscall's parameters
-          columns.width: 20
+          columns.width: 64
       ret:
         annotations:
           description: Syscall's return value
