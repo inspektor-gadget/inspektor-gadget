@@ -65,6 +65,8 @@ type AuthOptions struct {
 type VerifyOptions struct {
 	VerifyPublicKey bool
 	PublicKeys      []string
+	SignatureFile   string
+	PayloadFile     string
 }
 
 type AllowedGadgetsOptions struct {
@@ -921,9 +923,33 @@ func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
-	if err != nil {
-		return fmt.Errorf("getting signing information: %w", err)
+	if (imgOpts.SignatureFile == "" && imgOpts.PayloadFile != "") || (imgOpts.SignatureFile != "" && imgOpts.PayloadFile == "") {
+		return fmt.Errorf("signature and payload should be give together, one of them is empty: %q and %q", imgOpts.SignatureFile, imgOpts.PayloadFile)
+	}
+
+	var signatureBytes []byte
+	var payloadBytes []byte
+
+	if imgOpts.SignatureFile != "" {
+		signatureBytes, err = os.ReadFile(imgOpts.SignatureFile)
+		if err != nil {
+			return fmt.Errorf("reading signature file %s: %w", imgOpts.SignatureFile, err)
+		}
+
+		signatureBytes, err = base64.StdEncoding.DecodeString(string(signatureBytes))
+		if err != nil {
+			return fmt.Errorf("decoding signature: %w", err)
+		}
+
+		payloadBytes, err = os.ReadFile(imgOpts.PayloadFile)
+		if err != nil {
+			return fmt.Errorf("reading payload file %s: %w", imgOpts.PayloadFile, err)
+		}
+	} else {
+		signatureBytes, payloadBytes, err = loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
+		if err != nil {
+			return fmt.Errorf("getting signing information: %w", err)
+		}
 	}
 
 	verified := false
