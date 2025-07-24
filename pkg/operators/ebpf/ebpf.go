@@ -167,11 +167,12 @@ type ebpfInstance struct {
 
 	config *viper.Viper
 
-	program        []byte
-	logger         logger.Logger
-	collectionSpec *ebpf.CollectionSpec
-	collection     *ebpf.Collection
-	btfTypes       *btf.Spec
+	program          []byte
+	logger           logger.Logger
+	collectionSpec   *ebpf.CollectionSpec
+	collection       *ebpf.Collection
+	btfTypes         *btf.Spec
+	extraRelocations []*btf.Spec
 
 	seSizes map[string]uint32
 
@@ -342,9 +343,11 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
-	if _, err := i.fixBTFStructs(i.btfTypes); err != nil {
+	spec, err := i.fixBTFStructs(i.btfTypes)
+	if err != nil {
 		return fmt.Errorf("fixing structs: %w", err)
 	}
+	i.extraRelocations = append(i.extraRelocations, spec)
 
 	// add extra info to gadgetcontext if requested
 	if gadgetCtx.ExtraInfo() {
@@ -667,6 +670,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Programs: ebpf.ProgramOptions{
+			ExtraRelocationTargets: i.extraRelocations,
+		},
 	}
 
 	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
@@ -693,11 +699,12 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		mapSpec.ValueSize = btfStruct.Size
 	}
 
-	spec, err := i.fixBTFStructs(i.collectionSpec.Types.Copy())
-	if err != nil {
-		return fmt.Errorf("fixing structs: %w", err)
-	}
-	opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, spec)
+	//spec, err := i.fixBTFStructs(i.collectionSpec.Types.Copy())
+	////spec, err := i.fixBTFStructs(i.btfTypes)
+	//if err != nil {
+	//	return fmt.Errorf("fixing structs: %w", err)
+	//}
+	//opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, i.extraRelocations...)
 
 	for _, v := range i.vars {
 		res, ok := gadgetCtx.GetVar(v.name)
