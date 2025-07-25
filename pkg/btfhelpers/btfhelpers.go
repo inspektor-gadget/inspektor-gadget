@@ -171,3 +171,13 @@ func BuildSpec(types []btf.Type) (*btf.Spec, error) {
 
 	return spec, nil
 }
+
+func DumpStruct(s *btf.Struct) string {
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("struct %s {\n", s.Name))
+	for _, member := range s.Members {
+		buf.WriteString(fmt.Sprintf("  %s: %s @ %d\n", member.Name, member.Type.TypeName(), member.Offset.Bytes()))
+	}
+	buf.WriteString("}\n")
+	return buf.String()
+}

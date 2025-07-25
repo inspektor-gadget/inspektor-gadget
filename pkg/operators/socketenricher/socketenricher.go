@@ -37,6 +37,9 @@ const (
 	BTFSpecKey   = "socketEnricherbtf"
 	BTFStructKey = "socketEnricherStruct"
 	fieldsParam  = "socket-enricher-fields"
+
+	CwdFieldName     = "cwd"
+	ExepathFieldName = "exepath"
 )
 
 type SocketEnricherInterface interface {
@@ -48,6 +51,20 @@ type SocketEnricher struct {
 	socketEnricher *tracer.SocketEnricher
 	refCount       int
 	seConfig       *tracer.Config
+}
+
+// Sizes returns a map with the sizes of the optional fields.
+func (s *SocketEnricher) Sizes() map[string]uint32 {
+	sizes := make(map[string]uint32)
+	cfg := s.seConfig
+	if cfg.Cwd.Enabled {
+		sizes[CwdFieldName] = cfg.Cwd.Size
+	}
+	if cfg.Exepath.Enabled {
+		sizes[ExepathFieldName] = cfg.Exepath.Size
+	}
+
+	return sizes
 }
 
 func (s *SocketEnricher) Name() string {
