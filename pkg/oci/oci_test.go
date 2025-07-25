@@ -33,17 +33,17 @@ func TestSplitIGDomain(t *testing.T) {
 	tests := map[string]testDefinition{
 		"no_domain_and_remainder": {
 			name:              "trace_exec",
-			expectedDomain:    defaultDomain,
+			expectedDomain:    DefaultDomain,
 			expectedRemainder: officialRepoPrefix + "trace_exec",
 		},
 		"no_domain_and_remainder_with_tag": {
 			name:              "trace_exec:v0.42.0",
-			expectedDomain:    defaultDomain,
+			expectedDomain:    DefaultDomain,
 			expectedRemainder: officialRepoPrefix + "trace_exec:v0.42.0",
 		},
 		"no_domain": {
 			name:              "xyz/gadget/trace_exec",
-			expectedDomain:    defaultDomain,
+			expectedDomain:    DefaultDomain,
 			expectedRemainder: "xyz/gadget/trace_exec",
 		},
 		"full": {
@@ -88,7 +88,7 @@ func TestSplitIGDomain(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			actualDomain, actualRemainder := splitIGDomain(test.name)
+			actualDomain, actualRemainder := SplitIGDomain(test.name)
 			assert.Equal(t, test.expectedDomain, actualDomain)
 			assert.Equal(t, test.expectedRemainder, actualRemainder)
 		})
