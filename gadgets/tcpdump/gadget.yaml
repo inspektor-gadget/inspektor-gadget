@@ -1,0 +1,22 @@
+name: tcpdump
+description: Receive packets from hosts
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/tcpdump
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/tcpdump
+datasources:
+  packets:
+    annotations:
+      ebpf.rest.len: payload_len
+      ebpf.rest.name: payload
+      cli.supported-output-modes: pcap-ng,columns,json,yaml
+      cli.default-output-mode: columns
+      cli.raw.fields: payload
+      cli.pcap-ng.payload: payload
+      cli.pcap-ng.interface: ifindex
+      cli.pcap-ng.timestamp: timestamp
+      cli.pcap-ng.capture-length: payload_len
+      cli.pcap-ng.length: payload_len
+    fields:
+      payload:
+        annotations:
+          content-type: application/x-raw-packet

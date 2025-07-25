@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -43,6 +44,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	libpcap_compiler "github.com/inspektor-gadget/inspektor-gadget/pkg/libpcap-compiler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
@@ -376,27 +378,62 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 			if len(parts) != 3 {
 				return fmt.Errorf("invalid section name %q", p.SectionName)
 			}
-			if parts[0] != "classifier" {
-				return fmt.Errorf("invalid section name %q", p.SectionName)
+
+			lastIdx := -1
+		scanPacketFilter:
+			for idx, inst := range p.Instructions {
+				if idx <= lastIdx {
+					continue
+				}
+				if name, ok := strings.CutPrefix(inst.Symbol(), "gadget_pf_"); ok {
+					filter := i.paramValues["pf-"+name]
+					if filter == "" {
+						i.logger.Debugf("skipping pcap filter %q at %d: no filter set", filter, idx)
+						lastIdx = idx
+						continue
+					}
+					injectIdx := idx
+					i.logger.Debugf("injecting pcap filter %q at %d", filter, idx)
+					insns := p.Instructions
+					filterInsns, err := libpcap_compiler.CompileEbpf(filter, inst.Symbol(), true)
+					if err != nil {
+						return fmt.Errorf("adding filter: %w", err)
+					}
+					filterInsns[0] = filterInsns[0].WithMetadata(insns[injectIdx].Metadata)
+					insns[injectIdx] = insns[injectIdx].WithMetadata(asm.Metadata{})
+					p.Instructions = append(insns[:injectIdx], append(filterInsns, insns[injectIdx:]...)...)
+
+					lastIdx = injectIdx
+
+					// Scan from the top
+					goto scanPacketFilter
+				}
 			}
 
-			var direction tchandler.AttachmentDirection
-
-			switch parts[1] {
-			case "ingress":
-				direction = tchandler.AttachmentDirectionIngress
-			case "egress":
-				direction = tchandler.AttachmentDirectionEgress
+			switch parts[0] {
 			default:
-				return fmt.Errorf("unsupported hook type %q", parts[1])
-			}
+				return fmt.Errorf("invalid section name %q (nclass)", p.SectionName)
+			case "classifier":
+				var direction tchandler.AttachmentDirection
 
-			handler, err := tchandler.NewHandler(direction)
-			if err != nil {
-				return fmt.Errorf("creating tc network tracer: %w", err)
-			}
+				switch parts[1] {
+				case "ingress":
+					direction = tchandler.AttachmentDirectionIngress
+				case "egress":
+					direction = tchandler.AttachmentDirectionEgress
+				default:
+					return fmt.Errorf("unsupported hook type %q", parts[1])
+				}
 
-			i.tcHandlers[p.Name] = handler
+				handler, err := tchandler.NewHandler(direction)
+				if err != nil {
+					i.Close(gadgetCtx)
+					return fmt.Errorf("creating tc network tracer: %w", err)
+				}
+
+				i.tcHandlers[p.Name] = handler
+			case "tcx":
+			}
 		}
 	}
 
@@ -537,6 +574,26 @@ func (i *ebpfInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params
 
 	// MapIter params
 	res = append(res, i.mapParams()...)
+
+	// Iterate over programs
+	filters := make(map[string]struct{})
+	for programName, program := range i.collectionSpec.Programs {
+		// check for packet filters
+		for _, inst := range program.Instructions {
+			if name, ok := strings.CutPrefix(inst.Symbol(), "gadget_pf_"); ok {
+				if _, ok := filters[name]; ok {
+					continue
+				}
+				i.logger.Debugf("> program %q uses packet filter named %q", programName, name)
+				res = append(res, &api.Param{
+					Key:         "pf-" + name,
+					Description: "packet filter",
+					TypeHint:    api.TypeString,
+				})
+				filters[name] = struct{}{}
+			}
+		}
+	}
 	return res
 }
 
