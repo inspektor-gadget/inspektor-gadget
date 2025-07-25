@@ -17,8 +17,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -56,25 +56,17 @@ var versionCmd = &cobra.Command{
 			},
 		}
 
-		// Get server version information
-		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+		serverVersion, err := GetDeployedVersion()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: getting running Inspektor Gadget instances: %s\n", err)
+			return fmt.Errorf("getting deployed version: %w", err)
 		}
 
-		if len(gadgetNamespaces) == 1 {
-			// Exactly one running gadget instance found, use it
-			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
-			info, err := grpcRuntime.GetInfo()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: loading deploy info: %s\n", err)
-			} else {
-				versionInfo.ServerVersion = &Version{
-					Version: info.ServerVersion,
-				}
+		if !serverVersion.EQ(semver.Version{}) {
+			versionInfo.ServerVersion = &Version{
+				Version: serverVersion.String(),
 			}
-		} else if len(gadgetNamespaces) > 1 {
-			fmt.Fprintf(os.Stderr, "Error: multiple Inspektor Gadget instances found in namespaces: %s\n", gadgetNamespaces)
+		} else {
+			versionInfo.ServerVersion = nil
 		}
 
 		// Output based on format
@@ -98,4 +90,33 @@ var versionCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+// GetDeployedVersion attempts to determine the version of the deployed Inspektor Gadget instance
+func GetDeployedVersion() (semver.Version, error) {
+	// Try to get server version using the same logic as the version command
+	gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("getting running gadget namespaces: %w", err)
+	}
+
+	if len(gadgetNamespaces) == 1 {
+		// Exactly one running gadget instance found, use it
+		runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+		info, err := grpcRuntime.GetInfo()
+		if err != nil {
+			return semver.Version{}, fmt.Errorf("getting remote info: %w", err)
+		}
+		if info.ServerVersion != "" {
+			version, err := semver.ParseTolerant(info.ServerVersion)
+			if err != nil {
+				return semver.Version{}, fmt.Errorf("parsing server version %q: %w", info.ServerVersion, err)
+			}
+			return version, nil
+		}
+	} else if len(gadgetNamespaces) > 1 {
+		return semver.Version{}, fmt.Errorf("multiple Inspektor Gadget instances found in namespaces: %s", gadgetNamespaces)
+	}
+
+	return semver.Version{}, nil
 }

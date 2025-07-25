@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -108,44 +109,23 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
-	labelSelector := "k8s-app=gadget"
-	var errs []string
 
-	// Remove legacy resources
-	if err := removeLegacyResources(k8sClient, crdClient); err != nil {
-		errs = append(errs, fmt.Sprintf("removing legacy resources: %v", err))
+	// Determine the deployment version to decide on undeploy strategy
+	deployedVersion, err := GetDeployedVersion()
+	if err != nil {
+		return fmt.Errorf("determining deployed version: %w", err)
 	}
 
-	// Remove all labeled resources
-	fmt.Println("Discovering and removing labeled resources...")
-	if err := removeAllLabeledResources(dynClient, discoveryClient, gadgetNamespace, labelSelector); err != nil {
-		errs = append(errs, fmt.Sprintf("removing labeled resources: %v", err))
+	// Check if this is a pre-0.43.0 deployment (no labels)
+	legacyVersionThreshold, _ := semver.ParseTolerant("0.43.0")
+	if deployedVersion.LT(legacyVersionThreshold) && !deployedVersion.EQ(semver.Version{}) {
+		fmt.Printf("Detected deployment version v%s (< v0.43.0), using legacy undeploy method...\n", deployedVersion)
+		errs := runLegacyUndeploy(k8sClient, crdClient, dynClient, gadgetNamespace)
+		return finishUndeploy(errs)
 	}
 
-	// Handle cleanup wait or namespace deletion
-	if err := handleCleanupWait(k8sClient, dynClient, discoveryClient, gadgetNamespace, labelSelector, &errs); err != nil {
-		errs = append(errs, err.Error())
-	}
-
-	// Remove image policy if present
-	imagePolicyName := fmt.Sprintf("%s-image-policy", gadgetNamespace)
-	if _, err := dynClient.Resource(clusterImagePolicyResource).Get(context.TODO(), imagePolicyName, metav1.GetOptions{}); err == nil {
-		fmt.Println("Removing image policy...")
-		if err := dynClient.Resource(clusterImagePolicyResource).Delete(context.TODO(), imagePolicyName, metav1.DeleteOptions{}); err != nil {
-			errs = append(errs, fmt.Sprintf("failed removing image policy: %v", err))
-		}
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))
-	}
-
-	if undeployWait {
-		fmt.Println("Inspektor Gadget successfully removed")
-	} else {
-		fmt.Println("Inspektor Gadget is being removed")
-	}
-	return nil
+	errs := runLabelBasedUndeploy(k8sClient, crdClient, dynClient, discoveryClient, gadgetNamespace)
+	return finishUndeploy(errs)
 }
 
 // processResourceList discovers and removes resources with the specified label
@@ -282,9 +262,9 @@ func removeLegacyResources(k8sClient *kubernetes.Clientset, crdClient *clientset
 	return nil
 }
 
-func handleCleanupWait(k8sClient *kubernetes.Clientset, dynClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, gadgetNamespace, labelSelector string, errs *[]string) error {
+func handleCleanupWait(k8sClient *kubernetes.Clientset, dynClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, gadgetNamespace, labelSelector string) error {
 	if deleteNamespace {
-		return handleNamespaceDeletion(k8sClient, gadgetNamespace, errs)
+		return handleNamespaceDeletion(k8sClient, gadgetNamespace)
 	}
 
 	if undeployWait {
@@ -296,7 +276,7 @@ func handleCleanupWait(k8sClient *kubernetes.Clientset, dynClient dynamic.Interf
 	return nil
 }
 
-func handleNamespaceDeletion(k8sClient *kubernetes.Clientset, gadgetNamespace string, errs *[]string) error {
+func handleNamespaceDeletion(k8sClient *kubernetes.Clientset, gadgetNamespace string) error {
 	var list *v1.NamespaceList
 	var err error
 
@@ -307,8 +287,7 @@ func handleNamespaceDeletion(k8sClient *kubernetes.Clientset, gadgetNamespace st
 			},
 		)
 		if err != nil {
-			*errs = append(*errs, fmt.Sprintf("listing %q namespace: %s", gadgetNamespace, err))
-			return nil
+			return fmt.Errorf("listing %q namespace: %w", gadgetNamespace, err)
 		}
 
 		// nothing to do, namespace doesn't exist
@@ -323,8 +302,7 @@ func handleNamespaceDeletion(k8sClient *kubernetes.Clientset, gadgetNamespace st
 		context.TODO(), gadgetNamespace, metav1.DeleteOptions{},
 	)
 	if err != nil {
-		*errs = append(*errs, fmt.Sprintf("removing namespace: %v", err))
-		return nil
+		return fmt.Errorf("removing namespace: %w", err)
 	}
 
 	if undeployWait {
@@ -348,7 +326,7 @@ func handleNamespaceDeletion(k8sClient *kubernetes.Clientset, gadgetNamespace st
 		defer cancel()
 		_, err := watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
 		if err != nil {
-			*errs = append(*errs, fmt.Sprintf("failed waiting for %q namespace to be removed: %s", gadgetNamespace, err))
+			return fmt.Errorf("waiting for %q namespace to be removed: %w", gadgetNamespace, err)
 		}
 	}
 	return nil
@@ -398,4 +376,172 @@ func waitForLabeledResourcesDeletion(dynClient dynamic.Interface, discoveryClien
 		}
 		return true, nil // All resources deleted
 	})
+}
+
+// runLabelBasedUndeploy implements the new label-based undeploy logic for v0.43.0+
+func runLabelBasedUndeploy(k8sClient *kubernetes.Clientset, crdClient *clientset.Clientset, dynClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, gadgetNamespace string) []string {
+	var errs []string
+	labelSelector := "k8s-app=gadget"
+
+	// Remove legacy resources (for compatibility)
+	if err := removeLegacyResources(k8sClient, crdClient); err != nil {
+		errs = append(errs, fmt.Sprintf("removing legacy resources: %v", err))
+	}
+
+	// Remove all labeled resources
+	fmt.Println("Discovering and removing labeled resources...")
+	if err := removeAllLabeledResources(dynClient, discoveryClient, gadgetNamespace, labelSelector); err != nil {
+		errs = append(errs, fmt.Sprintf("removing labeled resources: %v", err))
+	}
+
+	// Handle cleanup wait or namespace deletion
+	if err := handleCleanupWait(k8sClient, dynClient, discoveryClient, gadgetNamespace, labelSelector); err != nil {
+		errs = append(errs, err.Error())
+	}
+
+	// Remove image policy if present
+	imagePolicyName := fmt.Sprintf("%s-image-policy", gadgetNamespace)
+	if _, err := dynClient.Resource(clusterImagePolicyResource).Get(context.TODO(), imagePolicyName, metav1.GetOptions{}); err == nil {
+		fmt.Println("Removing image policy...")
+		if err := dynClient.Resource(clusterImagePolicyResource).Delete(context.TODO(), imagePolicyName, metav1.DeleteOptions{}); err != nil {
+			errs = append(errs, fmt.Sprintf("failed removing image policy: %v", err))
+		}
+	}
+
+	return errs
+}
+
+// runLegacyUndeploy implements the hardcoded resource removal for versions < 0.43.0
+func runLegacyUndeploy(k8sClient *kubernetes.Clientset, crdClient *clientset.Clientset, dynClient dynamic.Interface, gadgetNamespace string) []string {
+	var errs []string
+
+	// Remove DaemonSet
+	fmt.Println("Removing DaemonSet...")
+	err := k8sClient.AppsV1().DaemonSets(gadgetNamespace).Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget\" DaemonSet: %s", err))
+	}
+
+	// Remove RoleBinding
+	fmt.Println("Removing role binding...")
+	err = k8sClient.RbacV1().RoleBindings(gadgetNamespace).Delete(
+		context.TODO(), "gadget-role-binding", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget-role-binding\" role binding: %s", err))
+	}
+
+	// Remove Role
+	fmt.Println("Removing role...")
+	err = k8sClient.RbacV1().Roles(gadgetNamespace).Delete(
+		context.TODO(), "gadget-role", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget-role\" role: %s", err))
+	}
+
+	// Remove ClusterRoleBinding
+	fmt.Println("Removing cluster role binding...")
+	err = k8sClient.RbacV1().ClusterRoleBindings().Delete(
+		context.TODO(), "gadget-cluster-role-binding", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget-cluster-role-binding\" cluster role binding: %s", err))
+	}
+
+	// Remove ClusterRole
+	fmt.Println("Removing cluster role...")
+	err = k8sClient.RbacV1().ClusterRoles().Delete(
+		context.TODO(), "gadget-cluster-role", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget-cluster-role\" cluster role: %s", err))
+	}
+
+	// Remove ConfigMap
+	fmt.Println("Removing config map...")
+	err = k8sClient.CoreV1().ConfigMaps(gadgetNamespace).Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget\" config map: %s", err))
+	}
+
+	// Remove ServiceAccount
+	fmt.Println("Removing service account...")
+	err = k8sClient.CoreV1().ServiceAccounts(gadgetNamespace).Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+	if err != nil && !errors.IsNotFound(err) {
+		errs = append(errs, fmt.Sprintf("failed to remove \"gadget\" service account: %s", err))
+	}
+
+	// Remove legacy resources
+	if err := removeLegacyResources(k8sClient, crdClient); err != nil {
+		errs = append(errs, fmt.Sprintf("removing legacy resources: %v", err))
+	}
+
+	// Remove image policy if present
+	imagePolicyName := fmt.Sprintf("%s-image-policy", gadgetNamespace)
+	if _, err := dynClient.Resource(clusterImagePolicyResource).Get(context.TODO(), imagePolicyName, metav1.GetOptions{}); err == nil {
+		fmt.Println("Removing image policy...")
+		if err := dynClient.Resource(clusterImagePolicyResource).Delete(context.TODO(), imagePolicyName, metav1.DeleteOptions{}); err != nil {
+			errs = append(errs, fmt.Sprintf("failed removing image policy: %v", err))
+		}
+	}
+
+	// Handle namespace deletion or wait for resources
+	if err := handleLegacyCleanupWait(k8sClient, gadgetNamespace); err != nil {
+		errs = append(errs, err.Error())
+	}
+
+	return errs
+}
+
+// handleLegacyCleanupWait handles cleanup waiting logic for legacy undeploy
+func handleLegacyCleanupWait(k8sClient *kubernetes.Clientset, gadgetNamespace string) error {
+	if deleteNamespace {
+		return handleNamespaceDeletion(k8sClient, gadgetNamespace)
+	}
+
+	if undeployWait {
+		fmt.Println("Waiting for DaemonSet to be fully removed...")
+		if err := waitForDaemonSetDeletion(k8sClient, gadgetNamespace, "gadget"); err != nil {
+			return fmt.Errorf("waiting for DaemonSet to be removed: %w", err)
+		}
+	}
+	return nil
+}
+
+// waitForDaemonSetDeletion waits for a DaemonSet to be deleted (for legacy undeploy)
+func waitForDaemonSetDeletion(k8sClient *kubernetes.Clientset, namespace, name string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	return k8sWait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+		_, err := k8sClient.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return false, nil
+	})
+}
+
+// finishUndeploy handles final cleanup and error reporting
+func finishUndeploy(errs []string) error {
+	if len(errs) > 0 {
+		return fmt.Errorf("removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))
+	}
+
+	if undeployWait {
+		fmt.Println("Inspektor Gadget successfully removed")
+	} else {
+		fmt.Println("Inspektor Gadget is being removed")
+	}
+	return nil
 }
