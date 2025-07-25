@@ -19,8 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -110,6 +112,7 @@ func (o *Operator) Priority() int {
 
 type OperatorInstance struct {
 	userStackMap *ebpf.Map
+	buildIDMap   *ebpf.Map
 	symbolizer   *symbolizer.Symbolizer
 
 	subscriptions map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
@@ -174,6 +177,10 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			}
 
 			addressesField, err := in.AddSubField("addresses", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
+			if err != nil {
+				return err
+			}
+			buildIDField, err := in.AddSubField("buildid", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
 			if err != nil {
 				return err
 			}
@@ -247,6 +254,48 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				}
 				addressesField.PutString(data, addressesBuilder.String())
 
+				if o.buildIDMap != nil {
+					// struct bpf_stack_build_id is part of Linux UAPI:
+					// https://github.com/torvalds/linux/blob/v6.14/include/uapi/linux/bpf.h#L1451
+					type bpfStackBuildID struct {
+						status     int32
+						buildID    [unix.BPF_BUILD_ID_SIZE]uint8
+						offsetOrIP uint64 // Union of offset and ip
+					}
+					const sizeOfBpfStackBuildID = 32
+					// Static assert that the size of bpfStackBuildID is correct
+					_ = func() {
+						var x [1]struct{}
+						var v bpfStackBuildID
+						_ = x[unsafe.Sizeof(v)-sizeOfBpfStackBuildID]
+					}
+					buildIDBuf := [ebpftypes.UserPerfMaxStackDepth * sizeOfBpfStackBuildID]byte{}
+					err = o.buildIDMap.Lookup(stackId, &buildIDBuf)
+					if err != nil {
+						logger.Warnf("build id for stack ID %d is lost: %s", stackId, err.Error())
+						return nil
+					}
+					buildid := (*[ebpftypes.UserPerfMaxStackDepth]bpfStackBuildID)(unsafe.Pointer(&buildIDBuf[0]))
+
+					var buildIDsBuilder strings.Builder
+				buildid_iter:
+					for i, b := range buildid {
+						switch b.status {
+						case unix.BPF_STACK_BUILD_ID_EMPTY:
+							break buildid_iter
+						case unix.BPF_STACK_BUILD_ID_VALID:
+							fmt.Fprintf(&buildIDsBuilder, "[%d]", i)
+							for _, byte := range b.buildID {
+								fmt.Fprintf(&buildIDsBuilder, "%02x", byte)
+							}
+							fmt.Fprintf(&buildIDsBuilder, " +%x; ", b.offsetOrIP)
+						case unix.BPF_STACK_BUILD_ID_IP:
+							fmt.Fprintf(&buildIDsBuilder, "[%d]%x; ", i, b.offsetOrIP)
+						}
+					}
+					buildIDField.PutString(data, buildIDsBuilder.String())
+				}
+
 				if o.symbolizer != nil {
 					task := symbolizer.Task{
 						Name:         fmt.Sprintf("%s/%s", containerName, comm),
@@ -293,6 +342,15 @@ func (o *OperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	if o.userStackMap == nil {
 		return errors.New("user stack map is nil")
+	}
+
+	buildIDMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.BuildIdMapName)
+	// buildIDMap is optional. Older gadgets won't have it.
+	if ok {
+		o.buildIDMap, ok = buildIDMapAny.(*ebpf.Map)
+		if !ok {
+			return errors.New("build_id map is not of expected type")
+		}
 	}
 
 	for ds, funcs := range o.subscriptions {
