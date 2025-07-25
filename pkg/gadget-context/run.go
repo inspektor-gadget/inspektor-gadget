@@ -30,6 +30,21 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
+func flattenMap(prefix string, v any, result map[string]string) {
+	switch val := v.(type) {
+	case map[string]any:
+		for k, v := range val {
+			newKey := k
+			if prefix != "" {
+				newKey = prefix + "." + k
+			}
+			flattenMap(newKey, v, result)
+		}
+	case string:
+		result[prefix] = val
+	}
+}
+
 func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error {
 	log := c.Logger()
 
@@ -99,7 +114,8 @@ func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error 
 	// set defaults for params according to gadget's config
 	if cfg, ok := c.GetVar("config"); ok {
 		if v, ok := cfg.(*viper.Viper); ok {
-			defaults := v.GetStringMapString("paramDefaults")
+			defaults := make(map[string]string)
+			flattenMap("operator", v.GetStringMap("paramDefaults"), defaults)
 			for _, p := range params {
 				fullName := p.Prefix + p.Key
 				if val, ok := defaults[fullName]; ok {
