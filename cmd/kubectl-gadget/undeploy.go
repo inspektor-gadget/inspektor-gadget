@@ -133,6 +133,9 @@ func processResourceList(dynClient dynamic.Interface, apiResourceLists []*metav1
 	listOptions := metav1.ListOptions{LabelSelector: labelSelector}
 	ctx := context.TODO()
 
+	// Check once if endpointslices are available to decide whether to skip endpoints
+	endpointSlicesAvailable := hasEndpointSlicesAvailable(apiResourceLists)
+
 	for _, apiResourceList := range apiResourceLists {
 		if apiResourceList == nil {
 			continue
@@ -154,6 +157,11 @@ func processResourceList(dynClient dynamic.Interface, apiResourceLists []*metav1
 			if strings.Contains(apiResource.Name, "/") ||
 				!slices.Contains(apiResource.Verbs, "list") ||
 				!slices.Contains(apiResource.Verbs, "delete") {
+				continue
+			}
+
+			// Skip deprecated v1 endpoints if v1 endpointslices are available
+			if apiResource.Name == "endpoints" && gv.Group == "" && gv.Version == "v1" && endpointSlicesAvailable {
 				continue
 			}
 
@@ -344,6 +352,9 @@ func waitForLabeledResourcesDeletion(dynClient dynamic.Interface, discoveryClien
 			return false, err
 		}
 
+		// Check once if endpointslices are available to decide whether to skip endpoints
+		endpointSlicesAvailable := hasEndpointSlicesAvailable(apiResourceLists)
+
 		// Check all resource types for any remaining resources with the label
 		for _, apiResourceList := range apiResourceLists {
 			if apiResourceList == nil {
@@ -357,6 +368,11 @@ func waitForLabeledResourcesDeletion(dynClient dynamic.Interface, discoveryClien
 
 			for _, apiResource := range apiResourceList.APIResources {
 				if strings.Contains(apiResource.Name, "/") || !slices.Contains(apiResource.Verbs, "list") {
+					continue
+				}
+
+				// Skip deprecated v1 endpoints if v1 endpointslices are available
+				if apiResource.Name == "endpoints" && gv.Group == "" && gv.Version == "v1" && endpointSlicesAvailable {
 					continue
 				}
 
@@ -544,4 +560,25 @@ func finishUndeploy(errs []string) error {
 		fmt.Println("Inspektor Gadget is being removed")
 	}
 	return nil
+}
+
+// hasEndpointSlicesAvailable checks if v1 endpointslices are available in the cluster
+func hasEndpointSlicesAvailable(apiResourceLists []*metav1.APIResourceList) bool {
+	for _, apiResourceList := range apiResourceLists {
+		if apiResourceList == nil {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(apiResourceList.GroupVersion)
+		if err != nil {
+			continue
+		}
+		if gv.Group == "discovery.k8s.io" && gv.Version == "v1" {
+			for _, apiResource := range apiResourceList.APIResources {
+				if apiResource.Name == "endpointslices" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
