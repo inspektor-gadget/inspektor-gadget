@@ -112,7 +112,7 @@ impl Drop for Map {
 }
 
 impl Map {
-    pub fn new(spec: MapSpec) -> Result<Self> {
+    pub fn new(spec: &MapSpec) -> Result<Self> {
         let name_ptr = string_to_buf_ptr(&spec.name);
         let ret = unsafe {
             _map_new(

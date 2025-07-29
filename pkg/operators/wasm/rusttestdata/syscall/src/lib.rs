@@ -63,7 +63,7 @@ fn gadgetInit() -> i32 {
 
     // open_tree has the same ID for both amd64 and arm64.
     syscall_name = "open_tree".to_string();
-    let Ok(id) = get_syscall_id(syscall_name.clone()) else {
+    let Ok(id) = get_syscall_id(&syscall_name) else {
         errorf!("failed to get ID for syscall {}", syscall_name);
         return 1;
     };
@@ -80,7 +80,7 @@ fn gadgetInit() -> i32 {
 
     // Test invalid syscall name
     let syscall_name = "foobar".to_string();
-    if let Ok(val) = get_syscall_id(syscall_name.clone()) {
+    if let Ok(val) = get_syscall_id(&syscall_name) {
         errorf!(
             "expected no syscall ID for syscall {}, got {}",
             syscall_name,

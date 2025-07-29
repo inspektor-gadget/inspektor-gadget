@@ -68,7 +68,7 @@ pub fn get_syscall_name(id: u16) -> Result<String> {
     }
 }
 
-pub fn get_syscall_id(name: String) -> Result<i32> {
+pub fn get_syscall_id(name: &str) -> Result<i32> {
     let id = unsafe { _get_syscall_id(string_to_buf_ptr(&name).0) };
 
     if id == -1 {
