@@ -18,6 +18,9 @@ use crate::helpers::string_to_buf_ptr; //relative paths may hinder in testing.
 extern "C" {
     #[link_name = "gadgetLog"]
     fn _log(level: u32, msg: u64);
+
+    #[link_name = "gadgetShouldLog"]
+    fn _should_log(level: u32) -> u32;
 }
 
 pub enum LogLevel {
@@ -34,20 +37,30 @@ pub fn log(level: LogLevel, message: &str) {
     }
 }
 
-// Rust doesn't support default variadic, but similar functionality are provided by macros allow for multiple arguments
+pub fn should_log(level: LogLevel) -> bool {
+    unsafe {
+        _should_log(level as u32) == 1
+    }
+}
+
+// Rust doesn't support variadic arguments, but macros allow for multiple arguments.
 #[macro_export]
 macro_rules! log {
     ($level:expr, $($arg:expr),+ $(,)?) => {{
-        let message = [$($arg),+].join(" ");
-        $crate::log::log($level, &message);
+        if $crate::log::should_log($level) {
+            let message = [$($arg),+].join(" ");
+            $crate::log::log($level, &message);
+        }
     }};
 }
 
 #[macro_export]
 macro_rules! logf {
     ($level:expr, $fmt:literal $(, $arg:tt)* ) => {{
-        let message = format!($fmt $(, $arg)*);
-        $crate::log::log($level, &message);
+        if $crate::log::should_log($level) {
+            let message = format!($fmt $(, $arg)*);
+            $crate::log::log($level, &message);
+        }
     }};
 }
 
