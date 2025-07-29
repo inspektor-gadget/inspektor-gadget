@@ -196,13 +196,10 @@ func TestExtraInfoLeak(t *testing.T) {
 
 func extractGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
 	image := gadgetrunner.GetGadgetImageName("ci/image_inspect")
+	ocihandlerOp := ocihandler.New()
 
 	opGlobalParams := make(map[string]*params.Params)
-	ociParams := apihelpers.ToParamDescs(ocihandler.OciHandler.InstanceParams()).ToParams()
-
-	ocihandler.OciHandler.Init(ociParams)
-
-	opGlobalParams["oci"] = apihelpers.ToParamDescs(ocihandler.OciHandler.GlobalParams()).ToParams()
+	opGlobalParams["oci"] = apihelpers.ToParamDescs(ocihandlerOp.GlobalParams()).ToParams()
 	verifyImage := "false"
 	if verifyImage == "true" || verifyImage == "false" {
 		opGlobalParams["oci"].Set("verify-image", verifyImage)
@@ -214,11 +211,11 @@ func extractGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
 	runtimeParams := runtime.ParamDescs().ToParams()
 
 	ops := make([]operators.DataOperator, 0)
-	err := ocihandler.OciHandler.Init(opGlobalParams["oci"])
+	err := ocihandlerOp.Init(opGlobalParams["oci"])
 	if err != nil {
 		return nil, fmt.Errorf("Error initializing OCI handler: %w\n", err)
 	}
-	ops = append(ops, ocihandler.OciHandler)
+	ops = append(ops, ocihandlerOp)
 
 	gadgetCtx := gadgetcontext.New(
 		context.Background(),
@@ -228,6 +225,7 @@ func extractGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
 		gadgetcontext.IncludeExtraInfo(extraInfo),
 	)
 
+	ociParams := apihelpers.ToParamDescs(ocihandlerOp.InstanceParams()).ToParams()
 	paramValueMap := make(map[string]string)
 	ociParams.CopyToMap(paramValueMap, "operator.oci.")
 
