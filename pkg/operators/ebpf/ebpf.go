@@ -48,6 +48,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
+	seop "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
@@ -166,10 +167,14 @@ type ebpfInstance struct {
 
 	config *viper.Viper
 
-	program        []byte
-	logger         logger.Logger
-	collectionSpec *ebpf.CollectionSpec
-	collection     *ebpf.Collection
+	program          []byte
+	logger           logger.Logger
+	collectionSpec   *ebpf.CollectionSpec
+	collection       *ebpf.Collection
+	btfTypes         *btf.Spec
+	extraRelocations []*btf.Spec
+
+	seFieldSizes map[string]uint32
 
 	tracers      map[string]*Tracer
 	structs      map[string]*Struct
@@ -272,7 +277,7 @@ func (i *ebpfInstance) analyze() error {
 	}
 
 	// Iterate over types and populate the gadget
-	for typ, err := range i.collectionSpec.Types.All() {
+	for typ, err := range i.btfTypes.All() {
 		if err != nil {
 			return fmt.Errorf("iterating over types: %w", err)
 		}
@@ -321,6 +326,28 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("initializing: %w", err)
 	}
+
+	// create copy of BTF information we'll modify before loading the programs.
+	// This has to be used for registering structures
+	i.btfTypes = i.collectionSpec.Types.Copy()
+
+	// TODO: it's a very hacky way to get information from other operator. The
+	// gadget context doesn't work as the socketenricher hasn't run when this
+	// method is invoked. The socket enricher depends on the ebpf operator, and
+	// the ebpf operator depends on the socket enricher, so this is a way to
+	// break that loop
+	seI, ok := operators.GetDataOperators()[seop.OperatorName]
+	if ok {
+		if se, ok := seI.(*seop.SocketEnricher); ok {
+			i.seFieldSizes = se.FieldSizes()
+		}
+	}
+
+	spec, err := i.fixBTFStructs(i.btfTypes)
+	if err != nil {
+		return fmt.Errorf("fixing structs: %w", err)
+	}
+	i.extraRelocations = append(i.extraRelocations, spec)
 
 	// add extra info to gadgetcontext if requested
 	if gadgetCtx.ExtraInfo() {
@@ -643,6 +670,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Programs: ebpf.ProgramOptions{
+			ExtraRelocationTargets: i.extraRelocations,
+		},
 	}
 
 	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
@@ -654,7 +684,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			return fmt.Errorf("invalid socket enricher BTF spec: expected *btf.Spec, got %T", seBtfSpecI)
 		}
 
-		opts.Programs.ExtraRelocationTargets = []*btf.Spec{seBTFSpec}
+		opts.Programs.ExtraRelocationTargets = append(opts.Programs.ExtraRelocationTargets, seBTFSpec)
 
 		bpfStructI, ok := gadgetCtx.GetVar("socketEnricherStruct")
 		if !ok {
