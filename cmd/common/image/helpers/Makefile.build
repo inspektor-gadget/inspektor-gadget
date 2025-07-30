@@ -17,6 +17,12 @@ BASECFLAGS = -target bpf -Wall -g -O2 -I/usr/include/$(shell uname -m)-linux-gnu
 CFLAGS ?=
 OUTPUTDIR ?= /tmp
 EBPFSOURCE ?= program.bpf.c
+CARGOFLAGS ?=
+FORCE_COLORS ?= false
+
+ifeq ($(FORCE_COLORS), true)
+    CARGOFLAGS += --color always
+endif
 
 ARCHS = amd64 arm64
 TARGETS = $(foreach ARCH,$(ARCHS),$(OUTPUTDIR)/$(ARCH).bpf.o)
@@ -41,7 +47,7 @@ wasm: $(WASM)
 else ifeq (rs, $(patsubst %.rs,rs,$(WASM)))
 wasm: $(WASM)
 	cd $(dir $(WASM)) && \
-	CARGO_TARGET_DIR=$(OUTPUTDIR) cargo build --target wasm32-wasip1 --release && \
+	CARGO_TARGET_DIR=$(OUTPUTDIR) cargo $(CARGOFLAGS) build --target wasm32-wasip1 --release && \
 	PACKAGE_NAME=$(shell awk -F\" '/^name *=/ { print $$2; exit }' $(dir $(WASM))/../Cargo.toml) && \
 	cp $(OUTPUTDIR)/wasm32-wasip1/release/$$PACKAGE_NAME.wasm $(OUTPUTDIR)/program.wasm && \
 	cd /work

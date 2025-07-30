@@ -123,6 +123,7 @@ func NewBuildCmd() *cobra.Command {
 type buildOptions struct {
 	outputDir         string
 	cFlags            string
+	forceColorsFlag   string
 	ebpfSourcePath    string
 	wasmSourcePath    string
 	btfgen            bool
@@ -135,6 +136,7 @@ func buildCmd(options buildOptions) []string {
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
 		"OUTPUTDIR=" + options.outputDir,
 		"CFLAGS=" + options.cFlags,
+		"FORCE_COLORS=" + options.forceColorsFlag,
 	}
 
 	if options.ebpfSourcePath != "" {
@@ -478,6 +480,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	if cflags, set := os.LookupEnv("CFLAGS"); set {
 		buildOpts.cFlags += " " + cflags
+	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) {
+		buildOpts.forceColorsFlag = "true"
 	}
 
 	cmd := buildCmd(buildOpts)
