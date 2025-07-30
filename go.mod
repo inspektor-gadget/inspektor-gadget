@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cilium/ebpf v0.18.0
+	github.com/cilium/ebpf v0.19.1-0.20250729164112-d994daa25101
 	github.com/containerd/containerd v1.7.28
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
@@ -53,7 +53,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0
 	go.opentelemetry.io/otel/sdk/log v0.13.0
 	go.opentelemetry.io/otel/sdk/metric v1.37.0
-	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
+	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0
@@ -206,10 +206,3 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/prometheus/otlptranslator v0.0.0-20250717125610-8549f4ab4f8f // indirect
 )
-
-// ebpf-go with some memory & cpu optimizations like
-// - https://github.com/cilium/ebpf/pull/1763
-// - https://github.com/cilium/ebpf/pull/1772
-// - https://github.com/cilium/ebpf/pull/1778
-// - https://github.com/cilium/ebpf/pull/1794
-replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20250625205447-f72d1b709b03
