@@ -19,13 +19,15 @@ import (
 
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 // Log levels for gadgetLog
 // Keep in sync with pkg/apis/wasm/log.go
 const (
 	errorLevel uint32 = iota
-	arnLevel
+	warnLevel
 	infoLevel
 	debugLevel
 	traceLevel
@@ -45,7 +47,7 @@ func (i *wasmOperatorInstance) addLogFuncs(env wazero.HostModuleBuilder) {
 		switch logLevel {
 		case errorLevel:
 			i.logger.Error(str)
-		case arnLevel:
+		case warnLevel:
 			i.logger.Warn(str)
 		case infoLevel:
 			i.logger.Info(str)
@@ -58,11 +60,34 @@ func (i *wasmOperatorInstance) addLogFuncs(env wazero.HostModuleBuilder) {
 		}
 	}
 
+	shouldLogFn := func(ctx context.Context, m wapi.Module, stack []uint64) {
+		logLevel := wapi.DecodeU32(stack[0])
+		loggerLevel := i.logger.GetLevel()
+
+		// Logger defines [PanicLevel, TraceLevel] but WASM API only defines
+		// [ErrorLevel, TraceLevel].
+		// If logger level is below ErrorLevel, we should not log.
+		// Otherwise log if the level are enabled by shifting WASM API log level.
+		if loggerLevel >= logger.ErrorLevel && uint32(loggerLevel) >= logLevel+uint32(logger.ErrorLevel) {
+			stack[0] = 1
+		} else {
+			stack[0] = 0
+		}
+	}
+
 	exportFunction(env, "gadgetLog", logFn,
 		[]wapi.ValueType{
 			wapi.ValueTypeI32, // log level
 			wapi.ValueTypeI64, // message
 		},
 		[]wapi.ValueType{},
+	)
+	exportFunction(env, "gadgetShouldLog", shouldLogFn,
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // log level
+		},
+		[]wapi.ValueType{
+			wapi.ValueTypeI32, // bool
+		},
 	)
 }
