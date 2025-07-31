@@ -62,11 +62,18 @@ type ociHandler struct {
 	globalParams *params.Params
 }
 
+func New() *ociHandler {
+	return &ociHandler{}
+}
+
 func (o *ociHandler) Name() string {
 	return "oci"
 }
 
 func (o *ociHandler) Init(params *params.Params) error {
+	if o.globalParams != nil {
+		return fmt.Errorf("ociHandler already initialized")
+	}
 	o.globalParams = params
 	return nil
 }
@@ -562,4 +569,4 @@ func (o *ociHandler) Priority() int {
 }
 
 // OciHandler is a singleton of ociHandler
-var OciHandler = &ociHandler{}
+var OciHandler = New()
