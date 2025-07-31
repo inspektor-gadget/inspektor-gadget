@@ -1,4 +1,5 @@
 name: bpfstats
+category: observer
 description: Get memory and CPU usage of eBPF programs and Gadgets
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/bpfstats
