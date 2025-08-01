@@ -1,1 +1,1 @@
-wasm: go/program.go
+#wasm: go/program.go
