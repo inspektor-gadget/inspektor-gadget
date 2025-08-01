@@ -17,6 +17,7 @@ package formatters
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"syscall"
 	"time"
@@ -46,6 +47,8 @@ const (
 	errnoTargetAnnotation     = "formatters.errno.target"
 	bytesTargetAnnotation     = "formatters.bytes.target"
 	durationTargetAnnotation  = "formatters.duration.target"
+	fileModeTargetAnnotation  = "formatters.file_mode.target"
+	fileFlagsTargetAnnotation = "formatters.file_flags.target"
 	Priority                  = 0
 )
 
@@ -180,6 +183,50 @@ func formatDuration(d time.Duration) string {
 	}
 }
 
+var flagNames = []string{
+	"O_CREAT",
+	"O_EXCL",
+	"O_NOCTTY",
+	"O_TRUNC",
+	"O_APPEND",
+	"O_NONBLOCK",
+	"O_DSYNC",
+	"O_FASYNC",
+	"O_DIRECT",
+	"O_LARGEFILE",
+	"O_DIRECTORY",
+	"O_NOFOLLOW",
+	"O_NOATIME",
+	"O_CLOEXEC",
+}
+
+func decodeFlags(flags int32) []string {
+	flagsStr := []string{}
+
+	// We first need to deal with the first 3 bits which indicates access mode.
+	switch flags & 0b11 {
+	case 0:
+		flagsStr = append(flagsStr, "O_RDONLY")
+	case 1:
+		flagsStr = append(flagsStr, "O_WRONLY")
+	case 2:
+		flagsStr = append(flagsStr, "O_RDWR")
+	}
+
+	// Then, we need to remove the last 6 bits and we can deal with the other
+	// flags.
+	// Indeed, O_CREAT is defined as 00000100, see:
+	// https://github.com/torvalds/linux/blob/9d646009f65d/include/uapi/asm-generic/fcntl.h#L24
+	flags >>= 6
+	for i, val := range flagNames {
+		if (1<<i)&flags != 0 {
+			flagsStr = append(flagsStr, val)
+		}
+	}
+
+	return flagsStr
+}
+
 // careful: order and priority matter both!
 var replacers = []replacer{
 	{
@@ -270,7 +317,7 @@ var replacers = []replacer{
 				return nil, fmt.Errorf("checking field %q: expected uint64", in.Name())
 			}
 
-			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.syscall", in, syscallTargetAnnotation)
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.file_mode", in, fileModeTargetAnnotation)
 			if err != nil {
 				return nil, err
 			}
@@ -517,6 +564,83 @@ var replacers = []replacer{
 			}, nil
 		},
 		priority: 1,
+	},
+	{
+		name:      "file_mode",
+		selectors: []string{"type:" + ebpftypes.FileModeTypeName},
+		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			if in.Type() != api.Kind_Uint32 {
+				return nil, fmt.Errorf("checking field %q: expected uint32", in.Name())
+			}
+
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.file_mode", in, fileModeTargetAnnotation)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := []datasource.FieldOption{
+				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
+			}
+			fileModeField, err := ds.AddField(outName, api.Kind_String, opts...)
+			if err != nil {
+				return nil, err
+			}
+
+			annotations.SetFieldVisibility(true, in)
+
+			return func(data datasource.Data) error {
+				mode, err := in.Uint32(data)
+				if err != nil {
+					return err
+				}
+
+				fileModeField.PutString(data, fs.FileMode(mode).String())
+
+				return nil
+			}, nil
+		},
+		priority: 0,
+	},
+	{
+		name:      "file_flags",
+		selectors: []string{"type:" + ebpftypes.FileFlagsTypeName},
+		replace: func(logger logger.Logger, ds datasource.DataSource, in datasource.FieldAccessor) (func(data datasource.Data) error, error) {
+			if in.Type() != api.Kind_Uint32 {
+				return nil, fmt.Errorf("checking field %q: expected uint32", in.Name())
+			}
+
+			outName, err := annotations.GetTargetNameFromAnnotation(logger, "formatters.file_flags", in, fileFlagsTargetAnnotation)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := []datasource.FieldOption{
+				datasource.WithSameParentAs(in),
+				datasource.WithSameOrderAs(in),
+			}
+			fileFlagsFields, err := ds.AddField(outName, api.Kind_String, opts...)
+			if err != nil {
+				return nil, err
+			}
+
+			annotations.SetFieldVisibility(true, in)
+
+			return func(data datasource.Data) error {
+				mode, err := in.Int32(data)
+				if err != nil {
+					return err
+				}
+
+				flags := decodeFlags(mode)
+				// TODO: the datasource doesn't support arrays yet.
+				flagsStr := strings.Join(flags, "|")
+				fileFlagsFields.PutString(data, flagsStr)
+
+				return nil
+			}, nil
+		},
+		priority: 0,
 	},
 }
 

@@ -63,6 +63,14 @@ typedef __u32 gadget_gid;
 // as string.
 typedef __u64 gadget_syscall;
 
+// gadget_file_mode is used to represent a file mode. A field is automatically added that contains the mode
+// as string.
+typedef __u32 gadget_file_mode;
+
+// gadget_file_flags is used to represent file flags. A field is automatically added that contains the flags
+// as string.
+typedef __u32 gadget_file_flags;
+
 typedef __u32 gadget_kernel_stack;
 
 struct gadget_user_stack {

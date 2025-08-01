@@ -30,8 +30,8 @@ tests:
       image: ghcr.io/mauriciovasquezbernal/bench
       cmd: /bench --events=open --events-per-second={eventsPerSecond}
     eventsPerSecond: [ 131072 ]
-  - name: trace_open_latest
-    gadgetName: trace_open:latest
+  - name: trace_open_no_wasm
+    gadgetName: ghcr.io/mauriciovasquezbernal/gadget/trace_open:nowasm
     generator:
       image: ghcr.io/mauriciovasquezbernal/bench
       cmd: /bench --events=open --events-per-second={eventsPerSecond}
