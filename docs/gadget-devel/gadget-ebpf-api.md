@@ -359,6 +359,48 @@ By default this field is hidden but you can use `columns.hidden` to the control 
 
 - `formatters.syscall.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
 
+### `gadget_file_mode`
+
+File mode values will be converted to their string representation:
+
+```c
+struct event {
+	gadget_file_mode mode_raw;
+};
+```
+
+```json
+  "mode": "-rw-r--r--",
+  "mode_raw": 33188,
+```
+
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
+
+#### Annotations
+
+- `formatters.file_mode.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
+
+### `gadget_file_flags`
+
+File flags values will be converted to their string representation:
+
+```c
+struct event {
+	gadget_file_flags flags_raw;
+};
+```
+
+```json
+  "flags": "O_RDONLY|O_CREAT|O_TRUNC",
+  "flags_raw": 577,
+```
+
+By default this field is hidden but you can use `columns.hidden` to the control visibility.
+
+#### Annotations
+
+- `formatters.file_flags.target`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
+
 ### `gadget_kernel_stack`
 
 Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stack-traces](#kernel-stack-traces)).
