@@ -54,6 +54,20 @@ readable" version and then the operator adds the human readable counterpart:
   },
 ```
 
+## File Mode
+
+```json
+  "mode": "-rw-r--r--",
+  "mode_raw": 33188,
+```
+
+## File Flags
+
+```json
+  "flags": "O_RDONLY|O_CREAT|O_TRUNC",
+  "flags_raw": 577,
+```
+
 Please check the [gadget developer
 documentation](../../gadget-devel/gadget-ebpf-api.md#enriched-types) to learn
 how to use this operator in your gadget.
