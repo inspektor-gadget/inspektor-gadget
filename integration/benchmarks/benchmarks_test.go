@@ -100,7 +100,7 @@ func TestBenchmarks(t *testing.T) {
 	t.Setenv("IG_PATH", config.IgPath)
 	t.Setenv("IG_FLAGS", strings.Join(config.IgFlags, " "))
 	t.Setenv("IG_RUNTIME", config.IgRuntime)
-	t.Setenv("GADGET_TAG", config.GadgetTag)
+	//t.Setenv("GADGET_TAG", config.GadgetTag)
 
 	filePath := fmt.Sprintf("test_results_%s.csv", time.Now().Format("20060102_150405"))
 	file, err := os.Create(filePath)
@@ -196,7 +196,7 @@ func (r *RunResult) String() string {
 }
 
 func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf any, usetracer bool) RunResult {
-	tName := fmt.Sprintf("test-%s", tc.GadgetName)
+	tName := fmt.Sprintf("test-%s", tc.Name)
 
 	runDuration := bc.GadgetRunDuration
 	timeoutParam := fmt.Sprintf("--timeout=%d", runDuration)
