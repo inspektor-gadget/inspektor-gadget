@@ -40,6 +40,8 @@ const (
 	ProcessTypeName     = "gadget_process"
 	CredsTypeName       = "gadget_creds"
 	ParentTypeName      = "gadget_parent"
+	FileModeTypeName    = "gadget_file_mode"
+	FileFlagsTypeName   = "gadget_file_flags"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"
