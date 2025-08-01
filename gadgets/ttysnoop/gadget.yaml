@@ -1,0 +1,17 @@
+name: 'ttysnoop'
+description: 'Watch live output from a tty or pts device'
+homepageURL: 'https://inspektor-gadget.io/'
+documentationURL: 'https://www.inspektor-gadget.io/docs/latest/gadgets/ttysnoop'
+sourceURL: 'https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/ttysnoop'
+datasources:
+  ttysnoop:
+    fields:
+      buf:
+        annotations:
+          description: 'buffer'
+          columns.width: 32
+      len:
+      ino:
+      inoptr:
+        annotations:
+          columns.hidden: "true"
