@@ -95,5 +95,10 @@ jobs:
       env:
         IMAGE_TAG: ${{ github.event.release.tag_name }}
         GADGET_TAG: ${{ github.event.release.tag_name }}
-      run:
-        make update-latest-tag
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        LATEST_TAG=$(gh release list --limit 1000 --json tagName | jq -r '.[].tagName' | sort -V | tail -n1)
+        echo "LATEST_TAG=$LATEST_TAG, CURRENT_IMAGE_TAG=$IMAGE_TAG"
+        if [ "$LATEST_TAG" = "$IMAGE_TAG" ]; then
+          make update-latest-tag
+        fi
