@@ -1,0 +1,318 @@
+---
+title: traceloop
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# traceloop
+
+The trace_loop gadget is used to capture and replay system calls in real-time, acting as a flight recorder for your Kubernetes applications.
+
+## Requirements
+
+- Minimum Kernel Version: 5.10+
+- Dependencies: Inspektor Gadget installed
+- Access: kubectl access to your cluster
+
+## Getting Started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/traceloop:latest [flags]
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/traceloop:latest [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+System calls are the foundation of how applications interact with the operating system. When debugging production issues, understanding the exact sequence of system calls before a crash or failure can be invaluable. The trace_loop gadget continuously captures these system calls, allowing you to "rewind" and see exactly what your application was doing when something went wrong.
+
+:::info
+Think of trace_loop as a flight recorder for your applications - it's always recording, and when something goes wrong, you can replay the exact sequence of events that led to the issue.
+:::
+
+### Flow of System Call Recording in Kubernetes
+
+Before diving into scenarios, it's important to understand how trace_loop captures system calls across different components:
+
+**Application Pods**: The primary targets that generate system calls through normal operation.
+
+**eBPF Probes**: Kernel-level probes that capture system calls in real-time.
+
+**Traceloop Recorder**: The component that buffers and formats system call data.
+
+**Output Stream**: Real-time display of captured system calls with context.
+
+The overall flow of system call capture is as follows:
+```
+Application Pods → System Calls → eBPF Probes → Traceloop Recorder → Output Stream
+     ↓                ↓              ↓               ↓              ↓
+Generate syscalls → Kernel level → Capture → Buffer & Format → Display
+```
+
+### Tracing a Specific Application Pod
+
+Let's walk through capturing system calls for a specific pod.
+
+First, create a namespace for testing:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl create ns test-traceloop-ns
+        ```
+        **Expected output:**
+        ```
+        namespace/test-traceloop-ns created
+        ```
+        
+        Create a pod that runs the sleep inf command, which makes the container sleep indefinitely (infinite sleep):
+        ```bash
+        $ kubectl run -n test-traceloop-ns --image busybox test-traceloop-pod --command -- sleep inf
+        ```
+        **Expected output:**
+        ```
+        pod/test-traceloop-pod created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run -it --rm --name test-traceloop busybox /bin/sh
+        ```
+    </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run traceloop:latest --namespace test-traceloop-ns
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   CPU         PID COMM      SYSCALL     PARAMETERS      RET
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run traceloop:latest --containername test-traceloop
+        RUNTIME.CONTAINERNAME                        CPU         PID COMM             SYSCALL                     PARAMETERS                  RET
+        ```
+    </TabItem>
+</Tabs>
+
+Now, let's generate some events: **Simulating and Capturing Issues**
+
+Inside the pod, perform some operations that will generate interesting system calls:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl exec -ti -n test-traceloop-ns test-traceloop-pod -- /bin/hush
+        / # ls
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        / # ls
+        ```
+    </TabItem>
+</Tabs>
+
+Let's collect the syscalls. Press Ctrl+C to collect the syscalls:
+
+The system calls captured by the trace_loop gadget are like the below:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run traceloop:latest --namespace test-traceloop-ns
+        K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   CPU         PID COMM      SYSCALL     PARAMETERS      RET
+        ^C
+        ...
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        brk         brk=0        94032…
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        mmap        addr=0, len… 14008…
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        access      filename="/… -1 (P…
+        ...
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        write       fd=1, buf="…    201
+        minikube-docker     test-traceloop-ns   test-traceloop-pod  test-traceloop-pod  2         95419 ls        exit_group  error_code=0      X
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run traceloop:latest --containername test-traceloop
+        RUNTIME.CONTAINERNAME                        CPU         PID COMM             SYSCALL                     PARAMETERS                  RET
+        ^C
+        ...
+        test-traceloop                            5         58054 sh               execve                    filename="/bin/ls", a…             0
+        test-traceloop                            5         58054 ls               brk                       brk=0                  102559763509…
+        test-traceloop                            5         58054 ls               mmap                      addr=0, len=8192, pro… 123786398932…
+        test-traceloop                            5         58054 ls               access                    filename="/etc/ld.so.… -1 (Permissi…
+        ...
+        test-traceloop                            5         58054 ls               write                     fd=1, buf="\x1b[1;34m…           201
+        test-traceloop                            5         58054 ls               exit_group                error_code=0                       X
+        ...
+        ```
+    </TabItem>
+</Tabs>
+
+The trace shows an ls command that allocated memory, encountered a permission error while trying to access a file or directory, successfully wrote its output to the terminal, and exited cleanly.
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete ns test-traceloop-ns
+        namespace "test-traceloop-ns" deleted
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-traceloop
+        ```
+    </TabItem>
+</Tabs>
+
+## Advanced Tracing Scenarios
+
+### Built-in System Call Filtering
+
+For more efficient filtering, traceloop supports built-in syscall filtering at the eBPF level, which reduces overhead and provides cleaner output than post-processing with grep.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        # Filter for specific syscalls
+        $ kubectl gadget run traceloop:latest -n test-ns --podname my-pod --syscall-filters openat,write,read
+        # Focus on file operations only
+        $ kubectl gadget run traceloop:latest -n test-ns --syscall-filters openat,close,read,write,unlink
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        # Filter for specific syscalls (using -c shorthand)
+        $ sudo ig run traceloop:latest -c test-container --syscall-filters openat,write
+        # Focus on file operations only
+        $ sudo ig run traceloop:latest -c test-container --syscall-filters openat,close,read,write,unlink
+        ```
+    </TabItem>
+</Tabs>
+
+**Benefits of built-in filtering:**
+- **Reduced overhead**: Filtering happens at the kernel level, not in userspace
+- **Cleaner output**: Only relevant syscalls are captured and displayed
+- **Better performance**: Less CPU and memory usage compared to grep filtering
+- **Focused debugging**: Easier to spot patterns in specific syscall categories
+
+:::info
+💡 **Pro tip**: Did you know you can filter specific syscalls with `sudo ig run traceloop -c [container] --syscall-filters openat,write`? This helps reduce noise, and shows only failed system calls, helping you quickly identify issues when debugging file I/O issues.
+:::
+
+**Common filtering patterns:**
+```bash
+# Comprehensive file I/O testing
+--syscall-filters open,openat,close,read,write
+
+# Memory operations
+--syscall-filters mmap,munmap,brk,mprotect
+
+# Process management
+--syscall-filters fork,execve,exit,exit_group,wait4
+
+# Network debugging
+--syscall-filters socket,bind,listen,accept,connect,sendto,recvfrom
+```
+
+## Real-World Debugging Scenarios
+
+### Scenario 1: Application System Call Monitoring
+
+When monitoring application activity, traceloop shows:
+- **System call sequence** - The chronological order of system calls (brk, mmap, access, write, exit_group)
+- **Process details** - Process ID, command name, and CPU core information
+- **Return values** - Success codes and failure codes with error types (like permission errors)
+- **File operations** - File access attempts with specific file descriptors and buffer information
+- **Kubernetes context** - Node, namespace, pod, and container identification
+- **Process termination** - Exit codes showing how processes end (error_code=0 for clean exit)
+
+The trace captures basic application behavior, showing what system calls an application makes during normal operation, whether those calls succeed or fail, and how processes terminate.
+
+### Scenario 2: Configuration Issues
+
+When troubleshooting application problems, traceloop shows:
+- **Permission issues with specific resources** - Failed file or directory access attempts with permission errors (like `access filename="/..." -1 (P...)`)
+
+The trace captures when applications encounter permission-related failures while trying to access files, directories, or other system resources, helping identify access control problems.
+
+## Integration with kubectl Workflows
+
+Trace_loop integrates seamlessly with standard Kubernetes debugging:
+
+```bash
+# Standard kubectl debugging
+kubectl get pods -n myapp
+kubectl describe pod problematic-pod -n myapp
+kubectl logs problematic-pod -n myapp
+
+# Enhanced with trace_loop for system-level insight
+kubectl gadget run traceloop:latest --namespace myapp --podname problematic-pod
+# ... reproduce the issue ...
+# ^C to capture the complete system call timeline
+```
+
+## Best Practices
+
+### Development Environment
+- Use traceloop during local testing with Docker containers to monitor basic application behavior
+- Capture system call sequences to understand normal application operation patterns
+- Use built-in syscall filtering (`--syscall-filters`) to focus on specific operation types during testing
+
+### Staging Environment
+- Test syscall filtering patterns before production use
+- Validate that traceloop can capture the specific system calls your application makes
+- Practice using targeted filtering to reduce overhead
+
+### Production Environment
+- Use targeted tracing with specific namespace/pod filters (`--namespace`, `--podname`)
+- Apply syscall filtering to reduce overhead and focus on relevant system calls (`--syscall-filters open,openat,close,read,write`)
+- Keep traces focused by filtering for specific containers or pods to minimize performance impact
+- Integrate with standard kubectl workflows - use alongside `kubectl get pods`, `kubectl describe`, and `kubectl logs` for comprehensive debugging
+
+### General Usage
+- Use the built-in filtering capabilities rather than post-processing with grep for better performance
+- Apply common filtering patterns based on your debugging needs (file I/O, memory operations, process management, or network debugging)
+- Clean up test environments after tracing sessions
+
+## Common Troubleshooting
+
+### No Events Captured
+- **Check kernel version**: `uname -r` (must be 5.10+)
+- **Verify target is running**: Ensure the pod/container is active and executing commands
+
+### Excessive Output
+- **Use namespace filtering**: `--namespace specific-namespace`
+- **Filter by pod**: `--podname specific-pod`
+- **Use built-in syscall filtering**: `--syscall-filters open,openat,close,read,write`
+- **Apply specific filtering patterns**: Use targeted filters like `--syscall-filters mmap,munmap,brk,mprotect` for memory operations
+
+### Integration Issues
+- **Use proper targeting**: Combine traceloop with standard kubectl commands (`kubectl get pods`, `kubectl describe`, `kubectl logs`)
+- **Clean up resources**: Remember to delete test namespaces and containers after tracing sessions
+
+## Limitations
+
+Timestamps are not filled on kernel older than 5.7.
