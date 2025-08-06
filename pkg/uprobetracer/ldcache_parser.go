@@ -145,7 +145,6 @@ func parseLdCache(containerPid uint32, ldCachePath string, libraryName string) (
 		return nil, fmt.Errorf("reading file %q in container pid %d: %w", ldCachePath, containerPid, err)
 	}
 	ldCacheFileSize := uint32(len(ldCacheFile))
-
 	var ldEntries []ldEntry
 	var filteredLibraries []string
 
@@ -175,6 +174,7 @@ func parseLdCache(containerPid uint32, ldCachePath string, libraryName string) (
 
 	// filter library entries with given library name
 	for _, entry := range ldEntries {
+		fmt.Printf("ldEntry: %s -> %s\n", entry.Key, entry.Value)
 		if strings.HasPrefix(entry.Key, libraryName+".so") {
 			filteredLibraries = append(filteredLibraries, entry.Value)
 		}

@@ -169,14 +169,18 @@ func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo 
 func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) {
 	filePath := t.attachFilePath
 	if filepath.IsAbs(filePath) {
+		t.logger.Warnf("Using absolute path %q for uprobe", filePath)
 		return []string{filePath}, nil
 	}
 
 	ldCachePath := "/etc/ld.so.cache"
+	t.logger.Warnf("Searching for library %q in container %d", filePath, containerPid)
 	ldCachePaths, err := parseLdCache(containerPid, ldCachePath, filePath)
 	if err != nil {
 		return nil, fmt.Errorf("parsing ld cache: %w", err)
 	}
+	t.logger.Warnf("Found %d library paths in container %d for %q", len(ldCachePaths), containerPid, filePath)
+	t.logger.Warnf("ldCachePaths: %v", ldCachePaths)
 	return ldCachePaths, nil
 }
 
@@ -209,14 +213,19 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 
 // try attaching to a container, will update `containerPid2Inodes`
 func (t *Tracer[Event]) attach(containerPid uint32) {
+	t.logger.Warnf("Actually attaching uprobe %q to container %d for symbol %q in file %s", t.progName, containerPid, t.attachSymbol, t.attachFilePath)
+
 	var attachedRealInodes []uint64
 	unsecuredAttachFilePaths, err := t.searchForLibrary(containerPid)
 	if err != nil {
-		t.logger.Debugf("attaching to container %d: %s", containerPid, err.Error())
+		t.logger.Warnf("attaching to container %d: %s", containerPid, err.Error())
 	}
 
+	t.logger.Warnf("found %d files to attach in container %d for symbol %q", len(unsecuredAttachFilePaths), containerPid, t.attachSymbol)
+	t.logger.Warnf("unsecuredAttachFilePaths: %v", unsecuredAttachFilePaths)
+
 	if len(unsecuredAttachFilePaths) == 0 {
-		t.logger.Debugf("cannot find file to attach in container %d for symbol %q", containerPid, t.attachSymbol)
+		t.logger.Warnf("cannot find file to attach in container %d for symbol %q", containerPid, t.attachSymbol)
 	}
 
 	for _, filePath := range unsecuredAttachFilePaths {
@@ -227,24 +236,25 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 		// the `private_data` field to be zero.
 		file, err := secureopen.OpenInContainer(containerPid, filePath)
 		if err != nil {
-			t.logger.Debugf("opening file '%q' for uprobe: %s", filePath, err.Error())
+			t.logger.Warnf("opening file '%q' for uprobe: %s", filePath, err.Error())
 			continue
 		}
+		t.logger.Warnf("opened file '%q' for uprobe in container %d", filePath, containerPid)
 		realInodePtr, err := kfilefields.ReadRealInodeFromFd(int(file.Fd()))
 		if err != nil {
-			t.logger.Debugf("getting inode info for '%q': %s", filePath, err.Error())
+			t.logger.Warnf("getting inode info for '%q': %s", filePath, err.Error())
 			file.Close()
 			continue
 		}
 
-		t.logger.Debugf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
+		t.logger.Warnf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
 		attachedRealInodes = append(attachedRealInodes, realInodePtr)
 
 		inode, exists := t.inodeRefCount[realInodePtr]
 		if !exists {
 			progLink, err := t.attachUprobe(file)
 			if err != nil {
-				t.logger.Debugf("failed to attach uprobe %q: %s", t.progName, err.Error())
+				t.logger.Warnf("failed to attach uprobe %q: %s", t.progName, err.Error())
 			}
 			t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink}
 		} else {
@@ -266,17 +276,20 @@ func (t *Tracer[Event]) AttachContainer(container *containercollection.Container
 	}
 
 	pid := container.ContainerPid()
+	t.logger.Warnf("Trying to attaching uprobe to container %s (%d)", container.Runtime.ContainerName, pid)
 	if t.prog == nil {
 		_, exist := t.pendingContainerPids[pid]
 		if exist {
 			return fmt.Errorf("container PID already exists: %d", pid)
 		}
 		t.pendingContainerPids[pid] = true
+		t.logger.Warnf("uprobetracer is in pending mode, container %s (%d) will be attached later", container.Runtime.ContainerName, pid)
 	} else {
 		_, exist := t.containerPid2Inodes[pid]
 		if exist {
 			return fmt.Errorf("container PID already exists: %d", pid)
 		}
+		t.logger.Warnf("uprobetracer is in running mode, attaching container %s (%d)", container.Runtime.ContainerName, pid)
 		t.attach(pid)
 	}
 	return nil
