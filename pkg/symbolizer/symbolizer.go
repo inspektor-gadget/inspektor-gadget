@@ -18,6 +18,7 @@ package symbolizer
 
 import (
 	"debug/elf"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -41,16 +42,32 @@ const (
 	pruneTickerTime     = time.Minute
 )
 
+var defaultDebuginfodCachePath string
+
+func init() {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		defaultDebuginfodCachePath = "/root/.cache/debuginfod_client"
+		return
+	}
+	defaultDebuginfodCachePath = filepath.Join(cacheDir, "debuginfod_client")
+}
+
 type SymbolizerOptions struct {
-	UseSymtab bool
+	UseSymtab                bool
+	UseDebugInfodClientCache bool
+	DebuginfodCachePath      string
 }
 
 type Symbolizer struct {
 	options SymbolizerOptions
 
-	lock             sync.RWMutex
+	lockSymbolTables sync.RWMutex
 	symbolTables     map[exeKey]*symbolTable
 	symbolCountTotal int
+
+	lockSymbolTablesFromBuildID sync.RWMutex
+	symbolTablesFromBuildID     map[string]*symbolTable
 
 	// hostProcFsPidNs is the pid namespace of /host/proc/1/ns/pid.
 	hostProcFsPidNs uint32
@@ -96,13 +113,17 @@ func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 		return nil, fmt.Errorf("reading inode of %s/1/ns/pid", host.HostProcFs)
 	}
 
+	if opts.DebuginfodCachePath == "" {
+		opts.DebuginfodCachePath = defaultDebuginfodCachePath
+	}
 	s := &Symbolizer{
-		options:         opts,
-		symbolTables:    make(map[exeKey]*symbolTable),
-		hostProcFsPidNs: uint32(pid1PidNsStat.Ino),
-		pruneTickerTime: pruneTickerTime,
-		symbolTableTTL:  symbolTableTTL,
-		exit:            make(chan struct{}),
+		options:                 opts,
+		symbolTables:            make(map[exeKey]*symbolTable),
+		symbolTablesFromBuildID: make(map[string]*symbolTable),
+		hostProcFsPidNs:         uint32(pid1PidNsStat.Ino),
+		pruneTickerTime:         pruneTickerTime,
+		symbolTableTTL:          symbolTableTTL,
+		exit:                    make(chan struct{}),
 	}
 	return s, nil
 }
@@ -125,9 +146,10 @@ func (s *Symbolizer) pruneLoop() {
 }
 
 func (s *Symbolizer) pruneOldObjects() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	now := time.Now()
+
+	// Clean symbolTables
+	s.lockSymbolTables.Lock()
 	tableRemovedCount := 0
 	symbolRemovedCount := 0
 	for key, table := range s.symbolTables {
@@ -143,6 +165,25 @@ func (s *Symbolizer) pruneOldObjects() {
 			tableRemovedCount, symbolRemovedCount,
 			len(s.symbolTables), s.symbolCountTotal)
 	}
+	s.lockSymbolTables.Unlock()
+
+	// Clean symbolTablesFromBuildID
+	s.lockSymbolTablesFromBuildID.Lock()
+	buildIDRemovedCount := 0
+	buildIDSymbolRemovedCount := 0
+	for buildID, table := range s.symbolTablesFromBuildID {
+		if now.Sub(table.timestamp) > s.symbolTableTTL {
+			delete(s.symbolTablesFromBuildID, buildID)
+			buildIDRemovedCount++
+			buildIDSymbolRemovedCount += len(table.symbols)
+		}
+	}
+	if buildIDRemovedCount > 0 {
+		log.Debugf("symbol tables from build ID pruned: %d symbol tables with %d symbols removed (remaining: %d symbol tables with %d symbols)",
+			buildIDRemovedCount, buildIDSymbolRemovedCount,
+			len(s.symbolTablesFromBuildID), s.symbolCountTotal)
+	}
+	s.lockSymbolTablesFromBuildID.Unlock()
 }
 
 // lookupByAddr returns the symbol name for the given address.
@@ -163,7 +204,7 @@ func (e *symbolTable) lookupByAddr(address uint64) string {
 	if found {
 		return e.symbols[n].name
 	}
-	return "[unknown]"
+	return ""
 }
 
 type PidNumbers struct {
@@ -187,36 +228,84 @@ type Task struct {
 	MtimeNsec uint32
 }
 
-func (s *Symbolizer) Resolve(task Task, addresses []uint64) ([]string, error) {
-	if s.options.UseSymtab {
-		return s.resolveWithSymtab(task, addresses)
-	}
-	// At the moment, we don't support other symbolization methods than symtab
-	// and NewSymbolizer() is only called with UseSymtab. So this code path is
-	// not taken. When implementing more symbolization methods, this can be
-	// added here.
-	return nil, nil
+// StackItemQuery is one item of the stack. It contains the data found from BPF:
+// the address and the build id. The build id comes from struct
+// bpf_stack_build_id from the Linux UAPI:
+// https://github.com/torvalds/linux/blob/v6.14/include/uapi/linux/bpf.h#L1451
+type StackItemQuery struct {
+	Addr         uint64
+	ValidBuildID bool
+	BuildID      [20]byte
+	Offset       uint64
+	IP           uint64
 }
 
-func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string, error) {
-	res := make([]string, len(addresses))
+type StackItemResponse struct {
+	Found  bool
+	Symbol string
+}
 
-	if len(addresses) == 0 {
-		return res, nil
+func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackItemResponse, error) {
+	if len(stackQueries) == 0 {
+		return nil, nil
+	}
+	res := make([]StackItemResponse, len(stackQueries))
+
+	if s.options.UseSymtab {
+		err := s.resolveWithSymtab(task, stackQueries, res)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if s.options.UseDebugInfodClientCache {
+		err := s.resolveWithDebuginfodClientCache(task, stackQueries, res)
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	// Most gadgets won't use the symbolizer, so don't start the prune loop until we need it.
+	if !s.pruneLoopStarted && (s.options.UseSymtab || s.options.UseDebugInfodClientCache) {
+		count := 0
+
+		s.lockSymbolTables.RLock()
+		count += len(s.symbolTables)
+		s.lockSymbolTables.RUnlock()
+
+		s.lockSymbolTablesFromBuildID.RLock()
+		count += len(s.symbolTablesFromBuildID)
+		s.lockSymbolTablesFromBuildID.RUnlock()
+
+		if count > 0 {
+			s.pruneLoopStarted = true
+			go s.pruneLoop()
+		}
+	}
+
+	return res, nil
+}
+
+func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, stackQueries []StackItemQuery, res []StackItemResponse) {
+	table.timestamp = time.Now()
+	for idx := range stackQueries {
+		symbol := table.lookupByAddr(stackQueries[idx].Addr)
+		if symbol != "" {
+			res[idx].Found = true
+			res[idx].Symbol = symbol
+		}
+	}
+}
+
+func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery, res []StackItemResponse) error {
 	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
-	s.lock.RLock()
+	s.lockSymbolTables.RLock()
 	table, ok := s.symbolTables[key]
 	if ok {
-		table.timestamp = time.Now()
-		for idx, addr := range addresses {
-			res[idx] = table.lookupByAddr(addr)
-		}
-		s.lock.RUnlock()
-		return res, nil
+		s.resolveStackItemsWithTable(table, stackQueries, res)
+		s.lockSymbolTables.RUnlock()
+		return nil
 	}
-	s.lock.RUnlock()
+	s.lockSymbolTables.RUnlock()
 
 	var err error
 	pid := uint32(0)
@@ -227,24 +316,18 @@ func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string,
 		}
 	}
 	if pid == 0 {
-		return nil, fmt.Errorf("procfs for %q not found", task.Name)
+		return fmt.Errorf("procfs for %q not found", task.Name)
 	}
-	table, err = s.newSymbolTable(pid, key)
+	table, err = s.newSymbolTableFromPid(pid, key)
 	if err != nil {
-		return nil, fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
+		return fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
 	}
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.lockSymbolTables.Lock()
+	defer s.lockSymbolTables.Unlock()
 	if len(table.symbols)+s.symbolCountTotal > maxSymbolCountTotal {
-		return nil, fmt.Errorf("too many symbols in all symbol tables: %d (max: %d)",
+		return fmt.Errorf("too many symbols in all symbol tables: %d (max: %d)",
 			len(table.symbols)+s.symbolCountTotal, maxSymbolCountTotal)
-	}
-
-	// Most gadgets won't use the symbolizer, so don't start the prune loop until we need it.
-	if !s.pruneLoopStarted {
-		s.pruneLoopStarted = true
-		go s.pruneLoop()
 	}
 
 	s.symbolTables[key] = table
@@ -253,15 +336,12 @@ func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string,
 	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
 		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
 
-	for idx, addr := range addresses {
-		res[idx] = table.lookupByAddr(addr)
-	}
-	return res, nil
+	s.resolveStackItemsWithTable(table, stackQueries, res)
+
+	return nil
 }
 
-func (s *Symbolizer) newSymbolTable(pid uint32, expectedExeKey exeKey) (*symbolTable, error) {
-	var symbols []*symbol
-
+func (s *Symbolizer) newSymbolTableFromPid(pid uint32, expectedExeKey exeKey) (*symbolTable, error) {
 	path := fmt.Sprintf("%s/%d/exe", host.HostProcFs, pid)
 	file, err := os.Open(path)
 	if err != nil {
@@ -290,6 +370,12 @@ func (s *Symbolizer) newSymbolTable(pid uint32, expectedExeKey exeKey) (*symbolT
 	if fs.Size() > maxExecutableSize {
 		return nil, fmt.Errorf("executable is too large (%d bytes)", fs.Size())
 	}
+
+	return s.newSymbolTableFromFile(file)
+}
+
+func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error) {
+	var symbols []*symbol
 
 	elfFile, err := elf.NewFile(file)
 	if err != nil {
@@ -338,4 +424,71 @@ func (s *Symbolizer) newSymbolTable(pid uint32, expectedExeKey exeKey) (*symbolT
 		symbols:   symbols,
 		timestamp: time.Now(),
 	}, nil
+}
+
+func (s *Symbolizer) resolveWithDebuginfodClientCache(task Task, stackQueries []StackItemQuery, res []StackItemResponse) error {
+	for i, query := range stackQueries {
+		if !query.ValidBuildID {
+			continue
+		}
+
+		buildIDStr := hex.EncodeToString(query.BuildID[:])
+
+		s.lockSymbolTablesFromBuildID.RLock()
+		table, ok := s.symbolTablesFromBuildID[buildIDStr]
+		if ok {
+			table.timestamp = time.Now()
+			symbol := table.lookupByAddr(stackQueries[i].Offset)
+			if symbol != "" {
+				res[i].Found = true
+				res[i].Symbol = symbol
+			}
+			s.lockSymbolTablesFromBuildID.RUnlock()
+			continue
+		}
+		s.lockSymbolTablesFromBuildID.RUnlock()
+
+		debuginfoPath := filepath.Join(s.options.DebuginfodCachePath, buildIDStr, "debuginfo")
+		file, err := os.Open(debuginfoPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				suggestedCmd := fmt.Sprintf("DEBUGINFOD_CACHE_PATH=%s DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo %s",
+					s.options.DebuginfodCachePath, buildIDStr)
+				log.Warnf("Debuginfo %s for %s not found in %s. Suggested remedial: %q", buildIDStr, task.Name, debuginfoPath, suggestedCmd)
+				continue
+			}
+			log.Warnf("Failed to open debuginfo file %s for %s: %v", debuginfoPath, task.Name, err)
+			continue
+		}
+		defer file.Close()
+
+		// Check if the file is empty
+		if fi, err := file.Stat(); err != nil {
+			log.Warnf("Failed to stat debuginfo file %s: %v", debuginfoPath, err)
+			continue
+		} else if fi.Size() == 0 {
+			suggestedCmd := fmt.Sprintf("rm -f %s", debuginfoPath)
+			log.Warnf("Debuginfo %s for %s in %s is empty. Suggested remedial: %q", buildIDStr, task.Name, debuginfoPath, suggestedCmd)
+			continue
+		}
+
+		table, err = s.newSymbolTableFromFile(file)
+		if err != nil {
+			return err
+		}
+
+		s.lockSymbolTablesFromBuildID.Lock()
+
+		s.symbolTablesFromBuildID[buildIDStr] = table
+
+		table.timestamp = time.Now()
+		symbol := table.lookupByAddr(stackQueries[i].Offset)
+		if symbol != "" {
+			res[i].Found = true
+			res[i].Symbol = symbol
+		}
+		s.lockSymbolTablesFromBuildID.Unlock()
+	}
+
+	return nil
 }

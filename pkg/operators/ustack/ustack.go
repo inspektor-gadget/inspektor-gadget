@@ -39,7 +39,8 @@ const (
 
 const (
 	// Params
-	symbolizersParam = "symbolizers"
+	symbolizersParam         = "symbolizers"
+	debuginfodCachePathParam = "debuginfod-client-cache-path"
 )
 
 type Operator struct{}
@@ -57,11 +58,18 @@ func (o *Operator) GlobalParams() api.Params {
 }
 
 func (o *Operator) InstanceParams() api.Params {
-	return api.Params{&api.Param{
-		Key:          symbolizersParam,
-		Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab"`,
-		DefaultValue: "auto",
-	}}
+	return api.Params{
+		&api.Param{
+			Key:          symbolizersParam,
+			Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab", "debuginfod-client-cache", "debuginfod-client-cache-on-ig-server".`,
+			DefaultValue: "auto",
+		},
+		&api.Param{
+			Key:          debuginfodCachePathParam,
+			Description:  `Path to the debuginfod client cache directory. If not set, the default system cache directory is used.`,
+			DefaultValue: "",
+		},
+	}
 }
 
 func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
@@ -69,11 +77,13 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 		subscriptions: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
 	}
 
-	opts := symbolizer.SymbolizerOptions{}
+	opts := symbolizer.SymbolizerOptions{
+		DebuginfodCachePath: instanceParamValues[debuginfodCachePathParam],
+	}
 	symbolizers := instanceParamValues[symbolizersParam]
 	switch symbolizers {
 	case "", "none":
-		opts.UseSymtab = false
+		// Nothing to do
 	case "auto":
 		opts.UseSymtab = true
 	default:
@@ -82,6 +92,14 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 			switch s {
 			case "symtab":
 				opts.UseSymtab = true
+			case "debuginfod-client-cache":
+				if !gadgetCtx.IsRemoteCall() {
+					opts.UseDebugInfodClientCache = true
+				}
+			case "debuginfod-client-cache-on-ig-server":
+				if gadgetCtx.IsRemoteCall() {
+					opts.UseDebugInfodClientCache = true
+				}
 			default:
 				return nil, fmt.Errorf("invalid symbolizer: %s", s)
 			}
@@ -90,7 +108,7 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 
 	var err error
 	// When the Symbolizer implements more options, they can be added here
-	if opts.UseSymtab {
+	if opts.UseSymtab || opts.UseDebugInfodClientCache {
 		instance.symbolizer, err = symbolizer.NewSymbolizer(opts)
 		if err != nil {
 			return nil, err
@@ -244,17 +262,17 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				}
 
 				var addressesBuilder strings.Builder
-				addrs := make([]uint64, 0, len(stack))
+				stackQueries := make([]symbolizer.StackItemQuery, 0, len(stack))
 				for i, addr := range stack {
 					if addr == 0 {
 						break
 					}
-					addrs = append(addrs, addr)
+					stackQueries = append(stackQueries, symbolizer.StackItemQuery{Addr: addr})
 					fmt.Fprintf(&addressesBuilder, "[%d]0x%016x; ", i, addr)
 				}
 				addressesField.PutString(data, addressesBuilder.String())
 
-				if o.buildIDMap != nil {
+				if o.buildIDMap != nil && o.buildIDMap.MaxEntries() > 0 {
 					// struct bpf_stack_build_id is part of Linux UAPI:
 					// https://github.com/torvalds/linux/blob/v6.14/include/uapi/linux/bpf.h#L1451
 					type bpfStackBuildID struct {
@@ -270,16 +288,22 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						_ = x[unsafe.Sizeof(v)-sizeOfBpfStackBuildID]
 					}
 					buildIDBuf := [ebpftypes.UserPerfMaxStackDepth * sizeOfBpfStackBuildID]byte{}
-					err = o.buildIDMap.Lookup(stackId, &buildIDBuf)
-					if err != nil {
-						logger.Warnf("build id for stack ID %d is lost: %s", stackId, err.Error())
-						return nil
-					}
 					buildid := (*[ebpftypes.UserPerfMaxStackDepth]bpfStackBuildID)(unsafe.Pointer(&buildIDBuf[0]))
+					errLookup := o.buildIDMap.Lookup(stackId, &buildIDBuf)
 
 					var buildIDsBuilder strings.Builder
 				buildid_iter:
-					for i, b := range buildid {
+					for i := 0; i < ebpftypes.UserPerfMaxStackDepth; i++ {
+						if errLookup != nil {
+							// The gadget didn't collect build ids
+							// Gadgets can use --collect-build-id to enable collecting build ids
+							break
+						}
+						if i >= len(stackQueries) {
+							break
+						}
+
+						b := buildid[i]
 						switch b.status {
 						case unix.BPF_STACK_BUILD_ID_EMPTY:
 							break buildid_iter
@@ -289,9 +313,14 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 								fmt.Fprintf(&buildIDsBuilder, "%02x", byte)
 							}
 							fmt.Fprintf(&buildIDsBuilder, " +%x; ", b.offsetOrIP)
+							stackQueries[i].ValidBuildID = true
+							stackQueries[i].BuildID = b.buildID
+							stackQueries[i].Offset = b.offsetOrIP
 						case unix.BPF_STACK_BUILD_ID_IP:
 							fmt.Fprintf(&buildIDsBuilder, "[%d]%x; ", i, b.offsetOrIP)
+							stackQueries[i].IP = b.offsetOrIP
 						}
+
 					}
 					buildIDField.PutString(data, buildIDsBuilder.String())
 				}
@@ -305,15 +334,15 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						MtimeSec:     int64(mtimeSec),
 						MtimeNsec:    mtimeNsec,
 					}
-					symbols, err := o.symbolizer.Resolve(task, addrs)
+					stackQueriesResponse, err := o.symbolizer.Resolve(task, stackQueries)
 					if err != nil {
 						logger.Warnf("symbolizer: %s", err)
 						return nil
 					}
 
 					var symbolsBuilder strings.Builder
-					for i, symbol := range symbols {
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, symbol)
+					for i, res := range stackQueriesResponse {
+						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, res.Symbol)
 					}
 					symbolsField.PutString(data, symbolsBuilder.String())
 				}
