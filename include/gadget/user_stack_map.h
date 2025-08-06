@@ -27,19 +27,19 @@ struct {
 const volatile bool collect_build_id = false;
 GADGET_PARAM(collect_build_id);
 
-const volatile int ig_build_id_max_entries = 5;
+const volatile int ig_build_id_max_entries = 1024;
 GADGET_PARAM(ig_build_id_max_entries);
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(key_size, sizeof(u32));
 	__uint(value_size,
-	       USER_MAX_STACK_DEPTH * sizeof(struct bpf_stack_build_id));
+	       GADGET_USER_MAX_STACK_DEPTH * sizeof(struct bpf_stack_build_id));
 	__uint(max_entries, 0); // To be replaced at runtime
 } ig_build_id SEC(".maps");
 
-
-static const struct bpf_stack_build_id empty_build_id[USER_MAX_STACK_DEPTH] = {};
+static const struct bpf_stack_build_id
+	empty_build_id[GADGET_USER_MAX_STACK_DEPTH] = {};
 
 // Linux v4.0 - v4.17
 struct timespec___obsolete {
@@ -193,7 +193,7 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 
 		int ret =
 			bpf_get_stack(ctx, build_id,
-				      USER_MAX_STACK_DEPTH *
+				      GADGET_USER_MAX_STACK_DEPTH *
 					      sizeof(struct bpf_stack_build_id),
 				      BPF_F_USER_STACK | BPF_F_USER_BUILD_ID);
 		if (ret < 0)
