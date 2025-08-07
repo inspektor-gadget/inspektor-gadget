@@ -1,0 +1,144 @@
+---
+title: ttysnoop
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# ttysnoop
+
+The ttysnoop gadget watches the output from a tty or pts device.
+
+## Use Cases
+
+This gadget captures the interactive shell activity within your Kubernetes
+pods, in containers and on the host.
+
+### Audit trail
+
+This gadget helps you keep an audit trail of actions performed by
+administrators in interactive shells on your Kubernetes clusters. This covers
+commands executed using `kubectl exec -ti` or `kubectl run -ti`, which allow
+direct interaction with pods. Implementing such an audit trail can be
+particularly useful for clusters that should otherwise not be tampered with,
+or where stricter control over administrator actions is desired.
+
+For more use cases and how this tool can be applied, you can refer to
+[Scribery](https://scribery.github.io/).
+
+### Foundation for Intrusion Detection Systems
+
+While it doesn't directly trigger alerts or manage keyword lists, the
+collected data can serve as a foundation for building your own intrusion
+detection systems. You can then integrate this data with other security tools
+to analyze what's typed or displayed in the pod, enabling you to detect
+potential intrusions based on your own defined keywords or regular expressions.
+
+### Recording and Replaying Terminal Sessions
+
+While the gadget itself doesn't offer a replay feature, the recorded data
+provides all the necessary information for you to build your own solution for
+replaying these sessions. This capability is especially useful for
+demonstrations, analysis, or creating reproducible scenarios.
+
+For a well-known example of how recorded terminal data can be used for
+replaying, you can refer to [Asciinema](https://asciinema.org/).
+
+### Training and Certification
+
+The gadget's ability to record interactive terminal sessions can be beneficial
+in educational and certification contexts. For instance, these recordings can
+be used to document practical exercises, track progress during training, or
+review performance in hands-on certification exams. This can be useful for
+assessments like the [Certified Kubernetes Administrator (CKA)
+exam](https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/),
+where candidates perform tasks in a live environment.
+
+## Requirements
+
+- Minimum Kernel Version : 6.1
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/ttysnoop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/ttysnoop:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+No flags.
+
+## Guide
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run -ti mypod --restart=Never --image=busybox -- sh -c 'while /bin/true ; do echo foo ; sleep 3 ; done'
+        pod/mypod created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-ttysnoop -ti busybox /bin/sh -c 'while /bin/true ; do echo foo ; sleep 3 ; done'
+        ```
+    </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ttysnoop:%IG_TAG% --podname mypod
+        K8S.NODE          K8S.NAMESPACE  K8S.PODNAME  K8S.CONTAINERNAME  COMM     PID     TID LEN  BUF
+        minikube-docker   default        mypod        mypod              sh    542352  542352 4    foo
+        minikube-docker   default        mypod        mypod              sh    542352  542352 4    foo
+        ^C
+        ```
+
+        We can stop the gadget by hitting Ctrl-C.
+
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ttysnoop:%IG_TAG% --containername test-ttysnoop
+        RUNTIME.CONTAINERNAME  COMM     PID     TID LEN  BUF
+        test-ttysnoop          sh    542352  542352 4    foo
+        test-ttysnoop          sh    542352  542352 4    foo
+        ^C
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod mypod
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-ttysnoop
+        ```
+    </TabItem>
+</Tabs>
