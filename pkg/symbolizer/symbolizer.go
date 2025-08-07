@@ -97,13 +97,17 @@ func (k exeKey) String() string {
 }
 
 func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
-	pid1PidNsInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", host.HostProcFs))
-	if err != nil {
-		return nil, err
-	}
-	pid1PidNsStat, ok := pid1PidNsInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return nil, fmt.Errorf("reading inode of %s/1/ns/pid", host.HostProcFs)
+	var hostProcFsPidNs uint32
+	if opts.UseSymtab {
+		pid1PidNsInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", host.HostProcFs))
+		if err != nil {
+			return nil, err
+		}
+		pid1PidNsStat, ok := pid1PidNsInfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return nil, fmt.Errorf("reading inode of %s/1/ns/pid", host.HostProcFs)
+		}
+		hostProcFsPidNs = uint32(pid1PidNsStat.Ino)
 	}
 
 	if opts.DebuginfodCachePath == "" {
@@ -113,7 +117,7 @@ func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 		options:                 opts,
 		symbolTables:            make(map[exeKey]*symbolTable),
 		symbolTablesFromBuildID: make(map[string]*symbolTable),
-		hostProcFsPidNs:         uint32(pid1PidNsStat.Ino),
+		hostProcFsPidNs:         hostProcFsPidNs,
 		pruneTickerTime:         pruneTickerTime,
 		symbolTableTTL:          symbolTableTTL,
 		exit:                    make(chan struct{}),
