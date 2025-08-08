@@ -120,22 +120,33 @@ func NewBuildCmd() *cobra.Command {
 	return cmd
 }
 
-func buildCmd(outputDir, ebpf, wasm, cflags, btfhubarchive string, btfgen bool) []string {
+type buildOptions struct {
+	outputDir         string
+	cFlags            string
+	forceColorsFlag   string
+	ebpfSourcePath    string
+	wasmSourcePath    string
+	btfgen            bool
+	btfHubArchivePath string
+}
+
+func buildCmd(options buildOptions) []string {
 	cmd := []string{
-		"make", "-f", filepath.Join(outputDir, "Makefile.build"),
+		"make", "-f", filepath.Join(options.outputDir, "Makefile.build"),
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"OUTPUTDIR=" + outputDir,
-		"CFLAGS=" + cflags,
+		"OUTPUTDIR=" + options.outputDir,
+		"CFLAGS=" + options.cFlags,
+		"FORCE_COLORS=" + options.forceColorsFlag,
 	}
 
-	if ebpf != "" {
-		cmd = append(cmd, "EBPFSOURCE="+ebpf, "ebpf")
+	if options.ebpfSourcePath != "" {
+		cmd = append(cmd, "EBPFSOURCE="+options.ebpfSourcePath, "ebpf")
 	}
-	if wasm != "" {
-		cmd = append(cmd, "WASM="+wasm, "wasm")
+	if options.wasmSourcePath != "" {
+		cmd = append(cmd, "WASM="+options.wasmSourcePath, "wasm")
 	}
-	if btfgen {
-		cmd = append(cmd, "BTFHUB_ARCHIVE="+btfhubarchive, "btfgen")
+	if options.btfgen {
+		cmd = append(cmd, "BTFHUB_ARCHIVE="+options.btfHubArchivePath, "btfgen")
 	}
 
 	return cmd
@@ -269,7 +280,14 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 	if conf.EBPFSource != "" || conf.Wasm != "" {
 		if opts.local {
-			cmd := buildCmd(opts.outputDir, conf.EBPFSource, conf.Wasm, conf.CFlags, opts.btfhubarchive, opts.btfgen)
+			cmd := buildCmd(buildOptions{
+				outputDir:         opts.outputDir,
+				ebpfSourcePath:    conf.EBPFSource,
+				wasmSourcePath:    conf.Wasm,
+				cFlags:            conf.CFlags,
+				btfHubArchivePath: opts.btfhubarchive,
+				btfgen:            opts.btfgen,
+			})
 			command := exec.Command(cmd[0], cmd[1:]...)
 			out, err := command.CombinedOutput()
 			if err != nil {
@@ -445,20 +463,30 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		conf.CFlags += " -I /work/include/ -I /work/include/gadget/@ARCH@/ "
 	}
 
-	wasmFullPath := ""
-	if conf.Wasm != "" {
-		wasmFullPath = filepath.Join(gadgetSourcePath, conf.Wasm)
+	buildOpts := buildOptions{
+		outputDir:         "/out",
+		cFlags:            conf.CFlags,
+		btfgen:            opts.btfgen,
+		btfHubArchivePath: "/btfhub-archive",
 	}
-	ebpfFullPath := ""
+
+	if conf.Wasm != "" {
+		buildOpts.wasmSourcePath = filepath.Join(gadgetSourcePath, conf.Wasm)
+	}
+
 	if conf.EBPFSource != "" {
-		ebpfFullPath = filepath.Join(gadgetSourcePath, conf.EBPFSource)
+		buildOpts.ebpfSourcePath = filepath.Join(gadgetSourcePath, conf.EBPFSource)
 	}
 
 	if cflags, set := os.LookupEnv("CFLAGS"); set {
-		conf.CFlags += " " + cflags
+		buildOpts.cFlags += " " + cflags
 	}
 
-	cmd := buildCmd("/out", ebpfFullPath, wasmFullPath, conf.CFlags, "/btfhub-archive", opts.btfgen)
+	if term.IsTerminal(int(os.Stdout.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) {
+		buildOpts.forceColorsFlag = "true"
+	}
+
+	cmd := buildCmd(buildOpts)
 
 	// The work mount ReadOnly field is updated as false, to allow Cargo.lock to compiled in /work folder for rust source code.
 	mounts := []mount.Mount{
