@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -63,7 +64,9 @@ type wasmOperator struct {
 func newWasmOperator() *wasmOperator {
 	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
 	if err != nil {
-		log.Warnf("failed to setup wasm compilation cache, skipping cache: %v", err)
+		if os.Geteuid() == 0 {
+			log.Warnf("failed to setup wasm compilation cache, skipping cache: %v", err)
+		}
 		return &wasmOperator{}
 	}
 	return &wasmOperator{
