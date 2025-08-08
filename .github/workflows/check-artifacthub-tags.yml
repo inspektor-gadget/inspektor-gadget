@@ -25,8 +25,15 @@ jobs:
     - name: Gather valid gadgets
       id: filter-gadgets
       run: |
-        gadgets=$(find gadgets -name 'artifacthub-pkg.yml' | cut -d'/' -f2 | perl -p -e 's/_/-/g')
-        gadgets=$(echo "$gadgets" | tr '\n' ',' | sed 's/,$//')
+        gadgets=""
+        for file in $(find gadgets -name 'artifacthub-pkg.yml'); do
+          name=$(grep '^name:' "$file" | awk -F': ' '{print $2}' | tr -d '"' | sed 's/ /-/g')
+          if [ -n "$name" ]; then
+            gadgets+="$name,"
+          fi
+        done
+        # Remove trailing comma
+        gadgets=${gadgets%,}
 
         echo "valid-gadgets-string=${gadgets}" >> $GITHUB_OUTPUT
 
