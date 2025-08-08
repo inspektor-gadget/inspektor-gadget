@@ -1,4 +1,5 @@
 name: profile qdisc latency
+category: observer
 description: Profile network scheduler latency
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_qdisc_latency
