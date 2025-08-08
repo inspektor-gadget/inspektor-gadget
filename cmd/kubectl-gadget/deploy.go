@@ -521,6 +521,21 @@ func applyConfigToConfigMap(cm *v1.ConfigMap, configPath string, flags *pflag.Fl
 		}
 	}
 
+		// Validate hookMode value if set
+	if v.IsSet("hookMode") {
+		hookMode := v.GetString("hookMode")
+		validHookModes := map[string]bool{
+			"auto": true,
+			"crio": true,
+			"podinformer": true,
+			"nri": true,
+			"fanotify+ebpf": true,
+		}
+		if !validHookModes[hookMode] {
+			return fmt.Errorf("invalid hookMode: %q. Must be one of: auto, crio, podinformer, nri, fanotify+ebpf", hookMode)
+		}
+	}
+
 	// Set values from --set-daemon-config flag
 	for _, set := range setDaemonConfig {
 		parts := strings.SplitN(set, "=", 2)
