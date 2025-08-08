@@ -2,7 +2,7 @@ ARG CLANG_LLVM_VERSION=18
 ARG BPFTOOL_VERSION=v7.3.0
 ARG LIBBPF_VERSION=v1.3.0
 ARG GOLANG_VERSION=1.24.4
-ARG RUST_VERSION=1.87.0
+ARG RUST_VERSION=nightly
 
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
