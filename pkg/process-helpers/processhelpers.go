@@ -46,8 +46,11 @@ type ProcessInfo struct {
 	CPUUsage         float64   `json:"cpuUsage"`         // CPU usage in percentage
 	CPUUsageRelative float64   `json:"cpuUsageRelative"` // CPU usage in percentage, relative to number of cores
 	CPUTime          uint64    `json:"cpuTime"`          // Total CPU time
+	Priority         int64     `json:"priority"`         // Process priority
+	Nice             int64     `json:"nice"`             // Nice Value
 	MemoryRSS        uint64    `json:"memoryRSS"`        // Resident Set Size in bytes
 	MemoryVirtual    uint64    `json:"memoryVirtual"`    // Virtual memory size in bytes
+	MemoryShared     uint64    `json:"memoryShared"`     // Shared memory size in bytes
 	MemoryRelative   float64   `json:"memoryRelative"`   // Percentage of memory usage of the system
 	ThreadCount      int       `json:"threadCount"`      // Number of threads
 	State            string    `json:"state"`            // Process state (R: running, S: sleeping, etc.)
@@ -102,6 +105,23 @@ var bufPool = sync.Pool{
 
 var builderPool = sync.Pool{New: func() interface{} { b := new(bytes.Buffer); return b }}
 
+// parseSigned parses a []byte of signed decimal digits without allocations
+func parseSigned(b []byte) int64 {
+	var v int64
+	mult := int64(1)
+	for _, c := range b {
+		if c == '-' {
+			mult = -1
+			continue
+		}
+		if c < '0' || c > '9' {
+			break
+		}
+		v = v*10 + int64(c-'0')
+	}
+	return v * mult
+}
+
 // parseDecimal parses a []byte of decimal digits without allocations
 func parseDecimal(b []byte) uint64 {
 	var v uint64
@@ -132,13 +152,15 @@ func parseTrimDecimal(b []byte) uint64 {
 }
 
 var (
-	prefName    = []byte("Name:\t")
-	prefPPid    = []byte("PPid:\t")
-	prefState   = []byte("State:\t")
-	prefUid     = []byte("Uid:\t")
-	prefVmSize  = []byte("VmSize:\t")
-	prefVmRSS   = []byte("VmRSS:\t")
-	prefThreads = []byte("Threads:\t")
+	prefName     = []byte("Name:\t")
+	prefPPid     = []byte("PPid:\t")
+	prefState    = []byte("State:\t")
+	prefUid      = []byte("Uid:\t")
+	prefVmSize   = []byte("VmSize:\t")
+	prefVmRSS    = []byte("VmRSS:\t")
+	prefVmShared = []byte("RssShmem:\t")
+	prefVmFile   = []byte("RssFile:\t")
+	prefThreads  = []byte("Threads:\t")
 )
 
 func GetTotalMemory() (uint64, error) {
@@ -211,6 +233,8 @@ func GetProcessInfo(pid int, timeDelta float64, options Options) (ProcessInfo, e
 		bVmSize := options.WithVmSize()
 		bVmRSS := options.WithVmRSS()
 		bThreads := options.WithThreadCount()
+		bVmShared := options.WithVmSize() // same as above
+		bVmFile := options.WithVmSize()
 
 		if options.WithMemoryRelative() {
 			bVmRSS = true
@@ -244,6 +268,12 @@ func GetProcessInfo(pid int, timeDelta float64, options Options) (ProcessInfo, e
 			case bVmRSS && bytes.HasPrefix(line, prefVmRSS):
 				bVmRSS = false
 				pi.MemoryRSS = parseTrimDecimal(line[len(prefVmRSS):]) * 1024
+			case bVmShared && bytes.HasPrefix(line, prefVmShared):
+				bVmShared = false
+				pi.MemoryShared += parseTrimDecimal(line[len(prefVmShared):]) * 1024
+			case bVmFile && bytes.HasPrefix(line, prefVmFile):
+				bVmFile = false
+				pi.MemoryShared += parseTrimDecimal(line[len(prefVmFile):]) * 1024
 			case bThreads && bytes.HasPrefix(line, prefThreads):
 				bThreads = false
 				pi.ThreadCount = int(parseTrimDecimal(line[len(prefThreads):]))
@@ -310,6 +340,10 @@ func GetProcessInfo(pid int, timeDelta float64, options Options) (ProcessInfo, e
 				utime = parseDecimal(f)
 			case 15: // stime
 				stime = parseDecimal(f)
+			case 18:
+				pi.Priority = parseSigned(f)
+			case 19:
+				pi.Nice = parseSigned(f)
 			case 22:
 				ticks = parseDecimal(f)
 			}
