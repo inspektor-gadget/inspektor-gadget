@@ -208,7 +208,7 @@ For more efficient filtering, traceloop supports built-in syscall filtering at t
         # Filter for specific syscalls
         $ kubectl gadget run traceloop:latest -n test-ns --podname my-pod --syscall-filters openat,write,read
         # Focus on file operations only
-        $ kubectl gadget run traceloop:latest -n test-ns --syscall-filters openat,close,read,write,unlink
+        $ kubectl gadget run traceloop:%IG_TAG% -n test-ns --syscall-filters openat,close,read,write,unlink
         ```
     </TabItem>
 
