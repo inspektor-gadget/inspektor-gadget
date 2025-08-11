@@ -61,12 +61,12 @@ sequenceDiagram
     participant eBPF as eBPF Probes
     participant Traceloop as Traceloop Recorder
     participant Output as Output Stream
-
+    participant User as Traceloop User
     App ->> Kernel: Generate syscalls
     Kernel ->> eBPF: Kernel level interception
     eBPF ->> Traceloop: Capture events
     Traceloop ->> Output: Buffer & format data
-    Output ->> App: Display results
+    Output ->> User: Display results
 ```
 
 ### Tracing a Specific Application Pod
