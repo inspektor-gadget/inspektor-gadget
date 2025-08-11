@@ -268,7 +268,7 @@ impl Tracelooper {
         let mut syscall_exit_events_map = HashMap::<u64, Vec<SyscallEvent>>::new();
         let record = [0u8; align_size(size_of::<TraceloopSyscallEventT>())];
         let mut to_delete = HashSet::new();
-        let mut events = Vec::new();
+        let mut events = Vec::with_capacity((64 * LINUX_PAGE_SIZE) as usize / align_size(size_of::<TraceloopSyscallEventT>()));
 
         perf_reader.pause()?;
 
