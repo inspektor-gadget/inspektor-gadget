@@ -30,7 +30,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/stealthrocket/wzprof"
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -128,6 +130,9 @@ type wasmOperatorInstance struct {
 	rt        wazero.Runtime
 	gadgetCtx operators.GadgetContext
 	mod       wapi.Module
+
+	cpu *wzprof.CPUProfiler
+	mem *wzprof.MemoryProfiler
 
 	logger logger.Logger
 
@@ -230,12 +235,46 @@ func (i *wasmOperatorInstance) init(
 	desc ocispec.Descriptor,
 	cache wazero.CompilationCache,
 ) error {
+	sampleRate := 1.0
+
 	ctx := gadgetCtx.Context()
+	reader, err := oci.GetContentFromDescriptor(ctx, target, desc)
+	if err != nil {
+		return fmt.Errorf("getting wasm program: %w", err)
+	}
+
+	wasmProgram, err := io.ReadAll(reader)
+	reader.Close()
+	if err != nil {
+		return fmt.Errorf("reading wasm program: %w", err)
+	}
+
+	p := wzprof.ProfilingFor(wasmProgram)
+	i.cpu = p.CPUProfiler()
+	i.mem = p.MemoryProfiler()
+
+	ctx = context.WithValue(ctx,
+													 experimental.FunctionListenerFactoryKey{},
+													experimental.MultiFunctionListenerFactory(
+														wzprof.Sample(sampleRate, i.cpu),
+																																		wzprof.Sample(sampleRate, i.mem),
+													),
+	)
 	rtConfig := wazero.NewRuntimeConfig().
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(256). // 16MB (64KB per page)
 		WithCompilationCache(cache)
 	i.rt = wazero.NewRuntimeWithConfig(ctx, rtConfig)
+
+	module, err := i.rt.CompileModule(ctx, wasmProgram)
+	if err != nil {
+		return fmt.Errorf("compiling wasm module: %w", err)
+	}
+
+	p.Prepare(module)
+	if err != nil {
+		return fmt.Errorf("preparing wasm module: %w", err)
+	}
 
 	igModuleBuilder := i.rt.NewHostModuleBuilder("ig")
 
@@ -259,18 +298,8 @@ func (i *wasmOperatorInstance) init(
 		return fmt.Errorf("instantiating WASI: %w", err)
 	}
 
-	reader, err := oci.GetContentFromDescriptor(ctx, target, desc)
-	if err != nil {
-		return fmt.Errorf("getting wasm program: %w", err)
-	}
-
-	wasmProgram, err := io.ReadAll(reader)
-	reader.Close()
-	if err != nil {
-		return fmt.Errorf("reading wasm program: %w", err)
-	}
-
 	config := wazero.NewModuleConfig().WithStartFunctions("_initialize")
+	i.cpu.StartProfile()
 	mod, err := i.rt.InstantiateWithConfig(ctx, wasmProgram, config)
 	if err != nil {
 		return fmt.Errorf("instantiating wasm: %w", err)
@@ -378,6 +407,12 @@ func (i *wasmOperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
 	}
 	if i.mod != nil {
 		errs = append(errs, i.mod.Close(gadgetCtx.Context()))
+
+		cpuProfile := i.cpu.StopProfile(1.0)
+		memProfile := i.mem.NewProfile(1.0)
+
+		errs = append(errs, wzprof.WriteProfile("cpu.pprof", cpuProfile))
+		errs = append(errs, wzprof.WriteProfile("mem.pprof", memProfile))
 	}
 
 	return errors.Join(errs...)

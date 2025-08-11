@@ -41,7 +41,7 @@ wasm: $(WASM)
 else ifeq (rs, $(patsubst %.rs,rs,$(WASM)))
 wasm: $(WASM)
 	cd $(dir $(WASM)) && \
-	CARGO_TARGET_DIR=$(OUTPUTDIR) cargo build --target wasm32-wasip1 --release && \
+	CARGO_TARGET_DIR=$(OUTPUTDIR) cargo --color always build --target wasm32-wasip1 --release && \
 	PACKAGE_NAME=$(shell awk -F\" '/^name *=/ { print $$2; exit }' $(dir $(WASM))/../Cargo.toml) && \
 	cp $(OUTPUTDIR)/wasm32-wasip1/release/$$PACKAGE_NAME.wasm $(OUTPUTDIR)/program.wasm && \
 	cd /work
