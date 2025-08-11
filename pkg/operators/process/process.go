@@ -50,6 +50,7 @@ const (
 	configKeyEnabled  = "operator.process.emitstats"
 	configKeyInterval = "operator.process.interval"
 	configKeyFields   = "operator.process.fields"
+	configKeyCount    = "operator.process.count"
 
 	// Default values
 	defaultInterval = 60 * time.Second
@@ -115,6 +116,8 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 		gadgetCtx.Logger().Debugf("Using default interval: %s", interval)
 	}
 
+	count := viperConfig.GetInt(configKeyCount)
+
 	// Get fields from config
 	fields := viperConfig.GetStringSlice(configKeyFields)
 
@@ -147,6 +150,7 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 
 	instance := &processOperatorInstance{
 		interval:   interval,
+		count:      count,
 		done:       make(chan struct{}),
 		dataSource: ds,
 	}
@@ -300,6 +304,7 @@ func (p *processOperator) Priority() int {
 
 type processOperatorInstance struct {
 	interval            time.Duration
+	count               int
 	dataSource          datasource.DataSource
 	done                chan struct{}
 	wg                  sync.WaitGroup
@@ -407,6 +412,8 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
+	count := 0
+
 	for {
 		select {
 		case <-p.done:
@@ -415,6 +422,10 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 			err := p.collectProcessInfo(gadgetCtx, true)
 			if err != nil {
 				gadgetCtx.Logger().Errorf("Error collecting process info: %v", err)
+			}
+			count++
+			if p.count > 0 && count >= p.count {
+				return
 			}
 		}
 	}
