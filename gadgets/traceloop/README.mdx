@@ -280,7 +280,7 @@ kubectl describe pod problematic-pod -n myapp
 kubectl logs problematic-pod -n myapp
 
 # Enhanced with traceloop for system-level insight
-kubectl gadget run traceloop:latest --namespace myapp --podname problematic-pod
+kubectl gadget run traceloop:%IG_TAG% --namespace myapp --podname problematic-pod
 # ... reproduce the issue ...
 # ^C to capture the complete system call timeline
 ```
