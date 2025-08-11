@@ -217,7 +217,7 @@ For more efficient filtering, traceloop supports built-in syscall filtering at t
         # Filter for specific syscalls (using -c shorthand)
         $ sudo ig run traceloop:latest -c test-container --syscall-filters openat,write
         # Focus on file operations only
-        $ sudo ig run traceloop:latest -c test-container --syscall-filters openat,close,read,write,unlink
+        $ sudo ig run traceloop:%IG_TAG% -c test-container --syscall-filters openat,close,read,write,unlink
         ```
     </TabItem>
 </Tabs>
