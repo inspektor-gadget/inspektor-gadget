@@ -146,7 +146,7 @@ The system calls captured by the traceloop gadget are like the below:
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run traceloop:latest --namespace test-traceloop-ns
+        $ kubectl gadget run traceloop:%IG_TAG% --namespace test-traceloop-ns
         K8S.NODE            K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME   CPU         PID COMM      SYSCALL     PARAMETERS      RET
         ^C
         ...
