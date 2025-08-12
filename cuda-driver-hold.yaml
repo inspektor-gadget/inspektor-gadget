@@ -24,6 +24,19 @@ spec:
         #include <stdio.h>
         #include <unistd.h>
 
+        // Prevent inlining with explicit attribute
+        __attribute__((noinline))
+        void my_cuda_alloc_function() {
+            CUdeviceptr dptr;
+            CUresult r = cuMemAlloc(&dptr, 1024);
+            if (r != CUDA_SUCCESS) {
+                printf("cuMemAlloc failed: %d\n", r);
+                return;
+            }
+            printf("cuMemAlloc triggered\n");
+            cuMemFree(dptr);
+        }
+
         int main() {
             CUdevice dev;
             CUcontext ctx;
@@ -33,15 +46,7 @@ spec:
             cuCtxCreate(&ctx, 0, dev);
 
             while (1) {
-                CUdeviceptr dptr;
-                CUresult r = cuMemAlloc(&dptr, 1024);
-                if (r != CUDA_SUCCESS) {
-                    printf("cuMemAlloc failed: %d\n", r);
-                    return 1;
-                }
-
-                printf("cuMemAlloc triggered\n");
-                cuMemFree(dptr);
+                my_cuda_alloc_function();
                 sleep(5);
             }
 

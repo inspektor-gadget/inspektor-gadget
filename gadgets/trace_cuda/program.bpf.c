@@ -10,6 +10,7 @@
 #include <gadget/common.h>
 #include <gadget/filter.h>
 #include <gadget/macros.h>
+#include <gadget/user_stack_map.h>
 
 enum cuda_event {
 	F_MALLOC_E,
@@ -22,6 +23,7 @@ struct event {
 	gadget_timestamp timestamp_raw;
 	struct gadget_process proc;
 	enum cuda_event event_type_raw;
+    struct gadget_user_stack ustack;
 };
 
 GADGET_TRACER_MAP(events, 1024 * 256);
@@ -76,6 +78,7 @@ int BPF_UPROBE(ig_cu_mem_alloc_e)
     event->timestamp_raw = bpf_ktime_get_boot_ns();
     gadget_process_populate(&event->proc);
     event->event_type_raw = F_CU_MEM_ALLOC_E;
+    gadget_get_user_stack(ctx, &event->ustack);
     gadget_submit_buf(ctx, &events, event, sizeof(*event));
 	return 0;
 }
@@ -91,6 +94,7 @@ int BPF_UPROBE(ig_cu_mem_alloc_x)
     event->timestamp_raw = bpf_ktime_get_boot_ns();
     gadget_process_populate(&event->proc);
     event->event_type_raw = F_CU_MEM_ALLOC_X;
+    gadget_get_user_stack(ctx, &event->ustack);
     gadget_submit_buf(ctx, &events, event, sizeof(*event));
 	return 0;
 }
