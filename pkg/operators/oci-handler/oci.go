@@ -51,6 +51,8 @@ const (
 	annotate                = "annotate"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
+	policyDocument          = "policy-document"
+	certificates            = "certificates"
 	allowedGadgets          = "allowed-gadgets"
 )
 
@@ -90,9 +92,21 @@ func (o *ociHandler) GlobalParams() api.Params {
 		{
 			Key:          publicKeys,
 			Title:        "Public keys",
-			Description:  "Public keys used to verify the gadgets",
+			Description:  "Public keys used to verify the gadgets signed with Cosign",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
+		},
+		{
+			Key:         policyDocument,
+			Title:       "Policy Document",
+			Description: "Policy Document used to verify the gadgets signed with Notation",
+			TypeHint:    api.TypeString,
+		},
+		{
+			Key:         certificates,
+			Title:       "Certificates",
+			Description: "Certificates used to verify the gadgets signed with Notation",
+			TypeHint:    api.TypeStringSlice,
 		},
 		{
 			Key:         allowedGadgets,
@@ -342,8 +356,14 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			DisallowPulling:    o.globalParams.Get(disallowPulling).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
-			VerifyPublicKey: o.globalParams.Get(verifyImage).AsBool(),
-			PublicKeys:      o.globalParams.Get(publicKeys).AsStringSlice(),
+			CosignVerifyOptions: oci.CosignVerifyOptions{
+				PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+			},
+			NotationVerifyOptions: oci.NotationVerifyOptions{
+				PolicyDocument: o.globalParams.Get(policyDocument).AsString(),
+				Certificates:   o.globalParams.Get(certificates).AsStringSlice(),
+			},
+			VerifyImage: o.globalParams.Get(verifyImage).AsBool(),
 		},
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
 			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
