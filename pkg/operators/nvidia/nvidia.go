@@ -94,10 +94,10 @@ type nvidiaOperatorInstance struct {
 	sdUtilAccessor datasource.FieldAccessor
 	sdMemAccessor  datasource.FieldAccessor
 
-	deviceHandle nvml.Device
-	existingPids map[uint32]struct{}
-	done         chan struct{}
-	mu           sync.Mutex
+	deviceHandle              nvml.Device
+	processUtilizationSamples map[uint32]nvml.ProcessUtilizationSample
+	done                      chan struct{}
+	mu                        sync.Mutex
 }
 
 func (s *nvidiaOperatorInstance) Name() string {
@@ -110,30 +110,25 @@ func (s *nvidiaOperatorInstance) Priority() int {
 
 func (s *nvidiaOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	s.processDs.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+		// TODO: the process info is read in another goroutine to avoid calling
+		// the function for each event. Another option is to subscribe to this
+		// darasource as an array, but then it won't work with normal gadgets,
+		// but perhaps that's fine?
 		pid, err := s.pidAccessor.Uint32(data)
 		if err != nil {
 			return fmt.Errorf("getting pid from process data source: %w", err)
 		}
 
-		if _, ok := s.existingPids[pid]; !ok {
+		// TODO: lock!
+		util, ok := s.processUtilizationSamples[pid]
+		if !ok {
+			// No utilization data for this PID, so we can skip it
 			return nil
 		}
 
-		// TODO: Should I use GetProcessesUtilizationInfo instead?
-		utils, ret := s.deviceHandle.GetProcessUtilization(uint64(pid))
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("unable to get utilization for process %d: %v", pid, nvml.ErrorString(ret))
-		}
-
-		// TODO: What if there are multiple instances of the same PID?
-		for _, util := range utils {
-			if util.Pid == pid {
-				// TODO: do we need to sum enc and dec?
-				s.sdUtilAccessor.PutUint32(data, util.SmUtil)
-				s.sdMemAccessor.PutUint32(data, util.MemUtil)
-				break
-			}
-		}
+		// TODO: do we need to sum enc and dec?
+		s.sdUtilAccessor.PutUint32(data, util.SmUtil)
+		s.sdMemAccessor.PutUint32(data, util.MemUtil)
 
 		return nil
 	}, 0)
@@ -166,22 +161,27 @@ func (s *nvidiaOperatorInstance) Start(gadgetCtx operators.GadgetContext) error 
 		// TODO: probably needs to be shared among multiple gadgets
 		timer := time.NewTicker(time.Second)
 
+		last := uint64(0)
+
 		for {
 			select {
 			case <-timer.C:
-				s.mu.Lock()
-				s.existingPids = make(map[uint32]struct{})
-				processInfos, ret := s.deviceHandle.GetComputeRunningProcesses()
+				utils, ret := s.deviceHandle.GetProcessUtilization(last)
 				if ret != nvml.SUCCESS {
-					fmt.Printf("Unable to get process info: %v\n", nvml.ErrorString(ret))
-					s.mu.Unlock()
+					//fmt.Printf("unable to get utilization: %v", nvml.ErrorString(ret))
 					continue
 				}
 
-				for _, processInfo := range processInfos {
-					s.existingPids[processInfo.Pid] = struct{}{}
+				s.mu.Lock()
+				s.processUtilizationSamples = make(map[uint32]nvml.ProcessUtilizationSample)
+				for _, util := range utils {
+					s.processUtilizationSamples[util.Pid] = util
 				}
 				s.mu.Unlock()
+				if len(utils) > 0 {
+					// We only need the last timestamp, so we can use the last one
+					last = utils[len(utils)-1].TimeStamp
+				}
 
 			case <-s.done:
 				return
