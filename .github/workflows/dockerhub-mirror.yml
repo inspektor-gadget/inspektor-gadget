@@ -7,7 +7,7 @@ name: Mirror Dockerhub
 env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository_owner }}
-  GO_VERSION: 1.24.4
+  GO_VERSION: 1.24.6
 on:
   workflow_dispatch:
   schedule:
