@@ -65,6 +65,11 @@ typedef __u64 gadget_syscall;
 
 typedef __u32 gadget_kernel_stack;
 
+// gadget_flex_string is used to define c strings which max size can be set by
+// the user at runtime. This is done by the bpf operator by exposing a
+// <fieldName>-size parameter to the user.
+typedef char gadget_flex_string;
+
 struct gadget_user_stack {
 	// Identify the executable. Leave it as 0 to disable user stacks.
 	__u64 exe_inode;
