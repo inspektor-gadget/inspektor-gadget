@@ -38,6 +38,12 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
+	"github.com/notaryproject/notation-go"
+	"github.com/notaryproject/notation-go/dir"
+	"github.com/notaryproject/notation-go/registry"
+	"github.com/notaryproject/notation-go/verifier"
+	"github.com/notaryproject/notation-go/verifier/trustpolicy"
+	"github.com/notaryproject/notation-go/verifier/truststore"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -63,8 +69,19 @@ type AuthOptions struct {
 }
 
 type VerifyOptions struct {
-	VerifyPublicKey bool
-	PublicKeys      []string
+	CosignVerifyOptions
+	NotationVerifyOptions
+
+	VerifyImage bool
+}
+
+type CosignVerifyOptions struct {
+	PublicKeys []string
+}
+
+type NotationVerifyOptions struct {
+	PolicyDocument string
+	Certificates   []string
 }
 
 type AllowedGadgetsOptions struct {
@@ -80,8 +97,10 @@ type ImageOptions struct {
 }
 
 const (
-	defaultOciStore = "/var/lib/ig/oci-store"
-	DefaultAuthFile = "/var/lib/ig/config.json"
+	defaultIgPath     = "/var/lib/ig"
+	defaultOciStore   = "/var/lib/ig/oci-store"
+	defaultTrustStore = "/var/lib/ig/truststore/x509/"
+	DefaultAuthFile   = "/var/lib/ig/config.json"
 
 	PullImageAlways  = "always"
 	PullImageMissing = "missing"
@@ -911,6 +930,103 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 }
 
 func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
+	var errs error
+
+	err := verifyImageWithCosign(ctx, imageStore, image, imgOpts)
+	if err == nil {
+		return nil
+	}
+
+	errs = errors.Join(errs, err)
+
+	err = verifyImageWithNotation(ctx, imageStore, image, imgOpts)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Join(errs, err)
+}
+
+func getAndValidateTrustPolicy(policy string) (*trustpolicy.Document, error) {
+	policyDocument := &trustpolicy.Document{}
+	if err := json.Unmarshal([]byte(policy), policyDocument); err != nil {
+		return nil, fmt.Errorf("unmarshalling trust policy Document: %w", err)
+	}
+
+	if len(policyDocument.TrustPolicies) > 1 {
+		return nil, errors.New("several policies are not supported, how can we know to which policy should the certificates be added")
+	}
+
+	if len(policyDocument.TrustPolicies[0].TrustStores) > 1 {
+		return nil, errors.New("policy with several trust stores are not supported, how can we know to which trust store should the certificates be added")
+	}
+
+	return policyDocument, nil
+}
+
+func addCertificatesToTrustStore(trustStore string, certificates []string) error {
+	path := defaultTrustStore + trustStore
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		return err
+	}
+
+	for i, certificate := range certificates {
+		if err := os.WriteFile(fmt.Sprintf("%s/certificate_%d.pem", path, i), []byte(certificate), 0o600); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Mainly inspired by:
+// https://github.com/notaryproject/notation-go/blob/6063ebe30f96/example_remoteVerify_test.go#L34
+func verifyImageWithNotation(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
+	imageRef, err := normalizeImageName(image)
+	if err != nil {
+		return fmt.Errorf("normalizing image name: %w", err)
+	}
+
+	remoteRepo, err := remote.NewRepository(imageRef.Name())
+	if err != nil {
+		return fmt.Errorf("creating remote repository: %w", err)
+	}
+
+	policy, err := getAndValidateTrustPolicy(imgOpts.PolicyDocument)
+	if err != nil {
+		return fmt.Errorf("getting and validating trust policy: %w", err)
+	}
+
+	// In the policy document, trust stores are given as "type:name":
+	// https://github.com/notaryproject/specifications/blob/v1.0.0/specs/trust-store-trust-policy.md#trust-policy
+	// which then corresponds to type/name in the filesystem:
+	// https://github.com/notaryproject/specifications/blob/v1.0.0/specs/trust-store-trust-policy.md#trust-policy
+	trustStore := strings.ReplaceAll(policy.TrustPolicies[0].TrustStores[0], ":", "/")
+	err = addCertificatesToTrustStore(trustStore, imgOpts.Certificates)
+	if err != nil {
+		return fmt.Errorf("adding certificates to trust store: %w", err)
+	}
+
+	dir.UserConfigDir = defaultIgPath
+	verifier, err := verifier.New(policy, truststore.NewX509TrustStore(dir.ConfigFS()), nil)
+	if err != nil {
+		return err
+	}
+
+	verifyOptions := notation.VerifyOptions{
+		ArtifactReference:    image,
+		MaxSignatureAttempts: 42,
+	}
+
+	_, _, err = notation.Verify(ctx, verifier, registry.NewRepository(remoteRepo), verifyOptions)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func verifyImageWithCosign(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
 		return fmt.Errorf("normalizing image name: %w", err)
@@ -1076,7 +1192,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
-	if !imgOpts.VerifyPublicKey {
+	if !imgOpts.VerifyImage {
 		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding option")
 
 		return nil
