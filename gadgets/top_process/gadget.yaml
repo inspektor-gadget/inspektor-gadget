@@ -11,3 +11,13 @@ datasources:
   processes:
     annotations:
       cli.clear-screen-before: "true"
+params:
+  custom:
+    interval:
+      description: "interval to re-read statistics"
+      defaultValue: 3s
+      patch:
+        operator:
+          process:
+            interval: >-
+              {{call .getParamValue "custom.interval"}}
