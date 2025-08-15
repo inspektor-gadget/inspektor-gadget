@@ -63,8 +63,8 @@ github.com/containerd/ttrpc v1.2.7 h1:qIrroQvuOL9HQ1X6KHe2ohc7p+HP/0VE6XPU7elJRq
 github.com/containerd/ttrpc v1.2.7/go.mod h1:YCXHsb32f+Sq5/72xHubdiJRQY9inL4a4ZQrAbN1q9o=
 github.com/containerd/typeurl/v2 v2.2.3 h1:yNA/94zxWdvYACdYO8zofhrTVuQY73fFU1y++dYSw40=
 github.com/containerd/typeurl/v2 v2.2.3/go.mod h1:95ljDnPfD3bAbDJRugOiShd/DlAAsxGtUBhJxIn7SCk=
-github.com/containers/common v0.64.0 h1:Jdjq1e5tqrLov9tcAVc/AfvQCgX4krhcfDBgOXwrSfw=
-github.com/containers/common v0.64.0/go.mod h1:bq2UIiFP8vUJdgM+WN8E8jkD7wF69SpDRGzU7epJljg=
+github.com/containers/common v0.64.1 h1:E8vSiL+B84/UCsyVSb70GoxY9cu+0bseLujm4EKF6GE=
+github.com/containers/common v0.64.1/go.mod h1:CtfQNHoCAZqWeXMwdShcsxmMJSeGRgKKMqAwRKmWrHE=
 github.com/containers/image/v5 v5.36.1 h1:6zpXBqR59UcAzoKpa/By5XekeqFV+htWYfr65+Cgjqo=
 github.com/containers/image/v5 v5.36.1/go.mod h1:b4GMKH2z/5t6/09utbse2ZiLK/c72GuGLFdp7K69eA4=
 github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 h1:Qzk5C6cYglewc+UyGf6lc8Mj2UaPTHy/iF2De0/77CA=
