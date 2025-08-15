@@ -30,18 +30,57 @@ type tcpClientConf struct {
 	maxRPS int
 }
 
+type tcpPool struct {
+	c chan net.Conn
+	f func() (net.Conn, error)
+}
+
+func newTCPPool(f func() (net.Conn, error), size int) *tcpPool {
+	return &tcpPool{
+		c: make(chan net.Conn, size),
+		f: f,
+	}
+}
+
+func (p *tcpPool) Get() (net.Conn, error) {
+	select {
+	case conn := <-p.c:
+		return conn, nil
+	default:
+		return p.f()
+	}
+}
+
+func (p *tcpPool) Put(conn net.Conn) {
+	select {
+	case p.c <- conn:
+		// Successfully put the connection back into the pool
+	default:
+		// Pool is full, close the connection
+		conn.Close()
+	}
+}
+
 func NewTCPClient(confStr string) (Generator, error) {
 	conf, err := parseTCPConfStr(confStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing TCP client config: %w", err)
 	}
 
-	cb := func() error {
+	pool := newTCPPool(func() (net.Conn, error) {
 		conn, err := net.DialTimeout("tcp", conf.server, 5*time.Second)
+		if err != nil {
+			return nil, fmt.Errorf("dialing TCP server %s: %w", conf.server, err)
+		}
+		return conn, nil
+	}, numWorkers)
+
+	cb := func() error {
+		conn, err := pool.Get()
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
+		defer pool.Put(conn)
 
 		// Send a simple message to the server
 		_, err = conn.Write([]byte("Ping\n"))
