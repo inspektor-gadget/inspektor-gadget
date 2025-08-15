@@ -51,6 +51,8 @@ const (
 	annotate                = "annotate"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
+	signature               = "signature"
+	payload                 = "payload"
 	allowedGadgets          = "allowed-gadgets"
 )
 
@@ -163,6 +165,20 @@ func (o *ociHandler) InstanceParams() api.Params {
 				"  'datasource:annotation=value' to add an annotation to a datasource.\n" +
 				"  'datasource.field:annotation=value' to add an annotation to the field of a datasource\n",
 			TypeHint: api.TypeStringSlice,
+		},
+		{
+			Key:          signature,
+			Title:        "Signature",
+			Description:  "Gadget signature. Used to verify a gadget signed locally",
+			DefaultValue: "",
+			TypeHint:     api.TypeString,
+		},
+		{
+			Key:          payload,
+			Title:        "Payload",
+			Description:  "Gadget payload. Used to verify a gadget signed locally",
+			DefaultValue: "",
+			TypeHint:     api.TypeString,
 		},
 	}
 }
@@ -344,6 +360,8 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		VerifyOptions: oci.VerifyOptions{
 			VerifyPublicKey: o.globalParams.Get(verifyImage).AsBool(),
 			PublicKeys:      o.globalParams.Get(publicKeys).AsStringSlice(),
+			Signature:       o.instanceParams.Get(signature).AsString(),
+			Payload:         o.instanceParams.Get(payload).AsString(),
 		},
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
 			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
