@@ -700,6 +700,24 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	for _, m := range i.collectionSpec.Maps {
+		if m.MaxEntries == 0 {
+			maxEntriesStr := m.Name + "_max_entries"
+			v, ok := i.collectionSpec.Variables[maxEntriesStr]
+			if !ok {
+				i.logger.Warnf("Replacing map %q max_entries: variable %q not found", m.Name, maxEntriesStr)
+				continue
+			}
+			var maxEntries uint32
+			err := v.Get(&maxEntries)
+			if err != nil {
+				i.logger.Warnf("Getting map %q max_entries: %s", m.Name, err)
+				continue
+			}
+			m.MaxEntries = maxEntries
+		}
+	}
+
 	i.logger.Debugf("creating ebpf collection")
 
 	// check if the btfgen operator has stored the kernel types in the context
