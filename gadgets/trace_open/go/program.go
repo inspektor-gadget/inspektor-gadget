@@ -16,53 +16,83 @@ package main
 
 import (
 	"io/fs"
+	"math/bits"
 	"strings"
 
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
-var flagNames = []string{
-	"O_CREAT",
-	"O_EXCL",
-	"O_NOCTTY",
-	"O_TRUNC",
-	"O_APPEND",
-	"O_NONBLOCK",
-	"O_DSYNC",
-	"O_FASYNC",
-	"O_DIRECT",
-	"O_LARGEFILE",
-	"O_DIRECTORY",
-	"O_NOFOLLOW",
-	"O_NOATIME",
-	"O_CLOEXEC",
+// Standard Linux file open flags from <fcntl.h>
+const (
+	// Access modes (handled separately)
+	O_RDONLY  = 0
+	O_WRONLY  = 1
+	O_RDWR    = 2
+	O_ACCMODE = 3
+
+	// Bit flags
+	O_CREAT     = 0100
+	O_EXCL      = 0200
+	O_NOCTTY    = 0400
+	O_TRUNC     = 01000
+	O_APPEND    = 02000
+	O_NONBLOCK  = 04000
+	O_DSYNC     = 010000
+	O_FASYNC    = 020000
+	O_DIRECT    = 040000
+	O_LARGEFILE = 0100000
+	O_DIRECTORY = 0200000
+	O_NOFOLLOW  = 0400000
+	O_NOATIME   = 01000000
+	O_CLOEXEC   = 02000000
+)
+
+// flagMap pairs the bitmask of a flag with its string representation.
+// Using a slice of structs makes the relationship explicit and order-independent.
+var flagMap = []struct {
+	val  int32
+	name string
+}{
+	{O_CREAT, "O_CREAT"},
+	{O_EXCL, "O_EXCL"},
+	{O_NOCTTY, "O_NOCTTY"},
+	{O_TRUNC, "O_TRUNC"},
+	{O_APPEND, "O_APPEND"},
+	{O_NONBLOCK, "O_NONBLOCK"},
+	{O_DSYNC, "O_DSYNC"},
+	{O_FASYNC, "O_FASYNC"},
+	{O_DIRECT, "O_DIRECT"},
+	{O_LARGEFILE, "O_LARGEFILE"},
+	{O_DIRECTORY, "O_DIRECTORY"},
+	{O_NOFOLLOW, "O_NOFOLLOW"},
+	{O_NOATIME, "O_NOATIME"},
+	{O_CLOEXEC, "O_CLOEXEC"},
 }
 
 func decodeFlags(flags int32) []string {
-	flagsStr := []string{}
+	// Pre-allocate a slice with a reasonable capacity to avoid reallocations.
+	// The number of set bits gives an exact count.
+	capacity := bits.OnesCount32(uint32(flags))
+	out := make([]string, 0, capacity)
 
-	// We first need to deal with the first 3 bits which indicates access mode.
-	switch flags & 0b11 {
-	case 0:
-		flagsStr = append(flagsStr, "O_RDONLY")
-	case 1:
-		flagsStr = append(flagsStr, "O_WRONLY")
-	case 2:
-		flagsStr = append(flagsStr, "O_RDWR")
+	// Handle the access mode, which is not a bitmask.
+	switch flags & O_ACCMODE {
+	case O_RDONLY:
+		out = append(out, "O_RDONLY")
+	case O_WRONLY:
+		out = append(out, "O_WRONLY")
+	case O_RDWR:
+		out = append(out, "O_RDWR")
 	}
 
-	// Then, we need to remove the last 6 bits and we can deal with the other
-	// flags.
-	// Indeed, O_CREAT is defined as 00000100, see:
-	// https://github.com/torvalds/linux/blob/9d646009f65d/include/uapi/asm-generic/fcntl.h#L24
-	flags >>= 6
-	for i, val := range flagNames {
-		if (1<<i)&flags != 0 {
-			flagsStr = append(flagsStr, val)
+	// Check each flag by its actual value.
+	for _, f := range flagMap {
+		if (flags & f.val) == f.val {
+			out = append(out, f.name)
 		}
 	}
 
-	return flagsStr
+	return out
 }
 
 //go:wasmexport gadgetInit
