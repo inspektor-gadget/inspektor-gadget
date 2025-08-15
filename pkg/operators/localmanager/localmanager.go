@@ -51,7 +51,6 @@ import (
 const (
 	OperatorName           = "LocalManager"
 	Runtimes               = "runtimes"
-	ContainerName          = "containername"
 	Host                   = "host"
 	DockerSocketPath       = "docker-socketpath"
 	ContainerdSocketPath   = "containerd-socketpath"
@@ -142,20 +141,13 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 }
 
 func (l *localManager) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.LocalContainer,
-		},
-		{
+	return append(common.GetContainerSelectorParams(false),
+		&params.ParamDesc{
 			Key:          Host,
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
-		},
-	}
+		})
 }
 
 func (l *localManager) Init(operatorParams *params.Params) error {
@@ -355,13 +347,7 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
 
-	// TODO: Improve filtering, see further details in
-	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
-	containerSelector := containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: l.params.Get(ContainerName).AsString(),
-		},
-	}
+	containerSelector := common.NewContainerSelector(l.params)
 
 	// If --host is set, we do not want to create the below map because we do not
 	// want any filtering.
@@ -607,20 +593,13 @@ func (l *localManager) InstantiateDataOperator(gadgetCtx operators.GadgetContext
 }
 
 func (l *localManagerTrace) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.LocalContainer,
-		},
-		{
+	return append(common.GetContainerSelectorParams(false),
+		&params.ParamDesc{
 			Key:          Host,
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
-		},
-	}
+		})
 }
 
 func (l *localManager) Priority() int {
@@ -642,11 +621,7 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
 
-	containerSelector := containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: l.params.Get(ContainerName).AsString(),
-		},
-	}
+	containerSelector := common.NewContainerSelector(l.params)
 
 	// mountnsmap will be handled differently than above
 	if !host {
@@ -684,11 +659,7 @@ func (l *localManagerTraceWrapper) Start(gadgetCtx operators.GadgetContext) erro
 	}
 
 	host := l.params.Get(Host).AsBool()
-	containerSelector := containercollection.ContainerSelector{
-		Runtime: containercollection.RuntimeSelector{
-			ContainerName: l.params.Get(ContainerName).AsString(),
-		},
-	}
+	containerSelector := common.NewContainerSelector(l.params)
 
 	extraContainers := []*containercollection.Container{}
 	if host {

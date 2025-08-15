@@ -33,6 +33,7 @@ func ParamDescsToParams(descs params.ParamDescs) (res api.Params) {
 	for _, desc := range descs {
 		res = append(res, &api.Param{
 			Key:            desc.Key,
+			AlternativeKey: desc.AlternativeKey,
 			Description:    desc.Description,
 			DefaultValue:   desc.DefaultValue,
 			TypeHint:       string(desc.TypeHint),
@@ -50,6 +51,7 @@ func ParamDescsToParams(descs params.ParamDescs) (res api.Params) {
 func ParamToParamDesc(p *api.Param) *params.ParamDesc {
 	return &params.ParamDesc{
 		Key:            p.Key,
+		AlternativeKey: p.AlternativeKey,
 		Alias:          p.Alias,
 		Title:          p.Title,
 		DefaultValue:   p.DefaultValue,
@@ -79,6 +81,18 @@ func NormalizeWithDefaults(p api.Params, v api.ParamValues) error {
 		}
 	}
 	return nil
+}
+
+// MergeWithAlternativeKeys will merge values from AlternativeKey into Key if Key is not set
+func MergeWithAlternativeKeys(p api.Params, v api.ParamValues) {
+	for _, param := range p {
+		if _, ok := v[param.Key]; !ok && param.AlternativeKey != "" {
+			if val, ok := v[param.AlternativeKey]; ok {
+				v[param.Key] = val
+				delete(v, param.AlternativeKey)
+			}
+		}
+	}
 }
 
 func Validate(p api.Params, v api.ParamValues) error {
