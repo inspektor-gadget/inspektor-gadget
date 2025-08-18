@@ -52,6 +52,7 @@ const (
 	annotate                = "annotate"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
+	certificates            = "certificates"
 	allowedGadgets          = "allowed-gadgets"
 )
 
@@ -91,9 +92,15 @@ func (o *ociHandler) GlobalParams() api.Params {
 		{
 			Key:          publicKeys,
 			Title:        "Public keys",
-			Description:  "Public keys used to verify the gadgets",
+			Description:  "Public keys used to verify the gadgets with cosign",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
+		},
+		{
+			Key:         certificates,
+			Title:       "Certificates",
+			Description: "Certificates used to verify the gadgets with notation",
+			TypeHint:    api.TypeStringSlice,
 		},
 		{
 			Key:         allowedGadgets,
@@ -346,6 +353,9 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			VerifyOptions: signatureverifier.VerifyOptions{
 				CosignVerifyOptions: signatureverifier.CosignVerifyOptions{
 					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+				},
+				NotationVerifyOptions: signatureverifier.NotationVerifyOptions{
+					Certificates: o.globalParams.Get(certificates).AsStringSlice(),
 				},
 			},
 			VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
