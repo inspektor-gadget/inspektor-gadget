@@ -987,7 +987,7 @@ func verifyImageWithNotation(ctx context.Context, imageStore oras.Target, image 
 		return fmt.Errorf("normalizing image name: %w", err)
 	}
 
-	remoteRepo, err := remote.NewRepository(imageRef.Name())
+	remoteRepo, err := newRepository(imageRef, &imgOpts.AuthOptions)
 	if err != nil {
 		return fmt.Errorf("creating remote repository: %w", err)
 	}
@@ -998,9 +998,9 @@ func verifyImageWithNotation(ctx context.Context, imageStore oras.Target, image 
 	}
 
 	// In the policy document, trust stores are given as "type:name":
-	// https://github.com/notaryproject/specifications/blob/v1.0.0/specs/trust-store-trust-policy.md#trust-policy
+	// https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md#trust-policy
 	// which then corresponds to type/name in the filesystem:
-	// https://github.com/notaryproject/specifications/blob/v1.0.0/specs/trust-store-trust-policy.md#trust-policy
+	// https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md#trust-policy
 	trustStore := strings.ReplaceAll(policy.TrustPolicies[0].TrustStores[0], ":", "/")
 	err = addCertificatesToTrustStore(trustStore, imgOpts.Certificates)
 	if err != nil {
