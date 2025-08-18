@@ -77,8 +77,6 @@ $ kubectl gadget deploy
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
 
-![Screencast of the deploy command](../install.gif)
-
 #### Customizing the deployment
 
 The customization is divided into **two** main sections: one for configuring **Kubernetes resources** and another for **configuring Inspektor Gadget** itself.
