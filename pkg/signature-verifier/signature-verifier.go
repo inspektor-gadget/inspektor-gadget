@@ -27,6 +27,7 @@ import (
 
 type VerifyOptions struct {
 	CosignVerifyOptions
+	NotationVerifyOptions
 }
 
 type Verifier interface {
@@ -52,18 +53,31 @@ func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageS
 }
 
 func Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named, opts VerifyOptions) error {
-	if len(opts.PublicKeys) == 0 {
-		return errors.New("no public keys given")
+	if len(opts.Certificates) > 0 {
+		verifier := notationVerifier{
+			certificates: opts.Certificates,
+		}
+
+		err := verifier.Verify(ctx, repo, imageStore, ref)
+		if err != nil {
+			return fmt.Errorf("verifying with notation: %w", err)
+		}
+
+		return nil
 	}
 
-	verifier := cosignVerifier{
-		publicKeys: opts.PublicKeys,
+	if len(opts.PublicKeys) > 0 {
+		verifier := cosignVerifier{
+			publicKeys: opts.PublicKeys,
+		}
+
+		err := verifier.Verify(ctx, repo, imageStore, ref)
+		if err != nil {
+			return fmt.Errorf("verifying with cosign: %w", err)
+		}
+
+		return nil
 	}
 
-	err := verifier.Verify(ctx, repo, imageStore, ref)
-	if err != nil {
-		return fmt.Errorf("verifying with cosign: %w", err)
-	}
-
-	return nil
+	return errors.New("no valid verification methods applicable or found")
 }
