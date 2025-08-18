@@ -45,15 +45,6 @@ type cosignVerifier struct {
 	publicKeys []string
 }
 
-func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
-	desc, err := store.Resolve(ctx, imageRef)
-	if err != nil {
-		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
-	}
-
-	return desc.Digest.String(), nil
-}
-
 func craftCosignSignatureTag(digest string) (string, error) {
 	// WARNING: cosign is considering changing the scheme for
 	// publishing/retrieving sigstore bundles to/from an OCI registry, see:
