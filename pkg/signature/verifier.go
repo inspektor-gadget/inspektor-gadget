@@ -17,6 +17,7 @@ package signature
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -24,6 +25,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
 )
 
 type Verifier interface {
@@ -31,19 +33,30 @@ type Verifier interface {
 }
 
 type SignatureVerifier struct {
-	*cosign.Verifier
+	verifiers map[string]Verifier
 }
 
 type VerifierOptions struct {
-	CosignVerifierOpts cosign.VerifierOptions
+	CosignVerifierOpts   cosign.VerifierOptions
+	NotationVerifierOpts notation.VerifierOptions
 }
 
 func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
-	if v.Verifier == nil {
+	if len(v.verifiers) == 0 {
 		return errors.New("no verification method available")
 	}
 
-	return v.Verifier.Verify(ctx, repo, imageStore, ref)
+	errs := make([]error, 0)
+	for method, verifier := range v.verifiers {
+		err := verifier.Verify(ctx, repo, imageStore, ref)
+		if err == nil {
+			return nil
+		}
+
+		errs = append(errs, fmt.Errorf("verifying with %s: %w", method, err))
+	}
+
+	return errors.Join(errs...)
 }
 
 func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
@@ -55,6 +68,25 @@ func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageS
 }
 
 func NewSignatureVerifier(opts VerifierOptions) (*SignatureVerifier, error) {
-	cosignVerifier, err := cosign.NewVerifier(opts.CosignVerifierOpts)
-	return &SignatureVerifier{cosignVerifier}, err
+	ret := &SignatureVerifier{verifiers: make(map[string]Verifier)}
+
+	if len(opts.CosignVerifierOpts.PublicKeys) > 0 {
+		verifier, err := cosign.NewVerifier(opts.CosignVerifierOpts)
+		if err != nil {
+			return nil, fmt.Errorf("creating cosign verifier: %w", err)
+		}
+
+		ret.verifiers["cosign"] = verifier
+	}
+
+	if len(opts.NotationVerifierOpts.Certificates) > 0 && len(opts.NotationVerifierOpts.PolicyDocument) > 0 {
+		verifier, err := notation.NewVerifier(opts.NotationVerifierOpts)
+		if err != nil {
+			return nil, fmt.Errorf("creating notation verifier: %w", err)
+		}
+
+		ret.verifiers["notation"] = verifier
+	}
+
+	return ret, nil
 }

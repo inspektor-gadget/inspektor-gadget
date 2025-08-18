@@ -56,14 +56,32 @@ func TestNewVerifier(t *testing.T) {
 	}
 
 	tests := map[string]testDefinition{
-		"no public key": {
+		"no_public_key": {
 			shouldErr: true,
 		},
-		"malformed public key": {
+		"malformed_public_key": {
 			opts: VerifierOptions{
 				PublicKeys: []string{"foobar"},
 			},
 			shouldErr: true,
+		},
+		"correct_public_key": {
+			opts: VerifierOptions{
+				PublicKeys: []string{resources.InspektorGadgetPublicKey},
+			},
+		},
+		"correct_public_keys": {
+			opts: VerifierOptions{
+				PublicKeys: []string{
+					`
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
+wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
+-----END PUBLIC KEY-----
+`,
+					resources.InspektorGadgetPublicKey,
+				},
+			},
 		},
 	}
 
@@ -99,13 +117,13 @@ func TestVerify(t *testing.T) {
 	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:a5de3655d6c7640eb6d43f7d9d7182b233ac86aedddfe6c132cba6b876264d97"
 
 	tests := map[string]testDefinition{
-		"good public key with signed gadget": {
+		"good_public_key_with_signed_gadget": {
 			opts: VerifierOptions{
 				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image: signedImage,
 		},
-		"wrong public key with signed gadget": {
+		"wrong_public_key_with_signed_gadget": {
 			opts: VerifierOptions{
 				PublicKeys: []string{
 					`
@@ -119,14 +137,14 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 			image:     signedImage,
 			shouldErr: true,
 		},
-		"public key with unsigned gadget": {
+		"public_key_with_unsigned_gadget": {
 			opts: VerifierOptions{
 				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image:     nonSignedImage,
 			shouldErr: true,
 		},
-		"several public keys with signed gadget": {
+		"several_public_keys_with_signed_gadget": {
 			opts: VerifierOptions{
 				PublicKeys: []string{
 					`
