@@ -39,6 +39,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
+	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
 )
 
 const (
@@ -342,8 +343,12 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			DisallowPulling:    o.globalParams.Get(disallowPulling).AsBool(),
 		},
 		VerifyOptions: oci.VerifyOptions{
-			VerifyPublicKey: o.globalParams.Get(verifyImage).AsBool(),
-			PublicKeys:      o.globalParams.Get(publicKeys).AsStringSlice(),
+			VerifyOptions: signatureverifier.VerifyOptions{
+				CosignVerifyOptions: signatureverifier.CosignVerifyOptions{
+					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+				},
+			},
+			VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
 		},
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
 			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
