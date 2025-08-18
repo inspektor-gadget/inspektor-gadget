@@ -46,6 +46,7 @@ type GadgetContext interface {
 	SetMetadata([]byte)
 	OrasTarget() oras.ReadOnlyTarget
 	IsRemoteCall() bool
+	IsClient() bool
 }
 
 // MapPrefix is used to avoid clash with maps and other eBPF objects when added

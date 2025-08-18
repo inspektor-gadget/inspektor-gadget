@@ -295,3 +295,7 @@ name: invalid-#name*
 		}
 	}
 }
+
+func (r *testRuntime) IsClient() bool {
+	return false
+}

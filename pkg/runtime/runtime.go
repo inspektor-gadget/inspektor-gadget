@@ -121,4 +121,6 @@ type Runtime interface {
 	RunGadget(gadgetCtx GadgetContext, runtimeParams *params.Params, paramValueMap api.ParamValues) error
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)
+
+	IsClient() bool
 }

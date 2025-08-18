@@ -299,3 +299,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	}
 	return result, runErr
 }
+
+func (r *Runtime) IsClient() bool {
+	return true
+}
