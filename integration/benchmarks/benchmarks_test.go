@@ -213,9 +213,17 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 	serverContainerName := fmt.Sprintf("%s-server", tName)
 	clientContainerName := fmt.Sprintf("%s-client", tName)
 
+	// sysctl settings for fine-tuning TCP/IP stack
+	sysctls := map[string]string{
+		"net.ipv4.ip_local_port_range": "10000 65535",
+		"net.ipv4.tcp_tw_reuse":        "1",
+		"net.ipv4.tcp_fin_timeout":     "10",
+		"net.ipv4.tcp_timestamps":      "0",
+	}
+
 	var nsTest string
 	// serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.ServerImage)}
-	clientContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.Generator.Image)}
+	clientContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.Generator.Image), containers.WithSysctls(sysctls)}
 
 	// TODO: kubectl support is future work
 	//	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
@@ -231,7 +239,7 @@ func testGadgetSingle(t *testing.T, bc *BenchmarkConfig, tc *TestConfig, conf an
 	var serverIP string
 
 	if tc.Server != nil {
-		serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.Server.Image)}
+		serverContainerOpts := []containers.ContainerOption{containers.WithContainerImage(tc.Server.Image), containers.WithSysctls(sysctls)}
 		serverContainer := containerFactory.NewContainer(serverContainerName, tc.Server.Cmd, serverContainerOpts...)
 		serverContainer.Start(t)
 		t.Cleanup(func() {

@@ -39,21 +39,23 @@ tests:
   - name: trace_tcp
     gadgetName: trace_tcp
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:debug
       cmd: /bench --events=tcp-server
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:debug
       cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
-    eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
+    # limit to 1024 because the bench client can't handle more than that
+    eventsPerSecond: [ 128, 256, 512, 1024 ]
   - name: top_tcp
     gadgetName: top_tcp
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:debug
       cmd: /bench --events=tcp-server
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:debug
       cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
-    eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
+    # limit to 1024 because the bench client can't handle more than that
+    eventsPerSecond: [ 128, 256, 512, 1024]
   - name: top_process
     gadgetName: top_process
     generator:
