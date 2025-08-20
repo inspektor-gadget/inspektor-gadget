@@ -276,6 +276,9 @@ var replacers = []replacer{
 			}
 
 			opts := []datasource.FieldOption{
+				datasource.WithAnnotations(map[string]string{
+					metadatav1.ColumnsSortByAnnotation: in.FullName(),
+				}),
 				datasource.WithSameParentAs(in),
 				datasource.WithSameOrderAs(in),
 			}
@@ -320,7 +323,8 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					metadatav1.TemplateAnnotation: "timestamp",
+					metadatav1.TemplateAnnotation:   "timestamp",
+					metadatav1.ColumnsSortByAnnotation: in.FullName(),
 				}),
 				datasource.WithSameParentAs(in),
 				datasource.WithSameOrderAs(in),
@@ -364,7 +368,8 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					metadatav1.TemplateAnnotation: "bytes",
+					metadatav1.TemplateAnnotation:   "bytes",
+					metadatav1.ColumnsSortByAnnotation: in.FullName(),
 				}),
 				datasource.WithSameParentAs(in),
 				datasource.WithSameOrderAs(in),
@@ -404,7 +409,8 @@ var replacers = []replacer{
 
 			opts := []datasource.FieldOption{
 				datasource.WithAnnotations(map[string]string{
-					metadatav1.TemplateAnnotation: "duration",
+					metadatav1.TemplateAnnotation:   "duration",
+					metadatav1.ColumnsSortByAnnotation: in.FullName(),
 				}),
 				datasource.WithSameParentAs(in),
 				datasource.WithSameOrderAs(in),

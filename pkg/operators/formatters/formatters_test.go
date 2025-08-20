@@ -26,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 )
 
@@ -748,4 +749,26 @@ func getFormattedTimeFromBootTime(bootTime uint64, format string) string {
 	adjusted := gadgets.WallTimeFromBootTime(bootTime)
 	t := time.Unix(0, int64(adjusted))
 	return t.Format(format)
+}
+
+func TestSortByAnnotation(t *testing.T) {
+	// Test that fields with sort-by annotation are properly handled
+	ds, err := datasource.New(datasource.TypeSingle, "test")
+	require.NoError(t, err)
+
+	// Create a bytes field with the sort-by annotation
+	_, err = ds.AddField("bytes_raw", api.Kind_Uint64)
+	require.NoError(t, err)
+
+	formattedField, err := ds.AddField("bytes", api.Kind_String, 
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsSortByAnnotation: "bytes_raw",
+		}))
+	require.NoError(t, err)
+
+	// Verify the annotation is set
+	annotations := formattedField.Annotations()
+	sortBy, exists := annotations[metadatav1.ColumnsSortByAnnotation]
+	require.True(t, exists, "sort-by annotation should exist")
+	require.Equal(t, "bytes_raw", sortBy, "sort-by annotation should point to raw field")
 }
