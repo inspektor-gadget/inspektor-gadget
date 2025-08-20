@@ -63,7 +63,9 @@ func TestTraceExec(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-exec"
-	containerImage := gadgettesting.GccImage
+	// TODO: It should use gadgettesting.GccImage, but the latest tag on that
+	// image is breaking this test. See issue #4810 for more details.
+	containerImage := "ghcr.io/inspektor-gadget/ci/gcc:test"
 
 	execProgram := `
 #define _GNU_SOURCE
