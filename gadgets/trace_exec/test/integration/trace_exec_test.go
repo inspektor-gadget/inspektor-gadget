@@ -63,9 +63,7 @@ func TestTraceExec(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 	containerName := "test-trace-exec"
-	// TODO: It should use gadgettesting.GccImage, but the latest tag on that
-	// image is breaking this test. See issue #4810 for more details.
-	containerImage := "ghcr.io/inspektor-gadget/ci/gcc:test"
+	containerImage := gadgettesting.GccImage
 
 	execProgram := `
 #define _GNU_SOURCE
@@ -133,7 +131,7 @@ int main(int argc, char *argv[], char **envp) {
 		execScriptsCmd,
 	)
 	// copies /usr/bin/sh to /usr/bin/sh2 to check that the upper_layer is true when executing /usr/bin/sh2
-	cmd := fmt.Sprintf("%s %s && cp /usr/bin/sh /usr/bin/sh2 && nsenter --setuid 1000 --setgid 1111 /usr/bin/sh2 -c '%s'", prepareScriptsCmd, buildCmd, innerCmd)
+	cmd := fmt.Sprintf("%s %s && cp /usr/bin/sh /usr/bin/sh2 && setpriv --reuid 1000 --regid 1111 --clear-groups /usr/bin/sh2 -c '%s'", prepareScriptsCmd, buildCmd, innerCmd)
 	innerShArgs := []string{"/usr/bin/sh2", "-c", innerCmd}
 
 	testContainer := containerFactory.NewContainer(containerName, cmd, containerOpts...)
