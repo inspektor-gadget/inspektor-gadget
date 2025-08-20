@@ -67,6 +67,9 @@ func (s *sortOperator) InstanceParams() api.Params {
 }
 
 func (s *sortOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
+	logger := gadgetCtx.Logger()
+	logger.Debugf("instantiating %s operator: client=%v, remote_call=%v", name, gadgetCtx.IsClient(), gadgetCtx.IsRemoteCall())
+
 	activate := false
 
 	sortBy := instanceParamValues[ParamSortBy]

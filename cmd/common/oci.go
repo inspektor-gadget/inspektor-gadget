@@ -215,6 +215,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			imageName,
 			gadgetcontext.WithDataOperators(ops...),
 			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
+			gadgetcontext.WithIsClient(runtime.IsClient()),
 		)
 
 		// GetOCIGadget needs at least the params from the oci handler, so let's prepare those in here
@@ -330,6 +331,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 
 			if isDetach {
 				return runInstanceSpecsDetached(ctx, runtime, specs, runtimeParams,
+					gadgetcontext.WithIsClient(runtime.IsClient()),
 					gadgetcontext.WithDataOperators(ops...),
 					gadgetcontext.WithTimeout(timeoutDuration),
 					gadgetcontext.WithUseInstance(false),
@@ -366,6 +368,7 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 			gadgetcontext.WithDataOperators(ops...),
 			gadgetcontext.WithTimeout(timeoutDuration),
 			gadgetcontext.WithUseInstance(commandMode == CommandModeAttach),
+			gadgetcontext.WithIsClient(runtime.IsClient()),
 		)
 
 		// Write back param values

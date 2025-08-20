@@ -33,3 +33,7 @@ func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) error {
 	return gadgetCtx.Run(paramValues)
 }
+
+func (r *Runtime) IsClient() bool {
+	return false
+}

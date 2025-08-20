@@ -162,6 +162,19 @@ func (c *GadgetContext) IsRemoteCall() bool {
 	return bVal
 }
 
+func (c *GadgetContext) IsClient() bool {
+	val := c.ctx.Value(clientKey)
+	if val == nil {
+		return false
+	}
+	bVal, ok := val.(bool)
+	if !ok {
+		c.logger.Errorf("invalid type of variable %s on context, expected bool, got %T", clientKey, val)
+		return false
+	}
+	return bVal
+}
+
 func (c *GadgetContext) UseInstance() bool {
 	return c.useInstance
 }
