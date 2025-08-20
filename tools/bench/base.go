@@ -78,7 +78,6 @@ func (g *baseGenerator) Start() error {
 
 func (g *baseGenerator) Stop() error {
 	close(g.done)
-	g.rateLimiter.Close()
 
 	return nil
 }

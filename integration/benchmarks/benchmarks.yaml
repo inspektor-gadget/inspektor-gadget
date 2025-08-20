@@ -1,5 +1,5 @@
 # How many times to run each test
-ntimes: 10
+ntimes: 1
 # Path of the ig binary
 ig_path: ig
 # Extra flags to pass to ig
@@ -17,49 +17,49 @@ tests:
   - name: trace_dns
     gadgetName: trace_dns
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=dns-server
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=dns:server={serverIP}:5353 --events-per-second={eventsPerSecond}
     # at 16384 IG starts to drop packets
     eventsPerSecond: [ 1024, 2048, 4096, 8192, 16384 ]
   - name: trace_exec
     gadgetName: trace_exec
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=exec --events-per-second={eventsPerSecond}
     eventsPerSecond: [ 4096, 8192, 16384, 32768, 65536 ]
   - name: trace_open
     gadgetName: trace_open
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=open --events-per-second={eventsPerSecond}
     eventsPerSecond: [ 32768, 65536, 131072, 262144, 524288 ]
   - name: trace_tcp
     gadgetName: trace_tcp
     server:
-      image: ghcr.io/mqasimsarfraz/bench:debug
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=tcp-server
     generator:
-      image: ghcr.io/mqasimsarfraz/bench:debug
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
     # limit to 1024 because the bench client can't handle more than that
-    eventsPerSecond: [ 128, 256, 512, 1024 ]
+    eventsPerSecond: [ 128, 256, 512, 1024, 2048]
   - name: top_tcp
     gadgetName: top_tcp
     server:
-      image: ghcr.io/mqasimsarfraz/bench:debug
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=tcp-server
     generator:
-      image: ghcr.io/mqasimsarfraz/bench:debug
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=tcp:server={serverIP}:8080 --events-per-second={eventsPerSecond}
     # limit to 1024 because the bench client can't handle more than that
-    eventsPerSecond: [ 128, 256, 512, 1024]
+    eventsPerSecond: [ 128, 256, 512, 1024, 2048]
   - name: top_process
     gadgetName: top_process
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/mqasimsarfraz/bench:workers
       cmd: /bench --events=processes --events-per-second={eventsPerSecond}
     # limit to 32768 as 32GB of memory aren't enough to run more processes
     eventsPerSecond: [ 2048, 4096, 8192, 16384, 32768 ]

@@ -20,7 +20,7 @@ import (
 
 type RateLimiter struct {
 	maxEventsPerSecond int
-	ticker             *time.Ticker
+	tokens             chan struct{}
 }
 
 // NewRateLimiter creates a new RateLimiter with the specified maximum events
@@ -30,25 +30,38 @@ func NewRateLimiter(maxEventsPerSecond int) *RateLimiter {
 		return &RateLimiter{}
 	}
 
-	interval := time.Second / time.Duration(maxEventsPerSecond)
-	ticker := time.NewTicker(interval)
-
-	return &RateLimiter{
+	rl := &RateLimiter{
 		maxEventsPerSecond: maxEventsPerSecond,
-		ticker:             ticker,
+		tokens:             make(chan struct{}, maxEventsPerSecond),
 	}
-}
 
-func (rl *RateLimiter) Close() {
-	if rl.ticker != nil {
-		rl.ticker.Stop()
-		rl.ticker = nil
+	// Fill the channel with tokens to allow immediate processing of events
+	for i := 0; i < maxEventsPerSecond; i++ {
+		rl.tokens <- struct{}{}
 	}
+
+	// Refill tokens at the specified rate
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			for i := 0; i < maxEventsPerSecond; i++ {
+				select {
+				case rl.tokens <- struct{}{}:
+				default:
+					break
+				}
+			}
+		}
+	}()
+
+	return rl
 }
 
 func (rl *RateLimiter) Run(fn func()) {
-	if rl.ticker != nil {
-		<-rl.ticker.C
+	if rl.tokens != nil {
+		<-rl.tokens
 	}
 
 	fn()
