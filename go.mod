@@ -1,13 +1,13 @@
 module github.com/inspektor-gadget/inspektor-gadget
 
-go 1.24.0
+go 1.24.3
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.19.1-0.20250729164112-d994daa25101
 	github.com/containerd/containerd v1.7.28
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.9.0
+	github.com/containerd/nri v0.10.0
 	github.com/containers/common v0.64.0
 	github.com/containers/image/v5 v5.36.1
 	github.com/coreos/go-systemd/v22 v22.5.0
