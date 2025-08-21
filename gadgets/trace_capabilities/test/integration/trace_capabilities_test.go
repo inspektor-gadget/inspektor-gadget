@@ -83,7 +83,7 @@ __attribute__((noinline)) void level1() {
 
 int main() {
     level1();
-    sleep(4);
+    sleep(1);
     return 0;
 }
 `
@@ -99,8 +99,23 @@ int main() {
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
-	buildCmd := fmt.Sprintf("echo %s | base64 -d > chroot.c && gcc -Wall -static -o /bin/mychroot chroot.c", progBase64)
-	innerCmd := "while true; do /bin/mychroot ; nice -n -20 echo; sleep 0.1; done"
+	buildCmd := fmt.Sprintf("echo %s | base64 -d > chroot.c && "+
+		"gcc -Wall -o /bin/mychroot1                                   chroot.c && "+
+		"gcc -Wall -o /bin/mychroot2                -static            chroot.c && "+
+		"gcc -Wall -o /bin/mychroot3 -Wl,--build-id                    chroot.c && "+
+		"gcc -Wall -o /bin/mychroot4 -Wl,--build-id -static            chroot.c && "+
+		"gcc -Wall -o /bin/mychroot5                        -fPIE -pie chroot.c && "+
+		"gcc -Wall -o /bin/mychroot6                -static -fPIE -pie chroot.c && "+
+		"gcc -Wall -o /bin/mychroot7 -Wl,--build-id         -fPIE -pie chroot.c && "+
+		"gcc -Wall -o /bin/mychroot8 -Wl,--build-id -static -fPIE -pie chroot.c && "+
+		"true",
+		progBase64)
+	innerCmd := "while true; do " +
+		"/bin/mychroot1 ; /bin/mychroot2 ; /bin/mychroot3 ; " +
+		"/bin/mychroot4 ; /bin/mychroot5 ; /bin/mychroot6 ; " +
+		"/bin/mychroot7 ; /bin/mychroot8 ; " +
+		"nice -n -20 echo; sleep 0.1; " +
+		"done"
 	testContainer := containerFactory.NewContainer(
 		containerName,
 		fmt.Sprintf("%s ; %s", buildCmd, innerCmd),
@@ -128,10 +143,10 @@ int main() {
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
-			expectedEntries := []*traceCapabilitiesEvent{
-				{
+			makeChrootEntry := func(i int) *traceCapabilitiesEvent {
+				return &traceCapabilitiesEvent{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-					Proc:       utils.BuildProc("mychroot", 0, 0),
+					Proc:       utils.BuildProc(fmt.Sprintf("mychroot%d", i), 0, 0),
 					Cap:        "CAP_SYS_CHROOT",
 					Syscall:    "SYS_CHROOT",
 					Audit:      1,
@@ -145,7 +160,17 @@ int main() {
 					CapEffective:  utils.NormalizedStr,
 					CurrentUserNs: 0,
 					TargetUserNs:  0,
-				},
+				}
+			}
+			expectedEntries := []*traceCapabilitiesEvent{
+				makeChrootEntry(1),
+				makeChrootEntry(2),
+				makeChrootEntry(3),
+				makeChrootEntry(4),
+				makeChrootEntry(5),
+				makeChrootEntry(6),
+				makeChrootEntry(7),
+				makeChrootEntry(8),
 				{
 					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("nice", 0, 0),
@@ -172,7 +197,7 @@ int main() {
 				utils.NormalizeString(&e.Kstack)
 				utils.NormalizeString(&e.CapEffective)
 
-				if e.Proc.Comm == "mychroot" {
+				if strings.HasPrefix(e.Proc.Comm, "mychroot") {
 					if strings.Contains(e.Ustack.Symbols, "level2") {
 						e.Ustack.Symbols = "level2"
 					}
