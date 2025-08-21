@@ -19,11 +19,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"crypto"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -38,10 +34,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/sigstore/sigstore/pkg/signature/payload"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -51,6 +44,7 @@ import (
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
 )
 
 type AuthOptions struct {
@@ -62,13 +56,14 @@ type AuthOptions struct {
 	DisallowPulling    bool
 }
 
-type VerifyOptions struct {
-	VerifyPublicKey bool
-	PublicKeys      []string
-}
-
 type AllowedGadgetsOptions struct {
 	AllowedGadgets []string
+}
+
+type VerifyOptions struct {
+	signatureverifier.VerifyOptions
+
+	VerifySignature bool
 }
 
 type ImageOptions struct {
@@ -211,7 +206,7 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 	}
 
 	imageDigest := desc.Digest.String()
-	if err := pullSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
+	if err := signatureverifier.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 		log.Warnf("error pulling signature: %v", err)
 		// it's not a requirement to have a signature for pulling the image
 		return &desc, nil
@@ -362,18 +357,9 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 			return fmt.Errorf("copying image to remote repository: %w", err)
 		}
 
-		signatureTag, err := craftSignatureTag(desc.Digest.String())
-		if err != nil {
-			return fmt.Errorf("crafting signature tag: %w", err)
-		}
-
-		_, err = oras.Copy(ctx, ociStore, signatureTag, dstStore,
-			signatureTag, oras.DefaultCopyOptions)
-		if err != nil {
-			if errors.Is(err, errdef.ErrNotFound) {
-				continue
-			}
-			return fmt.Errorf("copying signature to remote repository: %w", err)
+		err = signatureverifier.ExportSigningInformation(ctx, ociStore, dstStore, desc)
+		if errors.Is(err, errdef.ErrNotFound) {
+			continue
 		}
 	}
 
@@ -738,227 +724,6 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	}, nil
 }
 
-func craftSignatureTag(digest string) (string, error) {
-	// WARNING: cosign is considering changing the scheme for
-	// publishing/retrieving sigstore bundles to/from an OCI registry, see:
-	// https://sigstore.slack.com/archives/C0440BFT43H/p1712253122721879?thread_ts=1712238666.552719&cid=C0440BFT43H
-	// https://github.com/sigstore/cosign/pull/3622
-	parts := strings.Split(digest, ":")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("wrong digest, expected two parts, got %d", len(parts))
-	}
-
-	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
-}
-
-func loadSignature(ctx context.Context, repo oras.Target, signatureTag string) ([]byte, string, error) {
-	_, signatureManifestBytes, err := oras.FetchBytes(ctx, repo, signatureTag, oras.DefaultFetchBytesOptions)
-	if err != nil {
-		return nil, "", fmt.Errorf("getting signature bytes: %w", err)
-	}
-
-	signatureManifest := &ocispec.Manifest{}
-	err = json.Unmarshal(signatureManifestBytes, signatureManifest)
-	if err != nil {
-		return nil, "", fmt.Errorf("decoding signature manifest: %w", err)
-	}
-
-	layers := signatureManifest.Layers
-	expectedLen := 1
-	layersLen := len(layers)
-	if layersLen != expectedLen {
-		return nil, "", fmt.Errorf("wrong number of signature manifest layers: expected %d, got %d", expectedLen, layersLen)
-	}
-
-	layer := layers[0]
-	// Taken from:
-	// https://github.com/sigstore/cosign/blob/e23dcd11f24b729f6ff9300ab7a61b09d71da12a/pkg/types/media.go#L28
-	expectedMediaType := "application/vnd.dev.cosign.simplesigning.v1+json"
-	if layer.MediaType != expectedMediaType {
-		return nil, "", fmt.Errorf("wrong layer media type: expected %s, got %s", expectedMediaType, layer.MediaType)
-	}
-
-	signature, ok := layer.Annotations["dev.cosignproject.cosign/signature"]
-	if !ok {
-		return nil, "", fmt.Errorf("no signature in layer")
-	}
-
-	signatureBytes, err := base64.StdEncoding.DecodeString(signature)
-	if err != nil {
-		return nil, "", fmt.Errorf("decoding signature: %w", err)
-	}
-
-	payloadTag := layer.Digest.String()
-
-	return signatureBytes, payloadTag, nil
-}
-
-func loadPayload(ctx context.Context, repo oras.Target, payloadTag string) ([]byte, error) {
-	desc := ocispec.Descriptor{
-		Digest: digest.Digest(payloadTag),
-	}
-	rc, err := repo.Fetch(ctx, desc)
-	if err != nil {
-		return nil, fmt.Errorf("fetching payload content: %w", err)
-	}
-	defer rc.Close()
-
-	payloadBytes, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, fmt.Errorf("getting payload bytes: %w", err)
-	}
-
-	return payloadBytes, nil
-}
-
-func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
-	desc, err := store.Resolve(ctx, imageRef)
-	if err != nil {
-		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
-	}
-
-	return desc.Digest.String(), nil
-}
-
-func pullSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string, imageStore oras.Target) error {
-	signatureTag, err := craftSignatureTag(imageDigest)
-	if err != nil {
-		return fmt.Errorf("crafting signature tag: %w", err)
-	}
-	// copy the signature and payload from repo:signatureTag to imageStore
-	if _, err = oras.Copy(ctx, repo, signatureTag, imageStore, signatureTag, oras.DefaultCopyOptions); err != nil {
-		return fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
-	}
-
-	return nil
-}
-
-func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.Target, authOpts *AuthOptions) ([]byte, []byte, error) {
-	imageDigest, err := getImageDigest(ctx, imageStore, imageRef.String())
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting image digest: %w", err)
-	}
-
-	signatureTag, err := craftSignatureTag(imageDigest)
-	if err != nil {
-		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
-	}
-
-	if _, err := imageStore.Resolve(ctx, signatureTag); err != nil {
-		// it's possible that users pulled the image with an ig version
-		// that doesn't pulls the signature too, so we need to pull it here to
-		// avoid breaking them.
-		// TODO: This code could be removed in v0.45.0
-		if !errors.Is(err, errdef.ErrNotFound) {
-			return nil, nil, fmt.Errorf("resolving signature tag %q: %w", signatureTag, err)
-		}
-
-		repo, err := newRepository(imageRef, authOpts)
-		if err != nil {
-			return nil, nil, fmt.Errorf("creating remote repository: %w", err)
-		}
-
-		log.Debugf("Signature tag %q not found in local store, pulling it", signatureTag)
-		if err := pullSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
-			return nil, nil, fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
-		}
-	}
-
-	signature, payloadTag, err := loadSignature(ctx, imageStore, signatureTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting signature: %w", err)
-	}
-
-	payload, err := loadPayload(ctx, imageStore, payloadTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting payload: %w", err)
-	}
-
-	return signature, payload, nil
-}
-
-func newVerifier(publicKey []byte) (signature.Verifier, error) {
-	block, _ := pem.Decode(publicKey)
-	if block == nil {
-		return nil, fmt.Errorf("decoding public key to PEM blocks")
-	}
-
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("parsing public key: %w", err)
-	}
-
-	verifier, err := signature.LoadVerifier(pub, crypto.SHA256)
-	if err != nil {
-		return nil, fmt.Errorf("loading verifier: %w", err)
-	}
-
-	return verifier, nil
-}
-
-func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
-	payloadImage := &payload.SimpleContainerImage{}
-	err := json.Unmarshal(payloadBytes, payloadImage)
-	if err != nil {
-		return fmt.Errorf("unmarshalling payload: %w", err)
-	}
-
-	if payloadImage.Critical.Image.DockerManifestDigest != imageDigest {
-		return fmt.Errorf("payload digest does not correspond to image: expected %s, got %s", imageDigest, payloadImage.Critical.Image.DockerManifestDigest)
-	}
-
-	return nil
-}
-
-func verifyImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions) error {
-	imageRef, err := normalizeImageName(image)
-	if err != nil {
-		return fmt.Errorf("normalizing image name: %w", err)
-	}
-
-	imageDigest, err := getImageDigest(ctx, imageStore, imageRef.String())
-	if err != nil {
-		return fmt.Errorf("getting image digest: %w", err)
-	}
-
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageRef, imageStore, &imgOpts.AuthOptions)
-	if err != nil {
-		return fmt.Errorf("getting signing information: %w", err)
-	}
-
-	verified := false
-	var errs error
-	for _, publicKey := range imgOpts.PublicKeys {
-		verifier, err := newVerifier([]byte(publicKey))
-		if err != nil {
-			return fmt.Errorf("creating verifier for %s: %w", publicKey, err)
-		}
-
-		err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(payloadBytes))
-		if err == nil {
-			verified = true
-
-			break
-		}
-
-		errs = errors.Join(errs, err)
-	}
-
-	if !verified {
-		return fmt.Errorf("the image was not signed by the provided keys: %w", errs)
-	}
-
-	// We should not read the payload before confirming it was signed, so let's
-	// do this check once it was confirmed to be signed:
-	// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
-	err = checkPayloadImage(payloadBytes, imageDigest)
-	if err != nil {
-		return fmt.Errorf("checking payload image: %w", err)
-	}
-
-	return nil
-}
-
 // newRepository creates a client to the remote repository identified by
 // image using the given auth options.
 func newRepository(image reference.Named, authOpts *AuthOptions) (*remote.Repository, error) {
@@ -1076,15 +841,25 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		}
 	}
 
-	if !imgOpts.VerifyPublicKey {
-		imgOpts.Logger.Warnf("image signature verification is disabled due to using corresponding option")
+	if !imgOpts.VerifySignature {
+		log.Warnf("gadget signature verification is disabled due to using corresponding option")
 
 		return nil
 	}
 
-	err := verifyImage(ctx, imageStore, image, imgOpts)
+	imageRef, err := normalizeImageName(image)
 	if err != nil {
-		return fmt.Errorf("verifying image %q: %w", image, err)
+		return fmt.Errorf("normalizing image name: %w", err)
+	}
+
+	repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
+	if err != nil {
+		return fmt.Errorf("creating remote repository: %w", err)
+	}
+
+	err = signatureverifier.Verify(ctx, repo, imageStore, imageRef, imgOpts.VerifyOptions.VerifyOptions)
+	if err != nil {
+		return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 	}
 
 	return nil
