@@ -1,0 +1,22 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.42.0/v0.42.0.vex.json",
+  "author": "Inspektor Gadget Security Team <security@inspektor-gadget.io>",
+  "timestamp": "2025-08-21T08:52:50.431237874+02:00",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2025-54388"
+      },
+      "timestamp": "2025-08-21T08:52:50.431242261+02:00",
+      "products": [
+        {
+          "@id": "pkg:github/inspektor-gadget/inspektor-gadget@v0.42.0"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path"
+    }
+  ]
+}
