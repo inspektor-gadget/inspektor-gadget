@@ -64,6 +64,7 @@ type Symbolizer struct {
 
 	lockSymbolTablesFromBuildID sync.RWMutex
 	symbolTablesFromBuildID     map[string]*symbolTable
+	missingBuildIDs             map[string]bool
 
 	// hostProcFsPidNs is the pid namespace of /host/proc/1/ns/pid.
 	hostProcFsPidNs uint32
@@ -116,6 +117,7 @@ func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 		options:                 opts,
 		symbolTables:            make(map[exeKey]*symbolTable),
 		symbolTablesFromBuildID: make(map[string]*symbolTable),
+		missingBuildIDs:         make(map[string]bool),
 		hostProcFsPidNs:         hostProcFsPidNs,
 		pruneTickerTime:         pruneTickerTime,
 		symbolTableTTL:          symbolTableTTL,
@@ -370,9 +372,12 @@ func (s *Symbolizer) resolveWithDebuginfodClientCache(task Task, stackItems []St
 		file, err := os.Open(debuginfoPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				suggestedCmd := fmt.Sprintf("DEBUGINFOD_CACHE_PATH=%s DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo %s",
-					s.options.DebuginfodCachePath, buildIDStr)
-				log.Warnf("Debuginfo %s for %s not found in %s. Suggested remedial: %q", buildIDStr, task.Name, debuginfoPath, suggestedCmd)
+				if !s.missingBuildIDs[buildIDStr] {
+					s.missingBuildIDs[buildIDStr] = true
+					suggestedCmd := fmt.Sprintf("DEBUGINFOD_CACHE_PATH=%s DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo %s",
+						s.options.DebuginfodCachePath, buildIDStr)
+					log.Warnf("Debuginfo %s for %s not found in %s. Suggested remedial: %q", buildIDStr, task.Name, debuginfoPath, suggestedCmd)
+				}
 				continue
 			}
 			log.Warnf("Failed to open debuginfo file %s for %s: %v", debuginfoPath, task.Name, err)
@@ -398,6 +403,7 @@ func (s *Symbolizer) resolveWithDebuginfodClientCache(task Task, stackItems []St
 		s.lockSymbolTablesFromBuildID.Lock()
 
 		s.symbolTablesFromBuildID[buildIDStr] = table
+		delete(s.missingBuildIDs, buildIDStr)
 
 		table.timestamp = time.Now()
 		symbol := table.lookupByAddr(stackItems[i].Offset)
