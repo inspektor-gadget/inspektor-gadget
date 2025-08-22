@@ -1,0 +1,5 @@
+changelog:
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change

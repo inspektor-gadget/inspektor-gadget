@@ -368,6 +368,14 @@ to the commit message.
 Signed-off-by: Joe Smith <joe.smith@email.com>
 ```
 
+### Breaking Changes
+
+If a PR introduces a breaking change, please label it with the `breaking-change`
+label and provide the following information in the PR description:
+- What is the breaking change
+- Which users are impacted
+- How users should adapt to the breaking change
+
 ### Commit History Guidelines
 
 When authoring a PR, ensure that the commit history is clean and
