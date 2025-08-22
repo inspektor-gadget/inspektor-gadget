@@ -1,5 +1,6 @@
-name: snapshot file
-description: Show files
+name: snapshot_file
+image: snapshot_file:latest
+description: Show open files
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_file
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_file
@@ -7,12 +8,6 @@ datasources:
   files:
     fields:
       mntns_id:
-        annotations:
-          columns.hidden: true
-      tid:
-        annotations:
-          columns.hidden: true
-      pid:
         annotations:
           columns.hidden: true
       inode:

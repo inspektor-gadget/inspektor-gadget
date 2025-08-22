@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"io/fs"
 	"strings"
 
@@ -68,7 +67,6 @@ func decodeFlags(flags int32) []string {
 
 //go:wasmexport gadgetInit
 func gadgetInit() int32 {
-
 	ds, err := api.GetDataSource("files")
 	if err != nil {
 		api.Errorf("failed to get datasource: %s", err)
@@ -117,7 +115,6 @@ func gadgetInit() int32 {
 			api.Warnf("failed to get flags: %s", err)
 			return
 		}
-		fmt.Printf("Subscribing to data source, flagsRaw: \n", flagsRaw)
 
 		flagsStr := decodeFlags(flagsRaw)
 		// TODO: the datasource doesn't support arrays yet.

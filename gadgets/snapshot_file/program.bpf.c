@@ -1,10 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
-/* Copyright (c) 2025 Your Name
- *
- * Snapshot File Gadget
- *
- * Iterates over all open files of each task and emits one record per file.
- */
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (c) 2025 Shaheer Ahmad */
 
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
@@ -14,7 +9,7 @@
 #include <gadget/types.h>
 #include <gadget/filesystem.h>
 
-const volatile bool paths = false;
+	const volatile bool paths = false;
 
 #define MAX_PATH_LEN 256
 
@@ -37,7 +32,8 @@ const volatile u32 file_type_mask = (1U << FILE_TYPE_REGULAR) |
 struct gadget_file {
 	gadget_mntns_id mntns_id;
 	char comm[TASK_COMM_LEN];
-	__u32 pid, tid;
+	gadget_pid pid;
+	gadget_tid tid;
 	__u32 fd;
 	enum file_type type_raw;
 	char path[MAX_PATH_LEN];
@@ -122,10 +118,10 @@ int ig_snap_file(struct bpf_iter__task_file *ctx)
 	if (!task || !file)
 		return 0;
 
-	if (gadget_should_discard_data(
-		    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
-		    task->comm, task->cred->uid.val, task->cred->gid.val))
-		return 0;
+	// if (gadget_should_discard_data(
+	// 	    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
+	// 	    task->comm, task->cred->uid.val, task->cred->gid.val))
+	// 	return 0;
 
 	info.mntns_id = task->nsproxy->mnt_ns->ns.inum;
 	__builtin_memcpy(info.comm, task->comm, TASK_COMM_LEN);
