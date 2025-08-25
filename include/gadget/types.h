@@ -43,25 +43,33 @@ typedef __u32 gadget_netns_id;
 // time.
 typedef __u64 gadget_timestamp;
 
-// gadget_signal is used to represent a unix signal. A field is automatically added that contains the name
-// as string.
+// gadget_signal is used to represent a unix signal.
+// The formatter operator adds a field with the signal name.
 typedef __u32 gadget_signal;
 
-// gadget_errno is used to represent a unix errno. A field is automatically added that contains the name
-// as string.
+// gadget_errno is used to represent a unix errno.
+// The formatter operator adds a field with the name of the error.
 typedef __u32 gadget_errno;
 
-// gadget_uid is used to represent a uid. A field is automatically added that contains the corresponding user
-// name on the host system
+// gadget_uid is used to represent a uid.
+// The formatter operator adds a field with the name of the user.
 typedef __u32 gadget_uid;
 
-// gadget_gid is used to represent a uid. A field is automatically added that contains the corresponding group
-// name on the host system
+// gadget_gid is used to represent a gid.
+// The formatter operator adds a field with the name of the group.
 typedef __u32 gadget_gid;
 
-// gadget_syscall is used to represent a unix syscall. A field is automatically added that contains the name
-// as string.
+// gadget_syscall is used to represent a unix syscall.
+// The formatter operator adds a field with the name of the syscall.
 typedef __u64 gadget_syscall;
+
+// gadget_file_mode is used to represent a file mode.
+// The formatter operator adds a field with the string representation of the mode.
+typedef __u32 gadget_file_mode;
+
+// gadget_file_flags is used to represent file flags.
+// The formatter operator adds a field with the string representation of the flags.
+typedef __u32 gadget_file_flags;
 
 typedef __u32 gadget_kernel_stack;
 

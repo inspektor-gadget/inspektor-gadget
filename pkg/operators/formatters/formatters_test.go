@@ -374,6 +374,98 @@ func TestGeneral(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "file_mode",
+			kind:     api.Kind_Uint32,
+			epbftype: ebpftypes.FileModeTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data, value any) {
+				fa.PutUint32(data, value.(uint32))
+			},
+			data: []testCaseDatum{
+				{
+					value:      uint32(0o644), // -rw-r--r--
+					ok:         true,
+					expected:   "-rw-r--r--",
+					annotation: nil,
+				},
+				{
+					value:      uint32(0o755), // -rwxr-xr-x
+					ok:         true,
+					expected:   "-rwxr-xr-x",
+					annotation: map[string]string{"formatters.file_mode.target": "permissions"},
+				},
+				{
+					value:      uint32(0o777), // -rwxrwxrwx
+					ok:         true,
+					expected:   "-rwxrwxrwx",
+					annotation: nil,
+				},
+				{
+					value:      uint32(0o600), // -rw-------
+					ok:         true,
+					expected:   "-rw-------",
+					annotation: map[string]string{"formatters.file_mode.target": "owner_only"},
+				},
+				{
+					value:      uint32(0o444), // -r--r--r--
+					ok:         true,
+					expected:   "-r--r--r--",
+					annotation: nil,
+				},
+			},
+		},
+		{
+			name:     "file_flags",
+			kind:     api.Kind_Uint32,
+			epbftype: ebpftypes.FileFlagsTypeName,
+			putFunc: func(fa datasource.FieldAccessor, data datasource.Data, value any) {
+				fa.PutUint32(data, value.(uint32))
+			},
+			data: []testCaseDatum{
+				{
+					value:      uint32(0), // O_RDONLY
+					ok:         true,
+					expected:   "O_RDONLY",
+					annotation: nil,
+				},
+				{
+					value:      uint32(1), // O_WRONLY
+					ok:         true,
+					expected:   "O_WRONLY",
+					annotation: nil,
+				},
+				{
+					value:      uint32(2), // O_RDWR
+					ok:         true,
+					expected:   "O_RDWR",
+					annotation: nil,
+				},
+				{
+					value:      uint32(0o100), // O_CREAT (64 + 0 for O_RDONLY)
+					ok:         true,
+					expected:   "O_RDONLY|O_CREAT",
+					annotation: nil,
+				},
+				{
+					value:      uint32(0o101), // O_CREAT | O_WRONLY (64 + 1)
+					ok:         true,
+					expected:   "O_WRONLY|O_CREAT",
+					annotation: map[string]string{"formatters.file_flags.target": "write_flags"},
+				},
+				{
+					value:      uint32(0o1102), // O_CREAT | O_TRUNC | O_RDWR (64 + 512 + 2)
+					ok:         true,
+					expected:   "O_RDWR|O_CREAT|O_TRUNC",
+					annotation: nil,
+				},
+				{
+					value:      uint32(0o2000), // O_APPEND only (1024 + 0 for O_RDONLY)
+					ok:         true,
+					expected:   "O_RDONLY|O_APPEND",
+					annotation: map[string]string{"formatters.file_flags.target": "append_mode"},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

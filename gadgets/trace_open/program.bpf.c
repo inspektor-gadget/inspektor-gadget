@@ -28,8 +28,8 @@ struct event {
 
 	gadget_errno error_raw;
 	__u32 fd;
-	int flags_raw;
-	__u16 mode_raw;
+	gadget_file_flags flags_raw;
+	gadget_file_mode mode_raw;
 	struct gadget_user_stack ustack;
 	char fname[NAME_MAX];
 };
