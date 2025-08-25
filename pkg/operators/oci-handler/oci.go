@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -287,7 +287,6 @@ func constructTempConfig(ann string) (map[string]any, int, error) {
 				},
 			},
 		}
-		viper.Set("a", "b")
 		return tmpConfig, 1, nil
 
 	case 2:
@@ -390,8 +389,11 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	}
 	r.Close()
 
-	// Store metadata for serialization
-	gadgetCtx.SetMetadata(metadata)
+	// Store metadata
+	err = gadgetCtx.SetMetadata(metadata)
+	if err != nil {
+		return fmt.Errorf("setting metadata: %w", err)
+	}
 
 	cfg, ok := gadgetCtx.GetVar("config")
 	if !ok {
