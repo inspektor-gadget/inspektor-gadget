@@ -124,11 +124,24 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 	initializedOperators := false
 
 	preRun := func(cmd *cobra.Command, args []string) error {
-		err := runtime.Init(runtimeGlobalParams)
-		if err != nil {
-			return fmt.Errorf("initializing runtime: %w", err)
+		// Check if help is requested - if so, skip runtime initialization
+		// as it requires root permissions but help should be available to all users
+		skipRuntimeInit := false
+		for _, arg := range args {
+			if arg == "-h" || arg == "--help" {
+				skipRuntimeInit = true
+				break
+			}
 		}
-		defer runtime.Close()
+
+		var err error
+		if !skipRuntimeInit {
+			err = runtime.Init(runtimeGlobalParams)
+			if err != nil {
+				return fmt.Errorf("initializing runtime: %w", err)
+			}
+			defer runtime.Close()
+		}
 
 		// set global operator flags from the config file
 		for o, p := range opGlobalParams {
