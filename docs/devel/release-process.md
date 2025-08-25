@@ -46,12 +46,15 @@ $ git push origin v0.x.0
 ```
 < Relevant changes >
 
+### Breaking Changes
 ### General Improvements
 ### Security Improvements
 ### Bug Fixes
 ### Documentation Improvements
 ### Testing and Continue Integration
 ```
+
+For the breaking changes section, please copy the information from the PR description.
 
 6. Once satisfied with the release notes, publish the draft release as public release.
 
