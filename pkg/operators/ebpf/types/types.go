@@ -40,6 +40,7 @@ const (
 	ProcessTypeName     = "gadget_process"
 	CredsTypeName       = "gadget_creds"
 	ParentTypeName      = "gadget_parent"
+	FlexStringTypeName  = "gadget_flex_string"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"
