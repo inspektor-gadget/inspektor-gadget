@@ -486,6 +486,11 @@ nextParam:
 			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"
 		}
 
+		if p.AlternativeKey != "" {
+			cmd.PersistentFlags().Var(&Param{p}, p.AlternativeKey, desc)
+			cmd.PersistentFlags().MarkHidden(p.AlternativeKey)
+			desc += " (alias: " + p.AlternativeKey + ")"
+		}
 		flag := cmd.PersistentFlags().VarPF(&Param{p}, p.Key, p.Alias, desc)
 		if p.IsMandatory {
 			cmd.MarkPersistentFlagRequired(p.Key)

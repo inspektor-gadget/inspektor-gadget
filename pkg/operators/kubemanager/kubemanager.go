@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
@@ -44,23 +43,18 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
 	OperatorName = "KubeManager"
 
-	// Instance parameter keys
-	ParamContainerName = "containername"
-	ParamSelector      = "selector"
-	ParamAllNamespaces = "all-namespaces"
-	ParamPodName       = "podname"
-	ParamNamespace     = "namespace"
-
 	// Global parameter keys
 	ParamHookMode               = "hook-mode"
 	ParamFallbackPodInformer    = "fallback-podinformer"
 	ParamHookLivenessSocketFile = "hook-liveness-socketfile"
+
+	// Instance parameter keys
+	ParamAllNamespaces = "all-namespaces"
 )
 
 type MountNsMapSetter interface {
@@ -110,54 +104,14 @@ func (k *KubeManager) GlobalParamDescs() params.ParamDescs {
 }
 
 func (k *KubeManager) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ParamContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			ValueHint:   gadgets.K8SContainerName,
-		},
-		{
-			Key:         ParamSelector,
-			Alias:       "l",
-			Description: "Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
-			ValueHint:   gadgets.K8SLabels,
-			Validator: func(value string) error {
-				if value == "" {
-					return nil
-				}
-
-				pairs := strings.Split(value, ",")
-				for _, pair := range pairs {
-					kv := strings.Split(pair, "=")
-					if len(kv) != 2 {
-						return fmt.Errorf("should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
-					}
-				}
-
-				return nil
-			},
-		},
-		{
-			Key:         ParamPodName,
-			Alias:       "p",
-			Description: "Show only data from pods with that name",
-			ValueHint:   gadgets.K8SPodName,
-		},
-		{
+	return append(common.GetContainerSelectorParams(true),
+		&params.ParamDesc{
 			Key:          ParamAllNamespaces,
 			Alias:        "A",
 			Description:  "Show data from pods in all namespaces",
 			TypeHint:     params.TypeBool,
 			DefaultValue: "false",
-		},
-		{
-			Key:         ParamNamespace,
-			Alias:       "n",
-			Description: "Show only data from pods in a given namespace",
-			ValueHint:   gadgets.K8SNamespace,
-		},
-	}
+		})
 }
 
 func (k *KubeManager) Init(params *params.Params) error {
@@ -269,31 +223,6 @@ func (m *KubeManagerInstance) Name() string {
 	return OperatorName
 }
 
-func newContainerSelector(selectorSlice []string, namespace, podName, containerName string, useAllNamespace bool) containercollection.ContainerSelector {
-	labels := make(map[string]string)
-	for _, pair := range selectorSlice {
-		kv := strings.Split(pair, "=")
-		labels[kv[0]] = kv[1]
-	}
-
-	containerSelector := containercollection.ContainerSelector{
-		K8s: containercollection.K8sSelector{
-			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-				Namespace:     namespace,
-				PodName:       podName,
-				ContainerName: containerName,
-				PodLabels:     labels,
-			},
-		},
-	}
-
-	if useAllNamespace {
-		containerSelector.K8s.Namespace = ""
-	}
-
-	return containerSelector
-}
-
 func (m *KubeManagerInstance) PreGadgetRun() error {
 	log := m.gadgetCtx.Logger()
 
@@ -308,13 +237,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 }
 
 func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
-	containerSelector := newContainerSelector(
-		m.params.Get(ParamSelector).AsStringSlice(),
-		m.params.Get(ParamNamespace).AsString(),
-		m.params.Get(ParamPodName).AsString(),
-		m.params.Get(ParamContainerName).AsString(),
-		m.params.Get(ParamAllNamespaces).AsBool(),
-	)
+	containerSelector := newContainerSelector(m.params)
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
 		err := m.manager.tracerCollection.AddTracer(m.id, containerSelector)
@@ -401,6 +324,14 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 		}
 	}
 	return nil
+}
+
+func newContainerSelector(params *params.Params) containercollection.ContainerSelector {
+	containerSelector := common.NewContainerSelector(params)
+	if params.Get(ParamAllNamespaces).AsBool() {
+		containerSelector.K8s.Namespace = ""
+	}
+	return containerSelector
 }
 
 func (m *KubeManagerInstance) PostGadgetRun() error {
@@ -536,27 +467,7 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		0,
 	)
 
-	labels := make(map[string]string)
-	selectorSlice := m.params.Get(ParamSelector).AsStringSlice()
-	for _, pair := range selectorSlice {
-		kv := strings.Split(pair, "=")
-		labels[kv[0]] = kv[1]
-	}
-
-	containerSelector := containercollection.ContainerSelector{
-		K8s: containercollection.K8sSelector{
-			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-				Namespace:     m.params.Get(ParamNamespace).AsString(),
-				PodName:       m.params.Get(ParamPodName).AsString(),
-				ContainerName: m.params.Get(ParamContainerName).AsString(),
-				PodLabels:     labels,
-			},
-		},
-	}
-
-	if m.params.Get(ParamAllNamespaces).AsBool() {
-		containerSelector.K8s.Namespace = ""
-	}
+	containerSelector := newContainerSelector(m.params)
 
 	if m.manager.containerCollection == nil {
 		return fmt.Errorf("container-collection isn't available")
@@ -588,13 +499,7 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return nil
 	}
 
-	containerSelector := newContainerSelector(
-		m.params.Get(ParamSelector).AsStringSlice(),
-		m.params.Get(ParamNamespace).AsString(),
-		m.params.Get(ParamPodName).AsString(),
-		m.params.Get(ParamContainerName).AsString(),
-		m.params.Get(ParamAllNamespaces).AsBool(),
-	)
+	containerSelector := newContainerSelector(m.params)
 
 	return m.containersPublisher.PublishContainers(true, []*containercollection.Container{}, containerSelector)
 }
