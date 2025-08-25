@@ -77,6 +77,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if d.options.privileged {
 		hostConfig.Privileged = true
 	}
+	if d.options.sysctls != nil {
+		hostConfig.Sysctls = d.options.sysctls
+	}
 
 	if d.options.portBindings != nil {
 		hostConfig.PortBindings = d.options.portBindings
@@ -198,6 +201,13 @@ func (d *DockerContainer) Stop(t *testing.T) {
 			}
 		} else {
 			t.Fatalf("Client is not initialized")
+		}
+	}
+
+	if !d.options.expectStartError {
+		err := d.client.ContainerKill(d.options.ctx, d.id, "SIGINT")
+		if err != nil {
+			t.Fatalf("killing container: %s", err)
 		}
 	}
 

@@ -72,6 +72,12 @@ func WithLimits(limits map[string]string) ContainerOption {
 	}
 }
 
+func WithSysctls(sysctls map[string]string) ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithSysctls(sysctls))
+	}
+}
+
 func WithCleanup() ContainerOption {
 	return func(opts *cOptions) {
 		opts.cleanup = true
