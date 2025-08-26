@@ -663,6 +663,8 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fsnotify_event *event)
 		gadget_event->type_raw = ee->type;
 
 		gadget_event->tracee = ee->tracee;
+		gadget_event->tracee_uid_raw = ee->tracee_uid_raw;
+		gadget_event->tracee_gid_raw = ee->tracee_gid_raw;
 		gadget_event->tracee_mntns_id = ee->tracee_mntns_id;
 
 		gadget_event->prio = ee->prio;
