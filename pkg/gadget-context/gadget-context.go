@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/spf13/viper"
@@ -42,6 +43,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
+
+const customParamsKey = "params.custom"
 
 // GadgetContext handles running gadgets by the gadget interface; it orchestrates the whole lifecycle of the gadget
 // instance and communicates with gadget and runtime.
@@ -69,6 +72,7 @@ type GadgetContext struct {
 	localOperators []operators.DataOperatorInstance
 	vars           map[string]any
 	params         []*api.Param
+	paramValues    api.ParamValues
 	loaded         bool
 	imageName      string
 	metadata       []byte
@@ -245,18 +249,130 @@ func (c *GadgetContext) SetParams(params []*api.Param) {
 	c.params = append(c.params, params...)
 }
 
-func (c *GadgetContext) SetMetadata(m []byte) {
+// processCustomParams extracts and processes custom parameters from the
+// metadata file. It processes the parameters, applies any parameter values and
+// template processing to the metadata file, and adds the processed parameters
+// to the context via SetParams.
+func (c *GadgetContext) processCustomParams(v *viper.Viper, paramValues api.ParamValues) error {
+	params := make([]*api.Param, 0)
+
+	// Safeguard
+	if paramValues == nil {
+		paramValues = make(api.ParamValues)
+	}
+
+	customParams := v.Sub(customParamsKey)
+	if customParams == nil {
+		return nil
+	}
+
+	for k := range v.GetStringMap(customParamsKey) {
+		c.Logger().Debugf("evaluating custom param %q", k)
+		paramSub := customParams.Sub(k)
+		valuesSub := paramSub.Sub("values")
+		if valuesSub == nil && !paramSub.IsSet("patch") {
+			c.Logger().Debugf("custom param %q has no values and no global patch set", k)
+			continue
+		}
+		p := &api.Param{
+			Key:          k,
+			Description:  paramSub.GetString("description"),
+			Prefix:       "custom.",
+			DefaultValue: paramSub.GetString("defaultValue"),
+			Alias:        paramSub.GetString("alias"),
+		}
+		for value := range paramSub.GetStringMap("values") {
+			p.PossibleValues = append(p.PossibleValues, value)
+		}
+		params = append(params, p)
+
+		// Evaluate, if set
+		if val, ok := paramValues["custom."+k]; ok {
+			valSubPath := "values." + val + "."
+			if !paramSub.IsSet(valSubPath+"patch") && paramSub.IsSet("patch") {
+				// Use generic patch fallback
+				valSubPath = ""
+			}
+
+			c.Logger().Debugf("applying custom param %q", k)
+
+			valSub := paramSub.Sub(valSubPath + "patch")
+			if valSub == nil {
+				continue
+			}
+
+			// Apply templates
+			replacements := make(map[string]string)
+			for _, k1 := range valSub.AllKeys() {
+				v1 := valSub.Get(k1)
+				if s, ok := v1.(string); ok {
+					tpl, err := template.New(k1).Parse(s)
+					if err != nil {
+						return fmt.Errorf("parsing custom param %q value %q: %q cannot be parsed as template: %w", k, val, k1, err)
+					}
+					out := bytes.NewBuffer(nil)
+					err = tpl.Execute(out, map[string]any{
+						"getParamValue": func(key string) string { return paramValues[key] },
+						"getConfig": func(key string) string {
+							return v.GetString(strings.ToLower(key))
+						},
+					})
+					if err != nil {
+						return fmt.Errorf("evaluating custom param %q value %q template for %q: %w", k, val, k1, err)
+					}
+					if tplOut := out.String(); tplOut != s {
+						c.Logger().Debugf("custom param %q value %q: replacing %q's value %q with %q", k, valSubPath, k1, s, tplOut)
+						replacements[k1] = tplOut
+					}
+				}
+			}
+
+			for k1, v1 := range replacements {
+				paramSub.Set(valSubPath+"patch."+k1, v1)
+			}
+
+			applyMap := paramSub.GetStringMap(valSubPath + "patch")
+
+			// Prevent recursive patching of customparams
+			delete(applyMap, customParamsKey)
+
+			c.Logger().Debugf("applying custom param %+v", applyMap)
+
+			// Merge with config
+			err := v.MergeConfigMap(applyMap)
+			if err != nil {
+				return fmt.Errorf("merging custom param %q value %q: %w", k, valSubPath, err)
+			}
+
+			c.Logger().Debugf("map now %+v", v)
+		}
+	}
+
+	// Add the processed custom params
+	c.SetParams(params)
+
+	return nil
+}
+
+func (c *GadgetContext) SetMetadata(m []byte) error {
 	c.metadata = m
 
 	v := viper.New()
 	v.SetConfigType("yaml")
 	err := v.ReadConfig(bytes.NewReader(c.metadata))
 	if err != nil {
-		c.logger.Warn("unmarshalling metadata: %w", err)
-		return
+		return fmt.Errorf("unmarshalling metadata: %w", err)
 	}
 	c.logger.Debugf("loaded metadata as config")
+
+	// Extract and process custom params
+	err = c.processCustomParams(v, c.paramValues)
+	if err != nil {
+		return fmt.Errorf("processing custom params: %w", err)
+	}
+
 	c.SetVar("config", v)
+	return nil
 }
 
 func (c *GadgetContext) SerializeGadgetInfo(extraInfo bool) (*api.GadgetInfo, error) {
