@@ -398,6 +398,7 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				// screen later on, otherwise it could be printed multiple
 				// times.
 				if clearScreenBefore {
+					clearScreen()
 					printHeader()
 				}
 				p.SetEventCallback(formatter.EventHandlerFuncArray(headerFuncs...))

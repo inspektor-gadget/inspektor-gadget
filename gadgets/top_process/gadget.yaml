@@ -7,10 +7,59 @@ operator:
   process:
     emitstats: true
     interval: 3s
+    first-interval: 250ms
 datasources:
   processes:
     annotations:
       cli.clear-screen-before: "true"
+    fields:
+      startTimeStr:
+        annotations:
+          columns.alias: 'STARTTIME'
+      priority:
+        annotations:
+          columns.alias: 'PR'
+      nice:
+        annotations:
+          columns.alias: 'NI'
+      cpuTimeStr:
+        annotations:
+          columns.alias: 'TIME+'
+      cpuUsage:
+        annotations:
+          columns.alias: '%CPU'
+      cpuUsageRelative:
+        annotations:
+          columns.alias: '%RELCPU'
+      memoryRelative:
+        annotations:
+          columns.alias: '%MEM'
+      memoryRSS:
+        annotations:
+          columns.alias: 'RES'
+          columns.maxWidth: 12
+      memoryShared:
+        annotations:
+          columns.alias: 'SHR'
+          columns.maxWidth: 12
+      memoryVirtual:
+        annotations:
+          columns.alias: 'VIRT'
+          columns.maxWidth: 12
+      comm:
+        annotations:
+          columns.alias: 'COMMAND'
+          columns.with: 32
+          columns.maxwidth: 80
+          columns.ellipsis: end
+      threadCount:
+        annotations:
+          columns.alias: 'THR'
+          columns.maxWidth: 3
+      state:
+        annotations:
+          columns.alias: 'S'
+          columns.maxWidth: 1
 params:
   custom:
     interval:
