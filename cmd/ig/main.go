@@ -109,6 +109,7 @@ func main() {
 	rootCmd.AddCommand(common.NewLogoutCmd())
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))
+	rootCmd.AddCommand(common.NewInitCommand())
 
 	pprofAddr, _ := rootCmd.PersistentFlags().GetString("pprof-addr")
 	if pprofAddr != "" {
