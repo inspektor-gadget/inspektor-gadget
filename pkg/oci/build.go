@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,15 @@
 package oci
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -49,6 +52,7 @@ const (
 	wasmObjectMediaType = "application/vnd.gadget.wasm.program.v1+binary"
 	btfgenMediaType     = "application/vnd.gadget.btfgen.v1+binary"
 	metadataMediaType   = "application/vnd.gadget.config.v1+yaml"
+	sourceMediaType     = "application/vnd.gadget.source.v1+binary"
 )
 
 const (
@@ -78,6 +82,10 @@ type BuildGadgetImageOpts struct {
 	ValidateMetadata bool
 	// Date and time on which the image is built (date-time string as defined by RFC 3339).
 	CreatedDate string
+	// IncludeSources determines if the source directory should be included in the image
+	IncludeSources bool
+	// SourcePath points to the source root directory (usually src)
+	SourcePath string
 }
 
 // BuildGadgetImage creates an OCI image with the objects provided in opts. The image parameter in
@@ -169,6 +177,67 @@ func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, medi
 		return ocispec.Descriptor{}, fmt.Errorf("pushing %q layer: %w", mediaType, err)
 	}
 
+	return progDesc, nil
+}
+
+func createCompressedBlobFromPath(ctx context.Context, rootPath string) ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(buf)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	rootPath = filepath.Clean(rootPath)
+
+	err := filepath.Walk(rootPath, func(path string, fi fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		hdr, err := tar.FileInfoHeader(fi, "")
+		if err != nil {
+			return fmt.Errorf("creating tar header: %w", err)
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return fmt.Errorf("writing tar header: %w", err)
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		f, err := os.Open(filepath.Join(rootPath, path))
+		if err != nil {
+			return fmt.Errorf("opening file: %w", err)
+		}
+		defer f.Close()
+		_, err = io.Copy(tw, f)
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walking %q: %w", rootPath, err)
+	}
+
+	err = tw.Close()
+	if err != nil {
+		return nil, fmt.Errorf("closing tar writer: %w", err)
+	}
+	err = gw.Close()
+	if err != nil {
+		return nil, fmt.Errorf("closing gzip writer: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func createCompressedLayerDescFromPath(ctx context.Context, target oras.Target, rootPath, mediaType string) (ocispec.Descriptor, error) {
+	blob, err := createCompressedBlobFromPath(ctx, rootPath)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("creating compressed blob from path %q: %w", rootPath, err)
+	}
+
+	progDesc := content.NewDescriptorFromBytes(mediaType, blob)
+	err = pushDescriptorIfNotExists(ctx, target, progDesc, bytes.NewReader(blob))
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing %q layer: %w", mediaType, err)
+	}
 	return progDesc, nil
 }
 
@@ -327,6 +396,14 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", arch, err)
 		}
 		layers = append(layers, manifestDesc)
+	}
+
+	if o.IncludeSources {
+		layer, err := createCompressedLayerDescFromPath(ctx, target, o.SourcePath, sourceMediaType)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating %s layer: %w", sourceMediaType, err)
+		}
+		layers = append(layers, layer)
 	}
 
 	if len(layers) == 0 {
