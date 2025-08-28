@@ -42,6 +42,12 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name.
 	Containername string
 
+	// Kubernetes-related filters
+	K8sPodName       string
+	K8sNamespace     string
+	K8sSelector      []string
+	K8sContainerName string
+
 	// Comma-separated list of container runtimes.
 	Runtimes string
 
@@ -144,8 +150,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"containername",
 		"c",
 		"",
-		"Show only data from containers with that name",
+		"Show data only from containers with the runtime-assigned name (not the name defined in the pod spec) (alias: runtime-containername)",
 	)
+	command.PersistentFlags().StringVarP(
+		&commonFlags.Containername,
+		"runtime-containername", "", "", "",
+	)
+	command.PersistentFlags().MarkHidden("runtime-containername")
+
 	command.PersistentFlags().BoolVarP(
 		&commonFlags.Host,
 		"host",
@@ -182,6 +194,28 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		containerutilsTypes.RuntimeProtocolInternal,
 		fmt.Sprintf("Container runtime protocol (docker and containerd). Supported values are: %s",
 			strings.Join(containerutils.AvailableRuntimeProtocols, ", ")),
+	)
+
+	// Kubernetes-related flags
+	command.PersistentFlags().StringVar(
+		&commonFlags.K8sPodName,
+		"k8s-podname",
+		"",
+		"Show only data from Kubernetes pods with that name",
+	)
+
+	command.PersistentFlags().StringVar(
+		&commonFlags.K8sNamespace,
+		"k8s-namespace",
+		"",
+		"Show only data from pods in a given Kubernetes namespace",
+	)
+
+	command.PersistentFlags().StringVar(
+		&commonFlags.K8sContainerName,
+		"k8s-containername",
+		"",
+		"Show data only from containers with the name defined in the pod spec",
 	)
 }
 
