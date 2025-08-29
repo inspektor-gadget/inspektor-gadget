@@ -32,7 +32,6 @@ import (
 var expectedYaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  creationTimestamp: null
   name: test-advise-networkpolicy-client-network
   namespace: <CLIENT_NAMESPACE>
 spec:
@@ -57,7 +56,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  creationTimestamp: null
   name: test-advise-networkpolicy-server-network
   namespace: <SERVER_NAMESPACE>
 spec:
