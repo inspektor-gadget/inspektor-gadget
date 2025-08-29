@@ -29,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -58,6 +59,13 @@ func NewListContainersCmd() *cobra.Command {
 			selector := containercollection.ContainerSelector{
 				Runtime: containercollection.RuntimeSelector{
 					ContainerName: commonFlags.Containername,
+				},
+				K8s: containercollection.K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodName:       commonFlags.K8sPodName,
+						Namespace:     commonFlags.K8sNamespace,
+						ContainerName: commonFlags.K8sContainerName,
+					},
 				},
 			}
 

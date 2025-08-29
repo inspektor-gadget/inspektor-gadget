@@ -86,10 +86,11 @@ common fields:
  * `--node string`, show only data from pods running in that node
  * `-n string`, `--namespace string`, show data from pods in that namespace
  * `-A`, `--all-namespaces`, show data from pods in all namespaces
- * `-p string`, `--podname string`, show only data from pods with that name
- * `-c string`, `--containername string`, show only data from containers with that name
- * `-l string`, `--selector string`: show only data that matches the given
-   label or selector. Only `=` is currently supported (e.g. `key1=value1,key2=value2`).
+ * `-p string`, `--podname string`, `--k8s-podname` show only data from pods with that name
+ * `-c string`, `--containername string`, `--k8s-containername`, show only data from containers with the name defined in the pod spec
+ * `--runtime-containername string`, show only data from containers with the runtime-assigned name (not the name defined in the pod spec)
+ * `-l string`, `--selector string`, `--k8s-selector`, show only data that matches the given
+   Kubernetes label or selector. Only `=` is currently supported (e.g. `key1=value1,key2=value2`).
 
 We can use one or more of these parameters to choose which pods or
 containers will be inspected by our gadgets. For example:
@@ -112,9 +113,15 @@ fields in [user space](#filtering-in-user-space).
 
 The current supported fields to filter in kernel are:
 
- * `-c string`, `--containername string`, show only data from containers with
+ * `-c string`, `--containername string`, `--runtime-containername`, show only data from containers with
    that name. Notice that this container name is the one set by the runtime, and
-   it may be different from the one set by Kubernetes depending on the runtime.
+   it may be different from the one set by Kubernetes (defined in the pod spec) depending on the runtime.
+* `--k8s-containername string`, show only data from containers with the name
+   defined in the pod spec.
+* `--k8s-namespace string`, show data from pods in that Kubernetes namespace.
+* `--k8s-podname`, show only data from containers with the name defined in the pod spec
+* `--k8s-selector string`, show only data that matches the given
+Kubernetes label or selector. Only `=` is currently supported (e.g. `key1=value1,key2=value2`).
 
 For example, the following command will show only data from the container named
 `mycontainer`:
