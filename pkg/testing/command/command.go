@@ -18,6 +18,7 @@ package command
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os/exec"
 	"syscall"
 	"testing"
@@ -32,6 +33,14 @@ type Command struct {
 	// ValidateOutput is a function used to verify the output. It must make the test fail in
 	// case of error.
 	ValidateOutput func(t *testing.T, output string)
+
+	// ValidateStdErrOutput is a function used to verify the output. It must make the test fail in
+	// case of error.
+	ValidateStdErrOutput func(t *testing.T, output string)
+
+	// StdOutWriter is an optional writer to which the command's standard output will be written.
+	// It's used in situations where we want to process the output on-line without saving it.
+	StdOutWriter io.Writer
 
 	// StartAndStop indicates this command should first be started then stopped.
 	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
@@ -66,6 +75,10 @@ func (c *Command) initExecCmd() {
 	c.Cmd.Stdout = &c.stdout
 	c.Cmd.Stderr = &c.stderr
 
+	if c.StdOutWriter != nil {
+		c.Cmd.Stdout = c.StdOutWriter
+	}
+
 	// To be able to kill the process of /bin/sh and its child (the process of
 	// c.Cmd), we need to send the termination signal to their process group ID
 	// (PGID). However, child processes get the same PGID as their parents by
@@ -85,6 +98,14 @@ func (c *Command) verifyOutput(t *testing.T) {
 	}
 }
 
+// verifyStderrOutput verifies the output of the command by using the
+// ValidateStdErrOutput callback function provided by the user.
+func (c *Command) verifyStderrOutput(t *testing.T) {
+	if c.ValidateStdErrOutput != nil {
+		c.ValidateStdErrOutput(t, c.stderr.String())
+	}
+}
+
 // Run runs the Command on the given as parameter test.
 func (c *Command) Run(t *testing.T) {
 	c.initExecCmd()
@@ -95,6 +116,7 @@ func (c *Command) Run(t *testing.T) {
 		c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
+	c.verifyStderrOutput(t)
 	c.verifyOutput(t)
 }
 

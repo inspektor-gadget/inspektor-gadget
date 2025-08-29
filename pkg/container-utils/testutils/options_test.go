@@ -16,6 +16,9 @@ func TestContainerOptions(t *testing.T) {
 	if opts.seccompProfile != "" {
 		t.Errorf("Expected default seccompProfile to be empty")
 	}
+	if opts.sysctls != nil {
+		t.Errorf("Expected default sysctls to be nil")
+	}
 
 	if !opts.logs {
 		t.Errorf("Expected default logs to be true")

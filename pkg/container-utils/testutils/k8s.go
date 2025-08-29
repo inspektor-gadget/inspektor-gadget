@@ -61,6 +61,10 @@ func (c *K8sContainer) Start(t *testing.T) {
 		t.Fatalf("testutils/kubernetes: seccomp profiles are not supported yet")
 	}
 
+	if c.options.sysctls != nil {
+		t.Fatalf("testutils/kubernetes: sysctls are not supported yet")
+	}
+
 	if c.options.privileged {
 		t.Fatalf("testutils/kubernetes: privileged containers are not supported yet")
 	}
