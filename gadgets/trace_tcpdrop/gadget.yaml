@@ -1,4 +1,5 @@
 name: trace tcpdrop
+category: observer
 description: trace TCP packets dropped by the kernel
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_tcpdrop
