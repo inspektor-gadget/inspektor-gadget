@@ -70,3 +70,11 @@ params:
           process:
             interval: >-
               {{call .getParamValue "custom.interval"}}
+    count:
+      description: "number of reports"
+      defaultValue: 0
+      patch:
+        operator:
+          process:
+            count: >-
+              {{call .getParamValue "custom.count"}}
