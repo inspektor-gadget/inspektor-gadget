@@ -2092,7 +2092,7 @@ jobs:
           service_account: ${{ secrets.GKE_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ secrets.GKE_WORKLOAD_IDENTITY_PROVIDER }}
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@26f734c2779b00b7dda794207734c511110a4368 # v3.0.0
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Craft cluster name
         shell: bash
         run: |
