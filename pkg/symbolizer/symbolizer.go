@@ -80,6 +80,10 @@ type symbolTable struct {
 	// symbols is a slice of symbols. Order is preserved for binary search.
 	symbols []*symbol
 
+	// PIE (Position Independent Executable) needs addresses to be adjusted with
+	// base address.
+	isPIE bool
+
 	timestamp time.Time
 }
 
@@ -283,10 +287,10 @@ func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackI
 	return res, nil
 }
 
-func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, stackQueries []StackItemQuery, res []StackItemResponse) {
+func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, baseAddress uint64, stackQueries []StackItemQuery, res []StackItemResponse) {
 	table.timestamp = time.Now()
 	for idx := range stackQueries {
-		symbol := table.lookupByAddr(stackQueries[idx].Addr)
+		symbol := table.lookupByAddr(stackQueries[idx].Addr - baseAddress)
 		if symbol != "" {
 			res[idx].Found = true
 			res[idx].Symbol = symbol
@@ -342,6 +346,7 @@ func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error)
 
 	return &symbolTable{
 		symbols:   symbols,
+		isPIE:     elfFile.Type == elf.ET_DYN,
 		timestamp: time.Now(),
 	}, nil
 }
