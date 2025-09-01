@@ -2026,7 +2026,7 @@ jobs:
         # many gadgets running on parallel
         node_type='t2.xlarge'
         if [ ${{ matrix.arch }} = 'arm64' ]; then
-          node_type='a1.xlarge'
+          node_type='t4g.xlarge'
         fi
         eksctl create cluster --name ${{ env.CLUSTER_NAME }} --tags "ig-ci=true,ig-ci-timestamp=$(date -u +'%Y-%m-%dT%H:%M:%S%:z')" --node-type $node_type
     - name: Run integration tests
