@@ -17,6 +17,7 @@ package testing
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
@@ -73,6 +74,25 @@ func RemoveMemlock(t testing.TB) {
 	// Some kernel versions need to have the memlock rlimit removed
 	err := rlimit.RemoveMemlock()
 	require.NoError(t, err, "Failed to remove memlock rlimit: %s", err)
+}
+
+// GetArch returns the architecture of the current node.
+// When used in Kubernetes, it gets the architecture from a random node in the cluster.
+func GetArch(t testing.TB) string {
+	t.Helper()
+
+	var currArch string
+
+	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+		cmd := exec.Command("kubectl", "get", "nodes", "-o", "jsonpath={.items[0].status.nodeInfo.architecture}")
+		output, err := cmd.Output()
+		require.NoError(t, err, "Failed to get architecture: %s", err)
+		currArch = string(output)
+	} else {
+		currArch = runtime.GOARCH
+	}
+
+	return currArch
 }
 
 // GetKernelVersion returns the kernel version of the current node.
