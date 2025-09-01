@@ -16,13 +16,14 @@
 package ustack
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
-	"unsafe"
+	"sync"
 
 	"github.com/cilium/ebpf"
-	"golang.org/x/sys/unix"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -85,13 +86,13 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 	case "", "none":
 		// Nothing to do
 	case "auto":
-		opts.UseSymtab = true
+		opts.UseSymtab = !gadgetCtx.IsClient()
 	default:
 		list := strings.Split(symbolizers, ",")
 		for _, s := range list {
 			switch s {
 			case "symtab":
-				opts.UseSymtab = true
+				opts.UseSymtab = !gadgetCtx.IsClient()
 			case "debuginfod-client-cache":
 				if !gadgetCtx.IsRemoteCall() {
 					opts.UseDebugInfodClientCache = true
@@ -109,10 +110,16 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 	var err error
 	// When the Symbolizer implements more options, they can be added here
 	if opts.UseSymtab || opts.UseDebugInfodClientCache {
-		instance.symbolizer, err = symbolizer.NewSymbolizer(opts)
-		if err != nil {
-			return nil, err
-		}
+		// Use a sync.OnceValue to delay the creation of the Symbolizer because:
+		// - otherwise it is needlessly created during GetGadgetInfo
+		instance.symbolizer = sync.OnceValue(func() *symbolizer.Symbolizer {
+			s, err := symbolizer.NewSymbolizer(opts)
+			if err != nil {
+				log.Errorf("creating symbolizer: %s", err)
+				return nil
+			}
+			return s
+		})
 	}
 	err = instance.init(gadgetCtx)
 	if err != nil {
@@ -131,7 +138,7 @@ func (o *Operator) Priority() int {
 type OperatorInstance struct {
 	userStackMap *ebpf.Map
 	buildIDMap   *ebpf.Map
-	symbolizer   *symbolizer.Symbolizer
+	symbolizer   func() *symbolizer.Symbolizer
 
 	subscriptions map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 }
@@ -194,17 +201,49 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				continue
 			}
 
-			addressesField, err := in.AddSubField("addresses", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
-			if err != nil {
-				return err
+			// The ustack operator can run both on the client and on the server side.
+			// If it runs on the client side, the server might have already added the subfields.
+			var addressesField, buildIDField, symbolsField datasource.FieldAccessor
+			var err error
+
+			if addressesFieldAll := in.GetSubFieldsWithTag("name:addresses"); len(addressesFieldAll) == 0 {
+				addressesField, err = in.AddSubField("addresses", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden), datasource.WithTags("name:addresses", "operator:ustack"))
+				if err != nil {
+					return err
+				}
+			} else {
+				addressesField = addressesFieldAll[0]
+				if !addressesField.HasAllTagsOf("operator:ustack") {
+					logger.Warn("field addresses exists but does not belong to the ustack operator")
+					continue
+				}
+
 			}
-			buildIDField, err := in.AddSubField("buildid", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
-			if err != nil {
-				return err
+
+			if buildIDFieldAll := in.GetSubFieldsWithTag("name:buildid"); len(buildIDFieldAll) == 0 {
+				buildIDField, err = in.AddSubField("buildid", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden), datasource.WithTags("name:buildid", "operator:ustack"))
+				if err != nil {
+					return err
+				}
+			} else {
+				buildIDField = buildIDFieldAll[0]
+				if !buildIDField.HasAllTagsOf("operator:ustack") {
+					logger.Warn("field buildid exists but does not belong to the ustack operator")
+					continue
+				}
 			}
-			symbolsField, err := in.AddSubField("symbols", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
-			if err != nil {
-				return err
+
+			if symbolsFieldAll := in.GetSubFieldsWithTag("name:symbols"); len(symbolsFieldAll) == 0 {
+				symbolsField, err = in.AddSubField("symbols", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden), datasource.WithTags("name:symbols", "operator:ustack"))
+				if err != nil {
+					return err
+				}
+			} else {
+				symbolsField = symbolsFieldAll[0]
+				if !symbolsField.HasAllTagsOf("operator:ustack") {
+					logger.Warn("field symbols exists but does not belong to the ustack operator")
+					continue
+				}
 			}
 
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
@@ -254,78 +293,93 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				mtimeSec, _ := mtimeSecField[0].Uint64(data)
 				mtimeNsec, _ := mtimeNsecField[0].Uint32(data)
 
-				stack := [ebpftypes.UserPerfMaxStackDepth]uint64{}
-				err := o.userStackMap.Lookup(stackId, &stack)
-				if err != nil {
-					logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
-					return nil
-				}
+				stackQueries := make([]symbolizer.StackItemQuery, 0, ebpftypes.UserPerfMaxStackDepth)
+				var alreadyKnownSymbols []string // symbols already resolved server-side
 
-				var addressesBuilder strings.Builder
-				stackQueries := make([]symbolizer.StackItemQuery, 0, len(stack))
-				for i, addr := range stack {
-					if addr == 0 {
-						break
+				// The ustack operator can run both on the client and on the server side.
+				// The BPF map is not available client-side (e.g. kubectl-gadget)
+				if o.userStackMap != nil {
+					addressesStr, buildIDStr, moreStackItems, err := readUserStackMap(gadgetCtx, o.userStackMap, o.buildIDMap, stackId)
+					if err != nil {
+						logger.Warn(err)
+						return nil
 					}
-					stackQueries = append(stackQueries, symbolizer.StackItemQuery{Addr: addr})
-					fmt.Fprintf(&addressesBuilder, "[%d]0x%016x; ", i, addr)
-				}
-				addressesField.PutString(data, addressesBuilder.String())
+					if addressesStr != "" {
+						addressesField.PutString(data, addressesStr)
+					}
+					if buildIDStr != "" {
+						buildIDField.PutString(data, buildIDStr)
+					}
+					stackQueries = append(stackQueries, moreStackItems...)
+					alreadyKnownSymbols = make([]string, len(stackQueries))
+				} else {
+					// The symbolizer might be used client-side where we don't
+					// have access to BPF maps. Access data from the data source
+					// instead.
+					addressesStr, _ := addressesField.String(data)
+					addressesList := strings.Split(addressesStr, "; ")
+					buildIDStr, _ := buildIDField.String(data)
+					buildidList := strings.Split(buildIDStr, "; ")
+					alreadyKnownSymbolsStr, _ := symbolsField.String(data)
+					alreadyKnownSymbols = strings.Split(alreadyKnownSymbolsStr, "; ")
+					for i := range alreadyKnownSymbols {
+						index := strings.IndexByte(alreadyKnownSymbols[i], ']')
+						if index >= 0 {
+							alreadyKnownSymbols[i] = alreadyKnownSymbols[i][index+1:]
+						}
+					}
 
-				if o.buildIDMap != nil && o.buildIDMap.MaxEntries() > 0 {
-					// struct bpf_stack_build_id is part of Linux UAPI:
-					// https://github.com/torvalds/linux/blob/v6.14/include/uapi/linux/bpf.h#L1451
-					type bpfStackBuildID struct {
-						status     int32
-						buildID    [unix.BPF_BUILD_ID_SIZE]uint8
-						offsetOrIP uint64 // Union of offset and ip
-					}
-					const sizeOfBpfStackBuildID = 32
-					// Static assert that the size of bpfStackBuildID is correct
-					_ = func() {
-						var x [1]struct{}
-						var v bpfStackBuildID
-						_ = x[unsafe.Sizeof(v)-sizeOfBpfStackBuildID]
-					}
-					buildIDBuf := [ebpftypes.UserPerfMaxStackDepth * sizeOfBpfStackBuildID]byte{}
-					buildid := (*[ebpftypes.UserPerfMaxStackDepth]bpfStackBuildID)(unsafe.Pointer(&buildIDBuf[0]))
-					errLookup := o.buildIDMap.Lookup(stackId, &buildIDBuf)
-
-					var buildIDsBuilder strings.Builder
-				buildid_iter:
-					for i := 0; i < ebpftypes.UserPerfMaxStackDepth; i++ {
-						if errLookup != nil {
-							// The gadget didn't collect build ids
-							// Gadgets can use --collect-build-id to enable collecting build ids
+					for i := range addressesList {
+						if addressesList[i] == "" {
 							break
 						}
-						if i >= len(stackQueries) {
+						if len(buildidList) <= i {
+							buildidList = append(buildidList, "")
+						}
+						if len(alreadyKnownSymbols) <= i {
+							alreadyKnownSymbols = append(alreadyKnownSymbols, "")
+						}
+
+						var idx int
+						var addr uint64
+						var buildidStr string
+						var buildid [20]byte
+						var validBuildID bool
+						var offset uint64
+						var ip uint64
+						_, err := fmt.Sscanf(addressesList[i], "[%d]0x%x", &idx, &addr)
+						if err != nil {
 							break
 						}
-
-						b := buildid[i]
-						switch b.status {
-						case unix.BPF_STACK_BUILD_ID_EMPTY:
-							break buildid_iter
-						case unix.BPF_STACK_BUILD_ID_VALID:
-							fmt.Fprintf(&buildIDsBuilder, "[%d]", i)
-							for _, byte := range b.buildID {
-								fmt.Fprintf(&buildIDsBuilder, "%02x", byte)
-							}
-							fmt.Fprintf(&buildIDsBuilder, " +%x; ", b.offsetOrIP)
-							stackQueries[i].ValidBuildID = true
-							stackQueries[i].BuildID = b.buildID
-							stackQueries[i].Offset = b.offsetOrIP
-						case unix.BPF_STACK_BUILD_ID_IP:
-							fmt.Fprintf(&buildIDsBuilder, "[%d]%x; ", i, b.offsetOrIP)
-							stackQueries[i].IP = b.offsetOrIP
+						_, err = fmt.Sscanf(buildidList[i], "[%d]%s +%x", &idx, &buildidStr, &offset)
+						if err != nil {
+							_, _ = fmt.Sscanf(buildidList[i], "[%d]%x", &idx, &ip)
+							// It's ok if we don't have a build ID.
+						} else {
+							validBuildID = true
 						}
-
+						buildidSlice, err := hex.DecodeString(buildidStr)
+						if err != nil {
+							logger.Warnf("decoding build ID %q: %s", buildidStr, err)
+							break
+						}
+						// It's ok if we don't have a build ID. But if we have one, it should be valid.
+						if len(buildidSlice) != 20 && len(buildidSlice) != 0 {
+							logger.Warnf("decoding build ID %q: invalid length %d", buildidStr, len(buildidSlice))
+							break
+						}
+						copy(buildid[:], buildidSlice)
+						stackQueries = append(stackQueries, symbolizer.StackItemQuery{
+							Addr:         addr,
+							ValidBuildID: validBuildID,
+							BuildID:      buildid,
+							Offset:       offset,
+							IP:           ip,
+						})
 					}
-					buildIDField.PutString(data, buildIDsBuilder.String())
 				}
 
-				if o.symbolizer != nil {
+				if o.symbolizer != nil && o.symbolizer() != nil {
 					task := symbolizer.Task{
 						Name:         fmt.Sprintf("%s/%s", containerName, comm),
 						PidNumbers:   pidNumbers,
@@ -334,7 +388,7 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						MtimeSec:     int64(mtimeSec),
 						MtimeNsec:    mtimeNsec,
 					}
-					stackQueriesResponse, err := o.symbolizer.Resolve(task, stackQueries)
+					stackQueriesResponse, err := o.symbolizer().Resolve(task, stackQueries)
 					if err != nil {
 						logger.Warnf("symbolizer: %s", err)
 						return nil
@@ -342,7 +396,11 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 					var symbolsBuilder strings.Builder
 					for i, res := range stackQueriesResponse {
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, res.Symbol)
+						s := res.Symbol
+						if !res.Found && i < len(alreadyKnownSymbols) {
+							s = alreadyKnownSymbols[i]
+						}
+						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, s)
 					}
 					symbolsField.PutString(data, symbolsBuilder.String())
 				}
@@ -359,26 +417,28 @@ func (o *OperatorInstance) Name() string {
 }
 
 func (o *OperatorInstance) Start(gadgetCtx operators.GadgetContext) error {
-	userStackMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.UserStackMapName)
-	if !ok || userStackMapAny == nil {
-		return errors.New("user stack map is not initialized but used. " +
-			"if you are using `gadget_user_stack` as event field, " +
-			"try to include <gadget/user_stack_map.h>")
-	}
-	o.userStackMap, ok = userStackMapAny.(*ebpf.Map)
-	if !ok {
-		return errors.New("user stack map is not of expected type")
-	}
-	if o.userStackMap == nil {
-		return errors.New("user stack map is nil")
-	}
-
-	buildIDMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.BuildIdMapName)
-	// buildIDMap is optional. Older gadgets won't have it.
-	if ok {
-		o.buildIDMap, ok = buildIDMapAny.(*ebpf.Map)
+	if !gadgetCtx.IsClient() {
+		userStackMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.UserStackMapName)
+		if !ok || userStackMapAny == nil {
+			return errors.New("user stack map is not initialized but used. " +
+				"if you are using `gadget_user_stack` as event field, " +
+				"try to include <gadget/user_stack_map.h>")
+		}
+		o.userStackMap, ok = userStackMapAny.(*ebpf.Map)
 		if !ok {
-			return errors.New("build_id map is not of expected type")
+			return errors.New("user stack map is not of expected type")
+		}
+		if o.userStackMap == nil {
+			return errors.New("user stack map is nil")
+		}
+
+		buildIDMapAny, ok := gadgetCtx.GetVar(operators.MapPrefix + ebpftypes.BuildIdMapName)
+		// buildIDMap is optional. Older gadgets won't have it.
+		if ok {
+			o.buildIDMap, ok = buildIDMapAny.(*ebpf.Map)
+			if !ok {
+				return errors.New("build_id map is not of expected type")
+			}
 		}
 	}
 
@@ -395,8 +455,8 @@ func (o *OperatorInstance) Stop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (o *OperatorInstance) Close(gadgetCtx operators.GadgetContext) error {
-	if o.symbolizer != nil {
-		o.symbolizer.Close()
+	if o.symbolizer != nil && o.symbolizer() != nil {
+		o.symbolizer().Close()
 	}
 	return nil
 }
