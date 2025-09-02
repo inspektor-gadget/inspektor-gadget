@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,7 +119,15 @@ func (m *Manager) RunGadget(instance *api.GadgetInstance) {
 	m.mu.Unlock()
 	go func() {
 		defer cancel()
-		err := gi.Run(ctx, m.runtime, logger.DefaultLogger())
+		l := log.StandardLogger()
+		l.SetFormatter(&log.JSONFormatter{})
+		lwr := &logWrapper{Entry: l.WithFields(log.Fields{
+			"type":         "gadget-log",
+			"instanceID":   instance.Id,
+			"instanceName": instance.Name,
+			"gadget":       instance.GadgetConfig.ImageName,
+		}), logLevel: logger.Level(instance.GadgetConfig.LogLevel)}
+		err := gi.Run(ctx, m.runtime, lwr)
 		if err != nil {
 			log.Errorf("running gadget: %v", err)
 			gi.mu.Lock()
