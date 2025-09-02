@@ -655,7 +655,7 @@ Nothing special is needed.
 
 #### trace dns
 
-- [Socket filter](#socketfilter-programs)
+- [Socket filter](#socket_filter-programs)
 - [Socket enricher](#socket-enricher)
 - [Enum convert](#enum-convert)
 - [Endpoint enrichment](#endpoint-enrichment)
@@ -696,7 +696,7 @@ Already ported in gadgets/trace_open.bpf.c.
 
 #### trace sni
 
-- [Socket filter](#socketfilter-programs)
+- [Socket filter](#socket_filter-programs)
 - [Socket enricher](#socket-enricher)
 - [Endpoint enrichment](#endpoint-enrichment)
 
@@ -734,10 +734,12 @@ revisit later on:
 
 ### Support Inspektor Gadget API changes
 
-Inspektor Gadget exposes a small [API](#inspektor-gadget-api) composed by some C headers to gadget
-developers. Gadgets have to be compiled against it. In this iteration, we don't want to introduce
-additional complexity by supporting changes to that API, i.e. gadgets need to be recompiled to take
-changes in that API.
+Inspektor Gadget exposes a small
+[API](#inspektor-gadget-api-for-gadgets-developers) composed by some C headers
+to gadget developers. Gadgets have to be compiled against it. In this
+iteration, we don't want to introduce additional complexity by supporting
+changes to that API, i.e. gadgets need to be recompiled to take changes in that
+API.
 
 Later on we will consider solutions like bpf extensions or other forms of dynamic loading to solve
 this problem.
