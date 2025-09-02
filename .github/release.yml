@@ -1,5 +1,11 @@
 changelog:
   categories:
+    - title: Exciting New Features 🎉
+      labels:
+        - enhancement
     - title: Breaking Changes
       labels:
         - breaking-change
+    - title: Other Changes
+      labels:
+        - "*"
