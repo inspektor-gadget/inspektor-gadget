@@ -160,26 +160,6 @@ runtime installed. Currently supported runtime is `docker` only, You can run the
 $ make -C integration/ig/non-k8s test-docker
 ```
 
-### Benchmarks
-
-You can run the different benchmark tests with:
-
-```bash
-$ make gadgets-benchmarks
-```
-
-Or you can run an individual test with:
-
-```bash
-$ go test -exec sudo \
-    -bench='BenchmarkAllGadgetsWithContainers/container10$/trace-tcpconnect' \
-    -run=Benchmark \
-    ./internal/benchmarks/...
-```
-
-Records of previous benchmarks are available [here](https://inspektor-gadget.github.io/ig-benchmarks/dev/bench/index.html).
-See details in the [CI documentation (benchmarks)](ci.md#benchmarks).
-
 #### Explaining performance improvements in a PR
 
 If you want to contribute a performance improvement, it is useful to use benchmarks to explain the impact on
