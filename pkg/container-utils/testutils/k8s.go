@@ -176,7 +176,7 @@ func deletePodCommand(t *testing.T, podname, namespace string) *command.Command 
 	return &command.Command{
 		Name:           fmt.Sprintf("Delete %s", podname),
 		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl delete -n=%s pod %s", namespace, podname)),
-		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod \"%s\" deleted\n", podname)),
+		ValidateOutput: match.MatchRegexp(t, fmt.Sprintf("pod \"%s\" deleted( from %s namespace)?\n", podname, namespace)),
 	}
 }
 
