@@ -69,7 +69,7 @@ Containerd CRI Unix socket path
 
 Default: `/run/containerd/containerd.sock`
 
-### `container-namespace`
+### `containerd-namespace`
 
 Containerd namespace to use
 
@@ -92,11 +92,35 @@ Default: `false`
 
 ## Instance Parameters
 
-### `containername`
+### `containername` / `runtime-containername`
 
-Show only data from containers with that name
+Show data only from containers with the runtime-assigned name (not the name defined in the pod spec)
 
-Fully qualified name: `operator.LocalManager.containername`
+Fully qualified name: `operator.LocalManager.containername` / `operator.LocalManager.runtime-containername`
+
+### `k8s-containername`
+
+Show data only from containers with the name defined in the pod spec
+
+Fully qualified name: `operator.LocalManager.k8s-containername`
+
+### `k8s-namespace`
+
+Show only data from containers in that Kubernetes namespace
+
+Fully qualified name: `operator.LocalManager.k8s-namespace`
+
+### `k8s-podname`
+
+Show only data from containers in that Kubernetes pod
+
+Fully qualified name: `operator.LocalManager.k8s-podname`
+
+### `k8s-selector`
+
+Kubernetes Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).
+
+Fully qualified name: `operator.LocalManager.k8s-selector`
 
 ### `host`
 

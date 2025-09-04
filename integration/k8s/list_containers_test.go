@@ -164,6 +164,105 @@ func TestListContainers(t *testing.T) {
 		)
 		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
+
+	t.Run("FilteredListK8sContainerName", func(t *testing.T) {
+		t.Parallel()
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --k8s-containername=%s", containerRuntime, cn),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
+			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
+				match.MatchAllEntries(t, match.JSONSingleArrayMode, output, f, c)
+			},
+		)
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("FilteredListWithPodName", func(t *testing.T) {
+		t.Parallel()
+
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --k8s-podname=%s", containerRuntime, runtimeContainerName, cn),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
+			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
+				match.MatchAllEntries(t, match.JSONSingleArrayMode, output, f, c)
+			},
+		)
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("FilteredListWithNamespace", func(t *testing.T) {
+		t.Parallel()
+
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --k8s-namespace=%s", containerRuntime, runtimeContainerName, ns),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
+			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
+				match.MatchAllEntries(t, match.JSONSingleArrayMode, output, f, c)
+			},
+		)
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("NegativeFilteredList", func(t *testing.T) {
+		t.Parallel()
+
+		listContainerTestStep := &Command{
+			Name: "RunListContainers",
+			Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=non-existing", containerRuntime),
+			ValidateOutput: func(t *testing.T, output string) {
+				var containers []containercollection.Container
+				err := json.Unmarshal([]byte(output), &containers)
+				require.NoError(t, err, "unmarshalling list-containers output")
+				require.Len(t, containers, 0, "expected no containers")
+			},
+		}
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("NegativeFilteredListK8sContainerName", func(t *testing.T) {
+		t.Parallel()
+		listContainerTestStep := &Command{
+			Name: "RunListContainers",
+			Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --k8s-containername=non-existing", containerRuntime),
+			ValidateOutput: func(t *testing.T, output string) {
+				var containers []containercollection.Container
+				err := json.Unmarshal([]byte(output), &containers)
+				require.NoError(t, err, "unmarshalling list-containers output")
+				require.Len(t, containers, 0, "expected no containers")
+			},
+		}
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("NegativeFilteredListWithPodName", func(t *testing.T) {
+		t.Parallel()
+		listContainerTestStep := &Command{
+			Name: "RunListContainers",
+			Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --k8s-podname=non-existing", containerRuntime, runtimeContainerName),
+			ValidateOutput: func(t *testing.T, output string) {
+				var containers []containercollection.Container
+				err := json.Unmarshal([]byte(output), &containers)
+				require.NoError(t, err, "unmarshalling list-containers output")
+				require.Len(t, containers, 0, "expected no containers")
+			},
+		}
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("NegativeFilteredListWithNamespace", func(t *testing.T) {
+		t.Parallel()
+		listContainerTestStep := &Command{
+			Name: "RunListContainers",
+			Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --k8s-namespace=non-existing", containerRuntime, runtimeContainerName),
+			ValidateOutput: func(t *testing.T, output string) {
+				var containers []containercollection.Container
+				err := json.Unmarshal([]byte(output), &containers)
+				require.NoError(t, err, "unmarshalling list-containers output")
+				require.Len(t, containers, 0, "expected no containers")
+			},
+		}
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }
 
 func TestWatchCreatedContainers(t *testing.T) {
