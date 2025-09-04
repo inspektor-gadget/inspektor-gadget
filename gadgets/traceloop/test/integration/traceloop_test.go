@@ -100,10 +100,12 @@ func TestTraceloop(t *testing.T) {
 			normalize := func(e *traceloopEvent) {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeInt(&e.MntnsID)
-				utils.NormalizeInt(&e.CPU)
 				utils.NormalizeInt(&e.PID)
 				utils.NormalizeString(&e.Parameters)
 				utils.NormalizeString(&e.Ret)
+
+				// e.CPU can be 0, so set it manually to NormalizedInt
+				e.CPU = utils.NormalizedInt
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
