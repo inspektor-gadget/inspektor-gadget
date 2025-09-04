@@ -66,6 +66,7 @@ const (
 	AnnotationMetricsCollect     = "metrics.collect"
 	AnnotationMetricsPrint       = "metrics.print"
 	AnnotationMetricsType        = "metrics.type"
+	AnnotationMetricsName        = "metrics.name"
 	AnnotationMetricsDescription = "metrics.description"
 	AnnotationMetricsUnit        = "metrics.unit"
 	AnnotationMetricsBoundaries  = "metrics.boundaries"
@@ -372,7 +373,8 @@ type metricsCollector struct {
 }
 
 func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
-	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, "", attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
+	nameOverride := f.Annotations()[AnnotationMetricsName]
+	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, nameOverride, attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
 	if err != nil {
 		return err
 	}
@@ -383,7 +385,16 @@ func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
 	return nil
 }
 
+func getMetricName(f datasource.FieldAccessor) string {
+	if nameOverride := f.Annotations()[AnnotationMetricsName]; nameOverride != "" {
+		return nameOverride
+	}
+	return f.FullName()
+}
+
 func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType string) error {
+	metricName := getMetricName(f)
+
 	var options []metric.InstrumentOption
 	if description := f.Annotations()[AnnotationMetricsDescription]; description != "" {
 		options = append(options, metric.WithDescription(description))
@@ -394,7 +405,7 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 
 	switch f.Type() {
 	default:
-		return fmt.Errorf("unsupported field type for metrics value %q: %s", f.Name(), f.Type())
+		return fmt.Errorf("unsupported field type for metrics value %q: %s", metricName, f.Type())
 	case api.Kind_Uint8,
 		api.Kind_Uint16,
 		api.Kind_Uint32,
@@ -410,9 +421,9 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 			for i, option := range options {
 				tOptions[i] = option
 			}
-			ctr, err := mc.meter.Int64Counter(f.Name(), tOptions...)
+			ctr, err := mc.meter.Int64Counter(metricName, tOptions...)
 			if err != nil {
-				return fmt.Errorf("adding metric %s for %q: %w", metricType, f.Name(), err)
+				return fmt.Errorf("adding metric %s for %q: %w", metricType, metricName, err)
 			}
 			mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 				ctr.Add(ctx, asIntFn(data), metric.WithAttributeSet(set))
@@ -422,9 +433,9 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 			for i, option := range options {
 				tOptions[i] = option
 			}
-			ctr, err := mc.meter.Int64Gauge(f.Name(), tOptions...)
+			ctr, err := mc.meter.Int64Gauge(metricName, tOptions...)
 			if err != nil {
-				return fmt.Errorf("adding metric %s for %q: %w", metricType, f.Name(), err)
+				return fmt.Errorf("adding metric %s for %q: %w", metricType, metricName, err)
 			}
 			mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 				ctr.Record(ctx, asIntFn(data), metric.WithAttributeSet(set))
@@ -439,9 +450,9 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 			for i, option := range options {
 				tOptions[i] = option
 			}
-			ctr, err := mc.meter.Float64Counter(f.Name(), tOptions...)
+			ctr, err := mc.meter.Float64Counter(metricName, tOptions...)
 			if err != nil {
-				return fmt.Errorf("adding metric %s for %q: %w", metricType, f.Name(), err)
+				return fmt.Errorf("adding metric %s for %q: %w", metricType, metricName, err)
 			}
 			mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 				ctr.Add(ctx, asFloatFn(data), metric.WithAttributeSet(set))
@@ -451,9 +462,9 @@ func (mc *metricsCollector) addValFunc(f datasource.FieldAccessor, metricType st
 			for i, option := range options {
 				tOptions[i] = option
 			}
-			ctr, err := mc.meter.Float64Gauge(f.Name(), tOptions...)
+			ctr, err := mc.meter.Float64Gauge(metricName, tOptions...)
 			if err != nil {
-				return fmt.Errorf("adding metric %s for %q: %w", metricType, f.Name(), err)
+				return fmt.Errorf("adding metric %s for %q: %w", metricType, metricName, err)
 			}
 			mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 				ctr.Record(ctx, asFloatFn(data), metric.WithAttributeSet(set))
@@ -481,11 +492,13 @@ func listToVals[T int64 | float64](list string, conv func(string) (T, error)) ([
 }
 
 func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasource.FieldAccessor) error {
+	metricName := getMetricName(f)
+
 	options := make([]metric.HistogramOption, 0)
 	if buckets := f.Annotations()[AnnotationMetricsBoundaries]; buckets != "" {
 		boundaries, err := listToVals[float64](buckets, toFloat64)
 		if err != nil {
-			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
+			return fmt.Errorf("adding metric histogram for %q: %w", metricName, err)
 		}
 		options = append(options, metric.WithExplicitBucketBoundaries(boundaries...))
 	}
@@ -498,7 +511,7 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 
 	switch f.Type() {
 	default:
-		return fmt.Errorf("unsupported field type for metrics value %q: %s", f.Name(), f.Type())
+		return fmt.Errorf("unsupported field type for metrics value %q: %s", metricName, f.Type())
 	case api.ArrayOf(api.Kind_Uint32), api.ArrayOf(api.Kind_Uint64):
 		// Calc buckets
 		typeLen := 4
@@ -528,9 +541,9 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 			hOptions[i] = option
 		}
 
-		hist, err := mc.meter.Int64Histogram(f.Name(), hOptions...)
+		hist, err := mc.meter.Int64Histogram(metricName, hOptions...)
 		if err != nil {
-			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
+			return fmt.Errorf("adding metric histogram for %q: %w", metricName, err)
 		}
 		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
 			b := f.Get(data)
@@ -561,9 +574,9 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 		for i, option := range options {
 			hOptions[i] = option
 		}
-		hist, err := mc.meter.Int64Histogram(f.Name(), hOptions...)
+		hist, err := mc.meter.Int64Histogram(metricName, hOptions...)
 		if err != nil {
-			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
+			return fmt.Errorf("adding metric histogram for %q: %w", metricName, err)
 		}
 		asIntFn, _ := datasource.AsInt64(f) // error can't happen
 		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
@@ -575,9 +588,9 @@ func (mc *metricsCollector) addValHistFunc(ds datasource.DataSource, f datasourc
 		for i, option := range options {
 			hOptions[i] = option
 		}
-		hist, err := mc.meter.Float64Histogram(f.Name(), hOptions...)
+		hist, err := mc.meter.Float64Histogram(metricName, hOptions...)
 		if err != nil {
-			return fmt.Errorf("adding metric histogram for %q: %w", f.Name(), err)
+			return fmt.Errorf("adding metric histogram for %q: %w", metricName, err)
 		}
 		asFloatFn, _ := datasource.AsFloat64(f) // error can't happen
 		mc.values = append(mc.values, func(ctx context.Context, data datasource.Data, set attribute.Set) {
@@ -714,7 +727,7 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 
 		fields := ds.Accessors(false)
 		for _, f := range fields {
-			fieldName := f.Name()
+			fieldName := f.FullName()
 			metricsType := f.Annotations()[AnnotationMetricsType]
 
 			// Try to auto-apply metricsType from tags

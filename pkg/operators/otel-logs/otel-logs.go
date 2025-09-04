@@ -256,7 +256,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			case FieldNameTimestamp:
 				ts, err := datasource.AsInt64(f)
 				if err != nil {
-					return fmt.Errorf("using field %q as %q: %w", f.Name(), name, err)
+					return fmt.Errorf("using field %q as %q: %w", f.FullName(), name, err)
 				}
 				fns = append(fns, func(data datasource.Data, record *otellog.Record) {
 					record.SetObservedTimestamp(time.Unix(0, ts(data)*int64(time.Microsecond)))
@@ -264,7 +264,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			case FieldNameSeverity:
 				severity, err := datasource.AsInt64(f)
 				if err != nil {
-					return fmt.Errorf("using field %q as %q: %w", f.Name(), name, err)
+					return fmt.Errorf("using field %q as %q: %w", f.FullName(), name, err)
 				}
 				fns = append(fns, func(data datasource.Data, record *otellog.Record) {
 					record.SetSeverity(otellog.Severity(severity(data)))
@@ -274,7 +274,7 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 
 			kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, name, otellog.Int64Value, otellog.Float64Value, otellog.StringValue)
 			if err != nil {
-				return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.Name(), err)
+				return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.FullName(), err)
 			}
 			prep = append(prep, func(data datasource.Data) otellog.KeyValue {
 				key, val := kvf(data)
