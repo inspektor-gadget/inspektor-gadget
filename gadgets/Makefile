@@ -56,6 +56,7 @@ GADGETS ?= \
 	ttysnoop \
 	snapshot_process \
 	snapshot_socket \
+	tailcall \
 	ci/datasource-containers \
 	ci/inner_fields \
 	ci/sched_cls_drop \

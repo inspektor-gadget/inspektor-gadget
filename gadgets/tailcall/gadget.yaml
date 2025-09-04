@@ -1,0 +1,16 @@
+name: 'TODO: Fill the gadget name'
+description: 'TODO: Fill the gadget description'
+homepageURL: 'TODO: Fill the gadget homepage URL'
+documentationURL: 'TODO: Fill the gadget documentation URL'
+sourceURL: 'TODO: Fill the gadget source code URL'
+datasources:
+  exec:
+    fields:
+      proc:
+        annotations:
+          description: 'TODO: Fill field description'
+      timestamp_raw:
+        annotations:
+          description: 'TODO: Fill field description'
+params:
+  ebpf:
