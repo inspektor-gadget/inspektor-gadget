@@ -236,40 +236,6 @@ func removeAllLabeledResources(dynClient dynamic.Interface, discoveryClient disc
 	return nil
 }
 
-func removeLegacyResources(k8sClient *kubernetes.Clientset, crdClient *clientset.Clientset) error {
-	// Let's try to remove components of IG versions before v0.5.0,
-	// just in case somebody has a newer CLI but is trying to remove
-	// an old version of Inspektor Gadget from the cluster. Given
-	// that this is a best effort work, we don't track any error.
-
-	// kube-system/gadget daemon set
-	k8sClient.AppsV1().DaemonSets("kube-system").Delete(
-		context.TODO(), "gadget", metav1.DeleteOptions{},
-	)
-
-	// gadget cluster role binding
-	k8sClient.RbacV1().ClusterRoleBindings().Delete(
-		context.TODO(), "gadget", metav1.DeleteOptions{},
-	)
-
-	// kube-system/gadget service account
-	k8sClient.CoreV1().ServiceAccounts("kube-system").Delete(
-		context.TODO(), "gadget", metav1.DeleteOptions{},
-	)
-
-	// Even if we're not using CRDs anymore, we keep this code here in case a
-	// user tries to undeploy and old IG instance with a newer kubectl-gadget
-	// binary.
-	fmt.Println("Removing CRD...")
-	err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
-		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	return nil
-}
-
 func handleCleanupWait(k8sClient *kubernetes.Clientset, dynClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, gadgetNamespace, labelSelector string) error {
 	if deleteNamespace {
 		return handleNamespaceDeletion(k8sClient, gadgetNamespace)
@@ -399,11 +365,6 @@ func runLabelBasedUndeploy(k8sClient *kubernetes.Clientset, crdClient *clientset
 	var errs []string
 	labelSelector := "k8s-app=gadget"
 
-	// Remove legacy resources (for compatibility)
-	if err := removeLegacyResources(k8sClient, crdClient); err != nil {
-		errs = append(errs, fmt.Sprintf("removing legacy resources: %v", err))
-	}
-
 	// Remove all labeled resources
 	fmt.Println("Discovering and removing labeled resources...")
 	if err := removeAllLabeledResources(dynClient, discoveryClient, gadgetNamespace, labelSelector); err != nil {
@@ -492,11 +453,6 @@ func runLegacyUndeploy(k8sClient *kubernetes.Clientset, crdClient *clientset.Cli
 	)
 	if err != nil && !errors.IsNotFound(err) {
 		errs = append(errs, fmt.Sprintf("failed to remove \"gadget\" service account: %s", err))
-	}
-
-	// Remove legacy resources
-	if err := removeLegacyResources(k8sClient, crdClient); err != nil {
-		errs = append(errs, fmt.Sprintf("removing legacy resources: %v", err))
 	}
 
 	// Remove image policy if present
