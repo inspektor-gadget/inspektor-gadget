@@ -62,7 +62,7 @@ func TestTraceloop(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do ls > /dev/null; sleep 0.1; done",
+		"while true; do mkdir /not/there > /dev/null; nslookup test.local 127.0.0.1:1234; echo -n | nc 127.0.0.1 1234; (sleep 0.2 ; /bin/echo aqueduct) | true; sleep 0.1; done",
 		containerOpts...,
 	)
 
@@ -86,15 +86,47 @@ func TestTraceloop(t *testing.T) {
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
-			expectedEntry := &traceloopEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				MntnsID:    utils.NormalizedInt,
-				CPU:        utils.NormalizedInt,
-				PID:        utils.NormalizedInt,
-				Comm:       "ls",
-				Syscall:    "write",
-				Parameters: utils.NormalizedStr,
-				Ret:        utils.NormalizedStr,
+			expectedEntry := []*traceloopEvent{
+				{
+					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					MntnsID:    utils.NormalizedInt,
+					CPU:        utils.NormalizedInt,
+					PID:        utils.NormalizedInt,
+					Comm:       "mkdir",
+					Syscall:    "mkdir",
+					Parameters: `pathname="/not/there", mode=511`,
+					Ret:        "-1 ENOENT (no such file or directory)",
+				},
+				{
+					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					MntnsID:    utils.NormalizedInt,
+					CPU:        utils.NormalizedInt,
+					PID:        utils.NormalizedInt,
+					Comm:       "nslookup",
+					Syscall:    "connect",
+					Parameters: `fd=3, uservaddr=127.0.0.1:1234, addrlen=16`,
+					Ret:        "0", // connect syscall on UDP always succeeds
+				},
+				{
+					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					MntnsID:    utils.NormalizedInt,
+					CPU:        utils.NormalizedInt,
+					PID:        utils.NormalizedInt,
+					Comm:       "nc",
+					Syscall:    "connect",
+					Parameters: `fd=3, uservaddr=127.0.0.1:1234, addrlen=16`,
+					Ret:        "-1 ECONNREFUSED (connection refused)",
+				},
+				{
+					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					MntnsID:    utils.NormalizedInt,
+					CPU:        utils.NormalizedInt,
+					PID:        utils.NormalizedInt,
+					Comm:       "echo",
+					Syscall:    "write",
+					Parameters: `fd=1, buf="aqueduct\n", count=9`,
+					Ret:        "-1 EPIPE (broken pipe)",
+				},
 			}
 
 			normalize := func(e *traceloopEvent) {
@@ -102,11 +134,9 @@ func TestTraceloop(t *testing.T) {
 				utils.NormalizeInt(&e.MntnsID)
 				utils.NormalizeInt(&e.CPU)
 				utils.NormalizeInt(&e.PID)
-				utils.NormalizeString(&e.Parameters)
-				utils.NormalizeString(&e.Ret)
 			}
 
-			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntry...)
 		},
 	))
 

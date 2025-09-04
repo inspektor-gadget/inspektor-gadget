@@ -319,6 +319,161 @@ func alignSize(structSize uintptr) uintptr {
 	return ret
 }
 
+// Error table from
+// https://github.com/golang/sys/blob/master/unix/zerrors_linux_amd64.go
+// The list is the same between amd64 and arm64.
+// The table is redefined here because it is different in the wasm
+// architecture, see:
+// https://github.com/golang/go/blob/master/src/syscall/tables_wasip1.go
+var errorList = [...]struct {
+	num  syscall.Errno
+	name string
+	desc string
+}{
+	{1, "EPERM", "operation not permitted"},
+	{2, "ENOENT", "no such file or directory"},
+	{3, "ESRCH", "no such process"},
+	{4, "EINTR", "interrupted system call"},
+	{5, "EIO", "input/output error"},
+	{6, "ENXIO", "no such device or address"},
+	{7, "E2BIG", "argument list too long"},
+	{8, "ENOEXEC", "exec format error"},
+	{9, "EBADF", "bad file descriptor"},
+	{10, "ECHILD", "no child processes"},
+	{11, "EAGAIN", "resource temporarily unavailable"},
+	{12, "ENOMEM", "cannot allocate memory"},
+	{13, "EACCES", "permission denied"},
+	{14, "EFAULT", "bad address"},
+	{15, "ENOTBLK", "block device required"},
+	{16, "EBUSY", "device or resource busy"},
+	{17, "EEXIST", "file exists"},
+	{18, "EXDEV", "invalid cross-device link"},
+	{19, "ENODEV", "no such device"},
+	{20, "ENOTDIR", "not a directory"},
+	{21, "EISDIR", "is a directory"},
+	{22, "EINVAL", "invalid argument"},
+	{23, "ENFILE", "too many open files in system"},
+	{24, "EMFILE", "too many open files"},
+	{25, "ENOTTY", "inappropriate ioctl for device"},
+	{26, "ETXTBSY", "text file busy"},
+	{27, "EFBIG", "file too large"},
+	{28, "ENOSPC", "no space left on device"},
+	{29, "ESPIPE", "illegal seek"},
+	{30, "EROFS", "read-only file system"},
+	{31, "EMLINK", "too many links"},
+	{32, "EPIPE", "broken pipe"},
+	{33, "EDOM", "numerical argument out of domain"},
+	{34, "ERANGE", "numerical result out of range"},
+	{35, "EDEADLK", "resource deadlock avoided"},
+	{36, "ENAMETOOLONG", "file name too long"},
+	{37, "ENOLCK", "no locks available"},
+	{38, "ENOSYS", "function not implemented"},
+	{39, "ENOTEMPTY", "directory not empty"},
+	{40, "ELOOP", "too many levels of symbolic links"},
+	{42, "ENOMSG", "no message of desired type"},
+	{43, "EIDRM", "identifier removed"},
+	{44, "ECHRNG", "channel number out of range"},
+	{45, "EL2NSYNC", "level 2 not synchronized"},
+	{46, "EL3HLT", "level 3 halted"},
+	{47, "EL3RST", "level 3 reset"},
+	{48, "ELNRNG", "link number out of range"},
+	{49, "EUNATCH", "protocol driver not attached"},
+	{50, "ENOCSI", "no CSI structure available"},
+	{51, "EL2HLT", "level 2 halted"},
+	{52, "EBADE", "invalid exchange"},
+	{53, "EBADR", "invalid request descriptor"},
+	{54, "EXFULL", "exchange full"},
+	{55, "ENOANO", "no anode"},
+	{56, "EBADRQC", "invalid request code"},
+	{57, "EBADSLT", "invalid slot"},
+	{59, "EBFONT", "bad font file format"},
+	{60, "ENOSTR", "device not a stream"},
+	{61, "ENODATA", "no data available"},
+	{62, "ETIME", "timer expired"},
+	{63, "ENOSR", "out of streams resources"},
+	{64, "ENONET", "machine is not on the network"},
+	{65, "ENOPKG", "package not installed"},
+	{66, "EREMOTE", "object is remote"},
+	{67, "ENOLINK", "link has been severed"},
+	{68, "EADV", "advertise error"},
+	{69, "ESRMNT", "srmount error"},
+	{70, "ECOMM", "communication error on send"},
+	{71, "EPROTO", "protocol error"},
+	{72, "EMULTIHOP", "multihop attempted"},
+	{73, "EDOTDOT", "RFS specific error"},
+	{74, "EBADMSG", "bad message"},
+	{75, "EOVERFLOW", "value too large for defined data type"},
+	{76, "ENOTUNIQ", "name not unique on network"},
+	{77, "EBADFD", "file descriptor in bad state"},
+	{78, "EREMCHG", "remote address changed"},
+	{79, "ELIBACC", "can not access a needed shared library"},
+	{80, "ELIBBAD", "accessing a corrupted shared library"},
+	{81, "ELIBSCN", ".lib section in a.out corrupted"},
+	{82, "ELIBMAX", "attempting to link in too many shared libraries"},
+	{83, "ELIBEXEC", "cannot exec a shared library directly"},
+	{84, "EILSEQ", "invalid or incomplete multibyte or wide character"},
+	{85, "ERESTART", "interrupted system call should be restarted"},
+	{86, "ESTRPIPE", "streams pipe error"},
+	{87, "EUSERS", "too many users"},
+	{88, "ENOTSOCK", "socket operation on non-socket"},
+	{89, "EDESTADDRREQ", "destination address required"},
+	{90, "EMSGSIZE", "message too long"},
+	{91, "EPROTOTYPE", "protocol wrong type for socket"},
+	{92, "ENOPROTOOPT", "protocol not available"},
+	{93, "EPROTONOSUPPORT", "protocol not supported"},
+	{94, "ESOCKTNOSUPPORT", "socket type not supported"},
+	{95, "ENOTSUP", "operation not supported"},
+	{96, "EPFNOSUPPORT", "protocol family not supported"},
+	{97, "EAFNOSUPPORT", "address family not supported by protocol"},
+	{98, "EADDRINUSE", "address already in use"},
+	{99, "EADDRNOTAVAIL", "cannot assign requested address"},
+	{100, "ENETDOWN", "network is down"},
+	{101, "ENETUNREACH", "network is unreachable"},
+	{102, "ENETRESET", "network dropped connection on reset"},
+	{103, "ECONNABORTED", "software caused connection abort"},
+	{104, "ECONNRESET", "connection reset by peer"},
+	{105, "ENOBUFS", "no buffer space available"},
+	{106, "EISCONN", "transport endpoint is already connected"},
+	{107, "ENOTCONN", "transport endpoint is not connected"},
+	{108, "ESHUTDOWN", "cannot send after transport endpoint shutdown"},
+	{109, "ETOOMANYREFS", "too many references: cannot splice"},
+	{110, "ETIMEDOUT", "connection timed out"},
+	{111, "ECONNREFUSED", "connection refused"},
+	{112, "EHOSTDOWN", "host is down"},
+	{113, "EHOSTUNREACH", "no route to host"},
+	{114, "EALREADY", "operation already in progress"},
+	{115, "EINPROGRESS", "operation now in progress"},
+	{116, "ESTALE", "stale file handle"},
+	{117, "EUCLEAN", "structure needs cleaning"},
+	{118, "ENOTNAM", "not a XENIX named type file"},
+	{119, "ENAVAIL", "no XENIX semaphores available"},
+	{120, "EISNAM", "is a named type file"},
+	{121, "EREMOTEIO", "remote I/O error"},
+	{122, "EDQUOT", "disk quota exceeded"},
+	{123, "ENOMEDIUM", "no medium found"},
+	{124, "EMEDIUMTYPE", "wrong medium type"},
+	{125, "ECANCELED", "operation canceled"},
+	{126, "ENOKEY", "required key not available"},
+	{127, "EKEYEXPIRED", "key has expired"},
+	{128, "EKEYREVOKED", "key has been revoked"},
+	{129, "EKEYREJECTED", "key was rejected by service"},
+	{130, "EOWNERDEAD", "owner died"},
+	{131, "ENOTRECOVERABLE", "state not recoverable"},
+	{132, "ERFKILL", "operation not possible due to RF-kill"},
+	{133, "EHWPOISON", "memory page has hardware error"},
+}
+
+// errnoName returns the error name for error number e.
+func errnoName(e syscall.Errno) string {
+	i := sort.Search(len(errorList), func(i int) bool {
+		return errorList[i].num >= e
+	})
+	if i < len(errorList) && errorList[i].num == e {
+		return fmt.Sprintf("%s (%s)", errorList[i].name, errorList[i].desc)
+	}
+	return fmt.Sprintf("(unknown error %d)", e)
+}
+
 // Convert a return value to corresponding error number if meaningful.
 // See man syscalls:
 // Note:
@@ -331,7 +486,7 @@ func alignSize(structSize uintptr) uintptr {
 func retToStr(ret uint64) string {
 	errNo := int64(ret)
 	if errNo >= -4095 && errNo <= -1 {
-		return fmt.Sprintf("-1 (%s)", syscall.Errno(-errNo).Error())
+		return fmt.Sprintf("-1 %s", errnoName(syscall.Errno(-errNo)))
 	}
 	return fmt.Sprintf("%d", ret)
 }
