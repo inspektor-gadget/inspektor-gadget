@@ -3,3 +3,14 @@ changelog:
     - title: Breaking Changes
       labels:
         - breaking-change
+    - title: Other Changes
+      labels:
+        - "*"
+    - title: Dependencies updates
+      labels:
+        - dependencies
+        - go
+    - title: CI updates
+      labels:
+        - dependencies
+        - github_actions
