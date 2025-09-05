@@ -16,7 +16,6 @@ package signatureverifier
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/distribution/reference"
@@ -29,29 +28,23 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
 
-func createTestPrerequisities(image string) (oras.Target, *remote.Repository, reference.Named, error) {
-	store, err := oci.New(os.TempDir())
-	if err != nil {
-		return nil, nil, nil, err
-	}
+func createTestPrerequisities(t *testing.T, image string) (oras.Target, *remote.Repository, reference.Named) {
+	store, err := oci.New(t.TempDir())
+	require.NoError(t, err)
 
 	ref, err := reference.ParseNormalizedNamed(image)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	require.NoError(t, err)
 
 	ref = reference.TagNameOnly(ref)
 
 	repo, err := remote.NewRepository(ref.Name())
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	require.NoError(t, err)
 
 	repo.Client = &auth.Client{
 		Credential: auth.StaticCredential(reference.Domain(ref), auth.EmptyCredential),
 	}
 
-	return store, repo, ref, nil
+	return store, repo, ref
 }
 
 func TestVerify(t *testing.T) {
@@ -123,11 +116,10 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			store, repo, ref, err := createTestPrerequisities(test.image)
-			require.NoError(t, err)
+			store, repo, ref := createTestPrerequisities(t, test.image)
 
 			// Pull the image.
-			_, err = oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
+			_, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
 			require.NoError(t, err)
 
 			err = Verify(context.Background(), repo, store, ref, test.opts)
@@ -172,8 +164,7 @@ func TestPullSigningInformation(t *testing.T) {
 
 			ctx := context.Background()
 
-			store, repo, ref, err := createTestPrerequisities(test.image)
-			require.NoError(t, err)
+			store, repo, ref := createTestPrerequisities(t, test.image)
 
 			// Pull the image.
 			desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
@@ -200,11 +191,8 @@ func TestExportSigningInformation(t *testing.T) {
 
 	ctx := context.Background()
 
-	store, repo, ref, err := createTestPrerequisities(signedImage)
-	require.NoError(t, err)
-
-	destStore, _, destRef, err := createTestPrerequisities(destSignedImage)
-	require.NoError(t, err)
+	store, repo, ref := createTestPrerequisities(t, signedImage)
+	destStore, _, destRef := createTestPrerequisities(t, destSignedImage)
 
 	// Pull the image.
 	desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
