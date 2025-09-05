@@ -146,7 +146,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	}
 
 	if len(containerJSON.NetworkSettings.Networks) == 1 {
-		d.ip = containerJSON.NetworkSettings.IPAddress
+		for _, network := range containerJSON.NetworkSettings.Networks {
+			d.ip = network.IPAddress
+		}
 	}
 
 	d.portBindings = containerJSON.NetworkSettings.Ports
