@@ -59,7 +59,7 @@ func TestTraceSignal(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do sleep 3 & kill $!; done",
+		"while true; do sleep 1; sleep 3 & kill $!; done",
 		containerOpts...,
 	)
 
