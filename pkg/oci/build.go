@@ -34,6 +34,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
@@ -78,6 +79,8 @@ type BuildGadgetImageOpts struct {
 	ValidateMetadata bool
 	// Date and time on which the image is built (date-time string as defined by RFC 3339).
 	CreatedDate string
+	// GadgetCategory is the category of the gadget. If not set, it will be determined from metadata or spec.
+	GadgetCategory string
 }
 
 // BuildGadgetImage creates an OCI image with the objects provided in opts. The image parameter in
@@ -100,19 +103,57 @@ func buildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
+	var metadata metadatav1.GadgetMetadata
+	var hasMetadata bool
+	if md, err := os.Open(opts.MetadataPath); err == nil {
+		hasMetadata = true
+		defer md.Close()
+		err = yaml.NewDecoder(md).Decode(&metadata)
+		if err != nil {
+			return nil, fmt.Errorf("parsing metadata file: %w", err)
+		}
+	}
+	spec, _ := getAnySpec(opts)
+
+	// Try to get gadget category with the following priority:
+	// 1. From command line option
+	// 2. From metadata file if it exists
+	// 3. From the spec of the eBPF program if it exists
+	var category metadatav1.Category
+	if opts.GadgetCategory != "" {
+		category = metadatav1.Category(opts.GadgetCategory)
+	} else if metadata.Category != "" {
+		category = metadata.Category
+	} else if spec != nil {
+		if len(spec.Variables) == 0 {
+			return nil, errors.New("cannot determine gadget category: no variables in spec")
+		}
+		category, err = types.GetGadgetCategoryFromSpec(spec)
+		if err != nil {
+			return nil, fmt.Errorf("getting gadget category from spec: %w", err)
+		}
+	}
+	if category == "" {
+		return nil, errors.New("cannot determine gadget category: it should be provided either as a command line option, in the metadata file, or in the spec of the eBPF program")
+	}
+	metadata.Category = category
+
 	if opts.UpdateMetadata {
-		if err := createOrUpdateMetadataFile(ctx, opts); err != nil {
+		if spec == nil {
+			return nil, fmt.Errorf("no spec provided for metadata update")
+		}
+		if err = createOrUpdateMetadataFile(ctx, opts, spec, metadata, hasMetadata); err != nil {
 			return nil, fmt.Errorf("updating metadata file: %w", err)
 		}
 	}
 
 	if opts.ValidateMetadata {
-		if err := validateMetadataFile(ctx, opts); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("validating metadata file: %w", err)
+		if err = types.Validate(&metadata, spec); err != nil {
+			return nil, fmt.Errorf("validating metadata: %w", err)
 		}
 	}
 
-	indexDesc, err := createImageIndex(ctx, ociStore, opts)
+	indexDesc, err := createImageIndex(ctx, ociStore, opts, &metadata)
 	if err != nil {
 		return nil, fmt.Errorf("creating image index: %w", err)
 	}
@@ -195,11 +236,8 @@ func annotationsFromMetadata(metadataBytes []byte) (map[string]string, error) {
 	return annotations, nil
 }
 
-func createMetadataDesc(ctx context.Context, target oras.Target, metadataFilePath string) (ocispec.Descriptor, error) {
-	metadataBytes, err := os.ReadFile(metadataFilePath)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("reading metadata file: %w", err)
-	}
+func createMetadataDesc(ctx context.Context, target oras.Target, metadataBytes []byte) (ocispec.Descriptor, error) {
+	var err error
 	defDesc := content.NewDescriptorFromBytes(metadataMediaType, metadataBytes)
 	defDesc.Annotations, err = annotationsFromMetadata(metadataBytes)
 	if err != nil {
@@ -213,16 +251,7 @@ func createMetadataDesc(ctx context.Context, target oras.Target, metadataFilePat
 	return defDesc, nil
 }
 
-func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
-	emptyDesc := ocispec.DescriptorEmptyJSON
-	err := pushDescriptorIfNotExists(ctx, target, emptyDesc, bytes.NewReader(emptyDesc.Data))
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("pushing empty descriptor: %w", err)
-	}
-	return emptyDesc, nil
-}
-
-func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, arch string, paths *ObjectPath, createdDate string) (ocispec.Descriptor, error) {
+func createManifestForTarget(ctx context.Context, target oras.Target, metadata *metadatav1.GadgetMetadata, arch string, paths *ObjectPath, createdDate string) (ocispec.Descriptor, error) {
 	layerDescs := []ocispec.Descriptor{}
 
 	if paths.EBPF != "" {
@@ -250,26 +279,15 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 	}
 
 	var defDesc ocispec.Descriptor
-
-	if _, err := os.Stat(metadataFilePath); err == nil {
-		// Read the metadata file into a byte array
-		defDesc, err = createMetadataDesc(ctx, target, metadataFilePath)
-		if err != nil {
-			return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
-		}
-		defDesc.Annotations[ocispec.AnnotationCreated] = createdDate
-	} else {
-		// Create an empty descriptor
-		defDesc, err = createEmptyDesc(ctx, target)
-		if err != nil {
-			return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
-		}
-
-		// Even without metadata, we can still set some annotations
-		defDesc.Annotations = map[string]string{
-			ocispec.AnnotationCreated: createdDate,
-		}
+	metadataBytes, err := yaml.Marshal(metadata)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("marshalling metadata: %w", err)
 	}
+	defDesc, err = createMetadataDesc(ctx, target, metadataBytes)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
+	}
+	defDesc.Annotations[ocispec.AnnotationCreated] = createdDate
 
 	// Create the manifest which combines everything and push it to the memory store
 	manifest := ocispec.Manifest{
@@ -308,7 +326,7 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 	return manifestDesc, nil
 }
 
-func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetImageOpts) (ocispec.Descriptor, error) {
+func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetImageOpts, metadata *metadatav1.GadgetMetadata) (ocispec.Descriptor, error) {
 	// Read the eBPF program files and push them to the memory store
 	layers := []ocispec.Descriptor{}
 
@@ -322,7 +340,7 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 
 	for _, arch := range archs {
 		paths := o.ObjectPaths[arch]
-		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, arch, paths, o.CreatedDate)
+		manifestDesc, err := createManifestForTarget(ctx, target, metadata, arch, paths, o.CreatedDate)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", arch, err)
 		}
