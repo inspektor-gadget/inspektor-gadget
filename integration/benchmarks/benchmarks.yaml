@@ -1,0 +1,88 @@
+# How many times to run each test
+ntimes: 5
+# Path of the ig binary
+igPath: ig
+# Extra flags to pass to ig
+# ig_flags: [ "--pprof-add=localhost:6060", "-v" ]
+# Container runtime to use. Only docker is supported for now
+igRuntime: "docker"
+# Time in seconds each gadget runs for
+gadgetRunDuration: 20
+# Time in seconds we wait to run the gadget after the generator starts
+warmUpDuration: 5
+tests:
+  - name: trace_dns
+    gadgetName: trace_dns:v0.43.0
+    # trace only the client container
+    gadgetParams: ["--containername=test-trace_dns-client"]
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=dns-server
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=dns:server={{.ServerIP}}:5353 --events-per-second={{.EventsPerSecond}}
+    # at 8192 IG starts to drop packets
+    eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
+  - name: trace_exec
+    gadgetName: trace_exec:v0.43.0
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=exec --events-per-second={{.EventsPerSecond}}
+    eventsPerSecond: [ 1024, 2048, 4096, 8192 ]
+  - name: trace_open
+    gadgetName: trace_open:v0.43.0
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=open --events-per-second={{.EventsPerSecond}}
+    eventsPerSecond: [ 1024, 2048, 4096, 8192, 16384 ]
+  - name: trace_tcp
+    gadgetName: trace_tcp:v0.43.0
+    # trace only the client container
+    gadgetParams: ["--containername=test-trace_tcp-client"]
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp-server
+      sysctls:
+        "net.ipv4.ip_local_port_range": "10000 65535"
+        "net.ipv4.tcp_tw_reuse": "1"
+        "net.ipv4.tcp_fin_timeout":     "10"
+        "net.ipv4.tcp_timestamps":      "0"
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp:server={{.ServerIP}}:8080 --events-per-second={{.EventsPerSecond}}
+      sysctls:
+        "net.ipv4.ip_local_port_range": "10000 65535"
+        "net.ipv4.tcp_tw_reuse": "1"
+        "net.ipv4.tcp_fin_timeout":     "10"
+        "net.ipv4.tcp_timestamps":      "0"
+    # limit to 1024 because the bench client can't handle more than that
+    eventsPerSecond: [ 128, 256, 512, 1024 ]
+  - name: top_tcp
+    gadgetName: top_tcp:v0.43.0
+    # trace only the client container
+    gadgetParams: ["--containername=test-top_tcp-client"]
+    server:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp-server
+      sysctls:
+        "net.ipv4.ip_local_port_range": "10000 65535"
+        "net.ipv4.tcp_tw_reuse": "1"
+        "net.ipv4.tcp_fin_timeout":     "10"
+        "net.ipv4.tcp_timestamps":      "0"
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=tcp:server={{.ServerIP}}:8080 --events-per-second={{.EventsPerSecond}}
+      sysctls:
+        "net.ipv4.ip_local_port_range": "10000 65535"
+        "net.ipv4.tcp_tw_reuse": "1"
+        "net.ipv4.tcp_fin_timeout":     "10"
+        "net.ipv4.tcp_timestamps":      "0"
+    # limit to 1024 because the bench client can't handle more than that
+    eventsPerSecond: [ 128, 256, 512, 1024]
+  - name: top_process
+    gadgetName: top_process:v0.43.0
+    generator:
+      image: ghcr.io/mauriciovasquezbernal/bench
+      cmd: /bench --events=processes --events-per-second={{.EventsPerSecond}}
+    # limit to 32768 as 32GB of memory aren't enough to run more processes
+    eventsPerSecond: [ 2048, 4096, 8192, 16384, 32768 ]

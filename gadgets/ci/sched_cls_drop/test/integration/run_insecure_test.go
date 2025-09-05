@@ -57,7 +57,9 @@ func TestRunInsecure(t *testing.T) {
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
 
-	containerRegistryOpts := []containers.ContainerOption{containers.WithContainerImage(gadgettesting.RegistryImage)}
+	containerRegistryOpts := []containers.ContainerOption{
+		containers.WithContainerImage(gadgettesting.RegistryImage),
+	}
 
 	// It's a bit difficutl to implement this on Kubernetes as we'd to use port
 	// forwarding to copy the image below.
