@@ -60,10 +60,6 @@ func init() {
 	columns.MustRegisterTemplate("syscall", "width:18,maxWidth:28")
 }
 
-func Init(nodeName string) {
-	node = nodeName
-}
-
 type Time int64
 
 func (t Time) String() string {
@@ -235,56 +231,6 @@ func (k *K8sMetadata) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (c *CommonData) SetNode(node string) {
-	c.K8s.Node = node
-}
-
-func (c *CommonData) SetPodMetadata(container Container) {
-	k8s := container.K8sMetadata()
-	runtime := container.RuntimeMetadata()
-
-	c.K8s.PodName = k8s.PodName
-	c.K8s.Namespace = k8s.Namespace
-	c.K8s.PodLabels = k8s.PodLabels
-	c.K8s.Owner = *container.K8sOwnerReference()
-
-	// All containers in the same pod share the same container runtime
-	c.Runtime.RuntimeName = runtime.RuntimeName
-}
-
-func (c *CommonData) SetContainerMetadata(container Container) {
-	k8s := container.K8sMetadata()
-
-	c.K8s.ContainerName = k8s.ContainerName
-	c.K8s.PodName = k8s.PodName
-	c.K8s.Namespace = k8s.Namespace
-	c.K8s.PodLabels = k8s.PodLabels
-	c.K8s.Owner = *container.K8sOwnerReference()
-
-	runtime := container.RuntimeMetadata()
-	c.Runtime = *runtime
-}
-
-func (c *CommonData) GetNode() string {
-	return c.K8s.Node
-}
-
-func (c *CommonData) GetPod() string {
-	return c.K8s.PodName
-}
-
-func (c *CommonData) GetNamespace() string {
-	return c.K8s.Namespace
-}
-
-func (c *CommonData) GetContainer() string {
-	return c.K8s.ContainerName
-}
-
-func (c *CommonData) GetContainerImageName() string {
-	return c.Runtime.ContainerImageName
-}
-
 type L3Endpoint struct {
 	// Addr is filled by the gadget
 	Addr    string `json:"addr,omitempty" column:"addr,hide,template:ipaddr"`
@@ -297,59 +243,11 @@ type L3Endpoint struct {
 	PodLabels map[string]string `json:"podlabels,omitempty" column:"podLabels,hide"`
 }
 
-func (e *L3Endpoint) String() string {
-	switch e.Kind {
-	case EndpointKindPod:
-		return "p/" + e.Namespace + "/" + e.Name
-	case EndpointKindService:
-		return "s/" + e.Namespace + "/" + e.Name
-	case EndpointKindRaw:
-		return "r/" + e.Addr
-	default:
-		if e.Version == 6 {
-			return "[" + e.Addr + "]"
-		}
-		return e.Addr
-	}
-}
-
 type L4Endpoint struct {
 	L3Endpoint
 	// Port and Proto are filled by the gadget
 	Port  uint16 `json:"port" column:"port,hide,template:ipport"`
 	Proto uint16 `json:"proto,omitempty" column:"proto,hide,width:4"`
-}
-
-func (e *L4Endpoint) String() string {
-	return e.L3Endpoint.String() + ":" + fmt.Sprint(e.Port)
-}
-
-func MustAddVirtualL4EndpointColumn[Event any](
-	cols *columns.Columns[Event],
-	attr columns.Attributes,
-	getEndpoint func(*Event) L4Endpoint,
-) {
-	cols.MustAddColumn(
-		attr,
-		func(e *Event) any {
-			endpoint := getEndpoint(e)
-			return endpoint.String()
-		},
-	)
-}
-
-func MustAddVirtualL3EndpointColumn[Event any](
-	cols *columns.Columns[Event],
-	attr columns.Attributes,
-	getEndpoint func(*Event) L3Endpoint,
-) {
-	cols.MustAddColumn(
-		attr,
-		func(e *Event) any {
-			endpoint := getEndpoint(e)
-			return endpoint.String()
-		},
-	)
 }
 
 const (
@@ -372,106 +270,6 @@ const (
 	// Indicates the tracer in the node is now is able to produce events
 	READY EventType = "ready"
 )
-
-type Event struct {
-	CommonData
-
-	// Timestamp in nanoseconds since January 1, 1970 UTC. An int64 is big
-	// enough to represent time between the year 1678 and 2262.
-	Timestamp Time `json:"timestamp,omitempty" column:"timestamp,template:timestamp,stringer"`
-
-	// Type indicates the kind of this event
-	Type EventType `json:"type"`
-
-	// Message when Type is ERR, WARN, DEBUG or INFO
-	Message string `json:"message,omitempty"`
-}
-
-// GetBaseEvent is needed to implement commonutils.BaseElement and
-// snapshot.SnapshotEvent interfaces.
-func (e Event) GetBaseEvent() *Event {
-	return &e
-}
-
-func (e *Event) GetType() EventType {
-	return e.Type
-}
-
-func (e *Event) GetMessage() string {
-	return e.Message
-}
-
-func Err(msg string) Event {
-	return Event{
-		CommonData: CommonData{
-			K8s: K8sMetadata{
-				Node: node,
-			},
-		},
-		Type:    ERR,
-		Message: msg,
-	}
-}
-
-func Warn(msg string) Event {
-	return Event{
-		CommonData: CommonData{
-			K8s: K8sMetadata{
-				Node: node,
-			},
-		},
-		Type:    WARN,
-		Message: msg,
-	}
-}
-
-func Debug(msg string) Event {
-	return Event{
-		CommonData: CommonData{
-			K8s: K8sMetadata{
-				Node: node,
-			},
-		},
-		Type:    DEBUG,
-		Message: msg,
-	}
-}
-
-func Info(msg string) Event {
-	return Event{
-		CommonData: CommonData{
-			K8s: K8sMetadata{
-				Node: node,
-			},
-		},
-		Type:    INFO,
-		Message: msg,
-	}
-}
-
-func EventString(i interface{}) string {
-	b, err := json.Marshal(i)
-	if err != nil {
-		return fmt.Sprintf("error marshaling event: %s\n", err)
-	}
-	return string(b)
-}
-
-type WithMountNsID struct {
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
-}
-
-func (e *WithMountNsID) GetMountNSID() uint64 {
-	return e.MountNsID
-}
-
-type WithNetNsID struct {
-	NetNsID uint64 `json:"netnsid,omitempty" column:"netns,template:ns"`
-}
-
-func (e *WithNetNsID) GetNetNSID() uint64 {
-	return e.NetNsID
-}
 
 // parsePodLabels parses the podLabels string into a map
 func parsePodLabels(s string) (map[string]string, error) {
