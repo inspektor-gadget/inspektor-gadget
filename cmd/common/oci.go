@@ -43,6 +43,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ustack"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
