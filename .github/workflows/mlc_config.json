@@ -1,5 +1,7 @@
 {
-   "ignorePatterns" : [],
+   "ignorePatterns" : [
+      "%23"
+   ],
    "replacementPatterns" : [
       {
          "pattern" : "%IG_BRANCH%",
