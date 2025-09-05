@@ -66,6 +66,7 @@ const (
 	AnnotationMetricsCollect     = "metrics.collect"
 	AnnotationMetricsPrint       = "metrics.print"
 	AnnotationMetricsType        = "metrics.type"
+	AnnotationMetricsKeyName     = "metrics.keyname"
 	AnnotationMetricsDescription = "metrics.description"
 	AnnotationMetricsUnit        = "metrics.unit"
 	AnnotationMetricsBoundaries  = "metrics.boundaries"
@@ -363,8 +364,8 @@ type metricsCollector struct {
 	useGlobalProvider bool
 }
 
-func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
-	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, "", attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
+func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor, nameOverride string) error {
+	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, nameOverride, attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
 	if err != nil {
 		return err
 	}
@@ -725,7 +726,8 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			default:
 				continue
 			case MetricTypeKey:
-				err := collector.addKeyFunc(f)
+				metricsKeyName := f.Annotations()[AnnotationMetricsKeyName]
+				err := collector.addKeyFunc(f, metricsKeyName)
 				if err != nil {
 					return fmt.Errorf("adding key for %q: %w", fieldName, err)
 				}
