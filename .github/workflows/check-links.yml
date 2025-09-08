@@ -9,6 +9,7 @@ on:
 jobs:
   check-link:
     name: Links check
+    if: github.repository == 'inspektor-gadget/inspektor-gadget'
     runs-on: ubuntu-latest
 
     steps:

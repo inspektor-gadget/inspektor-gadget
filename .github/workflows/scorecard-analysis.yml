@@ -15,6 +15,7 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecard analysis
+    if: github.repository == 'inspektor-gadget/inspektor-gadget'
     runs-on: ubuntu-latest
     permissions:
       # Needed for Code scanning upload
