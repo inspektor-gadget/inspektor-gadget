@@ -24,6 +24,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
+	_ "go.opentelemetry.io/ebpf-profiler/support"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -62,7 +63,7 @@ func (o *Operator) InstanceParams() api.Params {
 	return api.Params{
 		&api.Param{
 			Key:          symbolizersParam,
-			Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab", "debuginfod-client-cache", "debuginfod-client-cache-on-ig-server".`,
+			Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab", "debuginfod-client-cache", "debuginfod-client-cache-on-ig-server", "otel-ebpf-profiler".`,
 			DefaultValue: "auto",
 		},
 		&api.Param{
@@ -101,6 +102,8 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 				if gadgetCtx.IsRemoteCall() {
 					opts.UseDebugInfodClientCache = true
 				}
+			case "otel-ebpf-profiler":
+				opts.UseOtelEbpfProfiler = !gadgetCtx.IsClient()
 			default:
 				return nil, fmt.Errorf("invalid symbolizer: %s", s)
 			}
@@ -109,7 +112,7 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 
 	var err error
 	// When the Symbolizer implements more options, they can be added here
-	if opts.UseSymtab || opts.UseDebugInfodClientCache {
+	if opts.UseSymtab || opts.UseDebugInfodClientCache || opts.UseOtelEbpfProfiler {
 		// Use a sync.OnceValue to delay the creation of the Symbolizer because:
 		// - otherwise it is needlessly created during GetGadgetInfo
 		instance.symbolizer = sync.OnceValue(func() *symbolizer.Symbolizer {
@@ -414,6 +417,15 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 func (o *OperatorInstance) Name() string {
 	return Name
+}
+func (o *OperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	logger := gadgetCtx.Logger()
+	err := startOtelEbpfProfiler(gadgetCtx, nil)
+	if err != nil {
+		logger.Warnf("failed to start OpenTelemetry eBPF Profiler: %s", err)
+		return err
+	}
+	return nil
 }
 
 func (o *OperatorInstance) Start(gadgetCtx operators.GadgetContext) error {

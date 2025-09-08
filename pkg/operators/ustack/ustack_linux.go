@@ -19,9 +19,14 @@ package ustack
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
+	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
+	oteltracertypes "go.opentelemetry.io/ebpf-profiler/tracer/types"
+
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -106,4 +111,40 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 	}
 
 	return addressesStr, buildIDStr, stackQueries, nil
+}
+
+func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map) error {
+	logger := gadgetCtx.Logger()
+
+	includeTracers, err := oteltracertypes.Parse("all")
+	if err != nil {
+		return fmt.Errorf("failed to parse the included tracers: %w", err)
+	}
+
+	monitorInterval := 5.0 * time.Second
+
+	// Load the eBPF code and map definitions
+	trc, err := oteltracer.NewTracer(gadgetCtx.Context(), &oteltracer.Config{
+		Intervals:              oteltimes.New(0, monitorInterval, 0),
+		IncludeTracers:         includeTracers,
+		FilterErrorFrames:      true,
+		SamplesPerSecond:       0,
+		MapScaleFactor:         0,
+		KernelVersionCheck:     false,
+		VerboseMode:            true,
+		BPFVerifierLogLevel:    2, // 0=none, 1=basic, 2=full
+		ProbabilisticInterval:  0,
+		ProbabilisticThreshold: 0,
+		OffCPUThreshold:        0,
+		IncludeEnvVars:         nil,
+		UProbeLinks:            nil,
+		LoadProbe:              true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to load eBPF tracer: %w", err)
+	}
+
+	logger.Infof("Starting OpenTelemetry eBPF Profiler: %v", trc)
+
+	return nil
 }

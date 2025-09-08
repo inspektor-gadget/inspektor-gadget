@@ -53,6 +53,7 @@ type SymbolizerOptions struct {
 	UseSymtab                bool
 	UseDebugInfodClientCache bool
 	DebuginfodCachePath      string
+	UseOtelEbpfProfiler      bool
 }
 
 type Symbolizer struct {
