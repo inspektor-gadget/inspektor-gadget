@@ -18,15 +18,19 @@ package ustack
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	otelhost "go.opentelemetry.io/ebpf-profiler/host"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
+	oteltracehandler "go.opentelemetry.io/ebpf-profiler/tracehandler"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
 	oteltracertypes "go.opentelemetry.io/ebpf-profiler/tracer/types"
-
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -113,6 +117,14 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 	return addressesStr, buildIDStr, stackQueries, nil
 }
 
+type traceReporter struct {
+	reportTraceEvent func(t *libpf.Trace, meta *samples.TraceEventMeta) error
+}
+
+func (r traceReporter) ReportTraceEvent(t *libpf.Trace, meta *samples.TraceEventMeta) error {
+	return r.reportTraceEvent(t, meta)
+}
+
 func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map) error {
 	logger := gadgetCtx.Logger()
 
@@ -121,11 +133,12 @@ func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map)
 		return fmt.Errorf("failed to parse the included tracers: %w", err)
 	}
 
-	monitorInterval := 5.0 * time.Second
+	monitorInterval := 2.0 * time.Second
 
 	// Load the eBPF code and map definitions
+	intervals := oteltimes.New(0, monitorInterval, 0)
 	trc, err := oteltracer.NewTracer(gadgetCtx.Context(), &oteltracer.Config{
-		Intervals:              oteltimes.New(0, monitorInterval, 0),
+		Intervals:              intervals,
 		IncludeTracers:         includeTracers,
 		FilterErrorFrames:      true,
 		SamplesPerSecond:       0,
@@ -146,5 +159,45 @@ func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map)
 
 	logger.Infof("Starting OpenTelemetry eBPF Profiler: %v", trc)
 
+	// Inspect ELF files on request
+	trc.StartPIDEventProcessor(gadgetCtx.Context())
+
+	// Cleanup ebpf maps when a process terminates
+	if err := trc.AttachSchedMonitor(); err != nil {
+		return fmt.Errorf("failed to attach scheduler monitor: %w", err)
+	}
+
+	traceCh := make(chan *otelhost.Trace)
+	if err := trc.StartMapMonitors(gadgetCtx.Context(), traceCh); err != nil {
+		return fmt.Errorf("failed to start map monitors: %v", err)
+	}
+
+	var rep traceReporter
+	rep.reportTraceEvent = func(t *libpf.Trace, meta *samples.TraceEventMeta) error {
+		fmt.Printf("Trace event: %+v\n", t)
+		for i, h := range t.Frames {
+			v := h.Value()
+			if v.SourceLine != 0 {
+				fmt.Printf("  #%d: %s +0x%x\n    %s:%d\n",
+					i, v.FunctionName, v.AddressOrLineno, v.SourceFile, v.SourceLine)
+			} else {
+				fmt.Printf("  #%d: %s +0x%x\n",
+					i, v.FunctionName, v.AddressOrLineno)
+			}
+		}
+		fmt.Printf("Trace meta: %+v\n", meta)
+		return nil
+	}
+
+	_, err = oteltracehandler.Start(gadgetCtx.Context(), rep, trc.TraceProcessor(),
+		traceCh, intervals, uint32(16*os.Getpagesize()))
+	if err != nil {
+		return fmt.Errorf("failed to start OpenTelemetry trace handler: %w", err)
+	}
+
+	progName := "uprobe__generic"
+	kprobeUnwindNative := trc.GetEbpfProgram(progName)
+	logger.Infof("%s: %v", progName, kprobeUnwindNative)
+	gadgetCtx.SetVar("otel-ebpf-program", kprobeUnwindNative)
 	return nil
 }
