@@ -16,6 +16,7 @@ env:
 
 jobs:
   check-gadgets:
+    if: github.repository == 'inspektor-gadget/inspektor-gadget'
     runs-on: ubuntu-latest
 
     steps:
