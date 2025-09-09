@@ -17,10 +17,12 @@ package testutils
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -200,6 +202,46 @@ func (d *DockerContainer) Stop(t *testing.T) {
 			}
 		} else {
 			t.Fatalf("Client is not initialized")
+		}
+	}
+
+	if !d.options.expectStartError {
+		killAndWait := func(signal string, wait time.Duration, next func()) {
+			err := d.client.ContainerKill(d.options.ctx, d.id, signal)
+			if err != nil {
+				t.Fatalf("killing container with %s: %s", signal, err)
+			}
+			ctxTimeout, cancel := context.WithTimeout(d.options.ctx, wait)
+			defer cancel()
+			statusCh, errCh := d.client.ContainerWait(ctxTimeout, d.id, container.WaitConditionNotRunning)
+			select {
+			case err := <-errCh:
+				if err != nil {
+					if errors.Is(err, context.DeadlineExceeded) && next != nil {
+						next()
+						return
+					}
+					t.Fatalf("Failed to wait for container: %s", err)
+				}
+			case <-statusCh:
+			}
+		}
+
+		killAndWait("SIGINT", 5*time.Second, func() {
+			killAndWait("SIGKILL", 2*time.Second, nil)
+		})
+
+		if d.options.expectedExitCode != nil {
+			// check exit code
+			inspect, err := d.client.ContainerInspect(d.options.ctx, d.id)
+			if err != nil {
+				t.Fatalf("inspecting container: %s", err)
+			}
+
+			if inspect.State.ExitCode != *d.options.expectedExitCode {
+				t.Fatalf("Container %q exited with code %d, expected %d",
+					d.name, inspect.State.ExitCode, *d.options.expectedExitCode)
+			}
 		}
 	}
 
