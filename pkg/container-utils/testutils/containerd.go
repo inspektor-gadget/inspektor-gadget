@@ -122,6 +122,9 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.expectedExitCode != nil {
 		t.Fatalf("testutils/containerd: ExpectedExitCode is not supported yet")
 	}
+	if c.options.sysctls != nil {
+		t.Fatalf("testutils/containerd: Sysctls are not supported yet")
+	}
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,

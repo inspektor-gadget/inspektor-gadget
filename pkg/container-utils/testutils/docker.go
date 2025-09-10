@@ -41,6 +41,7 @@ func NewDockerContainer(name, cmd string, options ...Option) Container {
 	for _, o := range options {
 		o(c.options)
 	}
+
 	return c
 }
 
@@ -78,6 +79,9 @@ func (d *DockerContainer) Run(t *testing.T) {
 	}
 	if d.options.privileged {
 		hostConfig.Privileged = true
+	}
+	if d.options.sysctls != nil {
+		hostConfig.Sysctls = d.options.sysctls
 	}
 
 	if d.options.portBindings != nil {

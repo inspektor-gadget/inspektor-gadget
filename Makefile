@@ -293,6 +293,12 @@ integration-tests: kubectl-gadget
 component-tests:
 	go test -exec sudo -v ./integration/components/... -integration -timeout 5m --builder-image $(GADGET_BUILDER)
 
+# BENCHMARKS_TESTS_PARAMS can be used to pass additional parameters locally e.g
+# BENCHMARKS_TESTS_PARAMS="-run TestBenchmarks/trace_dns" make benchmarks-test
+.PHONY: benchmarks-test
+benchmarks-test:
+	$(MAKE) -C ./integration/benchmarks
+
 .PHONY: website-local-update
 website-local-update:
 	# Check that the website repository is cloned in the parent directory
