@@ -100,7 +100,7 @@ Running the gadget:
         * Start `ig`:
 
         ```bash
-        $ sudo ./ig profile cpu --kernel-stacks-only --containername random --runtimes docker --map-fetch-interval 0
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpu:%IG_TAG%  --kernel-stacks-only --containername random --runtimes docker --map-fetch-interval 0
         ```
 
         * Observe the results:
