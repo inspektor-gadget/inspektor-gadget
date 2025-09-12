@@ -1,0 +1,250 @@
+---
+title: Stack traces
+sidebar_position: 1300
+description: Kernel and user stack traces
+---
+
+Inspektor Gadget supports collecting kernel and user space stack traces through
+eBPF. Stack traces provide valuable context about what code paths led to an
+event, helping with debugging, performance analysis (including generating
+flamegraphs), and security investigations.
+
+## Usage
+
+Gadgets making use of stack trace functionality typically disable it by default
+due to the additional overhead. When enabled, stack traces can be collected
+from:
+
+- **Kernel space**: Shows the kernel call stack when an event occurred. Enabled
+  with `--collect-kstack`.
+- **User space**: Shows the application call stack when an event occurred.
+  Enabled with `--collect-ustack`.
+
+The stack traces contain the addresses of the functions in the call stack. To
+convert these addresses into human-readable function names, symbolization is
+performed. Inspektor Gadget supports different symbolization methods, including
+client-side and server-side symbolization.
+
+- **Kallsyms**: Uses the kernel's kallsyms mechanism to resolve kernel addresses
+  (server-side only). This is always enabled for kernel stack traces.
+- **Symtab**: Uses the user space application's symbol table to resolve user
+  addresses (server-side only). This is enabled by default. You can use
+  `--symbolizers=symtab` to be explicit.
+- **Debuginfod cache**: Uses the debuginfod client cache to resolve user
+  addresses (server-side or client-side) from build ids and offsets. This
+  requires `--collect-build-id`. This is disabled by default for performance
+  reasons. Use `--symbolizers=debuginfod-client-cache` to enable it on the
+  client or on the standalone ig. Use
+  `--symbolizers=debuginfod-client-cache-on-ig-server` to enable it on the
+  server only.
+
+### Examples
+
+
+```bash
+kubectl gadget run trace_capabilities \
+    --collect-kstack \
+    --collect-ustack \
+    --collect-build-id \
+    --symbolizers symtab,debuginfod-client-cache \
+    -o yaml
+```
+
+### Output Format
+
+When stack traces are enabled, the output includes additional columns or fields showing the stack traces. For example:
+
+```
+ustack:
+  addresses: '[0]0x00007ff9dd7734fb; [1]0x00007ff9dd6763b8; [2]0x00007ff9dd67647b;
+    [3]0x00005617712fa2d5; '
+  buildid: '[0]91f01b4ad171c80b6303d08d1f08cba8b990413d +1274fb; [1]91f01b4ad171c80b6303d08d1f08cba8b990413d
+    +2a3b8; [2]91f01b4ad171c80b6303d08d1f08cba8b990413d +2a47b; [3]ae03c7096b4806aa173c0fd1861b019daf6a057a
+    +32d5; '
+  symbols: '[0]chroot; [1]__libc_start_call_main; [2]__libc_start_main_alias_1; [3]_start; '
+```
+
+The raw stack trace output consists of memory addresses. Symbolization converts
+these addresses into human-readable function names.
+
+## Architecture
+
+Stack trace collection in Inspektor Gadget works as follows:
+
+1. **Collection**: The eBPF program uses BPF helpers like `bpf_get_stack()` to
+   collect stack traces at specific trace points. Inspektor Gadget provides a
+   helper API at `gadget/kernel_stack_map.h` and `<gadget/user_stack_map.h>` to
+   help gadget authors. See [Stack maps in Gadget eBPF
+   API](../gadget-devel/gadget-ebpf-api.md#Stack-maps) for more information.
+2. **Transfer**: Stack traces are sent to userspace as part of the event data.
+3. **Processing**: The ebpf operator and the ustack operator process and
+   optionally symbolize the stack traces.
+
+
+## Performance Considerations
+
+Enabling stack traces increases overhead in several ways:
+
+- Additional CPU cycles for the eBPF program to collect the stack trace
+- Increased memory usage for storing stack frames
+- Greater data transfer between kernel and user space
+- CPU usage for symbolization
+
+The most impactful is the symbolization because it needs to parse the ELF file
+and load the symbol table.
+
+## Limitations
+
+### Stack depth
+
+Inspektor Gadget collects up to 127 frames for kernel stack traces and 127
+frames for user stack traces.
+
+It can be a problem with Java because Java applications often have deep call
+stacks, and hitting the frame limit may result in incomplete stack traces that
+miss important context.
+
+### Missing symbols
+
+- The symtab symbolization method only works if the executable has debug symbols
+  available.
+- The debuginfod symbolization method does not download the debuginfo packages
+  itself but leaves it to the user.
+- The debuginfod symbolization method relies on the build id being available in
+  an ELF note such as `.note.gnu.build-id` or `.note.go.buildid`. When building
+  with gcc, this can be added with `-Wl,--build-id`.
+  ```bash
+  $ readelf -n /bin/cat|grep 'Build ID:'
+    Build ID: 54d277fac459da46ee1a054d1ef6a5d02a3d9346
+  ```
+
+## Guide
+
+Prepare a simple program:
+```c
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+__attribute__((noinline)) void level3() {
+    chroot("/");
+}
+__attribute__((noinline)) void level2() {
+    level3();
+}
+__attribute__((noinline)) void level1() {
+    level2();
+}
+
+int main() {
+    level1();
+    sleep(1);
+    return 0;
+}
+```
+
+Create a container for compiling and running the example application:
+
+```bash
+$ docker run -ti --rm --name test ghcr.io/inspektor-gadget/ci/gcc:latest
+# cat > chroot.c
+gcc -Wall -o basic chroot.c
+gcc -Wall -static -o static chroot.c
+cp basic stripped ; strip stripped
+cp static static-stripped ; strip static-stripped
+gcc -Wall -Wl,--build-id -o stripped-buildid chroot.c ; strip stripped-buildid
+gcc -Wall -fPIE -pie -o pie chroot.c
+```
+
+Use the trace_capabilities gadget to collect the stack traces:
+
+```bash
+sudo ig run \
+    ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% \
+    --collect-ustack \
+    --collect-build-id \
+    --symbolizers symtab,debuginfod-client-cache \
+    -c test --fields proc.comm,ustack.symbols
+```
+
+We can now run the various versions of the program. Observe the output:
+```
+COMM             USTACK.SYMBOLS
+static           [0]chroot; [1]level2; [2]level1; [3]main; [4]__libc_start_call_main; [5]; [6];
+static-stripped  [0]; [1]; [2]; [3]; [4]; [5]; [6];
+```
+
+When the binary is not stripped of symbol table, the symbtab symbolizer works
+correctly. The stripped binary does not have symbols, so the symtab symbolizer
+cannot resolve the addresses.
+
+Some Linux distributions strip the binaries by default, but provide ways to
+retrieve the symbols, either with debuginfo packages or by using [public
+debuginfod database](https://sourceware.org/elfutils/Debuginfod.html). The
+debuginfod database is indexed by build id, which is a unique identifier for the
+binary generated at compile time with `gcc -Wl,--build-id`. This is what is
+suggested by the warnings:
+
+```
+WARN[0042] Debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe for test/stripped-buildi not found in /root/.cache/debuginfod_client/9cf9fe4e99a9106ef0b82f8337950c389e53defe/debuginfo. Suggested remedial: "DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe"
+WARN[0042] Debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe for test/stripped-buildi not found in /root/.cache/debuginfod_client/9cf9fe4e99a9106ef0b82f8337950c389e53defe/debuginfo. Suggested remedial: "DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe"
+WARN[0042] Debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe for test/stripped-buildi not found in /root/.cache/debuginfod_client/9cf9fe4e99a9106ef0b82f8337950c389e53defe/debuginfo. Suggested remedial: "DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo 9cf9fe4e99a9106ef0b82f8337950c389e53defe"
+stripped-buildi  [0]__GI_chroot; [1]; [2]; [3]; [4]__libc_start_call_main;
+```
+
+Let's use another container to demonstrate this:
+```bash
+$ docker run -ti --rm --name test ubuntu:24.10
+# chroot / chroot / id
+```
+
+At first, Inspektor Gadget will not be able to resolve the symbols:
+```
+WARN[0020] Debuginfo 91f01b4ad171c80b6303d08d1f08cba8b990413d for test/chroot not found in /root/.cache/debuginfod_client/91f01b4ad171c80b6303d08d1f08cba8b990413d/debuginfo. Suggested remedial: "DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo 91f01b4ad171c80b6303d08d1f08cba8b990413d"
+WARN[0020] Debuginfo ae03c7096b4806aa173c0fd1861b019daf6a057a for test/chroot not found in /root/.cache/debuginfod_client/ae03c7096b4806aa173c0fd1861b019daf6a057a/debuginfo. Suggested remedial: "DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo ae03c7096b4806aa173c0fd1861b019daf6a057a"
+chroot           [0]; [1]; [2]; [3];
+```
+
+Ubuntu 24.10 provides debuginfod packages on the federated server
+https://debuginfod.elfutils.org, so we can run the suggested commands as root:
+```bash
+sudo DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo 91f01b4ad171c80b6303d08d1f08cba8b990413d
+sudo DEBUGINFOD_CACHE_PATH=/root/.cache/debuginfod_client DEBUGINFOD_URLS=https://debuginfod.elfutils.org debuginfod-find debuginfo ae03c7096b4806aa173c0fd1861b019daf6a057a
+```
+
+Now, Inspektor Gadget can resolve the symbols even though the running executable is stripped:
+```
+COMM             USTACK.SYMBOLS
+chroot           [0]chroot; [1]__libc_start_call_main; [2]__libc_start_main_alias_1; [3]_start;
+```
+
+The same can apply for dynamic libraries. Even though `basic` was built without
+build id, it uses libc which was built with build id. So after using the
+debuginfod-find command to retrieve the missing debuginfo files, we can see the
+libc symbols for `basic`:
+
+```
+COMM             USTACK.SYMBOLS
+basic            [0]__GI_chroot; [1]level2; [2]level1; [3]main; [4]__libc_start_call_main;
+```
+
+Inspektor Gadget also supports Position-Independent Executables (PIE), so you
+can also see symbols for `pie`:
+
+```
+COMM             USTACK.SYMBOLS
+pie              [0]__GI_chroot; [1]level2; [2]level1; [3]main; [4]__libc_start_call_main;
+```
+
+We can also collect the kernel stack with `--collect-kstack`:
+```bash
+sudo ig run \
+    ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% \
+    --collect-kstack \
+    -c test --fields proc.comm,kstack
+```
+Here is the output:
+```
+COMM             KSTACK
+chroot           [0]security_capable; [1]ns_capable; [2]__x64_sys_chroot; [3]do_syscall_64; [4]entry_SYSCALL_64_after_hwframe;
+```
