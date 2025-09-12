@@ -18,10 +18,10 @@ Let's describe some concepts before jumping to the code.
 A runtime is the component that runs the Gadgets. Inspektor Gadget provides two
 runtimes:
 - [local](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@%IG_BRANCH%/pkg/runtime/local):
-  Used to run a Gadget on the local host. It's only supported on Linux.
+Used to run a Gadget on the local host. It's only supported on Linux.
 - [grpc](https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@%IG_BRANCH%/pkg/runtime/grpc):
-  Used to run a Gadget on a remote Linux host. It's supported on Linux, Windows
-  and Mac.
+Used to run a Gadget on a remote Linux host or Kubernetes cluster. It's supported on Linux, Windows
+and Mac.
 
 ### Operators
 
@@ -155,10 +155,10 @@ In this example we use some operators provided by Inspektor Gadget to extend the
 functionality of your application:
 
 - [LocalManager](../spec/operators/localmanager.md): Enriches events with
-  container information. Also provides a mechanism to filter events by
-  container.
+container information. Also provides a mechanism to filter events by
+container.
 - [Formatters](../spec/operators/formatters.md): Provides a prettier (or
-  human-readable) representation of some fields like timestamps, etc.
+human-readable) representation of some fields like timestamps, etc.
 
 Parameters for each operator are passed as a map of strings using the
 fully qualified name of the parameter as the key.
@@ -271,10 +271,16 @@ command tmux: server (12404) opened /proc/38122/cmdline
 
 ### Running Gadgets remotely with the gRPC runtime
 
-All the examples above run the gadgets (and their eBPF parts) locally. This
-example shows how to control a remote `ig` instance by using the gRPC runtime.
-In this case, the Gadget image is pulled by the remote instance, hence the
-client doesn't need to contact the OCI registry directly.
+All the examples above run the gadgets (and their eBPF parts) locally. The following
+examples show how to run gadgets remotely using the gRPC runtime in different
+environments (Linux host, Kubernetes cluster, etc.).
+
+#### Linux Host
+
+This example shows how to run a Gadget on a Kubernetes cluster using the gRPC
+runtime. In this case, an Inspektor Gadget installation is required on the
+Kubernetes cluster. That then also takes care of pulling the Gadget image
+from the OCI registry - the client itself does not contact the OCI registry.
 
 import GRPC from '!!raw-loader!./_golang/grpc/main.go';
 
@@ -298,6 +304,30 @@ $ go run .
 {"comm":"irqbalance","err":0,"fd":6,"flags":0,"fname":"/proc/irq/65/smp_affinity","gid":0,"mntns_id":4026533158,"mode":0,"pid":1262,"timestamp":6114009113261,"uid":0}
 {"comm":"irqbalance","err":0,"fd":6,"flags":0,"fname":"/proc/irq/98/smp_affinity","gid":0,"mntns_id":4026533158,"mode":0,"pid":1262,"timestamp":6114009138809,"uid":0}
 ```
+
+#### Kubernetes Cluster
+
+This example shows how to run a Gadget on a Kubernetes cluster using the gRPC
+runtime. In this case, Inspektor Gadget installation is required on the
+Kubernetes cluster, and it also takes care of pulling the Gadget image
+from the OCI registry so the client doesn't need to contact the OCI registry
+
+import GRPCK8s from '!!raw-loader!./_golang/grpc_kubernetes/main.go';
+
+<CodeBlock language="go">{GRPCK8s}</CodeBlock>
+
+Now let's run the example. See how it has all the Kubernetes metadata
+attached to the events:
+
+```bash
+$ go run .
+{"error":"","fd":14,"fname":"/proc/1/stat","k8s":{"containerName":"coredns","namespace":"kube-system","node":"aks-agentpool-93770793-vmss000000","owner":{},"podName":"coredns-6f776c8fb5-wwtqz"},"mode":"----------","proc":{"comm":"coredns","pid":19588,"tid":20673}}
+{"error":"","fd":14,"fname":"/proc/stat","k8s":{"containerName":"coredns","namespace":"kube-system","node":"aks-agentpool-93770793-vmss000000","owner":{},"podName":"coredns-6f776c8fb5-wwtqz"},"mode":"----------","proc":{"comm":"coredns","pid":19588,"tid":20673}}
+{"error":"","fd":14,"fname":"/proc/1/fd","k8s":{"containerName":"coredns","namespace":"kube-system","node":"aks-agentpool-93770793-vmss000000","owner":{},"podName":"coredns-6f776c8fb5-wwtqz"},"mode":"----------","proc":{"comm":"coredns","pid":19588,"tid":20673}}
+{"error":"","fd":14,"fname":"/proc/1/limits","k8s":{"containerName":"coredns","namespace":"kube-system","node":"aks-agentpool-93770793-vmss000000","owner":{},"podName":"coredns-6f776c8fb5-wwtqz"},"mode":"----------","proc":{"comm":"coredns","pid":19588,"tid":20673}}
+```
+
+
 
 ### Other Examples
 
