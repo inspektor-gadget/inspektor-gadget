@@ -227,3 +227,21 @@ func TestMultiple(t *testing.T) {
 		"string,number",
 	)
 }
+
+func TestGetFieldsByDsSimple(t *testing.T) {
+	s := &sortOperatorInstance{sortBy: "foo:string;bar:number"}
+	fieldsByDs := s.getFieldsByDs()
+	assert.EqualValues(t, map[string][]string{"foo": {"string"}, "bar": {"number"}}, fieldsByDs)
+}
+
+func TestGetFieldsByDsTwiceSameDs(t *testing.T) {
+	s := &sortOperatorInstance{sortBy: "foo:string;foo:number"}
+	fieldsByDs := s.getFieldsByDs()
+	assert.EqualValues(t, map[string][]string{"foo": {"string", "number"}}, fieldsByDs)
+}
+
+func TestGetFieldsByDsFieldSorting(t *testing.T) {
+	s := &sortOperatorInstance{sortBy: "foo:string,number"}
+	fieldsByDs := s.getFieldsByDs()
+	assert.EqualValues(t, map[string][]string{"foo": {"string", "number"}}, fieldsByDs)
+}
