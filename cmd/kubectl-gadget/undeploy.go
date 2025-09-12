@@ -113,7 +113,9 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	// Determine the deployment version to decide on undeploy strategy
 	deployedVersion, err := GetDeployedVersion()
 	if err != nil {
-		return fmt.Errorf("determining deployed version: %w", err)
+		fmt.Printf("Error determining deployed version: %s. Assuming v0.43.0+\n", err)
+		errs := runLabelBasedUndeploy(k8sClient, crdClient, dynClient, discoveryClient, gadgetNamespace)
+		return finishUndeploy(errs)
 	}
 
 	// Check if this is a pre-0.43.0 deployment (no labels)
