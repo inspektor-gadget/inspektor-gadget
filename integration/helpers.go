@@ -27,112 +27,12 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(
 	containercollection.Container{},
 	containercollection.K8sMetadata{},
 )
-
-type CommonDataOption func(commonData *eventtypes.CommonData)
-
-// WithRuntimeMetadata sets the runtime and container name in the common data.
-// Notice the container name is taken from the Kubernetes metadata.
-func WithRuntimeMetadata(runtime string) CommonDataOption {
-	return func(commonData *eventtypes.CommonData) {
-		commonData.Runtime.RuntimeName = eventtypes.String2RuntimeName(runtime)
-		commonData.Runtime.ContainerName = commonData.K8s.ContainerName
-	}
-}
-
-// WithContainerImageName sets the ContainerImageName to facilitate the tests
-func WithContainerImageName(imageName string, isDockerRuntime bool) CommonDataOption {
-	return func(commonData *eventtypes.CommonData) {
-		if !isDockerRuntime {
-			commonData.Runtime.ContainerImageName = imageName
-		}
-	}
-}
-
-// WithPodLabels sets the PodLabels to facilitate the tests
-func WithPodLabels(podName string, namespace string, enable bool) CommonDataOption {
-	return func(commonData *eventtypes.CommonData) {
-		if enable {
-			commonData.K8s.PodLabels = map[string]string{
-				"run": podName,
-			}
-		}
-	}
-}
-
-func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.CommonData {
-	e := eventtypes.CommonData{
-		K8s: eventtypes.K8sMetadata{
-			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-				Namespace: namespace,
-				// Pod and Container name are defined by BusyboxPodCommand.
-				PodName:       "test-pod",
-				ContainerName: "test-pod",
-			},
-		},
-		// TODO: Include the Node
-	}
-	for _, option := range options {
-		option(&e)
-	}
-	return e
-}
-
-func BuildCommonDataK8s(namespace string, options ...CommonDataOption) eventtypes.CommonData {
-	e := BuildCommonData(namespace, options...)
-	WithPodLabels("test-pod", namespace, true)(&e)
-	return e
-}
-
-func BuildBaseEvent(namespace string, options ...CommonDataOption) eventtypes.Event {
-	e := eventtypes.Event{
-		Type:       eventtypes.NORMAL,
-		CommonData: BuildCommonData(namespace),
-	}
-	for _, option := range options {
-		option(&e.CommonData)
-	}
-	return e
-}
-
-func BuildBaseEventK8s(namespace string, options ...CommonDataOption) eventtypes.Event {
-	e := BuildBaseEvent(namespace, options...)
-	WithPodLabels("test-pod", namespace, true)(&e.CommonData)
-	return e
-}
-
-func GetTestPodIP(t *testing.T, ns string, podname string) string {
-	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.status.podIP}")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	r, err := cmd.Output()
-	require.NoError(t, err, "getting pod ip: %s", stderr.String())
-	return string(r)
-}
-
-func GetPodIPsFromLabel(t *testing.T, ns string, label string) []string {
-	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", "-l", label, "-o", "jsonpath={.items[*].status.podIP}")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	r, err := cmd.Output()
-	require.NoError(t, err, "getting pods ips from label: %s", stderr.String())
-	return strings.Split(string(r), " ")
-}
-
-func GetPodNode(t *testing.T, ns string, podname string) string {
-	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.spec.nodeName}")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	r, err := cmd.Output()
-	require.NoError(t, err, "getting pod node: %s", stderr.String())
-	return string(r)
-}
 
 func GetPodUID(t *testing.T, ns, podname string) string {
 	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.metadata.uid}")
@@ -174,18 +74,6 @@ func GetContainerRuntime() (string, error) {
 		return "", fmt.Errorf("unexpected container runtime version: %s", ret)
 	}
 	return parts[0], nil
-}
-
-// GetIPVersion returns the version of the IP, 4 or 6. It makes the test fail in case of error.
-// Based on https://stackoverflow.com/a/48519490
-func GetIPVersion(t *testing.T, address string) uint8 {
-	if strings.Count(address, ":") < 2 {
-		return 4
-	} else if strings.Count(address, ":") >= 2 {
-		return 6
-	}
-	t.Fatalf("Failed to determine IP version for address %s", address)
-	return 0
 }
 
 func StartRegistry(t *testing.T, name string) testutils.Container {
