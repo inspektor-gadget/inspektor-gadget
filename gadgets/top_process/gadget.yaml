@@ -1,4 +1,5 @@
 name: top process
+category: observer
 description: Periodically report process statistics
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_process
