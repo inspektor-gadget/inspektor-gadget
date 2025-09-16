@@ -25,7 +25,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
@@ -50,9 +49,9 @@ type testDef struct {
 	port          int
 	async         bool
 	expectedErrno syscall.Errno // This is the expected errno from rawDial and not from any events captured by the gadget
-	runnerConfig  *utilstest.RunnerConfig
+	runnerConfig  *utils.RunnerConfig
 	generateEvent func(t *testing.T, addr string, port int, async bool, expectedErrno syscall.Errno, fdPtr *int, acceptFdPtr *int)
-	validateEvent func(t *testing.T, info *utilstest.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error
+	validateEvent func(t *testing.T, info *utils.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error
 }
 
 func TestTraceTcpGadget(t *testing.T) {
@@ -63,10 +62,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			port:          9070,
 			async:         true, // We only get a close when the connect succeeded or the socket is async. Here we know that the connect should error out
 			expectedErrno: syscall.ECONNREFUSED,
-			runnerConfig:  &utilstest.RunnerConfig{},
+			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
 						Proc:    info.Proc,
 						Type:    "close",
@@ -96,10 +95,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			port:          9070,
 			async:         false,
 			expectedErrno: syscall.ECONNREFUSED,
-			runnerConfig:  &utilstest.RunnerConfig{},
+			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
 						Proc:    info.Proc,
 						Type:    "connect",
@@ -129,10 +128,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			port:          9070,
 			async:         true,
 			expectedErrno: syscall.ECONNREFUSED,
-			runnerConfig:  &utilstest.RunnerConfig{},
+			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
 						Proc:    info.Proc,
 						Type:    "connect",
@@ -160,10 +159,10 @@ func TestTraceTcpGadget(t *testing.T) {
 		"captures_accept": {
 			ipAddr:        "127.0.0.1",
 			port:          9071,
-			runnerConfig:  &utilstest.RunnerConfig{HostNetwork: true},
+			runnerConfig:  &utils.RunnerConfig{HostNetwork: true},
 			generateEvent: generateAcceptConnectEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
 						Proc:    info.Proc,
 						Type:    "accept",
@@ -191,7 +190,7 @@ func TestTraceTcpGadget(t *testing.T) {
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			normalizeEvent := func(event *ExpectedTraceTcpEvent) {
 				// Src port varies, so we normalize it
 				// TODO: Add a generateEvent function that allows us to test specific src port too.
@@ -205,7 +204,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			acceptFd := -1
 
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					testCase.generateEvent(t, testCase.ipAddr, testCase.port, testCase.async, testCase.expectedErrno, &fd, &acceptFd)
 					return nil
 				})

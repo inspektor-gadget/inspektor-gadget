@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -33,23 +32,23 @@ import (
 type ExpectedSnapshotProcessEvent utils.Process
 
 type testDef struct {
-	runnerConfig   *utilstest.RunnerConfig
+	runnerConfig   *utils.RunnerConfig
 	generateEvent  func() (int, error)
-	validateEvent  func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent)
-	mntnsFilterMap func(info *utilstest.RunnerInfo) *ebpf.Map
+	validateEvent  func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent)
+	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 }
 
 func TestSnapshotProcessGadget(t *testing.T) {
 	// task iterator was introduced in 5.8
 	gadgettesting.MinimumKernelVersion(t, "5.8")
 	gadgettesting.InitUnitTest(t)
-	runnerConfig := &utilstest.RunnerConfig{}
+	runnerConfig := &utils.RunnerConfig{}
 	testCases := map[string]testDef{
 		"captures_events_with_no_filter": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
 					return &ExpectedSnapshotProcessEvent{
 						Comm: "sleep",
 						Pid:  uint32(sleepPid),
@@ -65,22 +64,22 @@ func TestSnapshotProcessGadget(t *testing.T) {
 		},
 		"captures_no_events_with_no_matching_filter": {
 			runnerConfig: runnerConfig,
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
 				mnts, _ := containerutils.GetNetNs(os.Getpid())
-				return utilstest.CreateMntNsFilterMap(t, mnts)
+				return utils.CreateMntNsFilterMap(t, mnts)
 			},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
-				utilstest.ExpectNoEvent(t, info, sleepPid, events)
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
+				utils.ExpectNoEvent(t, info, sleepPid, events)
 			},
 		},
 		"captures_events_with_matching_filter": {
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, sleepPid int) *ExpectedSnapshotProcessEvent {
 					return &ExpectedSnapshotProcessEvent{
 						Comm: "sleep",
 						Pid:  uint32(sleepPid),
@@ -97,7 +96,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 		"no_threads_are_captured": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
 				if len(events) == 0 {
 					t.Fatalf("no events were captured")
 				}
@@ -113,14 +112,14 @@ func TestSnapshotProcessGadget(t *testing.T) {
 
 			var processId int
 
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			var mntnsFilterMap *ebpf.Map
 			if testCase.mntnsFilterMap != nil {
 				mntnsFilterMap = testCase.mntnsFilterMap(runner.Info)
 			}
 			beforeGadgetRun := func() error {
 				// Use the runner to generate an event
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					pid, err := testCase.generateEvent()
 					if err != nil {
 						return err

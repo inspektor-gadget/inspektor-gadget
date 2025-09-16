@@ -25,7 +25,6 @@ import (
 	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
@@ -144,7 +143,7 @@ func MinimumKernelVersion(t testing.TB, minKernelVersion string) {
 }
 
 func InitUnitTest(t testing.TB) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 	RemoveMemlock(t)
 }
 

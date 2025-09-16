@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -37,9 +36,9 @@ type ExpectedTtysnoopEvent struct {
 }
 
 type testDef struct {
-	runnerConfig *utilstest.RunnerConfig
+	runnerConfig *utils.RunnerConfig
 	text         string
-	validate     func(t *testing.T, info *utilstest.RunnerInfo, events []ExpectedTtysnoopEvent, text string)
+	validate     func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTtysnoopEvent, text string)
 }
 
 func TestTtysnoopFull(t *testing.T) {
@@ -54,9 +53,9 @@ func TestTtysnoopFull(t *testing.T) {
 
 	testCases := map[string]testDef{
 		"simple_write": {
-			runnerConfig: &utilstest.RunnerConfig{},
+			runnerConfig: &utils.RunnerConfig{},
 			text:         "hello world",
-			validate: func(t *testing.T, info *utilstest.RunnerInfo, events []ExpectedTtysnoopEvent, text string) {
+			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTtysnoopEvent, text string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				require.Equal(t, len(text), events[0].Len, "Expected Len %d, got %d", len(text), events[0].Len)
 				require.Equal(t, text, events[0].Buf, "Expected Args %q, got %q", text, events[0].Buf)
@@ -67,9 +66,9 @@ func TestTtysnoopFull(t *testing.T) {
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					generateEventFromThread(t, testCase.text)
 					return nil
 				})
@@ -79,7 +78,7 @@ func TestTtysnoopFull(t *testing.T) {
 				Image:          "ttysnoop",
 				Timeout:        5 * time.Second,
 				ParamValues:    api.ParamValues{},
-				MntnsFilterMap: utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 				OnGadgetRun:    onGadgetRun,
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)

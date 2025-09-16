@@ -25,7 +25,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -81,15 +80,15 @@ type ExpectedFsnotifyEvent struct {
 }
 
 type testDef struct {
-	runnerConfig  *utilstest.RunnerConfig
+	runnerConfig  *utils.RunnerConfig
 	generateEvent func() (EventDetails, error)
-	validateEvent func(t *testing.T, info *utilstest.RunnerInfo, eventDetails EventDetails, events []ExpectedFsnotifyEvent)
+	validateEvent func(t *testing.T, info *utils.RunnerInfo, eventDetails EventDetails, events []ExpectedFsnotifyEvent)
 }
 
 func TestFsnotifyGadget(t *testing.T) {
 	gadgettesting.MinimumKernelVersion(t, "5.4")
 	gadgettesting.InitUnitTest(t)
-	runnerConfig := &utilstest.RunnerConfig{}
+	runnerConfig := &utils.RunnerConfig{}
 
 	// i_ino field is not available in Linux < 5.11
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/4222
@@ -103,8 +102,8 @@ func TestFsnotifyGadget(t *testing.T) {
 		"captures_inotify_event": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, eventDetails EventDetails, events []ExpectedFsnotifyEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedFsnotifyEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, eventDetails EventDetails, events []ExpectedFsnotifyEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedFsnotifyEvent {
 					ev := &ExpectedFsnotifyEvent{
 						Timestamp: utils.NormalizedStr,
 
@@ -136,7 +135,7 @@ func TestFsnotifyGadget(t *testing.T) {
 			t.Parallel()
 
 			var eventDetails EventDetails
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 
 			normalizeEvent := func(event *ExpectedFsnotifyEvent) {
 				utils.NormalizeString(&event.Timestamp)
@@ -149,7 +148,7 @@ func TestFsnotifyGadget(t *testing.T) {
 				}
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					var err error
 					eventDetails, err = testCase.generateEvent()
 					if err != nil {

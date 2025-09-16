@@ -22,15 +22,15 @@ import (
 	"github.com/stretchr/testify/require"
 	orasoci "oras.land/oras-go/v2/content/oci"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 func TestEmpty(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 

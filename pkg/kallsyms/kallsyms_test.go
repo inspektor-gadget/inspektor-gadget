@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 func TestCustomKAllSymsInstructionPointer(t *testing.T) {
@@ -163,9 +163,9 @@ func TestCustomKAllSymsParsing(t *testing.T) {
 
 func TestRealKAllSymsParsing(t *testing.T) {
 	path := "/proc/kallsyms"
-	utilstest.RequireRoot(t)
-	utilstest.RequireFileContains(t, path, "bpf_prog_fops")
-	utilstest.RequireFileContains(t, path, "socket_file_ops")
+	utils.RequireRoot(t)
+	utils.RequireFileContains(t, path, "bpf_prog_fops")
+	utils.RequireFileContains(t, path, "socket_file_ops")
 
 	type testT struct {
 		name           string
@@ -395,7 +395,7 @@ func TestSpecUpdateAddressesSymbolResolution(t *testing.T) {
 // BenchmarkKernelSymbolAddressJITParsing searches for the symbol while
 // reading the kallsyms file
 func BenchmarkKernelSymbolAddressJITParsing(b *testing.B) {
-	utilstest.RequireRoot(b)
+	utils.RequireRoot(b)
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
@@ -407,7 +407,7 @@ func BenchmarkKernelSymbolAddressJITParsing(b *testing.B) {
 // BenchmarkKernelSymbolAddressPreLoading loads the full kallsyms before
 // looking up the symbol
 func BenchmarkKernelSymbolAddressPreLoading(b *testing.B) {
-	utilstest.RequireRoot(b)
+	utils.RequireRoot(b)
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {

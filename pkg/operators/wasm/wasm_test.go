@@ -25,7 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 	orasoci "oras.land/oras-go/v2/content/oci"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -36,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 func runGadget(t *testing.T, gadgetCtx *gadgetcontext.GadgetContext, params map[string]string) error {
@@ -96,7 +96,7 @@ func TestWasm(t *testing.T) {
 }
 
 func testWasm(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -132,7 +132,7 @@ func TestWasmFields(t *testing.T) {
 }
 
 func testWasmFields(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -301,7 +301,7 @@ func TestWasmDataArray(t *testing.T) {
 }
 
 func testWasmDataArray(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -379,7 +379,7 @@ func TestWasmDataEmit(t *testing.T) {
 }
 
 func testWasmDataEmit(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -453,7 +453,7 @@ func TestWasmParams(t *testing.T) {
 }
 
 func testWasmParams(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -494,7 +494,7 @@ func TestConfig(t *testing.T) {
 }
 
 func testConfig(t *testing.T, path string) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	t.Parallel()
 
@@ -518,7 +518,7 @@ func testFiltering(t *testing.T, path string) {
 	gadgetCtx := createGadgetCtx(t, path, "filtering")
 
 	// Keep in sync with testdata/filtering/program.go
-	mntNsMap := utilstest.CreateMntNsFilterMap(t, 777)
+	mntNsMap := utils.CreateMntNsFilterMap(t, 777)
 	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mntNsMap)
 
 	err := runGadget(t, gadgetCtx, nil)

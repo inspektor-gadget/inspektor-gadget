@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -46,7 +45,7 @@ type ExpectedBpfstatsEvent struct {
 }
 
 type testDef struct {
-	runnerConfig   *utilstest.RunnerConfig
+	runnerConfig   *utils.RunnerConfig
 	allPrograms    bool
 	generateEvent  func(t *testing.T)
 	expectedEvents []ExpectedBpfstatsEvent
@@ -58,7 +57,7 @@ const (
 
 func TestBpfstatsGadget(t *testing.T) {
 	gadgettesting.InitUnitTest(t)
-	runnerConfig := &utilstest.RunnerConfig{}
+	runnerConfig := &utils.RunnerConfig{}
 
 	comm, err := os.Executable()
 	require.NoError(t, err)
@@ -109,7 +108,7 @@ func TestBpfstatsGadget(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 
 			normalizeEvent := func(event *ExpectedBpfstatsEvent) {
 				utils.NormalizeInt(&event.MapCount)
@@ -122,7 +121,7 @@ func TestBpfstatsGadget(t *testing.T) {
 				event.Runcount = utils.NormalizedInt
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					testCase.generateEvent(t)
 					return nil
 				})

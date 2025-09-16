@@ -25,7 +25,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -42,20 +41,20 @@ type ExpectedTraceOpenEvent struct {
 }
 
 type testDef struct {
-	runnerConfig   *utilstest.RunnerConfig
-	mntnsFilterMap func(info *utilstest.RunnerInfo) *ebpf.Map
+	runnerConfig   *utils.RunnerConfig
+	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 	generateEvent  func() (int, error)
-	validateEvent  func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent)
+	validateEvent  func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent)
 }
 
 func TestTraceOpenGadget(t *testing.T) {
 	gadgettesting.InitUnitTest(t)
 	testCases := map[string]testDef{
 		"captures_all_events_with_no_filters_configured": {
-			runnerConfig:  &utilstest.RunnerConfig{},
+			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
 						Proc:  info.Proc,
 						Fd:    uint32(fd),
@@ -65,23 +64,23 @@ func TestTraceOpenGadget(t *testing.T) {
 			},
 		},
 		"captures_no_events_with_no_matching_filter": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, 0)
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, 0)
 			},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
-				utilstest.ExpectNoEvent(t, info, fd, events)
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				utils.ExpectNoEvent(t, info, fd, events)
 			},
 		},
 		"captures_events_with_matching_filter": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
-				utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				utils.ExpectOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
 						Proc:  info.Proc,
 						Fd:    uint32(fd),
@@ -91,9 +90,9 @@ func TestTraceOpenGadget(t *testing.T) {
 			},
 		},
 		"test_flags_and_mode": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: func() (int, error) {
 				filename := "/tmp/test_flags_and_mode"
@@ -106,16 +105,16 @@ func TestTraceOpenGadget(t *testing.T) {
 
 				return fd, nil
 			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				require.Len(t, events, 1, "expected one event")
 				require.Equal(t, events[0].ModeRaw, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH, "mode")
 				require.Equal(t, events[0].FlagsRaw, unix.O_CREAT|unix.O_RDWR, "flags")
 			},
 		},
 		"test_symbolic_links": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: func() (int, error) {
 				// Create a symbolic link to /dev/null
@@ -136,15 +135,15 @@ func TestTraceOpenGadget(t *testing.T) {
 
 				return fd, nil
 			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				require.Len(t, events, 1, "expected one event")
 				require.Equal(t, events[0].FName, "/tmp/test_symbolic_links", "filename")
 			},
 		},
 		"test_relative_path": {
-			runnerConfig: &utilstest.RunnerConfig{},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: func() (int, error) {
 				relPath := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
@@ -159,14 +158,14 @@ func TestTraceOpenGadget(t *testing.T) {
 
 				return fd, nil
 			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				require.Len(t, events, 1, "expected one event")
 				relative_path := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
 				require.Equal(t, events[0].FName, relative_path, "filename")
 			},
 		},
 		"test_prefix_on_directory": {
-			runnerConfig: &utilstest.RunnerConfig{},
+			runnerConfig: &utils.RunnerConfig{},
 			generateEvent: func() (int, error) {
 				err := os.Mkdir("/tmp/foo", 0o750)
 				if err != nil {
@@ -191,8 +190,8 @@ func TestTraceOpenGadget(t *testing.T) {
 
 				return fd, nil
 			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
 					return &ExpectedTraceOpenEvent{
 						Proc:     info.Proc,
 						Fd:       uint32(fd),
@@ -205,15 +204,15 @@ func TestTraceOpenGadget(t *testing.T) {
 			},
 		},
 		"event_has_UID_and_GID_of_user_generating_event": {
-			runnerConfig: &utilstest.RunnerConfig{
+			runnerConfig: &utils.RunnerConfig{
 				Uid: int(1435),
 				Gid: int(6789),
 			},
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []ExpectedTraceOpenEvent) {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, _ int, events []ExpectedTraceOpenEvent) {
 				require.Len(t, events, 1, "expected one event")
 				require.Equal(t, uint32(info.Uid), events[0].Proc.Creds.Uid)
 				require.Equal(t, uint32(info.Gid), events[0].Proc.Creds.Gid)
@@ -224,13 +223,13 @@ func TestTraceOpenGadget(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			var fd int
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			var mntnsFilterMap *ebpf.Map
 			if testCase.mntnsFilterMap != nil {
 				mntnsFilterMap = testCase.mntnsFilterMap(runner.Info)
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					var err error
 					fd, err = testCase.generateEvent()
 					if err != nil {

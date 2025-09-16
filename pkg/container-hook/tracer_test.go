@@ -25,22 +25,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 func TestContainerHookEvent(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	type testDefinition struct {
 		generateEvent func(t *testing.T) string
-		validateEvent func(t *testing.T, info *utilstest.RunnerInfo, containerID string, events []ContainerEvent)
+		validateEvent func(t *testing.T, info *utils.RunnerInfo, containerID string, events []ContainerEvent)
 	}
 
 	for name, test := range map[string]testDefinition{
 		"one_container": {
 			generateEvent: generateEvent(0),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, containerID string) *ContainerEvent {
+			validateEvent: utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, containerID string) *ContainerEvent {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
@@ -49,7 +49,7 @@ func TestContainerHookEvent(t *testing.T) {
 		},
 		"one_container_after_some_failed_containers": {
 			generateEvent: generateEvent(2),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, containerID string) *ContainerEvent {
+			validateEvent: utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, containerID string) *ContainerEvent {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
@@ -61,7 +61,7 @@ func TestContainerHookEvent(t *testing.T) {
 			// https://github.com/torvalds/linux/blob/v6.9/fs/notify/fanotify/fanotify_user.c#L32
 			// #define FANOTIFY_DEFAULT_MAX_GROUPS	128
 			generateEvent: generateEvent(130),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, containerID string) *ContainerEvent {
+			validateEvent: utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, containerID string) *ContainerEvent {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
@@ -99,7 +99,7 @@ func TestContainerHookEvent(t *testing.T) {
 }
 
 func TestContainerHookCleanup(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	containerPendingTimeout = 100 * time.Millisecond
 	containerCheckInterval = 1 * time.Second

@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -70,10 +69,10 @@ func TestTraceSignalGadget(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-			runner := utilstest.NewRunnerWithTest(t, nil)
+			runner := utils.NewRunnerWithTest(t, nil)
 
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					p, err := os.StartProcess("/usr/bin/sleep", []string{"/usr/bin/sleep", "2"}, &os.ProcAttr{})
 					require.NoError(t, err, "start process")
 					defer p.Wait()
@@ -88,13 +87,13 @@ func TestTraceSignalGadget(t *testing.T) {
 				Timeout:        5 * time.Second,
 				ParamValues:    api.ParamValues{},
 				OnGadgetRun:    onGadgetRun,
-				MntnsFilterMap: utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 			gadgetRunner.RunGadget()
 
-			utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *traceSignalEvent {
+			utils.ExpectOneEvent(func(info *utils.RunnerInfo, fd int) *traceSignalEvent {
 				return &traceSignalEvent{
 					Proc:      info.Proc,
 					Signal:    signalName(testCase.signal),

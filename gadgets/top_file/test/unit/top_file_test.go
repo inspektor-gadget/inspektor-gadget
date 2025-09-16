@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/ebpf"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -41,10 +40,10 @@ type ExpectedTopFileEvent struct {
 }
 
 type testDef struct {
-	runnerConfig   *utilstest.RunnerConfig
+	runnerConfig   *utils.RunnerConfig
 	generateEvent  func() (string, error)
-	validateEvent  func(t *testing.T, info *utilstest.RunnerInfo, filepath string, events []ExpectedTopFileEvent)
-	mntnsFilterMap func(info *utilstest.RunnerInfo) *ebpf.Map
+	validateEvent  func(t *testing.T, info *utils.RunnerInfo, filepath string, events []ExpectedTopFileEvent)
+	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 }
 
 func TestTopFileGadget(t *testing.T) {
@@ -53,17 +52,17 @@ func TestTopFileGadget(t *testing.T) {
 	// https://github.com/torvalds/linux/commit/057996380a42bb64ccc04383cfa9c0ace4ea11f0
 	gadgettesting.MinimumKernelVersion(t, "5.6")
 	gadgettesting.InitUnitTest(t)
-	runnerConfig := &utilstest.RunnerConfig{}
+	runnerConfig := &utils.RunnerConfig{}
 
 	testCases := map[string]testDef{
 		"captures_events_with_filter": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			mntnsFilterMap: func(info *utilstest.RunnerInfo) *ebpf.Map {
-				return utilstest.CreateMntNsFilterMap(t, info.MountNsID)
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, filepath string, events []ExpectedTopFileEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, pid int) *ExpectedTopFileEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, filepath string, events []ExpectedTopFileEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTopFileEvent {
 					return &ExpectedTopFileEvent{
 						Proc: info.Proc,
 						T:    "R",
@@ -87,7 +86,7 @@ func TestTopFileGadget(t *testing.T) {
 			t.Parallel()
 
 			var filepath string
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			params := map[string]string{
 				"operator.oci.ebpf.map-fetch-interval": "1000ms",
 			}
@@ -100,7 +99,7 @@ func TestTopFileGadget(t *testing.T) {
 				utils.NormalizeInt(&event.Writes)
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					var err error
 					filepath, err = testCase.generateEvent()
 					if err != nil {

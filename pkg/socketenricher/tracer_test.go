@@ -28,15 +28,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func TestSocketEnricherCreate(t *testing.T) {
 	t.Parallel()
 
-	utilstest.RequireRoot(t)
-	utilstest.HostInit(t)
+	utils.RequireRoot(t)
+	utils.HostInit(t)
 
 	tracer, err := NewSocketEnricher(Config{})
 	require.NoError(t, err)
@@ -46,8 +46,8 @@ func TestSocketEnricherCreate(t *testing.T) {
 func TestSocketEnricherStopIdempotent(t *testing.T) {
 	t.Parallel()
 
-	utilstest.RequireRoot(t)
-	utilstest.HostInit(t)
+	utils.RequireRoot(t)
+	utils.HostInit(t)
 
 	tracer, err := NewSocketEnricher(Config{})
 	require.NoError(t, err)
@@ -60,8 +60,8 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 func TestSocketEnricherBadConfig(t *testing.T) {
 	t.Parallel()
 
-	utilstest.RequireRoot(t)
-	utilstest.HostInit(t)
+	utils.RequireRoot(t)
+	utils.HostInit(t)
 
 	type testDefinition struct {
 		config Config
@@ -131,8 +131,8 @@ type socketEnricherMapEntry struct {
 func TestSocketEnricherBind(t *testing.T) {
 	t.Parallel()
 
-	utilstest.RequireRoot(t)
-	utilstest.HostInit(t)
+	utils.RequireRoot(t)
+	utils.HostInit(t)
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err, "Cannot get current working directory")
@@ -141,9 +141,9 @@ func TestSocketEnricherBind(t *testing.T) {
 	ptask := host.GetProcComm(os.Getppid())
 
 	type testDefinition struct {
-		runnerConfig  *utilstest.RunnerConfig
+		runnerConfig  *utils.RunnerConfig
 		generateEvent func() (uint16, int, error)
-		expectedEvent func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry
+		expectedEvent func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry
 	}
 
 	// Golang generics cannot parameterize array sizes
@@ -170,7 +170,7 @@ func TestSocketEnricherBind(t *testing.T) {
 	for name, test := range map[string]testDefinition{
 		"udp": {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_DGRAM, 0),
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -192,7 +192,7 @@ func TestSocketEnricherBind(t *testing.T) {
 		},
 		"udp6": {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_DGRAM, 0),
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -219,7 +219,7 @@ func TestSocketEnricherBind(t *testing.T) {
 				}
 				return bindSocketWithOpts("::", unix.AF_INET6, unix.SOCK_DGRAM, 0, opts)
 			},
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -242,7 +242,7 @@ func TestSocketEnricherBind(t *testing.T) {
 		},
 		"tcp": {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -264,7 +264,7 @@ func TestSocketEnricherBind(t *testing.T) {
 		},
 		"tcp6": {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_STREAM, 0),
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -291,7 +291,7 @@ func TestSocketEnricherBind(t *testing.T) {
 				}
 				return bindSocketWithOpts("::", unix.AF_INET6, unix.SOCK_STREAM, 0, opts)
 			},
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -313,9 +313,9 @@ func TestSocketEnricherBind(t *testing.T) {
 			},
 		},
 		"tcp_uid_gid": {
-			runnerConfig:  &utilstest.RunnerConfig{Uid: 1000, Gid: 1111},
+			runnerConfig:  &utils.RunnerConfig{Uid: 1000, Gid: 1111},
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
-			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherGadgetSocketKey{
 						Netns:  uint32(info.NetworkNsID),
@@ -352,7 +352,7 @@ func TestSocketEnricherBind(t *testing.T) {
 					Size:    4096,
 				},
 			}
-			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, test.runnerConfig)
 
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
@@ -364,7 +364,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			// Generate the event in the fake container
 			var port uint16
 			var fd int
-			utilstest.RunWithRunner(t, runner, func() error {
+			utils.RunWithRunner(t, runner, func() error {
 				var err error
 				port, fd, err = test.generateEvent()
 				t.Cleanup(func() {
@@ -404,16 +404,16 @@ func TestSocketEnricherBind(t *testing.T) {
 
 			t.Logf("Testing if early tracer noticed the event")
 			entries := socketsMapEntries(t, earlyTracer, earlyNormalize, nil)
-			utilstest.ExpectAtLeastOneEvent(test.expectedEvent)(t, runner.Info, port, entries)
+			utils.ExpectAtLeastOneEvent(test.expectedEvent)(t, runner.Info, port, entries)
 
 			t.Logf("Testing if late tracer noticed the event")
 			entries2 := socketsMapEntries(t, lateTracer, lateNormalize, nil)
-			expectedEvent2 := func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent2 := func(info *utils.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				e := test.expectedEvent(info, port)
 				lateNormalize(e)
 				return e
 			}
-			utilstest.ExpectAtLeastOneEvent(expectedEvent2)(t, runner.Info, port, entries2)
+			utils.ExpectAtLeastOneEvent(expectedEvent2)(t, runner.Info, port, entries2)
 
 			t.Logf("Close socket in order to check for cleanup")
 			if fd != -1 {
