@@ -21,6 +21,7 @@ import (
 
 	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -34,9 +35,22 @@ type Verifier interface {
 }
 
 func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	signatureTag, err := craftCosignSignatureTag(desc.Digest.String())
+	digest := desc.Digest.String()
+	signatureTag, err := craftCosignSignatureTag(digest)
 	if err != nil {
 		return fmt.Errorf("crafting signature tag: %w", err)
+	}
+
+	_, err = oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
+	if err == nil {
+		return nil
+	}
+
+	log.Warnf("copying signing information using legacy scheme: %v, will try oci-1-1", err)
+
+	signatureTag, err = craftCosignIndexTag(digest)
+	if err != nil {
+		return fmt.Errorf("crafting index tag: %w", err)
 	}
 
 	_, err = oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
@@ -48,7 +62,24 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 }
 
 func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return pullCosignSigningInformation(ctx, repo, digest, imageStore)
+	signingInfoTag, err := craftCosignSignatureTag(digest)
+	if err != nil {
+		return fmt.Errorf("crafting cosign signature tag: %w", err)
+	}
+
+	err = pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore)
+	if err == nil {
+		return nil
+	}
+
+	log.Warnf("pulling signing information using legacy scheme: %v, will try oci-1-1", err)
+
+	signingInfoTag, err = craftCosignIndexTag(digest)
+	if err != nil {
+		return fmt.Errorf("crafting index signature tag: %w", err)
+	}
+
+	return pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore)
 }
 
 func Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named, opts VerifyOptions) error {
