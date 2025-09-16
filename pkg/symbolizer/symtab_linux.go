@@ -17,12 +17,15 @@
 package symbolizer
 
 import (
+	"bufio"
 	"debug/elf"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,17 +54,6 @@ func getHostProcFsPidNs() (uint32, error) {
 }
 
 func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery, res []StackItemResponse) error {
-	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
-	s.lockSymbolTables.RLock()
-	table, ok := s.symbolTables[key]
-	if ok {
-		s.resolveStackItemsWithTable(table, stackQueries, res)
-		s.lockSymbolTables.RUnlock()
-		return nil
-	}
-	s.lockSymbolTables.RUnlock()
-
-	var err error
 	pid := uint32(0)
 	for _, pidnr := range task.PidNumbers {
 		if pidnr.PidNsId == s.hostProcFsPidNs {
@@ -72,6 +64,21 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	if pid == 0 {
 		return fmt.Errorf("procfs for %q not found", task.Name)
 	}
+
+	var err error
+	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
+	s.lockSymbolTables.RLock()
+	table, ok := s.symbolTables[key]
+	if ok {
+		err = s.resolveStackItemsWithTable(table, pid, stackQueries, res)
+		s.lockSymbolTables.RUnlock()
+		if err != nil {
+			return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
+		}
+		return nil
+	}
+	s.lockSymbolTables.RUnlock()
+
 	table, err = s.newSymbolTableFromPid(pid, key)
 	if err != nil {
 		return fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
@@ -90,7 +97,10 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
 		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
 
-	s.resolveStackItemsWithTable(table, stackQueries, res)
+	err = s.resolveStackItemsWithTable(table, pid, stackQueries, res)
+	if err != nil {
+		return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
+	}
 
 	return nil
 }
@@ -176,19 +186,31 @@ func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error)
 
 	return &symbolTable{
 		symbols:   symbols,
+		isPIE:     elfFile.Type == elf.ET_DYN,
 		timestamp: time.Now(),
 	}, nil
 }
 
-func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, stackQueries []StackItemQuery, res []StackItemResponse) {
+func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, pid uint32, stackQueries []StackItemQuery, res []StackItemResponse) error {
 	table.timestamp = time.Now()
+
+	var baseAddress uint64
+	var err error
+	if table.isPIE {
+		baseAddress, err = getBaseAddress(pid)
+		if err != nil {
+			return fmt.Errorf("getting base address: %w", err)
+		}
+	}
+
 	for idx := range stackQueries {
-		symbol := table.lookupByAddr(stackQueries[idx].Addr)
+		symbol := table.lookupByAddr(stackQueries[idx].Addr - baseAddress)
 		if symbol != "" {
 			res[idx].Found = true
 			res[idx].Symbol = symbol
 		}
 	}
+	return nil
 }
 
 // lookupByAddr returns the symbol name for the given address.
@@ -210,4 +232,50 @@ func (e *symbolTable) lookupByAddr(address uint64) string {
 		return e.symbols[n].name
 	}
 	return "[unknown]"
+}
+
+// getBaseAddress gets the runtime base address of the main executable from /proc/pid/maps
+func getBaseAddress(pid uint32) (uint64, error) {
+	mapsPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "maps")
+	f, err := os.Open(mapsPath)
+	if err != nil {
+		return 0, fmt.Errorf("opening maps file: %w", err)
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := sc.Text()
+		parts := strings.Fields(line)
+		if len(parts) <= 5 {
+			continue
+		}
+		// Only check "r--p" (read-only) and "r-xp" (executable) sections as these
+		// reliably belong to the main executable, not heap/stack/anonymous memory.
+		perms := parts[1]
+		if perms != "r--p" && perms != "r-xp" {
+			continue
+		}
+		// Check if this is the main executable (not heap/vdso/anonymous)
+		filePath := parts[5]
+		if len(filePath) == 0 || filePath[0] != '/' {
+			continue
+		}
+		// Find the lowest address mapping for the main executable (ASLR base address).
+		addrRange := parts[0]
+		rangeParts := strings.Split(addrRange, "-")
+		baseStr := strings.TrimSpace(rangeParts[0])
+		base, err := strconv.ParseUint(baseStr, 16, 64)
+		if err != nil {
+			continue
+		}
+		return base, nil
+	}
+
+	if err := sc.Err(); err != nil {
+		return 0, fmt.Errorf("reading maps file: %w", err)
+	}
+
+	// /proc/pid/maps might be empty if the process is exiting / zombie.
+	return 0, fmt.Errorf("main executable not found in maps")
 }
