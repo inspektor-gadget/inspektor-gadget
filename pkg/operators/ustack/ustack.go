@@ -222,32 +222,32 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				mtimeSec, _ := mtimeSecField[0].Uint64(data)
 				mtimeNsec, _ := mtimeNsecField[0].Uint32(data)
 
-				stack := [ebpftypes.UserPerfMaxStackDepth]uint64{}
-				if o.userStackMap == nil {
-					logger.Warn("user stack map is not initialized")
-					return nil
-				}
-				userStackMap := o.userStackMap()
-				if userStackMap == nil {
-					logger.Warn("user stack map is missing")
-					return nil
-				}
-				err := userStackMap.Lookup(stackId, &stack)
-				if err != nil {
-					logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
-					return nil
-				}
+				var stackQueries []symbolizer.StackItemQuery
 
-				var addressesBuilder strings.Builder
-				addrs := make([]uint64, 0, len(stack))
-				for i, addr := range stack {
-					if addr == 0 {
-						break
+				// The ustack operator can run both on the client and on the server side.
+				// The BPF map is not available client-side (e.g. kubectl-gadget)
+				if !gadgetCtx.IsClient() {
+					if o.userStackMap == nil {
+						logger.Warn("user stack map is not initialized")
+						return nil
 					}
-					addrs = append(addrs, addr)
-					fmt.Fprintf(&addressesBuilder, "[%d]0x%016x; ", i, addr)
+					userStackMap := o.userStackMap()
+					if userStackMap == nil {
+						logger.Warn("user stack map is missing")
+						return nil
+					}
+
+					var addressesStr string
+					var err error
+					addressesStr, stackQueries, err = readUserStackMap(gadgetCtx, userStackMap, stackId)
+					if err != nil {
+						logger.Warn(err)
+						return nil
+					}
+					if addressesStr != "" {
+						addressesField.PutString(data, addressesStr)
+					}
 				}
-				addressesField.PutString(data, addressesBuilder.String())
 
 				if o.symbolizer != nil {
 					task := symbolizer.Task{
@@ -258,15 +258,16 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						MtimeSec:     int64(mtimeSec),
 						MtimeNsec:    mtimeNsec,
 					}
-					symbols, err := o.symbolizer.Resolve(task, addrs)
+					stackQueriesResponse, err := o.symbolizer.Resolve(task, stackQueries)
 					if err != nil {
 						logger.Warnf("symbolizer: %s", err)
 						return nil
 					}
 
 					var symbolsBuilder strings.Builder
-					for i, symbol := range symbols {
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, symbol)
+					for i, res := range stackQueriesResponse {
+						s := res.Symbol
+						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, s)
 					}
 					symbolsField.PutString(data, symbolsBuilder.String())
 				}
