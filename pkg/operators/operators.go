@@ -49,9 +49,13 @@ type GadgetContext interface {
 	IsClient() bool
 }
 
-// MapPrefix is used to avoid clash with maps and other eBPF objects when added
-// to gadget context.
-const MapPrefix string = "map/"
+const (
+	// MapPrefix is used to avoid clash with maps and other eBPF objects when added
+	// to gadget context.
+	MapPrefix string = "map/"
+
+	MapSpecPrefix string = "mapspec/"
+)
 
 type ImageOperator interface {
 	Name() string

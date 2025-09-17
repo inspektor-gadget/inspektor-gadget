@@ -419,6 +419,10 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		},
 	}
 
+	for name, m := range i.collectionSpec.Maps {
+		gadgetCtx.SetVar(operators.MapSpecPrefix+name, m)
+	}
+
 	return nil
 }
 
