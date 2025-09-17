@@ -125,7 +125,7 @@ func (r traceReporter) ReportTraceEvent(t *libpf.Trace, meta *samples.TraceEvent
 	return r.reportTraceEvent(t, meta)
 }
 
-func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map) error {
+func (o *OperatorInstance) startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map) error {
 	logger := gadgetCtx.Logger()
 
 	includeTracers, err := oteltracertypes.Parse("all")
@@ -174,18 +174,19 @@ func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map)
 
 	var rep traceReporter
 	rep.reportTraceEvent = func(t *libpf.Trace, meta *samples.TraceEventMeta) error {
-		fmt.Printf("Trace event: %+v\n", t)
+		var stackBuilder strings.Builder
 		for i, h := range t.Frames {
 			v := h.Value()
 			if v.SourceLine != 0 {
-				fmt.Printf("  #%d: %s +0x%x\n    %s:%d\n",
-					i, v.FunctionName, v.AddressOrLineno, v.SourceFile, v.SourceLine)
+				stackBuilder.WriteString(fmt.Sprintf("  #%d: %s +0x%x\n    %s:%d\n",
+					i, v.FunctionName, v.AddressOrLineno, v.SourceFile, v.SourceLine))
 			} else {
-				fmt.Printf("  #%d: %s +0x%x\n",
-					i, v.FunctionName, v.AddressOrLineno)
+				stackBuilder.WriteString(fmt.Sprintf("  #%d: %s +0x%x\n",
+					i, v.FunctionName, v.AddressOrLineno))
 			}
 		}
-		fmt.Printf("Trace meta: %+v\n", meta)
+		stackStr := stackBuilder.String()
+		o.correlationMap[meta.CorrelationID] = stackStr
 		return nil
 	}
 
@@ -195,9 +196,21 @@ func startOtelEbpfProfiler(gadgetCtx operators.GadgetContext, someMap *ebpf.Map)
 		return fmt.Errorf("failed to start OpenTelemetry trace handler: %w", err)
 	}
 
-	progName := "uprobe__generic"
-	kprobeUnwindNative := trc.GetEbpfProgram(progName)
-	logger.Infof("%s: %v", progName, kprobeUnwindNative)
-	gadgetCtx.SetVar("otel-ebpf-program", kprobeUnwindNative)
+	probeEntryEbpfProgram := trc.GetProbeEntryEbpfProgram()
+	gadgetCtx.SetVar("otel-ebpf-program", probeEntryEbpfProgram)
+	gadgetCtx.SetVar("otel_generic_params", trc.GetGenericParamsEbpfMap())
+
 	return nil
+}
+
+func (o *OperatorInstance) otelCorrelationIDToString(correlationID uint64) string {
+	if s, ok := o.correlationMap[correlationID]; ok {
+		return s
+	}
+	// Hack: the otel trace comes from a separate path
+	time.Sleep(time.Second)
+	if s, ok := o.correlationMap[correlationID]; ok {
+		return s
+	}
+	return fmt.Sprintf("otel_correlation_id:%d", correlationID)
 }

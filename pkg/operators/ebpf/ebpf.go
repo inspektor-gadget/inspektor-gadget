@@ -254,6 +254,9 @@ func (i *ebpfInstance) analyze() error {
 				if s == socketenricher.SocketsMapName {
 					return socketenricher.SocketsMapName, true
 				}
+				if s == "otel_generic_params" {
+					return "otel_generic_params", true
+				}
 				return "", false
 			},
 			populateFunc: i.populateMap,

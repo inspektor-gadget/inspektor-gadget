@@ -24,7 +24,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
-	_ "go.opentelemetry.io/ebpf-profiler/support"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -76,7 +75,8 @@ func (o *Operator) InstanceParams() api.Params {
 
 func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, instanceParamValues api.ParamValues) (operators.DataOperatorInstance, error) {
 	instance := &OperatorInstance{
-		subscriptions: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
+		subscriptions:  make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
+		correlationMap: make(map[uint64]string),
 	}
 
 	opts := symbolizer.SymbolizerOptions{
@@ -131,6 +131,7 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 	if len(instance.subscriptions) == 0 {
 		return nil, nil
 	}
+
 	return instance, nil
 }
 
@@ -142,6 +143,8 @@ type OperatorInstance struct {
 	userStackMap *ebpf.Map
 	buildIDMap   *ebpf.Map
 	symbolizer   func() *symbolizer.Symbolizer
+
+	correlationMap map[uint64]string // correlation ID to stack trace
 
 	subscriptions map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error
 }
@@ -160,6 +163,8 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			containerPidField := ds.GetField("runtime.containerPid")
 			containerNameField := ds.GetField("runtime.containerName")
 			commField := ds.GetField("proc.comm")
+
+			otelCorrelationIDField := ds.GetField("otel_correlation_id")
 
 			pidLevel0Field := in.GetSubFieldsWithTag("name:pid_level0")
 			if len(pidLevel0Field) != 1 {
@@ -206,8 +211,21 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 			// The ustack operator can run both on the client and on the server side.
 			// If it runs on the client side, the server might have already added the subfields.
-			var addressesField, buildIDField, symbolsField datasource.FieldAccessor
+			var otelStackField, addressesField, buildIDField, symbolsField datasource.FieldAccessor
 			var err error
+
+			if otelStackFieldAll := in.GetSubFieldsWithTag("name:otel_stack"); len(otelStackFieldAll) == 0 {
+				otelStackField, err = in.AddSubField("otel_stack", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden), datasource.WithTags("name:otel_stack", "operator:ustack"))
+				if err != nil {
+					return err
+				}
+			} else {
+				otelStackField = otelStackFieldAll[0]
+				if !otelStackField.HasAllTagsOf("operator:ustack") {
+					logger.Warn("field otel_stack exists but does not belong to the ustack operator")
+					continue
+				}
+			}
 
 			if addressesFieldAll := in.GetSubFieldsWithTag("name:addresses"); len(addressesFieldAll) == 0 {
 				addressesField, err = in.AddSubField("addresses", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden), datasource.WithTags("name:addresses", "operator:ustack"))
@@ -254,6 +272,13 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				// If user stacks are disabled
 				if inode == 0 {
 					return nil
+				}
+
+				if otelCorrelationIDField != nil {
+					otelCorrelationID, _ := otelCorrelationIDField.Uint64(data)
+					if otelCorrelationID != 0 {
+						otelStackField.PutString(data, o.otelCorrelationIDToString(otelCorrelationID))
+					}
 				}
 
 				stackId, _ := stackField[0].Uint32(data)
@@ -420,7 +445,7 @@ func (o *OperatorInstance) Name() string {
 }
 func (o *OperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	logger := gadgetCtx.Logger()
-	err := startOtelEbpfProfiler(gadgetCtx, nil)
+	err := o.startOtelEbpfProfiler(gadgetCtx, nil)
 	if err != nil {
 		logger.Warnf("failed to start OpenTelemetry eBPF Profiler: %s", err)
 		return err
