@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/expr"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -335,7 +336,15 @@ func (f *filterOperatorInstance) addFilter(gadgetCtx operators.GadgetContext, ds
 		return fmt.Errorf("field %q not found in datasource %s", fieldName, ds.Name())
 	}
 
-	ff, err := getFilterFunc(field, op, negate, value)
+	// Check if this field has a sort-by annotation pointing to a raw field
+	filterByField := field
+	if sortByAnnotation := field.Annotations()[metadatav1.ColumnsSortByAnnotation]; sortByAnnotation != "" {
+		if rawField := ds.GetField(sortByAnnotation); rawField != nil {
+			filterByField = rawField
+		}
+	}
+
+	ff, err := getFilterFunc(filterByField, op, negate, value)
 	if err != nil {
 		return err
 	}
