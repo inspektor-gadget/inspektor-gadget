@@ -22,7 +22,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -38,20 +37,20 @@ type ExpectedFdpassEvent struct {
 }
 
 type testDef struct {
-	runnerConfig   *utilstest.RunnerConfig
-	mntnsFilterMap func(info *utilstest.RunnerInfo) *ebpf.Map
+	runnerConfig   *utils.RunnerConfig
+	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 	generateEvent  func() (uint64, int, int, error)
-	validateEvent  func(t *testing.T, info *utilstest.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent)
+	validateEvent  func(t *testing.T, info *utils.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent)
 }
 
 func TestFdpassGadget(t *testing.T) {
 	gadgettesting.InitUnitTest(t)
 	testCases := map[string]testDef{
 		"basic": {
-			runnerConfig:  &utilstest.RunnerConfig{},
+			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateEvent,
-			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent) {
-				utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedFdpassEvent {
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent) {
+				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedFdpassEvent {
 					return &ExpectedFdpassEvent{
 						Proc:      info.Proc,
 						SocketIno: inodeNum,
@@ -70,13 +69,13 @@ func TestFdpassGadget(t *testing.T) {
 				socketIno  uint64
 				sockfd, fd int
 			)
-			runner := utilstest.NewRunnerWithTest(t, testCase.runnerConfig)
+			runner := utils.NewRunnerWithTest(t, testCase.runnerConfig)
 			var mntnsFilterMap *ebpf.Map
 			if testCase.mntnsFilterMap != nil {
 				mntnsFilterMap = testCase.mntnsFilterMap(runner.Info)
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					var err error
 					socketIno, sockfd, fd, err = testCase.generateEvent()
 					if err != nil {

@@ -5,13 +5,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 func TestNamespace(t *testing.T) {
-	test.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	// validate the container in k8s.io (default for ig) namespace
 	c1 := testutils.NewContainerdContainer("test-k8s-io", "sleep inf")

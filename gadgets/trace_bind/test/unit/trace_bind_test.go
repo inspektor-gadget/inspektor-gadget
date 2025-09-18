@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -87,9 +86,9 @@ func TestTraceBind(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			runner := utilstest.NewRunnerWithTest(t, &utilstest.RunnerConfig{})
+			runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					// pick socket parameters based on tc.network
 					var domain, socktype, proto int
 					var sa syscall.Sockaddr
@@ -142,7 +141,7 @@ func TestTraceBind(t *testing.T) {
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceBindEvent]{
 				Image:          "trace_bind",
 				Timeout:        5 * time.Second,
-				MntnsFilterMap: utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 				OnGadgetRun:    onGadgetRun,
 				ParamValues: api.ParamValues{
 					"operator.oci.ebpf.ignore-errors": "false",
@@ -152,8 +151,8 @@ func TestTraceBind(t *testing.T) {
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 			gadgetRunner.RunGadget()
 
-			utilstest.ExpectOneEvent(
-				func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceBindEvent {
+			utils.ExpectOneEvent(
+				func(info *utils.RunnerInfo, fd int) *ExpectedTraceBindEvent {
 					return &ExpectedTraceBindEvent{
 						Addr: utils.L4Endpoint{
 							Addr:    tc.addr,

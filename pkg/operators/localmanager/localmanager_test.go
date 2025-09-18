@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -41,7 +41,7 @@ const (
 )
 
 func TestLocalManagerBasic(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	// Call host.Init() as it'd be done by the local runtime. Otherwise, all
 	// calls to host.IsHost*() done by container-collection enrichers will fail.
@@ -56,7 +56,7 @@ func TestLocalManagerBasic(t *testing.T) {
 }
 
 func TestLocalManagerMountNsMap(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	// Call host.Init() as it'd be done by the local runtime. Otherwise, all
 	// calls to host.IsHost*() done by container-collection enrichers will fail.
@@ -121,7 +121,7 @@ func checkFdList(t *testing.T, initialFdList string, attempts int, sleep time.Du
 
 // TestLocalManagerClose tests that resources aren't leaked after calling Close()
 func TestLocalManagerClose(t *testing.T) {
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	// Call host.Init() as it'd be done by the local runtime. Otherwise, all
 	// calls to host.IsHost*() done by container-collection enrichers will fail.

@@ -26,7 +26,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
@@ -111,9 +110,9 @@ func TestTraceCapabilitiesGadget(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-			runner := utilstest.NewRunnerWithTest(t, &utilstest.RunnerConfig{})
+			runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					testCase.generateEvent()
 					return nil
 				})
@@ -122,13 +121,13 @@ func TestTraceCapabilitiesGadget(t *testing.T) {
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceCapabilitiesEvent]{
 				Image:          "trace_capabilities",
 				Timeout:        5 * time.Second,
-				MntnsFilterMap: utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 				OnGadgetRun:    onGadgetRun,
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 			gadgetRunner.RunGadget()
-			utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
+			utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
 				return &ExpectedTraceCapabilitiesEvent{
 					Proc:          info.Proc,
 					Cap:           testCase.requestedPermission,
@@ -145,10 +144,10 @@ func TestTraceCapabilitiesGadget(t *testing.T) {
 
 func TestNonAuditCapabilities(t *testing.T) {
 	gadgettesting.InitUnitTest(t)
-	runner := utilstest.NewRunnerWithTest(t, &utilstest.RunnerConfig{})
+	runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
 	var cmd *exec.Cmd
 	onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-		utilstest.RunWithRunner(t, runner, func() error {
+		utils.RunWithRunner(t, runner, func() error {
 			cmd = exec.Command("/bin/cat", "/proc/kallsyms")
 			err := cmd.Run()
 			require.NoError(t, err)
@@ -159,14 +158,14 @@ func TestNonAuditCapabilities(t *testing.T) {
 	opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceCapabilitiesEvent]{
 		Image:          "trace_capabilities",
 		Timeout:        5 * time.Second,
-		MntnsFilterMap: utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+		MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 		OnGadgetRun:    onGadgetRun,
 	}
 	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 	gadgetRunner.RunGadget()
 
-	utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
+	utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
 		return &ExpectedTraceCapabilitiesEvent{
 			Proc: utils.Process{
 				Pid:     uint32(cmd.Process.Pid),

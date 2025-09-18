@@ -25,9 +25,9 @@ import (
 	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 // This test file checks that the common filtering logic works as expected. We
@@ -196,18 +196,18 @@ func TestFiltering(t *testing.T) {
 			params := map[string]string{}
 			expectedEvents := 1
 
-			runnerConfig := &utilstest.RunnerConfig{
+			runnerConfig := &utils.RunnerConfig{
 				Uid: 123456,
 				Gid: 789012,
 			}
 
-			runner := utilstest.NewRunnerWithTest(t, runnerConfig)
+			runner := utils.NewRunnerWithTest(t, runnerConfig)
 
 			if testCase.matchMntns != nil {
 				if *testCase.matchMntns {
-					mntnsFilterMap = utilstest.CreateMntNsFilterMap(t, runner.Info.MountNsID)
+					mntnsFilterMap = utils.CreateMntNsFilterMap(t, runner.Info.MountNsID)
 				} else {
-					mntnsFilterMap = utilstest.CreateMntNsFilterMap(t, 0)
+					mntnsFilterMap = utils.CreateMntNsFilterMap(t, 0)
 					expectedEvents = 0
 				}
 			}
@@ -263,7 +263,7 @@ func TestFiltering(t *testing.T) {
 			require.NoError(t, os.Chown(tmpPath, runner.Info.Uid, runner.Info.Gid))
 
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
-				utilstest.RunWithRunner(t, runner, func() error {
+				utils.RunWithRunner(t, runner, func() error {
 					return generateEventWithSpecificPath(tmpPath)
 				})
 				return nil

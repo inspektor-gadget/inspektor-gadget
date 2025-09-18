@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -117,7 +117,7 @@ func TestWithTracerCollection(t *testing.T) {
 	t.Parallel()
 
 	// We need root to create the runners that will act as containers on this test
-	utilstest.RequireRoot(t)
+	utils.RequireRoot(t)
 
 	cc := ContainerCollection{}
 	f := &fakeTracerMapsUpdater{containers: make(map[string]*Container)}
@@ -130,11 +130,11 @@ func TestWithTracerCollection(t *testing.T) {
 
 	// We have to use real runners here as the WithTracerCollection() will drop the enricher if
 	// this doesn't have a valid PID
-	runners := make([]*utilstest.Runner, nContainers)
+	runners := make([]*utils.Runner, nContainers)
 	containers := make([]*Container, nContainers)
 
 	for i := 0; i < nContainers; i++ {
-		runner, err := utilstest.NewRunner(nil)
+		runner, err := utils.NewRunner(nil)
 		if err != nil {
 			t.Fatalf("Creating runner: %s", err)
 		}

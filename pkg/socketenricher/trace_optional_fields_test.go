@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
 type socketEnricherMapEntryBytes struct {
@@ -54,8 +54,8 @@ func firstN(str string, n int) string {
 func TestSocketEnricherOptionalFields(t *testing.T) {
 	t.Parallel()
 
-	utilstest.RequireRoot(t)
-	utilstest.HostInit(t)
+	utils.RequireRoot(t)
+	utils.HostInit(t)
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err, "Cannot get current working directory")
@@ -174,7 +174,7 @@ func TestSocketEnricherOptionalFields(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner := utilstest.NewRunnerWithTest(t, nil)
+			runner := utils.NewRunnerWithTest(t, nil)
 
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
@@ -186,7 +186,7 @@ func TestSocketEnricherOptionalFields(t *testing.T) {
 			// Generate the event in the fake container
 			var port uint16
 			var fd int
-			utilstest.RunWithRunner(t, runner, func() error {
+			utils.RunWithRunner(t, runner, func() error {
 				var err error
 				port, fd, err = bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_DGRAM, 0)()
 				t.Cleanup(func() {
