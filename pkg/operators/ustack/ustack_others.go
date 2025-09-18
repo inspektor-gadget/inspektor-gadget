@@ -25,6 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 )
 
-func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap *ebpf.Map, stackId uint32) (string, []symbolizer.StackItemQuery, error) {
-	return "", nil, errors.ErrUnsupported
+func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) (string, string, []symbolizer.StackItemQuery, error) {
+	return "", "", nil, errors.ErrUnsupported
 }
