@@ -704,6 +704,32 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Maps with a parameter _max_entries can have their size set at runtime.
+	// Example:
+	//     const volatile int mymap_max_entries = 1024;
+	//     GADGET_PARAM(mymap_max_entries);
+	//
+	//     struct {
+	//            __uint(type, BPF_MAP_TYPE_HASH);
+	//            __uint(key_size, sizeof(u32));
+	//            __uint(value_size, sizeof(u32));
+	//            __uint(max_entries, 0);
+	//     } mymap SEC(".maps");
+	for _, m := range i.collectionSpec.Maps {
+		maxEntriesStr := m.Name + "_max_entries"
+		v, ok := i.collectionSpec.Variables[maxEntriesStr]
+		if !ok {
+			continue
+		}
+		var maxEntries uint32
+		err := v.Get(&maxEntries)
+		if err != nil {
+			i.logger.Warnf("Getting map %q max_entries: %s", m.Name, err)
+			continue
+		}
+		m.MaxEntries = maxEntries
+	}
+
 	i.logger.Debugf("creating ebpf collection")
 
 	// check if the btfgen operator has stored the kernel types in the context
