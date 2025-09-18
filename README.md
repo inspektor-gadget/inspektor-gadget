@@ -197,6 +197,7 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 
 ## Recent Videos
 
+- Presentation: [From Kernel To Cloud: Building a Complete Open Source Observability Pipeline, OpenSearch Con NA - September 2025](https://opensearchconna2025.sched.com/event/25Gp0/from-kernel-to-cloud-building-a-complete-open-source-observability-pipeline-anirudha-jadhav-shenoy-pratik-gurudatt-amazon-web-services) ([video](https://www.youtube.com/watch?v=oWZnSS7mtK4), [slides](https://static.sched.com/hosted_files/opensearchconna2025/a8/From%20Kernel%20To%20Cloud_%20Building%20a%20Complete%20Open%20Source%20Observability%20Pipeline_final.pdf))
 - Talk: [Demystifying DNS: A Guide to Understanding and Debugging Request Flows in Kubernetes Clusters, Container Days Hamburg - September 2024](https://www.youtube.com/watch?v=KQpZg_NqbZw)
 - Talk: [eBPF Data Collection for Everyone – empowering the community to obtain Linux insights using Inspektor Gadget](https://www.youtube.com/watch?v=tkKXdaqji9c)
 - Talk: [Collecting Low-Level Metrics with eBPF, KubeCon + CloudNativeCon North America 2023](https://kccncna2023.sched.com/event/a70c0a016973beb5705f5f72fa58f622) ([video](https://www.youtube.com/watch?v=_ft3iTw5uv8), [slides](https://static.sched.com/hosted_files/kccncna2023/91/Collecting%20Low-Level%20Metrics%20with%20eBPF.pdf))
