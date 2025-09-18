@@ -17,25 +17,18 @@
 package symbolizer
 
 import (
-	"debug/elf"
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
+	"strconv"
+	"strings"
 	"syscall"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
-)
-
-const (
-	maxExecutableSize   = 512 * 1024 * 1024 // 512MB
-	maxSymbolLength     = 256
-	maxSymbolCount      = 10 * 1000 * 1000
-	maxSymbolCountTotal = 50 * 1000 * 1000
 )
 
 func getHostProcFsPidNs() (uint32, error) {
@@ -51,17 +44,6 @@ func getHostProcFsPidNs() (uint32, error) {
 }
 
 func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery, res []StackItemResponse) error {
-	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
-	s.lockSymbolTables.RLock()
-	table, ok := s.symbolTables[key]
-	if ok {
-		s.resolveStackItemsWithTable(table, stackQueries, res)
-		s.lockSymbolTables.RUnlock()
-		return nil
-	}
-	s.lockSymbolTables.RUnlock()
-
-	var err error
 	pid := uint32(0)
 	for _, pidnr := range task.PidNumbers {
 		if pidnr.PidNsId == s.hostProcFsPidNs {
@@ -72,6 +54,26 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	if pid == 0 {
 		return fmt.Errorf("procfs for %q not found", task.Name)
 	}
+
+	var err error
+	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
+	s.lockSymbolTables.RLock()
+	table, ok := s.symbolTables[key]
+	if ok {
+		var baseAddress uint64
+		if table.isPIE {
+			baseAddress, err = getBaseAddress(pid)
+			if err != nil {
+				return fmt.Errorf("getting base address for %q: %w", task.Name, err)
+			}
+		}
+
+		s.resolveStackItemsWithTable(table, baseAddress, stackQueries, res)
+		s.lockSymbolTables.RUnlock()
+		return nil
+	}
+	s.lockSymbolTables.RUnlock()
+
 	table, err = s.newSymbolTableFromPid(pid, key)
 	if err != nil {
 		return fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
@@ -90,7 +92,14 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
 		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
 
-	s.resolveStackItemsWithTable(table, stackQueries, res)
+	var baseAddress uint64
+	if table.isPIE {
+		baseAddress, err = getBaseAddress(pid)
+		if err != nil {
+			return fmt.Errorf("getting base address for %q: %w", task.Name, err)
+		}
+	}
+	s.resolveStackItemsWithTable(table, baseAddress, stackQueries, res)
 
 	return nil
 }
@@ -128,86 +137,47 @@ func (s *Symbolizer) newSymbolTableFromPid(pid uint32, expectedExeKey exeKey) (*
 	return s.newSymbolTableFromFile(file)
 }
 
-func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error) {
-	var symbols []*symbol
-
-	elfFile, err := elf.NewFile(file)
+// getBaseAddress gets the runtime base address of the main executable from /proc/pid/maps
+func getBaseAddress(pid uint32) (uint64, error) {
+	mapsPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "maps")
+	f, err := os.Open(mapsPath)
 	if err != nil {
-		return nil, fmt.Errorf("parsing ELF file: %w", err)
+		return 0, fmt.Errorf("opening maps file: %w", err)
 	}
-	defer elfFile.Close()
+	defer f.Close()
 
-	symtab, err := elfFile.Symbols()
-	if err != nil {
-		// No symbols found. This is not an error.
-		return &symbolTable{}, nil
-	}
-
-	symbolCount := 0
-	for _, sym := range symtab {
-		if sym.Name == "" {
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := sc.Text()
+		parts := strings.Fields(line)
+		if len(parts) <= 5 {
 			continue
 		}
-		if sym.Size == 0 {
+		// Only check "r--p" (read-only) and "r-xp" (executable) sections as these
+		// reliably belong to the main executable, not heap/stack/anonymous memory.
+		perms := parts[1]
+		if perms != "r--p" && perms != "r-xp" {
 			continue
 		}
-		if len(sym.Name) > maxSymbolLength {
-			sym.Name = sym.Name[:maxSymbolLength]
+		// Check if this is the main executable (not heap/vdso/anonymous)
+		filePath := parts[5]
+		if !strings.HasPrefix(filePath, "/") {
+			continue
 		}
-		symbols = append(symbols, &symbol{
-			name:  sym.Name,
-			value: sym.Value,
-			size:  sym.Size,
-		})
-		symbolCount++
+		// Find the lowest address mapping for the main executable (ASLR base address).
+		addrRange := parts[0]
+		rangeParts := strings.Split(addrRange, "-")
+		baseStr := strings.TrimSpace(rangeParts[0])
+		base, err := strconv.ParseUint(baseStr, 16, 64)
+		if err != nil {
+			continue
+		}
+		return base, nil
 	}
-	if symbolCount > maxSymbolCount {
-		return nil, fmt.Errorf("too many symbols: %d", symbolCount)
-	}
-	slices.SortFunc(symbols, func(a, b *symbol) int {
-		if a.value < b.value {
-			return -1
-		}
-		if a.value > b.value {
-			return 1
-		}
-		return 0
-	})
 
-	return &symbolTable{
-		symbols:   symbols,
-		timestamp: time.Now(),
-	}, nil
-}
-
-func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, stackQueries []StackItemQuery, res []StackItemResponse) {
-	table.timestamp = time.Now()
-	for idx := range stackQueries {
-		symbol := table.lookupByAddr(stackQueries[idx].Addr)
-		if symbol != "" {
-			res[idx].Found = true
-			res[idx].Symbol = symbol
-		}
+	if err := sc.Err(); err != nil {
+		return 0, fmt.Errorf("reading maps file: %w", err)
 	}
-}
 
-// lookupByAddr returns the symbol name for the given address.
-func (e *symbolTable) lookupByAddr(address uint64) string {
-	// Similar to a trivial binary search, but each symbol is a range.
-	n, found := slices.BinarySearchFunc(e.symbols, address, func(a *symbol, b uint64) int {
-		if a.value <= b && a.value+a.size > b {
-			return 0
-		}
-		if a.value > b {
-			return 1
-		}
-		if a.value < b {
-			return -1
-		}
-		return 0
-	})
-	if found {
-		return e.symbols[n].name
-	}
-	return "[unknown]"
+	return 0, fmt.Errorf("main executable not found in maps")
 }

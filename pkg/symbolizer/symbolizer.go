@@ -18,6 +18,8 @@ package symbolizer
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -29,8 +31,21 @@ const (
 	pruneTickerTime = time.Minute
 )
 
+var defaultDebuginfodCachePath string
+
+func init() {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		defaultDebuginfodCachePath = "/root/.cache/debuginfod_client"
+		return
+	}
+	defaultDebuginfodCachePath = filepath.Join(cacheDir, "debuginfod_client")
+}
+
 type SymbolizerOptions struct {
-	UseSymtab bool
+	UseSymtab           bool
+	UseDebugInfodCache  bool
+	DebuginfodCachePath string
 }
 
 type Symbolizer struct {
@@ -39,6 +54,10 @@ type Symbolizer struct {
 	lockSymbolTables sync.RWMutex
 	symbolTables     map[exeKey]*symbolTable
 	symbolCountTotal int
+
+	lockSymbolTablesFromBuildID sync.RWMutex
+	symbolTablesFromBuildID     map[string]*symbolTable
+	missingBuildIDs             map[string]bool
 
 	// hostProcFsPidNs is the pid namespace of /host/proc/1/ns/pid.
 	hostProcFsPidNs uint32
@@ -53,6 +72,10 @@ type Symbolizer struct {
 type symbolTable struct {
 	// symbols is a slice of symbols. Order is preserved for binary search.
 	symbols []*symbol
+
+	// PIE (Position Independent Executable) needs addresses to be adjusted with
+	// base address.
+	isPIE bool
 
 	timestamp time.Time
 }
@@ -83,14 +106,19 @@ func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 			return nil, err
 		}
 	}
+	if opts.DebuginfodCachePath == "" {
+		opts.DebuginfodCachePath = defaultDebuginfodCachePath
+	}
 
 	s := &Symbolizer{
-		options:         opts,
-		symbolTables:    make(map[exeKey]*symbolTable),
-		hostProcFsPidNs: hostProcFsPidNs,
-		pruneTickerTime: pruneTickerTime,
-		symbolTableTTL:  symbolTableTTL,
-		exit:            make(chan struct{}),
+		options:                 opts,
+		symbolTables:            make(map[exeKey]*symbolTable),
+		symbolTablesFromBuildID: make(map[string]*symbolTable),
+		missingBuildIDs:         make(map[string]bool),
+		hostProcFsPidNs:         hostProcFsPidNs,
+		pruneTickerTime:         pruneTickerTime,
+		symbolTableTTL:          symbolTableTTL,
+		exit:                    make(chan struct{}),
 	}
 	return s, nil
 }
@@ -113,9 +141,10 @@ func (s *Symbolizer) pruneLoop() {
 }
 
 func (s *Symbolizer) pruneOldObjects() {
-	s.lockSymbolTables.Lock()
-	defer s.lockSymbolTables.Unlock()
 	now := time.Now()
+
+	// Clean symbolTables
+	s.lockSymbolTables.Lock()
 	tableRemovedCount := 0
 	symbolRemovedCount := 0
 	for key, table := range s.symbolTables {
@@ -131,6 +160,25 @@ func (s *Symbolizer) pruneOldObjects() {
 			tableRemovedCount, symbolRemovedCount,
 			len(s.symbolTables), s.symbolCountTotal)
 	}
+	s.lockSymbolTables.Unlock()
+
+	// Clean symbolTablesFromBuildID
+	s.lockSymbolTablesFromBuildID.Lock()
+	buildIDRemovedCount := 0
+	buildIDSymbolRemovedCount := 0
+	for buildID, table := range s.symbolTablesFromBuildID {
+		if now.Sub(table.timestamp) > s.symbolTableTTL {
+			delete(s.symbolTablesFromBuildID, buildID)
+			buildIDRemovedCount++
+			buildIDSymbolRemovedCount += len(table.symbols)
+		}
+	}
+	if buildIDRemovedCount > 0 {
+		log.Debugf("symbol tables from build ID pruned: %d symbol tables with %d symbols removed (remaining: %d symbol tables with %d symbols)",
+			buildIDRemovedCount, buildIDSymbolRemovedCount,
+			len(s.symbolTablesFromBuildID), s.symbolCountTotal)
+	}
+	s.lockSymbolTablesFromBuildID.Unlock()
 }
 
 type PidNumbers struct {
@@ -155,8 +203,14 @@ type Task struct {
 }
 
 // StackItemQuery is one item of the stack. It contains the data found from BPF.
+// The build id comes from struct bpf_stack_build_id from the Linux UAPI:
+// https://github.com/torvalds/linux/blob/v6.14/include/uapi/linux/bpf.h#L1451
 type StackItemQuery struct {
-	Addr uint64
+	Addr         uint64
+	ValidBuildID bool
+	BuildID      [20]byte
+	Offset       uint64
+	IP           uint64
 }
 
 type StackItemResponse struct {
@@ -177,13 +231,24 @@ func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackI
 		}
 	}
 
+	if s.options.UseDebugInfodCache {
+		err := s.resolveWithDebuginfodCache(task, stackQueries, res)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Most gadgets won't use the symbolizer, so don't start the prune loop until we need it.
-	if !s.pruneLoopStarted && s.options.UseSymtab {
+	if !s.pruneLoopStarted && (s.options.UseSymtab || s.options.UseDebugInfodCache) {
 		count := 0
 
 		s.lockSymbolTables.RLock()
 		count += len(s.symbolTables)
 		s.lockSymbolTables.RUnlock()
+
+		s.lockSymbolTablesFromBuildID.RLock()
+		count += len(s.symbolTablesFromBuildID)
+		s.lockSymbolTablesFromBuildID.RUnlock()
 
 		if count > 0 {
 			s.pruneLoopStarted = true
