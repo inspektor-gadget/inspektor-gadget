@@ -10,27 +10,31 @@ import TabItem from '@theme/TabItem';
 Inspektor Gadget supports exporting metrics to Prometheus using the [metrics
 exporter](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/).
 In order to do so, you need to [enable the metrics
-listener](#enabling-the-metrics-listener) and [configure each gadget to actively
+listener & optionally specify the metrics exporter port](#enabling-the-metrics-listener),  and [configure each gadget to actively
 expose its metrics](#enabling-export-for-gadgets).
 
 ## Enabling the metrics listener
 
 In order to enable the metrics listener, you need to set the
-`otel-metrics-listen` parameter to `true`:
+`otel-metrics-listen` parameter to `true` and optionally specify
+the `otel-metrics-listen-address` parameter to define the address
+and port where the metrics will be exposed.:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        kubectl gadget deploy --otel-metrics-listen=true
+        kubectl gadget deploy --otel-metrics-listen=true --otel-metrics-listen-address=0.0.0.0:9091
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        sudo ig daemon --otel-metrics-listen=true
+        sudo ig daemon --otel-metrics-listen=true --otel-metrics-listen-address=0.0.0.0:9091
         ```
     </TabItem>
 </Tabs>
+
+If the `otel-metrics-listen-address` is not specified, the default address is 0.0.0.0:2224.
 
 ## Enabling export for gadgets
 
@@ -93,7 +97,9 @@ Following is an example of how to enable metrics export for the
 Once you have enabled the metrics listener and configured the gadgets to export
 metrics, you can query the metrics using Prometheus. By default, the metrics
 will be available at `http://0.0.0.0:2224/metrics`. You can change this address
-by setting the `otel-metrics-listen-address` parameter.
+by setting the `otel-metrics-listen-address` parameter. In the examples below
+the port 9091 will be used for exporting metrics. In which case the metrics will
+be available at `http://0.0.0.0:9091/metrics`.
 
 Metrics will be available under the `metricsname` you specified when enabling
 the metrics export for the gadget. For example, under `blockio-metrics` for the
@@ -102,9 +108,9 @@ the metrics export for the gadget. For example, under `blockio-metrics` for the
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ POD_NAME=$(kubectl get pods -n gadget -o jsonpath="{.items[0].metadata.name}")
-        $ kubectl -n gadget port-forward $POD_NAME 2224:2224 &
-        $ curl http://localhost:2224/metrics -s | grep blockio-metrics
+        $ export POD_NAME=$(kubectl get pods -n gadget -o jsonpath="{.items[0].metadata.name}")
+        $ kubectl -n gadget port-forward $POD_NAME 9091:9091 &
+        $ curl http://localhost:9091/metrics -s | grep blockio-metrics
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1"} 0
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2"} 0
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4"} 0
@@ -141,7 +147,7 @@ the metrics export for the gadget. For example, under `blockio-metrics` for the
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ curl http://localhost:2224/metrics -s | grep blockio-metrics
+        $ curl http://localhost:9091/metrics -s | grep blockio-metrics
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="1"} 0
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="2"} 0
         latency_bucket{otel_scope_name="blockio-metrics",otel_scope_version="",le="4"} 0
@@ -176,6 +182,100 @@ the metrics export for the gadget. For example, under `blockio-metrics` for the
         ```
     </TabItem>
 </Tabs>
+
+### Viewing metrics with Prometheus
+#### Prometheus Configuration
+If you have a Prometheus server running, you can configure it to scrape the metrics from the exposed port. The following
+is an example scrape configuration for Prometheus. The configuration file for Prometheus is usually named
+`prometheus.yml`. The following can used as a basis for your configuration file.
+
+```yaml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "gadgets"
+    static_configs:
+      - targets: ['localhost:9091']
+        labels:
+          app: "blockio"
+```
+#### Running the prometheus server
+Prometheus can be run both within a kubernetes cluster and outside of it. There are various advantages and disadvantages
+to both. Running externally means that resources within the cluster are not used. If multiple clusters are being monitored,
+then running prometheus externally may be a better option. However, this does require the metrics to be exposed
+externally.
+
+
+Once you have your configuration file ready, you can run prometheus either within your cluster or outside of it.
+
+In the examples below there are three options shown the external, internal & internal via minikube service. The internal
+services are deployed to the cluster using helm charts. The external service is run outside of the cluster. In all
+cases the configuration file is used to configure prometheus to scrape the metrics from the gadgets exporter which is
+being configured to run on port 9091.
+
+<Tabs groupId="env">
+    <TabItem value="external" label="External">
+        - [Prometheus server installation instructions](https://prometheus.io/docs/introduction/first_steps/#downloading-prometheus)
+        ```bash
+        prometheus --config.file=prometheus.yml
+        ```
+        In a separate terminal tab the the prometheus metrics port can be forwarded to localhost
+        ```bash
+        export POD_NAME=$(k get pods -n gadget -o jsonpath="{.items[0].metadata.name}")
+        kubectl -n gadget port-forward $POD_NAME 9091:9091
+        ```
+    </TabItem>
+    <TabItem value="internal" label="Internal">
+        - [Installation instructions for helm](https://helm.sh/docs/intro/install/)
+        - [Installation instructions for prometheus helm chart](https://github.com/prometheus-community/helm-charts)
+        ```bash
+        kubectl create configmap prometheus-config --from-file=prometheus.yml
+        helm install prometheus prometheus-community/prometheus \
+          --set serverFiles.prometheus.yml.configMapName=prometheus-config
+        kubectl expose service prometheus-server --type=NodePort \
+          --target-port=9090 --name=prometheus-server-ext
+        echo "Prometheus server is available at:"
+        echo "http://$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}"):$(kubectl get service prometheus-server-ext -o jsonpath="{.spec.ports[0].nodePort}")"
+        ```
+    </TabItem>
+    <TabItem value="minikube" label="Internal Minikube">
+        - [Installation instructions for helm](https://helm.sh/docs/intro/install/)
+        - [Installation instructions for prometheus helm chart](https://github.com/prometheus-community/helm-charts)
+        ```bash
+        kubectl create configmap prometheus-config --from-file=prometheus.yml
+        helm install prometheus prometheus-community/prometheus \
+          --set serverFiles.prometheus.yml.configMapName=prometheus-config
+        kubectl expose service prometheus-server --type=NodePort \
+          --target-port=9090 --name=prometheus-server-ext
+        minikube service prometheus-server-ext
+        ```
+    </TabItem>
+</Tabs>
+
+#### Viewing the metrics in Prometheus
+You can then view the metrics in the Prometheus web UI. The URL will vary depending on the way you choose to host your
+prometheus service.  For the externally hosted service the URL would be `http://localhost:9090/`. For prometheus services
+hosted internally to a cluster the URL will be variable. You can use the following queries to view the metrics in the
+prometheus graph tab:
+
+```
+latency_bucket{k8s_app="gadget", otel_scope_name="blockio-metrics"}
+```
+This shows a histogram from the blockio-metrics gadget.
+
+
+![Inspektor Gadget Counter Metric](../images/prometheus/blockio-metrics-histogram.png)
+
+Prometheus has its own [query language](https://prometheus.io/docs/prometheus/latest/querying/basics/) that you can use to filter and aggregate metrics. Prometheus has several
+types of metric types that can be emitted. The most common ones are:
+
+- **[Counter](https://prometheus.io/docs/concepts/metric_types/#counter)**: A counter is a cumulative metric that represents a single monotonically increasing counter whose value can only increase or be reset to zero on restart. For example, the `latency_count` metric in the example above is a counter that counts the number of latency measurements taken.
+- **[Gauge](https://prometheus.io/docs/concepts/metric_types/#gauge)**: A gauge is a metric that represents a single numerical value that can arbitrarily go up and down. For example, the `memory_usage` metric in the example above is a gauge that measures the current memory usage of the gadget.
+- **[Histogram](https://prometheus.io/docs/concepts/metric_types/#histogram)**: A histogram samples observations (usually things like request durations or response sizes) and counts them in configurable buckets. It also provides a sum of all observed values. For example, the `latency_bucket` metric in the example above is a histogram that measures the latency of block I/O operations.
+
 
 ## Stopping metrics collection
 
