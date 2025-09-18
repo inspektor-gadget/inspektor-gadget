@@ -17,28 +17,16 @@
 package symbolizer
 
 import (
-	"debug/elf"
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"slices"
 	"sync"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
-	maxExecutableSize   = 512 * 1024 * 1024 // 512MB
-	maxSymbolLength     = 256
-	maxSymbolCount      = 10 * 1000 * 1000
-	maxSymbolCountTotal = 50 * 1000 * 1000
-	symbolTableTTL      = time.Minute
-	pruneTickerTime     = time.Minute
+	symbolTableTTL  = time.Minute
+	pruneTickerTime = time.Minute
 )
 
 type SymbolizerOptions struct {
@@ -48,7 +36,7 @@ type SymbolizerOptions struct {
 type Symbolizer struct {
 	options SymbolizerOptions
 
-	lock             sync.RWMutex
+	lockSymbolTables sync.RWMutex
 	symbolTables     map[exeKey]*symbolTable
 	symbolCountTotal int
 
@@ -87,19 +75,19 @@ func (k exeKey) String() string {
 }
 
 func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
-	pid1PidNsInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", host.HostProcFs))
-	if err != nil {
-		return nil, err
-	}
-	pid1PidNsStat, ok := pid1PidNsInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return nil, fmt.Errorf("reading inode of %s/1/ns/pid", host.HostProcFs)
+	var hostProcFsPidNs uint32
+	if opts.UseSymtab {
+		var err error
+		hostProcFsPidNs, err = getHostProcFsPidNs()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	s := &Symbolizer{
 		options:         opts,
 		symbolTables:    make(map[exeKey]*symbolTable),
-		hostProcFsPidNs: uint32(pid1PidNsStat.Ino),
+		hostProcFsPidNs: hostProcFsPidNs,
 		pruneTickerTime: pruneTickerTime,
 		symbolTableTTL:  symbolTableTTL,
 		exit:            make(chan struct{}),
@@ -125,8 +113,8 @@ func (s *Symbolizer) pruneLoop() {
 }
 
 func (s *Symbolizer) pruneOldObjects() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.lockSymbolTables.Lock()
+	defer s.lockSymbolTables.Unlock()
 	now := time.Now()
 	tableRemovedCount := 0
 	symbolRemovedCount := 0
@@ -143,27 +131,6 @@ func (s *Symbolizer) pruneOldObjects() {
 			tableRemovedCount, symbolRemovedCount,
 			len(s.symbolTables), s.symbolCountTotal)
 	}
-}
-
-// lookupByAddr returns the symbol name for the given address.
-func (e *symbolTable) lookupByAddr(address uint64) string {
-	// Similar to a trivial binary search, but each symbol is a range.
-	n, found := slices.BinarySearchFunc(e.symbols, address, func(a *symbol, b uint64) int {
-		if a.value <= b && a.value+a.size > b {
-			return 0
-		}
-		if a.value > b {
-			return 1
-		}
-		if a.value < b {
-			return -1
-		}
-		return 0
-	})
-	if found {
-		return e.symbols[n].name
-	}
-	return "[unknown]"
 }
 
 type PidNumbers struct {
@@ -187,155 +154,42 @@ type Task struct {
 	MtimeNsec uint32
 }
 
-func (s *Symbolizer) Resolve(task Task, addresses []uint64) ([]string, error) {
-	if s.options.UseSymtab {
-		return s.resolveWithSymtab(task, addresses)
-	}
-	// At the moment, we don't support other symbolization methods than symtab
-	// and NewSymbolizer() is only called with UseSymtab. So this code path is
-	// not taken. When implementing more symbolization methods, this can be
-	// added here.
-	return nil, nil
+// StackItemQuery is one item of the stack. It contains the data found from BPF.
+type StackItemQuery struct {
+	Addr uint64
 }
 
-func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string, error) {
-	res := make([]string, len(addresses))
+type StackItemResponse struct {
+	Found  bool
+	Symbol string
+}
 
-	if len(addresses) == 0 {
-		return res, nil
+func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackItemResponse, error) {
+	if len(stackQueries) == 0 {
+		return nil, nil
 	}
+	res := make([]StackItemResponse, len(stackQueries))
 
-	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
-	s.lock.RLock()
-	table, ok := s.symbolTables[key]
-	if ok {
-		table.timestamp = time.Now()
-		for idx, addr := range addresses {
-			res[idx] = table.lookupByAddr(addr)
+	if s.options.UseSymtab {
+		err := s.resolveWithSymtab(task, stackQueries, res)
+		if err != nil {
+			return nil, err
 		}
-		s.lock.RUnlock()
-		return res, nil
-	}
-	s.lock.RUnlock()
-
-	var err error
-	pid := uint32(0)
-	for _, pidnr := range task.PidNumbers {
-		if pidnr.PidNsId == s.hostProcFsPidNs {
-			pid = pidnr.Pid
-			break
-		}
-	}
-	if pid == 0 {
-		return nil, fmt.Errorf("procfs for %q not found", task.Name)
-	}
-	table, err = s.newSymbolTable(pid, key)
-	if err != nil {
-		return nil, fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if len(table.symbols)+s.symbolCountTotal > maxSymbolCountTotal {
-		return nil, fmt.Errorf("too many symbols in all symbol tables: %d (max: %d)",
-			len(table.symbols)+s.symbolCountTotal, maxSymbolCountTotal)
 	}
 
 	// Most gadgets won't use the symbolizer, so don't start the prune loop until we need it.
-	if !s.pruneLoopStarted {
-		s.pruneLoopStarted = true
-		go s.pruneLoop()
+	if !s.pruneLoopStarted && s.options.UseSymtab {
+		count := 0
+
+		s.lockSymbolTables.RLock()
+		count += len(s.symbolTables)
+		s.lockSymbolTables.RUnlock()
+
+		if count > 0 {
+			s.pruneLoopStarted = true
+			go s.pruneLoop()
+		}
 	}
 
-	s.symbolTables[key] = table
-	s.symbolCountTotal += len(table.symbols)
-
-	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
-		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
-
-	for idx, addr := range addresses {
-		res[idx] = table.lookupByAddr(addr)
-	}
 	return res, nil
-}
-
-func (s *Symbolizer) newSymbolTable(pid uint32, expectedExeKey exeKey) (*symbolTable, error) {
-	var symbols []*symbol
-
-	path := fmt.Sprintf("%s/%d/exe", host.HostProcFs, pid)
-	file, err := os.Open(path)
-	if err != nil {
-		// The process might have terminated, or it might be in an unreachable
-		// pid namespace. Either way, we can't resolve symbols.
-		return nil, fmt.Errorf("opening process executable: %w", err)
-	}
-	defer file.Close()
-	fs, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("stat process executable: %w", err)
-	}
-	stat, ok := fs.Sys().(*syscall.Stat_t)
-	if !ok {
-		return nil, errors.New("getting syscall.Stat_t failed")
-	}
-	ino := stat.Ino
-	newKey := exeKey{ino, stat.Mtim.Sec, uint32(stat.Mtim.Nsec)}
-	if newKey != expectedExeKey {
-		newComm, _ := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", file.Fd()))
-		newComm = filepath.Base(newComm)
-		return nil, fmt.Errorf("opening executable: got %q inode %d, mtime %d.%d (expected %s)",
-			newComm, ino, stat.Mtim.Sec, stat.Mtim.Nsec,
-			expectedExeKey)
-	}
-	if fs.Size() > maxExecutableSize {
-		return nil, fmt.Errorf("executable is too large (%d bytes)", fs.Size())
-	}
-
-	elfFile, err := elf.NewFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("parsing ELF file: %w", err)
-	}
-	defer elfFile.Close()
-
-	symtab, err := elfFile.Symbols()
-	if err != nil {
-		// No symbols found. This is not an error.
-		return &symbolTable{}, nil
-	}
-
-	symbolCount := 0
-	for _, sym := range symtab {
-		if sym.Name == "" {
-			continue
-		}
-		if sym.Size == 0 {
-			continue
-		}
-		if len(sym.Name) > maxSymbolLength {
-			sym.Name = sym.Name[:maxSymbolLength]
-		}
-		symbols = append(symbols, &symbol{
-			name:  sym.Name,
-			value: sym.Value,
-			size:  sym.Size,
-		})
-		symbolCount++
-	}
-	if symbolCount > maxSymbolCount {
-		return nil, fmt.Errorf("too many symbols: %d", symbolCount)
-	}
-	slices.SortFunc(symbols, func(a, b *symbol) int {
-		if a.value < b.value {
-			return -1
-		}
-		if a.value > b.value {
-			return 1
-		}
-		return 0
-	})
-
-	return &symbolTable{
-		symbols:   symbols,
-		timestamp: time.Now(),
-	}, nil
 }
