@@ -54,6 +54,10 @@ type symbolTable struct {
 	// symbols is a slice of symbols. Order is preserved for binary search.
 	symbols []*symbol
 
+	// PIE (Position Independent Executable) needs addresses to be adjusted with
+	// base address.
+	isPIE bool
+
 	timestamp time.Time
 }
 
