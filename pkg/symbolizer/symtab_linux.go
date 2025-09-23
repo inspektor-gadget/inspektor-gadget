@@ -30,6 +30,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -66,11 +67,10 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	}
 
 	var err error
-	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
 	s.lockSymbolTables.RLock()
-	table, ok := s.symbolTables[key]
+	table, ok := s.symbolTables[task.Exe]
 	if ok {
-		err = s.resolveStackItemsWithTable(table, pid, stackQueries, res)
+		err = s.resolveStackItemsWithTable(task, table, pid, stackQueries, res)
 		s.lockSymbolTables.RUnlock()
 		if err != nil {
 			return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
@@ -79,7 +79,7 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	}
 	s.lockSymbolTables.RUnlock()
 
-	table, err = s.newSymbolTableFromPid(pid, key)
+	table, err = s.newSymbolTableFromPid(pid, task.Exe)
 	if err != nil {
 		return fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
 	}
@@ -91,13 +91,13 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 			len(table.symbols)+s.symbolCountTotal, maxSymbolCountTotal)
 	}
 
-	s.symbolTables[key] = table
+	s.symbolTables[task.Exe] = table
 	s.symbolCountTotal += len(table.symbols)
 
 	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
 		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
 
-	err = s.resolveStackItemsWithTable(table, pid, stackQueries, res)
+	err = s.resolveStackItemsWithTable(task, table, pid, stackQueries, res)
 	if err != nil {
 		return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
 	}
@@ -105,15 +105,9 @@ func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery,
 	return nil
 }
 
-func (s *Symbolizer) newSymbolTableFromPid(pid uint32, expectedExeKey exeKey) (*symbolTable, error) {
-	path := fmt.Sprintf("%s/%d/exe", host.HostProcFs, pid)
-	file, err := os.Open(path)
-	if err != nil {
-		// The process might have terminated, or it might be in an unreachable
-		// pid namespace. Either way, we can't resolve symbols.
-		return nil, fmt.Errorf("opening process executable: %w", err)
-	}
-	defer file.Close()
+// symbolTableKeyFromFile computes a key for the symbol table from the
+// executable's inode and modification time.
+func symbolTableKeyFromFile(file *os.File) (*SymbolTableKey, error) {
 	fs, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("stat process executable: %w", err)
@@ -122,17 +116,41 @@ func (s *Symbolizer) newSymbolTableFromPid(pid uint32, expectedExeKey exeKey) (*
 	if !ok {
 		return nil, errors.New("getting syscall.Stat_t failed")
 	}
-	ino := stat.Ino
-	newKey := exeKey{ino, stat.Mtim.Sec, uint32(stat.Mtim.Nsec)}
-	if newKey != expectedExeKey {
-		newComm, _ := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", file.Fd()))
-		newComm = filepath.Base(newComm)
-		return nil, fmt.Errorf("opening executable: got %q inode %d, mtime %d.%d (expected %s)",
-			newComm, ino, stat.Mtim.Sec, stat.Mtim.Nsec,
-			expectedExeKey)
-	}
+
 	if fs.Size() > maxExecutableSize {
 		return nil, fmt.Errorf("executable is too large (%d bytes)", fs.Size())
+	}
+
+	return &SymbolTableKey{
+		Major:     unix.Major(stat.Dev),
+		Minor:     unix.Minor(stat.Dev),
+		Ino:       stat.Ino,
+		MtimeSec:  stat.Mtim.Sec,
+		MtimeNsec: uint32(stat.Mtim.Nsec),
+	}, nil
+}
+
+func (s *Symbolizer) newSymbolTableFromPid(pid uint32, symbolTableKeyFromEbpf SymbolTableKey) (*symbolTable, error) {
+	path := fmt.Sprintf("%s/%d/exe", host.HostProcFs, pid)
+	file, err := os.Open(path)
+	if err != nil {
+		// The process might have terminated, or it might be in an unreachable
+		// pid namespace. Either way, we can't resolve symbols.
+		return nil, fmt.Errorf("opening process executable: %w", err)
+	}
+	defer file.Close()
+	expectedSymbolTableKey, err := symbolTableKeyFromFile(file)
+	if err != nil {
+		return nil, err
+	}
+	if *expectedSymbolTableKey != symbolTableKeyFromEbpf {
+		newComm, _ := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", file.Fd()))
+		newComm = filepath.Base(newComm)
+		return nil, fmt.Errorf("opening executable: got %q inode %d, mtime %d.%d (expected inode %d, mtime%d.%d)",
+			newComm, expectedSymbolTableKey.Ino,
+			expectedSymbolTableKey.MtimeSec, expectedSymbolTableKey.MtimeNsec,
+			symbolTableKeyFromEbpf.Ino,
+			symbolTableKeyFromEbpf.MtimeSec, symbolTableKeyFromEbpf.MtimeNsec)
 	}
 
 	return s.newSymbolTableFromFile(file)
@@ -150,7 +168,9 @@ func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error)
 	symtab, err := elfFile.Symbols()
 	if err != nil {
 		// No symbols found. This is not an error.
-		return &symbolTable{}, nil
+		return &symbolTable{
+			runtimeBaseAddrCache: make(map[baseAddrCacheKey]uint64),
+		}, nil
 	}
 
 	symbolCount := 0
@@ -196,20 +216,21 @@ func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error)
 	}
 
 	return &symbolTable{
-		symbols:     symbols,
-		isPIE:       elfFile.Type == elf.ET_DYN,
-		elfBaseAddr: elfBaseAddr,
-		timestamp:   time.Now(),
+		symbols:              symbols,
+		isPIE:                elfFile.Type == elf.ET_DYN,
+		elfBaseAddr:          elfBaseAddr,
+		timestamp:            time.Now(),
+		runtimeBaseAddrCache: make(map[baseAddrCacheKey]uint64),
 	}, nil
 }
 
-func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, pid uint32, stackQueries []StackItemQuery, res []StackItemResponse) error {
+func (s *Symbolizer) resolveStackItemsWithTable(task Task, table *symbolTable, pid uint32, stackQueries []StackItemQuery, res []StackItemResponse) error {
 	table.timestamp = time.Now()
 
 	var runtimeBaseAddr uint64
 	var err error
 
-	runtimeBaseAddr, err = getRuntimeBaseAddr(pid)
+	runtimeBaseAddr, err = getRuntimeBaseAddr(task, table, pid)
 	if err != nil {
 		return fmt.Errorf("getting runtime base address: %w", err)
 	}
@@ -251,7 +272,17 @@ func (e *symbolTable) lookupByAddr(address uint64) string {
 }
 
 // getRuntimeBaseAddr gets the runtime base address of the main executable from /proc/pid/maps
-func getRuntimeBaseAddr(pid uint32) (uint64, error) {
+func getRuntimeBaseAddr(task Task, table *symbolTable, pid uint32) (uint64, error) {
+	key := baseAddrCacheKey{
+		tgidLevel0:   task.Tgid,
+		baseAddrHash: task.BaseAddrHash,
+	}
+	if runtimeBaseAddr := table.runtimeBaseAddrCache[key]; runtimeBaseAddr != 0 {
+		log.Debugf("getRuntimeBaseAddr: pid %d (%s) runtime base address: 0x%x (from cache)",
+			pid, task.Name, runtimeBaseAddr)
+		return runtimeBaseAddr, nil
+	}
+
 	mapsPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "maps")
 	f, err := os.Open(mapsPath)
 	if err != nil {
@@ -285,6 +316,10 @@ func getRuntimeBaseAddr(pid uint32) (uint64, error) {
 		if err != nil {
 			continue
 		}
+
+		log.Debugf("getRuntimeBaseAddr: pid %d (%s) runtime base address: 0x%x (from /proc/%d/maps)",
+			pid, task.Name, base, pid)
+		table.runtimeBaseAddrCache[key] = base
 		return base, nil
 	}
 

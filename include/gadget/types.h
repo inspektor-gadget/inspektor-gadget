@@ -74,10 +74,20 @@ typedef __u32 gadget_file_flags;
 typedef __u32 gadget_kernel_stack;
 
 struct gadget_user_stack {
-	// Identify the executable. Leave it as 0 to disable user stacks.
-	__u64 exe_inode;
+	// Leave fields as 0 to disable user stacks.
+
+	// Identify the executable.
+	__u32 major;
+	__u32 minor;
+	__u64 inode;
 	__u64 mtime_sec;
 	__u32 mtime_nsec;
+
+	// Identify the base address.
+	// Changes whenever the base address changes at execve.
+	// Not shared between processes because of Address Space Layout Randomization.
+	// FNV-1a hash of tuple (mm_addr, start_code, start_stack)
+	__u32 base_addr_hash;
 
 	// The stack id as returned by bpf_get_stackid.
 	__u32 stack_id;
@@ -89,6 +99,7 @@ struct gadget_user_stack {
 	// figure out which pid to use based on the pidns.
 	// Use separate fields because arrays are not supported:
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/4060
+	__u32 tgid_level0;
 	__u32 pid_level0;
 	__u32 pidns_level0;
 	__u32 pid_level1;

@@ -17,7 +17,6 @@
 package symbolizer
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -37,7 +36,7 @@ type Symbolizer struct {
 	options SymbolizerOptions
 
 	lockSymbolTables sync.RWMutex
-	symbolTables     map[exeKey]*symbolTable
+	symbolTables     map[SymbolTableKey]*symbolTable
 	symbolCountTotal int
 
 	// hostProcFsPidNs is the pid namespace of /host/proc/1/ns/pid.
@@ -65,6 +64,13 @@ type symbolTable struct {
 	// - 0x400000 for all Go programs, regardless of PIE.
 	elfBaseAddr uint64
 
+	// runtimeBaseAddrCache caches the base address for a given BaseAddrHash.
+	// This avoids re-reading /proc/pid/maps for every stack trace resolution.
+	// The BaseAddrHash is similar to pids, except that it changes during execve
+	// and it might be shared by several processes sharing mm_struct (e.g.
+	// CLONE_VM or CLONE_THREADS).
+	runtimeBaseAddrCache map[baseAddrCacheKey]uint64
+
 	timestamp time.Time
 }
 
@@ -73,16 +79,26 @@ type symbol struct {
 	value, size uint64
 }
 
-// exeKey is an unique key for an executable given inode and mtime.
-// This key is used to cache symbol tables.
-type exeKey struct {
-	ino       uint64
-	mtimeSec  int64
-	mtimeNsec uint32
+type SymbolTableKey struct {
+	Major     uint32
+	Minor     uint32
+	Ino       uint64
+	MtimeSec  int64
+	MtimeNsec uint32
 }
 
-func (k exeKey) String() string {
-	return fmt.Sprintf("ino=%d mtime=%d.%d", k.ino, k.mtimeSec, k.mtimeNsec)
+type baseAddrCacheKey struct {
+	// tgidLevel0 is the thread group ID of the process in top-level pid
+	// namespace. IG might not have access to a procfs of the top-level pid
+	// namespace, so tgidLevel0 cannot be used to lookup procfs entries. This is
+	// just to ensure that unrelated tasks are not poisoning the cache for each
+	// others.
+	tgidLevel0 uint32
+
+	// baseAddrHash is an opaque hash provided by eBPF to identify the
+	// executable and its base address. It changes on execve and is shared by
+	// threads of the same process.
+	baseAddrHash uint32
 }
 
 func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
@@ -97,7 +113,7 @@ func NewSymbolizer(opts SymbolizerOptions) (*Symbolizer, error) {
 
 	s := &Symbolizer{
 		options:         opts,
-		symbolTables:    make(map[exeKey]*symbolTable),
+		symbolTables:    make(map[SymbolTableKey]*symbolTable),
 		hostProcFsPidNs: hostProcFsPidNs,
 		pruneTickerTime: pruneTickerTime,
 		symbolTableTTL:  symbolTableTTL,
@@ -151,6 +167,7 @@ type PidNumbers struct {
 
 type Task struct {
 	// Pids of the process that we want to resolve symbols for.
+	Tgid       uint32
 	PidNumbers []PidNumbers
 
 	// Name of the task for logging purposes. Optional.
@@ -160,9 +177,10 @@ type Task struct {
 	ContainerPid uint32
 
 	// Properties of the executable to check if the symbol table is still valid.
-	Ino       uint64
-	MtimeSec  int64
-	MtimeNsec uint32
+	Exe SymbolTableKey
+
+	// Opaque hash from ebpf representing the base address to check if it needs to be recalculated.
+	BaseAddrHash uint32
 }
 
 // StackItemQuery is one item of the stack. It contains the data found from BPF.
