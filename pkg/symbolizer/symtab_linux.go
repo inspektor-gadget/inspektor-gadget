@@ -184,27 +184,43 @@ func (s *Symbolizer) newSymbolTableFromFile(file *os.File) (*symbolTable, error)
 		return 0
 	})
 
+	// Find the virtual address of the first LOAD segment
+	// Command line equivalent:
+	//   readelf -lW $FILE | grep -m1 LOAD | awk '{print $3}'
+	var elfBaseAddr uint64
+	for _, prog := range elfFile.Progs {
+		if prog.Type == elf.PT_LOAD {
+			elfBaseAddr = prog.Vaddr
+			break
+		}
+	}
+
 	return &symbolTable{
-		symbols:   symbols,
-		isPIE:     elfFile.Type == elf.ET_DYN,
-		timestamp: time.Now(),
+		symbols:     symbols,
+		isPIE:       elfFile.Type == elf.ET_DYN,
+		elfBaseAddr: elfBaseAddr,
+		timestamp:   time.Now(),
 	}, nil
 }
 
 func (s *Symbolizer) resolveStackItemsWithTable(table *symbolTable, pid uint32, stackQueries []StackItemQuery, res []StackItemResponse) error {
 	table.timestamp = time.Now()
 
-	var baseAddress uint64
+	var runtimeBaseAddr uint64
 	var err error
-	if table.isPIE {
-		baseAddress, err = getBaseAddress(pid)
-		if err != nil {
-			return fmt.Errorf("getting base address: %w", err)
-		}
+
+	runtimeBaseAddr, err = getRuntimeBaseAddr(pid)
+	if err != nil {
+		return fmt.Errorf("getting runtime base address: %w", err)
 	}
 
+	log.Debugf("resolving %d stack frames with symbol table (pid %d, PIE=%v): runtime base address 0x%x, elf base address 0x%x, bias %d",
+		len(stackQueries), pid, table.isPIE,
+		runtimeBaseAddr, table.elfBaseAddr,
+		int64(table.elfBaseAddr-runtimeBaseAddr))
+
 	for idx := range stackQueries {
-		symbol := table.lookupByAddr(stackQueries[idx].Addr - baseAddress)
+		symbol := table.lookupByAddr(stackQueries[idx].Addr - runtimeBaseAddr + table.elfBaseAddr)
 		if symbol != "" {
 			res[idx].Found = true
 			res[idx].Symbol = symbol
@@ -234,8 +250,8 @@ func (e *symbolTable) lookupByAddr(address uint64) string {
 	return "[unknown]"
 }
 
-// getBaseAddress gets the runtime base address of the main executable from /proc/pid/maps
-func getBaseAddress(pid uint32) (uint64, error) {
+// getRuntimeBaseAddr gets the runtime base address of the main executable from /proc/pid/maps
+func getRuntimeBaseAddr(pid uint32) (uint64, error) {
 	mapsPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "maps")
 	f, err := os.Open(mapsPath)
 	if err != nil {

@@ -54,9 +54,16 @@ type symbolTable struct {
 	// symbols is a slice of symbols. Order is preserved for binary search.
 	symbols []*symbol
 
-	// PIE (Position Independent Executable) needs addresses to be adjusted with
-	// base address.
+	// PIE (Position Independent Executable). Useful information for debugging.
 	isPIE bool
+
+	// elfBaseAddr is the link-time base address as defined in the ELF headers.
+	// Typical values:
+	// - 0 for C PIE programs
+	// - 0x400000 for C non-PIE programs (unless chosen otherwise with
+	//   flag "-Wl,-Ttext=0x1234")
+	// - 0x400000 for all Go programs, regardless of PIE.
+	elfBaseAddr uint64
 
 	timestamp time.Time
 }
