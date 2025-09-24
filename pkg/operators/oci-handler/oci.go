@@ -39,7 +39,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
 )
 
 const (
@@ -61,6 +62,7 @@ const (
 
 type ociHandler struct {
 	globalParams *params.Params
+	verifyOpts   oci.VerifyOptions
 }
 
 func New() *ociHandler {
@@ -76,6 +78,27 @@ func (o *ociHandler) Init(params *params.Params) error {
 		return fmt.Errorf("ociHandler already initialized")
 	}
 	o.globalParams = params
+
+	verifyOptions := oci.VerifyOptions{
+		VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
+	}
+
+	if verifyOptions.VerifySignature {
+		verifier, err := signature.NewSignatureVerifier(
+			signature.VerifierOptions{
+				CosignVerifierOpts: cosign.VerifierOptions{
+					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+				},
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("creating signature verifier: %w", err)
+		}
+		verifyOptions.Verifier = verifier
+	}
+
+	o.verifyOpts = verifyOptions
+
 	return nil
 }
 
@@ -341,14 +364,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			InsecureRegistries: o.globalParams.Get(insecureRegistriesParam).AsStringSlice(),
 			DisallowPulling:    o.globalParams.Get(disallowPulling).AsBool(),
 		},
-		VerifyOptions: oci.VerifyOptions{
-			VerifyOptions: signatureverifier.VerifyOptions{
-				CosignVerifyOptions: signatureverifier.CosignVerifyOptions{
-					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
-				},
-			},
-			VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
-		},
+		VerifyOptions: o.ociHandler.verifyOpts,
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
 			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
 		},
