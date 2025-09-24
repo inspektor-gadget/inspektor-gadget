@@ -57,7 +57,7 @@ func (i *ebpfInstance) populateVar(t btf.Type, varName string) error {
 		tags:    tags,
 	}
 
-	i.gadgetCtx.Logger().Debugf("variable %q %v %+v", varName, refType, t)
+	i.logger.Debugf("variable %q %v %+v", varName, refType, t)
 	i.gadgetCtx.SetVar(varName, reflect.New(refType).Elem().Interface())
 	return nil
 }
