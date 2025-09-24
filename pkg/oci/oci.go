@@ -61,9 +61,8 @@ type AllowedGadgetsOptions struct {
 }
 
 type VerifyOptions struct {
-	signatureverifier.VerifyOptions
-
 	VerifySignature bool
+	Verifier        signatureverifier.Verifier
 }
 
 type ImageOptions struct {
@@ -857,12 +856,7 @@ func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgO
 		return fmt.Errorf("creating remote repository: %w", err)
 	}
 
-	verifier, err := signatureverifier.NewVerifier(imgOpts.VerifyOptions.VerifyOptions)
-	if err != nil {
-		return fmt.Errorf("creating verifier: %w", err)
-	}
-
-	err = verifier.Verify(ctx, repo, imageStore, imageRef)
+	err = imgOpts.Verifier.Verify(ctx, repo, imageStore, imageRef)
 	if err != nil {
 		return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 	}

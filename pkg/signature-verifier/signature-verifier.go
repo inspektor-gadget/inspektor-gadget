@@ -25,10 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
-type VerifyOptions struct {
-	cosign.VerifyOptions
-}
-
 type Verifier interface {
 	Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error
 }
@@ -39,8 +35,4 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 
 func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
 	return cosign.PullSigningInformation(ctx, repo, digest, imageStore)
-}
-
-func NewVerifier(opts VerifyOptions) (Verifier, error) {
-	return cosign.NewVerifier(opts.VerifyOptions)
 }
