@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
+	"github.com/inspektor-gadget/inspektor-gadget/gadgets/trace_exec/consts"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
@@ -228,7 +229,7 @@ int main(int argc, char *argv[], char **envp) {
 						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sh2", 1000, 1111),
 						Cwd:           "/",
-						Args:          strings.Join(innerShArgs, " "),
+						Args:          strings.Join(innerShArgs, consts.ArgsSeparator),
 						PupperLayer:   false,
 						UpperLayer:    true,
 						FupperLayer:   true,
@@ -249,7 +250,7 @@ int main(int argc, char *argv[], char **envp) {
 						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
-						Args:          strings.Join(sleep1Args, " "),
+						Args:          strings.Join(sleep1Args, consts.ArgsSeparator),
 						PupperLayer:   true,
 						UpperLayer:    false,
 						FupperLayer:   false,
@@ -269,7 +270,7 @@ int main(int argc, char *argv[], char **envp) {
 						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
-						Args:          strings.Join(sleep2Args, " "),
+						Args:          strings.Join(sleep2Args, consts.ArgsSeparator),
 						PupperLayer:   true,
 						UpperLayer:    false,
 						FupperLayer:   false,
