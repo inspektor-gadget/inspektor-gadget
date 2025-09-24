@@ -16,17 +16,17 @@ package signatureverifier
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
 type VerifyOptions struct {
-	CosignVerifyOptions
+	cosign.VerifyOptions
 }
 
 type Verifier interface {
@@ -34,36 +34,13 @@ type Verifier interface {
 }
 
 func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	signatureTag, err := craftCosignSignatureTag(desc.Digest.String())
-	if err != nil {
-		return fmt.Errorf("crafting signature tag: %w", err)
-	}
-
-	_, err = oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
-	if err != nil {
-		return fmt.Errorf("copying signature to remote repository: %w", err)
-	}
-
-	return nil
+	return cosign.ExportSigningInformation(ctx, src, dst, desc)
 }
 
 func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return pullCosignSigningInformation(ctx, repo, digest, imageStore)
+	return cosign.PullSigningInformation(ctx, repo, digest, imageStore)
 }
 
-func Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named, opts VerifyOptions) error {
-	if len(opts.PublicKeys) == 0 {
-		return errors.New("no public keys given")
-	}
-
-	verifier := cosignVerifier{
-		publicKeys: opts.PublicKeys,
-	}
-
-	err := verifier.Verify(ctx, repo, imageStore, ref)
-	if err != nil {
-		return fmt.Errorf("verifying with cosign: %w", err)
-	}
-
-	return nil
+func NewVerifier(opts VerifyOptions) (Verifier, error) {
+	return cosign.NewVerifier(opts.VerifyOptions)
 }

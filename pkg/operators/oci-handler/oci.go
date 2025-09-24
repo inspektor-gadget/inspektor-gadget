@@ -40,6 +40,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
+	cosign "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
 const (
@@ -343,7 +344,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		},
 		VerifyOptions: oci.VerifyOptions{
 			VerifyOptions: signatureverifier.VerifyOptions{
-				CosignVerifyOptions: signatureverifier.CosignVerifyOptions{
+				cosign.VerifyOptions{
 					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
 				},
 			},
