@@ -39,7 +39,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
+	cosign "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
 const (
@@ -61,6 +61,7 @@ const (
 
 type ociHandler struct {
 	globalParams *params.Params
+	verifyOpts   oci.VerifyOptions
 }
 
 func New() *ociHandler {
@@ -76,6 +77,27 @@ func (o *ociHandler) Init(params *params.Params) error {
 		return fmt.Errorf("ociHandler already initialized")
 	}
 	o.globalParams = params
+
+	verifyOptions := oci.VerifyOptions{
+		VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
+	}
+
+	// TODO: We could call signature verifier here as well, but IMO it's better
+	// to control the creation of the verifier here
+	if verifyOptions.VerifySignature {
+		verifier, err := cosign.NewVerifier(
+			cosign.VerifyOptions{
+				PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+			},
+		)
+		if err != nil {
+			return err
+		}
+		verifyOptions.Verifier = verifier
+	}
+
+	o.verifyOpts = verifyOptions
+
 	return nil
 }
 
@@ -341,14 +363,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 			InsecureRegistries: o.globalParams.Get(insecureRegistriesParam).AsStringSlice(),
 			DisallowPulling:    o.globalParams.Get(disallowPulling).AsBool(),
 		},
-		VerifyOptions: oci.VerifyOptions{
-			VerifyOptions: signatureverifier.VerifyOptions{
-				CosignVerifyOptions: signatureverifier.CosignVerifyOptions{
-					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
-				},
-			},
-			VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
-		},
+		VerifyOptions: o.ociHandler.verifyOpts,
 		AllowedGadgetsOptions: oci.AllowedGadgetsOptions{
 			AllowedGadgets: o.globalParams.Get(allowedGadgets).AsStringSlice(),
 		},

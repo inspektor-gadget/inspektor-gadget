@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
 func createTestPrerequisities(t *testing.T, image string) (oras.Target, *remote.Repository, reference.Named) {
@@ -47,11 +48,47 @@ func createTestPrerequisities(t *testing.T, image string) (oras.Target, *remote.
 	return store, repo, ref
 }
 
+func TestNewVerifier(t *testing.T) {
+	t.Parallel()
+
+	type testDefinition struct {
+		opts      cosign.VerifyOptions
+		shouldErr bool
+	}
+
+	tests := map[string]testDefinition{
+		"no public key": {
+			shouldErr: true,
+		},
+		"malformed public key": {
+			opts: cosign.VerifyOptions{
+				PublicKeys: []string{"foobar"},
+			},
+			shouldErr: true,
+		},
+	}
+
+	for name, test := range tests {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := cosign.NewVerifier(test.opts)
+			if test.shouldErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestVerify(t *testing.T) {
 	t.Parallel()
 
 	type testDefinition struct {
-		opts      VerifyOptions
+		opts      cosign.VerifyOptions
 		image     string
 		shouldErr bool
 	}
@@ -63,51 +100,46 @@ func TestVerify(t *testing.T) {
 	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:a5de3655d6c7640eb6d43f7d9d7182b233ac86aedddfe6c132cba6b876264d97"
 
 	tests := map[string]testDefinition{
-		"no public key": {
-			image:     signedImage,
-			shouldErr: true,
-		},
 		"good public key with signed gadget": {
-			opts: VerifyOptions{
-				CosignVerifyOptions: CosignVerifyOptions{
-					PublicKeys: []string{resources.InspektorGadgetPublicKey},
-				},
+			opts: cosign.VerifyOptions{
+				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image: signedImage,
 		},
-		"malformed public key with signed gadget": {
-			opts: VerifyOptions{
-				CosignVerifyOptions: CosignVerifyOptions{
-					PublicKeys: []string{"foobar"},
-				},
-			},
-			image:     signedImage,
-			shouldErr: true,
-		},
 		"wrong public key with signed gadget": {
-			opts: VerifyOptions{
-				CosignVerifyOptions: CosignVerifyOptions{
-					PublicKeys: []string{
-						`
+			opts: cosign.VerifyOptions{
+				PublicKeys: []string{
+					`
 -----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
 wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 -----END PUBLIC KEY-----
 `,
-					},
 				},
 			},
 			image:     signedImage,
 			shouldErr: true,
 		},
 		"public key with unsigned gadget": {
-			opts: VerifyOptions{
-				CosignVerifyOptions: CosignVerifyOptions{
-					PublicKeys: []string{resources.InspektorGadgetPublicKey},
-				},
+			opts: cosign.VerifyOptions{
+				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image:     nonSignedImage,
 			shouldErr: true,
+		},
+		"several public keys with signed gadget": {
+			opts: cosign.VerifyOptions{
+				PublicKeys: []string{
+					`
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
+wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
+-----END PUBLIC KEY-----
+					`,
+					resources.InspektorGadgetPublicKey,
+				},
+			},
+			image: signedImage,
 		},
 	}
 
@@ -122,7 +154,10 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 			_, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
 			require.NoError(t, err)
 
-			err = Verify(context.Background(), repo, store, ref, test.opts)
+			verifier, err := cosign.NewVerifier(test.opts)
+			require.NoError(t, err)
+
+			err = verifier.Verify(context.Background(), repo, store, ref)
 			if test.shouldErr {
 				require.Error(t, err)
 				return
