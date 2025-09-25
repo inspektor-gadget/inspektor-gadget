@@ -26,6 +26,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -49,7 +50,7 @@ func TestLocalManagerBasic(t *testing.T) {
 	require.NoError(t, err, "Failed to initialize host")
 
 	lm := &localManager{}
-	gParams := lm.GlobalParamDescs().ToParams()
+	gParams := apihelpers.ToParamDescs(lm.GlobalParams()).ToParams()
 	err = lm.Init(gParams)
 	require.NoError(t, err, "Failed to initialize localManager")
 	lm.Close()
@@ -64,7 +65,7 @@ func TestLocalManagerMountNsMap(t *testing.T) {
 	require.NoError(t, err, "Failed to initialize host")
 
 	lm := &localManager{}
-	gParams := lm.GlobalParamDescs().ToParams()
+	gParams := apihelpers.ToParamDescs(lm.GlobalParams()).ToParams()
 	err = lm.Init(gParams)
 	require.NoError(t, err, "Failed to initialize localManager")
 	defer func() {
@@ -137,7 +138,7 @@ func TestLocalManagerClose(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	lm := &localManager{}
-	gParams := lm.GlobalParamDescs().ToParams()
+	gParams := apihelpers.ToParamDescs(lm.GlobalParams()).ToParams()
 	gParams.Set(Runtimes, "docker")
 
 	for i := range 4 {

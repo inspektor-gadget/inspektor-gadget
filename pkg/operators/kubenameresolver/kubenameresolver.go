@@ -48,10 +48,6 @@ func (k *KubeNameResolver) Description() string {
 	return "KubeNameResolver resolves pod name/namespace to IP addresses"
 }
 
-func (k *KubeNameResolver) GlobalParamDescs() params.ParamDescs {
-	return nil
-}
-
 func (k *KubeNameResolver) ParamDescs() params.ParamDescs {
 	return nil
 }

@@ -58,10 +58,6 @@ func (s *SocketEnricher) Description() string {
 	return "Socket enricher provides process information for sockets"
 }
 
-func (s *SocketEnricher) GlobalParamDescs() params.ParamDescs {
-	return nil
-}
-
 func (s *SocketEnricher) ParamDescs() params.ParamDescs {
 	return nil
 }
