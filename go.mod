@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/ebpf v0.19.1-0.20250729164112-d994daa25101
+	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
 	github.com/containerd/containerd v1.7.28
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
@@ -26,10 +27,12 @@ require (
 	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
+	github.com/gopacket/gopacket v1.4.0
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v28.4.0+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/packetcap/go-pcap v0.0.0-20250723190045-d00b185f30b7
 	github.com/prometheus/client_golang v1.23.2
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.11.0 // indirect
@@ -54,7 +57,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.14.0
 	go.opentelemetry.io/otel/sdk/metric v1.38.0
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
-	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/net v0.44.0
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.36.0
 	golang.org/x/term v0.35.0
