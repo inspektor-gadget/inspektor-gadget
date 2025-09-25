@@ -123,6 +123,11 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			containerNameField := ds.GetField("runtime.containerName")
 			commField := ds.GetField("proc.comm")
 
+			tgidLevel0Field := in.GetSubFieldsWithTag("name:tgid_level0")
+			if len(tgidLevel0Field) != 1 {
+				logger.Warn("no tgid (level 0) field found")
+				continue
+			}
 			pidLevel0Field := in.GetSubFieldsWithTag("name:pid_level0")
 			if len(pidLevel0Field) != 1 {
 				logger.Warn("no pid (level 0) field found")
@@ -150,11 +155,24 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				continue
 			}
 
-			inodeField := in.GetSubFieldsWithTag("name:exe_inode")
+			majorField := in.GetSubFieldsWithTag("name:major")
+			if len(majorField) != 1 {
+				logger.Warn("no major field found")
+				continue
+			}
+
+			minorField := in.GetSubFieldsWithTag("name:minor")
+			if len(minorField) != 1 {
+				logger.Warn("no minor field found")
+				continue
+			}
+
+			inodeField := in.GetSubFieldsWithTag("name:inode")
 			if len(inodeField) != 1 {
 				logger.Warn("no inode field found")
 				continue
 			}
+
 			mtimeSecField := in.GetSubFieldsWithTag("name:mtime_sec")
 			if len(mtimeSecField) != 1 {
 				logger.Warn("no mtime_sec field found")
@@ -163,6 +181,11 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			mtimeNsecField := in.GetSubFieldsWithTag("name:mtime_nsec")
 			if len(mtimeNsecField) != 1 {
 				logger.Warn("no mtime_nsec field found")
+				continue
+			}
+			baseAddrHashField := in.GetSubFieldsWithTag("name:base_addr_hash")
+			if len(baseAddrHashField) != 1 {
+				logger.Warn("no base_addr_hash field found")
 				continue
 			}
 
@@ -176,13 +199,18 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			}
 
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
+				major, _ := majorField[0].Uint32(data)
+				minor, _ := minorField[0].Uint32(data)
 				inode, _ := inodeField[0].Uint64(data)
+
+				baseAddrHash, _ := baseAddrHashField[0].Uint32(data)
 				// If user stacks are disabled
 				if inode == 0 {
 					return nil
 				}
 
 				stackId, _ := stackField[0].Uint32(data)
+				tgidLevel0, _ := tgidLevel0Field[0].Uint32(data)
 				pidLevel0, _ := pidLevel0Field[0].Uint32(data)
 				pidnsLevel0, _ := pidnsLevel0Field[0].Uint32(data)
 				pidLevel1, _ := pidLevel1Field[0].Uint32(data)
@@ -219,7 +247,7 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				if commField != nil {
 					comm, _ = commField.String(data)
 				}
-				mtimeSec, _ := mtimeSecField[0].Uint64(data)
+				mtimeSec, _ := mtimeSecField[0].Int64(data)
 				mtimeNsec, _ := mtimeNsecField[0].Uint32(data)
 
 				var stackQueries []symbolizer.StackItemQuery
@@ -252,11 +280,17 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				if o.symbolizer != nil {
 					task := symbolizer.Task{
 						Name:         fmt.Sprintf("%s/%s", containerName, comm),
+						Tgid:         tgidLevel0,
 						PidNumbers:   pidNumbers,
 						ContainerPid: containerPid,
-						Ino:          inode,
-						MtimeSec:     int64(mtimeSec),
-						MtimeNsec:    mtimeNsec,
+						Exe: symbolizer.SymbolTableKey{
+							Major:     major,
+							Minor:     minor,
+							Ino:       inode,
+							MtimeSec:  mtimeSec,
+							MtimeNsec: mtimeNsec,
+						},
+						BaseAddrHash: baseAddrHash,
 					}
 					stackQueriesResponse, err := o.symbolizer.Resolve(task, stackQueries)
 					if err != nil {

@@ -10,6 +10,7 @@
 
 #include <gadget/types.h>
 #include <gadget/macros.h>
+#include <gadget/fnv1a.h>
 
 const volatile bool collect_ustack = false;
 GADGET_PARAM(collect_ustack);
@@ -121,6 +122,15 @@ gadget_inode_get_mtime(struct inode *inode, __u64 *mtime_sec, __u32 *mtime_nsec)
 	}
 }
 
+static __always_inline u32 gadget_get_base_addr_hash(struct task_struct *task)
+{
+	u32 hash = fnv_32a_init();
+	fnv_32a_update_u64(&hash, (u64)BPF_CORE_READ(task, mm));
+	fnv_32a_update_u64(&hash, (u64)BPF_CORE_READ(task, mm, start_code));
+	fnv_32a_update_u64(&hash, (u64)BPF_CORE_READ(task, mm, start_stack));
+	return hash;
+}
+
 /* gadget_get_user_stack gets the user stack into ustack if collect_ustack is
  * true, or initialize ustack to 0 otherwise.
  */
@@ -128,8 +138,14 @@ static __always_inline void
 gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 {
 	if (!collect_ustack) {
+		ustack->major = 0;
+		ustack->minor = 0;
+		ustack->inode = 0;
+		ustack->mtime_sec = 0;
+		ustack->mtime_nsec = 0;
+		ustack->base_addr_hash = 0;
 		ustack->stack_id = 0;
-		ustack->exe_inode = 0;
+		ustack->tgid_level0 = 0;
 		ustack->pid_level0 = 0;
 		ustack->pidns_level0 = 0;
 		ustack->pid_level1 = 0;
@@ -141,7 +157,6 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
-	ustack->exe_inode = (u64)BPF_CORE_READ(inode, i_ino);
 
 	struct pid *thread_pid = BPF_CORE_READ(task, thread_pid);
 	unsigned int level = BPF_CORE_READ(thread_pid, level);
@@ -150,6 +165,7 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 	// https://github.com/torvalds/linux/commit/b69f0aeb068980af983d399deafc7477cec8bc04
 	struct upid *numbers = (struct upid *)&thread_pid->numbers;
 
+	ustack->tgid_level0 = BPF_CORE_READ(task, tgid);
 	ustack->pid_level0 = BPF_CORE_READ(numbers, nr);
 	ustack->pidns_level0 = BPF_CORE_READ(numbers, ns, ns.inum);
 	if (level >= 1) {
@@ -161,7 +177,18 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 		ustack->pidns_level1 = 0;
 	}
 
+	// dev_t kernel encoding explained here:
+	// https://github.com/torvalds/linux/blob/v6.12/include/linux/kdev_t.h#L7-L12
+	// This is different to the way stat's st_dev is encoded in user space.
+	// So we use the u64 major and minor device numbers to ensure hash compatibility
+	// with user space.
+	dev_t dev = BPF_CORE_READ(inode, i_sb, s_dev);
+	ustack->major = (u32)((unsigned int)((dev) >> 20));
+	ustack->minor = (u32)((unsigned int)((dev) & ((1U << 20) - 1)));
+	ustack->inode = (u64)BPF_CORE_READ(inode, i_ino);
 	gadget_inode_get_mtime(inode, &ustack->mtime_sec, &ustack->mtime_nsec);
+
+	ustack->base_addr_hash = gadget_get_base_addr_hash(task);
 }
 
 #endif /* __STACK_MAP_H */
