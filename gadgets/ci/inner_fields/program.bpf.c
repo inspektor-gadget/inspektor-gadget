@@ -4,6 +4,7 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 
+
 enum myenum {
 	ONE = 1,
 	TWO = 2,
@@ -31,6 +32,7 @@ struct event {
 
 GADGET_TRACER_MAP(open_events, 1024 * 256);
 GADGET_TRACER(open, open_events, event);
+GADGET_CATEGORY_OBSERVER();
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct trace_event_raw_sys_enter *ctx)
