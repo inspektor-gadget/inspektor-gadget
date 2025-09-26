@@ -13,9 +13,7 @@ on the environment - when nodes are added to your cluster.
 
 ## Creating Gadget Instances
 
-To create a new Gadget Instance on your server / cluster, make sure to run `ig` with the `--daemon` (read
-[here](ig#using-ig-as-a-daemon) for more details) flag and then
-just add a `--detach` flag to the `gadgetctl` command, like so:
+To create a new Gadget Instance on your server / cluster, you can use the `run` command with the `--detach` option:
 
 <Tabs groupId="env">
     <TabItem value="gadgetctl" label="gadgetctl">
@@ -25,9 +23,31 @@ $ gadgetctl run trace_exec:latest --detach
 INFO[0001] installed on node "local" as "61c8fdd9b75e1aec3c242347f18cf854"
 ```
     </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget run trace_exec:latest --detach
+INFO[0001] installed as "f0ff5614be1a0da655ea308e13ce6605"
+ID           NAME                     TAGS                     GADGET
+4f5ae12c54bd serene_tu                                         trace_open:latest
+f0ff5614be1a brave_bartik                                      trace_exec:latest
+```
+    </TabItem>
 </Tabs>
 
 The command returns the ID of the newly installed Gadget Instance.
+
+:::warning
+When upgrading server versions, please make sure to also upgrade all existing Gadget Instances to avoid compatibility issues. For example in Kubernetes you should see following warning in the server logs:
+```
+$ kubectl logs -n gadget -l k8s-app=gadget
+...
+time="2025-09-26T07:50:38Z" level=warning msg="This gadget was built with ig v0.42.0 and it's being run with v0.44.1. Gadget could be incompatible"
+time="2025-09-26T07:50:40Z" level=error msg="running gadget: starting operators: starting operator \"oci\": starting operator \"ebpf\": creating eBPF collection: program ig_trace_dns: load program: bad CO-RE relocation: invalid func unknown#195896080 (303 line(s) omitted)"
+...
+```
+Please [delete](#deleting-a-gadget-instance) and re-create the Gadget Instance to resolve this.
+:::
 
 ## Listing Gadget Instances
 
