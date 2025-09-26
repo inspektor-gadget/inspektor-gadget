@@ -37,11 +37,11 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-type VerifyOptions struct {
+type VerifierOptions struct {
 	PublicKeys []string
 }
 
-type verifier struct {
+type Verifier struct {
 	verifiers []signature.Verifier
 }
 
@@ -67,7 +67,7 @@ func craftCosignSignatureTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
 }
 
-func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string, imageStore oras.Target) error {
+func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, imageDigest string) error {
 	signatureTag, err := craftCosignSignatureTag(imageDigest)
 	if err != nil {
 		return fmt.Errorf("crafting signature tag: %w", err)
@@ -150,7 +150,7 @@ func loadSigningInformation(ctx context.Context, imageRef reference.Named, image
 		}
 
 		log.Debugf("Signature tag %q not found in local store, pulling it", signatureTag)
-		if err := PullSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
+		if err := PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 			return nil, nil, fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
 		}
 	}
@@ -201,7 +201,7 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 	return nil
 }
 
-func (c *verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
+func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
 	imageDigest, err := getImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
@@ -254,13 +254,13 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 	return nil
 }
 
-func NewVerifier(opts VerifyOptions) (*verifier, error) {
+func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 	keys := len(opts.PublicKeys)
 	if keys == 0 {
 		return nil, errors.New("no public keys given")
 	}
 
-	verifier := &verifier{
+	verifier := &Verifier{
 		verifiers: make([]signature.Verifier, keys),
 	}
 

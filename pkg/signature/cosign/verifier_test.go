@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signatureverifier
+package cosign
 
 import (
 	"context"
@@ -26,7 +26,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
 )
 
 func createTestPrerequisities(t *testing.T, image string) (oras.Target, *remote.Repository, reference.Named) {
@@ -52,7 +51,7 @@ func TestNewVerifier(t *testing.T) {
 	t.Parallel()
 
 	type testDefinition struct {
-		opts      cosign.VerifyOptions
+		opts      VerifierOptions
 		shouldErr bool
 	}
 
@@ -61,7 +60,7 @@ func TestNewVerifier(t *testing.T) {
 			shouldErr: true,
 		},
 		"malformed public key": {
-			opts: cosign.VerifyOptions{
+			opts: VerifierOptions{
 				PublicKeys: []string{"foobar"},
 			},
 			shouldErr: true,
@@ -73,7 +72,7 @@ func TestNewVerifier(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := cosign.NewVerifier(test.opts)
+			_, err := NewVerifier(test.opts)
 			if test.shouldErr {
 				require.Error(t, err)
 				return
@@ -88,7 +87,7 @@ func TestVerify(t *testing.T) {
 	t.Parallel()
 
 	type testDefinition struct {
-		opts      cosign.VerifyOptions
+		opts      VerifierOptions
 		image     string
 		shouldErr bool
 	}
@@ -101,13 +100,13 @@ func TestVerify(t *testing.T) {
 
 	tests := map[string]testDefinition{
 		"good public key with signed gadget": {
-			opts: cosign.VerifyOptions{
+			opts: VerifierOptions{
 				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image: signedImage,
 		},
 		"wrong public key with signed gadget": {
-			opts: cosign.VerifyOptions{
+			opts: VerifierOptions{
 				PublicKeys: []string{
 					`
 -----BEGIN PUBLIC KEY-----
@@ -121,14 +120,14 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 			shouldErr: true,
 		},
 		"public key with unsigned gadget": {
-			opts: cosign.VerifyOptions{
+			opts: VerifierOptions{
 				PublicKeys: []string{resources.InspektorGadgetPublicKey},
 			},
 			image:     nonSignedImage,
 			shouldErr: true,
 		},
 		"several public keys with signed gadget": {
-			opts: cosign.VerifyOptions{
+			opts: VerifierOptions{
 				PublicKeys: []string{
 					`
 -----BEGIN PUBLIC KEY-----
@@ -154,7 +153,7 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 			_, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
 			require.NoError(t, err)
 
-			verifier, err := cosign.NewVerifier(test.opts)
+			verifier, err := NewVerifier(test.opts)
 			require.NoError(t, err)
 
 			err = verifier.Verify(context.Background(), repo, store, ref)

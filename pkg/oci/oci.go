@@ -44,7 +44,7 @@ import (
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	signatureverifier "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
 )
 
 type AuthOptions struct {
@@ -62,7 +62,7 @@ type AllowedGadgetsOptions struct {
 
 type VerifyOptions struct {
 	VerifySignature bool
-	Verifier        signatureverifier.Verifier
+	Verifier        *signature.SignatureVerifier
 }
 
 type ImageOptions struct {
@@ -205,7 +205,7 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 	}
 
 	imageDigest := desc.Digest.String()
-	if err := signatureverifier.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
+	if err := signature.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 		log.Warnf("error pulling signature: %v", err)
 		// it's not a requirement to have a signature for pulling the image
 		return &desc, nil
@@ -356,7 +356,7 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 			return fmt.Errorf("copying image to remote repository: %w", err)
 		}
 
-		err = signatureverifier.ExportSigningInformation(ctx, ociStore, dstStore, desc)
+		err = signature.ExportSigningInformation(ctx, ociStore, dstStore, desc)
 		if errors.Is(err, errdef.ErrNotFound) {
 			continue
 		}

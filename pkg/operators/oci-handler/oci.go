@@ -39,7 +39,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	cosign "github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
 )
 
 const (
@@ -82,16 +83,16 @@ func (o *ociHandler) Init(params *params.Params) error {
 		VerifySignature: o.globalParams.Get(verifyImage).AsBool(),
 	}
 
-	// TODO: We could call signature verifier here as well, but IMO it's better
-	// to control the creation of the verifier here
 	if verifyOptions.VerifySignature {
-		verifier, err := cosign.NewVerifier(
-			cosign.VerifyOptions{
-				PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+		verifier, err := signature.NewSignatureVerifier(
+			signature.VerifierOptions{
+				cosign.VerifierOptions{
+					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
+				},
 			},
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("creating signature verifier: %w", err)
 		}
 		verifyOptions.Verifier = verifier
 	}

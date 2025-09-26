@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signatureverifier
+package signature
 
 import (
 	"context"
@@ -22,11 +22,23 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature-verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
 )
 
 type Verifier interface {
 	Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error
+}
+
+type SignatureVerifier struct {
+	*cosign.Verifier
+}
+
+type VerifierOptions struct {
+	cosign.VerifierOptions
+}
+
+func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
+	return v.Verifier.Verify(ctx, repo, imageStore, ref)
 }
 
 func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
@@ -34,5 +46,10 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 }
 
 func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return cosign.PullSigningInformation(ctx, repo, digest, imageStore)
+	return cosign.PullSigningInformation(ctx, repo, imageStore, digest)
+}
+
+func NewSignatureVerifier(opts VerifierOptions) (*SignatureVerifier, error) {
+	cosignVerifier, err := cosign.NewVerifier(opts.VerifierOptions)
+	return &SignatureVerifier{ cosignVerifier }, err
 }
