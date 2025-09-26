@@ -227,3 +227,95 @@ func TestMultiple(t *testing.T) {
 		"string,number",
 	)
 }
+
+func TestSortByAnnotation(t *testing.T) {
+	// Test that fields with sort-by annotation use the referenced field for sorting
+	var accessors []datasource.FieldAccessor
+
+	prepare := func(gadgetCtx operators.GadgetContext) error {
+		ds, err := gadgetCtx.RegisterDataSource(datasource.TypeArray, "foo")
+		assert.NoError(t, err)
+
+		// Add raw field
+		rawAcc, err := ds.AddField("bytes_raw", api.Kind_Uint64)
+		assert.NoError(t, err)
+		accessors = append(accessors, rawAcc)
+
+		// Add formatted field with sort-by annotation pointing to raw field
+		formattedAcc, err := ds.AddField("bytes", api.Kind_String,
+			datasource.WithAnnotations(map[string]string{
+				"columns.sort-by": "bytes_raw",
+			}))
+		assert.NoError(t, err)
+		accessors = append(accessors, formattedAcc)
+
+		return nil
+	}
+
+	produce := func(gadgetCtx operators.GadgetContext) error {
+		for _, ds := range gadgetCtx.GetDataSources() {
+			if ds.Type() != datasource.TypeArray {
+				continue
+			}
+
+			arr, _ := ds.NewPacketArray()
+			
+			// Test data - should sort numerically by raw values, not alphabetically by formatted strings
+			testData := []struct {
+				raw       uint64
+				formatted string
+			}{
+				{1500, "1.5 kB"},  // Middle value
+				{22, "22 B"},      // Smallest value
+				{14000, "14 kB"},  // Largest value
+			}
+
+			for _, td := range testData {
+				data := arr.New()
+				accessors[0].PutUint64(data, td.raw)       // raw field
+				accessors[1].PutString(data, td.formatted) // formatted field
+				arr.Append(data)
+			}
+
+			err := ds.EmitAndRelease(arr)
+			assert.NoError(t, err)
+		}
+		return nil
+	}
+
+	verify := func(gadgetCtx operators.GadgetContext) error {
+		for _, s := range gadgetCtx.GetDataSources() {
+			if s.Type() != datasource.TypeArray {
+				continue
+			}
+			s.SubscribeArray(func(ds datasource.DataSource, array datasource.DataArray) error {
+				require.Equal(t, array.Len(), 3)
+
+				// Should be sorted by raw values: 22, 1500, 14000
+				expectedRawOrder := []uint64{22, 1500, 14000}
+
+				for i := 0; i < array.Len(); i++ {
+					data := array.Get(i)
+					rawValue, err := accessors[0].Uint64(data)
+					require.NoError(t, err)
+					require.Equal(t, expectedRawOrder[i], rawValue, 
+						"Expected raw values to be sorted numerically, not alphabetically by formatted strings")
+				}
+
+				return nil
+			}, Priority+1)
+		}
+		return nil
+	}
+
+	Tester(
+		t,
+		Operator,
+		api.ParamValues{
+			"operator.sort.sort": "bytes", // Sort by formatted field with annotation
+		},
+		prepare,
+		produce,
+		verify,
+	)
+}

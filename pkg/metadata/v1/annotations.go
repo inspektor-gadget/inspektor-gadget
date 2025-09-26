@@ -25,6 +25,7 @@ const (
 	ColumnsHexAnnotation       = "columns.hex"
 	ColumnsAliasAnnotation     = "columns.alias"
 	ColumnsPrecisionAnnotation = "columns.precision"
+	ColumnsSortByAnnotation    = "columns.sort-by"
 
 	DescriptionAnnotation = "description"
 	TemplateAnnotation    = "template"
