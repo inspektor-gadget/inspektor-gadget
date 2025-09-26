@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signatureverifier
+package cosign
 
 import (
 	"bytes"
@@ -37,12 +37,12 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-type CosignVerifyOptions struct {
+type VerifierOptions struct {
 	PublicKeys []string
 }
 
-type cosignVerifier struct {
-	publicKeys []string
+type Verifier struct {
+	verifiers []signature.Verifier
 }
 
 func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
@@ -67,7 +67,7 @@ func craftCosignSignatureTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
 }
 
-func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, imageDigest string, imageStore oras.Target) error {
+func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, imageDigest string) error {
 	signatureTag, err := craftCosignSignatureTag(imageDigest)
 	if err != nil {
 		return fmt.Errorf("crafting signature tag: %w", err)
@@ -150,7 +150,7 @@ func loadSigningInformation(ctx context.Context, imageRef reference.Named, image
 		}
 
 		log.Debugf("Signature tag %q not found in local store, pulling it", signatureTag)
-		if err := pullCosignSigningInformation(ctx, repo, imageDigest, imageStore); err != nil {
+		if err := PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 			return nil, nil, fmt.Errorf("copying signature tag %q: %w", signatureTag, err)
 		}
 	}
@@ -201,7 +201,7 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 	return nil
 }
 
-func (c *cosignVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
+func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
 	imageDigest, err := getImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
@@ -214,12 +214,7 @@ func (c *cosignVerifier) Verify(ctx context.Context, repo *remote.Repository, im
 
 	verified := false
 	var errs error
-	for _, publicKey := range c.publicKeys {
-		verifier, err := newVerifier([]byte(publicKey))
-		if err != nil {
-			return fmt.Errorf("creating verifier for %s: %w", publicKey, err)
-		}
-
+	for _, verifier := range c.verifiers {
 		err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(payloadBytes))
 		if err == nil {
 			verified = true
@@ -243,4 +238,40 @@ func (c *cosignVerifier) Verify(ctx context.Context, repo *remote.Repository, im
 	}
 
 	return nil
+}
+
+func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
+	signatureTag, err := craftCosignSignatureTag(desc.Digest.String())
+	if err != nil {
+		return fmt.Errorf("crafting signature tag: %w", err)
+	}
+
+	_, err = oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
+	if err != nil {
+		return fmt.Errorf("copying signature to remote repository: %w", err)
+	}
+
+	return nil
+}
+
+func NewVerifier(opts VerifierOptions) (*Verifier, error) {
+	keys := len(opts.PublicKeys)
+	if keys == 0 {
+		return nil, errors.New("no public keys given")
+	}
+
+	verifier := &Verifier{
+		verifiers: make([]signature.Verifier, keys),
+	}
+
+	for i, publicKey := range opts.PublicKeys {
+		verif, err := newVerifier([]byte(publicKey))
+		if err != nil {
+			return nil, fmt.Errorf("creating verifier for %s: %w", publicKey, err)
+		}
+
+		verifier.verifiers[i] = verif
+	}
+
+	return verifier, nil
 }
