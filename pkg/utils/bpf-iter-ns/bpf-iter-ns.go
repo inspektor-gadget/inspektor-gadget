@@ -17,6 +17,7 @@ package bpfiterns
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -55,11 +57,26 @@ func ReadOnCurrentPidNs(iter *link.Iter) ([]byte, error) {
 		return nil, fmt.Errorf("open BPF iterator: %w", err)
 	}
 	defer file.Close()
-	buf, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("read BPF iterator: %w", err)
+
+	var b bytes.Buffer
+	r := bufio.NewReader(file)
+	buf := make([]byte, 8192)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			b.Write(buf[:n])
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if errors.Is(err, syscall.EAGAIN) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read BPF iterator: %w", err)
+		}
 	}
-	return buf, err
+	return b.Bytes(), nil
 }
 
 // ReadOnHostPidNs reads the iterator in the host pid namespace.
@@ -103,12 +120,30 @@ func ReadOnHostPidNs(iter *link.Iter) ([]byte, error) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		defer r.Close()
+
+		var b bytes.Buffer
+		readBuf := make([]byte, 8192)
 		stdoutReader := bufio.NewReader(r)
-		// ReadAll will block until the write-side of the pipe is closed in both processes
-		// (the systemd service and this process)
-		buf, errReader = io.ReadAll(stdoutReader)
-		r.Close()
-		wg.Done()
+
+		for {
+			n, err := stdoutReader.Read(readBuf)
+			if n > 0 {
+				b.Write(readBuf[:n])
+			}
+			if err == io.EOF {
+				break
+			}
+			if errors.Is(err, syscall.EAGAIN) {
+				continue
+			}
+			if err != nil {
+				errReader = err
+				return
+			}
+		}
+		buf = b.Bytes()
 	}()
 
 	conn, err := systemdDbus.NewSystemdConnectionContext(context.TODO())
