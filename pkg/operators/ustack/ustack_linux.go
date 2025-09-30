@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	_ "go.opentelemetry.io/ebpf-profiler/support"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
