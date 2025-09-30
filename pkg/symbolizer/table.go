@@ -47,7 +47,7 @@ func (e *SymbolTable) LookupByAddr(address uint64) string {
 	if found {
 		return e.Symbols[n].Name
 	}
-	return "[unknown]"
+	return ""
 }
 
 func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {

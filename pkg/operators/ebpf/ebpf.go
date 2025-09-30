@@ -52,6 +52,7 @@ import (
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
@@ -255,6 +256,9 @@ func (i *ebpfInstance) analyze() error {
 				}
 				if s == socketenricher.SocketsMapName {
 					return socketenricher.SocketsMapName, true
+				}
+				if s == symbolizer.OtelGenericParamsMapName {
+					return symbolizer.OtelGenericParamsMapName, true
 				}
 				return "", false
 			},
@@ -813,6 +817,35 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("creating eBPF collection: %w", err)
 	}
 	i.collection = collection
+
+	if otelEbpfProgramI, ok := gadgetCtx.GetVar(symbolizer.OtelEbpfProgramKprobe); ok {
+		otelEbpfProgram, ok := otelEbpfProgramI.(*ebpf.Program)
+		if !ok {
+			return fmt.Errorf("invalid otel ebpf program: expected *ebpf.Program, got %T", otelEbpfProgramI)
+		}
+		if progMap, ok := collection.Maps[symbolizer.OtelTailCallForKprobeMapName]; ok {
+			err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny)
+			if err != nil {
+				return fmt.Errorf("updating %s map: %w", symbolizer.OtelTailCallForKprobeMapName, err)
+			}
+		} else {
+			i.logger.Warnf("%s map not found in gadget collection", symbolizer.OtelTailCallForKprobeMapName)
+		}
+	}
+	if otelEbpfProgramI, ok := gadgetCtx.GetVar(symbolizer.OtelEbpfProgramTracepoint); ok {
+		otelEbpfProgram, ok := otelEbpfProgramI.(*ebpf.Program)
+		if !ok {
+			return fmt.Errorf("invalid otel ebpf program: expected *ebpf.Program, got %T", otelEbpfProgramI)
+		}
+		if progMap, ok := collection.Maps[symbolizer.OtelTailCallForTracepointMapName]; ok {
+			err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny)
+			if err != nil {
+				return fmt.Errorf("updating %s map: %w", symbolizer.OtelTailCallForTracepointMapName, err)
+			}
+		} else {
+			i.logger.Warnf("%s map not found in gadget collection", symbolizer.OtelTailCallForTracepointMapName)
+		}
+	}
 
 	// collect program IDs and map IDs for this gadget
 	gadgetObjs := gadgetObjects{}
