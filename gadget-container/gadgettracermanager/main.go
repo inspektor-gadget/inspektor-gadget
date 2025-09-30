@@ -69,6 +69,7 @@ import (
 
 	// Symbolizers (all)
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/debuginfod"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/otel"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/symtab"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
