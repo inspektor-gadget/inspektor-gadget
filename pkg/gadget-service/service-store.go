@@ -46,14 +46,34 @@ func (s *Service) CreateGadgetInstance(ctx context.Context, request *api.CreateG
 }
 
 func (s *Service) ListGadgetInstances(ctx context.Context, request *api.ListGadgetInstancesRequest) (*api.ListGadgetInstanceResponse, error) {
-	return s.store.ListGadgetInstances(ctx, request)
+	resp, err := s.store.ListGadgetInstances(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("listing gadget instances: %w", err)
+	}
+	for _, gi := range resp.GadgetInstances {
+		st, err := s.instanceMgr.InstanceState(gi.Id)
+		if err != nil {
+			return nil, fmt.Errorf("getting instance status for %q: %w", gi.Id, err)
+		}
+		gi.State = st
+	}
+	return resp, nil
 }
 
 func (s *Service) GetGadgetInstance(ctx context.Context, id *api.GadgetInstanceId) (*api.GadgetInstance, error) {
 	if !api.IsValidInstanceID(id.Id) {
 		return nil, fmt.Errorf("invalid gadget instance id: %s", id.Id)
 	}
-	return s.store.GetGadgetInstance(ctx, id)
+	gi, err := s.store.GetGadgetInstance(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget instance from store: %w", err)
+	}
+	st, err := s.instanceMgr.InstanceState(gi.Id)
+	if err != nil {
+		return nil, fmt.Errorf("getting instance status for %q: %w", gi.Id, err)
+	}
+	gi.State = st
+	return gi, nil
 }
 
 func (s *Service) RemoveGadgetInstance(ctx context.Context, id *api.GadgetInstanceId) (*api.StatusResponse, error) {

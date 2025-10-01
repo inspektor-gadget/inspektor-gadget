@@ -1592,7 +1592,9 @@ type GadgetInstance struct {
 	// name is a (non-unique) string assigned to a gadget, set by the client
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// nodes is a list of nodes the gadget should run on; if empty, all nodes will run the gadget
-	Nodes         []string `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Nodes []string `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// state can be used to reflect the current state of the gadget instance
+	State         *GadgetInstanceState `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1669,6 +1671,65 @@ func (x *GadgetInstance) GetNodes() []string {
 	return nil
 }
 
+func (x *GadgetInstance) GetState() *GadgetInstanceState {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+type GadgetInstanceState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GadgetInstanceState) Reset() {
+	*x = GadgetInstanceState{}
+	mi := &file_api_api_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GadgetInstanceState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GadgetInstanceState) ProtoMessage() {}
+
+func (x *GadgetInstanceState) ProtoReflect() protoreflect.Message {
+	mi := &file_api_api_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GadgetInstanceState.ProtoReflect.Descriptor instead.
+func (*GadgetInstanceState) Descriptor() ([]byte, []int) {
+	return file_api_api_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GadgetInstanceState) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GadgetInstanceState) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type ListGadgetInstanceResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	GadgetInstances []*GadgetInstance      `protobuf:"bytes,1,rep,name=gadgetInstances,proto3" json:"gadgetInstances,omitempty"`
@@ -1678,7 +1739,7 @@ type ListGadgetInstanceResponse struct {
 
 func (x *ListGadgetInstanceResponse) Reset() {
 	*x = ListGadgetInstanceResponse{}
-	mi := &file_api_api_proto_msgTypes[22]
+	mi := &file_api_api_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1690,7 +1751,7 @@ func (x *ListGadgetInstanceResponse) String() string {
 func (*ListGadgetInstanceResponse) ProtoMessage() {}
 
 func (x *ListGadgetInstanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[22]
+	mi := &file_api_api_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1703,7 +1764,7 @@ func (x *ListGadgetInstanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGadgetInstanceResponse.ProtoReflect.Descriptor instead.
 func (*ListGadgetInstanceResponse) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{22}
+	return file_api_api_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListGadgetInstanceResponse) GetGadgetInstances() []*GadgetInstance {
@@ -1722,7 +1783,7 @@ type GadgetInstanceId struct {
 
 func (x *GadgetInstanceId) Reset() {
 	*x = GadgetInstanceId{}
-	mi := &file_api_api_proto_msgTypes[23]
+	mi := &file_api_api_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1734,7 +1795,7 @@ func (x *GadgetInstanceId) String() string {
 func (*GadgetInstanceId) ProtoMessage() {}
 
 func (x *GadgetInstanceId) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[23]
+	mi := &file_api_api_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1747,7 +1808,7 @@ func (x *GadgetInstanceId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GadgetInstanceId.ProtoReflect.Descriptor instead.
 func (*GadgetInstanceId) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{23}
+	return file_api_api_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GadgetInstanceId) GetId() string {
@@ -1767,7 +1828,7 @@ type StatusResponse struct {
 
 func (x *StatusResponse) Reset() {
 	*x = StatusResponse{}
-	mi := &file_api_api_proto_msgTypes[24]
+	mi := &file_api_api_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1779,7 +1840,7 @@ func (x *StatusResponse) String() string {
 func (*StatusResponse) ProtoMessage() {}
 
 func (x *StatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[24]
+	mi := &file_api_api_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1792,7 +1853,7 @@ func (x *StatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusResponse.ProtoReflect.Descriptor instead.
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{24}
+	return file_api_api_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *StatusResponse) GetResult() int32 {
@@ -1942,14 +2003,18 @@ const file_api_api_proto_rawDesc = "" +
 	"\x1cCreateGadgetInstanceResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\x05R\x06result\x12;\n" +
 	"\x0egadgetInstance\x18\x02 \x01(\v2\x13.api.GadgetInstanceR\x0egadgetInstance\"\x1c\n" +
-	"\x1aListGadgetInstancesRequest\"\xbb\x01\n" +
+	"\x1aListGadgetInstancesRequest\"\xeb\x01\n" +
 	"\x0eGadgetInstance\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\fgadgetConfig\x18\x02 \x01(\v2\x15.api.GadgetRunRequestR\fgadgetConfig\x12\x12\n" +
 	"\x04tags\x18\x03 \x03(\tR\x04tags\x12 \n" +
 	"\vtimeCreated\x18\x04 \x01(\x03R\vtimeCreated\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x14\n" +
-	"\x05nodes\x18\x05 \x03(\tR\x05nodes\"[\n" +
+	"\x05nodes\x18\x05 \x03(\tR\x05nodes\x12.\n" +
+	"\x05state\x18\a \x01(\v2\x18.api.GadgetInstanceStateR\x05state\"G\n" +
+	"\x13GadgetInstanceState\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"[\n" +
 	"\x1aListGadgetInstanceResponse\x12=\n" +
 	"\x0fgadgetInstances\x18\x01 \x03(\v2\x13.api.GadgetInstanceR\x0fgadgetInstances\"\"\n" +
 	"\x10GadgetInstanceId\x12\x0e\n" +
@@ -2002,7 +2067,7 @@ func file_api_api_proto_rawDescGZIP() []byte {
 }
 
 var file_api_api_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_api_api_proto_goTypes = []any{
 	(Kind)(0),                            // 0: api.Kind
 	(*GadgetRunRequest)(nil),             // 1: api.GadgetRunRequest
@@ -2027,58 +2092,60 @@ var file_api_api_proto_goTypes = []any{
 	(*CreateGadgetInstanceResponse)(nil), // 20: api.CreateGadgetInstanceResponse
 	(*ListGadgetInstancesRequest)(nil),   // 21: api.ListGadgetInstancesRequest
 	(*GadgetInstance)(nil),               // 22: api.GadgetInstance
-	(*ListGadgetInstanceResponse)(nil),   // 23: api.ListGadgetInstanceResponse
-	(*GadgetInstanceId)(nil),             // 24: api.GadgetInstanceId
-	(*StatusResponse)(nil),               // 25: api.StatusResponse
-	nil,                                  // 26: api.GadgetRunRequest.ParamValuesEntry
-	nil,                                  // 27: api.GadgetInfo.AnnotationsEntry
-	nil,                                  // 28: api.ExtraInfo.DataEntry
-	nil,                                  // 29: api.DataSource.AnnotationsEntry
-	nil,                                  // 30: api.Field.AnnotationsEntry
-	nil,                                  // 31: api.GetGadgetInfoRequest.ParamValuesEntry
+	(*GadgetInstanceState)(nil),          // 23: api.GadgetInstanceState
+	(*ListGadgetInstanceResponse)(nil),   // 24: api.ListGadgetInstanceResponse
+	(*GadgetInstanceId)(nil),             // 25: api.GadgetInstanceId
+	(*StatusResponse)(nil),               // 26: api.StatusResponse
+	nil,                                  // 27: api.GadgetRunRequest.ParamValuesEntry
+	nil,                                  // 28: api.GadgetInfo.AnnotationsEntry
+	nil,                                  // 29: api.ExtraInfo.DataEntry
+	nil,                                  // 30: api.DataSource.AnnotationsEntry
+	nil,                                  // 31: api.Field.AnnotationsEntry
+	nil,                                  // 32: api.GetGadgetInfoRequest.ParamValuesEntry
 }
 var file_api_api_proto_depIdxs = []int32{
-	26, // 0: api.GadgetRunRequest.paramValues:type_name -> api.GadgetRunRequest.ParamValuesEntry
+	27, // 0: api.GadgetRunRequest.paramValues:type_name -> api.GadgetRunRequest.ParamValuesEntry
 	1,  // 1: api.GadgetControlRequest.runRequest:type_name -> api.GadgetRunRequest
 	4,  // 2: api.GadgetControlRequest.stopRequest:type_name -> api.GadgetStopRequest
 	2,  // 3: api.GadgetControlRequest.attachRequest:type_name -> api.GadgetAttachRequest
 	8,  // 4: api.GadgetData.data:type_name -> api.DataElement
 	8,  // 5: api.GadgetDataArray.dataArray:type_name -> api.DataElement
 	15, // 6: api.GadgetInfo.dataSources:type_name -> api.DataSource
-	27, // 7: api.GadgetInfo.annotations:type_name -> api.GadgetInfo.AnnotationsEntry
+	28, // 7: api.GadgetInfo.annotations:type_name -> api.GadgetInfo.AnnotationsEntry
 	11, // 8: api.GadgetInfo.params:type_name -> api.Param
 	13, // 9: api.GadgetInfo.extraInfo:type_name -> api.ExtraInfo
-	28, // 10: api.ExtraInfo.data:type_name -> api.ExtraInfo.DataEntry
+	29, // 10: api.ExtraInfo.data:type_name -> api.ExtraInfo.DataEntry
 	16, // 11: api.DataSource.fields:type_name -> api.Field
-	29, // 12: api.DataSource.annotations:type_name -> api.DataSource.AnnotationsEntry
+	30, // 12: api.DataSource.annotations:type_name -> api.DataSource.AnnotationsEntry
 	0,  // 13: api.Field.kind:type_name -> api.Kind
-	30, // 14: api.Field.annotations:type_name -> api.Field.AnnotationsEntry
-	31, // 15: api.GetGadgetInfoRequest.paramValues:type_name -> api.GetGadgetInfoRequest.ParamValuesEntry
+	31, // 14: api.Field.annotations:type_name -> api.Field.AnnotationsEntry
+	32, // 15: api.GetGadgetInfoRequest.paramValues:type_name -> api.GetGadgetInfoRequest.ParamValuesEntry
 	12, // 16: api.GetGadgetInfoResponse.gadgetInfo:type_name -> api.GadgetInfo
 	22, // 17: api.CreateGadgetInstanceRequest.gadgetInstance:type_name -> api.GadgetInstance
 	22, // 18: api.CreateGadgetInstanceResponse.gadgetInstance:type_name -> api.GadgetInstance
 	1,  // 19: api.GadgetInstance.gadgetConfig:type_name -> api.GadgetRunRequest
-	22, // 20: api.ListGadgetInstanceResponse.gadgetInstances:type_name -> api.GadgetInstance
-	14, // 21: api.ExtraInfo.DataEntry.value:type_name -> api.GadgetInspectAddendum
-	6,  // 22: api.BuiltInGadgetManager.GetInfo:input_type -> api.InfoRequest
-	17, // 23: api.GadgetManager.GetGadgetInfo:input_type -> api.GetGadgetInfoRequest
-	5,  // 24: api.GadgetManager.RunGadget:input_type -> api.GadgetControlRequest
-	19, // 25: api.GadgetInstanceManager.CreateGadgetInstance:input_type -> api.CreateGadgetInstanceRequest
-	21, // 26: api.GadgetInstanceManager.ListGadgetInstances:input_type -> api.ListGadgetInstancesRequest
-	24, // 27: api.GadgetInstanceManager.GetGadgetInstance:input_type -> api.GadgetInstanceId
-	24, // 28: api.GadgetInstanceManager.RemoveGadgetInstance:input_type -> api.GadgetInstanceId
-	7,  // 29: api.BuiltInGadgetManager.GetInfo:output_type -> api.InfoResponse
-	18, // 30: api.GadgetManager.GetGadgetInfo:output_type -> api.GetGadgetInfoResponse
-	3,  // 31: api.GadgetManager.RunGadget:output_type -> api.GadgetEvent
-	20, // 32: api.GadgetInstanceManager.CreateGadgetInstance:output_type -> api.CreateGadgetInstanceResponse
-	23, // 33: api.GadgetInstanceManager.ListGadgetInstances:output_type -> api.ListGadgetInstanceResponse
-	22, // 34: api.GadgetInstanceManager.GetGadgetInstance:output_type -> api.GadgetInstance
-	25, // 35: api.GadgetInstanceManager.RemoveGadgetInstance:output_type -> api.StatusResponse
-	29, // [29:36] is the sub-list for method output_type
-	22, // [22:29] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	23, // 20: api.GadgetInstance.state:type_name -> api.GadgetInstanceState
+	22, // 21: api.ListGadgetInstanceResponse.gadgetInstances:type_name -> api.GadgetInstance
+	14, // 22: api.ExtraInfo.DataEntry.value:type_name -> api.GadgetInspectAddendum
+	6,  // 23: api.BuiltInGadgetManager.GetInfo:input_type -> api.InfoRequest
+	17, // 24: api.GadgetManager.GetGadgetInfo:input_type -> api.GetGadgetInfoRequest
+	5,  // 25: api.GadgetManager.RunGadget:input_type -> api.GadgetControlRequest
+	19, // 26: api.GadgetInstanceManager.CreateGadgetInstance:input_type -> api.CreateGadgetInstanceRequest
+	21, // 27: api.GadgetInstanceManager.ListGadgetInstances:input_type -> api.ListGadgetInstancesRequest
+	25, // 28: api.GadgetInstanceManager.GetGadgetInstance:input_type -> api.GadgetInstanceId
+	25, // 29: api.GadgetInstanceManager.RemoveGadgetInstance:input_type -> api.GadgetInstanceId
+	7,  // 30: api.BuiltInGadgetManager.GetInfo:output_type -> api.InfoResponse
+	18, // 31: api.GadgetManager.GetGadgetInfo:output_type -> api.GetGadgetInfoResponse
+	3,  // 32: api.GadgetManager.RunGadget:output_type -> api.GadgetEvent
+	20, // 33: api.GadgetInstanceManager.CreateGadgetInstance:output_type -> api.CreateGadgetInstanceResponse
+	24, // 34: api.GadgetInstanceManager.ListGadgetInstances:output_type -> api.ListGadgetInstanceResponse
+	22, // 35: api.GadgetInstanceManager.GetGadgetInstance:output_type -> api.GadgetInstance
+	26, // 36: api.GadgetInstanceManager.RemoveGadgetInstance:output_type -> api.StatusResponse
+	30, // [30:37] is the sub-list for method output_type
+	23, // [23:30] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_api_api_proto_init() }
@@ -2097,7 +2164,7 @@ func file_api_api_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_api_proto_rawDesc), len(file_api_api_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   31,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

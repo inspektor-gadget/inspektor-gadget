@@ -39,6 +39,19 @@ const (
 	stateError
 )
 
+func (s gadgetState) String() string {
+	switch s {
+	case stateInvalid:
+		return "Invalid"
+	case stateRunning:
+		return "Running"
+	case stateError:
+		return "Error"
+	default:
+		return "Unknown"
+	}
+}
+
 type bufferedEvent struct {
 	datasourceID uint32
 	payload      []byte
@@ -211,6 +224,10 @@ func (p *GadgetInstance) Run(
 
 	runtimeParams := runtime.ParamDescs().ToParams()
 	runtimeParams.CopyFromMap(p.request.ParamValues, "runtime.")
+
+	p.mu.Lock()
+	p.state = stateRunning
+	p.mu.Unlock()
 
 	return runtime.RunGadget(gadgetCtx, runtimeParams, p.request.ParamValues)
 }

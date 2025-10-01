@@ -25,12 +25,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 type GadgetInfo struct {
-	pg *api.GadgetInstance
+	pg *grpcruntime.GadgetInstance
 }
 
 func AddInstanceCommands(
@@ -58,7 +57,7 @@ func AddInstanceCommands(
 				if g.pg == nil {
 					return ""
 				}
-				return g.pg.Id[:12]
+				return g.pg.Instance.Id[:12]
 			})
 			cols.MustAddColumn(columns.Attributes{
 				Name:         "Name",
@@ -69,7 +68,7 @@ func AddInstanceCommands(
 				if g.pg == nil {
 					return ""
 				}
-				return g.pg.Name
+				return g.pg.Instance.Name
 			})
 			cols.MustAddColumn(columns.Attributes{
 				Name:         "Tags",
@@ -80,10 +79,21 @@ func AddInstanceCommands(
 				if g.pg == nil {
 					return ""
 				}
-				return strings.Join(g.pg.Tags, ",")
+				return strings.Join(g.pg.Instance.Tags, ",")
 			})
 			cols.MustAddColumn(columns.Attributes{
 				Name:         "Gadget",
+				Visible:      true,
+				EllipsisType: ellipsis.End,
+				Order:        40,
+			}, func(g *GadgetInfo) any {
+				if g.pg == nil {
+					return ""
+				}
+				return g.pg.Instance.GadgetConfig.ImageName
+			})
+			cols.MustAddColumn(columns.Attributes{
+				Name:         "Node",
 				Visible:      true,
 				EllipsisType: ellipsis.End,
 				Order:        50,
@@ -91,13 +101,36 @@ func AddInstanceCommands(
 				if g.pg == nil {
 					return ""
 				}
-				return g.pg.GadgetConfig.ImageName
+				return g.pg.Node
+			})
+			cols.MustAddColumn(columns.Attributes{
+				Name:         "Status",
+				Visible:      true,
+				EllipsisType: ellipsis.End,
+				Order:        60,
+			}, func(g *GadgetInfo) any {
+				if g.pg == nil || g.pg.Instance.State == nil {
+					return ""
+				}
+				return g.pg.Instance.State.Status
+			})
+			cols.MustAddColumn(columns.Attributes{
+				Name:         "Error",
+				Visible:      true,
+				EllipsisType: ellipsis.Start,
+				Order:        70,
+				Width:        40,
+			}, func(g *GadgetInfo) any {
+				if g.pg == nil || g.pg.Instance.State == nil {
+					return ""
+				}
+				return g.pg.Instance.State.Message
 			})
 
 			formatter := textcolumns.NewFormatter(cols.GetColumnMap())
 			fmt.Println(formatter.FormatHeader())
 
-			gadgets, err := runtime.GetGadgetInstances(context.Background(), runtimeParams)
+			gadgets, err := runtime.GetGadgetInstances(context.Background(), runtimeParams, true)
 			if err != nil {
 				return err
 			}

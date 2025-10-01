@@ -259,6 +259,14 @@ message GadgetInstance {
 
   // nodes is a list of nodes the gadget should run on; if empty, all nodes will run the gadget
   repeated string nodes = 5;
+
+  // state can be used to reflect the current state of the gadget instance
+  GadgetInstanceState state = 7;
+}
+
+message GadgetInstanceState {
+  string status = 1;
+  string message = 2;
 }
 
 message ListGadgetInstanceResponse {
