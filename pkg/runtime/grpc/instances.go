@@ -30,8 +30,13 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
+type NodeInstanceState struct {
+	State *api.GadgetInstanceState
+	Node  string
+}
+
 func (r *Runtime) RemoveGadgetInstance(ctx context.Context, runtimeParams *params.Params, id string) error {
-	return r.runInstanceManagerClientForTargets(ctx, runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
+	return r.runInstanceManagerClientForTargets(ctx, runtimeParams, false, func(target target, client api.GadgetInstanceManagerClient) error {
 		res, err := client.RemoveGadgetInstance(ctx, &api.GadgetInstanceId{Id: id})
 		if err != nil {
 			return err
@@ -45,7 +50,7 @@ func (r *Runtime) RemoveGadgetInstance(ctx context.Context, runtimeParams *param
 
 func (r *Runtime) GetGadgetInstances(ctx context.Context, runtimeParams *params.Params) (instances []*api.GadgetInstance, err error) {
 	var mu sync.Mutex
-	err = r.runInstanceManagerClientForTargets(ctx, runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
+	err = r.runInstanceManagerClientForTargets(ctx, runtimeParams, true, func(target target, client api.GadgetInstanceManagerClient) error {
 		res, err := client.ListGadgetInstances(ctx, &api.ListGadgetInstancesRequest{})
 		if err != nil {
 			return err
@@ -58,7 +63,17 @@ func (r *Runtime) GetGadgetInstances(ctx context.Context, runtimeParams *params.
 		return nil
 	})
 	slices.SortFunc(instances, func(i1 *api.GadgetInstance, i2 *api.GadgetInstance) int {
-		return strings.Compare(i1.Id, i2.Id)
+		if i1.Id != i2.Id {
+			return strings.Compare(i1.Id, i2.Id)
+		}
+		if i1.State.Status == i2.State.Status {
+			return 0
+		}
+		// Move the instance to the front if it's not running
+		if i1.State.Status != api.GadgetInstanceStatus_StatusRunning {
+			return -1
+		}
+		return 1
 	})
 	instances = slices.CompactFunc(instances, func(i1 *api.GadgetInstance, i2 *api.GadgetInstance) bool {
 		return i1.Id == i2.Id
@@ -66,9 +81,39 @@ func (r *Runtime) GetGadgetInstances(ctx context.Context, runtimeParams *params.
 	return
 }
 
-func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtimeParams *params.Params, fn func(target target, client api.GadgetInstanceManagerClient) error) error {
+func (r *Runtime) GetNodeInstanceStates(ctx context.Context, runtimeParams *params.Params, id string) ([]*NodeInstanceState, error) {
+	var mu sync.Mutex
+	var nStates []*NodeInstanceState
+	err := r.runInstanceManagerClientForTargets(ctx, runtimeParams, true, func(target target, client api.GadgetInstanceManagerClient) error {
+		res, err := client.ListGadgetInstances(ctx, &api.ListGadgetInstancesRequest{})
+		if err != nil {
+			return err
+		}
+
+		mu.Lock()
+		for _, gi := range res.GadgetInstances {
+			if gi.Id == id {
+				nStates = append(nStates, &NodeInstanceState{
+					State: gi.GetState(),
+					Node:  target.node,
+				})
+				break
+			}
+		}
+		mu.Unlock()
+
+		slices.SortFunc(nStates, func(i1 *NodeInstanceState, i2 *NodeInstanceState) int {
+			return strings.Compare(i1.Node, i2.Node)
+		})
+		return nil
+	})
+	return nStates, err
+}
+
+func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtimeParams *params.Params, allTargets bool, fn func(target target, client api.GadgetInstanceManagerClient) error) error {
 	// depending on the environment, we need to either connect to a single random target (k8s, where k8s/etcd handles
 	// synchronizing gadget configuration), or all possible targets (ig-daemon).
+	// if allTargets is true, we connect to all targets, otherwise we connect to one or more targets depending on the environment.
 	targets, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
 		return fmt.Errorf("getting targets: %w", err)
@@ -78,7 +123,7 @@ func (r *Runtime) runInstanceManagerClientForTargets(ctx context.Context, runtim
 		return fmt.Errorf("no targets found")
 	}
 
-	if environment.Environment == environment.Kubernetes {
+	if !allTargets && environment.Environment == environment.Kubernetes {
 		// We only need to connect to one target
 		targets = targets[:1]
 	}
@@ -156,7 +201,7 @@ func (r *Runtime) createGadgetInstance(gadgetCtx runtime.GadgetContext, runtimeP
 	ids := make(map[string][]string)
 	var lastID string
 
-	err = r.runInstanceManagerClientForTargets(gadgetCtx.Context(), runtimeParams, func(target target, client api.GadgetInstanceManagerClient) error {
+	err = r.runInstanceManagerClientForTargets(gadgetCtx.Context(), runtimeParams, false, func(target target, client api.GadgetInstanceManagerClient) error {
 		gadgetCtx.Logger().Debugf("creating gadget on node %q", target.node)
 		res, err := client.CreateGadgetInstance(gadgetCtx.Context(), instanceRequest)
 		if err != nil {
