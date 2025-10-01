@@ -122,6 +122,10 @@ var wellKnownParams = map[wellKnownParamKey]wellKnownParamVal{
 		Key:         "collect-ustack",
 		Description: "Collect user stack traces",
 	},
+	{TypeName: "bool", VarName: "collect_build_id"}: {
+		Key:         "collect-build-id",
+		Description: "Collect build IDs",
+	},
 }
 
 func handleWellKnownParam(btfVar *btf.Var, p *param) {

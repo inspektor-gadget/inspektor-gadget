@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !linux
-
 package symbolizer
 
-import (
-	"errors"
-)
+import "time"
 
-func getHostProcFsPidNs() (uint32, error) {
-	return 0, errors.ErrUnsupported
+type Resolver interface {
+	// Priority tells in which order to call Resolve(). Lower values first.
+	Priority() int
+
+	NewInstance(SymbolizerOptions) (ResolverInstance, error)
 }
 
-func (s *Symbolizer) resolveWithSymtab(task Task, stackQueries []StackItemQuery, res []StackItemResponse) error {
-	return errors.ErrUnsupported
+type ResolverInstance interface {
+	Resolve(task Task, stackQueries []StackItemQuery, stackResponses []StackItemResponse) error
+	IsPruningNeeded() bool
+	PruneOldObjects(now time.Time, ttl time.Duration)
 }

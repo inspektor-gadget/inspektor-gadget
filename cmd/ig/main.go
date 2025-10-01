@@ -50,6 +50,10 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/uidgidresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ustack"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/wasm"
+
+	// Symbolizers (all)
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/debuginfod"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/symtab"
 )
 
 func main() {
