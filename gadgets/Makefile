@@ -32,6 +32,7 @@ GADGETS ?= \
 	profile_cpu \
 	profile_qdisc_latency \
 	profile_tcprtt \
+	tcpdump \
 	trace_bind \
 	trace_capabilities \
 	trace_dns \

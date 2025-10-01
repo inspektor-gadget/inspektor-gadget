@@ -1,0 +1,44 @@
+name: tcpdump
+description: Capture network packets
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/tcpdump
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/tcpdump
+params:
+  ebpf:
+    snaplen:
+      key: snaplen
+      description: 'Maximum number of bytes to capture from a packet.'
+datasources:
+  packets:
+    annotations:
+      ebpf.rest.len: payload_len
+      ebpf.rest.name: payload
+      cli.supported-output-modes: pcap-ng,columns,json,yaml
+      cli.default-output-mode: columns
+      cli.raw.fields: payload
+      pcap.payload: payload
+      pcap.timestamp: timestamp
+      pcap.packet-length: payload_len
+    fields:
+      ifindex:
+        annotations:
+          pcap.interface-key: true
+      payload:
+        annotations:
+          content-type: application/x-raw-packet
+      k8s.node:
+        annotations:
+          pcap.interface-var: k8s.node
+          pcap.interface-key: true
+      k8s.containerName:
+        annotations:
+          pcap.interface-var: k8s.containerName
+      k8s.podName:
+        annotations:
+          pcap.interface-var: k8s.podName
+      k8s.podLabels:
+        annotations:
+          pcap.interface-var: k8s.podLabels
+      runtime.containerName:
+        annotations:
+          pcap.interface-var: runtime.containerName
