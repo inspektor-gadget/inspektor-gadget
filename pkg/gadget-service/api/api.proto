@@ -259,6 +259,9 @@ message GadgetInstance {
 
   // nodes is a list of nodes the gadget should run on; if empty, all nodes will run the gadget
   repeated string nodes = 5;
+
+  // status can be used to reflect the current status of the gadget instance (e.g., Running, Error, etc)
+  string status = 7;
 }
 
 message ListGadgetInstanceResponse {

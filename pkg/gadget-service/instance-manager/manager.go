@@ -164,3 +164,11 @@ func (m *Manager) LookupInstance(gadgetInstanceID string) *GadgetInstance {
 
 	return nil
 }
+
+func (m *Manager) InstanceStatus(gadgetInstanceID string) (string, error) {
+	gi := m.LookupInstance(gadgetInstanceID)
+	if gi == nil {
+		return "", ErrNotFound
+	}
+	return gi.state.String(), nil
+}

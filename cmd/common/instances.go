@@ -83,6 +83,17 @@ func AddInstanceCommands(
 				return strings.Join(g.pg.Tags, ",")
 			})
 			cols.MustAddColumn(columns.Attributes{
+				Name:         "Status",
+				Visible:      true,
+				EllipsisType: ellipsis.End,
+				Order:        40,
+			}, func(g *GadgetInfo) any {
+				if g.pg == nil {
+					return ""
+				}
+				return g.pg.Status
+			})
+			cols.MustAddColumn(columns.Attributes{
 				Name:         "Gadget",
 				Visible:      true,
 				EllipsisType: ellipsis.End,
