@@ -21,6 +21,14 @@ import (
 )
 
 const (
+	OtelGenericParamsMapName         = "otel_generic_params"
+	OtelTailCallForKprobeMapName     = "otel_tc_kprobe"
+	OtelTailCallForTracepointMapName = "otel_tc_tracepoint"
+	OtelEbpfProgramKprobe            = "otel_ebpf_program_kprobe"
+	OtelEbpfProgramTracepoint        = "otel_ebpf_program_tracepoint"
+)
+
+const (
 	pruneObjTTL     = time.Minute
 	pruneTickerTime = time.Minute
 )
@@ -29,6 +37,7 @@ type SymbolizerOptions struct {
 	UseSymtab           bool
 	UseDebugInfodCache  bool
 	DebuginfodCachePath string
+	UseOtelEbpfProfiler bool
 }
 
 type Symbolizer struct {
@@ -151,6 +160,9 @@ type Task struct {
 
 	// Opaque hash from ebpf representing the base address to check if it needs to be recalculated.
 	BaseAddrHash uint32
+
+	// Opaque correlation ID from eBPF.
+	CorrelationID uint64
 }
 
 // StackItemQuery is one item of the stack. It contains the data found from BPF.
@@ -167,6 +179,20 @@ type StackItemQuery struct {
 type StackItemResponse struct {
 	Found  bool
 	Symbol string
+}
+
+func (s *Symbolizer) GetEbpfReplacements() map[string]interface{} {
+	ret := make(map[string]interface{})
+	for _, r := range s.resolvers {
+		replacements := r.GetEbpfReplacements()
+		if replacements == nil {
+			continue
+		}
+		for name, repl := range replacements {
+			ret[name] = repl
+		}
+	}
+	return ret
 }
 
 func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackItemResponse, error) {

@@ -61,7 +61,7 @@ func (o *Operator) InstanceParams() api.Params {
 	return api.Params{
 		&api.Param{
 			Key:          symbolizersParam,
-			Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab", "debuginfod-cache", "debuginfod-cache-on-ig-server".`,
+			Description:  `Symbolizers to use. Possible values are: "none", "auto", or comma-separated list among: "symtab", "debuginfod-cache", "debuginfod-cache-on-ig-server", "otel-ebpf-profiler".`,
 			DefaultValue: "auto",
 		},
 		&api.Param{
@@ -100,12 +100,16 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 				if gadgetCtx.IsRemoteCall() {
 					instance.symbolizerOpts.UseDebugInfodCache = true
 				}
+			case "otel-ebpf-profiler":
+				instance.symbolizerOpts.UseOtelEbpfProfiler = !gadgetCtx.IsClient()
 			default:
 				return nil, fmt.Errorf("invalid symbolizer: %s", s)
 			}
 		}
 	}
-	instance.symbolizerEnabled = instance.symbolizerOpts.UseSymtab || instance.symbolizerOpts.UseDebugInfodCache
+	instance.symbolizerEnabled = instance.symbolizerOpts.UseSymtab ||
+		instance.symbolizerOpts.UseDebugInfodCache ||
+		instance.symbolizerOpts.UseOtelEbpfProfiler
 
 	err := instance.init(gadgetCtx)
 	if err != nil {
@@ -150,6 +154,11 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 			tgidLevel0Field := in.GetSubFieldsWithTag("name:tgid_level0")
 			if len(tgidLevel0Field) != 1 {
 				logger.Warn("no tgid (level 0) field found")
+				continue
+			}
+			otelCorrelationIDField := in.GetSubFieldsWithTag("name:otel_correlation_id")
+			if len(otelCorrelationIDField) != 1 {
+				logger.Warn("no otel_correlation_id field found")
 				continue
 			}
 			pidLevel0Field := in.GetSubFieldsWithTag("name:pid_level0")
@@ -254,6 +263,7 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				}
 
 				stackId, _ := stackField[0].Uint32(data)
+				otelCorrelationID, _ := otelCorrelationIDField[0].Uint64(data)
 				tgidLevel0, _ := tgidLevel0Field[0].Uint32(data)
 				pidLevel0, _ := pidLevel0Field[0].Uint32(data)
 				pidnsLevel0, _ := pidnsLevel0Field[0].Uint32(data)
@@ -409,7 +419,8 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 							MtimeSec:  mtimeSec,
 							MtimeNsec: mtimeNsec,
 						},
-						BaseAddrHash: baseAddrHash,
+						BaseAddrHash:  baseAddrHash,
+						CorrelationID: otelCorrelationID,
 					}
 					stackQueriesResponse, err := o.symbolizer.Resolve(task, stackQueries)
 					if err != nil {
@@ -438,6 +449,10 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		o.symbolizer, err = symbolizer.NewSymbolizer(o.symbolizerOpts)
 		if err != nil {
 			return err
+		}
+		repl := o.symbolizer.GetEbpfReplacements()
+		for name, r := range repl {
+			gadgetCtx.SetVar(name, r)
 		}
 	}
 
