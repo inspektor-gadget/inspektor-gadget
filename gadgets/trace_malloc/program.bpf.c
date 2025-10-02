@@ -56,6 +56,25 @@ struct {
 	__type(value, u64);
 } memptrs SEC(".maps");
 
+struct alloc_key {
+	__u32 stack_id_key;
+};
+
+struct alloc_val {
+	__u64 count;
+	struct gadget_user_stack ustack;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, struct alloc_key);
+	__type(value, struct alloc_val);
+} allocs SEC(".maps");
+
+
+GADGET_MAPITER(allocs, allocs);
+
 /**
  * clean up the maps when a thread terminates,
  * because there may be residual data in the map
@@ -72,8 +91,10 @@ int trace_sched_process_exit(void *ctx)
 	return 0;
 }
 
+
+
 GADGET_TRACER_MAP(events, 1024 * 256);
-GADGET_TRACER(malloc, events, event);
+//GADGET_TRACER(malloc, events, event);
 
 static __always_inline int gen_alloc_enter(size_t size)
 {
@@ -116,6 +137,23 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	event->timestamp_raw = bpf_ktime_get_ns();
 
 	gadget_get_user_stack(ctx, &event->ustack);
+
+	struct alloc_key key = {
+		.stack_id_key = event->ustack.stack_id,
+	};
+
+	struct alloc_val *val = bpf_map_lookup_elem(&allocs, &key);
+	if (!val) {
+		struct alloc_val new_val = {
+			.count = size,
+			.ustack = event->ustack,
+		};
+		bpf_map_update_elem(&allocs, &key, &new_val, BPF_ANY);
+	} else {
+		val->count += size;
+	}
+
+
 
 	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
