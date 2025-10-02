@@ -79,30 +79,6 @@ func (k *KubeManager) Description() string {
 	return "KubeManager handles container/pod/namespace information using Container-Collection and Tracer-Collection."
 }
 
-func (k *KubeManager) GlobalParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:          ParamFallbackPodInformer,
-			DefaultValue: "true",
-			Description:  "Use pod informer as a fallback for the main hook",
-			TypeHint:     params.TypeBool,
-		},
-		{
-			Key:            ParamHookMode,
-			DefaultValue:   hookModeAuto,
-			Description:    "Mechanism to collect container information",
-			TypeHint:       params.TypeString,
-			PossibleValues: supportedHookModes,
-		},
-		{
-			Key:          ParamHookLivenessSocketFile,
-			DefaultValue: types.DefaultHookAndLivenessSocketFile,
-			Description:  "Path to the socket file for serving hook's requests for adding/removing containers and for liveness checks",
-			TypeHint:     params.TypeString,
-		},
-	}
-}
-
 func (k *KubeManager) ParamDescs() params.ParamDescs {
 	return append(common.GetContainerSelectorParams(true),
 		&params.ParamDesc{
@@ -371,7 +347,27 @@ func (m *KubeManagerInstance) EnrichEvent(ev any) error {
 }
 
 func (k *KubeManager) GlobalParams() api.Params {
-	return apihelpers.ParamDescsToParams(k.GlobalParamDescs())
+	return apihelpers.ParamDescsToParams(params.ParamDescs{
+		{
+			Key:          ParamFallbackPodInformer,
+			DefaultValue: "true",
+			Description:  "Use pod informer as a fallback for the main hook",
+			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:            ParamHookMode,
+			DefaultValue:   hookModeAuto,
+			Description:    "Mechanism to collect container information",
+			TypeHint:       params.TypeString,
+			PossibleValues: supportedHookModes,
+		},
+		{
+			Key:          ParamHookLivenessSocketFile,
+			DefaultValue: types.DefaultHookAndLivenessSocketFile,
+			Description:  "Path to the socket file for serving hook's requests for adding/removing containers and for liveness checks",
+			TypeHint:     params.TypeString,
+		},
+	})
 }
 
 func (k *KubeManager) InstanceParams() api.Params {

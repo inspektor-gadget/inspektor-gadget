@@ -23,7 +23,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/containerd/containerd/pkg/cri/constants"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -84,60 +83,6 @@ func (l *localManager) Name() string {
 
 func (l *localManager) Description() string {
 	return "Handles enrichment of container data and attaching/detaching to and from containers"
-}
-
-func (l *localManager) GlobalParamDescs() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:          Runtimes,
-			Alias:        "r",
-			DefaultValue: strings.Join(containerutils.AvailableRuntimes, ","),
-			Description: fmt.Sprintf("Comma-separated list of container runtimes. Supported values are: %s",
-				strings.Join(containerutils.AvailableRuntimes, ", ")),
-			// PossibleValues: containerutils.AvailableRuntimes, // TODO
-		},
-		{
-			Key:          DockerSocketPath,
-			DefaultValue: runtimeclient.DockerDefaultSocketPath,
-			Description:  "Docker Engine API Unix socket path",
-		},
-		{
-			Key:          ContainerdSocketPath,
-			DefaultValue: runtimeclient.ContainerdDefaultSocketPath,
-			Description:  "Containerd CRI Unix socket path",
-		},
-		{
-			Key:          CrioSocketPath,
-			DefaultValue: runtimeclient.CrioDefaultSocketPath,
-			Description:  "CRI-O CRI Unix socket path",
-		},
-		{
-			Key:          PodmanSocketPath,
-			DefaultValue: runtimeclient.PodmanDefaultSocketPath,
-			Description:  "Podman Unix socket path",
-		},
-		{
-			Key:          ContainerdNamespace,
-			DefaultValue: constants.K8sContainerdNamespace,
-			Description:  "Containerd namespace to use",
-		},
-		{
-			Key:          RuntimeProtocol,
-			DefaultValue: "internal",
-			Description:  "Container runtime protocol. Supported values are: internal, cri",
-		},
-		{
-			Key:          EnrichWithK8sApiserver,
-			DefaultValue: "false",
-			Description:  "Connect to the K8s API server to get further K8s enrichment",
-			TypeHint:     params.TypeBool,
-		},
-		{
-			Key:          KubeconfigPath,
-			DefaultValue: "", // Try in-cluster config by default
-			Description:  "Path to kubeconfig file. If not set, in-cluster config will be used.",
-		},
-	}
 }
 
 func (l *localManager) ParamDescs() params.ParamDescs {
@@ -505,7 +450,57 @@ type localManagerTraceWrapper struct {
 }
 
 func (l *localManager) GlobalParams() api.Params {
-	return apihelpers.ParamDescsToParams(l.GlobalParamDescs())
+	return apihelpers.ParamDescsToParams(params.ParamDescs{
+		{
+			Key:          Runtimes,
+			Alias:        "r",
+			DefaultValue: strings.Join(containerutils.AvailableRuntimes, ","),
+			Description: fmt.Sprintf("Comma-separated list of container runtimes. Supported values are: %s",
+				strings.Join(containerutils.AvailableRuntimes, ", ")),
+			// PossibleValues: containerutils.AvailableRuntimes, // TODO
+		},
+		{
+			Key:          DockerSocketPath,
+			DefaultValue: runtimeclient.DockerDefaultSocketPath,
+			Description:  "Docker Engine API Unix socket path",
+		},
+		{
+			Key:          ContainerdSocketPath,
+			DefaultValue: runtimeclient.ContainerdDefaultSocketPath,
+			Description:  "Containerd CRI Unix socket path",
+		},
+		{
+			Key:          CrioSocketPath,
+			DefaultValue: runtimeclient.CrioDefaultSocketPath,
+			Description:  "CRI-O CRI Unix socket path",
+		},
+		{
+			Key:          PodmanSocketPath,
+			DefaultValue: runtimeclient.PodmanDefaultSocketPath,
+			Description:  "Podman Unix socket path",
+		},
+		{
+			Key:          ContainerdNamespace,
+			DefaultValue: "k8s.io",
+			Description:  "Containerd namespace to use",
+		},
+		{
+			Key:          RuntimeProtocol,
+			DefaultValue: "internal",
+			Description:  "Container runtime protocol. Supported values are: internal, cri",
+		},
+		{
+			Key:          EnrichWithK8sApiserver,
+			DefaultValue: "false",
+			Description:  "Connect to the K8s API server to get further K8s enrichment",
+			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          KubeconfigPath,
+			DefaultValue: "", // Try in-cluster config by default
+			Description:  "Path to kubeconfig file. If not set, in-cluster config will be used.",
+		},
+	})
 }
 
 func (l *localManager) InstanceParams() api.Params {

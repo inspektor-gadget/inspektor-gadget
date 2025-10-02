@@ -55,10 +55,6 @@ func (k *UidGidResolver) Description() string {
 	return "UidGidResolver resolves uid and gid to username and groupname"
 }
 
-func (k *UidGidResolver) GlobalParamDescs() params.ParamDescs {
-	return nil
-}
-
 func (k *UidGidResolver) GlobalParams() api.Params {
 	return nil
 }
