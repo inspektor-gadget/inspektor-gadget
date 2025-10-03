@@ -1592,7 +1592,9 @@ type GadgetInstance struct {
 	// name is a (non-unique) string assigned to a gadget, set by the client
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// nodes is a list of nodes the gadget should run on; if empty, all nodes will run the gadget
-	Nodes         []string `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Nodes []string `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// status can be used to reflect the current status of the gadget instance (e.g., Running, Error, etc)
+	Status        string `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1667,6 +1669,13 @@ func (x *GadgetInstance) GetNodes() []string {
 		return x.Nodes
 	}
 	return nil
+}
+
+func (x *GadgetInstance) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type ListGadgetInstanceResponse struct {
@@ -1942,14 +1951,15 @@ const file_api_api_proto_rawDesc = "" +
 	"\x1cCreateGadgetInstanceResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\x05R\x06result\x12;\n" +
 	"\x0egadgetInstance\x18\x02 \x01(\v2\x13.api.GadgetInstanceR\x0egadgetInstance\"\x1c\n" +
-	"\x1aListGadgetInstancesRequest\"\xbb\x01\n" +
+	"\x1aListGadgetInstancesRequest\"\xd3\x01\n" +
 	"\x0eGadgetInstance\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\fgadgetConfig\x18\x02 \x01(\v2\x15.api.GadgetRunRequestR\fgadgetConfig\x12\x12\n" +
 	"\x04tags\x18\x03 \x03(\tR\x04tags\x12 \n" +
 	"\vtimeCreated\x18\x04 \x01(\x03R\vtimeCreated\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x14\n" +
-	"\x05nodes\x18\x05 \x03(\tR\x05nodes\"[\n" +
+	"\x05nodes\x18\x05 \x03(\tR\x05nodes\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"[\n" +
 	"\x1aListGadgetInstanceResponse\x12=\n" +
 	"\x0fgadgetInstances\x18\x01 \x03(\v2\x13.api.GadgetInstanceR\x0fgadgetInstances\"\"\n" +
 	"\x10GadgetInstanceId\x12\x0e\n" +
