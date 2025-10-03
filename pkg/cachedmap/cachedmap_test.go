@@ -217,3 +217,87 @@ func TestResourceCacheGetCmp(t *testing.T) {
 	require.True(t, found)
 	assert.Equal(t, value2, objFromCache)
 }
+
+func TestResourceCacheKeys(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](defaultTestTTL).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "one")
+	cache.Add(2, "two")
+	cache.Remove(1)
+
+	keys := cache.Keys()
+	assert.Contains(t, keys, 1)
+	assert.Contains(t, keys, 2)
+	assert.Len(t, keys, 2)
+}
+
+func TestResourceCacheGetCmpFromOld(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](defaultTestTTL).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "value1")
+	cache.Remove(1)
+
+	obj, found := cache.GetCmp(func(s string) bool {
+		return s == "value1"
+	})
+	require.True(t, found)
+	assert.Equal(t, "value1", obj)
+}
+
+func TestResourceCacheClear(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](defaultTestTTL).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "one")
+	cache.Remove(1)
+	cache.Clear()
+
+	assert.Len(t, cache.current, 0)
+	assert.Len(t, cache.old, 0)
+}
+
+func TestResourceCacheGetFromOld(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](defaultTestTTL).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "value")
+	cache.Remove(1)
+
+	obj, found := cache.Get(1)
+	require.True(t, found)
+	assert.Equal(t, "value", obj)
+}
+
+func TestResourceCacheGetCmpNotFound(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](defaultTestTTL).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "one")
+	cache.Remove(1)
+
+	// Test when comparison function returns false for all items
+	obj, found := cache.GetCmp(func(s string) bool {
+		return false
+	})
+	assert.False(t, found)
+	assert.Empty(t, obj)
+}
+
+func TestResourceCachePruneLoop(t *testing.T) {
+	t.Parallel()
+	cache := NewCachedMap[int, string](50 * time.Millisecond).(*cachedMap[int, string])
+	t.Cleanup(func() { cache.Close() })
+
+	cache.Add(1, "one")
+	cache.Remove(1)
+
+	time.Sleep(100 * time.Millisecond)
+	assert.Len(t, cache.old, 0)
+}
