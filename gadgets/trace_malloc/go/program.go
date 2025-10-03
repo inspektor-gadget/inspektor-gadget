@@ -54,13 +54,19 @@ func gadgetPreStart() int32 {
 
 	symbolsF, err := syscallds.GetField("ustack.symbols")
 	if err != nil {
-		api.Errorf("getting syscalls field: %s", err)
+		api.Errorf("getting symbols field: %s", err)
 		return 1
 	}
 
 	countF, err := syscallds.GetField("count")
 	if err != nil {
-		api.Errorf("getting syscalls field: %s", err)
+		api.Errorf("getting count field: %s", err)
+		return 1
+	}
+
+	commF, err := syscallds.GetField("proc.comm")
+	if err != nil {
+		api.Errorf("getting comm field: %s", err)
 		return 1
 	}
 
@@ -83,8 +89,19 @@ func gadgetPreStart() int32 {
 			symbolsPart := strings.Split(symbols, "; ")
 			for i, j := 0, len(symbolsPart)-1; i < j; i, j = i+1, j-1 {
 				symbolsPart[i], symbolsPart[j] = symbolsPart[j], symbolsPart[i]
+
 			}
+
+			comm, err := commF.String(data, 256)
+			if err != nil {
+				api.Warnf("reading comm: %s", err)
+				continue
+			}
+
 			symbols = strings.Join(symbolsPart, "; ")
+
+			// append process name to understand what process are those calls comming from
+			symbols = comm + /*";" + */ symbols
 
 			//api.Infof("symbols: %s", symbols)
 

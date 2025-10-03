@@ -4,23 +4,6 @@ homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_malloc
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_malloc
 datasources:
-#  malloc:
-#    fields:
-#      operation_raw:
-#        annotations:
-#          columns.hidden: true
-#      operation:
-#        annotations:
-#          description: memory operation type
-#      addr:
-#        annotations:
-#          description: address of malloc/free operations
-#          columns.width: 20
-#          columns.hex: true
-#      size:
-#        annotations:
-#          description: size of malloc operations
-#          columns.width: 20
   allocs:
     annotations:
       cli.supported-output-modes: none

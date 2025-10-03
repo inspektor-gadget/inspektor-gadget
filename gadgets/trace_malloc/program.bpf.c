@@ -29,17 +29,6 @@ enum memop {
 	pvalloc,
 };
 
-struct event {
-	gadget_timestamp timestamp_raw;
-	struct gadget_process proc;
-
-	struct gadget_user_stack ustack;
-
-	enum memop operation_raw;
-	__u64 addr;
-	__u64 size;
-};
-
 /* used for context between uprobes and uretprobes of allocations */
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -62,6 +51,7 @@ struct alloc_key {
 
 struct alloc_val {
 	__u64 count;
+	struct gadget_process proc;
 	struct gadget_user_stack ustack;
 };
 
@@ -91,11 +81,6 @@ int trace_sched_process_exit(void *ctx)
 	return 0;
 }
 
-
-
-GADGET_TRACER_MAP(events, 1024 * 256);
-//GADGET_TRACER(malloc, events, event);
-
 static __always_inline int gen_alloc_enter(size_t size)
 {
 	u32 tid;
@@ -109,7 +94,6 @@ static __always_inline int gen_alloc_enter(size_t size)
 static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 					  enum memop operation, u64 addr)
 {
-	struct event *event;
 	u64 pid_tgid;
 	u32 tid;
 	u64 *size_ptr;
@@ -126,36 +110,24 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	size = *size_ptr;
 	bpf_map_delete_elem(&sizes, &tid);
 
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return 0;
-
-	gadget_process_populate(&event->proc);
-	event->operation_raw = operation;
-	event->addr = addr;
-	event->size = size;
-	event->timestamp_raw = bpf_ktime_get_ns();
-
-	gadget_get_user_stack(ctx, &event->ustack);
-
 	struct alloc_key key = {
-		.stack_id_key = event->ustack.stack_id,
+		// TODO: This breaks modularity as it uses the ig_ustack map directly
+		.stack_id_key = bpf_get_stackid(
+		ctx, &ig_ustack, BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK),
 	};
 
 	struct alloc_val *val = bpf_map_lookup_elem(&allocs, &key);
 	if (!val) {
 		struct alloc_val new_val = {
 			.count = size,
-			.ustack = event->ustack,
 		};
+		gadget_process_populate(&new_val.proc);
+		gadget_get_user_stack(ctx, &new_val.ustack);
+
 		bpf_map_update_elem(&allocs, &key, &new_val, BPF_ANY);
 	} else {
 		val->count += size;
 	}
-
-
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
 }
@@ -163,24 +135,22 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 static __always_inline int gen_free_enter(struct pt_regs *ctx,
 					  enum memop operation, u64 addr)
 {
-	struct event *event;
-
 	if (gadget_should_discard_data_current())
 		return 0;
 
-	event = gadget_reserve_buf(&events, sizeof(*event));
-	if (!event)
-		return 0;
-
-	gadget_process_populate(&event->proc);
-	event->operation_raw = operation;
-	event->addr = addr;
-	event->size = 0;
-	event->timestamp_raw = bpf_ktime_get_ns();
-
-	gadget_get_user_stack(ctx, &event->ustack);
-
-	gadget_submit_buf(ctx, &events, event, sizeof(*event));
+//	event = gadget_reserve_buf(&events, sizeof(*event));
+//	if (!event)
+//		return 0;
+//
+//	gadget_process_populate(&event->proc);
+//	event->operation_raw = operation;
+//	event->addr = addr;
+//	event->size = 0;
+//	event->timestamp_raw = bpf_ktime_get_ns();
+//
+//	gadget_get_user_stack(ctx, &event->ustack);
+//
+//	gadget_submit_buf(ctx, &events, event, sizeof(*event));
 
 	return 0;
 }
