@@ -17,12 +17,15 @@
 package symbolizer
 
 import (
+	"bufio"
 	"debug/elf"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -205,11 +208,34 @@ func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string,
 		return res, nil
 	}
 
+	pid := uint32(0)
+	for _, pidnr := range task.PidNumbers {
+		if pidnr.PidNsId == s.hostProcFsPidNs {
+			pid = pidnr.Pid
+			break
+		}
+	}
+
 	key := exeKey{task.Ino, task.MtimeSec, task.MtimeNsec}
 	s.lock.RLock()
 	table, ok := s.symbolTables[key]
 	if ok {
 		table.timestamp = time.Now()
+		// Try to get runtime base address and adjust addresses
+		if pid != 0 {
+			runtimeBase, err := s.getRuntimeBase(pid)
+			if err == nil {
+				for idx, addr := range addresses {
+					// Convert runtime address to file-relative address
+					adjustedAddr := addr - runtimeBase
+					res[idx] = table.lookupByAddr(adjustedAddr)
+				}
+				s.lock.RUnlock()
+				return res, nil
+			}
+			log.Debugf("getting runtime base address for pid %d failed: %s, falling back to direct lookup", pid, err)
+		}
+		// Fallback to direct lookup if runtime base calculation fails
 		for idx, addr := range addresses {
 			res[idx] = table.lookupByAddr(addr)
 		}
@@ -218,17 +244,11 @@ func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string,
 	}
 	s.lock.RUnlock()
 
-	var err error
-	pid := uint32(0)
-	for _, pidnr := range task.PidNumbers {
-		if pidnr.PidNsId == s.hostProcFsPidNs {
-			pid = pidnr.Pid
-			break
-		}
-	}
 	if pid == 0 {
 		return nil, fmt.Errorf("procfs for %q not found", task.Name)
 	}
+
+	var err error
 	table, err = s.newSymbolTable(pid, key)
 	if err != nil {
 		return nil, fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
@@ -253,10 +273,65 @@ func (s *Symbolizer) resolveWithSymtab(task Task, addresses []uint64) ([]string,
 	log.Debugf("symbol table for %q (pid %d) loaded: %d symbols (total: %d symbol tables with %d symbols)",
 		task.Name, pid, len(table.symbols), len(s.symbolTables), s.symbolCountTotal)
 
-	for idx, addr := range addresses {
-		res[idx] = table.lookupByAddr(addr)
+	// Try to get runtime base address and adjust addresses
+	runtimeBase, err := s.getRuntimeBase(pid)
+	if err == nil {
+		for idx, addr := range addresses {
+			// Convert runtime address to file-relative address
+			adjustedAddr := addr - runtimeBase
+			res[idx] = table.lookupByAddr(adjustedAddr)
+		}
+	} else {
+		log.Debugf("getting runtime base address for pid %d failed: %s, falling back to direct lookup", pid, err)
+		// Fallback to direct lookup
+		for idx, addr := range addresses {
+			res[idx] = table.lookupByAddr(addr)
+		}
 	}
 	return res, nil
+}
+
+// getRuntimeBase gets the runtime base address of the main executable from /proc/pid/maps
+func (s *Symbolizer) getRuntimeBase(pid uint32) (uint64, error) {
+	mapsPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "maps")
+	f, err := os.Open(mapsPath)
+	if err != nil {
+		return 0, fmt.Errorf("opening maps file: %w", err)
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := sc.Text()
+		// Find the lowest address mapping for the main executable (ASLR base address).
+		// Only check "r--p" (read-only) and "r-xp" (executable) sections as these
+		// reliably belong to the main executable, not heap/stack/anonymous memory.
+		if strings.Contains(line, "r--p") || strings.Contains(line, "r-xp") {
+			parts := strings.Fields(line)
+			if len(parts) >= 6 {
+				filePath := parts[5]
+				// Check if this is the main executable (not a library, not vdso, not anonymous, not device)
+				if !strings.Contains(filePath, ".so") && !strings.Contains(filePath, "[") && !strings.HasPrefix(filePath, "/dev/") && filePath != "" {
+					addrRange := parts[0]
+					rangeParts := strings.Split(addrRange, "-")
+					if len(rangeParts) >= 1 {
+						baseStr := strings.TrimSpace(rangeParts[0])
+						base, err := strconv.ParseUint(baseStr, 16, 64)
+						if err != nil {
+							continue
+						}
+						return base, nil
+					}
+				}
+			}
+		}
+	}
+
+	if err := sc.Err(); err != nil {
+		return 0, fmt.Errorf("reading maps file: %w", err)
+	}
+
+	return 0, fmt.Errorf("main executable not found in maps")
 }
 
 func (s *Symbolizer) newSymbolTable(pid uint32, expectedExeKey exeKey) (*symbolTable, error) {
