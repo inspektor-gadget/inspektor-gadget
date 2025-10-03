@@ -27,6 +27,7 @@ enum memop {
 	valloc,
 	memalign,
 	pvalloc,
+	cuda_malloc,
 };
 
 /* used for context between uprobes and uretprobes of allocations */
@@ -156,133 +157,149 @@ static __always_inline int gen_free_enter(struct pt_regs *ctx,
 }
 
 /* common macros */
-#define PROBE_RET_VAL_FOR_ALLOC(func)                              \
-	SEC("uretprobe/libc:" #func)                               \
-	int trace_uretprobe_##func(struct pt_regs *ctx)            \
-	{                                                          \
+#define PROBE_RET_VAL_FOR_ALLOC(func)							  \
+	SEC("uretprobe/libc:" #func)							   \
+	int trace_uretprobe_##func(struct pt_regs *ctx)			\
+	{														  \
 		return gen_alloc_exit(ctx, func, PT_REGS_RC(ctx)); \
 	}
 
-/* malloc */
-SEC("uprobe/libc:malloc")
-int BPF_UPROBE(trace_uprobe_malloc, size_t size)
+///* malloc */
+//SEC("uprobe/libc:malloc")
+//int BPF_UPROBE(trace_uprobe_malloc, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(malloc)
+//
+///* free */
+//SEC("uprobe/libc:free")
+//int BPF_UPROBE(trace_uprobe_free, void *address)
+//{
+//	return gen_free_enter(ctx, free, (u64)address);
+//}
+//
+///* calloc */
+//SEC("uprobe/libc:calloc")
+//int BPF_UPROBE(trace_uprobe_calloc, size_t nmemb, size_t size)
+//{
+//	return gen_alloc_enter(nmemb * size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(calloc)
+//
+///* realloc */
+//SEC("uprobe/libc:realloc")
+//int BPF_UPROBE(trace_uprobe_realloc, void *ptr, size_t size)
+//{
+//	gen_free_enter(ctx, realloc_free, (u64)ptr);
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(realloc)
+//
+///* mmap */
+//SEC("uprobe/libc:mmap")
+//int BPF_UPROBE(trace_uprobe_mmap, void *address, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(mmap)
+//
+///* munmap */
+//SEC("uprobe/libc:munmap")
+//int BPF_UPROBE(trace_uprobe_munmap, void *address)
+//{
+//	return gen_free_enter(ctx, munmap, (u64)address);
+//}
+//
+///* posix_memalign */
+//SEC("uprobe/libc:posix_memalign")
+//int BPF_UPROBE(trace_uprobe_posix_memalign, void **memptr, size_t alignment,
+//		   size_t size)
+//{
+//	u64 memptr64;
+//	u32 tid;
+//
+//	tid = (u32)bpf_get_current_pid_tgid();
+//	memptr64 = (u64)memptr;
+//	bpf_map_update_elem(&memptrs, &tid, &memptr64, BPF_ANY);
+//
+//	return gen_alloc_enter(size);
+//}
+//
+//SEC("uretprobe/libc:posix_memalign")
+//int trace_uretprobe_posix_memalign(struct pt_regs *ctx)
+//{
+//	u64 *memptr64;
+//	void *addr;
+//	u32 tid;
+//
+//	tid = (u32)bpf_get_current_pid_tgid();
+//
+//	memptr64 = bpf_map_lookup_elem(&memptrs, &tid);
+//	if (!memptr64)
+//		return 0;
+//	bpf_map_delete_elem(&memptrs, &tid);
+//
+//	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*memptr64))
+//		return 0;
+//
+//	return gen_alloc_exit(ctx, posix_memalign, (u64)addr);
+//}
+//
+///* aligned_alloc */
+//SEC("uprobe/libc:aligned_alloc")
+//int BPF_UPROBE(trace_uprobe_aligned_alloc, size_t alignment, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(aligned_alloc)
+//
+///* valloc */
+//SEC("uprobe/libc:valloc")
+//int BPF_UPROBE(trace_uprobe_valloc, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(valloc)
+//
+///* memalign */
+//SEC("uprobe/libc:memalign")
+//int BPF_UPROBE(trace_uprobe_memalign, size_t alignment, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(memalign)
+//
+///* pvalloc */
+//SEC("uprobe/libc:pvalloc")
+//int BPF_UPROBE(trace_uprobe_pvalloc, size_t size)
+//{
+//	return gen_alloc_enter(size);
+//}
+//
+//PROBE_RET_VAL_FOR_ALLOC(pvalloc)
+
+/* CUDA STUFF */
+SEC("uprobe/libcuda:cuMemAlloc_v2")
+int BPF_UPROBE(ig_cu_mem_alloc_e, void *ptr, size_t size)
 {
 	return gen_alloc_enter(size);
 }
 
-PROBE_RET_VAL_FOR_ALLOC(malloc)
-
-/* free */
-SEC("uprobe/libc:free")
-int BPF_UPROBE(trace_uprobe_free, void *address)
+SEC("uretprobe/libcuda:cuMemAlloc_v2")
+int BPF_UPROBE(ig_cu_mem_alloc_x)
 {
-	return gen_free_enter(ctx, free, (u64)address);
+
+	// TODO: how to get address?
+	return gen_alloc_exit(ctx, cuda_malloc, 0);
 }
 
-/* calloc */
-SEC("uprobe/libc:calloc")
-int BPF_UPROBE(trace_uprobe_calloc, size_t nmemb, size_t size)
-{
-	return gen_alloc_enter(nmemb * size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(calloc)
-
-/* realloc */
-SEC("uprobe/libc:realloc")
-int BPF_UPROBE(trace_uprobe_realloc, void *ptr, size_t size)
-{
-	gen_free_enter(ctx, realloc_free, (u64)ptr);
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(realloc)
-
-/* mmap */
-SEC("uprobe/libc:mmap")
-int BPF_UPROBE(trace_uprobe_mmap, void *address, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(mmap)
-
-/* munmap */
-SEC("uprobe/libc:munmap")
-int BPF_UPROBE(trace_uprobe_munmap, void *address)
-{
-	return gen_free_enter(ctx, munmap, (u64)address);
-}
-
-/* posix_memalign */
-SEC("uprobe/libc:posix_memalign")
-int BPF_UPROBE(trace_uprobe_posix_memalign, void **memptr, size_t alignment,
-	       size_t size)
-{
-	u64 memptr64;
-	u32 tid;
-
-	tid = (u32)bpf_get_current_pid_tgid();
-	memptr64 = (u64)memptr;
-	bpf_map_update_elem(&memptrs, &tid, &memptr64, BPF_ANY);
-
-	return gen_alloc_enter(size);
-}
-
-SEC("uretprobe/libc:posix_memalign")
-int trace_uretprobe_posix_memalign(struct pt_regs *ctx)
-{
-	u64 *memptr64;
-	void *addr;
-	u32 tid;
-
-	tid = (u32)bpf_get_current_pid_tgid();
-
-	memptr64 = bpf_map_lookup_elem(&memptrs, &tid);
-	if (!memptr64)
-		return 0;
-	bpf_map_delete_elem(&memptrs, &tid);
-
-	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*memptr64))
-		return 0;
-
-	return gen_alloc_exit(ctx, posix_memalign, (u64)addr);
-}
-
-/* aligned_alloc */
-SEC("uprobe/libc:aligned_alloc")
-int BPF_UPROBE(trace_uprobe_aligned_alloc, size_t alignment, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(aligned_alloc)
-
-/* valloc */
-SEC("uprobe/libc:valloc")
-int BPF_UPROBE(trace_uprobe_valloc, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(valloc)
-
-/* memalign */
-SEC("uprobe/libc:memalign")
-int BPF_UPROBE(trace_uprobe_memalign, size_t alignment, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(memalign)
-
-/* pvalloc */
-SEC("uprobe/libc:pvalloc")
-int BPF_UPROBE(trace_uprobe_pvalloc, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(pvalloc)
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
