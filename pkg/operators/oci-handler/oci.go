@@ -41,6 +41,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
 )
 
 const (
@@ -53,6 +54,8 @@ const (
 	annotate                = "annotate"
 	verifyImage             = "verify-image"
 	publicKeys              = "public-keys"
+	certificates            = "notation-certificates"
+	policyDocument          = "notation-policy-document"
 	allowedGadgets          = "allowed-gadgets"
 )
 
@@ -89,6 +92,10 @@ func (o *ociHandler) Init(params *params.Params) error {
 				CosignVerifierOpts: cosign.VerifierOptions{
 					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
 				},
+				NotationVerifierOpts: notation.VerifierOptions{
+					Certificates:   o.globalParams.Get(certificates).AsStringSlice(),
+					PolicyDocument: o.globalParams.Get(policyDocument).AsString(),
+				},
 			},
 		)
 		if err != nil {
@@ -114,9 +121,21 @@ func (o *ociHandler) GlobalParams() api.Params {
 		{
 			Key:          publicKeys,
 			Title:        "Public keys",
-			Description:  "Public keys used to verify the gadgets",
+			Description:  "Public keys used to verify the gadgets with cosign",
 			DefaultValue: resources.InspektorGadgetPublicKey,
 			TypeHint:     api.TypeStringSlice,
+		},
+		{
+			Key:         certificates,
+			Title:       "Notation certificates",
+			Description: "Certificates used to verify the gadgets with notation",
+			TypeHint:    api.TypeStringSlice,
+		},
+		{
+			Key:         policyDocument,
+			Title:       "Notation policy Document",
+			Description: "Policy Document used to verify the gadgets with notation",
+			TypeHint:    api.TypeString,
 		},
 		{
 			Key:         allowedGadgets,
