@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cuda-driver-hold
+spec:
+  restartPolicy: Never
+  tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+  containers:
+  - name: cuda-driver-hold
+    image: nvidia/cuda:12.4.1-devel-ubuntu22.04
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        set -e
+        apt update && apt install -y build-essential
+        cat <<EOF > hold_driver_api.cu
+        #include <cuda.h>
+        #include <stdio.h>
+        #include <unistd.h>
+
+        // Prevent inlining with explicit attribute
+        __attribute__((noinline))
+        void my_cuda_alloc_function() {
+            CUdeviceptr dptr;
+
+            CUresult r = cuMemAlloc(&dptr, 1024);
+            if (r != CUDA_SUCCESS) {
+                return;
+            }
+
+            cuMemFree(dptr);
+        }
+
+        // Function that intentionally fails to allocate memory
+        __attribute__((noinline))
+        void my_cuda_alloc_fail_function() {
+            CUdeviceptr dptr;
+
+            // Try to allocate 1TB of memory - this should fail
+            size_t huge_size = 1024ULL * 1024ULL * 1024ULL * 1024ULL; // 1TB
+            CUresult r = cuMemAlloc(&dptr, huge_size);
+            if (r != CUDA_SUCCESS) {
+                return;
+            }
+
+            cuMemFree(dptr);
+        }
+
+        int main() {
+            CUdevice dev;
+            CUcontext ctx;
+
+            cuInit(0);
+            cuDeviceGet(&dev, 0);
+            cuCtxCreate(&ctx, 0, dev);
+
+            while (1) {
+                my_cuda_alloc_function();
+
+                my_cuda_alloc_fail_function();
+
+                sleep(5);
+            }
+
+            return 0;
+        }
+        EOF
+
+        # I need -lcuda because I'm writing a CUDA Driver API program, which explicitly depends on symbols provided by libcuda.so. Without that flag, the linker can’t find them.
+        # If I were writing a CUDA Runtime API program, I would not need to link against -lcudart, as the runtime API is designed to be used without explicit linking.
+        nvcc -o hold_driver_api hold_driver_api.cu -lcuda
+        ./hold_driver_api

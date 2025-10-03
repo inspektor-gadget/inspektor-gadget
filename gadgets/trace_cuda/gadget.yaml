@@ -1,0 +1,20 @@
+name: trace cuda
+description: Periodically report CUDA memory allocation activity
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_cuda
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_cuda
+datasources:
+  cuda:
+    fields:
+      proc.pid:
+        annotations:
+          columns.hidden: "true"
+      proc.tid:
+        annotations:
+          columns.hidden: "true"
+      proc.comm:
+        annotations:
+          columns.hidden: "true"
+      event_type:
+        annotations:
+          columns.width: 20

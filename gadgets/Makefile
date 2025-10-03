@@ -34,6 +34,7 @@ GADGETS ?= \
 	profile_tcprtt \
 	trace_bind \
 	trace_capabilities \
+	trace_cuda \
 	trace_dns \
 	trace_exec \
 	trace_fsslower \
