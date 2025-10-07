@@ -187,6 +187,7 @@ $ federated_name=<myFederatedCredentialName>
 $ organization=<myGitHubOrganization>
 $ repository=<myGitHubRepository>
 $ environment=<myCIJobEnvironment>
+$ service_management_reference=<myServiceManagementReference>
 
 # Set subscription so that we don't need to specify it at every command.
 $ az account set --subscription $subscription_id
@@ -197,7 +198,7 @@ $ az account set --subscription $subscription_id
 $ az group create --name $resourcegroup --location $location
 
 # Register an application for your CI.
-$ az ad app create --display-name $app_name
+$ az ad app create --display-name $app_name --service-management-reference $service_management_reference
 {
 # It should reply with a big JSON object.
 }
