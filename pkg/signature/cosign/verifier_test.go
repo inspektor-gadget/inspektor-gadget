@@ -185,54 +185,6 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 	}
 }
 
-func TestPullSigningInformation(t *testing.T) {
-	t.Parallel()
-
-	type testDefinition struct {
-		image     string
-		shouldErr bool
-	}
-
-	// v0.43.0
-	signedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:7ecd35cc935edb56c7beb1077e4ca1aabdd1d4e4429b0df027398534d6da9fe6"
-
-	// v0.25.0
-	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:a5de3655d6c7640eb6d43f7d9d7182b233ac86aedddfe6c132cba6b876264d97"
-
-	tests := map[string]testDefinition{
-		"signed image": {
-			image: signedImage,
-		},
-		"non signed image": {
-			image:     nonSignedImage,
-			shouldErr: true,
-		},
-	}
-
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-
-			store, repo, ref := createTestPrerequisities(t, test.image)
-
-			// Pull the image.
-			desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
-			require.NoError(t, err)
-
-			err = PullSigningInformation(ctx, repo, store, desc.Digest.String())
-			if test.shouldErr {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-		})
-	}
-}
-
 func TestExportSigningInformation(t *testing.T) {
 	t.Parallel()
 
@@ -250,7 +202,8 @@ func TestExportSigningInformation(t *testing.T) {
 	desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
 	require.NoError(t, err)
 
-	err = PullSigningInformation(ctx, repo, store, desc.Digest.String())
+	puller := &Puller{}
+	err = puller.PullSigningInformation(ctx, repo, store, desc.Digest.String())
 	require.NoError(t, err)
 
 	// Push the image

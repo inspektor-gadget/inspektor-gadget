@@ -64,23 +64,6 @@ func craftCosignSignatureTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
 }
 
-func craftCosignIndexTag(digest string) (string, error) {
-	parts := strings.Split(digest, ":")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("wrong digest, expected two parts, got %d", len(parts))
-	}
-
-	return fmt.Sprintf("%s-%s", parts[0], parts[1]), nil
-}
-
-func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, signingInfoTag string, imageStore oras.Target) error {
-	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
-		return fmt.Errorf("copying index tag %q: %w", signingInfoTag, err)
-	}
-
-	return nil
-}
-
 func loadSignature(ctx context.Context, imageStore oras.Target, signatureTag string) ([]byte, *ocispec.Descriptor, error) {
 	_, signatureManifestBytes, err := oras.FetchBytes(ctx, imageStore, signatureTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
@@ -195,7 +178,7 @@ func loadSigningInformation(ctx context.Context, imageRef reference.Named, image
 		return signature, payload, nil
 	}
 
-	indexTag, err := craftCosignIndexTag(imageDigest)
+	indexTag, err := helpers.CraftSignatureIndexTag(imageDigest)
 	if err != nil {
 		return nil, nil, fmt.Errorf("crafting index tag: %w", err)
 	}
@@ -291,7 +274,7 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 		return nil
 	}
 
-	signatureTag, err = craftCosignIndexTag(desc.Digest.String())
+	signatureTag, err = helpers.CraftSignatureIndexTag(desc.Digest.String())
 	if err != nil {
 		return fmt.Errorf("crafting index tag: %w", err)
 	}
@@ -302,30 +285,6 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 	}
 
 	return errors.Join(exportSignatureTagErr, exportIndexTagErr)
-}
-
-func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	signingInfoTag, err := craftCosignSignatureTag(digest)
-	if err != nil {
-		return fmt.Errorf("crafting cosign signature tag: %w", err)
-	}
-
-	pullSignatureTagErr := pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore)
-	if pullSignatureTagErr == nil {
-		return nil
-	}
-
-	signingInfoTag, err = craftCosignIndexTag(digest)
-	if err != nil {
-		return fmt.Errorf("crafting index signature tag: %w", err)
-	}
-
-	pullIndexTagErr := pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore)
-	if pullIndexTagErr == nil {
-		return nil
-	}
-
-	return errors.Join(pullSignatureTagErr, pullIndexTagErr)
 }
 
 func NewVerifier(opts VerifierOptions) (*Verifier, error) {

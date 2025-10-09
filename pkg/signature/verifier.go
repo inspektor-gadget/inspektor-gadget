@@ -63,10 +63,6 @@ func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst 
 	return cosign.ExportSigningInformation(ctx, src, dst, desc)
 }
 
-func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return cosign.PullSigningInformation(ctx, repo, imageStore, digest)
-}
-
 func NewSignatureVerifier(opts VerifierOptions) (*SignatureVerifier, error) {
 	ret := &SignatureVerifier{verifiers: make(map[string]Verifier)}
 
