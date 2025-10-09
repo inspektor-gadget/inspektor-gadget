@@ -33,6 +33,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
 type VerifierOptions struct {
@@ -52,15 +54,6 @@ const (
 	// https://github.com/sigstore/cosign/blob/45bda40b8ef4/pkg/types/media.go#L28
 	simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 )
-
-func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
-	desc, err := store.Resolve(ctx, imageRef)
-	if err != nil {
-		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
-	}
-
-	return desc.Digest.String(), nil
-}
 
 func craftCosignSignatureTag(digest string) (string, error) {
 	parts := strings.Split(digest, ":")
@@ -187,7 +180,7 @@ func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *
 }
 
 func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.Target, repo *remote.Repository) ([]byte, []byte, error) {
-	imageDigest, err := getImageDigest(ctx, imageStore, imageRef.String())
+	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, imageRef.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting image digest: %w", err)
 	}
@@ -249,7 +242,7 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 }
 
 func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
-	imageDigest, err := getImageDigest(ctx, imageStore, ref.String())
+	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
 	}

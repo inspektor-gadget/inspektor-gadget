@@ -32,6 +32,8 @@ import (
 	"github.com/notaryproject/notation-go/verifier/truststore"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
 type VerifierOptions struct {
@@ -44,15 +46,6 @@ type Verifier struct {
 }
 
 const maxSignatureAttempts = 50
-
-func getImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
-	desc, err := store.Resolve(ctx, imageRef)
-	if err != nil {
-		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
-	}
-
-	return desc.Digest.String(), nil
-}
 
 func getAndValidateTrustPolicy(policy string) (*trustpolicy.Document, error) {
 	policyDocument := &trustpolicy.Document{}
@@ -125,7 +118,7 @@ func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 }
 
 func (n *Verifier) Verify(ctx context.Context, _ *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
-	imageDigest, err := getImageDigest(ctx, imageStore, ref.String())
+	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
 	}
