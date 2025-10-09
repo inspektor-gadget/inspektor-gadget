@@ -23,6 +23,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/oci11"
 )
 
 type Puller interface {
@@ -35,8 +36,9 @@ type SignaturePuller struct {
 
 var DefaultSignaturePuller = SignaturePuller{
 	pullers: map[string]Puller{
-		"cosign": &cosign.Puller{},
-	}
+		"cosign":  &cosign.Puller{},
+		"oci 1.1": &oci11.Puller{},
+	},
 }
 
 func (p *SignaturePuller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
