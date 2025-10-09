@@ -58,6 +58,9 @@ func TestPullSigningInformation(t *testing.T) {
 			// v0.43.0
 			image: "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:7ecd35cc935edb56c7beb1077e4ca1aabdd1d4e4429b0df027398534d6da9fe6",
 		},
+		"notation_signed_image": {
+			image: "ttl.sh/trace_malloc:francis-notation",
+		},
 		"non_signed_image": {
 			// v0.25.0
 			image:     "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:a5de3655d6c7640eb6d43f7d9d7182b233ac86aedddfe6c132cba6b876264d97",
