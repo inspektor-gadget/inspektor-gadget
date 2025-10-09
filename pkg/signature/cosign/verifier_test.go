@@ -184,32 +184,3 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 		})
 	}
 }
-
-func TestExportSigningInformation(t *testing.T) {
-	t.Parallel()
-
-	// v0.43.0
-	signedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:7ecd35cc935edb56c7beb1077e4ca1aabdd1d4e4429b0df027398534d6da9fe6"
-
-	destSignedImage := "ttl.sh/gadget/trace_open:unit-test-signing"
-
-	ctx := context.Background()
-
-	store, repo, ref := createTestPrerequisities(t, signedImage)
-	destStore, _, destRef := createTestPrerequisities(t, destSignedImage)
-
-	// Pull the image.
-	desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
-	require.NoError(t, err)
-
-	puller := &Puller{}
-	err = puller.PullSigningInformation(ctx, repo, store, desc.Digest.String())
-	require.NoError(t, err)
-
-	// Push the image
-	desc, err = oras.Copy(ctx, store, ref.String(), destStore, destRef.String(), oras.DefaultCopyOptions)
-	require.NoError(t, err)
-
-	err = ExportSigningInformation(ctx, store, destStore, desc)
-	require.NoError(t, err)
-}

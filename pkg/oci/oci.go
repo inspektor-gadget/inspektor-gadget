@@ -356,7 +356,7 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 			return fmt.Errorf("copying image to remote repository: %w", err)
 		}
 
-		err = signature.ExportSigningInformation(ctx, ociStore, dstStore, desc)
+		err = signature.DefaultSignatureExporter.ExportSigningInformation(ctx, ociStore, dstStore, desc)
 		if errors.Is(err, errdef.ErrNotFound) {
 			continue
 		}

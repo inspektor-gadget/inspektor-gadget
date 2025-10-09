@@ -62,8 +62,6 @@
 
 /integration/ @blanquicet @mqasimsarfraz
 /internal/test/ @mauriciovasquezbernal
-/pkg/amd64/ @eiffel-fl
-/pkg/arm64/ @eiffel-fl
 /pkg/columns/ @flyth
 /pkg/container-collection/ @alban @blanquicet @mqasimsarfraz
 /pkg/container-hook/ @alban
@@ -72,7 +70,6 @@
 /pkg/datasource/ @flyth
 /pkg/gadget-context/ @flyth
 /pkg/gadget-service/ @flyth
-/pkg/gadgets/traceloop/ @eiffel-fl
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
 /pkg/histogram/ @blanquicet
 /pkg/kallsyms/ @alban
@@ -106,6 +103,7 @@
 /pkg/resources/manifests/ @eiffel-fl
 /pkg/resources/rbac/ @eiffel-fl
 /pkg/runtime/ @flyth @mauriciovasquezbernal
+/pkg/signature/ @eiffel-fl
 /pkg/socketenricher/ @alban
 /pkg/standardgadgets/ @mauriciovasquezbernal
 /pkg/tracer-collection/ @alban

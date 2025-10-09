@@ -263,30 +263,6 @@ func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageSto
 	return nil
 }
 
-func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	signatureTag, err := craftCosignSignatureTag(desc.Digest.String())
-	if err != nil {
-		return fmt.Errorf("crafting signature tag: %w", err)
-	}
-
-	_, exportSignatureTagErr := oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
-	if exportSignatureTagErr == nil {
-		return nil
-	}
-
-	signatureTag, err = helpers.CraftSignatureIndexTag(desc.Digest.String())
-	if err != nil {
-		return fmt.Errorf("crafting index tag: %w", err)
-	}
-
-	_, exportIndexTagErr := oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
-	if exportIndexTagErr == nil {
-		return nil
-	}
-
-	return errors.Join(exportSignatureTagErr, exportIndexTagErr)
-}
-
 func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 	keys := len(opts.PublicKeys)
 	if keys == 0 {
