@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"cmp"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -950,4 +951,128 @@ func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, d
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}
 	return reader, nil
+}
+
+// ExtractSources retrieves the gadget source blob (if present) from the given image
+// and extracts it (tar.gz) into destDir. It returns true if sources were found and extracted.
+func ExtractSources(ctx context.Context, imageStore oras.Target, image string, destDir string, authOpts *AuthOptions, uid, gid int) (bool, error) {
+	if imageStore == nil {
+		// If no store is given, use the default store; we assume the image is available in that case
+		ociStore, err := newLocalOciStore()
+		if err != nil {
+			return false, fmt.Errorf("getting oci store: %w", err)
+		}
+		imageStore = ociStore.Store
+	} else {
+		// If a store is given, we will pull the image
+		_, err := pullGadgetImageToStore(ctx, imageStore, image, authOpts)
+		if err != nil {
+			return false, fmt.Errorf("pulling gadget image: %w", err)
+		}
+	}
+
+	index, err := getIndex(ctx, imageStore, image)
+	if err != nil {
+		return false, fmt.Errorf("getting index: %w", err)
+	}
+
+	for _, desc := range index.Manifests {
+		if desc.MediaType == sourceMediaType {
+			reader, err := imageStore.Fetch(ctx, desc)
+			if err != nil {
+				return false, fmt.Errorf("fetching sources blob: %w", err)
+			}
+			defer reader.Close()
+			if err := extractTarGz(reader, destDir, uid, gid); err != nil {
+				return false, fmt.Errorf("extracting sources: %w", err)
+			}
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// extractTarGz extracts a gzip-compressed tar stream into destDir securely.
+func extractTarGz(r io.Reader, destDir string, uid, gid int) error {
+	gz, err := gzip.NewReader(r)
+	if err != nil {
+		return fmt.Errorf("creating gzip reader: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	cleanDest := filepath.Clean(destDir)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("reading tar: %w", err)
+		}
+
+		target := filepath.Join(cleanDest, hdr.Name)
+		cleanTarget := filepath.Clean(target)
+		// ensure target is within destDir
+		if !strings.HasPrefix(cleanTarget+string(os.PathSeparator), cleanDest+string(os.PathSeparator)) && cleanTarget != cleanDest {
+			return fmt.Errorf("invalid path in archive: %s", hdr.Name)
+		}
+
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(cleanTarget, 0o755); err != nil {
+				return fmt.Errorf("creating dir: %w", err)
+			}
+			if uid != -1 && gid != -1 {
+				if err := os.Chown(cleanTarget, uid, gid); err != nil {
+					return fmt.Errorf("setting uid/gid: %w", err)
+				}
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			if err := os.MkdirAll(filepath.Dir(cleanTarget), 0o755); err != nil {
+				return fmt.Errorf("creating parent dir: %w", err)
+			}
+			f, err := os.OpenFile(cleanTarget, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode))
+			if err != nil {
+				return fmt.Errorf("creating file: %w", err)
+			}
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return fmt.Errorf("writing file: %w", err)
+			}
+			if uid != -1 && gid != -1 {
+				if err := f.Chown(uid, gid); err != nil {
+					return fmt.Errorf("setting uid/gid: %w", err)
+				}
+			}
+			f.Close()
+		case tar.TypeSymlink:
+			// Create symlink only if it stays within destDir
+			linkTarget := hdr.Linkname
+			// For safety, do not allow absolute links
+			if filepath.IsAbs(linkTarget) {
+				return fmt.Errorf("absolute symlink not allowed: %s", hdr.Name)
+			}
+			finalLink := filepath.Join(filepath.Dir(cleanTarget), linkTarget)
+			finalLink = filepath.Clean(finalLink)
+			if !strings.HasPrefix(finalLink+string(os.PathSeparator), cleanDest+string(os.PathSeparator)) && finalLink != cleanDest {
+				return fmt.Errorf("symlink escapes destination: %s -> %s", hdr.Name, linkTarget)
+			}
+			if err := os.MkdirAll(filepath.Dir(cleanTarget), 0o755); err != nil {
+				return fmt.Errorf("creating parent dir: %w", err)
+			}
+			if err := os.Symlink(linkTarget, cleanTarget); err != nil {
+				return fmt.Errorf("creating symlink: %w", err)
+			}
+			if uid != -1 && gid != -1 {
+				if err := os.Chown(cleanTarget, uid, gid); err != nil {
+					return fmt.Errorf("setting uid/gid: %w", err)
+				}
+			}
+		default:
+			// ignore other types
+		}
+	}
+	return nil
 }
