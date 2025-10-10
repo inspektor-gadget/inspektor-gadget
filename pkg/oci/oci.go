@@ -781,7 +781,7 @@ func getContentBytesFromDescriptor(ctx context.Context, fetcher content.Fetcher,
 	return bytes, nil
 }
 
-func ensureImage(ctx context.Context, imageStore oras.Target, image string, imgOpts *ImageOptions, pullPolicy string) error {
+func ensureImage(ctx context.Context, imageStore oras.GraphTarget, image string, imgOpts *ImageOptions, pullPolicy string) error {
 	switch pullPolicy {
 	case PullImageAlways:
 		_, err := pullGadgetImageToStore(ctx, imageStore, image, &imgOpts.AuthOptions)

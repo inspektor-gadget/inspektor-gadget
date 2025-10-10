@@ -124,7 +124,7 @@ func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 	return &Verifier{verif}, nil
 }
 
-func (n *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
+func (n *Verifier) Verify(ctx context.Context, _ *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
 	imageDigest, err := getImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
@@ -134,7 +134,7 @@ func (n *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageSto
 		ArtifactReference:    fmt.Sprintf("%s@%s", ref.Name(), imageDigest),
 		MaxSignatureAttempts: maxSignatureAttempts,
 	}
-	_, _, err = notation.Verify(ctx, n.Verifier, registry.NewRepository(repo), verifyOptions)
+	_, _, err = notation.Verify(ctx, n.Verifier, registry.NewRepository(imageStore), verifyOptions)
 
 	return err
 }
