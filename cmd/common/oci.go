@@ -65,7 +65,7 @@ var commandModesDescriptions = map[CommandMode]string{
 }
 
 func findGadgetInstances(runtime *grpcruntime.Runtime, runtimeParams *params.Params, idOrNames []string) (instances []*api.GadgetInstance, ambiguous []string, notfound []string, retErr error) {
-	gadgetInstances, err := runtime.GetGadgetInstances(context.Background(), runtimeParams)
+	gadgetInstances, err := runtime.GetGadgetInstances(context.Background(), runtimeParams, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -75,13 +75,13 @@ nextName:
 		matches := 0
 		var instance *api.GadgetInstance
 		for _, tmpGadgetInstance := range gadgetInstances {
-			if idOrName == tmpGadgetInstance.Id {
-				instances = append(instances, tmpGadgetInstance)
+			if idOrName == tmpGadgetInstance.Instance.Id {
+				instances = append(instances, tmpGadgetInstance.Instance)
 				break nextName
 			}
 			// match partial ID or full name
-			if tmpGadgetInstance.Name == idOrName || strings.HasPrefix(tmpGadgetInstance.Id, idOrName) {
-				instance = tmpGadgetInstance
+			if tmpGadgetInstance.Instance.Name == idOrName || strings.HasPrefix(tmpGadgetInstance.Instance.Id, idOrName) {
+				instance = tmpGadgetInstance.Instance
 				matches++
 			}
 		}
