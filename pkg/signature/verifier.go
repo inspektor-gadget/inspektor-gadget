@@ -29,7 +29,7 @@ import (
 )
 
 type Verifier interface {
-	Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error
+	Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error
 }
 
 type SignatureVerifier struct {
@@ -41,7 +41,7 @@ type VerifierOptions struct {
 	NotationVerifierOpts notation.VerifierOptions
 }
 
-func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.Target, ref reference.Named) error {
+func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
 	if len(v.verifiers) == 0 {
 		return errors.New("no verification method available")
 	}
