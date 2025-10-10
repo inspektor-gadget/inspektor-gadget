@@ -42,6 +42,7 @@ import (
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-logs"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-metrics"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-profiles"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/sort"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ustack"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
