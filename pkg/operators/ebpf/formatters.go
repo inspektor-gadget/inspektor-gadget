@@ -183,6 +183,9 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				i.logger.Warnf("getting target name for kstack field %q: %v", in.Name(), err)
 				continue
 			}
+
+			gadgetCtx.Logger().Infof("Adding kernel stack formatter for field %s -> %s", in.Name(), targetName)
+
 			out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
 			if err != nil {
 				return err
