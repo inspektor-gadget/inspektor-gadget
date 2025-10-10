@@ -18,15 +18,20 @@ datasources:
       views.defaults.mode: flamegraph
       ebpf.map.flush-on-stop: true
       cli.clear-screen-before: "true"
+      # profiling exporter annotations
+      profiles.stack-fields: kern_stack,user_stack_raw.symbols
+      profiles.value-field: samples
     fields:
       runtime.containerName:
         annotations:
           flamegraph.level: 0
           flamegraph.type: single
+          profiles.sample-attribute: "true"
       proc.comm:
         annotations:
           flamegraph.level: 10
           flamegraph.type: single
+          profiles.sample-attribute: "true"
       user_stack:
         annotations:
           flamegraph.level: 20
