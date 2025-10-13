@@ -184,10 +184,6 @@ func (o *combinerOperatorInstance) InstanceParams() params.ParamDescs {
 	return nil
 }
 
-func (o *combinerOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) api.Params {
-	return nil
-}
-
 func (o *combinerOperatorInstance) forwardData(
 	gadgetCtx operators.GadgetContext,
 	config *combinerConfig,
