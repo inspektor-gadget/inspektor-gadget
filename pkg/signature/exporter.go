@@ -23,6 +23,7 @@ import (
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/oci11"
 )
 
 type Exporter interface {
@@ -36,6 +37,7 @@ type SignatureExporter struct {
 var DefaultSignatureExporter = SignatureExporter{
 	exporters: map[string]Exporter{
 		"cosign":  &cosign.Exporter{},
+		"oci 1.1": &oci11.Exporter{},
 	},
 }
 
