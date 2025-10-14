@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -110,10 +111,10 @@ func (c *Command) verifyStderrOutput(t *testing.T) {
 func (c *Command) Run(t *testing.T) {
 	c.initExecCmd()
 
-	t.Logf("Run command(%s):\n", c.Name)
+	t.Logf("[%s] Run command(%s):\n", time.Now().UTC(), c.Name)
 	err := c.Cmd.Run()
-	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.Name, c.stderr.String(), c.stdout.String())
+	t.Logf("[%s] Command returned(%s):\n%s\n%s\n",
+		time.Now().UTC(), c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
 	c.verifyStderrOutput(t)
@@ -130,7 +131,7 @@ func (c *Command) Start(t *testing.T) {
 
 	c.initExecCmd()
 
-	t.Logf("Start command(%s)", c.Name)
+	t.Logf("[%s] Start command(%s)", time.Now().UTC(), c.Name)
 	err := c.Cmd.Start()
 	require.NoError(t, err, "failed to start command(%s)", c.Name)
 
@@ -147,10 +148,10 @@ func (c *Command) Stop(t *testing.T) {
 		return
 	}
 
-	t.Logf("Stop command(%s)\n", c.Name)
+	t.Logf("[%s] Stop command(%s)\n", time.Now().UTC(), c.Name)
 	err := c.kill()
-	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.Name, c.stderr.String(), c.stdout.String())
+	t.Logf("[%s] Command returned(%s):\n%s\n%s\n",
+		time.Now().UTC(), c.Name, c.stderr.String(), c.stdout.String())
 	require.NoError(t, err, "failed to kill command(%s)", c.Name)
 
 	c.verifyOutput(t)
