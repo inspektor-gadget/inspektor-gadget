@@ -67,7 +67,7 @@ func TestTraceFSSlower(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done",
+		"echo 'this is foo' > foo && while true; do cat foo && sleep 1; done",
 		containerOpts...,
 	)
 

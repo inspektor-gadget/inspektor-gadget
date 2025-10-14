@@ -66,7 +66,7 @@ func TestTraceTCP(t *testing.T) {
 	// TODO: can't use setuidgid because it's not available on the nginx image
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"nginx && while true; do curl 127.0.0.1; sleep 0.1; done",
+		"nginx && while true; do curl 127.0.0.1; sleep 1; done",
 		containerOpts...,
 	)
 

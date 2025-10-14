@@ -60,7 +60,7 @@ func TestTraceOpen(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 0.1; done",
+		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 1; done",
 		containerOpts...,
 	)
 

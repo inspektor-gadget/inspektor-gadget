@@ -65,7 +65,7 @@ func TestTopBlockio(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do dd if=/dev/zero of=/tmp/test count=4096; sleep 0.2; done",
+		"while true; do dd if=/dev/zero of=/tmp/test count=4096; sleep 1; done",
 		containerOpts...,
 	)
 
