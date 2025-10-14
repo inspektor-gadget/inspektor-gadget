@@ -28,7 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
 
-func createTestPrerequisities(t *testing.T, image string) (oras.Target, *remote.Repository, reference.Named) {
+func createTestPrerequisities(t *testing.T, image string) (oras.GraphTarget, *remote.Repository, reference.Named) {
 	store, err := oci.New(t.TempDir())
 	require.NoError(t, err)
 
