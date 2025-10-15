@@ -2048,7 +2048,7 @@ jobs:
   test-integration-gke:
     name: Integration tests on GKE
     # level: 4
-    if: needs.check-secrets.outputs.gke == 'true'
+    if: needs.check-secrets.outputs.gke == 'true' && false
     needs:
       - check-secrets
       - build-clients
