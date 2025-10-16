@@ -28,6 +28,7 @@ import (
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
 
@@ -67,8 +68,17 @@ func do() error {
 
 	// The socker enricher operator is used to provide information about the
 	// process performing the DNS query.
+	socketEnricherFields := params.ParamDescs{
+		{
+			Key:         "socket-enricher-fields",
+			Description: "Fields to enrich the socket event with",
+			TypeHint:    params.TypeString,
+		},
+	}
 	socketEnricherOp := &socketenricher.SocketEnricher{}
-	if err := socketEnricherOp.Init(nil); err != nil {
+	socketEnricherParams := socketEnricherFields.ToParams()
+	socketEnricherParams.Get("socket-enricher-fields").Set("cwd=512,exepath=512")
+	if err := socketEnricherOp.Init(socketEnricherParams); err != nil {
 		return fmt.Errorf("init socket enricher: %w", err)
 	}
 	defer socketEnricherOp.Close()
