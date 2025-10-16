@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
@@ -31,6 +33,21 @@ import (
 
 type GadgetInfo struct {
 	pg *api.GadgetInstance
+}
+
+type NodeInstanceState struct {
+	Node    string `yaml:"Node"`
+	Status  string `yaml:"Status"`
+	Message string `yaml:"Message"`
+}
+
+type InstanceState struct {
+	ID            string              `yaml:"ID"`
+	Name          string              `yaml:"Name"`
+	Image         string              `yaml:"Image"`
+	TimeCreated   string              `yaml:"TimeCreated"`
+	Params        map[string]string   `yaml:"Params"`
+	NodeInstances []NodeInstanceState `yaml:"NodeInstances"`
 }
 
 func AddInstanceCommands(
@@ -86,12 +103,23 @@ func AddInstanceCommands(
 				Name:         "Gadget",
 				Visible:      true,
 				EllipsisType: ellipsis.End,
-				Order:        50,
+				Order:        40,
 			}, func(g *GadgetInfo) any {
 				if g.pg == nil {
 					return ""
 				}
 				return g.pg.GadgetConfig.ImageName
+			})
+			cols.MustAddColumn(columns.Attributes{
+				Name:         "Status",
+				Visible:      true,
+				EllipsisType: ellipsis.End,
+				Order:        50,
+			}, func(g *GadgetInfo) any {
+				if g.pg == nil || g.pg.State == nil {
+					return ""
+				}
+				return toInstanceStatus(g.pg.State)
 			})
 
 			formatter := textcolumns.NewFormatter(cols.GetColumnMap())
@@ -140,4 +168,69 @@ func AddInstanceCommands(
 	}
 	AddFlags(deleteCmd, runtimeParams, nil, runtime)
 	rootCmd.AddCommand(deleteCmd)
+
+	showCmd := &cobra.Command{
+		Use:          "show",
+		Aliases:      []string{"s", "sh"},
+		Short:        "Show details of a gadget instance",
+		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			instances, ambiguous, notfound, err := findGadgetInstances(runtime, runtimeParams, args)
+			if err != nil {
+				return fmt.Errorf("getting gadget instances: %w", err)
+			}
+			if len(ambiguous) > 0 {
+				return fmt.Errorf("ambiguous names/ids: %s", strings.Join(ambiguous, ", "))
+			}
+			if len(notfound) > 0 {
+				return fmt.Errorf("instance %q not found", args[0])
+			}
+			nStates, err := runtime.GetNodeInstanceStates(context.Background(), runtimeParams, instances[0].Id)
+			if err != nil {
+				return fmt.Errorf("getting node instances state: %w", err)
+			}
+
+			var nodeInstances []NodeInstanceState
+			for _, ni := range nStates {
+				nodeInstances = append(nodeInstances, NodeInstanceState{
+					Node:    ni.Node,
+					Status:  toInstanceStatus(ni.State),
+					Message: ni.State.Message,
+				})
+			}
+			state := InstanceState{
+				ID:            instances[0].Id,
+				Name:          instances[0].Name,
+				Image:         instances[0].GadgetConfig.ImageName,
+				TimeCreated:   time.Unix(instances[0].TimeCreated, 0).Format(time.RFC3339),
+				Params:        instances[0].GadgetConfig.ParamValues,
+				NodeInstances: nodeInstances,
+			}
+
+			out, err := yaml.Marshal(state)
+			if err != nil {
+				return fmt.Errorf("marshalling state to YAML: %w", err)
+			}
+			fmt.Print(string(out))
+
+			return nil
+		},
+	}
+	AddFlags(showCmd, runtimeParams, nil, runtime)
+	rootCmd.AddCommand(showCmd)
+}
+
+func toInstanceStatus(state *api.GadgetInstanceState) string {
+	if state == nil {
+		return ""
+	}
+	switch state.Status {
+	case api.GadgetInstanceStatus_StatusRunning:
+		return "Running"
+	case api.GadgetInstanceStatus_StatusError:
+		return "Error"
+	default:
+		return "Unknown"
+	}
 }
