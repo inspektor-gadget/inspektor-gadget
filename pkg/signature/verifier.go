@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/distribution/reference"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
@@ -57,14 +56,6 @@ func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository,
 	}
 
 	return errors.Join(errs...)
-}
-
-func ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	return cosign.ExportSigningInformation(ctx, src, dst, desc)
-}
-
-func PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return cosign.PullSigningInformation(ctx, repo, imageStore, digest)
 }
 
 func NewSignatureVerifier(opts VerifierOptions) (*SignatureVerifier, error) {

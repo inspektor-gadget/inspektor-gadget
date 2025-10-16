@@ -205,7 +205,7 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 	}
 
 	imageDigest := desc.Digest.String()
-	if err := signature.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
+	if err := signature.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 		log.Warnf("error pulling signature: %v", err)
 		// it's not a requirement to have a signature for pulling the image
 		return &desc, nil
@@ -356,7 +356,7 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 			return fmt.Errorf("copying image to remote repository: %w", err)
 		}
 
-		err = signature.ExportSigningInformation(ctx, ociStore, dstStore, desc)
+		err = signature.DefaultSignatureExporter.ExportSigningInformation(ctx, ociStore, dstStore, desc)
 		if errors.Is(err, errdef.ErrNotFound) {
 			continue
 		}
