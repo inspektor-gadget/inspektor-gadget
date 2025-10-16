@@ -17,6 +17,9 @@ datasources:
       views.modes.flamegraph: true
       views.defaults.mode: flamegraph
       ebpf.map.flush-on-stop: true
+      # profiling exporter annotations
+      profiles.stack-field: kern_stack
+      profiles.value-field: samples
     fields:
       runtime.containerName:
         annotations:
