@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/ebpf"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	tracer "github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
@@ -59,7 +60,17 @@ func (s *SocketEnricher) Description() string {
 }
 
 func (s *SocketEnricher) GlobalParamDescs() params.ParamDescs {
-	return nil
+	return params.ParamDescs{
+		{
+			Key:   fieldsParam,
+			Title: "Socket enricher fields",
+			Description: "List of optional fields and their sizes to be enabled on the socket enricher using the `field0=size,field1=size,...` format. " +
+				"Disabling or reducing the size of the optional fields can reduce the memory and CPU usage of Inspektor Gadget. " +
+				"Passing 0 as the size will use the default size of 512 bytes. If a field is not present on the list, then it's disabled.",
+			DefaultValue: "cwd=512,exepath=512",
+			TypeHint:     params.TypeStringSlice,
+		},
+	}
 }
 
 func (s *SocketEnricher) ParamDescs() params.ParamDescs {
@@ -163,17 +174,7 @@ func (i *SocketEnricherInstance) EnrichEvent(ev any) error {
 }
 
 func (s *SocketEnricher) GlobalParams() api.Params {
-	return api.Params{
-		{
-			Key:   fieldsParam,
-			Title: "Socket enricher fields",
-			Description: "List of optional fields and their sizes to be enabled on the socket enricher using the `field0=size,field1=size,...` format. " +
-				"Disabling or reducing the size of the optional fields can reduce the memory and CPU usage of Inspektor Gadget. " +
-				"Passing 0 as the size will use the default size of 512 bytes. If a field is not present on the list, then it's disabled.",
-			DefaultValue: "cwd=512,exepath=512",
-			TypeHint:     api.TypeStringSlice,
-		},
-	}
+	return apihelpers.ParamDescsToParams(s.GlobalParamDescs())
 }
 
 func (s *SocketEnricher) InstanceParams() api.Params {
