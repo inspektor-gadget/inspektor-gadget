@@ -22,6 +22,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	igjson "github.com/inspektor-gadget/inspektor-gadget/pkg/datasource/formatters/json"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
@@ -49,7 +50,7 @@ func do() error {
 
 	// Configure the local manager operator
 	localManagerOp := localmanager.LocalManagerOperator
-	localManagerParams := localManagerOp.GlobalParamDescs().ToParams()
+	localManagerParams := apihelpers.ToParamDescs(localManagerOp.GlobalParams()).ToParams()
 	localManagerParams.Get(localmanager.Runtimes).Set("docker")
 	if err := localManagerOp.Init(localManagerParams); err != nil {
 		return fmt.Errorf("init local manager: %w", err)
