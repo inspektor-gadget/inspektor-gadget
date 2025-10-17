@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package tracercollection
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -31,6 +32,7 @@ const (
 
 type TracerCollection struct {
 	tracers             map[string]tracer
+	tracersMutex        *sync.RWMutex
 	containerCollection *containercollection.ContainerCollection
 	testOnly            bool
 }
@@ -46,6 +48,7 @@ type tracer struct {
 func NewTracerCollection(cc *containercollection.ContainerCollection) (*TracerCollection, error) {
 	return &TracerCollection{
 		tracers:             make(map[string]tracer),
+		tracersMutex:        &sync.RWMutex{},
 		containerCollection: cc,
 	}, nil
 }
@@ -53,6 +56,7 @@ func NewTracerCollection(cc *containercollection.ContainerCollection) (*TracerCo
 func NewTracerCollectionTest(cc *containercollection.ContainerCollection) (*TracerCollection, error) {
 	return &TracerCollection{
 		tracers:             make(map[string]tracer),
+		tracersMutex:        &sync.RWMutex{},
 		containerCollection: cc,
 		testOnly:            true,
 	}, nil
@@ -72,6 +76,8 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 				return
 			}
 
+			tc.tracersMutex.RLock()
+			defer tc.tracersMutex.RUnlock()
 			for _, t := range tc.tracers {
 				if containercollection.ContainerSelectorMatches(&t.containerSelector, event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
@@ -85,6 +91,8 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 			}
 
 		case containercollection.EventTypeRemoveContainer:
+			tc.tracersMutex.RLock()
+			defer tc.tracersMutex.RUnlock()
 			for _, t := range tc.tracers {
 				if containercollection.ContainerSelectorMatches(&t.containerSelector, event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
@@ -96,6 +104,8 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 }
 
 func (tc *TracerCollection) AddTracer(id string, containerSelector containercollection.ContainerSelector) error {
+	tc.tracersMutex.Lock()
+	defer tc.tracersMutex.Unlock()
 	if _, ok := tc.tracers[id]; ok {
 		return fmt.Errorf("tracer id %q: %w", id, os.ErrExist)
 	}
@@ -135,6 +145,8 @@ func (tc *TracerCollection) RemoveTracer(id string) error {
 		return fmt.Errorf("container id not set")
 	}
 
+	tc.tracersMutex.Lock()
+	defer tc.tracersMutex.Unlock()
 	t, ok := tc.tracers[id]
 	if !ok {
 		return fmt.Errorf("unknown tracer %q", id)
@@ -149,10 +161,14 @@ func (tc *TracerCollection) RemoveTracer(id string) error {
 }
 
 func (tc *TracerCollection) TracerCount() int {
+	tc.tracersMutex.RLock()
+	defer tc.tracersMutex.RUnlock()
 	return len(tc.tracers)
 }
 
 func (tc *TracerCollection) TracerDump() (out string) {
+	tc.tracersMutex.RLock()
+	defer tc.tracersMutex.RUnlock()
 	for i, t := range tc.tracers {
 		out += fmt.Sprintf("%v -> %q/%q (%s) Labels: \n",
 			i,
@@ -171,6 +187,8 @@ func (tc *TracerCollection) TracerDump() (out string) {
 }
 
 func (tc *TracerCollection) TracerExists(id string) bool {
+	tc.tracersMutex.RLock()
+	defer tc.tracersMutex.RUnlock()
 	_, ok := tc.tracers[id]
 	return ok
 }
@@ -178,6 +196,8 @@ func (tc *TracerCollection) TracerExists(id string) bool {
 func (tc *TracerCollection) Close() {}
 
 func (tc *TracerCollection) TracerMountNsMap(id string) (*ebpf.Map, error) {
+	tc.tracersMutex.RLock()
+	defer tc.tracersMutex.RUnlock()
 	t, ok := tc.tracers[id]
 	if !ok {
 		return nil, fmt.Errorf("unknown tracer %q", id)
