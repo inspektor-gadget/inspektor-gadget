@@ -628,6 +628,13 @@ func (i *ebpfInstance) tracePipe(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
+	params := apihelpers.ToParamDescs(i.ExtraParams(gadgetCtx)).ToParams()
+	for _, p := range *params {
+		if _, ok := i.paramValues[p.Key]; !ok {
+			i.paramValues[p.Key] = p.DefaultValue
+		}
+	}
+
 	for ds, formatters := range i.formatters {
 		for _, formatter := range formatters {
 			ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
