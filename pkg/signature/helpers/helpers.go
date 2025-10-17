@@ -46,3 +46,13 @@ func CraftSignatureIndexTag(digest string) (string, error) {
 
 	return fmt.Sprintf("%s-%s", parts[0], parts[1]), nil
 }
+
+func CopySigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
+	signingInfoTag, err := craftSigningInfoTag(digest)
+	if err != nil {
+		return fmt.Errorf("crafting signing information tag: %w", err)
+	}
+
+	_, err = oras.Copy(ctx, src, signingInfoTag, dst, signingInfoTag, oras.DefaultCopyOptions)
+	return err
+}
