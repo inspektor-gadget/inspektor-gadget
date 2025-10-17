@@ -115,7 +115,7 @@ func TestAdviseNetworkpolicyGadget(t *testing.T) {
 	}
 	testClientContainer := containerFactory.NewContainer(
 		clientContainerName,
-		fmt.Sprintf("while true; do sleep 0.5 && wget %s; done", testServerContainer.IP()),
+		fmt.Sprintf("while true; do sleep 1 && wget %s; done", testServerContainer.IP()),
 		clientContainerOpts...,
 	)
 

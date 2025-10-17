@@ -68,7 +68,7 @@ func TestTraceMount(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do mount /mnt /mnt; sleep 0.1; done",
+		"while true; do mount /mnt /mnt; sleep 1; done",
 		containerOpts...,
 	)
 

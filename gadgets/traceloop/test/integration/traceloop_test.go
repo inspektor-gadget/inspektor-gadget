@@ -62,7 +62,7 @@ func TestTraceloop(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do ls > /dev/null; sleep 0.1; done",
+		"while true; do ls > /dev/null; sleep 1; done",
 		containerOpts...,
 	)
 
