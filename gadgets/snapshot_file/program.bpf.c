@@ -14,7 +14,7 @@ const volatile bool paths = false;
 #define MAX_PATH_LEN 256
 
 enum file_type {
-	REGULAR = 1,
+	REGULAR = 0,
 	SOCKET,
 	PIPE,
 	BPF_MAP,
@@ -117,10 +117,10 @@ int ig_snap_file(struct bpf_iter__task_file *ctx)
 	if (!task || !file)
 		return 0;
 
-	// if (gadget_should_discard_data(
-	// 	    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
-	// 	    task->comm, task->cred->uid.val, task->cred->gid.val))
-	// 	return 0;
+	if (gadget_should_discard_data(
+		    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
+		    task->comm, task->cred->uid.val, task->cred->gid.val))
+		return 0;
 
 	info.mntns_id = task->nsproxy->mnt_ns->ns.inum;
 	__builtin_memcpy(info.comm, task->comm, TASK_COMM_LEN);

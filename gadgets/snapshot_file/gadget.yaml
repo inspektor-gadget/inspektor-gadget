@@ -32,5 +32,5 @@ params:
       description: Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
     file_type_mask:
       key: type-mask
-      defaultValue: "100010"
-      description: File type mask to filter files by type (default includes regular files and directories)
+      defaultValue: "17"
+      description: File type mask to filter files by type (default includes regular files and directories => 2^0 + 2^4 = 17)
