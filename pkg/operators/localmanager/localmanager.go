@@ -482,23 +482,6 @@ func (l *localManagerTrace) PostGadgetRun() error {
 	return nil
 }
 
-func (l *localManagerTrace) enrich(ev any) {
-	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		l.manager.containerCollection.EnrichEventByMntNs(event)
-	}
-	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		l.manager.containerCollection.EnrichEventByNetNs(event)
-	}
-}
-
-func (l *localManagerTrace) EnrichEvent(ev any) error {
-	if !l.enrichEvents {
-		return nil
-	}
-	l.enrich(ev)
-	return nil
-}
-
 type localManagerTraceWrapper struct {
 	localManagerTrace
 	runID string
