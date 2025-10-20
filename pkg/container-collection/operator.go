@@ -18,7 +18,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
-func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoFromMountNSID) {
+func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoFromMountNSID) bool {
 	event.SetNode(cc.nodeName)
 
 	mountNsId := event.GetMountNSID()
@@ -29,9 +29,10 @@ func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoF
 	if container != nil {
 		event.SetContainerMetadata(container)
 	}
+	return container != nil
 }
 
-func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoFromNetNSID) {
+func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoFromNetNSID) bool {
 	event.SetNode(cc.nodeName)
 
 	netNsId := event.GetNetNSID()
@@ -40,16 +41,18 @@ func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoF
 		containers = lookupContainersByNetns(cc.cachedContainers, netNsId)
 	}
 	if len(containers) == 0 || containers[0].HostNetwork {
-		return
+		return false
 	}
 	if len(containers) == 1 {
 		event.SetContainerMetadata(containers[0])
-		return
+		return true
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
 		event.SetPodMetadata(containers[0])
+		return true
 	}
+	return false
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.
 	// 	What should we do here?
