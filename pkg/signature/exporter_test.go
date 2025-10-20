@@ -16,26 +16,45 @@ package signature
 
 import (
 	"context"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 )
 
 func TestExportSigningInformation(t *testing.T) {
 	t.Parallel()
 
 	type testDefinition struct {
-		src string
-		dst string
+		src       string
+		dst       string
+		searchFor string
 	}
 
 	tests := map[string]testDefinition{
-		"cosign_signed_image": {
-			src: "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:7ecd35cc935edb56c7beb1077e4ca1aabdd1d4e4429b0df027398534d6da9fe6",
-			dst: "ttl.sh/trace_open:cosign-export-unit-test",
+		"cosign_legacy_signed_image": {
+			src:       "ttl.sh/signed_with_cosign_legacy:latest",
+			dst:       "signed_with_cosign_legacy",
+			searchFor: "application/vnd.dev.cosign.simplesigning.v1+json",
+		},
+		"cosign_oci11_signed_image": {
+			src:       "ttl.sh/signed_with_cosign_oci11:latest",
+			dst:       "signed_with_cosign_oci11",
+			searchFor: "application/vnd.dev.cosign.simplesigning.v1+json",
+		},
+		"notation_signed_image": {
+			src:       "ttl.sh/signed_with_notation:latest",
+			dst:       "signed_with_cosign_notation",
+			searchFor: "io.cncf.notary.signingAgent",
 		},
 	}
+
+	srcStore, err := oci.New(filepath.Join("testdata", "oci-store"))
+	require.NoError(t, err)
 
 	for name, test := range tests {
 		test := test
@@ -43,24 +62,41 @@ func TestExportSigningInformation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			tempDir := t.TempDir()
+			dstStore, err := oci.New(tempDir)
+			require.NoError(t, err)
+
 			ctx := context.Background()
-
-			store, repo, ref := createTestPrerequisities(t, test.src)
-			destStore, _, destRef := createTestPrerequisities(t, test.dst)
-
-			// Pull the image.
-			desc, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
+			desc, err := srcStore.Resolve(ctx, test.src)
 			require.NoError(t, err)
 
-			err = DefaultSignaturePuller.PullSigningInformation(ctx, repo, store, desc.Digest.String())
+			err = DefaultSignatureExporter.ExportSigningInformation(ctx, srcStore, dstStore, desc)
 			require.NoError(t, err)
 
-			// Push the image
-			desc, err = oras.Copy(ctx, store, ref.String(), destStore, destRef.String(), oras.DefaultCopyOptions)
-			require.NoError(t, err)
+			found := false
+			err = filepath.WalkDir(tempDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
 
-			err = DefaultSignatureExporter.ExportSigningInformation(ctx, store, destStore, desc)
+				if d.IsDir() {
+					return nil
+				}
+
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+
+				if strings.Contains(string(content), test.searchFor) {
+					found = true
+					return fs.SkipAll
+				}
+
+				return nil
+			})
 			require.NoError(t, err)
+			require.True(t, found)
 		})
 	}
 }

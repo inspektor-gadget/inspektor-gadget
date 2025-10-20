@@ -1,0 +1,1 @@
+{"critical":{"identity":{"docker-reference":"ttl.sh/signed_with_cosign_legacy"},"image":{"docker-manifest-digest":"sha256:20296fb8a8c8a97808229625945da73f5f4d5843800317ead8c203081156cc9c"},"type":"cosign container image signature"},"optional":null}
