@@ -16,36 +16,14 @@ package cosign
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/distribution/reference"
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
-
-func createTestPrerequisities(t *testing.T, image string) (oras.GraphTarget, *remote.Repository, reference.Named) {
-	store, err := oci.New(t.TempDir())
-	require.NoError(t, err)
-
-	ref, err := reference.ParseNormalizedNamed(image)
-	require.NoError(t, err)
-
-	ref = reference.TagNameOnly(ref)
-
-	repo, err := remote.NewRepository(ref.Name())
-	require.NoError(t, err)
-
-	repo.Client = &auth.Client{
-		Credential: auth.StaticCredential(reference.Domain(ref), auth.EmptyCredential),
-	}
-
-	return store, repo, ref
-}
 
 func TestNewVerifier(t *testing.T) {
 	t.Parallel()
@@ -54,6 +32,19 @@ func TestNewVerifier(t *testing.T) {
 		opts      VerifierOptions
 		shouldErr bool
 	}
+
+	publicKey0 := `
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6u8dLv8gnPGFEoAeeRXZ9r1QUqu
+vxvpnBNH+Gwent1O0IisyCeEYEeGAOVcmqCLFywoF62CUMZIex/Xw56nfw==
+-----END PUBLIC KEY-----
+`
+	publicKey1 := `
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
+wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
+-----END PUBLIC KEY-----
+`
 
 	tests := map[string]testDefinition{
 		"no_public_key": {
@@ -67,19 +58,14 @@ func TestNewVerifier(t *testing.T) {
 		},
 		"correct_public_key": {
 			opts: VerifierOptions{
-				PublicKeys: []string{resources.InspektorGadgetPublicKey},
+				PublicKeys: []string{publicKey0},
 			},
 		},
 		"correct_public_keys": {
 			opts: VerifierOptions{
 				PublicKeys: []string{
-					`
------BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
-wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
------END PUBLIC KEY-----
-`,
-					resources.InspektorGadgetPublicKey,
+					publicKey0,
+					publicKey1,
 				},
 			},
 		},
@@ -110,53 +96,58 @@ func TestVerify(t *testing.T) {
 		shouldErr bool
 	}
 
-	// v0.43.0
-	signedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:7ecd35cc935edb56c7beb1077e4ca1aabdd1d4e4429b0df027398534d6da9fe6"
+	legacySignedImage := "ttl.sh/signed_with_cosign_legacy:latest"
+	oci11SignedImage := "ttl.sh/signed_with_cosign_oci11:latest"
+	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/unsigned:francis-signature-unit-tests"
 
-	// v0.25.0
-	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/trace_open@sha256:a5de3655d6c7640eb6d43f7d9d7182b233ac86aedddfe6c132cba6b876264d97"
-
-	tests := map[string]testDefinition{
-		"good_public_key_with_signed_gadget": {
-			opts: VerifierOptions{
-				PublicKeys: []string{resources.InspektorGadgetPublicKey},
-			},
-			image: signedImage,
-		},
-		"wrong_public_key_with_signed_gadget": {
-			opts: VerifierOptions{
-				PublicKeys: []string{
-					`
+	goodPublicKey := `
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6u8dLv8gnPGFEoAeeRXZ9r1QUqu
+vxvpnBNH+Gwent1O0IisyCeEYEeGAOVcmqCLFywoF62CUMZIex/Xw56nfw==
+-----END PUBLIC KEY-----
+`
+	wrongPublicKey := `
 -----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
 wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 -----END PUBLIC KEY-----
-`,
-				},
+`
+
+	tests := map[string]testDefinition{
+		"good_public_key_with_legacy_signed_image": {
+			opts: VerifierOptions{
+				PublicKeys: []string{goodPublicKey},
 			},
-			image:     signedImage,
+			image: legacySignedImage,
+		},
+		"good_public_key_with_oci11_signed_image": {
+			opts: VerifierOptions{
+				PublicKeys: []string{goodPublicKey},
+			},
+			image: oci11SignedImage,
+		},
+		"wrong_public_key_with_signed_image": {
+			opts: VerifierOptions{
+				PublicKeys: []string{wrongPublicKey},
+			},
+			image:     legacySignedImage,
 			shouldErr: true,
 		},
-		"public_key_with_unsigned_gadget": {
+		"public_key_with_unsigned_image": {
 			opts: VerifierOptions{
-				PublicKeys: []string{resources.InspektorGadgetPublicKey},
+				PublicKeys: []string{goodPublicKey},
 			},
 			image:     nonSignedImage,
 			shouldErr: true,
 		},
-		"several_public_keys_with_signed_gadget": {
+		"several_public_keys_with_signed_image": {
 			opts: VerifierOptions{
 				PublicKeys: []string{
-					`
------BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIur1/9dgnL6gwRsXRoE5tgpiZX0V
-wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
------END PUBLIC KEY-----
-					`,
-					resources.InspektorGadgetPublicKey,
+					wrongPublicKey,
+					goodPublicKey,
 				},
 			},
-			image: signedImage,
+			image: legacySignedImage,
 		},
 	}
 
@@ -165,10 +156,15 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			store, repo, ref := createTestPrerequisities(t, test.image)
+			store, err := oci.New(filepath.Join("..", "testdata", "oci-store"))
+			require.NoError(t, err)
 
-			// Pull the image.
-			_, err := oras.Copy(context.Background(), repo, ref.String(), store, ref.String(), oras.DefaultCopyOptions)
+			ref, err := reference.ParseNormalizedNamed(test.image)
+			require.NoError(t, err)
+
+			ref = reference.TagNameOnly(ref)
+
+			repo, err := remote.NewRepository(ref.Name())
 			require.NoError(t, err)
 
 			verifier, err := NewVerifier(test.opts)
