@@ -45,6 +45,7 @@ var RuntimePaths = []string{
 	"/var/lib/k0s/bin/runc",                      // Used in k0s
 	"/aarch64-bottlerocket-linux-gnu/sys-root/usr/bin/runc", // Used in Bottlerocket OS
 	"/x86_64-bottlerocket-linux-gnu/sys-root/usr/bin/runc",  // Used in Bottlerocket OS
+	"/snap/microk8s/current/bin/runc",
 }
 
 // Notify marks the runtime path given as argument if it exists.
