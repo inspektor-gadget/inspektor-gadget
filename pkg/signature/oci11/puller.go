@@ -16,7 +16,6 @@ package oci11
 
 import (
 	"context"
-	"fmt"
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
@@ -27,14 +26,5 @@ import (
 type Puller struct{} // Empty type only to respect the interface.
 
 func (c *Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	signingInfoTag, err := helpers.CraftSignatureIndexTag(digest)
-	if err != nil {
-		return fmt.Errorf("crafting cosign signature tag: %w", err)
-	}
-
-	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
-		return fmt.Errorf("copying index tag %q: %w", signingInfoTag, err)
-	}
-
-	return nil
+	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, helpers.CraftSignatureIndexTag)
 }

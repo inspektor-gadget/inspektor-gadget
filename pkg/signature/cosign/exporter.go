@@ -16,20 +16,15 @@ package cosign
 
 import (
 	"context"
-	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
 type Exporter struct{} // Empty type only to respect the interface.
 
 func (e *Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	signatureTag, err := craftCosignSignatureTag(desc.Digest.String())
-	if err != nil {
-		return fmt.Errorf("crafting signature tag: %w", err)
-	}
-
-	_, err = oras.Copy(ctx, src, signatureTag, dst, signatureTag, oras.DefaultCopyOptions)
-	return err
+	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), craftCosignSignatureTag)
 }

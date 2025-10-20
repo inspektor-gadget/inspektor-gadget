@@ -20,6 +20,8 @@ import (
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
 type Puller struct{} // Empty type only to respect the interface.
@@ -33,10 +35,5 @@ func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, 
 }
 
 func (c *Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	signingInfoTag, err := craftCosignSignatureTag(digest)
-	if err != nil {
-		return fmt.Errorf("crafting cosign signature tag: %w", err)
-	}
-
-	return pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore)
+	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, craftCosignSignatureTag)
 }
