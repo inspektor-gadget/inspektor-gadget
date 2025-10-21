@@ -353,23 +353,6 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 	return nil
 }
 
-func (m *KubeManagerInstance) enrich(ev any) {
-	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		m.manager.containerCollection.EnrichEventByMntNs(event)
-	}
-	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		m.manager.containerCollection.EnrichEventByNetNs(event)
-	}
-}
-
-func (m *KubeManagerInstance) EnrichEvent(ev any) error {
-	if !m.enrichEvents {
-		return nil
-	}
-	m.enrich(ev)
-	return nil
-}
-
 func (k *KubeManager) GlobalParams() api.Params {
 	return apihelpers.ParamDescsToParams(k.GlobalParamDescs())
 }

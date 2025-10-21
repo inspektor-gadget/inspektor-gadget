@@ -57,8 +57,8 @@ type EventWrapperBase struct {
 }
 
 type (
-	MntNsEnrichFunc func(event operators.ContainerInfoFromMountNSID)
-	NetNsEnrichFunc func(event operators.ContainerInfoFromNetNSID)
+	MntNsEnrichFunc func(event operators.ContainerInfoFromMountNSID) bool
+	NetNsEnrichFunc func(event operators.ContainerInfoFromNetNSID) bool
 )
 
 // GetEventWrappers checks for data sources containing references to mntns/netns that we could enrich data for
@@ -120,11 +120,18 @@ func Subscribe(
 			EventWrapperBase: wrapper,
 		}
 		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+			// We collect the mount and network namespace of the container to
+			// perform the enrichment. Depending on the gadget, one of them
+			// could not be available. In K8s, the mount namespace is more
+			// specific than the network namespace as multiple containers in the
+			// same pod share the same network namespace. So, if the enrichment
+			// by mount ns is successful, we skip the enrichment by net ns.
+			enriched := false
 			wr.Data = data
 			if wrapper.MntnsidAccessor != nil {
-				mntNsEnrichFunc(&wr)
+				enriched = mntNsEnrichFunc(&wr)
 			}
-			if wrapper.NetnsidAccessor != nil {
+			if !enriched && wrapper.NetnsidAccessor != nil {
 				netNsEnrichFunc(&wr)
 			}
 			return nil
