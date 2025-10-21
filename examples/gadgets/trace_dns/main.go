@@ -68,7 +68,8 @@ func do() error {
 	// The socker enricher operator is used to provide information about the
 	// process performing the DNS query.
 	socketEnricherOp := &socketenricher.SocketEnricher{}
-	if err := socketEnricherOp.Init(nil); err != nil {
+	socketEnricherParams := socketEnricherOp.GlobalParamDescs().ToParams()
+	if err := socketEnricherOp.Init(socketEnricherParams); err != nil {
 		return fmt.Errorf("init socket enricher: %w", err)
 	}
 	defer socketEnricherOp.Close()
