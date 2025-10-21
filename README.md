@@ -186,7 +186,7 @@ Contributions are welcome, see [CONTRIBUTING](docs/devel/contributing.md).
 
 ## Community Meeting
 
-We hold community meetings regularly. Please check our [calendar](https://calendar.google.com/calendar/u/0/embed?src=ac93fb85a1999d57dd97cce129479bb2741946e1d7f4db918fe14433c192152d@group.calendar.google.com)
+We hold community meetings regularly. Please check our [calendar](https://zoom-lfx.platform.linuxfoundation.org/meetings/inspektorgadget?view=month)
 for the full schedule of up-coming meetings and please add any topic you want to discuss to our [meeting
 notes](https://docs.google.com/document/d/1cbPYvYTsdRXd41PEDcwC89IZbcA8WneNt34oiu5s9VA/edit)
 document.
