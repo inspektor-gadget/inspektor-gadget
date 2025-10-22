@@ -1,0 +1,205 @@
+---
+title: Exporting Profiles (OpenTelemetry)
+sidebar_position: 1300
+description: Using OpenTelemetry to export profiles
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+:::warning
+
+The OpenTelemetry profiling signal is experimental and this support could change
+without any notice.
+
+:::
+
+Inspektor Gadget supports exporting the [experimental profile
+signal](https://opentelemetry.io/blog/2024/profiling/) to OpenTelemetry using
+OTLP. Profile exporters are configured on the `otel-profiles` section of the
+config file:
+
+```yaml
+# ig-config.yaml
+operator:
+  otel-profiles:
+    exporters:
+      my-profiles-exporter:
+        exporter: otlp-grpc
+        compression: gzip
+        endpoint: "127.0.0.1:4317"
+        insecure: true
+```
+
+This will configure an exporter named `my-profiles-exporter` with the given
+endpoint, gzip compression enabled and TLS disabled.
+
+You can then run a gadget and activate the exporter for it by setting the
+`--otel-profiles-exporter=my-profiles-exporter` flag.
+
+### Exporter settings
+
+#### exporter
+
+Currently we only support `otlp-grpc`.
+
+#### compression
+
+Compression can be set to either "none" (no compression) or "gzip" (gzip
+compression).
+
+#### endpoint
+
+IP address and port of the gRPC receiver.
+
+#### insecure
+
+If set to true, the gRPC connection will not use TLS encryption. False by
+default.
+
+## Annotations
+
+### Datasource
+
+The exporter looks for some annotations in the datasource to identify which fields to use.
+
+#### `profiles.stack-fields`
+
+Defines which fields contain the stack trace of the sample.
+
+#### `profiles.value-field`
+
+Defines which field contains the value to use for the sample. For instance, it
+can be the number of times the stack trace has been found, of the quantity of
+memory allocated by a given stack trace.
+
+### Fields
+
+The exporter also uses some annotations on the fields
+
+#### `profiles.sample-attribute`
+
+Marks a field to be used as an attribute of the sample.
+
+Annotations example:
+
+```yaml
+datasources:
+  samples:
+    annotations:
+      profiles.stack-fields: kern_stack
+      profiles.value-field: samples
+    fields:
+      runtime.containerName:
+        annotations:
+          profiles.sample-attribute: "true"
+      proc.comm:
+        annotations:
+          profiles.sample-attribute: "true"
+```
+
+This configuration indicates that `kern_stack` field contains the stack trace,
+the `samples` field contains the stack trace value and the
+`runtime.containerName` and `proc.comm` fields are used as attributes of the
+collected samples.
+
+## Guide
+
+This guide provides a working end to end example of this support using the
+profile_cpu gadget, [pyroscope](https://github.com/grafana/pyroscope) and Grafana.
+
+Create the following files on your machine:
+
+```yaml
+# docker-compose.yaml
+services:
+  pyroscope:
+    # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
+    image: grafana/pyroscope:1.15.0
+    command: ["-self-profiling.disable-push=true"]
+    ports:
+      - "4040:4040"
+    networks:
+      - otel-net
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - otel-net
+
+networks:
+  otel-net:
+    driver: bridge
+```
+
+```yaml
+# grafana-provisioning/datasources/pyroscope.yml
+---
+apiVersion: 1
+datasources:
+  - uid: local-pyroscope
+    type: grafana-pyroscope-datasource
+    name: Pyroscope
+    url: http://pyroscope:4040
+    jsonData:
+      keepCookies: [pyroscope_git_session]
+    # Uncomment these if using with Grafana Cloud
+    # basicAuth: true
+    # basicAuthUser: '123456'
+    # secureJsonData:
+      # basicAuthPassword: PASSWORD
+```
+
+Start the grafana and pyroscope containers using docker compose:
+
+```bash
+$ docker compose up
+...
+```
+
+The Grafana dashboard should be accessible on `http://localhost:3000`.
+
+Now, configure a profiles exporter pointing to the running pyroscope instance.
+(Note: We could also configure an instance of the opentelemetry-collector
+between IG and pyroscope, but for simplicity we avoid this.)
+
+```yaml
+# ig-config.yaml
+operator:
+  otel-profiles:
+    exporters:
+      my-profiles-exporter:
+        exporter: otlp-grpc
+        compression: gzip
+        endpoint: "127.0.0.1:4040"
+        insecure: true
+```
+
+Then, run the profile_cpu gadget configured to export profiles:
+
+```bash
+$ sudo ig run profile_cpu --otel-profiles-exporter=my-profiles-exporter --config=ig-config.yaml
+```
+
+Run a container to generate some events:
+
+```bash
+$ docker run --rm -it --name mycontainer busybox sh -c "cat /dev/random > /dev/null"
+```
+
+The profiles will be available under "Drilldown -> Profiles"
+
+[Profiles on Grafana](../images/profiles-1.png)
+
+It's possible to filter data by `proc_comm` and `runtime_containerName`:
+
+[Profiles filtering](../images/profiles-2.png)
