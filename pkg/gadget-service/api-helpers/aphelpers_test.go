@@ -17,11 +17,238 @@
 package apihelpers
 
 import (
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParamDescsToParams(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    params.ParamDescs
+		expected api.Params
+	}{
+		{
+			name:     "empty",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "single param",
+			input: params.ParamDescs{
+				{
+					Key:            "param1",
+					Description:    "A sample parameter",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 1",
+					Alias:          "p1",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint",
+					PossibleValues: []string{"val1", "val2"},
+					IsMandatory:    true,
+				},
+			},
+			expected: api.Params{
+				{
+					Key:            "param1",
+					Description:    "A sample parameter",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 1",
+					Alias:          "p1",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint",
+					PossibleValues: []string{"val1", "val2"},
+					IsMandatory:    true,
+				},
+			},
+		},
+
+		{
+			name: "multiple params",
+			input: params.ParamDescs{
+				{
+					Key:            "param2",
+					Description:    "multiple params",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 1",
+					Alias:          "p1",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint1",
+					PossibleValues: []string{"val1", "val2"},
+					IsMandatory:    true,
+				},
+				{
+					Key:            "param2",
+					Description:    "mutliple params",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 2",
+					Alias:          "p2",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint",
+					PossibleValues: []string{"val4", "val2"},
+					IsMandatory:    false,
+				},
+			},
+			expected: api.Params{
+				{
+					Key:            "param2",
+					Description:    "multiple params",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 1",
+					Alias:          "p1",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint1",
+					PossibleValues: []string{"val1", "val2"},
+					IsMandatory:    true,
+				},
+				{
+					Key:            "param2",
+					Description:    "mutliple params",
+					DefaultValue:   "default",
+					TypeHint:       "string",
+					Title:          "Parameter 2",
+					Alias:          "p2",
+					Tags:           []string{"tag1", "tag2"},
+					ValueHint:      "hint",
+					PossibleValues: []string{"val4", "val2"},
+					IsMandatory:    false,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := ParamDescsToParams(test.input)
+			require.Equal(t, test.expected, got)
+		})
+	}
+}
+
+func TestParamToParamDesc(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *api.Param
+		expected *params.ParamDesc
+	}{
+		{
+			name: "single param",
+			input: &api.Param{
+				Key:            "param1",
+				Description:    "A sample parameter",
+				DefaultValue:   "default",
+				TypeHint:       "string",
+				Title:          "Parameter 1",
+				Alias:          "p1",
+				Tags:           []string{"tag1", "tag2"},
+				ValueHint:      "hint",
+				PossibleValues: []string{"val1", "val2"},
+				IsMandatory:    true,
+			},
+			expected: &params.ParamDesc{
+				Key:            "param1",
+				Description:    "A sample parameter",
+				DefaultValue:   "default",
+				TypeHint:       params.TypeHint("string"),
+				Title:          "Parameter 1",
+				Alias:          "p1",
+				Tags:           []string{"tag1", "tag2"},
+				ValueHint:      params.ValueHint("hint"),
+				PossibleValues: []string{"val1", "val2"},
+				IsMandatory:    true,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := ParamToParamDesc(test.input)
+			require.Equal(t, test.expected, got)
+		})
+	}
+}
+
+func TestToParamDescs(t *testing.T) {
+	tests := []struct {
+		name       string
+		p          api.Params
+		paramDescs *params.ParamDesc
+	}{
+		{
+			name: "appending to paramDescs",
+			p: api.Params{
+				{
+					Key:         "Key",
+					Description: "Description",
+				},
+			},
+			paramDescs: &params.ParamDesc{
+				Key:         "Key",
+				Description: "Description",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ans := ToParamDescs(test.p)
+			for _, desc := range ans {
+				require.Equal(t, test.paramDescs, desc)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		p    api.Params
+		v    api.ParamValues
+		err  error
+	}{
+		{
+			name: "when value is nil",
+			p: api.Params{
+				{
+					Key:         "test",
+					Description: "Description",
+				},
+			},
+			v:   api.ParamValues{},
+			err: nil,
+		},
+
+		{
+			name: "when value is not nil but got error",
+			p: api.Params{
+				{
+					Key:            "color",
+					PossibleValues: []string{"yellow", "black", "green"},
+				},
+			},
+			v: api.ParamValues{
+				"color": "white",
+			},
+			err: errors.New("invalid value \"white\" as \"color\": valid values are: yellow, black, green"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := Validate(test.p, test.v)
+			require.Equal(t, test.err, err)
+		})
+	}
+}
 
 func TestGetStringValuesPerDataSource(t *testing.T) {
 	tests := []struct {
