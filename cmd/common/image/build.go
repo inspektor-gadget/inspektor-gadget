@@ -254,7 +254,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	}
 
 	if !hasEBPFSource && !hasMetadata && !hasWasm && !hasGo {
-		return fmt.Errorf("ateast one of ebpf source (program.bpf.c), metadata (gadget.yaml), .go files (present in go folder) or wasm module is required")
+		return fmt.Errorf("at least one of ebpf source (program.bpf.c), metadata (gadget.yaml), .go files (present in go folder) or wasm module is required")
 	}
 
 	// copy helper files
