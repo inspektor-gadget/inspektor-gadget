@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,18 +29,18 @@ import (
 )
 
 type ExpectedBpfstatsEvent struct {
-	GadgetID    string `json:"gadgetID"`
-	GadgetImage string `json:"gadgetImage"`
-	GadgetName  string `json:"gadgetName"`
-	MapCount    int    `json:"mapCount"`
-	MapMemory   string `json:"mapMemory"`
-	ProgID      int    `json:"progID"`
-	ProgName    string `json:"progName"`
-	ProgType    string `json:"progType"`
-	Runcount    int    `json:"runcount"`
-	Runtime     string `json:"runtime"`
-	Comms       string `json:"comms"`
-	Pids        string `json:"pids"`
+	GadgetID    string   `json:"gadgetID"`
+	GadgetImage string   `json:"gadgetImage"`
+	GadgetName  string   `json:"gadgetName"`
+	MapCount    int      `json:"mapCount"`
+	MapMemory   string   `json:"mapMemory"`
+	ProgID      int      `json:"progID"`
+	ProgName    string   `json:"progName"`
+	ProgType    string   `json:"progType"`
+	Runcount    int      `json:"runcount"`
+	Runtime     string   `json:"runtime"`
+	Comms       []string `json:"comms"`
+	Pids        []uint32 `json:"pids"`
 }
 
 type testDef struct {
@@ -61,9 +60,8 @@ func TestBpfstatsGadget(t *testing.T) {
 
 	comm, err := os.Executable()
 	require.NoError(t, err)
-	comm = filepath.Base(comm)
-
-	pids := fmt.Sprintf("%d", os.Getpid())
+	comms := []string{filepath.Base(comm)}
+	pids := []uint32{uint32(os.Getpid())}
 
 	testCases := map[string]testDef{
 		"by_gadget": {
@@ -89,7 +87,7 @@ func TestBpfstatsGadget(t *testing.T) {
 					ProgName:    "ig_openat_e",
 					ProgID:      utils.NormalizedInt,
 					ProgType:    "TracePoint",
-					Comms:       comm,
+					Comms:       comms,
 					Pids:        pids,
 				},
 				{
@@ -97,7 +95,7 @@ func TestBpfstatsGadget(t *testing.T) {
 					ProgName:    "ig_openat_x",
 					ProgID:      utils.NormalizedInt,
 					ProgType:    "TracePoint",
-					Comms:       comm,
+					Comms:       comms,
 					Pids:        pids,
 				},
 				// TODO: test external program
