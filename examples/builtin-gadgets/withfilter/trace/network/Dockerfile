@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.24.2-bullseye@sha256:f0fe88a509ede4f792cbd42056e939c210a1b2be282cfe89c57a654ef8707cd2 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24.6-bullseye@sha256:2cdc80dc25edcb96ada1654f73092f2928045d037581fa4aa7c40d18af7dd85a AS builder
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 WORKDIR /src
