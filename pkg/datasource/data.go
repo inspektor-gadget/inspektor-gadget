@@ -42,12 +42,20 @@ func (d *dataElement) payload() [][]byte {
 	return d.Payload
 }
 
+func (d *dataElement) payloadAppend(b []byte) {
+	d.Payload = append(d.Payload, b)
+}
+
 type data api.GadgetData
 
 func (d *data) private() {}
 
 func (d *data) payload() [][]byte {
 	return d.Data.Payload
+}
+
+func (d *data) payloadAppend(b []byte) {
+	d.Data.Payload = append(d.Data.Payload, b)
 }
 
 func (d *data) SetSeq(seq uint32) {

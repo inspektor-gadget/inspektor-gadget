@@ -48,6 +48,7 @@ const (
 type Data interface {
 	private()
 	payload() [][]byte
+	payloadAppend(b []byte)
 }
 
 type DataArray interface {

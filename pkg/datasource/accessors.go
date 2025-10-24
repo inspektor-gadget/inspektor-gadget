@@ -150,6 +150,8 @@ type FieldAccessor interface {
 	Int64Array(Data) ([]int64, error)
 	Float32Array(Data) ([]float32, error)
 	Float64Array(Data) ([]float64, error)
+	StringArray(Data) ([]string, error)
+	BytesArray(Data) ([][]byte, error)
 
 	PutUint8(Data, uint8) error
 	PutUint16(Data, uint16) error
@@ -164,6 +166,19 @@ type FieldAccessor interface {
 	PutString(Data, string) error
 	PutBytes(Data, []byte) error
 	PutBool(Data, bool) error
+
+	PutUint8Array(Data, []uint8) error
+	PutUint16Array(Data, []uint16) error
+	PutUint32Array(Data, []uint32) error
+	PutUint64Array(Data, []uint64) error
+	PutInt8Array(Data, []int8) error
+	PutInt16Array(Data, []int16) error
+	PutInt32Array(Data, []int32) error
+	PutInt64Array(Data, []int64) error
+	PutFloat32Array(Data, []float32) error
+	PutFloat64Array(Data, []float64) error
+	PutStringArray(Data, []string) error
+	PutBytesArray(Data, [][]byte) error
 }
 
 type fieldAccessor struct {
@@ -289,6 +304,14 @@ func (a *fieldAccessor) RemoveReference(recurse bool) {
 func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOption) (FieldAccessor, error) {
 	a.ds.lock.Lock()
 	defer a.ds.lock.Unlock()
+
+	if api.IsArrayKind(a.f.Kind) {
+		if api.IsArrayKind(kind) {
+			return nil, errors.New("adding array of arrays is not supported")
+		}
+
+		kind = api.ArrayOf(kind)
+	}
 
 	parentFullName, err := resolveNames(a.f.Index, a.ds.fields, 0)
 	if err != nil {
@@ -521,7 +544,7 @@ func (a *fieldAccessor) Float64(data Data) (float64, error) {
 // return unsafe.Slice((*uint64)(unsafe.Pointer(&val[0])), len(val)/8), nil
 // I _think_ it's okay, but if there are any reasons against it, please let me know.
 
-func copyArray[T constraints.Integer | constraints.Float](a *fieldAccessor, data Data, convert func([]byte) T) ([]T, error) {
+func getFixedSizeArray[T constraints.Integer | constraints.Float](a *fieldAccessor, data Data, convert func([]byte) T) ([]T, error) {
 	var s T
 	size := int(unsafe.Sizeof(s))
 	val := a.Get(data)
@@ -536,43 +559,73 @@ func copyArray[T constraints.Integer | constraints.Float](a *fieldAccessor, data
 }
 
 func (a *fieldAccessor) Uint8Array(data Data) ([]uint8, error) {
-	return copyArray(a, data, func(v []byte) uint8 { return v[0] })
+	return getFixedSizeArray(a, data, func(v []byte) uint8 { return v[0] })
 }
 
 func (a *fieldAccessor) Uint16Array(data Data) ([]uint16, error) {
-	return copyArray(a, data, a.ds.byteOrder.Uint16)
+	return getFixedSizeArray(a, data, a.ds.byteOrder.Uint16)
 }
 
 func (a *fieldAccessor) Uint32Array(data Data) ([]uint32, error) {
-	return copyArray(a, data, a.ds.byteOrder.Uint32)
+	return getFixedSizeArray(a, data, a.ds.byteOrder.Uint32)
 }
 
 func (a *fieldAccessor) Uint64Array(data Data) ([]uint64, error) {
-	return copyArray(a, data, a.ds.byteOrder.Uint64)
+	return getFixedSizeArray(a, data, a.ds.byteOrder.Uint64)
 }
 
 func (a *fieldAccessor) Int8Array(data Data) ([]int8, error) {
-	return copyArray(a, data, func(v []byte) int8 { return int8(v[0]) })
+	return getFixedSizeArray(a, data, func(v []byte) int8 { return int8(v[0]) })
 }
 
 func (a *fieldAccessor) Int16Array(data Data) ([]int16, error) {
-	return copyArray(a, data, func(v []byte) int16 { return int16(a.ds.byteOrder.Uint16(v)) })
+	return getFixedSizeArray(a, data, func(v []byte) int16 { return int16(a.ds.byteOrder.Uint16(v)) })
 }
 
 func (a *fieldAccessor) Int32Array(data Data) ([]int32, error) {
-	return copyArray(a, data, func(v []byte) int32 { return int32(a.ds.byteOrder.Uint32(v)) })
+	return getFixedSizeArray(a, data, func(v []byte) int32 { return int32(a.ds.byteOrder.Uint32(v)) })
 }
 
 func (a *fieldAccessor) Int64Array(data Data) ([]int64, error) {
-	return copyArray(a, data, func(v []byte) int64 { return int64(a.ds.byteOrder.Uint64(v)) })
+	return getFixedSizeArray(a, data, func(v []byte) int64 { return int64(a.ds.byteOrder.Uint64(v)) })
 }
 
 func (a *fieldAccessor) Float32Array(data Data) ([]float32, error) {
-	return copyArray(a, data, func(v []byte) float32 { return math.Float32frombits(a.ds.byteOrder.Uint32(v)) })
+	return getFixedSizeArray(a, data, func(v []byte) float32 { return math.Float32frombits(a.ds.byteOrder.Uint32(v)) })
 }
 
 func (a *fieldAccessor) Float64Array(data Data) ([]float64, error) {
-	return copyArray(a, data, func(v []byte) float64 { return math.Float64frombits(a.ds.byteOrder.Uint64(v)) })
+	return getFixedSizeArray(a, data, func(v []byte) float64 { return math.Float64frombits(a.ds.byteOrder.Uint64(v)) })
+}
+
+func getVariableSizeArray[T string | []byte](a *fieldAccessor, data Data, convert func([]byte) T) ([]T, error) {
+	// get indexes
+	idxs, err := a.Uint32Array(data)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := data.payload()
+
+	// get values
+	ret := make([]T, 0, len(idxs))
+	for _, idx := range idxs {
+		if idx >= uint32(len(payload)) {
+			return nil, fmt.Errorf("invalid payload index %d, only %d payloads available", idx, len(payload))
+		}
+
+		valBytes := payload[idx]
+		ret = append(ret, convert(valBytes))
+	}
+	return ret, nil
+}
+
+func (a *fieldAccessor) StringArray(data Data) ([]string, error) {
+	return getVariableSizeArray(a, data, func(v []byte) string { return string(v) })
+}
+
+func (a *fieldAccessor) BytesArray(data Data) ([][]byte, error) {
+	return getVariableSizeArray(a, data, func(v []byte) []byte { return v })
 }
 
 func (a *fieldAccessor) String(data Data) (string, error) {
@@ -700,4 +753,102 @@ func (a *fieldAccessor) PutBool(data Data, val bool) error {
 		b[0] = 0
 	}
 	return nil
+}
+
+// arrays: Arrays are stored depending on their type:
+// - Fixed-size items as numeric types are stored as a contiguous block of
+// memory in the payload.
+// - Variable-size items as strings and arrays of bytes: the field contains a
+// list of indexes pointing to the actual items in the payload.
+
+func putFixedSizeArray[T constraints.Integer | constraints.Float](a *fieldAccessor, data Data, vals []T, convert func([]byte, T)) error {
+	var s T
+	size := int(unsafe.Sizeof(s))
+
+	b := make([]byte, len(vals)*size)
+	for i, v := range vals {
+		convert(b[i*size:], v)
+	}
+	a.Set(data, b)
+	return nil
+}
+
+func (a *fieldAccessor) PutUint8Array(data Data, val []uint8) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v uint8) {
+		b[0] = v
+	})
+}
+
+func (a *fieldAccessor) PutUint16Array(data Data, val []uint16) error {
+	return putFixedSizeArray(a, data, val, a.ds.byteOrder.PutUint16)
+}
+
+func (a *fieldAccessor) PutUint32Array(data Data, val []uint32) error {
+	return putFixedSizeArray(a, data, val, a.ds.byteOrder.PutUint32)
+}
+
+func (a *fieldAccessor) PutUint64Array(data Data, val []uint64) error {
+	return putFixedSizeArray(a, data, val, a.ds.byteOrder.PutUint64)
+}
+
+func (a *fieldAccessor) PutInt8Array(data Data, val []int8) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v int8) {
+		b[0] = uint8(v)
+	})
+}
+
+func (a *fieldAccessor) PutInt16Array(data Data, val []int16) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v int16) {
+		a.ds.byteOrder.PutUint16(b, uint16(v))
+	})
+}
+
+func (a *fieldAccessor) PutInt32Array(data Data, val []int32) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v int32) {
+		a.ds.byteOrder.PutUint32(b, uint32(v))
+	})
+}
+
+func (a *fieldAccessor) PutInt64Array(data Data, val []int64) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v int64) {
+		a.ds.byteOrder.PutUint64(b, uint64(v))
+	})
+}
+
+func (a *fieldAccessor) PutFloat32Array(data Data, val []float32) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v float32) {
+		a.ds.byteOrder.PutUint32(b, math.Float32bits(v))
+	})
+}
+
+func (a *fieldAccessor) PutFloat64Array(data Data, val []float64) error {
+	return putFixedSizeArray(a, data, val, func(b []byte, v float64) {
+		a.ds.byteOrder.PutUint64(b, math.Float64bits(v))
+	})
+}
+
+func putVariableSizeArray[T string | []byte](a *fieldAccessor, data Data, vals []T, convert func(T) []byte) error {
+	payloadCount := a.ds.payloadCount
+	n := len(vals)
+
+	indexes := make([]uint32, n)
+	for i, v := range vals {
+		indexes[i] = payloadCount
+		payloadCount++
+		data.payloadAppend(convert(v))
+	}
+	if err := a.PutUint32Array(data, indexes); err != nil {
+		return err
+	}
+
+	a.ds.payloadCount = payloadCount
+	return nil
+}
+
+func (a *fieldAccessor) PutStringArray(data Data, val []string) error {
+	return putVariableSizeArray(a, data, val, func(v string) []byte { return []byte(v) })
+}
+
+func (a *fieldAccessor) PutBytesArray(data Data, val [][]byte) error {
+	return putVariableSizeArray(a, data, val, func(v []byte) []byte { return v })
 }
