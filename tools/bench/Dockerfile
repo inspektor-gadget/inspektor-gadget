@@ -7,7 +7,7 @@ COPY . /go/src/github.com/inspektor-gadget/inspektor-gadget/tools/bench/
 RUN GOARCH=${TARGETARCH} go build -o /bench /go/src/github.com/inspektor-gadget/inspektor-gadget/tools/bench
 
 # Final image
-FROM alpine:3.18@sha256:1875c923b73448b558132e7d4a44b815d078779ed7a73f76209c6372de95ea8d
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:e8a4044e0b4ae4257efa45fc026c0bc30ad320d43bd4c1a7d5271bd241e386d0
 COPY --from=builder /bench /bench
 
 CMD ["/bench"]
