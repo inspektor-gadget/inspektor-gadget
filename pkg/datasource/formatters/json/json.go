@@ -182,6 +182,24 @@ func writeFloatArrFn[T constraints.Float](
 	}
 }
 
+func writeStringArrFn[T string | []byte](
+	toArrayFn func(datasource.Data) ([]T, error),
+	fieldSep []byte,
+	newIndent string,
+	convert func(T) string,
+) func(e *encodeState, data datasource.Data) {
+	return func(e *encodeState, data datasource.Data) {
+		vals, _ := toArrayFn(data)
+		for i, v := range vals {
+			if i > 0 {
+				e.Write(fieldSep)
+			}
+			e.WriteString(newIndent)
+			writeString(e, convert(v))
+		}
+	}
+}
+
 func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix string, indent string) (fns []func(*encodeState, datasource.Data), fieldCounter int) {
 	if accessors == nil {
 		accessors = f.ds.Accessors(true)
@@ -299,6 +317,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 				fn = writeFloatArrFn(accessor.Float32Array, f.fieldSep, newIndent)
 			case api.ArrayOf(api.Kind_Float64):
 				fn = writeFloatArrFn(accessor.Float64Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_String), api.ArrayOf(api.Kind_CString):
+				fn = writeStringArrFn(accessor.StringArray, f.fieldSep, newIndent, func(s string) string { return s })
+			case api.ArrayOf(api.Kind_Bytes):
+				fn = writeStringArrFn(accessor.BytesArray, f.fieldSep, newIndent, func(b []byte) string { return hex.EncodeToString(b) })
 			default:
 				fn = func(e *encodeState, data datasource.Data) {
 					e.Write(fieldName)
