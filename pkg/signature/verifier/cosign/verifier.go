@@ -24,7 +24,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -55,13 +54,12 @@ const (
 	simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 )
 
-func craftCosignSignatureTag(digest string) (string, error) {
-	parts := strings.Split(digest, ":")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("wrong digest, expected two parts, got %d", len(parts))
+func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, signingInfoTag string, imageStore oras.Target) error {
+	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
+		return fmt.Errorf("copying index tag %q: %w", signingInfoTag, err)
 	}
 
-	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
+	return nil
 }
 
 func loadSignature(ctx context.Context, imageStore oras.Target, signatureTag string) ([]byte, *ocispec.Descriptor, error) {
@@ -168,7 +166,7 @@ func loadSigningInformation(ctx context.Context, imageRef reference.Named, image
 		return nil, nil, fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureTag, err := craftCosignSignatureTag(imageDigest)
+	signatureTag, err := helpers.CraftCosignSignatureTag(imageDigest)
 	if err != nil {
 		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
 	}
