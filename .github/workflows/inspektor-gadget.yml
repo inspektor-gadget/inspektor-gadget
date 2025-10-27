@@ -8,6 +8,7 @@ env:
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:main
   DEFAULT_GADGET_BUILDER_IMAGE: ghcr.io/inspektor-gadget/gadget-builder:main
+  DEFAULT_TOOLS_BENCH_IMAGE: ghcr.io/inspektor-gadget/benchmark:main
   # With the recent update of docker/build-push-action to v6, this action
   # started creating docker build summary files (i.e. .dockerbuild).
   # Sadly, these files create troubles when trying to download artifact in the
@@ -989,6 +990,11 @@ jobs:
               include/**
               Dockerfiles/gadget-builder.Dockerfile
               cmd/common/image/Makefile.build
+          - name: "tools-bench"
+            context: "tools/bench"
+            dockerfile: "tools/bench/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
+            key-files: "tools/bench/*"
     steps:
     - uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493 # v4.2.2
     - name: Set up Docker Buildx
@@ -1039,6 +1045,8 @@ jobs:
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
           elif [ ${{ matrix.image.name }} == "gadget-builder" ]; then
             image=${{ env.DEFAULT_GADGET_BUILDER_IMAGE }}
+          elif [ ${{ matrix.image.name }} == "tools-bench" ]; then
+            image=${{ env.DEFAULT_TOOLS_BENCH_IMAGE }}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
             exit 1

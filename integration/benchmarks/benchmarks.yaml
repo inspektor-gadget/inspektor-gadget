@@ -16,23 +16,23 @@ tests:
     # trace only the client container
     gadgetParams: ["--containername=test-trace_dns-client"]
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=dns-server
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=dns:server={{.ServerIP}}:5353 --events-per-second={{.EventsPerSecond}}
     # at 8192 IG starts to drop packets
     eventsPerSecond: [ 256, 512, 1024, 2048, 4096 ]
   - name: trace_exec
     gadgetName: trace_exec:v0.43.0
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=exec --events-per-second={{.EventsPerSecond}}
     eventsPerSecond: [ 1024, 2048, 4096, 8192 ]
   - name: trace_open
     gadgetName: trace_open:v0.43.0
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=open --events-per-second={{.EventsPerSecond}}
     eventsPerSecond: [ 1024, 2048, 4096, 8192, 16384 ]
   - name: trace_tcp
@@ -40,7 +40,7 @@ tests:
     # trace only the client container
     gadgetParams: ["--containername=test-trace_tcp-client"]
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=tcp-server
       sysctls:
         "net.ipv4.ip_local_port_range": "10000 65535"
@@ -48,7 +48,7 @@ tests:
         "net.ipv4.tcp_fin_timeout":     "10"
         "net.ipv4.tcp_timestamps":      "0"
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=tcp:server={{.ServerIP}}:8080 --events-per-second={{.EventsPerSecond}}
       sysctls:
         "net.ipv4.ip_local_port_range": "10000 65535"
@@ -62,7 +62,7 @@ tests:
     # trace only the client container
     gadgetParams: ["--containername=test-top_tcp-client"]
     server:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=tcp-server
       sysctls:
         "net.ipv4.ip_local_port_range": "10000 65535"
@@ -70,7 +70,7 @@ tests:
         "net.ipv4.tcp_fin_timeout":     "10"
         "net.ipv4.tcp_timestamps":      "0"
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=tcp:server={{.ServerIP}}:8080 --events-per-second={{.EventsPerSecond}}
       sysctls:
         "net.ipv4.ip_local_port_range": "10000 65535"
@@ -82,7 +82,7 @@ tests:
   - name: top_process
     gadgetName: top_process:v0.43.0
     generator:
-      image: ghcr.io/mauriciovasquezbernal/bench
+      image: ghcr.io/inspektor-gadget/benchmark:main
       cmd: /bench --events=processes --events-per-second={{.EventsPerSecond}}
     # limit to 32768 as 32GB of memory aren't enough to run more processes
     eventsPerSecond: [ 2048, 4096, 8192, 16384, 32768 ]
