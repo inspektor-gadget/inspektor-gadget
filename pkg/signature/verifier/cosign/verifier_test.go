@@ -156,7 +156,7 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			store, err := oci.New(filepath.Join("..", "testdata", "oci-store"))
+			store, err := oci.New(filepath.Join("..", "..", "testdata", "oci-store"))
 			require.NoError(t, err)
 
 			ref, err := reference.ParseNormalizedNamed(test.image)
