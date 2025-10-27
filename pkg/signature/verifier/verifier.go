@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package verifier
 
 import (
 	"context"
@@ -23,8 +23,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
 )
 
 type Verifier interface {

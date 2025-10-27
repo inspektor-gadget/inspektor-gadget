@@ -17,14 +17,14 @@ package cosign
 import (
 	"context"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
-type Exporter struct{} // Empty type only to respect the interface.
+type Puller struct{} // Empty type only to respect the interface.
 
-func (e *Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), craftCosignSignatureTag)
+func (c *Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
+	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, helpers.CraftCosignSignatureTag)
 }
