@@ -24,6 +24,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -53,6 +54,13 @@ const (
 	// https://github.com/sigstore/cosign/blob/45bda40b8ef4/pkg/types/media.go#L28
 	simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 )
+
+const (
+	legacyFormat string = "legacy"
+	oci11Format  string = "oci 1.1"
+)
+
+var supportedFormats = []string{legacyFormat, oci11Format}
 
 func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, signingInfoTag string, imageStore oras.Target) error {
 	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
@@ -129,7 +137,25 @@ func getSignatureTagOci11(ctx context.Context, imageStore oras.Target, signingIn
 	return "", fmt.Errorf("signature tag not found for index %q", signingInfoTag)
 }
 
-func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *remote.Repository, signingInfoTag string, useOCI11 bool) ([]byte, []byte, error) {
+func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *remote.Repository, imageDigest string, format string) ([]byte, []byte, error) {
+	var signingInfoTag string
+	switch format {
+	case legacyFormat:
+		signatureTag, err := helpers.CraftCosignSignatureTag(imageDigest)
+		if err != nil {
+			return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
+		}
+		signingInfoTag = signatureTag
+	case oci11Format:
+		indexTag, err := helpers.CraftSignatureIndexTag(imageDigest)
+		if err != nil {
+			return nil, nil, fmt.Errorf("crafting index tag: %w", err)
+		}
+		signingInfoTag = indexTag
+	default:
+		return nil, nil, fmt.Errorf("signature format %q unknown, expected one in %v", format, strings.Join(supportedFormats, ","))
+	}
+
 	_, err := imageStore.Resolve(ctx, signingInfoTag)
 	if err != nil {
 		if err := pullCosignSigningInformation(ctx, repo, signingInfoTag, imageStore); err != nil {
@@ -138,13 +164,14 @@ func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *
 	}
 
 	var signatureTag string
-	if useOCI11 {
+	switch format {
+	case legacyFormat:
+		signatureTag = signingInfoTag
+	case oci11Format:
 		signatureTag, err = getSignatureTagOci11(ctx, imageStore, signingInfoTag)
 		if err != nil {
 			return nil, nil, fmt.Errorf("getting OCI 1.1 signature tag: %w", err)
 		}
-	} else {
-		signatureTag = signingInfoTag
 	}
 
 	signature, payloadTag, err := loadSignature(ctx, imageStore, signatureTag)
@@ -166,27 +193,16 @@ func loadSigningInformation(ctx context.Context, imageRef reference.Named, image
 		return nil, nil, fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureTag, err := helpers.CraftCosignSignatureTag(imageDigest)
-	if err != nil {
-		return nil, nil, fmt.Errorf("crafting signature tag: %w", err)
+	errs := make([]error, 0)
+	for _, format := range supportedFormats {
+		signature, payload, err := _loadSigningInformation(ctx, imageStore, repo, imageDigest, format)
+		if err == nil {
+			return signature, payload, nil
+		}
+		errs = append(errs, err)
 	}
 
-	signature, payload, loadSignatureTagErr := _loadSigningInformation(ctx, imageStore, repo, signatureTag, false)
-	if loadSignatureTagErr == nil {
-		return signature, payload, nil
-	}
-
-	indexTag, err := helpers.CraftSignatureIndexTag(imageDigest)
-	if err != nil {
-		return nil, nil, fmt.Errorf("crafting index tag: %w", err)
-	}
-
-	signature, payload, loadIndexTagErr := _loadSigningInformation(ctx, imageStore, repo, indexTag, true)
-	if loadIndexTagErr == nil {
-		return signature, payload, nil
-	}
-
-	return nil, nil, errors.Join(loadSignatureTagErr, loadIndexTagErr)
+	return nil, nil, errors.Join(errs...)
 }
 
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
