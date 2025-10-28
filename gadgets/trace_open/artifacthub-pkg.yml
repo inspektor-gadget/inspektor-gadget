@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.45.0
+version: 0.41.1
 name: "trace open"
 category: monitoring-logging
 displayName: "trace open"
-createdAt: "2025-10-06T08:07:40Z"
-digest: "2025-10-06T08:07:40Z"
+createdAt: "2025-10-28T09:34:07Z"
+digest: "2025-10-28T09:34:07Z"
 description: "trace open files"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
