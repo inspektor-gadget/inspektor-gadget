@@ -20,7 +20,7 @@ MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
 GADGET_TAG ?= $(shell ./tools/image-tag branch)
 GADGET_REPOSITORY ?= $(CONTAINER_REPO_NAMESPACE)/gadget
-VERIFY_GADGETS ?= true
+VERIFY_GADGETS ?= false
 TEST_COMPONENT ?= inspektor-gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
@@ -355,7 +355,11 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 	  '.[] | select(.repoTags[] == "$(CONTAINER_REPO):$(IMAGE_TAG)")' || \
 	  (echo "Image $(CONTAINER_REPO):$(IMAGE_TAG) was not correctly loaded into Minikube" && false)
 	@echo
-	./kubectl-gadget deploy --set-daemon-config=operator.oci.verify-image=$(VERIFY_GADGETS) --liveness-probe=$(LIVENESS_PROBE) \
+	@echo "Preparing daemon config file"
+	echo "operator.oci.insecure-registries: [ "$(shell $(MINIKUBE) ip):5000" ]" > .daemon-config.yaml
+	echo "operator.oci.verify-image: $(VERIFY_GADGETS)" >> .daemon-config.yaml
+	@echo "Deploying Inspektor Gadget on Minikube"
+	./kubectl-gadget deploy --daemon-config=.daemon-config.yaml --liveness-probe=$(LIVENESS_PROBE) \
 		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
