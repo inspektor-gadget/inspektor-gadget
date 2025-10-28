@@ -34,27 +34,84 @@ import (
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 )
 
-type dataElement api.DataElement
+type EdataElement api.DataElement
 
-func (d *dataElement) private() {}
+func (d *EdataElement) private() {}
 
-func (d *dataElement) payload() [][]byte {
+func (d *EdataElement) payload() [][]byte {
 	return d.Payload
 }
 
-type data api.GadgetData
+func (d *EdataElement) DeepCopy() Data {
+	out := &EdataElement{}
+	d.DeepCopyInto(out)
+	return out
+}
 
-func (d *data) private() {}
+func (d *EdataElement) DeepCopyInto(out Data) {
+	o, ok := out.(*EdataElement)
+	if !ok {
+		return
+	}
 
-func (d *data) payload() [][]byte {
+	if len(d.Payload) == 0 {
+		o.Payload = nil
+		return
+	}
+
+	if cap(o.Payload) < len(d.Payload) {
+		o.Payload = make([][]byte, len(d.Payload))
+	}
+	o.Payload = o.Payload[:len(d.Payload)]
+
+	for i, p := range d.Payload {
+		if cap(o.Payload[i]) < len(p) {
+			o.Payload[i] = make([]byte, len(p))
+		}
+		o.Payload[i] = o.Payload[i][:len(p)]
+		copy(o.Payload[i], p)
+	}
+}
+
+type Edata api.GadgetData
+
+func (d *Edata) private() {}
+
+func (d *Edata) payload() [][]byte {
 	return d.Data.Payload
 }
 
-func (d *data) SetSeq(seq uint32) {
+func (d *Edata) DeepCopy() Data {
+	out := &Edata{}
+	d.DeepCopyInto(out)
+	return out
+}
+
+func (d *Edata) DeepCopyInto(out Data) {
+	o, ok := out.(*Edata)
+	if !ok {
+		return
+	}
+	o.Node = d.Node
+	o.Seq = d.Seq
+
+	if d.Data == nil {
+		o.Data = nil
+		return
+	}
+
+	if o.Data == nil {
+		o.Data = &api.DataElement{}
+	}
+
+	(*EdataElement)(d.Data).DeepCopyInto((*EdataElement)(o.Data))
+}
+
+func (d *Edata) SetSeq(seq uint32) {
 	d.Seq = seq
 }
 
-func (d *data) Raw() proto.Message {
+func (d *Edata) Raw() proto.Message {
 	return (*api.GadgetData)(d)
 }
 
@@ -76,7 +133,7 @@ func (d *dataArray) Get(index int) Data {
 	if index < 0 || index >= len(d.DataArray) {
 		return nil
 	}
-	return (*dataElement)(d.DataArray[index])
+	return (*EdataElement)(d.DataArray[index])
 }
 
 func (d *dataArray) Swap(i, j int) {
@@ -106,7 +163,7 @@ func (d *dataArray) New() Data {
 }
 
 func (d *dataArray) Append(data Data) {
-	d.DataArray = append(d.DataArray, (*api.DataElement)(data.(*dataElement)))
+	d.DataArray = append(d.DataArray, (*api.DataElement)(data.(*EdataElement)))
 }
 
 func (d *dataArray) Len() int {
@@ -247,8 +304,8 @@ func (ds *dataSource) Type() Type {
 	return ds.dType
 }
 
-func (ds *dataSource) newDataElement() *dataElement {
-	d := &dataElement{
+func (ds *dataSource) newDataElement() *EdataElement {
+	d := &EdataElement{
 		Payload: make([][]byte, ds.payloadCount),
 	}
 
@@ -281,7 +338,7 @@ func (ds *dataSource) NewPacketSingle() (PacketSingle, error) {
 		return nil, errors.New("only single data sources can create single packets")
 	}
 
-	return &data{
+	return &Edata{
 		Data: (*api.DataElement)(ds.newDataElement()),
 	}, nil
 }
@@ -291,7 +348,7 @@ func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
 		return nil, errors.New("only single data sources can create single packets")
 	}
 
-	data := &data{}
+	data := &Edata{}
 	err := proto.Unmarshal(b, data.Raw())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling payload: %w", err)
@@ -592,14 +649,14 @@ func (ds *dataSource) Subscribe(fn DataFunc, priority int) error {
 	switch ds.Type() {
 	case TypeSingle:
 		ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
-			return fn(ds, p.(*data))
+			return fn(ds, p.(*Edata))
 		}})
 	case TypeArray:
 		ds.addSubscription(&subscription{priority: priority, fn: func(source DataSource, p Packet) error {
 			i := 0
 			alen := len(p.(*dataArray).DataArray)
 			for i < alen {
-				err := fn(ds, (*dataElement)(p.(*dataArray).DataArray[i]))
+				err := fn(ds, (*EdataElement)(p.(*dataArray).DataArray[i]))
 				if err != nil {
 					if errors.Is(err, ErrDiscard) {
 						p.(*dataArray).DataArray = slices.Delete(p.(*dataArray).DataArray, i, i+1)
@@ -710,7 +767,7 @@ func (ds *dataSource) Dump(p Packet, wr io.Writer) {
 		ds.dumpData(wr, p.(Data))
 	case TypeArray:
 		for _, d := range p.(*dataArray).GetDataArray() {
-			ds.dumpData(wr, (*dataElement)(d))
+			ds.dumpData(wr, (*EdataElement)(d))
 		}
 	}
 }

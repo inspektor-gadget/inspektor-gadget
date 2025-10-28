@@ -48,6 +48,8 @@ const (
 type Data interface {
 	private()
 	payload() [][]byte
+	DeepCopy() Data
+	DeepCopyInto(Data)
 }
 
 type DataArray interface {
