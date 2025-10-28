@@ -2359,8 +2359,8 @@ jobs:
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-        with:
-          cosign-release: 'v2.6.0'
+      with:
+        cosign-release: 'v2.6.0'
     - name: Sign checksums file
       if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
