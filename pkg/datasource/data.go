@@ -42,12 +42,20 @@ func (d *dataElement) payload() [][]byte {
 	return d.Payload
 }
 
+func (d *dataElement) DeepCopy() Data {
+	return (*dataElement)(proto.CloneOf((*api.DataElement)(d)))
+}
+
 type data api.GadgetData
 
 func (d *data) private() {}
 
 func (d *data) payload() [][]byte {
 	return d.Data.Payload
+}
+
+func (d *data) DeepCopy() Data {
+	return (*data)(proto.CloneOf((*api.GadgetData)(d)))
 }
 
 func (d *data) SetSeq(seq uint32) {
