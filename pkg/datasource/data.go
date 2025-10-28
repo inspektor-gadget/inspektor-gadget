@@ -42,12 +42,57 @@ func (d *dataElement) payload() [][]byte {
 	return d.Payload
 }
 
+func (d *dataElement) deepCopyInto(out Data) {
+	o, ok := out.(*dataElement)
+	if !ok {
+		return
+	}
+
+	if len(d.Payload) == 0 {
+		o.Payload = nil
+		return
+	}
+
+	if cap(o.Payload) < len(d.Payload) {
+		o.Payload = make([][]byte, len(d.Payload))
+	}
+	o.Payload = o.Payload[:len(d.Payload)]
+
+	for i, p := range d.Payload {
+		if cap(o.Payload[i]) < len(p) {
+			o.Payload[i] = make([]byte, len(p))
+		}
+		o.Payload[i] = o.Payload[i][:len(p)]
+		copy(o.Payload[i], p)
+	}
+}
+
 type data api.GadgetData
 
 func (d *data) private() {}
 
 func (d *data) payload() [][]byte {
 	return d.Data.Payload
+}
+
+func (d *data) deepCopyInto(out Data) {
+	o, ok := out.(*data)
+	if !ok {
+		return
+	}
+	o.Node = d.Node
+	o.Seq = d.Seq
+
+	if d.Data == nil {
+		o.Data = nil
+		return
+	}
+
+	if o.Data == nil {
+		o.Data = &api.DataElement{}
+	}
+
+	(*dataElement)(d.Data).deepCopyInto((*dataElement)(o.Data))
 }
 
 func (d *data) SetSeq(seq uint32) {
@@ -95,7 +140,7 @@ func (d *dataArray) Resize(size int) error {
 		return errors.New("resizing to a larger size is not supported")
 	}
 	for i := size; i < len(d.DataArray); i++ {
-		d.Release(d.Get(i))
+		d.ds.Release(d.Get(i))
 	}
 	d.DataArray = d.DataArray[:size]
 	return nil
@@ -113,7 +158,11 @@ func (d *dataArray) Len() int {
 	return len(d.DataArray)
 }
 
+// Release returns a Data item to the pool for reuse.
+// The Data instance must not be used after calling Release.
+// This delegates to the underlying DataSource's Release method.
 func (d *dataArray) Release(data Data) {
+	d.ds.Release(data)
 }
 
 type field api.Field
@@ -178,6 +227,13 @@ type dataSource struct {
 	lock      sync.RWMutex
 
 	config *viper.Viper
+
+	// Per-DataSource pools for efficient memory reuse
+	dataElementPool sync.Pool
+	dataPool        sync.Pool
+
+	// allocatorFields contains fields that need memory allocation in newDataElement
+	allocatorFields []*field
 }
 
 func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSource, error) {
@@ -196,6 +252,15 @@ func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSourc
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
 		annotations:     make(map[string]string),
+		allocatorFields: make([]*field, 0),
+	}
+
+	// Initialize per-DataSource pools
+	ds.dataElementPool.New = func() interface{} {
+		return &dataElement{}
+	}
+	ds.dataPool.New = func() interface{} {
+		return &data{}
 	}
 
 	for _, option := range options {
@@ -227,6 +292,7 @@ func NewFromAPI(in *api.DataSource) (DataSource, error) {
 		if !FieldFlagUnreferenced.In(f.Flags) {
 			ds.fieldMap[f.FullName] = (*field)(f)
 		}
+		ds.addToAllocatorFields((*field)(f))
 	}
 	if in.Flags&api.DataSourceFlagsBigEndian != 0 {
 		ds.byteOrder = binary.BigEndian
@@ -247,30 +313,64 @@ func (ds *dataSource) Type() Type {
 	return ds.dType
 }
 
-func (ds *dataSource) newDataElement() *dataElement {
-	d := &dataElement{
-		Payload: make([][]byte, ds.payloadCount),
+func getSizeForKind(kind api.Kind) int {
+	switch kind {
+	case api.Kind_Bool, api.Kind_Int8, api.Kind_Uint8:
+		return 1
+	case api.Kind_Int16, api.Kind_Uint16:
+		return 2
+	case api.Kind_Int32, api.Kind_Uint32, api.Kind_Float32:
+		return 4
+	case api.Kind_Int64, api.Kind_Uint64, api.Kind_Float64:
+		return 8
+	default:
+		return 0
+	}
+}
+
+func (ds *dataSource) addToAllocatorFields(f *field) {
+	if FieldFlagEmpty.In(f.Flags) || FieldFlagStaticMember.In(f.Flags) ||
+		FieldFlagContainer.In(f.Flags) {
+		return
 	}
 
-	// Allocate memory for fixed size fields added with Add{Sub}Field
-	for _, f := range ds.fields {
-		// Skip all fields that don't need memory allocated: empty, static
-		// members and containers
-		if FieldFlagEmpty.In(f.Flags) || FieldFlagStaticMember.In(f.Flags) ||
-			FieldFlagContainer.In(f.Flags) {
+	size := getSizeForKind(f.Kind)
+	if size == 0 {
+		return
+	}
+
+	ds.allocatorFields = append(ds.allocatorFields, f)
+}
+
+func (ds *dataSource) newDataElement() *dataElement {
+	d := ds.dataElementPool.Get().(*dataElement)
+
+	// Resize payload slice if needed
+	if cap(d.Payload) < int(ds.payloadCount) {
+		d.Payload = make([][]byte, int(ds.payloadCount))
+	} else {
+		d.Payload = d.Payload[:int(ds.payloadCount)]
+		// Keep existing payload slices for reuse, don't set to nil
+	}
+
+	// Allocate or reuse memory for fixed size fields
+	for _, f := range ds.allocatorFields {
+		if FieldFlagUnreferenced.In(f.Flags) {
 			continue
 		}
 
-		switch f.Kind {
-		case api.Kind_Bool, api.Kind_Int8, api.Kind_Uint8:
-			d.payload()[f.PayloadIndex] = make([]byte, 1)
-		case api.Kind_Int16, api.Kind_Uint16:
-			d.payload()[f.PayloadIndex] = make([]byte, 2)
-		case api.Kind_Int32, api.Kind_Uint32, api.Kind_Float32:
-			d.payload()[f.PayloadIndex] = make([]byte, 4)
-		case api.Kind_Int64, api.Kind_Uint64, api.Kind_Float64:
-			d.payload()[f.PayloadIndex] = make([]byte, 8)
+		size := getSizeForKind(f.Kind)
+		if size == 0 {
+			continue
 		}
+
+		slot := d.payload()[f.PayloadIndex]
+		if cap(slot) < size {
+			slot = make([]byte, size)
+		} else {
+			slot = slot[:size]
+		}
+		d.payload()[f.PayloadIndex] = slot
 	}
 
 	return d
@@ -281,9 +381,11 @@ func (ds *dataSource) NewPacketSingle() (PacketSingle, error) {
 		return nil, errors.New("only single data sources can create single packets")
 	}
 
-	return &data{
-		Data: (*api.DataElement)(ds.newDataElement()),
-	}, nil
+	d := ds.dataPool.Get().(*data)
+	d.Node = ""
+	d.Seq = 0
+	d.Data = (*api.DataElement)(ds.newDataElement())
+	return d, nil
 }
 
 func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
@@ -291,16 +393,17 @@ func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
 		return nil, errors.New("only single data sources can create single packets")
 	}
 
-	data := &data{}
-	err := proto.Unmarshal(b, data.Raw())
+	d := ds.dataPool.Get().(*data)
+	err := proto.Unmarshal(b, d.Raw())
 	if err != nil {
+		ds.dataPool.Put(d)
 		return nil, fmt.Errorf("unmarshaling payload: %w", err)
 	}
 
 	// TODO: check that size fields matches the size of the fields in the
 	// DataSource
 
-	return data, nil
+	return d, nil
 }
 
 func (ds *dataSource) NewPacketArray() (PacketArray, error) {
@@ -431,6 +534,10 @@ func (ds *dataSource) AddStaticFields(size uint32, fields []StaticField) (FieldA
 
 	ds.applyFieldConfig(newFields...)
 
+	for _, f := range newFields {
+		ds.addToAllocatorFields(f)
+	}
+
 	ds.fields = append(ds.fields, newFields...)
 
 	for _, f := range newFields {
@@ -548,6 +655,8 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 	}
 
 	ds.applyFieldConfig(nf)
+
+	ds.addToAllocatorFields(nf)
 
 	ds.fields = append(ds.fields, nf)
 	ds.fieldMap[nf.FullName] = nf
@@ -678,7 +787,55 @@ func (ds *dataSource) EmitAndRelease(p Packet) error {
 	return nil
 }
 
-func (ds *dataSource) Release(p Packet) {
+// DeepCopy creates a deep copy of the Data using a pooled instance from this DataSource.
+// The returned Data MUST be released by calling DataSource.Release() when no longer needed.
+func (ds *dataSource) DeepCopy(source Data) Data {
+	switch src := source.(type) {
+	case *dataElement:
+		out := ds.dataElementPool.Get().(*dataElement)
+		src.deepCopyInto(out)
+		return out
+	case *data:
+		out := ds.dataPool.Get().(*data)
+		src.deepCopyInto(out)
+		return out
+	default:
+		return nil
+	}
+}
+
+// Release returns a Packet or Data to the pool for reuse.
+// The instance MUST NOT be used after calling Release.
+func (ds *dataSource) Release(item interface{}) {
+	switch v := item.(type) {
+	case *data:
+		if v.Data != nil {
+			elem := (*dataElement)(v.Data)
+			// Keep payload slices for reuse - don't set to nil to reduce GC pressure
+			elem.Payload = nil
+			ds.dataElementPool.Put(elem)
+			v.Data = nil
+		}
+		v.Node = ""
+		v.Seq = 0
+		ds.dataPool.Put(v)
+	case *dataElement:
+		// Keep payload slices for reuse - don't set to nil to reduce GC pressure
+		v.Payload = nil
+		ds.dataElementPool.Put(v)
+	case *dataArray:
+		// Release all elements in the array
+		for _, elem := range v.DataArray {
+			dataElem := (*dataElement)(elem)
+			// Keep payload slices for reuse - don't set to nil to reduce GC pressure
+			dataElem.Payload = nil
+			ds.dataElementPool.Put(dataElem)
+		}
+		v.DataArray = nil
+		v.Node = ""
+		v.Seq = 0
+		// Note: dataArray embeds *api.GadgetDataArray, we don't pool this as it's created less frequently
+	}
 }
 
 func (ds *dataSource) ReportLostData(ctr uint64) {
