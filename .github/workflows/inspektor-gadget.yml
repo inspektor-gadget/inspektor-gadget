@@ -990,7 +990,7 @@ jobs:
               include/**
               Dockerfiles/gadget-builder.Dockerfile
               cmd/common/image/Makefile.build
-          - name: "tools-bench"
+          - name: "benchmark"
             context: "tools/bench"
             dockerfile: "tools/bench/Dockerfile"
             platform: "linux/amd64,linux/arm64"
@@ -1045,7 +1045,7 @@ jobs:
             image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
           elif [ ${{ matrix.image.name }} == "gadget-builder" ]; then
             image=${{ env.DEFAULT_GADGET_BUILDER_IMAGE }}
-          elif [ ${{ matrix.image.name }} == "tools-bench" ]; then
+          elif [ ${{ matrix.image.name }} == "benchmark" ]; then
             image=${{ env.DEFAULT_TOOLS_BENCH_IMAGE }}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
