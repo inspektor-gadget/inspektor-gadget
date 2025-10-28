@@ -44,6 +44,7 @@ func NewImageCmd(r runtime.Runtime, addCommands []*cobra.Command) *cobra.Command
 	cmd.AddCommand(NewListCmd())
 	cmd.AddCommand(NewInspectCmd(r))
 	cmd.AddCommand(NewRemoveCmd())
+	cmd.AddCommand(NewVerifyCmd())
 
 	return cmd
 }
