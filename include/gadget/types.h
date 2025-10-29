@@ -134,6 +134,7 @@ struct gadget_creds {
 struct gadget_parent {
 	gadget_pcomm comm[TASK_COMM_LEN];
 	gadget_ppid pid;
+	gadget_tid tid;
 };
 
 struct gadget_process {

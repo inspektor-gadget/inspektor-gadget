@@ -76,6 +76,7 @@ type Creds struct {
 type Parent struct {
 	Comm string `json:"comm,omitempty"`
 	Pid  uint32 `json:"pid,omitempty"`
+	Tid  uint32 `json:"tid,omitempty"`
 }
 
 type Process struct {
