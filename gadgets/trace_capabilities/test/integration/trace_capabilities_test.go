@@ -41,16 +41,16 @@ type traceCapabilitiesEvent struct {
 	Timestamp string        `json:"timestamp"`
 	Proc      utils.Process `json:"proc"`
 
-	CurrentUserNs uint64 `json:"current_user_ns"`
-	TargetUserNs  uint64 `json:"target_user_ns"`
-	CapEffective  string `json:"cap_effective"`
-	Cap           string `json:"cap"`
-	Audit         uint32 `json:"audit"`
-	Insetid       uint32 `json:"insetid"`
-	Syscall       string `json:"syscall"`
-	Kstack        string `json:"kstack"`
-	Ustack        ustack `json:"ustack"`
-	Capable       bool   `json:"capable"`
+	CurrentUserNs uint64   `json:"current_user_ns"`
+	TargetUserNs  uint64   `json:"target_user_ns"`
+	CapEffective  string   `json:"cap_effective"`
+	Cap           string   `json:"cap"`
+	Audit         uint32   `json:"audit"`
+	Insetid       uint32   `json:"insetid"`
+	Syscall       string   `json:"syscall"`
+	Kstack        []string `json:"kstack"`
+	Ustack        ustack   `json:"ustack"`
+	Capable       bool     `json:"capable"`
 }
 
 func TestTraceCapabilities(t *testing.T) {
@@ -182,7 +182,7 @@ int main() {
 
 					// Check the existence of the following fields
 					Timestamp:     utils.NormalizedStr,
-					Kstack:        utils.NormalizedStr,
+					Kstack:        utils.NormalizedStrArray,
 					Insetid:       0,
 					CapEffective:  utils.NormalizedStr,
 					CurrentUserNs: 0,
@@ -194,7 +194,7 @@ int main() {
 				utils.NormalizeCommonData(&e.CommonData)
 				utils.NormalizeString(&e.Timestamp)
 				utils.NormalizeProc(&e.Proc)
-				utils.NormalizeString(&e.Kstack)
+				utils.NormalizeStringArray(&e.Kstack)
 				utils.NormalizeString(&e.CapEffective)
 
 				if strings.HasPrefix(e.Proc.Comm, "mychroot") {

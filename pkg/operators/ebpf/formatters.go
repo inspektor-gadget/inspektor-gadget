@@ -183,20 +183,19 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				i.logger.Warnf("getting target name for kstack field %q: %v", in.Name(), err)
 				continue
 			}
-			out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
+			out, err := ds.AddField(targetName, api.ArrayOf(api.Kind_String), datasource.WithSameParentAs(in))
 			if err != nil {
 				return err
 			}
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
 				inBytes := in.Get(data)
 				stackId := ds.ByteOrder().Uint32(inBytes)
-				outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
+				stackTrace, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
 				if err != nil {
 					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
-					out.Set(data, []byte{})
 					return nil
 				}
-				out.Set(data, []byte(outString))
+				out.PutStringArray(data, stackTrace)
 				return nil
 			}
 			i.formatters[ds] = append(i.formatters[ds], converter)
@@ -205,20 +204,20 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 	return nil
 }
 
-func fetchAndFormatStackTrace(stackId uint32, stackLookup func(interface{}, interface{}) error, lookupByInstructionPointer func(uint64) string) (string, error) {
+func fetchAndFormatStackTrace(stackId uint32, stackLookup func(interface{}, interface{}) error, lookupByInstructionPointer func(uint64) string) ([]string, error) {
 	stack := [ebpftypes.KernelPerfMaxStackDepth]uint64{}
 	err := stackLookup(stackId, &stack)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	outString := ""
-	for depth, addr := range stack {
+	ret := []string{}
+	for _, addr := range stack {
 		if addr == 0 {
 			break
 		}
-		outString += fmt.Sprintf("[%d]%s; ", depth, lookupByInstructionPointer(addr))
+		ret = append(ret, lookupByInstructionPointer(addr))
 	}
-	return outString, nil
+	return ret, nil
 }
 
 func (i *ebpfInstance) initFormatters(gadgetCtx operators.GadgetContext) error {

@@ -256,6 +256,8 @@ const (
 	NormalizedStr = "foo"
 )
 
+var NormalizedStrArray = []string{"foo", "bar"}
+
 func NormalizeInt[T constraints.Integer](f *T) {
 	var zero T
 
@@ -267,5 +269,11 @@ func NormalizeInt[T constraints.Integer](f *T) {
 func NormalizeString(f *string) {
 	if *f != "" {
 		*f = NormalizedStr
+	}
+}
+
+func NormalizeStringArray(f *[]string) {
+	if len(*f) > 0 {
+		*f = NormalizedStrArray
 	}
 }
