@@ -310,7 +310,7 @@ func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOpt
 			return nil, errors.New("adding array of arrays is not supported")
 		}
 
-		kind = api.ArrayOf(kind)
+		//kind = api.ArrayOf(kind)
 	}
 
 	parentFullName, err := resolveNames(a.f.Index, a.ds.fields, 0)

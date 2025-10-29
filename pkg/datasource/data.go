@@ -551,6 +551,7 @@ func (ds *dataSource) AddField(name string, kind api.Kind, opts ...FieldOption) 
 
 	// Reserve new payload for non-empty fields
 	if !FieldFlagEmpty.In(nf.Flags) {
+		fmt.Printf("Reserving payload for field %q\n", nf.FullName)
 		nf.PayloadIndex = ds.payloadCount
 		ds.payloadCount++
 	}

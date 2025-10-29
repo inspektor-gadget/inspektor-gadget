@@ -230,8 +230,10 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 		var subFieldCount int
 		subFields := accessor.SubFields()
 		if len(subFields) > 0 {
+			fmt.Printf("handling %s that has subfields\n", fullFieldName)
 			subFieldFuncs, subFieldCount = f.addSubFields(subFields, fullFieldName+".", indent+f.indent)
 			fieldCounter += subFieldCount
+			fmt.Printf("done with subfields of %s\n", fullFieldName)
 		}
 
 		// If subFieldCount is > 0, a child of this field has been requested, so we also
@@ -256,6 +258,8 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			}
 		}
 
+		//fmt.Printf("including field %s\n", fullFieldName)
+
 		ctr++
 		fieldCounter++
 		fieldName := []byte("\"" + accessor.Name() + "\":")
@@ -275,16 +279,54 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 			closerArray = append([]byte("\n"+indent), closerArray...)
 		}
 
+		newIndent := ""
+		if f.pretty {
+			newIndent = indent + f.indent
+		}
+
 		// Field has subfields
 		if len(subFields) > 0 {
-			fns = append(fns, func(e *encodeState, data datasource.Data) {
-				e.Write(fieldName)
-				e.Write(f.opener)
-			})
-			fns = append(fns, subFieldFuncs...)
-			fns = append(fns, func(e *encodeState, data datasource.Data) {
-				e.Write(closer)
-			})
+			if accessor.Type() == api.ArrayOf(api.Kind_Invalid) {
+				fmt.Printf("array of objects for field1 %s\n", fullFieldName)
+				fns = append(fns, func(e *encodeState, data datasource.Data) {
+					e.Write(fieldName)
+					e.Write(f.openerArray)
+					// TODO: should loop over elements
+					vals := []string{"one", "two", "three"} //dummy
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(fieldSep)
+						}
+						e.WriteString(newIndent)
+						writeString(e, v)
+					}
+					//for _, fn := range subFieldFuncs {
+					//	fn(e, data)
+					//}
+					e.Write(closerArray)
+				})
+			} else {
+				fmt.Printf("handling field %s as object\n", fullFieldName)
+				fns = append(fns, func(e *encodeState, data datasource.Data) {
+					e.Write(fieldName)
+					e.Write(f.opener)
+				})
+				fns = append(fns, subFieldFuncs...)
+				fns = append(fns, func(e *encodeState, data datasource.Data) {
+					e.Write(closer)
+				})
+			}
+
+			//if accessor.Type() == api.ArrayOf(api.Kind_Invalid) {
+			//	fmt.Printf("array of objects for field1 %s\n", fullFieldName)
+			//	fns = append(fns, func(e *encodeState, data datasource.Data) {
+			//		e.Write(fieldName)
+			//		e.Write(f.openerArray)
+			//		fn(e, data)
+			//		e.Write(closerArray)
+			//	})
+			//}
+
 			continue
 		}
 
@@ -292,6 +334,8 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 
 		// Field doesn't have subfields
 		if accessor.Type()&api.KindFlagArray != 0 {
+			fmt.Printf("handling field %s as array\n", fullFieldName)
+
 			newIndent := ""
 			if f.pretty {
 				newIndent = indent + f.indent
@@ -321,6 +365,8 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 				fn = writeStringArrFn(accessor.StringArray, f.fieldSep, newIndent, func(s string) string { return s })
 			case api.ArrayOf(api.Kind_Bytes):
 				fn = writeStringArrFn(accessor.BytesArray, f.fieldSep, newIndent, func(b []byte) string { return hex.EncodeToString(b) })
+			case api.ArrayOf(api.Kind_Invalid):
+				fmt.Printf("array of objects for field %s\n", fullFieldName)
 			default:
 				fn = func(e *encodeState, data datasource.Data) {
 					e.Write(fieldName)
