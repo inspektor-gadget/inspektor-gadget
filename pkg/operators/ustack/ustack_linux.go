@@ -18,7 +18,6 @@ package ustack
 
 import (
 	"fmt"
-	"strings"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -47,27 +46,23 @@ func checkBuildIDMap(buildIDMap *ebpf.Map) error {
 	return nil
 }
 
-func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) (string, string, []symbolizer.StackItemQuery, error) {
+func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) ([]symbolizer.StackItemQuery, error) {
 	logger := gadgetCtx.Logger()
 
 	stack := [ebpftypes.UserPerfMaxStackDepth]uint64{}
 	err := userStackMap.Lookup(stackId, &stack)
 	if err != nil {
 		logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
-		return "", "", nil, nil
+		return nil, nil
 	}
 
-	var addressesBuilder strings.Builder
 	stackQueries := make([]symbolizer.StackItemQuery, 0, ebpftypes.UserPerfMaxStackDepth)
-	for i, addr := range stack {
+	for _, addr := range stack {
 		if addr == 0 {
 			break
 		}
 		stackQueries = append(stackQueries, symbolizer.StackItemQuery{Addr: addr})
-		fmt.Fprintf(&addressesBuilder, "[%d]0x%016x; ", i, addr)
 	}
-	addressesStr := addressesBuilder.String()
-	buildIDStr := ""
 
 	// The buildIDMap is optional. Older gadgets won't have it.
 	if buildIDMap != nil && buildIDMap.MaxEntries() > 0 {
@@ -76,10 +71,9 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 		if errLookup != nil {
 			// The gadget didn't collect build ids
 			// Gadgets can use --collect-build-id to enable collecting build ids
-			return addressesStr, "", stackQueries, nil
+			return stackQueries, nil
 		}
 
-		var buildIDsBuilder strings.Builder
 	buildid_iter:
 		for i := 0; i < ebpftypes.UserPerfMaxStackDepth; i++ {
 			if i >= len(stackQueries) {
@@ -91,22 +85,15 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 			case unix.BPF_STACK_BUILD_ID_EMPTY:
 				break buildid_iter
 			case unix.BPF_STACK_BUILD_ID_VALID:
-				fmt.Fprintf(&buildIDsBuilder, "[%d]", i)
-				for _, byte := range b.BuildID {
-					fmt.Fprintf(&buildIDsBuilder, "%02x", byte)
-				}
-				fmt.Fprintf(&buildIDsBuilder, " +%x; ", b.OffsetOrIP)
 				stackQueries[i].ValidBuildID = true
 				stackQueries[i].BuildID = b.BuildID
 				stackQueries[i].Offset = b.OffsetOrIP
 			case unix.BPF_STACK_BUILD_ID_IP:
-				fmt.Fprintf(&buildIDsBuilder, "[%d]%x; ", i, b.OffsetOrIP)
 				stackQueries[i].IP = b.OffsetOrIP
 			}
 
 		}
-		buildIDStr = buildIDsBuilder.String()
 	}
 
-	return addressesStr, buildIDStr, stackQueries, nil
+	return stackQueries, nil
 }

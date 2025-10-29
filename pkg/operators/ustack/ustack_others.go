@@ -29,6 +29,6 @@ func checkBuildIDMap(buildIDMap *ebpf.Map) error {
 	return errors.ErrUnsupported
 }
 
-func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) (string, string, []symbolizer.StackItemQuery, error) {
-	return "", "", nil, errors.ErrUnsupported
+func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMap *ebpf.Map, stackId uint32) ([]symbolizer.StackItemQuery, error) {
+	return nil, errors.ErrUnsupported
 }

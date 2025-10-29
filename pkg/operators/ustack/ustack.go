@@ -16,7 +16,6 @@
 package ustack
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -215,10 +214,10 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 			// The ustack operator can run both on the client and on the server side.
 			// If it runs on the client side, the server might have already added the subfields.
-			addField := func(name string) (datasource.FieldAccessor, error) {
-				field := in.GetSubFieldsWithTag("name:" + name)
+			addField := func(parent datasource.FieldAccessor, name string, kind api.Kind) (datasource.FieldAccessor, error) {
+				field := parent.GetSubFieldsWithTag("name:" + name)
 				if len(field) == 0 {
-					return in.AddSubField(name, api.Kind_String,
+					return parent.AddSubField(name, kind,
 						datasource.WithFlags(datasource.FieldFlagHidden),
 						datasource.WithTags("name:"+name, "operator:ustack"))
 				}
@@ -229,15 +228,25 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 				return field[0], nil
 			}
-			addressesField, err := addField("addresses")
+			// each frame contains: address, buildid, offset_or_ip, symbols
+			framefield, err := addField(in, "frame", api.ArrayOf(api.Kind_Invalid))
 			if err != nil {
 				return err
 			}
-			buildIDField, err := addField("buildid")
+			addressesField, err := addField(framefield, "addresses", api.Kind_Uint64)
 			if err != nil {
 				return err
 			}
-			symbolsField, err := addField("symbols")
+			buildIDField, err := addField(framefield, "buildids", api.Kind_Bytes)
+			if err != nil {
+				return err
+			}
+			offsetOrIP, err := addField(framefield, "offsets_or_ips", api.Kind_Uint64)
+			if err != nil {
+				return err
+			}
+
+			symbolsField, err := addField(framefield, "symbols", api.Kind_String)
 			if err != nil {
 				return err
 			}
@@ -314,31 +323,40 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						buildIDMap = o.buildIDMap()
 					}
 
-					var addressesStr, buildIDStr string
+					//var addressesStr, buildIDStr string
 					var err error
-					addressesStr, buildIDStr, stackQueries, err = readUserStackMap(gadgetCtx, userStackMap, buildIDMap, stackId)
+					stackQueries, err = readUserStackMap(gadgetCtx, userStackMap, buildIDMap, stackId)
 					if err != nil {
 						logger.Warn(err)
 						return nil
 					}
-					if addressesStr != "" {
-						addressesField.PutString(data, addressesStr)
+
+					addresses := make([]uint64, 0, len(stackQueries))
+					buildIDs := make([][]byte, 0, len(stackQueries))
+					offsetOrIps := make([]uint64, 0, len(stackQueries))
+					for _, sq := range stackQueries {
+						buildIDs = append(buildIDs, sq.BuildID[:])
+						addresses = append(addresses, sq.Addr)
+						if sq.ValidBuildID {
+							offsetOrIps = append(offsetOrIps, sq.Offset)
+						} else {
+							offsetOrIps = append(offsetOrIps, sq.IP)
+						}
 					}
-					if buildIDStr != "" {
-						buildIDField.PutString(data, buildIDStr)
-					}
+					addressesField.PutUint64Array(data, addresses)
+					buildIDField.PutBytesArray(data, buildIDs)
+					offsetOrIP.PutUint64Array(data, offsetOrIps)
 
 					alreadyKnownSymbols = make([]string, len(stackQueries))
 				} else if o.symbolizer != nil {
 					// The symbolizer might be used client-side where we don't
 					// have access to BPF maps. Access data from the data source
 					// instead.
-					addressesStr, _ := addressesField.String(data)
-					addressesList := strings.Split(addressesStr, "; ")
-					buildIDStr, _ := buildIDField.String(data)
-					buildidList := strings.Split(buildIDStr, "; ")
-					alreadyKnownSymbolsStr, _ := symbolsField.String(data)
-					alreadyKnownSymbols = strings.Split(alreadyKnownSymbolsStr, "; ")
+					addresses, _ := addressesField.Uint64Array(data)
+					buildIDs, _ := buildIDField.BytesArray(data)
+					offsetsOrIPs, _ := offsetOrIP.Uint64Array(data)
+
+					alreadyKnownSymbols, _ := symbolsField.StringArray(data)
 					for i := range alreadyKnownSymbols {
 						index := strings.IndexByte(alreadyKnownSymbols[i], ']')
 						if index >= 0 {
@@ -346,46 +364,29 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						}
 					}
 
-					for i := range addressesList {
-						if addressesList[i] == "" {
+					for i, addr := range addresses {
+						if addresses[i] == 0 {
 							break
 						}
-						if len(buildidList) <= i {
-							buildidList = append(buildidList, "")
-						}
+
 						if len(alreadyKnownSymbols) <= i {
 							alreadyKnownSymbols = append(alreadyKnownSymbols, "")
 						}
 
-						var idx int
-						var addr uint64
-						var buildidStr string
 						var buildid [20]byte
 						var validBuildID bool
 						var offset uint64
 						var ip uint64
-						_, err := fmt.Sscanf(addressesList[i], "[%d]0x%x", &idx, &addr)
-						if err != nil {
-							break
-						}
-						_, err = fmt.Sscanf(buildidList[i], "[%d]%s +%x", &idx, &buildidStr, &offset)
-						if err != nil {
-							_, _ = fmt.Sscanf(buildidList[i], "[%d]%x", &idx, &ip)
-							// It's ok if we don't have a build ID.
-						} else {
+
+						buildID := buildIDs[i]
+						if len(buildID) == 20 {
+							copy(buildid[:], buildID)
 							validBuildID = true
+							offset = offsetsOrIPs[i]
+						} else {
+							ip = offsetsOrIPs[i]
 						}
-						buildidSlice, err := hex.DecodeString(buildidStr)
-						if err != nil {
-							logger.Warnf("decoding build ID %q: %s", buildidStr, err)
-							break
-						}
-						// It's ok if we don't have a build ID. But if we have one, it should be valid.
-						if len(buildidSlice) != 20 && len(buildidSlice) != 0 {
-							logger.Warnf("decoding build ID %q: invalid length %d", buildidStr, len(buildidSlice))
-							break
-						}
-						copy(buildid[:], buildidSlice)
+
 						stackQueries = append(stackQueries, symbolizer.StackItemQuery{
 							Addr:         addr,
 							ValidBuildID: validBuildID,
@@ -417,15 +418,15 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						return nil
 					}
 
-					var symbolsBuilder strings.Builder
+					symbols := make([]string, len(stackQueriesResponse))
 					for i, res := range stackQueriesResponse {
 						s := res.Symbol
 						if !res.Found && i < len(alreadyKnownSymbols) {
 							s = alreadyKnownSymbols[i]
 						}
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, s)
+						symbols[i] = s
 					}
-					symbolsField.PutString(data, symbolsBuilder.String())
+					symbolsField.PutStringArray(data, symbols)
 				}
 				return nil
 			}
