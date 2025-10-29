@@ -56,9 +56,9 @@ static __always_inline int handle(struct __sk_buff *skb, __u8 packet_type)
 			       (void *)(long)skb->data_end))
 		return 0;
 
-	struct gadget_socket_value *skb_val = gadget_socket_lookup(skb);
-	if (gadget_should_discard_data_by_skb(skb_val))
-		return 0;
+	__u8 is_ingress = (packet_type == PACKET_TYPE_INGRESS);
+	struct gadget_socket_value *skb_val =
+		gadget_socket_lookup_with_direction(skb, is_ingress);
 
 	struct packet_event_t *event;
 

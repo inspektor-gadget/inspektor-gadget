@@ -61,8 +61,12 @@ struct {
 } gadget_sockets SEC(".maps");
 
 #ifdef GADGET_TYPE_NETWORKING
+// Helper to lookup a socket based on the skb information and the packet direction.
+// This is useful for TC programs since we can't rely on skb->pkt_type to determine
+// the packet direction.
 static __always_inline struct gadget_socket_value *
-gadget_socket_lookup(const struct __sk_buff *skb)
+gadget_socket_lookup_with_direction(const struct __sk_buff *skb,
+				    __u8 is_ingress)
 {
 	struct gadget_socket_value *ret;
 	struct gadget_socket_key key = {
@@ -171,13 +175,13 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	int off = l4_off;
 	switch (key.proto) {
 	case IPPROTO_TCP:
-		if (skb->pkt_type == GADGET_SE_PACKET_HOST)
+		if (is_ingress)
 			off += GADGET_SE_TCPHDR_DEST_OFFSET;
 		else
 			off += GADGET_SE_TCPHDR_SOURCE_OFFSET;
 		break;
 	case IPPROTO_UDP:
-		if (skb->pkt_type == GADGET_SE_PACKET_HOST)
+		if (is_ingress)
 			off += GADGET_SE_UDPHDR_DEST_OFFSET;
 		else
 			off += GADGET_SE_UDPHDR_SOURCE_OFFSET;
@@ -204,6 +208,18 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	}
 
 	return 0;
+}
+
+// Helper to lookup a socket based using skb->pkt_type.
+// This shouldn't be used with TC program because in certain cases (e.g CNIs)
+// the skb->pkt_type will be set to GADGET_SE_PACKET_HOST since the packet is destined
+// for the host because it needs to be routed via host. In such cases, use
+// gadget_socket_lookup_with_direction() instead.
+static __always_inline struct gadget_socket_value *
+gadget_socket_lookup(const struct __sk_buff *skb)
+{
+	__u8 is_ingress = (skb->pkt_type == GADGET_SE_PACKET_HOST);
+	return gadget_socket_lookup_with_direction(skb, is_ingress);
 }
 #endif
 
