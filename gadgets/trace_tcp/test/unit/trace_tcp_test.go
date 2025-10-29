@@ -66,8 +66,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					proc := info.Proc
+					utils.NormalizeProc(&proc)
 					return &ExpectedTraceTcpEvent{
-						Proc:    info.Proc,
+						Proc:    proc,
 						Type:    "close",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -99,8 +101,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					proc := info.Proc
+					utils.NormalizeProc(&proc)
 					return &ExpectedTraceTcpEvent{
-						Proc:    info.Proc,
+						Proc:    proc,
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -132,8 +136,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					proc := info.Proc
+					utils.NormalizeProc(&proc)
 					return &ExpectedTraceTcpEvent{
-						Proc:    info.Proc,
+						Proc:    proc,
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -163,8 +169,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			generateEvent: generateAcceptConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
+					proc := info.Proc
+					utils.NormalizeProc(&proc)
 					return &ExpectedTraceTcpEvent{
-						Proc:    info.Proc,
+						Proc:    proc,
 						Type:    "accept",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -199,6 +207,7 @@ func TestTraceTcpGadget(t *testing.T) {
 				} else {
 					utils.NormalizeInt(&event.Src.Port)
 				}
+				utils.NormalizeProc(&event.Proc)
 			}
 			fd := -1
 			acceptFd := -1

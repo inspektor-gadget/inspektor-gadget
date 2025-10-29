@@ -38,8 +38,9 @@ type socketenricherGadgetSocketValue struct {
 	Sock                uint64
 	DeletionTimestamp   uint64
 	Ppid                uint32
+	Ptid                uint32
 	Ipv6only            int8
-	_                   [3]byte
+	_                   [7]byte
 	OptionalFieldsStart [0]int8
 	Cwd                 [4096]int8
 	Exepath             [4096]int8

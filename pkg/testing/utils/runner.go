@@ -202,6 +202,7 @@ func (r *Runner) runLoop() {
 		},
 		Parent: ebpftypes.Parent{
 			Comm: pcomm,
+			Tid:  uint32(ppid),
 			Pid:  uint32(ppid),
 		},
 	}

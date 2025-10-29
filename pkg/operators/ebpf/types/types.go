@@ -32,6 +32,7 @@ const (
 	PidTypeName         = "gadget_pid"
 	PpidTypeName        = "gadget_ppid"
 	TidTypeName         = "gadget_tid"
+	PtidTypeName        = "gadget_ptid"
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
@@ -76,6 +77,7 @@ type Creds struct {
 type Parent struct {
 	Comm string `json:"comm,omitempty"`
 	Pid  uint32 `json:"pid,omitempty"`
+	Tid  uint32 `json:"tid,omitempty"`
 }
 
 type Process struct {
