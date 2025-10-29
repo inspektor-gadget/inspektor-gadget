@@ -54,9 +54,8 @@ message GadgetEvent {
   uint32 seq = 2;
   bytes payload = 3;
   uint32 dataSourceID = 4;
+  uint64 lostSamples = 5;
 }
-
-
 
 message GadgetStopRequest {
 }
@@ -87,12 +86,14 @@ message GadgetData {
   string node = 1;
   uint32 seq = 2;
   DataElement data = 3;
+  uint64 lostSamples = 4;
 }
 
 message GadgetDataArray {
   string node = 1;
   uint32 seq = 2;
   repeated DataElement dataArray = 3;
+  uint64 lostSamples = 4;
 }
 
 message Param {
