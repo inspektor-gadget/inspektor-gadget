@@ -264,6 +264,7 @@ gadget_process_populate_from_socket(const struct gadget_socket_value *skb_val,
 	__builtin_memcpy(p->parent.comm, skb_val->ptask,
 			 sizeof(p->parent.comm));
 	p->parent.pid = skb_val->ppid;
+	p->parent.tid = skb_val->ptid;
 }
 
 #endif

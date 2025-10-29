@@ -52,6 +52,7 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 		bpf_probe_read_kernel(&socket_value.ptask,
 				      sizeof(socket_value.ptask), parent->comm);
 		socket_value.ppid = (__u32)BPF_CORE_READ(parent, tgid);
+		socket_value.ptid = (__u32)BPF_CORE_READ(parent, pid);
 	}
 
 	socket_value.sock = (__u64)sock;

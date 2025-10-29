@@ -113,6 +113,7 @@ struct gadget_user_stack {
 typedef __u32 gadget_pid;
 typedef __u32 gadget_ppid;
 typedef __u32 gadget_tid;
+typedef __u32 gadget_ptid;
 typedef char gadget_comm;
 typedef char gadget_pcomm;
 typedef __u64 gadget_bytes;
@@ -134,7 +135,7 @@ struct gadget_creds {
 struct gadget_parent {
 	gadget_pcomm comm[TASK_COMM_LEN];
 	gadget_ppid pid;
-	gadget_tid tid;
+	gadget_ptid tid;
 };
 
 struct gadget_process {
@@ -164,6 +165,7 @@ struct gadget_socket_value {
 	__u64 sock;
 	__u64 deletion_timestamp;
 	__u32 ppid;
+	__u32 ptid;
 	char ipv6only;
 
 	char optional_fields_start[0] __attribute__((aligned(8)));
