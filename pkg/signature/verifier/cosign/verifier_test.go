@@ -98,6 +98,7 @@ func TestVerify(t *testing.T) {
 
 	legacySignedImage := "ttl.sh/signed_with_cosign_legacy:latest"
 	oci11SignedImage := "ttl.sh/signed_with_cosign_oci11:latest"
+	bundleSignedImage := "ttl.sh/signed_with_cosign_bundle:latest"
 	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/unsigned:francis-signature-unit-tests"
 
 	goodPublicKey := `
@@ -125,6 +126,12 @@ wE3h/OMa2IqglFFvk8Qh1EX9zr5aASFdRcTKScjrU7uS1y6Z1z3NQe2P+g==
 				PublicKeys: []string{goodPublicKey},
 			},
 			image: oci11SignedImage,
+		},
+		"good_public_key_with_bundle_signed_image": {
+			opts: VerifierOptions{
+				PublicKeys: []string{goodPublicKey},
+			},
+			image: bundleSignedImage,
 		},
 		"wrong_public_key_with_signed_image": {
 			opts: VerifierOptions{

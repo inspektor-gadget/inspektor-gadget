@@ -30,9 +30,13 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
+	sigstorebundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
+	"google.golang.org/protobuf/encoding/protojson"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
@@ -51,16 +55,21 @@ const (
 	signatureArtifactType = "application/vnd.dev.cosign.artifact.sig.v1+json"
 
 	// Taken from:
+	// https://github.com/sigstore/cosign/blob/ee3d9fe1c55e/pkg/cosign/bundle/protobundle.go#L36
+	bundleV03MediaType = "application/vnd.dev.sigstore.bundle.v0.3+json"
+
+	// Taken from:
 	// https://github.com/sigstore/cosign/blob/45bda40b8ef4/pkg/types/media.go#L28
 	simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 )
 
 const (
-	legacyFormat string = "legacy"
-	oci11Format  string = "oci 1.1"
+	legacyFormat  string = "legacy"
+	oci11Format   string = "oci 1.1"
+	bundleFormat  string = "bundle"
 )
 
-var supportedFormats = []string{legacyFormat, oci11Format}
+var supportedFormats = []string{legacyFormat, oci11Format, bundleFormat}
 
 func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, signingInfoTag string, imageStore oras.Target) error {
 	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
@@ -70,7 +79,7 @@ func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, 
 	return nil
 }
 
-func loadSignature(ctx context.Context, imageStore oras.Target, signatureTag string) ([]byte, *ocispec.Descriptor, error) {
+func loadSignatureAndPayloadNotBundle(ctx context.Context, imageStore oras.Target, signatureTag string) ([]byte, []byte, error) {
 	_, signatureManifestBytes, err := oras.FetchBytes(ctx, imageStore, signatureTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting signature bytes: %w", err)
@@ -104,16 +113,50 @@ func loadSignature(ctx context.Context, imageStore oras.Target, signatureTag str
 		return nil, nil, fmt.Errorf("decoding signature: %w", err)
 	}
 
-	return signatureBytes, &payloadDescriptor, nil
-}
-
-func loadPayload(ctx context.Context, imageStore oras.Target, payloadDescriptor *ocispec.Descriptor) ([]byte, error) {
-	payloadBytes, err := content.FetchAll(ctx, imageStore, *payloadDescriptor)
+	payloadBytes, err := content.FetchAll(ctx, imageStore, payloadDescriptor)
 	if err != nil {
-		return nil, fmt.Errorf("getting payload bytes: %w", err)
+		return nil, nil, fmt.Errorf("getting payload bytes: %w", err)
 	}
 
-	return payloadBytes, nil
+	return signatureBytes, payloadBytes, nil
+}
+
+func loadSignatureAndPayloadForBundle(ctx context.Context, imageStore oras.Target, signatureTag string) ([]byte, []byte, error) {
+	_, bundleBytes, err := oras.FetchBytes(ctx, imageStore, signatureTag, oras.DefaultFetchBytesOptions)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getting bundle bytes: %w", err)
+	}
+
+	bundle := &sigstorebundle.Bundle{}
+	err = protojson.Unmarshal(bundleBytes, bundle)
+	if err != nil {
+		return nil, nil, fmt.Errorf("decoding bundle: %w", err)
+	}
+
+	envelope := bundle.GetDsseEnvelope()
+	if envelope == nil {
+		return nil, nil, errors.New("DSSE envelope not found in bundle")
+	}
+
+	signatures := envelope.GetSignatures()
+	expectedLen := 1
+	signaturesLen := len(signatures)
+	if signaturesLen != expectedLen {
+		return nil, nil, fmt.Errorf("wrong number of signatures: expected %d, got %d", expectedLen, signaturesLen)
+	}
+
+	return signatures[0].Sig, dsse.PAE(envelope.GetPayloadType(), envelope.GetPayload()), nil
+}
+
+func loadSignatureAndPayload(ctx context.Context, imageStore oras.Target, signatureTag string, format string) ([]byte, []byte, error) {
+	switch format {
+	case legacyFormat, oci11Format:
+		return loadSignatureAndPayloadNotBundle(ctx, imageStore, signatureTag)
+	case bundleFormat:
+		return loadSignatureAndPayloadForBundle(ctx, imageStore, signatureTag)
+	default:
+		return nil, nil, fmt.Errorf("signature format %q unknown, expected one in %v", format, strings.Join(supportedFormats, ","))
+	}
 }
 
 func getSignatureTagOci11(ctx context.Context, imageStore oras.Target, signingInfoTag string) (string, error) {
@@ -137,7 +180,28 @@ func getSignatureTagOci11(ctx context.Context, imageStore oras.Target, signingIn
 	return "", fmt.Errorf("signature tag not found for index %q", signingInfoTag)
 }
 
-func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *remote.Repository, imageDigest string, format string) ([]byte, []byte, error) {
+func getSignatureTagBundle(ctx context.Context, imageStore oras.Target, signingInfoTag string) (string, error) {
+	_, manifestBytes, err := oras.FetchBytes(ctx, imageStore, signingInfoTag, oras.DefaultFetchBytesOptions)
+	if err != nil {
+		return "", fmt.Errorf("getting index bytes: %w", err)
+	}
+
+	manifest := &ocispec.Manifest{}
+	err = json.Unmarshal(manifestBytes, manifest)
+	if err != nil {
+		return "", fmt.Errorf("decoding index: %w", err)
+	}
+
+	for _, layer := range manifest.Layers {
+		if layer.MediaType == bundleV03MediaType {
+			return layer.Digest.String(), nil
+		}
+	}
+
+	return "", fmt.Errorf("signature tag not found for index %q", signingInfoTag)
+}
+
+func _loadSigningInformation(ctx context.Context, imageStore oras.GraphTarget, repo *remote.Repository, imageDigest string, format string) ([]byte, []byte, error) {
 	var signingInfoTag string
 	switch format {
 	case legacyFormat:
@@ -152,6 +216,22 @@ func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *
 			return nil, nil, fmt.Errorf("crafting index tag: %w", err)
 		}
 		signingInfoTag = indexTag
+	case bundleFormat:
+		desc, err := imageStore.Resolve(ctx, imageDigest)
+		if err != nil {
+			return nil, nil, fmt.Errorf("resolving %q: %w", imageDigest, err)
+		}
+
+		descriptors, err := registry.Referrers(ctx, imageStore, desc, bundleV03MediaType)
+		if err != nil {
+			return nil, nil, fmt.Errorf("searching for bundle referring %q: %w", imageDigest, err)
+		}
+
+		if len(descriptors) > 1 {
+			return nil, nil, errors.New("image with several bundles are not supported")
+		}
+
+		signingInfoTag = descriptors[0].Digest.String()
 	default:
 		return nil, nil, fmt.Errorf("signature format %q unknown, expected one in %v", format, strings.Join(supportedFormats, ","))
 	}
@@ -172,37 +252,32 @@ func _loadSigningInformation(ctx context.Context, imageStore oras.Target, repo *
 		if err != nil {
 			return nil, nil, fmt.Errorf("getting OCI 1.1 signature tag: %w", err)
 		}
+	case bundleFormat:
+		signatureTag, err = getSignatureTagBundle(ctx, imageStore, signingInfoTag)
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting bundle signature tag: %w", err)
+		}
 	}
 
-	signature, payloadTag, err := loadSignature(ctx, imageStore, signatureTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting signature: %w", err)
-	}
-
-	payload, err := loadPayload(ctx, imageStore, payloadTag)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting payload: %w", err)
-	}
-
-	return signature, payload, nil
+	return loadSignatureAndPayload(ctx, imageStore, signatureTag, format)
 }
 
-func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.Target, repo *remote.Repository) ([]byte, []byte, error) {
+func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.GraphTarget, repo *remote.Repository) ([]byte, []byte, string, error) {
 	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, imageRef.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("getting image digest: %w", err)
+		return nil, nil, "", fmt.Errorf("getting image digest: %w", err)
 	}
 
 	errs := make([]error, 0)
 	for _, format := range supportedFormats {
 		signature, payload, err := _loadSigningInformation(ctx, imageStore, repo, imageDigest, format)
 		if err == nil {
-			return signature, payload, nil
+			return signature, payload, format, nil
 		}
-		errs = append(errs, err)
+		errs = append(errs, fmt.Errorf("loading signing information for %q: %w", format, err))
 	}
 
-	return nil, nil, errors.Join(errs...)
+	return nil, nil, "", errors.Join(errs...)
 }
 
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
@@ -244,7 +319,7 @@ func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageSto
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, ref, imageStore, repo)
+	signatureBytes, payloadBytes, format, err := loadSigningInformation(ctx, ref, imageStore, repo)
 	if err != nil {
 		return fmt.Errorf("getting signing information: %w", err)
 	}
@@ -266,12 +341,14 @@ func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageSto
 		return fmt.Errorf("the image was not signed by the provided keys: %w", errs)
 	}
 
-	// We should not read the payload before confirming it was signed, so let's
-	// do this check once it was confirmed to be signed:
-	// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
-	err = checkPayloadImage(payloadBytes, imageDigest)
-	if err != nil {
-		return fmt.Errorf("checking payload image: %w", err)
+	if format != bundleFormat {
+		// We should not read the payload before confirming it was signed, so let's
+		// do this check once it was confirmed to be signed:
+		// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
+		err = checkPayloadImage(payloadBytes, imageDigest)
+		if err != nil {
+			return fmt.Errorf("checking payload image: %w", err)
+		}
 	}
 
 	return nil
