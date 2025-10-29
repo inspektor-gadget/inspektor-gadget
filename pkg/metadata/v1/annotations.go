@@ -102,6 +102,12 @@ var AnnotationsTemplates = map[string]map[string]string{
 		ColumnsMinWidthAnnotation:  "7",
 		ColumnsAlignmentAnnotation: string(AlignmentRight),
 	},
+	"ptid": {
+		DescriptionAnnotation:      "Parent thread ID",
+		ColumnsMinWidthAnnotation:  "7",
+		ColumnsAlignmentAnnotation: string(AlignmentRight),
+		ColumnsHiddenAnnotation:    "true",
+	},
 	"uid": {
 		DescriptionAnnotation:      "User ID",
 		ColumnsMinWidthAnnotation:  "8",

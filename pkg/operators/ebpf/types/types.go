@@ -32,6 +32,7 @@ const (
 	PidTypeName         = "gadget_pid"
 	PpidTypeName        = "gadget_ppid"
 	TidTypeName         = "gadget_tid"
+	PtidTypeName        = "gadget_ptid"
 	CommTypeName        = "gadget_comm"
 	PcommTypeName       = "gadget_pcomm"
 	SyscallTypeName     = "gadget_syscall"
