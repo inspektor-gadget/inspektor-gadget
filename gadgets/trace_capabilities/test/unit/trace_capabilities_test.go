@@ -175,6 +175,7 @@ func TestNonAuditCapabilities(t *testing.T) {
 				Parent: utils.Parent{
 					Comm: "unit.test",
 					Pid:  uint32(os.Getpid()),
+					Tid:  info.Proc.Tid,
 				},
 			},
 			Cap:           "CAP_SYSLOG",
