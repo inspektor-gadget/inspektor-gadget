@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,28 +30,28 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/nsenter"
 )
 
-type linkSnapshotter struct {
+type linkIterator struct {
 	link *link.Iter
 	typ  string
 }
 
-type Snapshotter struct {
+type Iterator struct {
 	structName string
 
 	ds       datasource.DataSource
 	accessor datasource.FieldAccessor
 
-	// iterators is a list of iterators that this snapshotter needs to run to
-	// get the data. This information is gathered from the snapshotter
+	// iterators is a list of iterator programs that this Iterator needs to run to
+	// get the data. This information is gathered from the iterator
 	// definition in the eBPF program.
 	iterators map[string]struct{}
 
-	// links is a map of iterators to their links. Links are created when the
+	// links is a map of iterator programs to their links. Links are created when the
 	// iterator is attached to the kernel.
-	links map[string]*linkSnapshotter
+	links map[string]*linkIterator
 }
 
-func (i *ebpfInstance) parseSnapshotterPrograms(programs []string) (map[string]struct{}, error) {
+func (i *ebpfInstance) parseIteratorPrograms(programs []string) (map[string]struct{}, error) {
 	iterators := make(map[string]struct{}, len(programs))
 
 	for _, program := range programs {
@@ -78,13 +78,13 @@ func (i *ebpfInstance) parseSnapshotterPrograms(programs []string) (map[string]s
 	return iterators, nil
 }
 
-func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
-	i.logger.Debugf("populating snapshotter %q", varName)
+func (i *ebpfInstance) populateIterators(t btf.Type, varName string) error {
+	i.logger.Debugf("populating iterator %q", varName)
 
 	parts := strings.Split(varName, typeSplitter)
 	if len(parts) < 3 {
 		// At least one program is required
-		return fmt.Errorf("invalid snapshotter definition, expected format: <name>___<structName>___<program1>___...___<programN>, got %q",
+		return fmt.Errorf("invalid iterator definition, expected format: <name>___<structName>___<program1>___...___<programN>, got %q",
 			varName)
 	}
 
@@ -94,13 +94,13 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 	i.logger.Debugf("> name       : %q", name)
 	i.logger.Debugf("> struct name: %q", structName)
 
-	iterators, err := i.parseSnapshotterPrograms(parts[2:])
+	iterators, err := i.parseIteratorPrograms(parts[2:])
 	if err != nil {
-		return fmt.Errorf("parsing snapshotter %q programs: %w", name, err)
+		return fmt.Errorf("parsing iterator %q programs: %w", name, err)
 	}
 
-	if _, ok := i.snapshotters[name]; ok {
-		i.logger.Debugf("snapshotter %q already defined, skipping", name)
+	if _, ok := i.iterators[name]; ok {
+		i.logger.Debugf("iterator %q already defined, skipping", name)
 		return nil
 	}
 
@@ -109,32 +109,32 @@ func (i *ebpfInstance) populateSnapshotter(t btf.Type, varName string) error {
 		return fmt.Errorf("finding struct %q in eBPF object: %w", structName, err)
 	}
 
-	i.logger.Debugf("adding snapshotter %q", name)
-	i.snapshotters[name] = &Snapshotter{
+	i.logger.Debugf("adding iterator %q", name)
+	i.iterators[name] = &Iterator{
 		structName: btfStruct.Name,
 		iterators:  iterators,
-		links:      make(map[string]*linkSnapshotter),
+		links:      make(map[string]*linkIterator),
 	}
 
 	err = i.populateStructDirect(btfStruct)
 	if err != nil {
-		return fmt.Errorf("populating struct %q for snapshotter %q: %w", btfStruct.Name, name, err)
+		return fmt.Errorf("populating struct %q for iterator %q: %w", btfStruct.Name, name, err)
 	}
 
 	return nil
 }
 
-func (i *ebpfInstance) runSnapshotters() error {
-	for sName, snapshotter := range i.snapshotters {
-		i.logger.Debugf("Running snapshotter %q", sName)
+func (i *ebpfInstance) runIterators() error {
+	for sName, iter := range i.iterators {
+		i.logger.Debugf("Running iterator %q", sName)
 
-		pArray, err := snapshotter.ds.NewPacketArray()
+		pArray, err := iter.ds.NewPacketArray()
 		if err != nil {
 			return fmt.Errorf("creating new packet: %w", err)
 		}
 
-		for pName, l := range snapshotter.links {
-			i.logger.Debugf("Running iterator %q", pName)
+		for pName, l := range iter.links {
+			i.logger.Debugf("Running iterator program %q", pName)
 
 			if !isIteratorKindSupported(l.typ) {
 				return fmt.Errorf("iterator kind %q is not supported", l.typ)
@@ -145,7 +145,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 					return fmt.Errorf("reading iterator %q: %w", pName, err)
 				}
 
-				size := snapshotter.accessor.Size()
+				size := iter.accessor.Size()
 				if uint32(len(buf))%size != 0 {
 					return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
 						pName, len(buf), size)
@@ -153,7 +153,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 
 				for i := uint32(0); i < uint32(len(buf)); i += size {
 					data := pArray.New()
-					if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+					if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
 						pArray.Release(data)
 						return fmt.Errorf("setting data element %d: %w", i, err)
 					}
@@ -180,7 +180,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 							return fmt.Errorf("reading iterator %q: %w", pName, err)
 						}
 
-						size := snapshotter.accessor.Size()
+						size := iter.accessor.Size()
 						if uint32(len(buf))%size != 0 {
 							return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
 								pName, len(buf), size)
@@ -188,7 +188,7 @@ func (i *ebpfInstance) runSnapshotters() error {
 
 						for i := uint32(0); i < uint32(len(buf)); i += size {
 							data := pArray.New()
-							if err := snapshotter.accessor.Set(data, buf[i:i+size]); err != nil {
+							if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
 								pArray.Release(data)
 								return fmt.Errorf("setting data element %d: %w", i, err)
 							}
@@ -205,8 +205,8 @@ func (i *ebpfInstance) runSnapshotters() error {
 			}
 		}
 
-		if err := snapshotter.ds.EmitAndRelease(pArray); err != nil {
-			return fmt.Errorf("emitting snapshotter %q data: %w", sName, err)
+		if err := iter.ds.EmitAndRelease(pArray); err != nil {
+			return fmt.Errorf("emitting iter %q data: %w", sName, err)
 		}
 	}
 	return nil
