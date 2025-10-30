@@ -236,7 +236,13 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 
 			for _, ds := range gadgetCtx.GetDataSources() {
 				dsID := dsLookup[ds.Name()]
+				lostSamples := uint64(0)
 				ds.SubscribePacket(func(ds datasource.DataSource, packet datasource.Packet) error {
+					// We'll be moving the lostSampleCount to the transport level here and have it
+					// increase monotonically
+					currentLostSamples := packet.LostSampleCount()
+					packet.SetLostSampleCount(0)
+
 					d, _ := proto.Marshal(packet.Raw())
 
 					event := &api.GadgetEvent{
@@ -248,6 +254,11 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 					seqLock.Lock()
 					seq++
 					event.Seq = seq
+
+					// Increase global lostSampleCount within the lock to retain order and write it to
+					// the event; if the event goes missing, we can still recover the delta on the client
+					lostSamples += currentLostSamples
+					event.LostSamples = lostSamples
 
 					// Try to send event; if outputBuffer is full, it will be dropped by taking
 					// the default path.
