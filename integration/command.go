@@ -652,9 +652,9 @@ func WaitUntilJobCompleteCommand(namespace string, jobname string) *Command {
 // the given as parameter namespace is ready.
 func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
 	return &Command{
-		Name:           "WaitForTestPod",
-		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname),
-		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
+		Name:           "WaitForReadyTestPod",
+		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=created --timeout=10s -n %s %s || kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname, namespace, podname),
+		ExpectedRegexp: fmt.Sprintf("pod/%s condition met\n", podname),
 	}
 }
 

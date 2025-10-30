@@ -80,7 +80,6 @@ func (c *K8sContainer) Start(t *testing.T) {
 
 	testSteps := []igtesting.TestStep{
 		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
-		sleepForSecondsCommand(2),
 		waitCommand,
 	}
 	if !c.options.useExistingNamespace {
@@ -235,8 +234,8 @@ func deleteK8sNamespace(t *testing.T, namespace string) {
 func waitUntilPodReadyCommand(t *testing.T, namespace string, podname string) *command.Command {
 	return &command.Command{
 		Name:           "WaitForTestPod",
-		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname)),
-		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
+		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=created --timeout=10s -n %s %s || kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname, namespace, podname)),
+		ValidateOutput: match.MatchRegexp(t, fmt.Sprintf("pod/%s condition met\n", podname)),
 	}
 }
 
