@@ -18,7 +18,7 @@ datasources:
       cli.raw.fields: payload
       pcap.payload: payload
       pcap.timestamp: timestamp
-      pcap.packet-length: payload_len
+      pcap.packet-length: packet_size
     fields:
       ifindex:
         annotations:
