@@ -26,8 +26,10 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -67,9 +69,10 @@ const (
 
 	kernelTypesVar = "kernelTypes"
 
-	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
-	AnnotationRestName    = "ebpf.rest.name"
-	AnnotationRestLen     = "ebpf.rest.len"
+	AnnotationMapFlushOnStop  = "ebpf.map.flush-on-stop"
+	AnnotationIterFetchOnStop = "ebpf.iter.fetch-on-stop"
+	AnnotationRestName        = "ebpf.rest.name"
+	AnnotationRestLen         = "ebpf.rest.len"
 )
 
 type gadgetObjects struct {
@@ -524,11 +527,30 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.accessor = accessor
 		m.ds = ds
 
-		// Configure fetch-count and fetch-interval annotations to make the
+		annotations := ds.Annotations()
+
+		// Configure fetch-count and fetch-interval annotations (if not present) to make the
 		// combiner operator handle the data correctly
-		// TODO: Make this configurable
-		m.ds.AddAnnotation(api.FetchIntervalAnnotation, "0")
-		m.ds.AddAnnotation(api.FetchCountAnnotation, "1")
+		if annotations[api.FetchIntervalAnnotation] != "" {
+			m.interval, err = time.ParseDuration(annotations[api.FetchIntervalAnnotation])
+			if err != nil {
+				return fmt.Errorf("parsing %s: %w", api.FetchIntervalAnnotation, err)
+			}
+		} else {
+			m.ds.AddAnnotation(api.FetchIntervalAnnotation, "0")
+			m.interval = time.Duration(0)
+		}
+		if annotations[api.FetchCountAnnotation] != "" {
+			m.count, err = strconv.Atoi(annotations[api.FetchCountAnnotation])
+			if err != nil {
+				return fmt.Errorf("parsing %s: %w", api.FetchCountAnnotation, err)
+			}
+		} else {
+			m.ds.AddAnnotation(api.FetchCountAnnotation, "1")
+			m.count = 1
+		}
+
+		m.fetchOnStop = annotations[AnnotationIterFetchOnStop] == "true"
 	}
 	for name, m := range i.mapIters {
 		fields := make([]*Field, 0)
@@ -561,7 +583,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.valAccessor = accessor
 
 		annotations := ds.Annotations()
-		if flushOnStop := annotations[AnnotationFlushOnStop]; flushOnStop == "true" {
+		if flushOnStop := annotations[AnnotationMapFlushOnStop]; flushOnStop == "true" {
 			i.logger.Debugf("flushing on stop enabled")
 			m.flushOnStop = true
 		}

@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -49,6 +50,11 @@ type Iterator struct {
 	// links is a map of iterator programs to their links. Links are created when the
 	// iterator is attached to the kernel.
 	links map[string]*linkIterator
+
+	interval time.Duration
+	count    int
+
+	fetchOnStop bool
 }
 
 func (i *ebpfInstance) parseIteratorPrograms(programs []string) (map[string]struct{}, error) {
@@ -126,88 +132,131 @@ func (i *ebpfInstance) populateIterators(t btf.Type, varName string) error {
 
 func (i *ebpfInstance) runIterators() error {
 	for sName, iter := range i.iterators {
-		i.logger.Debugf("Running iterator %q", sName)
+		fetch := func() error {
+			i.logger.Debugf("Running iterator %q", sName)
 
-		pArray, err := iter.ds.NewPacketArray()
-		if err != nil {
-			return fmt.Errorf("creating new packet: %w", err)
-		}
-
-		for pName, l := range iter.links {
-			i.logger.Debugf("Running iterator program %q", pName)
-
-			if !isIteratorKindSupported(l.typ) {
-				return fmt.Errorf("iterator kind %q is not supported", l.typ)
+			pArray, err := iter.ds.NewPacketArray()
+			if err != nil {
+				return fmt.Errorf("creating new packet: %w", err)
 			}
-			if !isIteratorKindPerNetNs(l.typ) {
-				buf, err := bpfiterns.Read(l.link)
-				if err != nil {
-					return fmt.Errorf("reading iterator %q: %w", pName, err)
-				}
 
-				size := iter.accessor.Size()
-				if uint32(len(buf))%size != 0 {
-					return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
-						pName, len(buf), size)
-				}
+			for pName, l := range iter.links {
+				i.logger.Debugf("Running iterator program %q", pName)
 
-				for i := uint32(0); i < uint32(len(buf)); i += size {
-					data := pArray.New()
-					if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
-						pArray.Release(data)
-						return fmt.Errorf("setting data element %d: %w", i, err)
+				if !isIteratorKindSupported(l.typ) {
+					return fmt.Errorf("iterator kind %q is not supported", l.typ)
+				}
+				if !isIteratorKindPerNetNs(l.typ) {
+					buf, err := bpfiterns.Read(l.link)
+					if err != nil {
+						return fmt.Errorf("reading iterator %q: %w", pName, err)
 					}
-					pArray.Append(data)
-				}
-			} else {
-				visitedNetNs := make(map[uint64]struct{})
-				for _, container := range i.containers {
-					_, visited := visitedNetNs[container.Netns]
-					if visited {
-						continue
+
+					size := iter.accessor.Size()
+					if uint32(len(buf))%size != 0 {
+						return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+							pName, len(buf), size)
 					}
-					visitedNetNs[container.Netns] = struct{}{}
 
-					err := nsenter.NetnsEnter(int(container.ContainerPid()), func() error {
-						reader, err := l.link.Open()
-						if err != nil {
-							return err
+					for i := uint32(0); i < uint32(len(buf)); i += size {
+						data := pArray.New()
+						if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
+							pArray.Release(data)
+							return fmt.Errorf("setting data element %d: %w", i, err)
 						}
-						defer reader.Close()
-
-						buf, err := io.ReadAll(reader)
-						if err != nil {
-							return fmt.Errorf("reading iterator %q: %w", pName, err)
+						pArray.Append(data)
+					}
+				} else {
+					visitedNetNs := make(map[uint64]struct{})
+					for _, container := range i.containers {
+						_, visited := visitedNetNs[container.Netns]
+						if visited {
+							continue
 						}
+						visitedNetNs[container.Netns] = struct{}{}
 
-						size := iter.accessor.Size()
-						if uint32(len(buf))%size != 0 {
-							return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
-								pName, len(buf), size)
-						}
-
-						for i := uint32(0); i < uint32(len(buf)); i += size {
-							data := pArray.New()
-							if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
-								pArray.Release(data)
-								return fmt.Errorf("setting data element %d: %w", i, err)
+						err := nsenter.NetnsEnter(int(container.ContainerPid()), func() error {
+							reader, err := l.link.Open()
+							if err != nil {
+								return err
 							}
-							pArray.Append(data)
-						}
+							defer reader.Close()
 
-						return nil
-					})
-					if err != nil && !errors.Is(err, os.ErrNotExist) {
-						return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
-							container.Runtime.ContainerName, pName, err)
+							buf, err := io.ReadAll(reader)
+							if err != nil {
+								return fmt.Errorf("reading iterator %q: %w", pName, err)
+							}
+
+							size := iter.accessor.Size()
+							if uint32(len(buf))%size != 0 {
+								return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
+									pName, len(buf), size)
+							}
+
+							for i := uint32(0); i < uint32(len(buf)); i += size {
+								data := pArray.New()
+								if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
+									pArray.Release(data)
+									return fmt.Errorf("setting data element %d: %w", i, err)
+								}
+								pArray.Append(data)
+							}
+
+							return nil
+						})
+						if err != nil && !errors.Is(err, os.ErrNotExist) {
+							return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
+								container.Runtime.ContainerName, pName, err)
+						}
 					}
 				}
 			}
-		}
 
-		if err := iter.ds.EmitAndRelease(pArray); err != nil {
-			return fmt.Errorf("emitting iter %q data: %w", sName, err)
+			if err := iter.ds.EmitAndRelease(pArray); err != nil {
+				return fmt.Errorf("emitting iter %q data: %w", sName, err)
+			}
+			return nil
 		}
+		i.wg.Add(1)
+		go func() {
+			defer i.wg.Done()
+			if iter.interval == 0 && iter.count == 1 {
+				// Only a single time if interval is zero and count is 1
+				err := fetch()
+				if err != nil {
+					i.logger.Warnf("error running iterator %q: %v", sName, err)
+				}
+				return
+			}
+			ctr := 0
+			tickerChan := make(<-chan time.Time)
+			if iter.interval > 0 {
+				tickerChan = time.NewTicker(iter.interval).C
+			}
+			for {
+				select {
+				case <-i.done:
+					if iter.fetchOnStop {
+						i.logger.Debugf("fetching on stop")
+						err := fetch()
+						if err != nil {
+							i.logger.Warnf("error running iterator %q: %v", sName, err)
+						}
+					}
+					return
+				case <-tickerChan:
+					err := fetch()
+					if err != nil {
+						i.logger.Warnf("error running iterator %q: %v", sName, err)
+					}
+					ctr++
+					if iter.count > 0 && ctr >= iter.count {
+						// TODO: close DS
+						return
+					}
+				}
+			}
+		}()
 	}
 	return nil
 }
