@@ -50,7 +50,8 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 
 	parent = task->real_parent;
 	if (parent) {
-		process.parent.pid = parent->pid;
+		process.parent.pid = parent->tgid;
+		process.parent.tid = parent->pid;
 		__builtin_memcpy(process.parent.comm, parent->comm,
 				 TASK_COMM_LEN);
 	}
