@@ -32,6 +32,7 @@ void static __always_inline gadget_process_populate(struct gadget_process *p)
 	bpf_probe_read_kernel(&p->parent.comm, sizeof(p->parent.comm),
 			      parent->comm);
 	p->parent.pid = BPF_CORE_READ(parent, tgid);
+	p->parent.tid = BPF_CORE_READ(parent, pid);
 }
 
 #endif

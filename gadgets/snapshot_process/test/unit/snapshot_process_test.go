@@ -54,7 +54,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
 						Parent: utils.Parent{
-							Pid:  uint32(info.Tid),
+							Pid:  uint32(info.Pid),
+							Tid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},
 						MntNsID: info.MountNsID,
@@ -85,7 +86,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
 						Parent: utils.Parent{
-							Pid:  uint32(info.Tid),
+							Pid:  uint32(info.Pid),
+							Tid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},
 						MntNsID: info.MountNsID,
