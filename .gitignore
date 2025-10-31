@@ -41,6 +41,7 @@ pkg/btfgen/btfs/arm64/*
 !pkg/kfilefields/**/*.o
 !pkg/gadgets/**/*.o
 !pkg/socketenricher/*.o
+.daemon-config.yaml
 
 !gadgets/*.o
 !testdata/*.o

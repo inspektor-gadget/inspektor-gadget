@@ -20,6 +20,8 @@ DOCKER ?= docker
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
 
+include minikube.mk
+
 GADGETS ?= \
 	advise_networkpolicy \
 	advise_seccomp \
@@ -137,7 +139,7 @@ push: $(addsuffix -push,$(GADGETS))
 
 %-push-existing: %
 	@echo "Pushing existing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS)
 
 .PHONY:
 push-existing: $(addsuffix -push-existing,$(GADGETS))
