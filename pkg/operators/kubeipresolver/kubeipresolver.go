@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -247,10 +247,7 @@ func (k *KubeIPResolver) Priority() int {
 
 func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	m.k8sInventory.Start()
-	return nil
-}
 
-func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error {
 	for ds, acc := range m.endpointsAccessors {
 		ds.Subscribe(func(source datasource.DataSource, data datasource.Data) error {
 			var errs error
@@ -315,6 +312,10 @@ func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error 
 			return errs
 		}, Priority)
 	}
+	return nil
+}
+
+func (m *KubeIPResolverInstance) Start(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
