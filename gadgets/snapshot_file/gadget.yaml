@@ -1,0 +1,36 @@
+name: snapshot file
+description: Show open files
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_file
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_file
+datasources:
+  files:
+    fields:
+      mntns_id:
+        annotations:
+          columns.hidden: true
+      inode:
+        annotations:
+          columns.hidden: true
+      flags_raw:
+        annotations:
+          columns.hidden: true
+      mode_raw:
+        annotations:
+          columns.hidden: true
+      flags:
+        annotations:
+          columns.hidden: false
+      mode:
+        annotations:
+          columns.hidden: false
+params:
+  ebpf:
+    paths:
+      key: paths
+      defaultValue: "false"
+      description: Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
+    file_type_mask:
+      key: type-mask
+      defaultValue: "17"
+      description: File type mask to filter files by type (default includes regular files and directories => 2^0 + 2^4 = 17)
