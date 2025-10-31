@@ -22,6 +22,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -224,7 +225,15 @@ func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 				return fmt.Errorf("field %s not found", fieldName)
 			}
 
-			cmp := getCompareFunc(field, negate)
+			// Check if this field has a sort-by annotation pointing to a raw field
+			sortByField := field
+			if sortByAnnotation := field.Annotations()[metadatav1.ColumnsSortByAnnotation]; sortByAnnotation != "" {
+				if rawField := ds.GetField(sortByAnnotation); rawField != nil {
+					sortByField = rawField
+				}
+			}
+
+			cmp := getCompareFunc(sortByField, negate)
 			if cmp == nil {
 				return fmt.Errorf("field %s cannot be used for sorting", fieldName)
 			}
