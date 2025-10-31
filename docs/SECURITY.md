@@ -65,7 +65,7 @@ To add a VEX document when none exists for a specific version yet, use the
 ```bash
 VER=v0.41.0
 vexctl create --file .vex/$VER.vex.json \
---product "pkg:github/inspektor-gadget/inspektor-gadget@$VER" \
+--product "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@$VER" \
 --vuln "CVE-2025-54388" \
 --status "not_affected" \
 --justification "vulnerable_code_not_in_execute_path" \
@@ -86,7 +86,7 @@ instead of `vexctl create`. For example:
 ```bash
 VER=v0.41.0
 vexctl add --in-place .vex/$VER.vex.json \
---product "pkg:github/inspektor-gadget/inspektor-gadget@$VER" \
+--product "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@$VER" \
 --vuln "CVE-2099-12345" \
 --status "not_affected" \
 --justification "vulnerable_code_not_in_execute_path"
