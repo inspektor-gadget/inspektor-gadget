@@ -22,8 +22,12 @@ const (
 	// Prefix used to mark eBPF params
 	paramPrefix = "gadget_param_"
 
-	// Prefix used to mark snapshotters structs
+	// Prefix used to mark snapshotters structs.
+	// Deprecated: use iteratorsPrefix instead
 	snapshottersPrefix = "gadget_snapshotter_"
+
+	// Prefix used for iterators
+	iteratorsPrefix = "gadget_iter_"
 
 	// Prefix used to mark tracer map created with GADGET_TRACER_MAP() defined in
 	// include/gadget/buffer.h.
