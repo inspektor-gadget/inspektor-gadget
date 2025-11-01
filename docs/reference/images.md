@@ -454,3 +454,39 @@ $ sudo ig image inspect advise_seccomp:latest --show-datasources --jsonpath='[0]
   "runtime.containerStartedAt"
 ]
 ```
+
+#### `verify`
+
+Verify the given gadget image signature.
+
+```bash
+$ sudo ig image verify -h
+PASTE_HERE_THE_OUTPUT_OF_THE_COMMAND
+
+Verify gadget signatures
+
+Usage:
+  ig image verify [gadget] [flags]
+
+Flags:
+  -h, --help                              help for verify
+      --notation-certificates strings     Certificates for Notation verification
+      --notation-policy-document string   Trust policy JSON for Notation verification
+      --public-keys strings               Inline Cosign public key (use --public-keys="$(cat your-key.pub)") (default ["-----BEGIN PUBLIC KEY-----
+                                          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+                                          Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+                                          -----END PUBLIC KEY-----
+                                          "])
+
+Global Flags:
+      --auto-mount-filesystems   Automatically mount bpffs, debugfs and tracefs if they are not already mounted
+      --auto-wsl-workaround      Automatically find the host procfs when running in WSL2
+      --config string            config file to use
+      --pprof-addr string        Starts a pprof server for profiling at the given address (e.g., 'localhost:6060'), leave empty to disable (default).
+  -v, --verbose                  Print debug information
+
+  ```bash
+$ sudo ig image verify --public-keys="\"$(cat cosign.pub)\"" ghcr.io/inspektor-gadget/gadget/trace_exec:v0.45.0
+ 
+Verifying image: ghcr.io/inspektor-gadget/gadget/trace_exec:v0.45.0
+Image verified successfully!
