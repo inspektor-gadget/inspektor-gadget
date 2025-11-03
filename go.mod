@@ -27,7 +27,7 @@ require (
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/gopacket/gopacket v1.4.0
+	github.com/gopacket/gopacket v1.5.0
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v28.5.1+incompatible
 	github.com/notaryproject/notation-go v1.3.2
