@@ -41,40 +41,135 @@ Default value: 0
 
 ### Piping to tcpdump
 
-If you want to let tcpdump analyze the captured traffic directly, you can use the `pcap-ng` output mode and pipe IG's
-output directly to tcpdump like so:
+If you want to let tcpdump analyze the captured traffic directly, you can use the `pcap-ng` output mode and pipe the
+output to the `tcpdump` command. Start the gadget using:
 
-```bash
-$ ig run tcpdump:%IG_TAG% --host --pf "port 80" -o pcap-ng | tcpdump -nvr -
-14:18:23.386163 IP (tos 0x0, ttl 64, id 59190, offset 0, flags [DF], proto TCP (6), length 60)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [S], cksum 0xb6f0 (incorrect -> 0x68f7), seq 1211089028, win 64240, options [mss 1460,sackOK,TS val 3404957675 ecr 0,nop,wscale 7], length 0
-14:18:23.405108 IP (tos 0x0, ttl 127, id 3783, offset 0, flags [none], proto TCP (6), length 48)
-    13.107.253.67.80 > 172.17.0.2.53618: Flags [S.], cksum 0x988a (correct), seq 2080464456, ack 1211089029, win 32768, options [mss 1460,wscale 1,nop], length 0
-14:18:23.405212 IP (tos 0x0, ttl 64, id 59191, offset 0, flags [DF], proto TCP (6), length 40)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [.], cksum 0xb6dc (incorrect -> 0x425a), ack 1, win 502, length 0
-14:18:23.405869 IP (tos 0x0, ttl 64, id 59192, offset 0, flags [DF], proto TCP (6), length 116)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [P.], cksum 0xb728 (incorrect -> 0x4206), seq 1:77, ack 1, win 502, length 76: HTTP
-14:18:23.406531 IP (tos 0x0, ttl 127, id 3784, offset 0, flags [none], proto TCP (6), length 40)
-    13.107.253.67.80 > 172.17.0.2.53618: Flags [.], cksum 0x0404 (correct), ack 77, win 16384, length 0
-14:18:23.433402 IP (tos 0x0, ttl 127, id 3785, offset 0, flags [none], proto TCP (6), length 319)
-    13.107.253.67.80 > 172.17.0.2.53618: Flags [P.], cksum 0x98ef (correct), seq 1:280, ack 77, win 16384, length 279: HTTP, length: 279
-	HTTP/1.1 307 Temporary Redirect
-	Date: Wed, 30 Jul 2025 12:18:23 GMT
-	Content-Type: text/html
-	Content-Length: 0
-	Connection: keep-alive
-	Location: https://microsoft.com/
-	X-Cache: CONFIG_NOCACHE
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        kubectl gadget run tcpdump:%IG_TAG% --pf "port 80" -o pcap-ng | tcpdump -nvr -
+        ```
+    </TabItem>
 
-14:18:23.433435 IP (tos 0x0, ttl 64, id 59193, offset 0, flags [DF], proto TCP (6), length 40)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [.], cksum 0xb6dc (incorrect -> 0x40f8), ack 280, win 501, length 0
-14:18:23.434372 IP (tos 0x0, ttl 64, id 59194, offset 0, flags [DF], proto TCP (6), length 40)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [F.], cksum 0xb6dc (incorrect -> 0x40f7), seq 77, ack 280, win 501, length 0
-14:18:23.436706 IP (tos 0x0, ttl 127, id 3786, offset 0, flags [none], proto TCP (6), length 40)
-    13.107.253.67.80 > 172.17.0.2.53618: Flags [.], cksum 0x02ec (correct), ack 78, win 16384, length 0
-14:18:23.466609 IP (tos 0x0, ttl 127, id 3787, offset 0, flags [none], proto TCP (6), length 40)
-    13.107.253.67.80 > 172.17.0.2.53618: Flags [F.], cksum 0x02eb (correct), seq 280, ack 78, win 16384, length 0
-14:18:23.466629 IP (tos 0x0, ttl 64, id 0, offset 0, flags [DF], proto TCP (6), length 40)
-    172.17.0.2.53618 > 13.107.253.67.80: Flags [.], cksum 0x40f6 (correct), ack 281, win 501, length 0
-```
+    <TabItem value="ig" label="ig">
+        ```bash
+        sudo ig run tcpdump:%IG_TAG% --host --pf "port 80" -o pcap-ng | tcpdump -nvr -
+        ```
+    </TabItem>
+</Tabs>
 
+Launch a container that would send traffic to port 80:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        kubectl run -it --rm --restart=Never --image=busybox http-client -- wget -qO- http://example.com
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        docker run -it --rm busybox wget -qO- http://example.com
+        ```
+    </TabItem>
+</Tabs>
+
+Now if you go back to the terminal where you ran the gadget, you should see the captured traffic:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run tcpdump:%IG_TAG% --pf "port 80" -o pcap-ng | tcpdump -nvr -
+        reading from file -, link-type EN10MB (Ethernet), snapshot length 262144
+        01:00:00.000000 IP (tos 0x0, ttl 64, id 3739, offset 0, flags [DF], proto TCP (6), length 60)
+        10.244.0.8.48980 > 23.192.228.84.80: Flags [S], cksum 0x073f (incorrect -> 0x2324), seq 4288214674, win 64240, options [mss 1460,sackOK,TS val 1325407754 ecr 0,nop,wscale 7], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 0, offset 0, flags [DF], proto TCP (6), length 60)
+        23.192.228.84.80 > 10.244.0.8.48980: Flags [S.], cksum 0x9567 (correct), seq 4003919749, ack 4288214675, win 65160, options [mss 1460,sackOK,TS val 3968644953 ecr 1325407754,nop,wscale 7], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 64, id 3740, offset 0, flags [DF], proto TCP (6), length 52)
+        10.244.0.8.48980 > 23.192.228.84.80: Flags [.], cksum 0x0737 (incorrect -> 0xbff6), ack 1, win 502, options [nop,nop,TS val 1325407962 ecr 3968644953], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 64, id 3741, offset 0, flags [DF], proto TCP (6), length 126)
+        10.244.0.8.48980 > 23.192.228.84.80: Flags [P.], cksum 0x0781 (incorrect -> 0x46c9), seq 1:75, ack 1, win 502, options [nop,nop,TS val 1325407962 ecr 3968644953], length 74: HTTP, length: 74
+        GET / HTTP/1.1
+        Host: example.com
+        User-Agent: Wget
+        Connection: close
+
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 48347, offset 0, flags [DF], proto TCP (6), length 52)
+        23.192.228.84.80 > 10.244.0.8.48980: Flags [.], cksum 0xbecd (correct), ack 75, win 509, options [nop,nop,TS val 3968645169 ecr 1325407962], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 48348, offset 0, flags [DF], proto TCP (6), length 830)
+        23.192.228.84.80 > 10.244.0.8.48980: Flags [P.], cksum 0x661a (correct), seq 1:779, ack 75, win 509, options [nop,nop,TS val 3968645175 ecr 1325407962], length 778: HTTP, length: 778
+        HTTP/1.1 200 OK
+        Content-Type: text/html
+        ETag: "bc2473a18e003bdb249eba5ce893033f:1760028122.592274"
+        Last-Modified: Thu, 09 Oct 2025 16:42:02 GMT
+        Cache-Control: max-age=86000
+        Date: Mon, 03 Nov 2025 16:35:05 GMT
+        Content-Length: 513
+        Connection: close
+        X-N: S
+
+        <!doctype html><html lang="en"><head><title>Example Domain</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href="https://iana.org/domains/example">Learn more</a></div></body></html>
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 48349, offset 0, flags [DF], proto TCP (6), length 52)
+        23.192.228.84.80 > 10.244.0.8.48980: Flags [F.], cksum 0xbbba (correct), seq 779, ack 75, win 509, options [nop,nop,TS val 3968645177 ecr 1325407962], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 64, id 3742, offset 0, flags [DF], proto TCP (6), length 52)
+        10.244.0.8.48980 > 23.192.228.84.80: Flags [.], cksum 0x0737 (incorrect -> 0xbafe), ack 779, win 496, options [nop,nop,TS val 1325408166 ecr 3968645175], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 64, id 3743, offset 0, flags [DF], proto TCP (6), length 52)
+        10.244.0.8.48980 > 23.192.228.84.80: Flags [F.], cksum 0x0737 (incorrect -> 0xbafa), seq 75, ack 780, win 496, options [nop,nop,TS val 1325408166 ecr 3968645177], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 48350, offset 0, flags [DF], proto TCP (6), length 52)
+        23.192.228.84.80 > 10.244.0.8.48980: Flags [.], cksum 0xba2d (correct), ack 76, win 509, options [nop,nop,TS val 3968645369 ecr 1325408166], length 0
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ ig run tcpdump:%IG_TAG% --host --pf "port 80" -o pcap-ng | tcpdump -nvr -
+        reading from file -, link-type EN10MB (Ethernet), snapshot length 262144
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15760, offset 0, flags [DF], proto TCP (6), length 60)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [S], cksum 0x255d (incorrect -> 0x2fac), seq 3933863054, win 64240, options [mss 1460,sackOK,TS val 1577197157 ecr 0,nop,wscale 7], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 0, offset 0, flags [DF], proto TCP (6), length 60)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [S.], cksum 0x2ccc (correct), seq 4222487833, ack 3933863055, win 65160, options [mss 1460,sackOK,TS val 4086039266 ecr 1577197157,nop,wscale 7], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15761, offset 0, flags [DF], proto TCP (6), length 52)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [.], cksum 0x2555 (incorrect -> 0x56fc), ack 1, win 502, options [nop,nop,TS val 1577197460 ecr 4086039266], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15762, offset 0, flags [DF], proto TCP (6), length 126)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [P.], cksum 0x259f (incorrect -> 0xddce), seq 1:75, ack 1, win 502, options [nop,nop,TS val 1577197460 ecr 4086039266], length 74: HTTP, length: 74
+        GET / HTTP/1.1
+        Host: example.com
+        User-Agent: Wget
+        Connection: close
+
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 0, offset 0, flags [DF], proto TCP (6), length 60)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [S.], cksum 0x2bf9 (correct), seq 4222487833, ack 3933863055, win 65160, options [mss 1460,sackOK,TS val 4086039477 ecr 1577197157,nop,wscale 7], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15763, offset 0, flags [DF], proto TCP (6), length 52)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [.], cksum 0x2555 (incorrect -> 0x55e6), ack 1, win 502, options [nop,nop,TS val 1577197664 ecr 4086039266], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 51857, offset 0, flags [DF], proto TCP (6), length 52)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [.], cksum 0x5576 (correct), ack 75, win 509, options [nop,nop,TS val 4086039575 ecr 1577197460], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 51858, offset 0, flags [DF], proto TCP (6), length 830)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [P.], cksum 0xffbe (correct), seq 1:779, ack 75, win 509, options [nop,nop,TS val 4086039581 ecr 1577197460], length 778: HTTP, length: 778
+        HTTP/1.1 200 OK
+        Content-Type: text/html
+        ETag: "bc2473a18e003bdb249eba5ce893033f:1760028122.592274"
+        Last-Modified: Thu, 09 Oct 2025 16:42:02 GMT
+        Cache-Control: max-age=86000
+        Date: Mon, 03 Nov 2025 16:37:22 GMT
+        Content-Length: 513
+        Connection: close
+        X-N: S
+
+        <!doctype html><html lang="en"><head><title>Example Domain</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href="https://iana.org/domains/example">Learn more</a></div></body></html>
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15764, offset 0, flags [DF], proto TCP (6), length 52)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [.], cksum 0x2555 (incorrect -> 0x5195), ack 779, win 496, options [nop,nop,TS val 1577197682 ecr 4086039581], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15765, offset 0, flags [DF], proto TCP (6), length 52)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [F.], cksum 0x2555 (incorrect -> 0x5193), seq 75, ack 779, win 496, options [nop,nop,TS val 1577197683 ecr 4086039581], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 51859, offset 0, flags [DF], proto TCP (6), length 52)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [F.], cksum 0x5264 (correct), seq 779, ack 75, win 509, options [nop,nop,TS val 4086039582 ecr 1577197460], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 63, id 15766, offset 0, flags [DF], proto TCP (6), length 52)
+        192.168.0.194.38004 > 23.220.75.232.80: Flags [.], cksum 0x2555 (incorrect -> 0x5191), ack 780, win 496, options [nop,nop,TS val 1577197683 ecr 4086039582], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 46, id 51860, offset 0, flags [DF], proto TCP (6), length 52)
+        23.220.75.232.80 > 192.168.0.194.38004: Flags [.], cksum 0x50a4 (correct), ack 76, win 509, options [nop,nop,TS val 4086039806 ecr 1577197683], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 45, id 51860, offset 0, flags [DF], proto TCP (6), length 52)
+        23.220.75.232.80 > 172.17.0.4.38004: Flags [.], cksum 0x65f9 (correct), ack 3933863130, win 509, options [nop,nop,TS val 4086039806 ecr 1577197683], length 0
+        01:00:00.000000 IP (tos 0x0, ttl 45, id 51860, offset 0, flags [DF], proto TCP (6), length 52)
+        23.220.75.232.80 > 172.17.0.4.38004: Flags [.], cksum 0x65f9 (correct), ack 1, win 509, options [nop,nop,TS val 4086039806 ecr 1577197683], length 0
+        ```
+    </TabItem>
+</Tabs>
