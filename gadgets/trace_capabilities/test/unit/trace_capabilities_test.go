@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"os"
 	"os/exec"
 	"syscall"
 	"testing"
@@ -168,14 +167,14 @@ func TestNonAuditCapabilities(t *testing.T) {
 	utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
 		return &ExpectedTraceCapabilitiesEvent{
 			Proc: utils.Process{
-				Pid:     uint32(cmd.Process.Pid),
-				Tid:     uint32(cmd.Process.Pid),
-				Comm:    "cat",
+				Pid:     info.Proc.Pid,
+				Tid:     info.Proc.Tid,
+				Comm:    info.Proc.Comm,
 				MntNsID: info.MountNsID,
 				Parent: utils.Parent{
-					Comm: "unit.test",
-					Pid:  uint32(os.Getpid()),
-					Tid:  info.Proc.Tid,
+					Comm: info.Proc.Parent.Comm,
+					Pid:  info.Proc.Parent.Pid,
+					Tid:  info.Proc.Parent.Tid,
 				},
 			},
 			Cap:           "CAP_SYSLOG",
