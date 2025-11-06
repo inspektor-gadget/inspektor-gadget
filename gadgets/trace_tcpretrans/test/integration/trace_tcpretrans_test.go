@@ -98,7 +98,7 @@ func TestTraceTCPretrans(t *testing.T) {
 					Proto:   "TCP",
 				},
 				Dst: utils.L4Endpoint{
-					Addr:    "1.1.1.1",
+					Addr:    utils.NormalizedStr,
 					Version: 4,
 					Port:    443,
 					Proto:   "TCP",
@@ -123,6 +123,11 @@ func TestTraceTCPretrans(t *testing.T) {
 				utils.NormalizeProc(&e.Proc)
 				utils.NormalizeString(&e.Src.Addr)
 				utils.NormalizeInt(&e.Src.Port)
+
+				if e.Dst.Addr != "1.1.1.1" && e.Dst.Addr != "1.0.0.1" {
+					t.Fatalf("unexpected destination address: %s", e.Dst.Addr)
+				}
+				utils.NormalizeString(&e.Dst.Addr)
 			}
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEntries)
 		},
