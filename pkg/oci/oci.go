@@ -708,7 +708,12 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	if err != nil {
 		return nil, fmt.Errorf("getting host string: %w", err)
 	}
-	authConfig, err := cfg.GetAuthConfig(hostString)
+	authKey := hostString
+	// Special case for docker.io
+	if authKey == "docker.io" {
+		authKey = "index.docker.io"
+	}
+	authConfig, err := cfg.GetAuthConfig(authKey)
 	if err != nil {
 		return nil, fmt.Errorf("getting auth config: %w", err)
 	}
