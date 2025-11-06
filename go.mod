@@ -168,8 +168,8 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.2-0.20241226121412-a5dc8ff20d0a // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
-	github.com/sigstore/protobuf-specs v0.4.1 // indirect
+	github.com/secure-systems-lab/go-securesystemslib v0.9.0
+	github.com/sigstore/protobuf-specs v0.4.1
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -203,6 +203,8 @@ require (
 	sigs.k8s.io/release-utils v0.11.1 // indirect
 )
 
+require github.com/in-toto/in-toto-golang v0.9.0
+
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
@@ -213,6 +215,7 @@ require (
 	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
+	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
