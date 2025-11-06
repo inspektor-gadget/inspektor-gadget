@@ -43,6 +43,8 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
 
+	"github.com/docker/cli/cli/config/types"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
 )
@@ -691,9 +693,19 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 		log.Debugf("Using default docker auth file instead")
 		log.Debugf("$HOME: %q", os.Getenv("HOME"))
 
-		cfg, err = config.Load("")
-		if err != nil {
-			return nil, fmt.Errorf("loading auth config: %w", err)
+		dockerCfgDir := os.Getenv("DOCKER_CONFIG")
+		if dockerCfgDir != "" {
+			if c, err := config.Load(dockerCfgDir); err == nil {
+				log.Debugf("Loaded docker config from DOCKER_CONFIG=%s", dockerCfgDir)
+				cfg = c
+			}
+		}
+
+		if cfg == nil {
+			cfg, err = config.Load("")
+			if err != nil {
+				return nil, fmt.Errorf("loading auth config: %w", err)
+			}
 		}
 
 	} else {
@@ -708,7 +720,7 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	if err != nil {
 		return nil, fmt.Errorf("getting host string: %w", err)
 	}
-	authConfig, err := cfg.GetAuthConfig(hostString)
+	authConfig, err := tryAuthAliases(cfg, hostString)
 	if err != nil {
 		return nil, fmt.Errorf("getting auth config: %w", err)
 	}
@@ -950,4 +962,30 @@ func GetContentFromDescriptor(ctx context.Context, target oras.ReadOnlyTarget, d
 		return nil, fmt.Errorf("fetching descriptor: %w", err)
 	}
 	return reader, nil
+}
+
+func tryAuthAliases(cfg *configfile.ConfigFile, host string) (types.AuthConfig, error) {
+	aliases := []string{
+		host,
+		"docker.io",
+		"registry-1.docker.io",
+		"https://index.docker.io/v1/",
+		"index.docker.io",
+	}
+
+	for _, key := range aliases {
+		ac, err := cfg.GetAuthConfig(key)
+		if err == nil && !isEmptyAuth(ac) {
+			log.Debugf("auth: using credentials for %s", key)
+			return ac, nil
+		}
+	}
+	return types.AuthConfig{}, nil
+}
+
+func isEmptyAuth(ac types.AuthConfig) bool {
+	return ac.Username == "" &&
+		ac.Password == "" &&
+		ac.IdentityToken == "" &&
+		ac.Auth == ""
 }
