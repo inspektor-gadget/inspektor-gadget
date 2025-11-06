@@ -41,6 +41,7 @@ type Verifier struct {
 
 var supportedFormats = []signatureformat.SignatureFormat{
 	signatureformat.LegacyFormat{},
+	signatureformat.BundleFormat{},
 	signatureformat.OCI11Format{},
 }
 
