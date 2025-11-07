@@ -715,7 +715,7 @@ common information.
 ### Types
 
 - `gadget_creds`: Contains the user id and group id.
-- `gadget_parent`: Contains the name and pid of the parent process.
+- `gadget_parent`: Contains the name, pid and tid of the parent process.
 - `gadget_process`: Contains the name, pid, tid, user and parent of the process.
 
 ## Helpers
