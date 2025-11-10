@@ -37,9 +37,9 @@ $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_fsslower:%IG_TAG% [flags]
 
 ### `--min`
 
-Minimum latency in ms to trace
+Minimum latency in µs to trace
 
-Default value: "10"
+Default value: "10000"
 
 ### `--pid`
 
@@ -67,7 +67,7 @@ TODO
 
   <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run trace_fsslower:%IG_TAG%  --verify-image=false --filesystem ext4 --min 1 -c test-trace-fsslower
+$ sudo ig run trace_fsslower:%IG_TAG%  --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
 RUNTIME.CONTAINERNAME     COMM                 PID        TID DELTA_… OFFSET   SIZE FILE         OP
 ```
   </TabItem>
@@ -103,7 +103,7 @@ TODO
 
   <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run trace_fsslower%IG_TAG% --verify-image=false --filesystem ext4 --min 1 -c test-trace-fsslower
+$ sudo ig run trace_fsslower%IG_TAG% --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
 RUNTIME.CONTAINERNAME     COMM                 PID        TID DELTA_… OFFSET   SIZE FILE         OP
 test-trace-fsslower       dpkg-preconf…     204239     204239    1008      0 92233… #38586681    F_FSYNC
 test-trace-fsslower       dpkg-preconf…     204239     204239    1878      0 92233… #38586683    F_FSYNC
