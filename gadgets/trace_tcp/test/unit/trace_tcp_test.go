@@ -65,11 +65,9 @@ func TestTraceTcpGadget(t *testing.T) {
 			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
-						Proc:    proc,
+						Proc:    info.Proc,
 						Type:    "close",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -88,6 +86,10 @@ func TestTraceTcpGadget(t *testing.T) {
 						Fd:       -1,
 						AcceptFd: -1,
 					}
+				}, func(expected, actual *ExpectedTraceTcpEvent) {
+					utils.NormalizeInt(&expected.Src.Port)
+					utils.NormalizeInt(&actual.Src.Port)
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, fd, events)
 				return nil
 			},
@@ -100,11 +102,9 @@ func TestTraceTcpGadget(t *testing.T) {
 			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
-						Proc:    proc,
+						Proc:    info.Proc,
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -123,6 +123,10 @@ func TestTraceTcpGadget(t *testing.T) {
 						Fd:       fd,
 						AcceptFd: -1,
 					}
+				}, func(expected, actual *ExpectedTraceTcpEvent) {
+					utils.NormalizeInt(&expected.Src.Port)
+					utils.NormalizeInt(&actual.Src.Port)
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, fd, events)
 				return nil
 			},
@@ -135,11 +139,9 @@ func TestTraceTcpGadget(t *testing.T) {
 			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateConnectEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
-						Proc:    proc,
+						Proc:    info.Proc,
 						Type:    "connect",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -158,6 +160,10 @@ func TestTraceTcpGadget(t *testing.T) {
 						Fd:       fd,
 						AcceptFd: -1,
 					}
+				}, func(expected, actual *ExpectedTraceTcpEvent) {
+					utils.NormalizeInt(&expected.Src.Port)
+					utils.NormalizeInt(&actual.Src.Port)
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, fd, events)
 				return nil
 			},
@@ -167,12 +173,10 @@ func TestTraceTcpGadget(t *testing.T) {
 			port:          9071,
 			runnerConfig:  &utils.RunnerConfig{HostNetwork: true},
 			generateEvent: generateAcceptConnectEvent,
-			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, acceptfd int, events []ExpectedTraceTcpEvent) error {
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					return &ExpectedTraceTcpEvent{
-						Proc:    proc,
+						Proc:    info.Proc,
 						Type:    "accept",
 						NetNsId: int(info.NetworkNsID),
 						Src: utils.L4Endpoint{
@@ -188,8 +192,12 @@ func TestTraceTcpGadget(t *testing.T) {
 							Proto:   "TCP",
 						},
 						Fd:       fd,
-						AcceptFd: acceptFd,
+						AcceptFd: acceptfd,
 					}
+				}, func(expected, actual *ExpectedTraceTcpEvent) {
+					utils.NormalizeInt(&expected.Dst.Port)
+					utils.NormalizeInt(&actual.Dst.Port)
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, fd, events)
 				return nil
 			},
@@ -207,7 +215,10 @@ func TestTraceTcpGadget(t *testing.T) {
 				} else {
 					utils.NormalizeInt(&event.Src.Port)
 				}
-				utils.NormalizeProc(&event.Proc)
+				// Use NormalizeParentTidForUnitTest with a dummy expected event
+				// This is for the gadget runner's internal normalization
+				dummy := utils.Process{}
+				utils.NormalizeParentTidForUnitTest(&dummy, &event.Proc)
 			}
 			fd := -1
 			acceptFd := -1

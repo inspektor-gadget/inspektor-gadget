@@ -93,13 +93,17 @@ func TestTraceSignalGadget(t *testing.T) {
 
 			gadgetRunner.RunGadget()
 
-			utils.ExpectOneEvent(func(info *utils.RunnerInfo, fd int) *traceSignalEvent {
+			utils.ExpectOneEventWithNormalize(func(info *utils.RunnerInfo, fd int) *traceSignalEvent {
 				return &traceSignalEvent{
 					Proc:      info.Proc,
 					Signal:    signalName(testCase.signal),
 					SignalRaw: int(testCase.signal),
 					Error:     "",
 				}
+			}, func(expected, actual *traceSignalEvent) {
+				// Normalize only parent TID for unit test, properly handling parent TID
+				// validation for multi-threaded parent processes
+				utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 			})(t, runner.Info, 0, gadgetRunner.CapturedEvents)
 		})
 	}

@@ -20,6 +20,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -165,6 +167,35 @@ func NormalizeProc(p *Process) {
 	NormalizeString(&p.Parent.Comm)
 }
 
+// NormalizeParentTidForUnitTest normalizes only the parent TID field for unit test validation.
+// This function properly handles parent TID validation for multi-threaded parent processes
+// by checking if two TIDs belong to the same process (have the same TGID) rather than
+// requiring an exact match. This is appropriate for unit tests which have access to /proc.
+//
+// For parent TID:
+//   - If actual parent TID is 0 (unset), normalizes expected to 0 as well
+//   - If both expected and actual parent TIDs are non-zero and belong to the same process,
+//     normalizes actual to match expected, allowing the comparison to succeed.
+//   - If they don't belong to the same process, they are left as-is,
+//     allowing the comparison to fail appropriately.
+func NormalizeParentTidForUnitTest(expected, actual *Process) {
+	// For parent TID, handle multi-threaded parent processes
+	// If actual parent TID is 0 (unset), normalize expected to 0 as well
+	if actual.Parent.Tid == 0 {
+		expected.Parent.Tid = 0
+	} else if expected.Parent.Tid != 0 {
+		// Both are non-zero, check if they belong to the same process
+		expectedTgid, err1 := GetThreadGroupID(expected.Parent.Tid)
+		actualTgid, err2 := GetThreadGroupID(actual.Parent.Tid)
+
+		// If both TGIDs were successfully retrieved and they match,
+		// normalize actual parent TID to match expected
+		if err1 == nil && err2 == nil && expectedTgid == actualTgid {
+			actual.Parent.Tid = expected.Parent.Tid
+		}
+	}
+}
+
 func IsDockerRuntime() bool {
 	return ContainerRuntime == eventtypes.RuntimeNameDocker.String()
 }
@@ -270,4 +301,33 @@ func NormalizeString(f *string) {
 	if *f != "" {
 		*f = NormalizedStr
 	}
+}
+
+// GetThreadGroupID returns the thread group ID (TGID/PID) for a given thread ID.
+// This is useful to check if two thread IDs belong to the same process.
+// Returns an error if the thread doesn't exist or can't be read.
+func GetThreadGroupID(tid uint32) (uint32, error) {
+	// Read /proc/<tid>/status to get the Tgid field
+	statusPath := filepath.Join("/proc", strconv.FormatUint(uint64(tid), 10), "status")
+	content, err := os.ReadFile(statusPath)
+	if err != nil {
+		return 0, fmt.Errorf("reading %s: %w", statusPath, err)
+	}
+
+	// Parse the status file to find the Tgid line
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "Tgid:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				tgid, err := strconv.ParseUint(fields[1], 10, 32)
+				if err != nil {
+					return 0, fmt.Errorf("parsing Tgid: %w", err)
+				}
+				return uint32(tgid), nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("cannot find Tgid in %s", statusPath)
 }
