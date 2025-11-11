@@ -156,6 +156,15 @@ func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf
 }
 
 func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
+	for _, param := range i.params {
+		for _, tag := range param.Tags {
+			//  TODO: define constant for tag "collect-kstack" and document it
+			if tag == "collect-kstack" && i.paramValues[param.Key] == "false" {
+				return nil
+			}
+		}
+	}
+
 	var kernelSymbolResolver *kallsyms.KAllSyms = nil
 	for _, ds := range gadgetCtx.GetDataSources() {
 		for _, in := range ds.GetFieldsWithTag("type:" + ebpftypes.KernelStackTypeName) {

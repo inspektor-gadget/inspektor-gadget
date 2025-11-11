@@ -67,6 +67,8 @@ params:
       key: collect-kstack
       defaultValue: "true"
       description: Collect kernel stack traces
+      tags:
+      - collect-kstack
     unique:
       key: unique
       defaultValue: "false"
