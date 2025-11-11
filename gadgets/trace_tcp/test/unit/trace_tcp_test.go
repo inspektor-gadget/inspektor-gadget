@@ -67,7 +67,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceTcpEvent{
 						Proc:    proc,
 						Type:    "close",
@@ -102,7 +102,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceTcpEvent{
 						Proc:    proc,
 						Type:    "connect",
@@ -137,7 +137,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, _ int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceTcpEvent{
 						Proc:    proc,
 						Type:    "connect",
@@ -170,7 +170,7 @@ func TestTraceTcpGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, acceptFd int, events []ExpectedTraceTcpEvent) error {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTraceTcpEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceTcpEvent{
 						Proc:    proc,
 						Type:    "accept",
@@ -207,7 +207,7 @@ func TestTraceTcpGadget(t *testing.T) {
 				} else {
 					utils.NormalizeInt(&event.Src.Port)
 				}
-				utils.NormalizeProc(&event.Proc)
+				utils.NormalizeParentTid(&event.Proc)
 			}
 			fd := -1
 			acceptFd := -1

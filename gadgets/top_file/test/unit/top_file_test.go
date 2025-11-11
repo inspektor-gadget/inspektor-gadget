@@ -64,7 +64,7 @@ func TestTopFileGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, filepath string, events []ExpectedTopFileEvent) {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTopFileEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTopFileEvent{
 						Proc: proc,
 						T:    "R",
@@ -99,7 +99,7 @@ func TestTopFileGadget(t *testing.T) {
 			}
 			normalizeEvent := func(event *ExpectedTopFileEvent) {
 				utils.NormalizeInt(&event.Writes)
-				utils.NormalizeProc(&event.Proc)
+				utils.NormalizeParentTid(&event.Proc)
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utils.RunWithRunner(t, runner, func() error {

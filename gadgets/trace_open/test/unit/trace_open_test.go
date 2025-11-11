@@ -55,8 +55,10 @@ func TestTraceOpenGadget(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					proc := info.Proc
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceOpenEvent{
-						Proc:  info.Proc,
+						Proc:  proc,
 						Fd:    uint32(fd),
 						FName: "/dev/null",
 					}
@@ -81,8 +83,10 @@ func TestTraceOpenGadget(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utils.ExpectOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					proc := info.Proc
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceOpenEvent{
-						Proc:  info.Proc,
+						Proc:  proc,
 						Fd:    uint32(fd),
 						FName: "/dev/null",
 					}
@@ -192,8 +196,10 @@ func TestTraceOpenGadget(t *testing.T) {
 			},
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceOpenEvent {
+					proc := info.Proc
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceOpenEvent{
-						Proc:     info.Proc,
+						Proc:     proc,
 						Fd:       uint32(fd),
 						FName:    "/tmp/foo/bar.test",
 						ErrRaw:   0,
@@ -239,11 +245,15 @@ func TestTraceOpenGadget(t *testing.T) {
 				})
 				return nil
 			}
+			normalizeEvent := func(event *ExpectedTraceOpenEvent) {
+				utils.NormalizeParentTid(&event.Proc)
+			}
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceOpenEvent]{
 				Image:          "trace_open",
 				Timeout:        5 * time.Second,
 				MntnsFilterMap: mntnsFilterMap,
 				OnGadgetRun:    onGadgetRun,
+				NormalizeEvent: normalizeEvent,
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
