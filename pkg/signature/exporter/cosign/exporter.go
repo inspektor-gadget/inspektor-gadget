@@ -26,5 +26,5 @@ import (
 type Exporter struct{} // Empty type only to respect the interface.
 
 func (e *Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
-	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), craftCosignSignatureTag)
+	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), helpers.CraftCosignSignatureTag)
 }
