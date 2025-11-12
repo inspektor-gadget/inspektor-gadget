@@ -30,6 +30,12 @@ datasources:
           columns.alignment: right
       fname:
         annotations:
+          description: File name as given in the open syscall
+          columns.width: 32
+          columns.minwidth: 24
+      fpath:
+        annotations:
+          description: Full file path after symlink resolution (require --paths flag)
           columns.width: 32
           columns.minwidth: 24
 params:
@@ -38,3 +44,7 @@ params:
       key: failed
       defaultValue: "false"
       description: Show only failed events
+    paths:
+      key: paths
+      defaultValue: "false"
+      description: Show file path after symlink resolution
