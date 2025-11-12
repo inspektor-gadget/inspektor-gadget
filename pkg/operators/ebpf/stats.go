@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -218,10 +217,7 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	}
 
 	// process fields
-	// TODO: Ideally these should be arrays, but it's not supported yet by
-	// Inspektor Gadget, see
-	// https://github.com/inspektor-gadget/inspektor-gadget/issues/3032
-	instance.commsField, err = instance.ds.AddField("comms", api.Kind_String,
+	instance.commsField, err = instance.ds.AddField("comms", api.ArrayOf(api.Kind_String),
 		datasource.WithAnnotations(map[string]string{
 			metadatav1.ColumnsWidthAnnotation: "16",
 			metadatav1.DescriptionAnnotation:  "List of processes using the eBPF program",
@@ -230,7 +226,7 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	if err != nil {
 		return nil, err
 	}
-	instance.pidsField, err = instance.ds.AddField("pids", api.Kind_String,
+	instance.pidsField, err = instance.ds.AddField("pids", api.ArrayOf(api.Kind_Uint32),
 		datasource.WithAnnotations(map[string]string{
 			metadatav1.ColumnsWidthAnnotation: "16",
 			metadatav1.DescriptionAnnotation:  "List of PIDs using the eBPF program",
@@ -321,8 +317,8 @@ type stat struct {
 	mapMemory uint64
 	mapCount  uint64
 
-	comms string
-	pids  string
+	comms []string
+	pids  []uint32
 }
 
 type progStat struct {
@@ -354,8 +350,8 @@ func (i *ebpfOperatorDataInstance) sendStats(stats []stat) error {
 		i.runcountField.PutUint64(d, stat.runcount)
 		i.mapMemoryField.PutUint64(d, stat.mapMemory)
 		i.mapCountField.PutUint64(d, stat.mapCount)
-		i.commsField.PutString(d, stat.comms)
-		i.pidsField.PutString(d, stat.pids)
+		i.commsField.PutStringArray(d, stat.comms)
+		i.pidsField.PutUint32Array(d, stat.pids)
 
 		arr.Append(d)
 	}
@@ -394,14 +390,10 @@ func enrichStat(stat *stat, processMap map[uint32][]processmaptypes.Process) {
 		return
 	}
 
-	comms := make([]string, 0, len(procs))
-	pids := make([]string, 0, len(procs))
 	for _, proc := range procs {
-		comms = append(comms, proc.Comm)
-		pids = append(pids, fmt.Sprintf("%d", proc.Pid))
+		stat.comms = append(stat.comms, proc.Comm)
+		stat.pids = append(stat.pids, proc.Pid)
 	}
-	stat.comms = strings.Join(comms, ",")
-	stat.pids = strings.Join(pids, ",")
 }
 
 func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
