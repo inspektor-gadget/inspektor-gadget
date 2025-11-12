@@ -60,6 +60,7 @@ GADGETS ?= \
 	snapshot_process \
 	snapshot_socket \
 	ci/datasource-containers \
+	ci/flex_string \
 	ci/inner_fields \
 	ci/sched_cls_drop \
 	ci/image_inspect \

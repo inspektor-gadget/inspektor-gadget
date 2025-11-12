@@ -43,6 +43,8 @@ const (
 	ParentTypeName      = "gadget_parent"
 	FileModeTypeName    = "gadget_file_mode"
 	FileFlagsTypeName   = "gadget_file_flags"
+	FlexStringTypeName  = "gadget_flex_string"
+	FlexBytesTypeName   = "gadget_flex_bytes"
 
 	// Metrics
 	CounterU32TypeName       = "gadget_counter__u32"
