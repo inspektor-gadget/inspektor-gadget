@@ -193,6 +193,9 @@ func (i *ebpfInstance) populateParam(t btf.Type, varName string) error {
 		if a := paramInfo.GetStringSlice("tags"); len(a) != 0 {
 			newParam.Tags = a
 		}
+		if m := paramInfo.GetStringMapString("annotations"); len(m) != 0 {
+			newParam.Annotations = m
+		}
 	}
 
 	i.params[varName] = newParam

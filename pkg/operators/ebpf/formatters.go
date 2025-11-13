@@ -156,11 +156,13 @@ func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf
 }
 
 func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) error {
+	fields := map[string]bool{}
 	for _, param := range i.params {
-		for _, tag := range param.Tags {
-			//  TODO: define constant for tag "collect-kstack" and document it
-			if tag == "collect-kstack" && i.paramValues[param.Key] == "false" {
-				return nil
+		for k, v := range param.Annotations {
+			if k == "fields" {
+				for field := range strings.SplitSeq(v, ",") {
+					fields[strings.TrimSpace(field)] = i.paramValues[param.Key] == "true"
+				}
 			}
 		}
 	}
@@ -172,14 +174,6 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				continue
 			}
 			in.SetHidden(true, false)
-
-			if kernelSymbolResolver == nil {
-				var err error
-				kernelSymbolResolver, err = kallsyms.NewKAllSyms()
-				if err != nil {
-					return err
-				}
-			}
 
 			if i.collectionSpec.Maps[ebpftypes.KernelStackMapName] == nil {
 				return errors.New("kernel stack map is not initialized but used. " +
@@ -196,19 +190,34 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 			if err != nil {
 				return err
 			}
-			converter := func(ds datasource.DataSource, data datasource.Data) error {
-				inBytes := in.Get(data)
-				stackId := ds.ByteOrder().Uint32(inBytes)
-				outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
-				if err != nil {
-					i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
-					out.Set(data, []byte{})
+
+			enabled, exists := fields[ds.Name()+"."+in.Name()]
+			// Old gadgets without the annotations always require kernel symbolization
+			kernelSymbolizationRequired := !exists || enabled
+
+			if kernelSymbolizationRequired {
+				if kernelSymbolResolver == nil {
+					var err error
+					kernelSymbolResolver, err = kallsyms.NewKAllSyms()
+					if err != nil {
+						return err
+					}
+				}
+
+				converter := func(ds datasource.DataSource, data datasource.Data) error {
+					inBytes := in.Get(data)
+					stackId := ds.ByteOrder().Uint32(inBytes)
+					outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
+					if err != nil {
+						i.logger.Warnf("stack with ID %d is lost: %s", stackId, err.Error())
+						out.Set(data, []byte{})
+						return nil
+					}
+					out.Set(data, []byte(outString))
 					return nil
 				}
-				out.Set(data, []byte(outString))
-				return nil
+				i.formatters[ds] = append(i.formatters[ds], converter)
 			}
-			i.formatters[ds] = append(i.formatters[ds], converter)
 		}
 	}
 	return nil
