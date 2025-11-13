@@ -124,6 +124,38 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 	return desc, err
 }
 
+func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions) error {
+	return retry("VerifyGadgetImage", func() error {
+		if !imgOpts.VerifySignature {
+			log.Warnf("gadget signature verification is disabled due to using corresponding option")
+
+			return nil
+		}
+
+		imageStore, err := newLocalOciStore()
+		if err != nil {
+			return fmt.Errorf("getting oci store: %w", err)
+		}
+
+		imageRef, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image name: %w", err)
+		}
+
+		repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
+		if err != nil {
+			return fmt.Errorf("creating remote repository: %w", err)
+		}
+
+		err = imgOpts.Verifier.Verify(ctx, repo, imageStore, imageRef)
+		if err != nil {
+			return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+		}
+
+		return nil
+	})
+}
+
 func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
 	ociStore, err := newLocalOciStore()
 	if err != nil {
@@ -838,27 +870,6 @@ func ensureImage(ctx context.Context, imageStore oras.GraphTarget, image string,
 		if !found {
 			return fmt.Errorf("%s is not part of allowed gadgets: %v", image, strings.Join(imgOpts.AllowedGadgets, ", "))
 		}
-	}
-
-	if !imgOpts.VerifySignature {
-		log.Warnf("gadget signature verification is disabled due to using corresponding option")
-
-		return nil
-	}
-
-	imageRef, err := normalizeImageName(image)
-	if err != nil {
-		return fmt.Errorf("normalizing image name: %w", err)
-	}
-
-	repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
-	if err != nil {
-		return fmt.Errorf("creating remote repository: %w", err)
-	}
-
-	err = imgOpts.Verifier.Verify(ctx, repo, imageStore, imageRef)
-	if err != nil {
-		return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 	}
 
 	return nil

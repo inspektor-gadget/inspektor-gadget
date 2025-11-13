@@ -403,6 +403,11 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("ensuring image: %w", err)
 		}
+
+		err = oci.VerifyGadgetImage(gadgetCtx.Context(), gadgetCtx.ImageName(), imgOpts)
+		if err != nil {
+			return fmt.Errorf("verifying image: %w", err)
+		}
 	}
 
 	manifest, err := oci.GetManifestForHost(gadgetCtx.Context(), target, gadgetCtx.ImageName())
