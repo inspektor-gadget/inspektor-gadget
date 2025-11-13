@@ -162,6 +162,50 @@ func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra 
 	}
 }
 
+// ExpectOneEventWithNormalize expects only matching event to be captured, with normalization.
+// The normalize function is called on both expected and actual events before comparison.
+func ExpectOneEventWithNormalize[Event any, Extra any](
+	getEvent func(info *RunnerInfo, extra Extra) *Event,
+	normalize func(expected, actual *Event),
+) ValidateEventType[Event, Extra] {
+	return func(t *testing.T, info *RunnerInfo, extra Extra, events []Event) {
+		expectedEvent := getEvent(info, extra)
+
+		require.Len(t, events, 1, "One event is expected")
+		normalize(expectedEvent, &events[0])
+		require.Equal(t, expectedEvent, &events[0], "Event doesn't match")
+	}
+}
+
+// ExpectAtLeastOneEventWithNormalize expects that at least one of the captured events matches, with normalization.
+// The normalize function is called on both expected and actual events before comparison.
+func ExpectAtLeastOneEventWithNormalize[Event any, Extra any](
+	getEvent func(info *RunnerInfo, extra Extra) *Event,
+	normalize func(expected, actual *Event),
+) ValidateEventType[Event, Extra] {
+	return func(t *testing.T, info *RunnerInfo, extra Extra, events []Event) {
+		expectedEvent := getEvent(info, extra)
+
+		for i := range events {
+			// Create a copy of the expected event for each comparison
+			expectedCopy := *expectedEvent
+			normalize(&expectedCopy, &events[i])
+			if reflect.DeepEqual(&expectedCopy, &events[i]) {
+				return
+			}
+		}
+
+		// Provide extra info when only a single event was captured
+		if len(events) == 1 {
+			expectedCopy := *expectedEvent
+			normalize(&expectedCopy, &events[0])
+			t.Fatalf("Event doesn't match:\n%s",
+				cmp.Diff(&expectedCopy, &events[0]))
+		}
+		t.Fatalf("Event wasn't captured")
+	}
+}
+
 // Equal compares if two values are the same.
 // Deprecated: Use require.Equal instead.
 func Equal[T comparable](t *testing.T, expected, actual T, message string) {

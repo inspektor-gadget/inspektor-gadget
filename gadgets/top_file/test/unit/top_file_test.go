@@ -62,11 +62,9 @@ func TestTopFileGadget(t *testing.T) {
 				return utils.CreateMntNsFilterMap(t, info.MountNsID)
 			},
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, filepath string, events []ExpectedTopFileEvent) {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, pid int) *ExpectedTopFileEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, pid int) *ExpectedTopFileEvent {
 					return &ExpectedTopFileEvent{
-						Proc: proc,
+						Proc: info.Proc,
 						T:    "R",
 						File: filepath,
 
@@ -79,6 +77,10 @@ func TestTopFileGadget(t *testing.T) {
 						RBytes: 0,
 						WBytes: 10240,
 					}
+				}, func(expected, actual *ExpectedTopFileEvent) {
+					utils.NormalizeInt(&expected.Writes)
+					utils.NormalizeInt(&actual.Writes)
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, 0, events)
 			},
 		},
@@ -99,7 +101,10 @@ func TestTopFileGadget(t *testing.T) {
 			}
 			normalizeEvent := func(event *ExpectedTopFileEvent) {
 				utils.NormalizeInt(&event.Writes)
-				utils.NormalizeProc(&event.Proc)
+				// Use NormalizeParentTidForUnitTest with a dummy expected event
+				// This is for the gadget runner's internal normalization
+				dummy := utils.Process{}
+				utils.NormalizeParentTidForUnitTest(&dummy, &event.Proc)
 			}
 			onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
 				utils.RunWithRunner(t, runner, func() error {

@@ -50,16 +50,16 @@ func TestFdpassGadget(t *testing.T) {
 			runnerConfig:  &utils.RunnerConfig{},
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent) {
-				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedFdpassEvent {
-					proc := info.Proc
-					utils.NormalizeProc(&proc)
+				utils.ExpectAtLeastOneEventWithNormalize(func(info *utils.RunnerInfo, fd int) *ExpectedFdpassEvent {
 					return &ExpectedFdpassEvent{
-						Proc:      proc,
+						Proc:      info.Proc,
 						SocketIno: inodeNum,
 						Sockfd:    uint32(sockfd),
 						Fd:        uint32(fd),
 						File:      "/dev/null",
 					}
+				}, func(expected, actual *ExpectedFdpassEvent) {
+					utils.NormalizeParentTidForUnitTest(&expected.Proc, &actual.Proc)
 				})(t, info, fd, events)
 			},
 		},
@@ -88,7 +88,10 @@ func TestFdpassGadget(t *testing.T) {
 				return nil
 			}
 			normalizeEvent := func(event *ExpectedFdpassEvent) {
-				utils.NormalizeProc(&event.Proc)
+				// Use NormalizeParentTidForUnitTest with a dummy expected event
+				// This is for the gadget runner's internal normalization
+				dummy := utils.Process{}
+				utils.NormalizeParentTidForUnitTest(&dummy, &event.Proc)
 			}
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedFdpassEvent]{
 				Image:          "fdpass",
