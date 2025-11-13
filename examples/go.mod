@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/inspektor-gadget/inspektor-gadget v0.28.1
-	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
