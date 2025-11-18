@@ -46,31 +46,22 @@ it is the last release with [builtin
 gadgets](gadgets/switching_to_image_based_gadgets.mdx), which some users may
 still rely on.
 
-All VEX documents are published in the following locations:
-
-- In the .vex directory of this repository, at
-  [https://github.com/inspektor-gadget/inspektor-gadget/tree/main/.vex](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/.vex).
-  This helps discovery by tools such as [VEX
-  Hub](https://github.com/aquasecurity/vexhub?tab=readme-ov-file#discovery-of-vex-documents)
-- Assets attached to their [corresponding official GitHub
-  Releases](https://github.com/inspektor-gadget/inspektor-gadget/releases). For
-  each release (e.g., v0.42.0), you will find a corresponding vex.json file
-  available for download alongside the source code and other release artifacts.
+The vex document is published in the .vex directory of this repository, at
+[https://github.com/inspektor-gadget/inspektor-gadget/tree/main/.vex](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/.vex).
+This helps discovery by tools such as [VEX
+Hub](https://github.com/aquasecurity/vexhub?tab=readme-ov-file#discovery-of-vex-documents).
 
 ### How to Create or Update VEX Documents
 
-To add a VEX document when none exists for a specific version yet, use the
-[vexctl command](https://github.com/openvex/vexctl):
+To add a new VEX statement use the [vexctl command](https://github.com/openvex/vexctl):
 
 ```bash
 VER=v0.41.0
-vexctl create --file .vex/$VER.vex.json \
+vexctl add --in-place .vex/golang.vex.json \
 --product "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@$VER" \
---vuln "CVE-2025-54388" \
+--vuln "CVE-2099-12345" \
 --status "not_affected" \
---justification "vulnerable_code_not_in_execute_path" \
---id "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/$VER/$VER.vex.json" \
---author "Inspektor Gadget Security Team <security@inspektor-gadget.io>"
+--justification "vulnerable_code_not_in_execute_path"
 ```
 
 The [possible
@@ -79,15 +70,3 @@ and [possible
 justifications](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md#status-justifications)
 are listed in the [OpenVEX
 Specification](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md).
-
-When a VEX document already exists for a specific version, use `vexctl add`
-instead of `vexctl create`. For example:
-
-```bash
-VER=v0.41.0
-vexctl add --in-place .vex/$VER.vex.json \
---product "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@$VER" \
---vuln "CVE-2099-12345" \
---status "not_affected" \
---justification "vulnerable_code_not_in_execute_path"
-```
