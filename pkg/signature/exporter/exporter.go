@@ -22,6 +22,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/bundle"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/cosign"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/oci11"
 )
@@ -39,6 +40,7 @@ var DefaultSignatureExporter = SignatureExporter{
 	exporters: []Exporter{
 		&cosign.Exporter{},
 		&oci11.Exporter{},
+		&bundle.Exporter{},
 	},
 }
 
