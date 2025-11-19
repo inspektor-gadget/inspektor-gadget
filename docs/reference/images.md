@@ -453,15 +453,12 @@ $ sudo ig image inspect advise_seccomp:latest --show-datasources --jsonpath='[0]
   "runtime.containerImageDigest",
   "runtime.containerStartedAt"
 ]
-
 ```
 
 #### `verify`
 
 Verify the given gadget image signature, for more details see [the documentation related to verifying](verify-assets.mdx).
-Before verifying an image, make sure it is already present in the local store.
-
-If not, pull it first:
+Before verifying an image, make sure it is already present in the local store. If not, pull it first:
 
 ```bash
 $ sudo ig image pull IMAGE_NAME
@@ -487,12 +484,10 @@ Global Flags:
       --config string            config file to use
       --pprof-addr string        Starts a pprof server for profiling at the given address (e.g., 'localhost:6060'), leave empty to disable (default).
   -v, --verbose                  Print debug information
-
 ```
 
 ```bash
 $ sudo ig image verify ghcr.io/inspektor-gadget/gadget/trace_exec:v0.45.0
- 
 Verifying image: trace_exec:v0.45.0
 Image verified successfully!
 ```

@@ -132,6 +132,10 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 			return nil
 		}
 
+		if imgOpts.Verifier == nil {
+			return errors.New("signature verification requested but no verifier provided")
+		}
+
 		imageStore, err := newLocalOciStore()
 		if err != nil {
 			return fmt.Errorf("getting oci store: %w", err)
