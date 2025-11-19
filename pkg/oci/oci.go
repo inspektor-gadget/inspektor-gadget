@@ -148,12 +148,7 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 			return fmt.Errorf("normalizing image name: %w", err)
 		}
 
-		repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
-		if err != nil {
-			return fmt.Errorf("creating remote repository: %w", err)
-		}
-
-		err = imgOpts.Verifier.Verify(ctx, repo, imageStore, imageRef)
+		err = imgOpts.Verifier.Verify(ctx, imageStore, imageRef)
 		if err != nil {
 			return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 		}

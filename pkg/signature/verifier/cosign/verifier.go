@@ -28,7 +28,6 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 	signatureformat "github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign/signature-format"
@@ -47,12 +46,7 @@ var supportedFormats = []signatureformat.SignatureFormat{
 	&signatureformat.OCI11Format{},
 }
 
-func loadSigningInformation(ctx context.Context, imageRef reference.Named, imageStore oras.GraphTarget, repo *remote.Repository) ([]byte, []byte, error) {
-	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, imageRef.String())
-	if err != nil {
-		return nil, nil, fmt.Errorf("getting image digest: %w", err)
-	}
-
+func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget) ([]byte, []byte, error) {
 	errs := make([]error, 0)
 	for _, format := range supportedFormats {
 		signingInfoTag, err := format.CraftSigningInfoTag(imageDigest)
@@ -115,13 +109,13 @@ func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
 	return nil
 }
 
-func (c *Verifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
+func (c *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref reference.Named) error {
 	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, ref, imageStore, repo)
+	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageDigest, imageStore)
 	if err != nil {
 		return fmt.Errorf("getting signing information: %w", err)
 	}

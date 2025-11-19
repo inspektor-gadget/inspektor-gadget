@@ -22,7 +22,6 @@ import (
 	"github.com/distribution/reference"
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 func TestNewVerifier(t *testing.T) {
@@ -263,16 +262,12 @@ S//euSjbohacaQzTb8ZQqRLKfg==
 
 			ref, err := reference.ParseNormalizedNamed(test.image)
 			require.NoError(t, err)
-
 			ref = reference.TagNameOnly(ref)
-
-			repo, err := remote.NewRepository(ref.Name())
-			require.NoError(t, err)
 
 			verifier, err := NewVerifier(test.opts)
 			require.NoError(t, err)
 
-			err = verifier.Verify(context.Background(), repo, store, ref)
+			err = verifier.Verify(context.Background(), store, ref)
 			if test.shouldErr {
 				require.Error(t, err)
 				return
