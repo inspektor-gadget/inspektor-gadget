@@ -41,6 +41,7 @@ struct event {
 	gadget_errno error_raw;
 	int args_count;
 	int tty;
+	bool from_rootfs;
 	bool upper_layer;
 	bool fupper_layer;
 	bool pupper_layer;
@@ -196,14 +197,15 @@ int ig_execveat_e(struct syscall_trace_enter *ctx)
 	return enter_execve(pathname, args);
 }
 
-static __always_inline bool has_upper_layer(struct inode *inode)
+static __always_inline bool is_from_rootfs(struct inode *inode)
 {
 	unsigned long sb_magic = BPF_CORE_READ(inode, i_sb, s_magic);
 
-	if (sb_magic != OVERLAYFS_SUPER_MAGIC) {
-		return false;
-	}
+	return sb_magic == OVERLAYFS_SUPER_MAGIC;
+}
 
+static __always_inline bool has_upper_layer(struct inode *inode)
+{
 	struct dentry *upperdentry;
 
 	// struct ovl_inode defined in fs/overlayfs/ovl_entry.h
@@ -232,11 +234,13 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 		return 0;
 
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
-	if (inode)
+	if (inode && is_from_rootfs(inode)) {
+		event->from_rootfs = true;
 		event->upper_layer = has_upper_layer(inode);
+	}
 
 	struct inode *pinode = BPF_CORE_READ(parent, mm, exe_file, f_inode);
-	if (pinode)
+	if (pinode && is_from_rootfs(pinode))
 		event->pupper_layer = has_upper_layer(pinode);
 
 	gadget_process_populate(&event->proc);
@@ -343,7 +347,7 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	}
 
 	struct inode *inode = BPF_CORE_READ(bprm, file, f_inode);
-	if (inode)
+	if (inode && is_from_rootfs(inode))
 		event->fupper_layer = has_upper_layer(inode);
 
 	if (paths) {
