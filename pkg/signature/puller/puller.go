@@ -22,6 +22,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/bundle"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/cosign"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/oci11"
 )
@@ -39,6 +40,7 @@ var DefaultSignaturePuller = SignaturePuller{
 	pullers: []Puller{
 		&cosign.Puller{},
 		&oci11.Puller{},
+		&bundle.Puller{},
 	},
 }
 
