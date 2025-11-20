@@ -79,6 +79,8 @@ const (
 	HistogramOutputMode = "histogram"
 
 	MinPrintInterval = time.Millisecond * 25
+
+	TagGroupOtelMetrics = "group:OpenTelemetry Metrics"
 )
 
 var renderedDsCliAnnotations = map[string]string{
@@ -265,20 +267,26 @@ func (m *otelMetricsOperator) InstanceParams() api.Params {
 	return api.Params{
 		{
 			Key:         ParamOtelMetricsName,
+			Title:       "Metrics Name",
 			TypeHint:    api.TypeString,
 			Description: "override name of the exported datasource; use a comma-separated list with datasource:newname to specify more than one name",
+			Tags:        []string{TagGroupOtelMetrics},
 		},
 		{
 			Key:          ParamOtelMetricsPrintInterval,
+			Title:        "Metrics Print Interval",
 			TypeHint:     api.TypeDuration,
 			Description:  "interval to use when printing metrics; minimum is 25ms",
 			DefaultValue: "1000ms",
+			Tags:         []string{TagGroupOtelMetrics},
 		},
 		{
 			Key:          ParamOtelMetricsExporter,
+			Title:        "Exporter",
 			TypeHint:     api.TypeString,
 			Description:  "name of the configured metric provider to use; leave empty to use the default exporter",
 			DefaultValue: "",
+			Tags:         []string{TagGroupOtelMetrics},
 		},
 	}
 }

@@ -57,6 +57,8 @@ const (
 	certificates            = "notation-certificates"
 	policyDocument          = "notation-policy-document"
 	allowedGadgets          = "allowed-gadgets"
+
+	TagGroupOCI = "group:OCI"
 )
 
 const (
@@ -186,6 +188,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Description:  "Validate the gadget metadata before running the gadget",
 			DefaultValue: "true",
 			TypeHint:     api.TypeBool,
+			Tags:         []string{api.TagAdvanced, TagGroupOCI},
 		},
 		{
 			Key:          pullParam,
@@ -198,6 +201,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 				oci.PullImageNever,
 			},
 			TypeHint: api.TypeString,
+			Tags:     []string{api.TagAdvanced, TagGroupOCI},
 		},
 		{
 			Key:   annotate,
@@ -206,6 +210,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 				"  'datasource:annotation=value' to add an annotation to a datasource.\n" +
 				"  'datasource.field:annotation=value' to add an annotation to the field of a datasource\n",
 			TypeHint: api.TypeStringSlice,
+			Tags:     []string{api.TagAdvanced, TagGroupOCI},
 		},
 	}
 }
