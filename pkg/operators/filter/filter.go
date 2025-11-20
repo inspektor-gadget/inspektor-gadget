@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -170,13 +170,17 @@ func (f *filterOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) 
 		keyFilter := keyForDataSource(ParamFilter, ds)
 		filtersParam = append(filtersParam, &api.Param{
 			Key:         keyFilter,
+			Title:       fmt.Sprintf("Filter for %q", dsName),
 			Description: descriptionFilter,
+			Tags:        []string{api.TagGroupDataFiltering},
 		})
 
 		keyFilterExpr := keyForDataSource(ParamFilterExpr, ds)
 		filtersParam = append(filtersParam, &api.Param{
 			Key:         keyFilterExpr,
+			Title:       fmt.Sprintf("Expression Filter for %q", dsName),
 			Description: fmt.Sprintf(descriptionFilterExp, dsName),
+			Tags:        []string{api.TagGroupDataFiltering},
 		})
 
 		if len(dataSources) == 1 {
@@ -184,12 +188,14 @@ func (f *filterOperatorInstance) ExtraParams(gadgetCtx operators.GadgetContext) 
 				Key:         ParamFilter,
 				Description: fmt.Sprintf("Synonym for --%s", keyFilter),
 				Alias:       "F",
+				Tags:        []string{api.TagGroupDataFiltering, api.TagAdvanced},
 			})
 
 			filtersParam = append(filtersParam, &api.Param{
 				Key:         ParamFilterExpr,
 				Description: fmt.Sprintf("Synonym for --%s", keyFilterExpr),
 				Alias:       "E",
+				Tags:        []string{api.TagGroupDataFiltering, api.TagAdvanced},
 			})
 		}
 	}

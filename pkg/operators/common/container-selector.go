@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -71,29 +72,39 @@ func parseLabelsSelector(selectorSlice []string) map[string]string {
 func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 	k8sPodName := params.ParamDesc{
 		Key:         ParamK8sPodName,
+		Title:       "K8s Pod Name",
 		Description: "Show only data from Kubernetes pods with that name",
 		ValueHint:   gadgets.K8SPodName,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sNamespace := params.ParamDesc{
 		Key:         ParamK8sNamespace,
+		Title:       "K8s Namespace",
 		Description: "Show only data from pods in a given Kubernetes namespace",
 		ValueHint:   gadgets.K8SNamespace,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sSelector := params.ParamDesc{
 		Key:         ParamK8sSelector,
+		Title:       "K8s Label Selector",
 		Description: "Kubernetes Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
 		ValueHint:   gadgets.K8SLabels,
 		Validator:   labelSelectorValidator,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sContainerNameParam := params.ParamDesc{
 		Key:         ParamK8sContainerName,
+		Title:       "K8s Container Name",
 		Description: "Show data only from containers with the name defined in the pod spec",
 		ValueHint:   gadgets.K8SContainerName,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	runtimeContainerParam := params.ParamDesc{
 		Key:         ParamRuntimeContainerName,
+		Title:       "Runtime Container Name",
 		Description: "Show data only from containers with the runtime-assigned name (not the name defined in the pod spec)",
 		ValueHint:   gadgets.LocalContainer,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 
 	// For backward compatibility, we swap the main keys and alternative keys, ensuring
