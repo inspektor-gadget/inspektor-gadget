@@ -118,18 +118,24 @@ func TestTraceCapabilitiesGadget(t *testing.T) {
 				})
 				return nil
 			}
+			normalizeEvent := func(event *ExpectedTraceCapabilitiesEvent) {
+				utils.NormalizeParentTid(&event.Proc)
+			}
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceCapabilitiesEvent]{
 				Image:          "trace_capabilities",
 				Timeout:        5 * time.Second,
 				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 				OnGadgetRun:    onGadgetRun,
+				NormalizeEvent: normalizeEvent,
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 			gadgetRunner.RunGadget()
 			utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
+				proc := info.Proc
+				utils.NormalizeParentTid(&proc)
 				return &ExpectedTraceCapabilitiesEvent{
-					Proc:          info.Proc,
+					Proc:          proc,
 					Cap:           testCase.requestedPermission,
 					Audit:         1,
 					Insetid:       testCase.insetId,
@@ -155,29 +161,37 @@ func TestNonAuditCapabilities(t *testing.T) {
 		})
 		return nil
 	}
+	normalizeEvent := func(event *ExpectedTraceCapabilitiesEvent) {
+		utils.NormalizeParentTid(&event.Proc)
+	}
 	opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceCapabilitiesEvent]{
 		Image:          "trace_capabilities",
 		Timeout:        5 * time.Second,
 		MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 		OnGadgetRun:    onGadgetRun,
+		NormalizeEvent: normalizeEvent,
 	}
 	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 	gadgetRunner.RunGadget()
 
 	utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedTraceCapabilitiesEvent {
-		return &ExpectedTraceCapabilitiesEvent{
-			Proc: utils.Process{
-				Pid:     uint32(cmd.Process.Pid),
-				Tid:     uint32(cmd.Process.Pid),
-				Comm:    "cat",
-				MntNsID: info.MountNsID,
-				Parent: utils.Parent{
-					Comm: "unit.test",
-					Pid:  uint32(os.Getpid()),
-					Tid:  info.Proc.Tid,
-				},
+		proc := info.Proc
+		utils.NormalizeParentTid(&proc)
+		expectedProc := utils.Process{
+			Pid:     uint32(cmd.Process.Pid),
+			Tid:     uint32(cmd.Process.Pid),
+			Comm:    "cat",
+			MntNsID: info.MountNsID,
+			Parent: utils.Parent{
+				Comm: "unit.test",
+				Pid:  uint32(os.Getpid()),
+				Tid:  proc.Tid,
 			},
+		}
+		utils.NormalizeParentTid(&expectedProc)
+		return &ExpectedTraceCapabilitiesEvent{
+			Proc:          expectedProc,
 			Cap:           "CAP_SYSLOG",
 			Audit:         0,
 			Insetid:       0,

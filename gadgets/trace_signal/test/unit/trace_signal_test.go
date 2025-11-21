@@ -82,20 +82,26 @@ func TestTraceSignalGadget(t *testing.T) {
 				})
 				return nil
 			}
+			normalizeEvent := func(event *traceSignalEvent) {
+				utils.NormalizeParentTid(&event.Proc)
+			}
 			opts := gadgetrunner.GadgetRunnerOpts[traceSignalEvent]{
 				Image:          "trace_signal",
 				Timeout:        5 * time.Second,
 				ParamValues:    api.ParamValues{},
 				OnGadgetRun:    onGadgetRun,
 				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+				NormalizeEvent: normalizeEvent,
 			}
 			gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
 
 			gadgetRunner.RunGadget()
 
 			utils.ExpectOneEvent(func(info *utils.RunnerInfo, fd int) *traceSignalEvent {
+				proc := info.Proc
+				utils.NormalizeParentTid(&proc)
 				return &traceSignalEvent{
-					Proc:      info.Proc,
+					Proc:      proc,
 					Signal:    signalName(testCase.signal),
 					SignalRaw: int(testCase.signal),
 					Error:     "",

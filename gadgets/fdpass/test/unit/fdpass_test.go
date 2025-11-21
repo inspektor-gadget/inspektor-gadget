@@ -52,7 +52,7 @@ func TestFdpassGadget(t *testing.T) {
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, inodeNum uint64, sockfd int, fd int, events []ExpectedFdpassEvent) {
 				utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, fd int) *ExpectedFdpassEvent {
 					proc := info.Proc
-					utils.NormalizeProc(&proc)
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedFdpassEvent{
 						Proc:      proc,
 						SocketIno: inodeNum,
@@ -88,7 +88,7 @@ func TestFdpassGadget(t *testing.T) {
 				return nil
 			}
 			normalizeEvent := func(event *ExpectedFdpassEvent) {
-				utils.NormalizeProc(&event.Proc)
+				utils.NormalizeParentTid(&event.Proc)
 			}
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedFdpassEvent]{
 				Image:          "fdpass",
