@@ -54,6 +54,8 @@ const (
 
 	CompressionNone = "none"
 	CompressionGZIP = "gzip"
+
+	TagGroupOtelLogs = "group:OpenTelemetry Logs"
 )
 
 var supportedExporters = []string{ExporterOTLPGRPC}
@@ -131,8 +133,10 @@ func (o *otelLogsOperator) InstanceParams() api.Params {
 	return api.Params{
 		&api.Param{
 			Key:          ParamOtelLogsExporter,
+			Title:        "Logs Exporter",
 			Description:  "Exporter to use for log exporting",
 			DefaultValue: "",
+			Tags:         []string{TagGroupOtelLogs},
 		},
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ func (s *sortOperator) InstanceParams() api.Params {
 			Title: "Sort By",
 			Description: "Sort by fields. Join multiple fields with ','. Prefix a field with '-' to sort in descending order. " +
 				"If using multiple data sources, prefix fields with 'datasourcename:' and separate with ';'",
+			Tags: []string{api.TagGroupDataFiltering},
 		},
 	}
 }

@@ -144,9 +144,11 @@ func (l *localManager) ParamDescs() params.ParamDescs {
 	return append(common.GetContainerSelectorParams(false),
 		&params.ParamDesc{
 			Key:          Host,
+			Title:        "Host Data",
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+			Tags:         []string{api.TagGroupDataCollection},
 		})
 }
 
@@ -579,9 +581,11 @@ func (l *localManagerTrace) ParamDescs() params.ParamDescs {
 	return append(common.GetContainerSelectorParams(false),
 		&params.ParamDesc{
 			Key:          Host,
+			Title:        "Host Data",
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+			Tags:         []string{api.TagGroupDataCollection},
 		})
 }
 

@@ -59,6 +59,7 @@ func (l *limiterOperator) InstanceParams() api.Params {
 				"Use -1 to disable the limiter.",
 			DefaultValue: "-1",
 			TypeHint:     api.TypeString,
+			Tags:         []string{api.TagGroupDataFiltering},
 		},
 	}
 }
