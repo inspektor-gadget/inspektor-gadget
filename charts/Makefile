@@ -34,19 +34,19 @@ endif
 
 # install uses 'helm upgrade --install' to make chart installation idempotent.
 install: build
-	$(HELM) upgrade --install gadget $(CHART_DIR) --namespace gadget --create-namespace
+	$(HELM) upgrade --install gadget $(CHART_DIR) --namespace gadget --create-namespace $$HELM_PARAMS
 
 uninstall:
-	$(HELM) uninstall gadget --namespace gadget
+	$(HELM) uninstall gadget --namespace gadget $$HELM_PARAMS
 
 lint: build
-	$(HELM) lint $(CHART_DIR)
+	$(HELM) lint $(CHART_DIR) $$HELM_PARAMS
 
 template: build
-	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds | tee $(OUTPUT_DIR)/deploy.yaml
+	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds $$HELM_PARAMS | tee $(OUTPUT_DIR)/deploy.yaml
 
 package: build
-	$(HELM) package $(CHART_DIR) -d $(BUILD_DIR)
+	$(HELM) package $(CHART_DIR) -d $(BUILD_DIR) $$HELM_PARAMS
 
 help:
 	@echo "Usage: make <target>"
