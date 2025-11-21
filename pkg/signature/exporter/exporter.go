@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package exporter
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/oci11"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/oci11"
 )
 
 type Exporter interface {

@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cosign
+package signatureformat
 
 import (
 	"context"
-	"fmt"
 
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
-type Puller struct{} // Empty type only to respect the interface.
+type LegacyFormat struct{}
 
-func pullCosignSigningInformation(ctx context.Context, repo *remote.Repository, signingInfoTag string, imageStore oras.Target) error {
-	if _, err := oras.Copy(ctx, repo, signingInfoTag, imageStore, signingInfoTag, oras.DefaultCopyOptions); err != nil {
-		return fmt.Errorf("copying index tag %q: %w", signingInfoTag, err)
-	}
-
-	return nil
+func (LegacyFormat) CraftSigningInfoTag(imageDigest string) (string, error) {
+	return helpers.CraftCosignSignatureTag(imageDigest)
 }
 
-func (c *Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, craftCosignSignatureTag)
+func (LegacyFormat) FindSignatureTag(_ context.Context, _ oras.GraphTarget, signingInfoTag string) (string, error) {
+	return signingInfoTag, nil
+}
+
+func (LegacyFormat) LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, error) {
+	return loadSignatureAndPayload(ctx, imageStore, signatureTag)
+}
+
+func (LegacyFormat) Name() string {
+	return "legacy"
 }

@@ -31,7 +31,6 @@ import (
 	"github.com/notaryproject/notation-go/verifier/trustpolicy"
 	"github.com/notaryproject/notation-go/verifier/truststore"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
@@ -117,7 +116,7 @@ func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 	return &Verifier{verif}, nil
 }
 
-func (n *Verifier) Verify(ctx context.Context, _ *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
+func (n *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref reference.Named) error {
 	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)

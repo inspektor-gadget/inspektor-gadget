@@ -10,9 +10,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
 )
 
 func NewVerifyCmd() *cobra.Command {
@@ -28,7 +28,7 @@ func NewVerifyCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			image := args[0]
 
-			verifier, err := signature.NewSignatureVerifier(signature.VerifierOptions{
+			verifier, err := verifier.NewSignatureVerifier(verifier.VerifierOptions{
 				CosignVerifierOpts: cosign.VerifierOptions{
 					PublicKeys: strings.Split(cosignPublicKeys, ","),
 				},
