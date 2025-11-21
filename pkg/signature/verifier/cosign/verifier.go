@@ -19,14 +19,12 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 
 	"github.com/distribution/reference"
 	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/sigstore/sigstore/pkg/signature/payload"
 	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
@@ -46,7 +44,7 @@ var supportedFormats = []signatureformat.SignatureFormat{
 	&signatureformat.OCI11Format{},
 }
 
-func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget) ([]byte, []byte, error) {
+func loadSigningInformation(ctx context.Context, imageDigest string, imageStore oras.GraphTarget) ([]byte, []byte, []byte, signatureformat.SignatureFormat, error) {
 	errs := make([]error, 0)
 	for _, format := range supportedFormats {
 		signingInfoTag, err := format.CraftSigningInfoTag(imageDigest)
@@ -63,17 +61,17 @@ func loadSigningInformation(ctx context.Context, imageDigest string, imageStore 
 			continue
 		}
 
-		signature, payload, err := format.LoadSignatureAndPayload(ctx, imageStore, signatureTag)
+		signature, payload, rawPayload, err := format.LoadSignatureAndPayload(ctx, imageStore, signatureTag)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("loading signature and payload for %s format: %w", format.Name(), err))
 
 			continue
 		}
 
-		return signature, payload, nil
+		return signature, payload, rawPayload, format, nil
 	}
 
-	return nil, nil, errors.Join(errs...)
+	return nil, nil, nil, nil, errors.Join(errs...)
 }
 
 func newVerifier(publicKey []byte) (signature.Verifier, error) {
@@ -95,27 +93,13 @@ func newVerifier(publicKey []byte) (signature.Verifier, error) {
 	return verifier, nil
 }
 
-func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
-	payloadImage := &payload.SimpleContainerImage{}
-	err := json.Unmarshal(payloadBytes, payloadImage)
-	if err != nil {
-		return fmt.Errorf("unmarshalling payload: %w", err)
-	}
-
-	if payloadImage.Critical.Image.DockerManifestDigest != imageDigest {
-		return fmt.Errorf("payload digest does not correspond to image: expected %s, got %s", imageDigest, payloadImage.Critical.Image.DockerManifestDigest)
-	}
-
-	return nil
-}
-
 func (c *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref reference.Named) error {
 	imageDigest, err := helpers.GetImageDigest(ctx, imageStore, ref.String())
 	if err != nil {
 		return fmt.Errorf("getting image digest: %w", err)
 	}
 
-	signatureBytes, payloadBytes, err := loadSigningInformation(ctx, imageDigest, imageStore)
+	signatureBytes, payloadBytes, rawPayload, format, err := loadSigningInformation(ctx, imageDigest, imageStore)
 	if err != nil {
 		return fmt.Errorf("getting signing information: %w", err)
 	}
@@ -140,7 +124,7 @@ func (c *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref 
 	// We should not read the payload before confirming it was signed, so let's
 	// do this check once it was confirmed to be signed:
 	// https://github.com/containers/image/blob/main/docs/containers-signature.5.md#the-cryptographic-signature
-	err = checkPayloadImage(payloadBytes, imageDigest)
+	err = format.CheckPayloadImage(rawPayload, imageDigest)
 	if err != nil {
 		return fmt.Errorf("checking payload image: %w", err)
 	}

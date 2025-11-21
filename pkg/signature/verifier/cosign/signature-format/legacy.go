@@ -24,6 +24,10 @@ import (
 
 type LegacyFormat struct{}
 
+func (*LegacyFormat) CheckPayloadImage(payloadBytes []byte, imageDigest string) error {
+	return checkPayloadImage(payloadBytes, imageDigest)
+}
+
 func (*LegacyFormat) CraftSigningInfoTag(imageDigest string) (string, error) {
 	return helpers.CraftCosignSignatureTag(imageDigest)
 }
@@ -32,7 +36,7 @@ func (*LegacyFormat) FindSignatureTag(_ context.Context, _ oras.GraphTarget, sig
 	return signingInfoTag, nil
 }
 
-func (*LegacyFormat) LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, error) {
+func (*LegacyFormat) LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, []byte, error) {
 	return loadSignatureAndPayload(ctx, imageStore, signatureTag)
 }
 

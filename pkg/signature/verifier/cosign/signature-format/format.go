@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/sigstore/sigstore/pkg/signature/payload"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 )
@@ -30,50 +31,65 @@ import (
 const simpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 
 type SignatureFormat interface {
+	CheckPayloadImage(payloadBytes []byte, imageDigest string) error
 	CraftSigningInfoTag(imageDigest string) (string, error)
 	FindSignatureTag(ctx context.Context, imageStore oras.GraphTarget, signingInfoTag string) (string, error)
-	LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, error)
+	LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, []byte, error)
 	Name() string
 }
 
-func loadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, error) {
+func checkPayloadImage(payloadBytes []byte, imageDigest string) error {
+	payloadImage := &payload.SimpleContainerImage{}
+	err := json.Unmarshal(payloadBytes, payloadImage)
+	if err != nil {
+		return fmt.Errorf("unmarshalling payload: %w", err)
+	}
+
+	if payloadImage.Critical.Image.DockerManifestDigest != imageDigest {
+		return fmt.Errorf("payload digest does not correspond to image: expected %s, got %s", imageDigest, payloadImage.Critical.Image.DockerManifestDigest)
+	}
+
+	return nil
+}
+
+func loadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, []byte, error) {
 	_, signatureManifestBytes, err := oras.FetchBytes(ctx, imageStore, signatureTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
-		return nil, nil, fmt.Errorf("getting signature bytes: %w", err)
+		return nil, nil, nil, fmt.Errorf("getting signature bytes: %w", err)
 	}
 
 	signatureManifest := &ocispec.Manifest{}
 	err = json.Unmarshal(signatureManifestBytes, signatureManifest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("decoding signature manifest: %w", err)
+		return nil, nil, nil, fmt.Errorf("decoding signature manifest: %w", err)
 	}
 
 	layers := signatureManifest.Layers
 	expectedLen := 1
 	layersLen := len(layers)
 	if layersLen != expectedLen {
-		return nil, nil, fmt.Errorf("wrong number of signature manifest layers: expected %d, got %d", expectedLen, layersLen)
+		return nil, nil, nil, fmt.Errorf("wrong number of signature manifest layers: expected %d, got %d", expectedLen, layersLen)
 	}
 
 	payloadDescriptor := layers[0]
 	if payloadDescriptor.MediaType != simpleSigningMediaType {
-		return nil, nil, fmt.Errorf("wrong payloadDescriptor media type: expected %s, got %s", simpleSigningMediaType, payloadDescriptor.MediaType)
+		return nil, nil, nil, fmt.Errorf("wrong payloadDescriptor media type: expected %s, got %s", simpleSigningMediaType, payloadDescriptor.MediaType)
 	}
 
 	signature, ok := payloadDescriptor.Annotations["dev.cosignproject.cosign/signature"]
 	if !ok {
-		return nil, nil, fmt.Errorf("no signature in payloadDescriptor")
+		return nil, nil, nil, fmt.Errorf("no signature in payloadDescriptor")
 	}
 
 	signatureBytes, err := base64.StdEncoding.DecodeString(signature)
 	if err != nil {
-		return nil, nil, fmt.Errorf("decoding signature: %w", err)
+		return nil, nil, nil, fmt.Errorf("decoding signature: %w", err)
 	}
 
 	payloadBytes, err := content.FetchAll(ctx, imageStore, payloadDescriptor)
 	if err != nil {
-		return nil, nil, fmt.Errorf("getting payload bytes: %w", err)
+		return nil, nil, nil, fmt.Errorf("getting payload bytes: %w", err)
 	}
 
-	return signatureBytes, payloadBytes, nil
+	return signatureBytes, payloadBytes, payloadBytes, nil
 }
