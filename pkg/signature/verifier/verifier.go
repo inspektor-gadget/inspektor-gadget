@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package verifier
 
 import (
 	"context"
@@ -21,14 +21,13 @@ import (
 
 	"github.com/distribution/reference"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
 )
 
 type Verifier interface {
-	Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error
+	Verify(ctx context.Context, imageStore oras.GraphTarget, ref reference.Named) error
 }
 
 type SignatureVerifier struct {
@@ -40,14 +39,14 @@ type VerifierOptions struct {
 	NotationVerifierOpts notation.VerifierOptions
 }
 
-func (v *SignatureVerifier) Verify(ctx context.Context, repo *remote.Repository, imageStore oras.GraphTarget, ref reference.Named) error {
+func (v *SignatureVerifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref reference.Named) error {
 	if len(v.verifiers) == 0 {
 		return errors.New("no verification method available")
 	}
 
 	errs := make([]error, 0)
 	for method, verifier := range v.verifiers {
-		err := verifier.Verify(ctx, repo, imageStore, ref)
+		err := verifier.Verify(ctx, imageStore, ref)
 		if err == nil {
 			return nil
 		}

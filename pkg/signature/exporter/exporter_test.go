@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package exporter
 
 import (
 	"context"
@@ -53,7 +53,7 @@ func TestExportSigningInformation(t *testing.T) {
 		},
 	}
 
-	srcStore, err := oci.New(filepath.Join("testdata", "oci-store"))
+	srcStore, err := oci.New(filepath.Join("..", "testdata", "oci-store"))
 	require.NoError(t, err)
 
 	for name, test := range tests {

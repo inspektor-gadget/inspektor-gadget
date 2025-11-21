@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package puller
 
 import (
 	"context"
@@ -22,8 +22,9 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/oci11"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/bundle"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller/oci11"
 )
 
 type Puller interface {
@@ -31,13 +32,20 @@ type Puller interface {
 }
 
 type SignaturePuller struct {
-	pullers map[string]Puller
+	pullers []struct{
+		name   string
+		puller Puller
+	}
 }
 
 var DefaultSignaturePuller = SignaturePuller{
-	pullers: map[string]Puller{
-		"cosign":  &cosign.Puller{},
-		"oci 1.1": &oci11.Puller{},
+	pullers: []struct{
+		name   string
+		puller Puller
+	}{
+		{"cosign", &cosign.Puller{}},
+		{"oci 1.1", &oci11.Puller{}},
+		{"bundle", &bundle.Puller{}},
 	},
 }
 
@@ -47,13 +55,13 @@ func (p *SignaturePuller) PullSigningInformation(ctx context.Context, repo *remo
 	}
 
 	errs := make([]error, 0)
-	for method, puller := range p.pullers {
-		err := puller.PullSigningInformation(ctx, repo, imageStore, digest)
+	for _, p := range p.pullers {
+		err := p.puller.PullSigningInformation(ctx, repo, imageStore, digest)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, fmt.Errorf("pulling signing information with %s: %w", method, err))
+		errs = append(errs, fmt.Errorf("pulling signing information with %s: %w", p.name, err))
 	}
 
 	return errors.Join(errs...)

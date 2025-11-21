@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signature
+package exporter
 
 import (
 	"context"
@@ -22,8 +22,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/oci11"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/bundle"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/oci11"
 )
 
 type Exporter interface {
@@ -31,13 +32,20 @@ type Exporter interface {
 }
 
 type SignatureExporter struct {
-	exporters map[string]Exporter
+	exporters []struct{
+		name     string
+		exporter Exporter
+	}
 }
 
 var DefaultSignatureExporter = SignatureExporter{
-	exporters: map[string]Exporter{
-		"cosign":  &cosign.Exporter{},
-		"oci 1.1": &oci11.Exporter{},
+	exporters: []struct{
+		name string
+		exporter Exporter
+	}{
+		{"cosign",  &cosign.Exporter{}},
+		{"oci 1.1", &oci11.Exporter{}},
+		{"bundle", &bundle.Exporter{}},
 	},
 }
 
@@ -47,13 +55,13 @@ func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src or
 	}
 
 	errs := make([]error, 0)
-	for method, exporter := range e.exporters {
-		err := exporter.ExportSigningInformation(ctx, src, dst, desc)
+	for _, e:= range e.exporters {
+		err := e.exporter.ExportSigningInformation(ctx, src, dst, desc)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", method, err))
+		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", e.name, err))
 	}
 
 	return errors.Join(errs...)
