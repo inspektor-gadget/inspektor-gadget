@@ -278,9 +278,13 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 
 func DockerContainerToContainerData(container *container.Summary) *runtimeclient.ContainerData {
 	imageDigest := ""
+	containerName := ""
+	if len(container.Names) > 0 {
+		containerName = container.Names[0]
+	}
 	return buildContainerData(
 		container.ID,
-		container.Names[0],
+		containerName,
 		container.Image,
 		imageDigest,
 		container.State,
