@@ -72,7 +72,7 @@ capabilities: {}
 tolerations: {}
 
 # -- Skip Helm labels
-skipLabels: true
+skipLabels: false
 
 # -- Labels to be added to all other resources.
 additionalLabels:
