@@ -513,6 +513,69 @@ A new field containing the flags set will be added to the event:
 - `ebpf.formatter.enum`: Name of the new field. If the annotation is not set and the source field name has a `_raw` suffix, the target name will be set to the source name without that suffix.
 - `ebpf.formatter.bitfield.separator`: Separator used. Defaults to `|`.
 
+## Flexible Strings
+
+For some gadgets, you may want to use strings whose maximum size is configurable
+at runtime to save memory. For that, gadgets can use the `gadget_flex_string`
+type:
+
+```c
+// Enable CO-RE access index preservation
+// We need this to allow CO-RE to relocate the different members of
+// the structure as the size of the flexible string can change at runtime
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute push(__attribute__((preserve_access_index)), \
+			     apply_to = record)
+#endif
+
+struct event {
+	gadget_flex_string mystring[MAX_SIZE];
+};
+
+// Disable CO-RE access index preservation
+#ifndef BPF_NO_PRESERVE_ACCESS_INDEX
+#pragma clang attribute pop
+#endif
+```
+
+:::warning
+
+The `gadget_flex_string` fields must be on the root of the event structure.
+
+:::
+
+The maximum size of the string can be set by the user at runtime using the
+`<fieldName>-size` parameter. For example, to set the maximum size of `mystring`
+to 64 bytes, the user can run:
+
+```bash
+$ sudo ig run trace_dns --mystring-size=64
+```
+
+Gadgets using this type, must follow the next guidelines to fill those fields:
+
+```c
+// 1. Check if the field exists. Setting a size of 0 will disable the field.
+bool mystring_exists = bpf_core_field_exists(event->mystring);
+if (mystring_exists) {
+	// 2. Get the size of the field.
+	unsigned int mystring_len = bpf_core_field_size(event->mystring);
+
+	// 3. Use `bpf_probe_read_kernel_str()` to fill the string.
+	bpf_probe_read_kernel_str(event->mystring, mystring_len, source);
+}
+
+// 4. use bpf_core_type_size() to get the size of the event. sizeof()
+// will provide a wrong value as the size is changed at runtime.
+unsigned int event_size = bpf_core_type_size(struct event);
+gadget_submit_buf(ctx, &events, event, event_size);
+```
+
+## Flexible Byte Arrays
+
+The same logic as above can be used for arrays of bytes using the
+`gadget_flex_bytes` type.
+
 ## Buffer API
 
 There are two kind of eBPF maps used to send events to userspace: (a) perf ring
