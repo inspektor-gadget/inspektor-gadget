@@ -1,0 +1,48 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/inspektor-gadget/inspektor-gadget/blob/main/.vex/golang.vex.json",
+  "author": "Inspektor Gadget Security Team <security@inspektor-gadget.io>",
+  "version": 2,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2025-54388"
+      },
+      "products": [
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.41.0"
+        },
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.42.0"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "timestamp": "2025-11-12T12:27:14.007523636Z"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2025-52881"
+      },
+      "products": [
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.41.0"
+        },
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.41.1"
+        },
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.45.0"
+        },
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.46.0"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "timestamp": "2025-11-12T12:30:28.276759574Z"
+    }
+  ],
+  "timestamp": "2025-11-12T12:27:14Z",
+  "last_updated": "2025-11-12T12:30:28Z"
+}
