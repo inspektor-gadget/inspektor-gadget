@@ -1,4 +1,5 @@
 name: trace tcpretrans
+category: observer
 description: trace TCP retransmissions
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_tcpretrans

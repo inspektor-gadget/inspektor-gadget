@@ -88,7 +88,7 @@ func TestImage(t *testing.T) {
 			name: "build",
 			cmd:  commonImage.NewBuildCmd(),
 			args: []string{
-				"--builder-image", *testBuilderImage, "--tag", testLocalImage, gadgetSrcFolder,
+				"--builder-image", *testBuilderImage, "--tag", testLocalImage, "--gadget-category", "observer", gadgetSrcFolder,
 			},
 			expectedStdout: []string{
 				fmt.Sprintf("Successfully built %s", testLocalImage),
@@ -313,7 +313,8 @@ func TestExportDeterministic(t *testing.T) {
 	// build and export the image
 	for i := 0; i < 2; i++ {
 		runCmd(t, commonImage.NewBuildCmd(), []string{
-			"--builder-image", *testBuilderImage, "--tag", testImage, gadgetSrcFolder,
+			"--builder-image", *testBuilderImage, "--tag", testImage,
+			"--gadget-category", "observer", gadgetSrcFolder,
 		})
 		exportPath := path.Join(tmpFolder, fmt.Sprintf("export%d.tar", i))
 		runCmd(t, commonImage.NewExportCmd(), []string{testImage, exportPath})

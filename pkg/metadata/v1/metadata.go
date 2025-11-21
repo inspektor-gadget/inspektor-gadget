@@ -43,6 +43,24 @@ type Field struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 }
 
+type Category string
+
+const (
+	CategoryObserver  Category = "observer"
+	CategoryGenerator Category = "generator"
+	CategoryMutator   Category = "mutator"
+)
+
+var CategoryList = []Category{
+	CategoryObserver,
+	CategoryGenerator,
+	CategoryMutator,
+}
+
+func (c Category) String() string {
+	return string(c)
+}
+
 type DataSource struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Fields      map[string]Field  `yaml:"fields"`
@@ -53,6 +71,8 @@ type GadgetMetadata struct {
 	Name string `yaml:"name"`
 	// Gadget description
 	Description string `yaml:"description,omitempty"`
+	// Category is the category of the gadget
+	Category Category `yaml:"category,omitempty"`
 	// HomepageURL is the URL to the gadget's homepage
 	HomepageURL string `yaml:"homepageURL,omitempty"`
 	// DocumentationURL is the URL to the gadget's documentation

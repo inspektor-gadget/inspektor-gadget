@@ -1,4 +1,5 @@
 name: top file
+category: observer
 description: Periodically report read/write activity by file
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_file

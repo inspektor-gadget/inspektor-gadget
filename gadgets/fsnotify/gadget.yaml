@@ -1,4 +1,5 @@
 name: fsnotify
+category: observer
 description: Gadget enriching inotify or fanotify events
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/fsnotify

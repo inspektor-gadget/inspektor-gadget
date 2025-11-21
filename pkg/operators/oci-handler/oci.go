@@ -35,6 +35,7 @@ import (
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -57,6 +58,7 @@ const (
 	certificates            = "notation-certificates"
 	policyDocument          = "notation-policy-document"
 	allowedGadgets          = "allowed-gadgets"
+	allowedCategories       = "allowed-categories"
 )
 
 const (
@@ -162,6 +164,18 @@ func (o *ociHandler) GlobalParams() api.Params {
 			Description:  "Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     api.TypeString,
+		},
+		{
+			Key:          allowedCategories,
+			Title:        "Allowed categories",
+			Description:  "List of allowed categories, if gadget is not part of it, execution will be denied. By default, only 'observer' is allowed",
+			DefaultValue: metadatav1.CategoryObserver.String(),
+			TypeHint:     api.TypeStringSlice,
+			PossibleValues: []string{
+				metadatav1.CategoryObserver.String(),
+				metadatav1.CategoryMutator.String(),
+				metadatav1.CategoryGenerator.String(),
+			},
 		},
 	}
 
@@ -442,6 +456,19 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 	viper, ok := cfg.(*viper.Viper)
 	if !ok {
 		return fmt.Errorf("invalid configuration format")
+	}
+
+	// Validate gadget metadata
+	c := viper.Get("category")
+	if c == nil {
+		return fmt.Errorf("category not found in metadata")
+	}
+	categories := o.globalParams.Get(allowedCategories).AsStringSlice()
+	if len(categories) == 0 {
+		categories = []string{metadatav1.CategoryObserver.String()}
+	}
+	if !slices.Contains(categories, c.(string)) {
+		return fmt.Errorf("category %q not allowed", c)
 	}
 
 	for _, ann := range o.instanceParams.Get(annotate).AsStringSlice() {
