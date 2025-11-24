@@ -459,8 +459,11 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	i.params[ParamTraceKernel] = &param{
 		Param: &api.Param{
 			Key:          ParamTraceKernel,
+			Title:        "Print Kernel Tracing Messages",
+			Description:  "Prints kernel messages from the trace pipe (e.g. coming from bpf_trace_printk)",
 			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
+			Tags:         []string{api.TagAdvanced, "group:eBPF"},
 		},
 	}
 
