@@ -1,0 +1,42 @@
+---
+title: profile_cuda
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# profile_cuda
+
+The `profile_cuda` gadget profiles CUDA memory allocations in `libcuda.so` (Driver API).
+It traces the following CUDA Driver API functions:
+
+- `cuMemAlloc_v2` - Allocate device memory
+- `cuMemAllocHost_v2` - Allocate page-locked host memory
+- `cuMemAllocManaged` - Allocate managed memory
+- `cuMemAllocPitch_v2` - Allocate pitched device memory
+
+The gadget aggregates memory allocations by user stack trace, allowing you to identify
+which code paths are responsible for CUDA memory usage.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cuda:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cuda:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+TODO
