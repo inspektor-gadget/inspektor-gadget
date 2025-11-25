@@ -204,7 +204,9 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 		attributeFields := make(map[string]datasource.FieldAccessor)
 
 		for _, f := range ds.Fields() {
+			fmt.Printf("checking field %q for attribute annotation\n", f.FullName)
 			if val, ok := f.Annotations[sampleAttributeAnnotation]; ok && val == "true" {
+				fmt.Printf("adding attribute field: %q\n", f.FullName)
 				attributeFields[f.FullName] = ds.GetField(f.FullName)
 			}
 		}
@@ -253,6 +255,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 
 			attributeKeys := make(map[string]int32)
 			for name := range attributeFields {
+				fmt.Printf("adding attribute key: %q\n", name)
 				keyIdx := stringSet.Add(name)
 				attributeKeys[name] = keyIdx
 			}
@@ -312,6 +315,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 
 				for _, f := range functions {
 					// add the function
+					fmt.Printf("adding function: %q\n", f)
 					fIndex := functionSet.Add(function{nameIdx: int32(stringSet.Add(f))})
 
 					// add the location
@@ -327,6 +331,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			stringTable := dic.StringTable()
 			stringTable.EnsureCapacity(len(stringSet))
 			for _, val := range stringSet.ToSlice() {
+				fmt.Printf("adding string: %q\n", val)
 				stringTable.Append(val)
 			}
 
@@ -387,10 +392,13 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 				return fmt.Errorf("client not found: %q", exporterName)
 			}
 
+			fmt.Printf("exporting %d profiles to %s\n", prof.Sample().Len(), exporterName)
+
 			req := pprofileotlp.NewExportRequestFromProfiles(profiles)
 
 			res, err := client.Export(gadgetCtx.Context(), req, o.o.callOpts...)
 			if err != nil {
+				fmt.Printf("error exporting profiles: %v\n", err)
 				return err
 			}
 

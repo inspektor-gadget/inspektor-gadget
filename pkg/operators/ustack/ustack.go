@@ -112,8 +112,12 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 		return nil, err
 	}
 	if len(instance.subscriptions) == 0 {
+		//fmt.Printf("ustack operator: no user stack fields found in datasources, operator will be a no-op\n")
 		return nil, nil
 	}
+
+	//fmt.Printf("ustack operator: symbolizer enabled=%v (symtab=%v, debuginfod-cache=%v)\n",
+	//	instance.symbolizerEnabled, instance.symbolizerOpts.UseSymtab, instance.symbolizerOpts.UseDebugInfodCache)
 	return instance, nil
 }
 

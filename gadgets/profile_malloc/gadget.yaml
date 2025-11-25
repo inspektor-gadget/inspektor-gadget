@@ -1,0 +1,22 @@
+name: trace malloc
+description: use uprobe to trace malloc and free in libc.so
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_malloc
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_malloc
+datasources:
+  allocs:
+    annotations:
+      #cli.supported-output-modes: none
+      ebpf.map.flush-on-stop: true
+      profiles.stack-field: ustack_raw.addresses
+      profiles.value-field: count
+    fields:
+      proc.comm:
+        annotations:
+          flamegraph.level: 10
+          flamegraph.type: single
+          profiles.sample-attribute: "true"
+  #flamegraph:
+  #  annotations:
+  #    cli.supported-output-modes: flamegraph
+  #    cli.default-output-mode: flamegraph
