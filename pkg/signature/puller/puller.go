@@ -28,16 +28,17 @@ import (
 
 type Puller interface {
 	PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error
+	Name() string
 }
 
 type SignaturePuller struct {
-	pullers map[string]Puller
+	pullers []Puller
 }
 
 var DefaultSignaturePuller = SignaturePuller{
-	pullers: map[string]Puller{
-		"cosign":  &cosign.Puller{},
-		"oci 1.1": &oci11.Puller{},
+	pullers: []Puller{
+		&cosign.Puller{},
+		&oci11.Puller{},
 	},
 }
 
@@ -47,13 +48,13 @@ func (p *SignaturePuller) PullSigningInformation(ctx context.Context, repo *remo
 	}
 
 	errs := make([]error, 0)
-	for method, puller := range p.pullers {
+	for _, puller := range p.pullers {
 		err := puller.PullSigningInformation(ctx, repo, imageStore, digest)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, fmt.Errorf("pulling signing information with %s: %w", method, err))
+		errs = append(errs, fmt.Errorf("pulling signing information with %s: %w", puller.Name(), err))
 	}
 
 	return errors.Join(errs...)
