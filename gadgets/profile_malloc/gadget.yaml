@@ -1,0 +1,19 @@
+name: trace malloc
+description: Profile memory allocations in libc.so
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_malloc
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_malloc
+datasources:
+  allocs:
+    annotations:
+      ebpf.map.flush-on-stop: true
+      profiles.stack-fields: ustack_raw.symbols
+      profiles.value-field: count
+      profiles.type: malloc
+      profiles.unit: bytes
+    fields:
+      proc.comm:
+        annotations:
+          flamegraph.level: 10
+          flamegraph.type: single
+          profiles.sample-attribute: "true"
