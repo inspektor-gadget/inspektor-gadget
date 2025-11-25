@@ -70,6 +70,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/debuginfod"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer/symtab"
 
+	_ "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	kubemanagertypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/types"

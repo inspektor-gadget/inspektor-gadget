@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	_ "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
