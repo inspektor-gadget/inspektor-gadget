@@ -47,6 +47,15 @@ func CraftSignatureIndexTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s", parts[0], parts[1]), nil
 }
 
+func CraftCosignSignatureTag(digest string) (string, error) {
+	parts := strings.Split(digest, ":")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("wrong digest, expected two parts, got %d", len(parts))
+	}
+
+	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
+}
+
 func CopySigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
 	signingInfoTag, err := craftSigningInfoTag(digest)
 	if err != nil {

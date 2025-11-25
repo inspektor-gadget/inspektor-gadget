@@ -39,9 +39,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
 )
 
 const (
@@ -89,8 +89,8 @@ func (o *ociHandler) Init(params *params.Params) error {
 	}
 
 	if verifyOptions.VerifySignature {
-		verifier, err := signature.NewSignatureVerifier(
-			signature.VerifierOptions{
+		verifier, err := verifier.NewSignatureVerifier(
+			verifier.VerifierOptions{
 				CosignVerifierOpts: cosign.VerifierOptions{
 					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
 				},
