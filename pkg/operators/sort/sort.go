@@ -176,8 +176,7 @@ func getCompareFunc(f datasource.FieldAccessor, negate bool) func(i, j datasourc
 	}
 }
 
-func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
-	s.sorters = make(map[datasource.DataSource][]func(i datasource.Data, j datasource.Data) bool)
+func (s *sortOperatorInstance) getFieldsByDs() map[string][]string {
 	dsSorts := make(map[string][]string)
 	for _, srt := range strings.Split(s.sortBy, ";") {
 		dsFields := strings.Split(srt, ":")
@@ -189,9 +188,15 @@ func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 		fields := strings.Split(fieldList, ",")
 		if len(fields) > 2 || fields[0] != "" {
-			dsSorts[dsName] = fields
+			dsSorts[dsName] = append(dsSorts[dsName], fields...)
 		}
 	}
+	return dsSorts
+}
+
+func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
+	s.sorters = make(map[datasource.DataSource][]func(i datasource.Data, j datasource.Data) bool)
+	dsSorts := s.getFieldsByDs()
 
 	// Check edge cases
 	dsSpecific := true
