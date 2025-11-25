@@ -28,16 +28,17 @@ import (
 
 type Exporter interface {
 	ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error
+	Name() string
 }
 
 type SignatureExporter struct {
-	exporters map[string]Exporter
+	exporters []Exporter
 }
 
 var DefaultSignatureExporter = SignatureExporter{
-	exporters: map[string]Exporter{
-		"cosign":  &cosign.Exporter{},
-		"oci 1.1": &oci11.Exporter{},
+	exporters: []Exporter{
+		&cosign.Exporter{},
+		&oci11.Exporter{},
 	},
 }
 
@@ -47,13 +48,13 @@ func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src or
 	}
 
 	errs := make([]error, 0)
-	for method, exporter := range e.exporters {
+	for _, exporter := range e.exporters {
 		err := exporter.ExportSigningInformation(ctx, src, dst, desc)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", method, err))
+		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", exporter.Name(), err))
 	}
 
 	return errors.Join(errs...)

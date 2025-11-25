@@ -25,6 +25,10 @@ import (
 
 type Exporter struct{} // Empty type only to respect the interface.
 
-func (e *Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error {
+func (*Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error {
 	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), helpers.CraftSignatureIndexTag)
+}
+
+func (*Exporter) Name() string {
+	return "oci 1.1"
 }
