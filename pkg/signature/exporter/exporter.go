@@ -27,7 +27,7 @@ import (
 )
 
 type Exporter interface {
-	ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error
+	ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error
 }
 
 type SignatureExporter struct {
@@ -41,7 +41,7 @@ var DefaultSignatureExporter = SignatureExporter{
 	},
 }
 
-func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
+func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error {
 	if len(e.exporters) == 0 {
 		return errors.New("no exporting method available")
 	}
