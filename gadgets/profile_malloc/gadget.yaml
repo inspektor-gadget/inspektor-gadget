@@ -8,7 +8,7 @@ datasources:
     annotations:
       #cli.supported-output-modes: none
       ebpf.map.flush-on-stop: true
-      profiles.stack-field: ustack_raw.addresses
+      profiles.stack-field: ustack_raw.symbols
       profiles.value-field: count
     fields:
       proc.comm:
