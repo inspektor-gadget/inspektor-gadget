@@ -150,7 +150,37 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 
 		err = imgOpts.Verifier.Verify(ctx, imageStore, imageRef)
 		if err != nil {
-			return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+			if !errors.Is(err, errdef.ErrNotFound) {
+				return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+			}
+
+			log.Warn("signature not found, will pull signing information and try verification again")
+
+			repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
+			if err != nil {
+				return fmt.Errorf("creating remote repository: %w", err)
+			}
+
+			desc, err := imageStore.Resolve(ctx, imageRef.String())
+			if err != nil {
+				return fmt.Errorf("resolving %q in local store: %w", image, err)
+			}
+
+			// The signature may not be present locally, let's pull it and verify
+			// again.
+			err = puller.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, desc.Digest.String())
+			if err != nil {
+				return fmt.Errorf("pulling gadget signature %q: %w", image, err)
+			}
+
+			if err := imageStore.saveIndexWithLock(); err != nil {
+				return err
+			}
+
+			err = imgOpts.Verifier.Verify(ctx, imageStore, imageRef)
+			if err != nil {
+				return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+			}
 		}
 
 		return nil
