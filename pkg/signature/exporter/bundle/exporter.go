@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cosign
+package bundle
 
 import (
 	"context"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
-type Puller struct{} // Empty type only to respect the interface.
+type Exporter struct{} // Empty type only to respect the interface.
 
-func (*Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, helpers.CraftCosignSignatureTag)
+func (*Exporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error {
+	return helpers.CopySigningInformation(ctx, src, dst, desc.Digest.String(), func(digest string) (string, error) {
+		return helpers.FindBundleTag(ctx, src, digest)
+	})
 }
 
-func (*Puller) Name() string {
-	return "cosign"
+func (*Exporter) Name() string {
+	return "bundle"
 }

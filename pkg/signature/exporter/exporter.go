@@ -22,38 +22,41 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/bundle"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/cosign"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter/oci11"
 )
 
 type Exporter interface {
-	ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error
+	ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error
+	Name() string
 }
 
 type SignatureExporter struct {
-	exporters map[string]Exporter
+	exporters []Exporter
 }
 
 var DefaultSignatureExporter = SignatureExporter{
-	exporters: map[string]Exporter{
-		"cosign":  &cosign.Exporter{},
-		"oci 1.1": &oci11.Exporter{},
+	exporters: []Exporter{
+		&cosign.Exporter{},
+		&oci11.Exporter{},
+		&bundle.Exporter{},
 	},
 }
 
-func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, desc ocispec.Descriptor) error {
+func (e *SignatureExporter) ExportSigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, desc ocispec.Descriptor) error {
 	if len(e.exporters) == 0 {
 		return errors.New("no exporting method available")
 	}
 
 	errs := make([]error, 0)
-	for method, exporter := range e.exporters {
+	for _, exporter := range e.exporters {
 		err := exporter.ExportSigningInformation(ctx, src, dst, desc)
 		if err == nil {
 			return nil
 		}
 
-		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", method, err))
+		errs = append(errs, fmt.Errorf("exporting signing information with %s: %w", exporter.Name(), err))
 	}
 
 	return errors.Join(errs...)

@@ -39,12 +39,17 @@ func TestExportSigningInformation(t *testing.T) {
 		"cosign_legacy_signed_image": {
 			src:       "ttl.sh/signed_with_cosign_legacy:latest",
 			dst:       "signed_with_cosign_legacy",
-			searchFor: "application/vnd.dev.cosign.simplesigning.v1+json",
+			searchFor: "application/vnd.dev.cosign.simplesigning",
 		},
 		"cosign_oci11_signed_image": {
 			src:       "ttl.sh/signed_with_cosign_oci11:latest",
 			dst:       "signed_with_cosign_oci11",
-			searchFor: "application/vnd.dev.cosign.simplesigning.v1+json",
+			searchFor: "application/vnd.dev.cosign.simplesigning",
+		},
+		"cosign_bundle_signed_image": {
+			src:       "ttl.sh/signed_with_cosign_bundle:latest",
+			dst:       "signed_with_cosign_bundle",
+			searchFor: "application/vnd.dev.sigstore.bundle",
 		},
 		"notation_signed_image": {
 			src:       "ttl.sh/signed_with_notation:latest",

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cosign
+package bundle
 
 import (
 	"context"
@@ -26,9 +26,11 @@ import (
 type Puller struct{} // Empty type only to respect the interface.
 
 func (*Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, helpers.CraftCosignSignatureTag)
+	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, func(digest string) (string, error) {
+		return helpers.FindBundleTag(ctx, repo, digest)
+	})
 }
 
 func (*Puller) Name() string {
-	return "cosign"
+	return "bundle"
 }

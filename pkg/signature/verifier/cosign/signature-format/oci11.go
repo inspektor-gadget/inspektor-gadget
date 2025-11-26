@@ -31,6 +31,10 @@ const signatureArtifactType = "application/vnd.dev.cosign.artifact.sig.v1+json"
 
 type OCI11Format struct{}
 
+func (*OCI11Format) CheckPayloadImage(payloadBytes []byte, imageDigest string) error {
+	return checkPayloadImage(payloadBytes, imageDigest)
+}
+
 func (*OCI11Format) CraftSigningInfoTag(imageDigest string) (string, error) {
 	return helpers.CraftSignatureIndexTag(imageDigest)
 }
@@ -56,7 +60,7 @@ func (*OCI11Format) FindSignatureTag(ctx context.Context, imageStore oras.GraphT
 	return "", fmt.Errorf("signature tag not found for index %q", signingInfoTag)
 }
 
-func (*OCI11Format) LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, error) {
+func (*OCI11Format) LoadSignatureAndPayload(ctx context.Context, imageStore oras.GraphTarget, signatureTag string) ([]byte, []byte, []byte, error) {
 	return loadSignatureAndPayload(ctx, imageStore, signatureTag)
 }
 
