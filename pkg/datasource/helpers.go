@@ -88,7 +88,7 @@ func GetKeyValueFunc[S ~string, T any](
 	stringFn func(string) T,
 ) (func(Data) (S, T), error) {
 	emptyVal := *new(T)
-	name := f.Name()
+	name := f.FullName()
 	if nameOverride != "" {
 		name = nameOverride
 	}
