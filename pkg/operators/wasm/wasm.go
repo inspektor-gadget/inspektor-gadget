@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"oras.land/oras-go/v2"
 
@@ -230,7 +232,7 @@ func (i *wasmOperatorInstance) init(
 	desc ocispec.Descriptor,
 	cache wazero.CompilationCache,
 ) error {
-	ctx := gadgetCtx.Context()
+	ctx := experimental.WithCompilationWorkers(gadgetCtx.Context(), runtime.GOMAXPROCS(0))
 	rtConfig := wazero.NewRuntimeConfig().
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(256). // 16MB (64KB per page)
