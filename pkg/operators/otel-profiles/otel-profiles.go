@@ -218,7 +218,6 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			dic.LinkTable().AppendEmpty()
 			dic.MappingTable().AppendEmpty()
 			dic.StackTable().AppendEmpty()
-			dic.AttributeTable().AppendEmpty()
 
 			stringSet := make(orderedset.OrderedSet[string], 64)
 			stringSet.Add("")
@@ -257,7 +256,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 				attributeKeys[name] = keyIdx
 			}
 
-			stackIdx := int32(0)
+			stackIdx := int32(1)
 
 			for i := 0; i < da.Len(); i++ {
 				d := da.Get(i)
@@ -274,6 +273,9 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 
 				// TODO: invert it?
 				functions := strings.Split(kStack, "; ")
+				if len(functions) == 0 {
+					continue
+				}
 
 				sample := prof.Sample().AppendEmpty()
 				sample.Values().Append(int64(samples))
@@ -311,6 +313,10 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 				stack := dic.StackTable().AppendEmpty()
 
 				for _, f := range functions {
+					if f == "" {
+						continue
+					}
+
 					// add the function
 					fIndex := functionSet.Add(function{nameIdx: int32(stringSet.Add(f))})
 
