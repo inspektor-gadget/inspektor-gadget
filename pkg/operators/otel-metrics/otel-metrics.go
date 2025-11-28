@@ -44,6 +44,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/otel/helpers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -73,6 +74,10 @@ const (
 
 	AnnotationImplicitCounterName        = "metrics.implicit-counter.name"
 	AnnotationImplicitCounterDescription = "metrics.implicit-counter.description"
+
+	AnnotationKeysPrefix      = "metrics.key."
+	AnnotationKeysValueSuffix = ".value"
+	AnnotationKeysTypeSuffix  = ".type"
 
 	PrintDataSourceSuffix = "rendered"
 	PrintFieldName        = "text"
@@ -709,10 +714,12 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 
 		hasValueFields := false
 
+		annotations := ds.Annotations()
+
 		// Support an implicit counter
-		if implicitCounter := ds.Annotations()[AnnotationImplicitCounterName]; implicitCounter != "" {
+		if implicitCounter := annotations[AnnotationImplicitCounterName]; implicitCounter != "" {
 			tOptions := make([]metric.Int64CounterOption, 0)
-			if implicitCounterDescription := ds.Annotations()[AnnotationImplicitCounterDescription]; implicitCounterDescription != "" {
+			if implicitCounterDescription := annotations[AnnotationImplicitCounterDescription]; implicitCounterDescription != "" {
 				tOptions = append(tOptions, metric.WithDescription(implicitCounterDescription))
 			}
 			ctr, err := collector.meter.Int64Counter(implicitCounter, tOptions...)
@@ -723,6 +730,26 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 				ctr.Add(ctx, 1, metric.WithAttributeSet(set))
 			})
 			hasValueFields = true
+		}
+
+		// Read additional static keys from annotations
+		staticValFns, err := helpers.GetKeyValueFuncsFromAnnotations[attribute.Key, attribute.Value](
+			annotations,
+			AnnotationKeysPrefix,
+			AnnotationKeysValueSuffix,
+			AnnotationKeysTypeSuffix,
+			attribute.Int64Value,
+			attribute.Float64Value,
+			attribute.StringValue,
+		)
+		if err != nil {
+			return fmt.Errorf("preparing static keys: %w", err)
+		}
+		for _, fn := range staticValFns {
+			k, v := fn()
+			collector.keys = append(collector.keys, func(ds datasource.Data) attribute.KeyValue {
+				return attribute.KeyValue{Key: k, Value: v}
+			})
 		}
 
 		fields := ds.Accessors(false)
@@ -770,7 +797,7 @@ func (m *otelMetricsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext
 			continue
 		}
 
-		err := ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+		err = ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
 			collector.Collect(gadgetCtx.Context(), data)
 			return nil
 		}, Priority)
