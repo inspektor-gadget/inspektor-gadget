@@ -73,21 +73,21 @@ func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 	k8sPodName := params.ParamDesc{
 		Key:         ParamK8sPodName,
 		Title:       "K8s Pod Name",
-		Description: "Show only data from Kubernetes pods with that name",
+		Description: "Kubernetes pods to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SPodName,
 		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sNamespace := params.ParamDesc{
 		Key:         ParamK8sNamespace,
 		Title:       "K8s Namespace",
-		Description: "Show only data from pods in a given Kubernetes namespace",
+		Description: "Kubernetes namespaces to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SNamespace,
 		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sSelector := params.ParamDesc{
 		Key:         ParamK8sSelector,
 		Title:       "K8s Label Selector",
-		Description: "Kubernetes Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
+		Description: "Kubernetes Labels selector to filter on. Supports comma-separated list and exclusion using '!' (e.g. '!key=value' or 'key=!value').",
 		ValueHint:   gadgets.K8SLabels,
 		Validator:   labelSelectorValidator,
 		Tags:        []string{api.TagGroupDataFiltering},
@@ -95,14 +95,14 @@ func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 	k8sContainerNameParam := params.ParamDesc{
 		Key:         ParamK8sContainerName,
 		Title:       "K8s Container Name",
-		Description: "Show data only from containers with the name defined in the pod spec",
+		Description: "Kubernetes container names to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SContainerName,
 		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	runtimeContainerParam := params.ParamDesc{
 		Key:         ParamRuntimeContainerName,
 		Title:       "Runtime Container Name",
-		Description: "Show data only from containers with the runtime-assigned name (not the name defined in the pod spec)",
+		Description: "runtime-assigned name container names to filter on (not the name defined in the pod spec). Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.LocalContainer,
 		Tags:        []string{api.TagGroupDataFiltering},
 	}
