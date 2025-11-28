@@ -55,26 +55,44 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 	}
 
 	if s.K8s.ContainerName != "" {
-		if strings.HasPrefix(s.K8s.ContainerName, "!") {
-			if c.K8s.ContainerName == s.K8s.ContainerName[1:] {
-				return false
+		parts := strings.Split(s.K8s.ContainerName, ",")
+		matched := false
+		hasInclusion := false
+		for _, part := range parts {
+			if strings.HasPrefix(part, "!") {
+				if c.K8s.ContainerName == part[1:] {
+					return false // Explicit exclusion
+				}
+			} else {
+				hasInclusion = true
+				if c.K8s.ContainerName == part {
+					matched = true
+				}
 			}
-		} else {
-			if c.K8s.ContainerName != s.K8s.ContainerName {
-				return false
-			}
+		}
+		if hasInclusion && !matched {
+			return false
 		}
 	}
 
 	if s.Runtime.ContainerName != "" {
-		if strings.HasPrefix(s.Runtime.ContainerName, "!") {
-			if c.Runtime.ContainerName == s.Runtime.ContainerName[1:] {
-				return false
+		parts := strings.Split(s.Runtime.ContainerName, ",")
+		matched := false
+		hasInclusion := false
+		for _, part := range parts {
+			if strings.HasPrefix(part, "!") {
+				if c.Runtime.ContainerName == part[1:] {
+					return false // Explicit exclusion
+				}
+			} else {
+				hasInclusion = true
+				if c.Runtime.ContainerName == part {
+					matched = true
+				}
 			}
-		} else {
-			if c.Runtime.ContainerName != s.Runtime.ContainerName {
-				return false
-			}
+		}
+		if hasInclusion && !matched {
+			return false
 		}
 	}
 
