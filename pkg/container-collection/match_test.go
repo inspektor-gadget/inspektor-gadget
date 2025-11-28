@@ -360,6 +360,78 @@ func TestSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "Several container names with match",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "c1,c2,c3",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c2",
+					},
+				},
+			},
+		},
+		{
+			description: "Several container names without match",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "c1,c2,c3",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c4",
+					},
+				},
+			},
+		},
+		{
+			description: "Several runtime container names with match",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerName: "rc1,rc2,rc3",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerName: "rc2",
+					},
+				},
+			},
+		},
+		{
+			description: "Several runtime container names without match",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerName: "rc1,rc2,rc3",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerName: "rc4",
+					},
+				},
+			},
+		},
 	}
 
 	for i, entry := range table {
