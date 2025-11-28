@@ -15,29 +15,80 @@
 package containercollection
 
 import (
-	"slices"
 	"strings"
 )
 
 // ContainerSelectorMatches tells if a container matches the criteria in a
 // container selector.
 func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
-	if s.K8s.Namespace != "" && !slices.Contains(strings.Split(s.K8s.Namespace, ","), c.K8s.Namespace) {
-		return false
-	}
-	if s.K8s.PodName != "" && s.K8s.PodName != c.K8s.PodName {
-		return false
-	}
-	if s.K8s.ContainerName != "" && s.K8s.ContainerName != c.K8s.ContainerName {
-		return false
-	}
-	if s.Runtime.ContainerName != "" && s.Runtime.ContainerName != c.Runtime.ContainerName {
-		return false
-	}
-	for sk, sv := range s.K8s.PodLabels {
-		if cv, ok := c.K8s.PodLabels[sk]; !ok || cv != sv {
+	if s.K8s.Namespace != "" {
+		parts := strings.Split(s.K8s.Namespace, ",")
+		matched := false
+		hasInclusion := false
+		for _, part := range parts {
+			if strings.HasPrefix(part, "!") {
+				if c.K8s.Namespace == part[1:] {
+					return false // Explicit exclusion
+				}
+			} else {
+				hasInclusion = true
+				if c.K8s.Namespace == part {
+					matched = true
+				}
+			}
+		}
+		if hasInclusion && !matched {
 			return false
 		}
 	}
+
+	if s.K8s.PodName != "" {
+		if strings.HasPrefix(s.K8s.PodName, "!") {
+			if c.K8s.PodName == s.K8s.PodName[1:] {
+				return false
+			}
+		} else {
+			if c.K8s.PodName != s.K8s.PodName {
+				return false
+			}
+		}
+	}
+
+	if s.K8s.ContainerName != "" {
+		if strings.HasPrefix(s.K8s.ContainerName, "!") {
+			if c.K8s.ContainerName == s.K8s.ContainerName[1:] {
+				return false
+			}
+		} else {
+			if c.K8s.ContainerName != s.K8s.ContainerName {
+				return false
+			}
+		}
+	}
+
+	if s.Runtime.ContainerName != "" {
+		if strings.HasPrefix(s.Runtime.ContainerName, "!") {
+			if c.Runtime.ContainerName == s.Runtime.ContainerName[1:] {
+				return false
+			}
+		} else {
+			if c.Runtime.ContainerName != s.Runtime.ContainerName {
+				return false
+			}
+		}
+	}
+
+	for sk, sv := range s.K8s.PodLabels {
+		if strings.HasPrefix(sk, "!") {
+			if cv, ok := c.K8s.PodLabels[sk]; ok && cv == sv[1:] {
+				return false
+			}
+		} else {
+			if cv, ok := c.K8s.PodLabels[sk]; !ok || cv != sv {
+				return false
+			}
+		}
+	}
+
 	return true
 }
