@@ -1,0 +1,112 @@
+---
+title: snapshot_file
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `snapshot_file` gadget shows open files for running processes.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/snapshot_file:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/snapshot_file:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Flags
+
+### `--paths`
+
+Show full file paths (by default, only dentry names are shown).
+
+Default value: `"false"`
+
+### `--file-type-mask`
+
+Filter which file types to display using a bitmask.
+By default, only **regular files** and **directories** are shown (bitmask value 17).
+
+Supported file types:
+
+- REGULAR
+- SOCKET
+- PIPE
+- BPF_MAP
+- DIRECTORY
+- CHAR_DEV
+- BLOCK_DEV
+- SYMLINK
+- OTHER
+
+The bitmask order, from left to right, corresponds to the file types listed above.
+
+## Guide
+
+Run a pod / container:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox test-snapshot-file -- sh -c 'echo hello > /tmp/demo.txt && tail -f /tmp/demo.txt'
+pod/test-snapshot-file created
+```
+
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-snapshot-file -d busybox /bin/sh -c 'echo hello > /tmp/demo.txt && tail -f /tmp/demo.txt'
+...
+```
+
+Now, run the gadget and see how it shows the open file:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run snapshot_file:%IG_TAG%
+K8S.NODE        K8S.NAMESPACE   K8S.PODNAME         K8S.CONTAINERNAME   COMM   PID   TID   FD   PATH    TYPE    FLAGS   MODE      
+minikube-docker default         test-snapshot-file  test-snapshot-file  tail     5432  5432  3  demo.txt REGULAR    O_RDONLY    -rw-------  
+^C
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run snapshot_file:%IG_TAG% -c test-snapshot-file
+RUNTIME.CONTAINERNAME   COMM   PID   TID   FD   PATH   TYPE     FLAGS   MODE
+test-snapshot-file      tail   5321  5321  3    demo.txt REGULAR    O_RDONLY  -rw-------  
+^C
+```
+</TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod test-snapshot-file
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-snapshot-file
+```
+</TabItem>
+</Tabs>
+
