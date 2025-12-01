@@ -43,7 +43,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -81,7 +81,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Check workflow files
       shell: bash
       run: |
@@ -97,7 +97,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -122,7 +122,7 @@ jobs:
 
     steps:
       # Fetch project source with GitHub Actions Checkout.
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       # Run the "semgrep ci" command on the command line of the docker image.
       - run: cd "$GITHUB_WORKSPACE" && semgrep ci --config "$GITHUB_WORKSPACE/.semgrep_rules.yaml"
 
@@ -133,7 +133,7 @@ jobs:
     needs: build-helper-images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Check ebpf formatting
         env:
           GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
@@ -175,7 +175,7 @@ jobs:
     if: ${{ github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Check if added dependencies do not contain CVE.
         uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
 
@@ -195,7 +195,7 @@ jobs:
           - os: windows
             arch: arm64
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -260,7 +260,7 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
       run: |
@@ -298,7 +298,7 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -356,7 +356,7 @@ jobs:
       matrix:
         platform: [amd64, arm64]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -387,7 +387,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -427,7 +427,7 @@ jobs:
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set up QEMU
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
     - name: Set up Docker Buildx
@@ -577,7 +577,7 @@ jobs:
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set up QEMU
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
     - name: Set up Docker Buildx
@@ -837,7 +837,7 @@ jobs:
     outputs:
       image-digest: ${{ steps.publish-manifest-list.outputs.image-digest }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Login to Container Registry
@@ -905,7 +905,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Login to Container Registry
@@ -996,7 +996,7 @@ jobs:
             platform: "linux/amd64,linux/arm64"
             key-files: "tools/bench/*"
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
     - name: Cache Docker layers
@@ -1083,7 +1083,7 @@ jobs:
       matrix:
         example: [container-hook, kube-container-collection]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -1112,7 +1112,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1132,7 +1132,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1157,7 +1157,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1216,7 +1216,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1266,7 +1266,7 @@ jobs:
       - package-helm-charts
       - build-gadget-container-images
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Install Helm
       uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
       with:
@@ -1335,7 +1335,7 @@ jobs:
       contents: read
       packages: write
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Login to Container Registry
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
@@ -1364,7 +1364,7 @@ jobs:
     needs:
       - build-helper-images
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1458,7 +1458,7 @@ jobs:
     # (inspektor-gadget/inspektor-gadget) so we can catch it early.
     if: needs.check-secrets.outputs.cosign == 'true' || (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget')
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
         with:
@@ -1485,7 +1485,7 @@ jobs:
       matrix:
         runtime: [ docker, containerd, cri-o ]
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Set container repository and determine image tag
         id: set-repo-determine-image-tag
         uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1544,7 +1544,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Login to Container Registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
@@ -1609,7 +1609,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Set container repository and determine image tag
         id: set-repo-determine-image-tag
         uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1663,7 +1663,7 @@ jobs:
             # - "4.19"
 
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1731,7 +1731,7 @@ jobs:
       matrix:
         runtime: [docker, containerd]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1799,7 +1799,7 @@ jobs:
       matrix:
         runtime: [ docker, containerd ]
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Setup go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
@@ -1857,7 +1857,7 @@ jobs:
     env:
       AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -1945,7 +1945,7 @@ jobs:
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -2001,7 +2001,7 @@ jobs:
       AWS_REGION: us-east-2
       AWS_EKS_CLUSTER_PREFIX: ig-ci-eks-
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -2085,7 +2085,7 @@ jobs:
     env:
       GKE_CLUSTER_PREFIX: 'ig-ci-gke-'
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+      - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
       - name: Setup go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
@@ -2170,7 +2170,7 @@ jobs:
       matrix:
         runtime: [docker, containerd, cri-o]
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Setup go
       uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
@@ -2231,7 +2231,7 @@ jobs:
       (github.event_name == 'push' && github.repository == 'inspektor-gadget/inspektor-gadget') ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'inspektor-gadget/inspektor-gadget'))
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Get all reports
       uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
       with:
@@ -2269,7 +2269,7 @@ jobs:
       contents: write
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:

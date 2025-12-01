@@ -18,7 +18,7 @@ jobs:
       pull-requests: write
       packages: write
     steps:
-    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
+    - uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5 # v4.2.2
     - name: Update new version in krew-index
       if: github.repository == 'inspektor-gadget/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@3d9faef30a82761d610544f62afddca00993eef9 # v0.0.47
