@@ -111,7 +111,7 @@ func (i *ebpfInstance) populateIterators(t btf.Type, varName string) error {
 	}
 
 	var btfStruct *btf.Struct
-	if err := i.collectionSpec.Types.TypeByName(structName, &btfStruct); err != nil {
+	if err := i.btfTypes.TypeByName(structName, &btfStruct); err != nil {
 		return fmt.Errorf("finding struct %q in eBPF object: %w", structName, err)
 	}
 
