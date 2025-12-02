@@ -457,7 +457,7 @@ $ sudo ig image inspect advise_seccomp:latest --show-datasources --jsonpath='[0]
 
 #### `verify`
 
-Verify the given gadget image signature, for more details see [the documentation related to verifying](verify-assets.mdx).
+Verify the given gadget image signature, for more details see [the documentation related to verifying](verify-gadgets.mdx).
 Before verifying an image, make sure it is already present in the local store. If not, pull it first:
 
 ```bash

@@ -1,0 +1,330 @@
+---
+title: Verifying Gadgets
+sidebar_position: 1005
+description: Verify Gadgets
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Inspektor Gadget official gadgets are signed using
+[`cosign`](https://github.com/sigstore/cosign).
+In this guide, we will see how you can verify them with this tool as well as
+verifying your own gadgets using one of the supported methods, i.e. cosign and
+notation.
+
+## Verify with cosign
+
+Like our container image, we sign all our image-based gadgets.
+The signatures are by default verified against the official Inspektor Gadget public key.
+
+As of now, we support the following cosign format:
+* legacy [.sig](https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#tag-based-discovery) format,
+* [OCI 1.1](https://www.chainguard.dev/unchained/building-towards-oci-v1-1-support-in-cosign)
+* and [bundle](https://docs.sigstore.dev/about/bundle/)
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+When using Inspektor Gadget on Kubernetes, you have to configure these features at deploy time.
+This enforces the policies so that users cannot override them.
+By default all image-based gadgets are verified using Inspektor Gadget public key:
+
+```bash
+$ kubectl gadget deploy
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run ghcr.io/your_repo/trace_exec -A
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your_repo/trace_exec": verifying signature: invalid signature when validating ASN.1 encoded signature
+$ kubectl gadget run trace_exec -A
+K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
+gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+...
+```
+
+You can specify a custom public key at deployment time using `--daemon-config`. Start by creating daemon config file:
+
+```bash
+cat <<EOF > daemon-config.yaml
+operator:
+    oci:
+        public-keys:
+        - |
+            -----BEGIN PUBLIC KEY-----
+            MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp3pbyFZOnEz4ZtkXY0Zm
+            Q78zbdZ9Pyhgje+oD1T49r7HYeUdf2vKyc1ObcCwT3EZyzv48IC6cBcdNu4RjbS8
+            snpzFVK5P9szolYJfuMJyLkMTGOAc6AjA0YY8b3wJtV8F3N3IjzA0HtJ3vIqDxIb
+            e8rm52uh4RV7SooxMyh5SAdPi06/kAV2ZClQK1z5Vob9zM2U8w2M8Ib4h/cHBY4e
+            7W9IuQZTvwlAEyEZng7GUPf/dke69/9I3/N9UoKXIJ8cHg0pxtWKPmCGoFqFT9qR
+            ehd9nJdWmLfFT7y1KmfkxknC0TAl3lA4ArZqYYzRmX8cUFz2mGNzNnWgkxN7qVMS
+            LQIDAQAB
+            -----END PUBLIC KEY-----
+EOF
+```
+
+Then, you can deploy Inspektor Gadget with this configuration:
+
+```bash
+
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+...
+Inspektor Gadget successfully deployed
+# Without the official public key, official gadgets will be rejected.
+$ kubectl gadget run trace_exec -A
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "trace_exec": the image was not signed by the provided keys: crypto/rsa: verification error
+$ kubectl-gadget run ghcr.io/your_repo/trace_exec -A
+K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
+gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+...
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+Let's try to run an image-based gadget which was not signed:
+
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/inspektor-gadget/gadget/trace_open:v0.27.0": getting signing information: getting signature: getting signature bytes: ghcr.io/inspektor-gadget/gadget/trace_open:sha256-0c0e2fa72ae70e65351ab7a48a1cd5a68752a94d9c36e7b51e8764a1b7be3d7a.sig: not found
+```
+
+As the image was not signed, no signature was found in the repository, so the execution is denied.
+
+You can set your own public keys with `--public-keys`:
+
+```bash
+$ sudo ig run --public-keys="$(cat your-key.pub)" ghcr.io/your-repo/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+```
+
+If you forget to set your public key, the image-based gadget will be verified using Inspektor Gadget public key and you will get the following error:
+
+```bash
+$ sudo ig run ghcr.io/your-repo/gadget/trace_open
+Error: fetching gadget information: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your-repo/gadget/trace_open": verifying signature: invalid signature when validating ASN.1 encoded signature
+```
+
+You can specify several public keys:
+
+```bash
+$ sudo ig run --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" ghcr.io/your-repo/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+$ sudo ig run --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" ghcr.io/inspektor-gadget/gadget/trace_open
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+The signing information are set once when starting `ig` as a daemon.
+This avoids them being tampered by any users.
+By default all image-based gadgets are verified using Inspektor Gadget public key:
+
+```bash
+$ sudo ig daemon --public-keys="$(cat your-key.pub)"
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your_repo/trace_exec
+Error: fetching gadget information: getting gadget info: rpc error: code = Unknown desc = getting gadget info: initializing and preparing operators: instantiating operator "oci": ensuring image: verifying image "ghcr.io/your_repo/trace_exec:latest": the image was not signed by the provided keys: invalid signature when validating ASN.1 encoded signature
+$ gadgetctl run trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+```
+
+You can specify several public keys, by using a comma to separate them:
+
+```bash
+$ IP='your_ip'
+$ PORT='your_port'
+$ ADDR=tcp://$IP:$PORT
+$ sudo ig daemon --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" --host=$ADDR
+...
+# Switch to another terminal
+$ gadgetctl run trace_open:latest
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+...
+^C
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:latest
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+</TabItem>
+</Tabs>
+
+## Verify with notation
+
+Along with cosign, Inspektor Gadget supports running gadgets signed with notation.
+The main difference consists in using certificates and a [policy document](https://github.com/notaryproject/specifications/blob/main/specs/trust-store-trust-policy.md#trust-policy).
+Note that, notation and cosign verification are complementary and it is possible to run gadgets signed with both methods.
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+When using Inspektor Gadget on Kubernetes, you have to configure these features at deploy time.
+This enforces the policies so that users cannot override them.
+
+You can specify a certificate at deployment time using `--daemon-config`. Start by creating daemon config file:
+
+```bash
+cat <<EOF > daemon-config.yaml
+operator:
+    oci:
+        notation-certificates:
+        - |
+            -----BEGIN CERTIFICATE-----
+            MIIDRTCCAi2gAwIBAgICAIEwDQYJKoZIhvcNAQELBQAwUTELMAkGA1UEBhMCVVMx
+            CzAJBgNVBAgTAldBMRAwDgYDVQQHEwdTZWF0dGxlMQ8wDQYDVQQKEwZOb3Rhcnkx
+            EjAQBgNVBAMTCWJhcmZvby5pbzAeFw0yNTEwMDExNTQ2MzVaFw0yNTEwMDIxNTQ2
+            MzVaMFExCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJXQTEQMA4GA1UEBxMHU2VhdHRs
+            ZTEPMA0GA1UEChMGTm90YXJ5MRIwEAYDVQQDEwliYXJmb28uaW8wggEiMA0GCSqG
+            SIb3DQEBAQUAA4IBDwAwggEKAoIBAQDirG5+wdavupHd+K3M4hvPAzQu1NE6Edur
+            VsptZTBXnZNCT3/rVlzIF6uoExUe9k8xdBV86aVlI1KUKXb3jWtq4u+9ACcmZ3nO
+            +JzhkOZEGN7XTf7axDWIZWv5mye655shIwtLrrguNBs+0lXqO+x5uImqdGtjgH5S
+            RrDpHzSNiRziyqym1fCgJI3lwO/sWIZK+2oJLPvCYzS4k0sNo50wB6JI+Eu/qtBK
+            c0OCXLhKr0ml9bRpDaoMyIhQrD0+k5JWSDPlNCwIEYueJpf3Ua38YuuM3pPEj8MA
+            /hzEyrFpqeJV2Nn5JHRjAecSZbFRHyRtzETn9NKaz00EnoE3/O3nAgMBAAGjJzAl
+            MA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDAzANBgkqhkiG9w0B
+            AQsFAAOCAQEANjfgsg6Zxc/g+8T3ZLNMj0myd8yciiL16iS4+LQKViRGNmAjRbic
+            eslrAFXSiZHI/RIJxKnQBxtDiXs8UlknV2mLnxZP+S2vk3kW/z0w6gRPRC8t3w3K
+            BcsDhE//PzLmnXdEYSZQvgXfdv2JujEb1euspyTjRL1vBlxdPh5eeevZsysHrt6q
+            c2bFCX/8nicguibCC4ybKQazsbQK07tIPDwlbu0+sCk6ojmhdMZeOaXVcUoaisgq
+            dKl8IemhdshLNii2f05fLb1ftcMaG0XIT7i86txiDbiBs+srcjW4bqfhSc201jHu
+            /ftuKYyrrWBgnWZ6gmzqC5SR4pBdZVAp3w==
+            -----END CERTIFICATE-----
+        notation-policy-document: |
+          {
+              "version": "1.0",
+              "trustPolicies": [
+                  {
+                      "name": "inspektor-gadget-policy",
+                      "registryScopes": [ "*" ],
+                      "signatureVerification": {
+                        "level" : "strict"
+                      },
+                      "trustStores": ["ca:foobar.io"],
+                      "trustedIdentities": [
+                        "x509.subject: CN=foobar.io, O=Notary, L=Seattle, ST=WA, C=US"
+                      ]
+                  }
+              ]
+          }
+EOF
+```
+
+Then, you can deploy Inspektor Gadget with this configuration:
+
+```bash
+
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+...
+Inspektor Gadget successfully deployed
+$ kubectl-gadget run ghcr.io/your_repo/trace_exec -A
+K8S.NAMESP… K8S.PODNAME K8S.CONTAI… MNTNS… TIMES… PID    PPID   UID    GID    LOGIN… SESSI… RETVAL ARGS_… UPPER… ARGS_… COMM  ARGS  K8S.…
+gadget      gadge…hbh8n gadget      40265… 22867… 53386  53368  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+gadget      gadge…hbh8n gadget      40265… 22867… 53387  53369  0      0      42949… 42949… 0      2      false  35     gadg… /bin… mini…
+...
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+You can set your own certificates and policy document with `--notation-certificates` and `notation-policy-document`:
+
+```bash
+$ sudo ig run --notation-certificates="$(cat your-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) ghcr.io/your-repo/gadget/trace_open:your_tag
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+```
+
+You can specify several certificates:
+
+```bash
+$ sudo ig run --notation-certificates="$(cat your-1st-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) ghcr.io/your-repo/gadget/trace_open:your_1st_tag
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+$ sudo ig run --notation-certificates="$(cat your-1st-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) ghcr.io/your-repo/gadget/trace_open:your_2nd_tag
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+...
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+The signing information are set once when starting `ig` as a daemon.
+This avoids them being tampered by any users.
+
+```bash
+$ sudo ig daemon --notation-certificates="$(cat your-certificate.crt)" --notation-policy-document="$(cat your-policy-document.json)"
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your_repo/trace_exec
+RUNTIME.CONTAINERNAME    COMM                    PID           TID PCOMM                PPID ARGS         ER… TIMESTAMP
+```
+
+You can specify several certificates, by using a comma to separate them:
+
+```bash
+$ IP='your_ip'
+$ PORT='your_port'
+$ ADDR=tcp://$IP:$PORT
+$ sudo ig daemon --notation-certificates="$(cat your-1st-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) --host=$ADDR
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:your_1st_tag
+RUNTIME.CONTAINER… COMM              PID       TID       UID       GID  FD FNAME                    MODE      ERROR  TIMESTAMP
+...
+^C
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:your_2nd_tag
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+
+</TabItem>
+</Tabs>
+
+## Disabling the verification
+
+You can skip verifying image-based gadget signature.
+Note that we do not recommend using this and this should be used for development purpose only:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+Start by creating a daemon config file:
+
+```bash
+cat <<EOF > daemon-config.yaml
+operator:
+    oci:
+        verify-image: false
+EOF
+```
+
+Then, you can deploy Inspektor Gadget with this configuration:
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+...
+Inspektor Gadget successfully deployed
+$ kubectl gadget run trace_exec -A
+WARN[0001] minikube-docker      | gadget signature verification is disabled due to using corresponding option
+K8S.NAMESPACE       K8S.PODNAME         K8S.CONTAINERNAME          PID       PPID RE… COMM      ARGS      K8S.NODE  TIMESTAMP
+gadget              gadget-z55jq        gadget                   55376      55357   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
+gadget              gadget-z55jq        gadget                   55375      55358   0 gadgettr… /bin/gad… minikube… 2024-07-17T07:39:07.…
+...
+```
+</TabItem>
+
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run --verify-image=false ghcr.io/your-repo/gadget/trace_open
+WARN[0000] gadget signature verification is disabled due to using corresponding option
+WARN[0000] gadget signature verification is disabled due to using corresponding option
+RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL… MODE        COMM        FNAME                  TIMESTAMP
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+```bash
+$ sudo ig daemon --verify-image=false
+...
+# Switch to another terminal
+$ gadgetctl run ghcr.io/your-repo/gadget/trace_open:latest
+WARN[0000] your_ip              | gadget signature verification is disabled due to using corresponding option
+RUNTIME.CONTAINERN… TIMESTAMP  PID        UID        GID        MNTNS_ID   ERR        FD         FLAGS      MODE      COMM      FNAME
+```
+</TabItem>
+</Tabs>
