@@ -42,6 +42,7 @@ struct event {
 	int args_count;
 	int tty;
 	bool from_rootfs;
+	bool file_from_rootfs;
 	bool upper_layer;
 	bool fupper_layer;
 	bool pupper_layer;
@@ -360,7 +361,10 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 		return 0;
 	}
 
-	struct inode *inode = BPF_CORE_READ(bprm, file, f_inode);
+	struct file *s_file = BPF_CORE_READ(bprm, file);
+	event->file_from_rootfs = is_from_rootfs(s_file);
+
+	struct inode *inode = BPF_CORE_READ(s_file, f_inode);
 	if (inode)
 		event->fupper_layer = has_upper_layer(inode);
 
