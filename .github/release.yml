@@ -3,9 +3,6 @@ changelog:
     - title: Breaking Changes
       labels:
         - breaking-change
-    - title: Other Changes
-      labels:
-        - "*"
     - title: Dependencies updates
       labels:
         - dependencies
@@ -14,3 +11,6 @@ changelog:
       labels:
         - dependencies
         - github_actions
+    - title: Other Changes
+      labels:
+        - "*"
