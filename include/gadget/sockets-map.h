@@ -12,6 +12,7 @@
 
 // Necessary for the SEC() definition
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_core_read.h>
 #include <gadget/types.h>
 
 // This file is shared between the networking and tracing programs.
@@ -264,7 +265,11 @@ gadget_process_populate_from_socket(const struct gadget_socket_value *skb_val,
 	__builtin_memcpy(p->parent.comm, skb_val->ptask,
 			 sizeof(p->parent.comm));
 	p->parent.pid = skb_val->ppid;
-	p->parent.tid = skb_val->ptid;
+
+	if (bpf_core_field_exists(skb_val->ptid))
+		p->parent.tid = skb_val->ptid;
+	else
+		p->parent.tid = 0;
 }
 
 #endif
