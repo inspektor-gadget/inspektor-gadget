@@ -92,6 +92,11 @@ datasources:
           description: The controlling terminal of the process. 0 for processes without a terminal.
           columns.width: 5
           columns.hidden: false
+      from_rootfs:
+        annotations:
+          description: Whether the executable file of the process (interpreter in case of script) is in the rootfs of the container. Initialized when the execution succeeded or failed with the -ENOEXEC error ("Exec format error"). Notice that to get failed executions, you need to set ignore_failed to false.
+          columns.width: 5
+          columns.hidden: true
 params:
   ebpf:
     ignore_failed:

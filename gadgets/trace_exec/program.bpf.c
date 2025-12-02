@@ -41,6 +41,7 @@ struct event {
 	gadget_errno error_raw;
 	int args_count;
 	int tty;
+	bool from_rootfs;
 	bool upper_layer;
 	bool fupper_layer;
 	bool pupper_layer;
@@ -196,6 +197,20 @@ int ig_execveat_e(struct syscall_trace_enter *ctx)
 	return enter_execve(pathname, args);
 }
 
+static __always_inline bool is_from_rootfs(struct file *file)
+{
+	struct vfsmount *file_mnt, *root_mnt;
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+
+	// Get the mount of the file being executed
+	file_mnt = BPF_CORE_READ(file, f_path.mnt);
+
+	// Get the root mount of the current process (container root)
+	root_mnt = BPF_CORE_READ(task, fs, root.mnt);
+
+	return root_mnt == file_mnt;
+}
+
 static __always_inline bool has_upper_layer(struct inode *inode)
 {
 	unsigned long sb_magic = BPF_CORE_READ(inode, i_sb, s_magic);
@@ -239,11 +254,14 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	if (pinode)
 		event->pupper_layer = has_upper_layer(pinode);
 
+	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
+
+	event->from_rootfs = is_from_rootfs(exe_file);
+
 	gadget_process_populate(&event->proc);
 	event->error_raw = 0;
 
 	if (paths) {
-		struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 		char *exepath = get_path_str(&exe_file->f_path);
 		bpf_probe_read_kernel_str(event->exepath,
 					  sizeof(event->exepath), exepath);
