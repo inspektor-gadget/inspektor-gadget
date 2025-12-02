@@ -1,4 +1,4 @@
-// Copyright 2023 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ type cmdOpts struct {
 	validateMetadata bool
 	btfgen           bool
 	btfhubarchive    string
+	includeSource    bool
 }
 
 func NewBuildCmd() *cobra.Command {
@@ -113,6 +114,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.builderImagePull, "builder-image-pull", "always", "Specify when the builder image should be pulled [always, missing, never]")
 	cmd.Flags().BoolVar(&opts.updateMetadata, "update-metadata", false, "Update the metadata according to the eBPF code")
 	cmd.Flags().BoolVar(&opts.validateMetadata, "validate-metadata", true, "Validate the metadata file before building the gadget image")
+	cmd.Flags().BoolVar(&opts.includeSource, "include-source", true, "Include the source code in the image")
 
 	cmd.Flags().BoolVar(&opts.btfgen, "btfgen", false, "Enable btfgen")
 	cmd.Flags().StringVar(&opts.btfhubarchive, "btfhub-archive", "", "Path to the location of the btfhub-archive files")
@@ -211,6 +213,11 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 		if err := os.Chdir(opts.path); err != nil {
 			return fmt.Errorf("changing directory: %w", err)
+		}
+
+		opts.path, err = os.Getwd()
+		if err != nil {
+			return fmt.Errorf("getting current directory: %w", err)
 		}
 	}
 
@@ -342,6 +349,8 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		MetadataPath:     conf.Metadata,
 		UpdateMetadata:   opts.updateMetadata,
 		ValidateMetadata: opts.validateMetadata,
+		IncludeSources:   opts.includeSource,
+		SourcePath:       opts.path,
 	}
 
 	if sourceDateEpoch, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
