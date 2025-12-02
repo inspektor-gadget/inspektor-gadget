@@ -198,10 +198,10 @@ int ig_execveat_e(struct syscall_trace_enter *ctx)
 	return enter_execve(pathname, args);
 }
 
-static __always_inline bool is_from_rootfs(struct file *file)
+static __always_inline bool __is_from_rootfs(struct task_struct *task,
+					     struct file *file)
 {
 	struct vfsmount *file_mnt, *root_mnt;
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 
 	// Get the mount of the file being executed
 	file_mnt = BPF_CORE_READ(file, f_path.mnt);
@@ -210,6 +210,12 @@ static __always_inline bool is_from_rootfs(struct file *file)
 	root_mnt = BPF_CORE_READ(task, fs, root.mnt);
 
 	return root_mnt == file_mnt;
+}
+
+static __always_inline bool is_from_rootfs(struct file *file)
+{
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	return __is_from_rootfs(task, file);
 }
 
 static __always_inline bool has_upper_layer(struct inode *inode)
@@ -257,7 +263,7 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 
 	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 
-	event->from_rootfs = is_from_rootfs(exe_file);
+	event->from_rootfs = __is_from_rootfs(task, exe_file);
 
 	gadget_process_populate(&event->proc);
 	event->error_raw = 0;
