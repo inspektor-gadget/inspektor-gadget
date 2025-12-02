@@ -7,6 +7,7 @@ dataSources:
   tcprtt:
     annotations:
       metrics.print: "true"
+      cli.clear-screen-before: "true"
     fields:
       latency:
         annotations:

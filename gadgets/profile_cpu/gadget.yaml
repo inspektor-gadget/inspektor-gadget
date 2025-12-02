@@ -17,6 +17,7 @@ datasources:
       views.modes.flamegraph: true
       views.defaults.mode: flamegraph
       ebpf.map.flush-on-stop: true
+      cli.clear-screen-before: "true"
     fields:
       runtime.containerName:
         annotations:
