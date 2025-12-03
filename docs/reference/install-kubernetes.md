@@ -316,7 +316,7 @@ podman-socketpath: /run/podman/podman.sock
 Please check the following documents to learn more about different options:
 - [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
 - [Using Insecure Registries](./insecure-registries.mdx)
-- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
+- [Verifying Gadget Images](./verify-gadgets.mdx)
 
 ### Installation with the Helm chart
 

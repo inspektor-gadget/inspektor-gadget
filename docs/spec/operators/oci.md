@@ -32,14 +32,14 @@ Fully qualified name: `operator.oci.pull-secret`
 ### `verify-image`
 
 Verify image using the provided public key. Check [Verify image-based
-gadgets](../../reference/verify-assets.mdx#verify-image-based-gadgets) to learn more.
+gadgets](../../reference/verify-gadgets.mdx) to learn more.
 
 Default: `true`
 
 ### `public-keys`
 
 Public keys used to verify the gadgets. Check [Verify image-based
-gadgets](../../reference/verify-assets.mdx#verify-image-based-gadgets) to learn more.
+gadgets](../../reference/verify-gadgets.mdx) to learn more.
 
 Default: [Inspektor Gadget public
 key](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/pkg/resources/inspektor-gadget.pub).
