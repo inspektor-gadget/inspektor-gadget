@@ -106,12 +106,12 @@ func Init(config Config) error {
 	} else {
 		mountsSuggested, err := autoMountFilesystems(true)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+			// Continue execution instead of crashing
 		}
 		if len(mountsSuggested) != 0 {
-			fmt.Fprintf(os.Stderr, "error: filesystems %s not mounted (did you try --auto-mount-filesystems?)\n", strings.Join(mountsSuggested, ", "))
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "warning: filesystems %s not mounted (try --auto-mount-filesystems if needed)\n", strings.Join(mountsSuggested, ", "))
+			// Continue execution instead of crashing
 		}
 	}
 
@@ -124,8 +124,8 @@ func Init(config Config) error {
 	} else {
 		err = suggestWSLWorkaround()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+			// Continue execution instead of crashing
 		}
 	}
 
