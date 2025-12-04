@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
+	pathrslite "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	"github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -57,12 +57,13 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 
 	case containerutilsTypes.RuntimeProtocolCRI:
 		// TODO: Configurable
-		joinedSocketPath, err := securejoin.SecureJoin(host.HostRoot, runtimeclient.CriDockerDefaultSocketPath)
+		socketFile, err := pathrslite.OpenInRoot(host.HostRoot, runtimeclient.CriDockerDefaultSocketPath)
 		if err != nil {
-			return nil, fmt.Errorf("securejoining %v to %v: %w", host.HostRoot, runtimeclient.CriDockerDefaultSocketPath, err)
+			return nil, fmt.Errorf("opening %q with root %q: %w", socketPath, host.HostRoot, err)
 		}
-		return cri.NewCRIClient(types.RuntimeNameDocker, joinedSocketPath, DefaultTimeout)
+		defer socketFile.Close()
 
+		return cri.NewCRIClient(types.RuntimeNameDocker, fmt.Sprintf("/proc/self/fd/%d", socketFile.Fd()), DefaultTimeout)
 	default:
 		return nil, fmt.Errorf("unknown runtime protocol %q", protocol)
 	}
@@ -81,8 +82,7 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 	}
 
 	return &DockerClient{
-		client:     cli,
-		socketPath: socketPath,
+		client: cli,
 	}, nil
 }
 
