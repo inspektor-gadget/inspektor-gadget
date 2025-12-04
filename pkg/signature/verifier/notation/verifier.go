@@ -126,6 +126,8 @@ func (n *Verifier) Verify(ctx context.Context, imageStore oras.GraphTarget, ref 
 		ArtifactReference:    fmt.Sprintf("%s@%s", ref.Name(), imageDigest),
 		MaxSignatureAttempts: maxSignatureAttempts,
 	}
+	// We cannot use oras.ReadOnlyGraphTarget in Verifier interface as
+	// registry.NewRepository() expects an oras.GraphTarget.
 	_, _, err = notation.Verify(ctx, n.Verifier, registry.NewRepository(imageStore), verifyOptions)
 
 	return err

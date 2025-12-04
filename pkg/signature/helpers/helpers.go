@@ -24,7 +24,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-func GetImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
+func GetImageDigest(ctx context.Context, store oras.ReadOnlyGraphTarget, imageRef string) (string, error) {
 	desc, err := store.Resolve(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
