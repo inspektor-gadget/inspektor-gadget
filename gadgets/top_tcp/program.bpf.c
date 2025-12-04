@@ -115,11 +115,9 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 		bpf_map_update_elem(&ip_map, &ip_key, &zero, BPF_NOEXIST);
 	} else {
 		if (receiving)
-			trafficp->received_raw += size;
+			__sync_fetch_and_add(&trafficp->received_raw, size);
 		else
-			trafficp->sent_raw += size;
-
-		bpf_map_update_elem(&ip_map, &ip_key, trafficp, BPF_EXIST);
+			__sync_fetch_and_add(&trafficp->sent_raw, size);
 	}
 
 	return 0;
