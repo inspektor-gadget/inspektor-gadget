@@ -8,5 +8,6 @@
 * [Burak Ok](https://github.com/burak-ok)
 * [Qasim Sarfraz](https://github.com/mqasimsarfraz)
 * [Claudia Marcu](https://github.com/claudiamarcubina)
+* [Matthias Bertschy](https://github.com/matthyx)
 * [Chris Kühl](https://github.com/blixtra) (project manager)
 * [Maya Singh](https://github.com/mayasingh17) (project manager)
