@@ -86,6 +86,8 @@ func GetKeyValueFunc[S ~string, T any](
 	int64Fn func(int64) T,
 	float64Fn func(float64) T,
 	stringFn func(string) T,
+	boolFn func(bool) T,
+	bytesFn func([]byte) T,
 ) (func(Data) (S, T), error) {
 	emptyVal := *new(T)
 	name := f.FullName()
@@ -99,9 +101,25 @@ func GetKeyValueFunc[S ~string, T any](
 		return func(data Data) (S, T) {
 			val, err := f.String(data)
 			if err != nil {
-				return "", emptyVal
+				return S(name), emptyVal
 			}
 			return S(name), stringFn(val)
+		}, nil
+	case api.Kind_Bool:
+		return func(data Data) (S, T) {
+			val, err := f.Bool(data)
+			if err != nil {
+				return S(name), emptyVal
+			}
+			return S(name), boolFn(val)
+		}, nil
+	case api.Kind_Bytes:
+		return func(data Data) (S, T) {
+			val, err := f.Bytes(data)
+			if err != nil {
+				return S(name), emptyVal
+			}
+			return S(name), bytesFn(val)
 		}, nil
 	case api.Kind_Uint8,
 		api.Kind_Uint16,

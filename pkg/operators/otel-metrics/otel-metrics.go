@@ -17,6 +17,7 @@ package otelmetrics
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -372,9 +373,13 @@ type metricsCollector struct {
 	useGlobalProvider bool
 }
 
+func bytesToAttributeValue(b []byte) attribute.Value {
+	return attribute.StringValue(base64.StdEncoding.EncodeToString(b))
+}
+
 func (mc *metricsCollector) addKeyFunc(f datasource.FieldAccessor) error {
 	nameOverride := f.Annotations()[AnnotationMetricsName]
-	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, nameOverride, attribute.Int64Value, attribute.Float64Value, attribute.StringValue)
+	vf, err := datasource.GetKeyValueFunc[attribute.Key, attribute.Value](f, nameOverride, attribute.Int64Value, attribute.Float64Value, attribute.StringValue, attribute.BoolValue, bytesToAttributeValue)
 	if err != nil {
 		return err
 	}
