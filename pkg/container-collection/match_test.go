@@ -170,6 +170,397 @@ func TestSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "Exclude container by name shouldn't return a result with the excluded container name",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "!this-container",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by name returns a result without the excluded container name",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "!other-container",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by namespace shouldn't return a result with the excluded namespace",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace: "!this-namespace",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by namespace returns a result without the excluded namespace",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace: "!this-namespace",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "other-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod name shouldn't return a result with the excluded pod name",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodName: "!this-pod",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod name returns a result without the excluded pod name",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodName: "!this-pod",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "other-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod label shouldn't return a result with the excluded pod label",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodLabels: map[string]string{
+							"!key1": "value1",
+						},
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+						PodLabels: map[string]string{
+							"key1": "value1",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod label should return a result without the excluded pod label",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodLabels: map[string]string{
+							"!key1": "value1",
+						},
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+						PodLabels: map[string]string{
+							"key1": "value2",
+							"key2": "value2",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod label value shouldn't return a result with the excluded value",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodLabels: map[string]string{
+							"key1": "!value1",
+						},
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+						PodLabels: map[string]string{
+							"key1": "value1",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by pod label value should return a result without the excluded value",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						PodLabels: map[string]string{
+							"key1": "!value1",
+						},
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+						PodLabels: map[string]string{
+							"key1": "value2",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by runtime container name shouldn't return a result with the excluded container name",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerName: "!runtime-container",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerName: "runtime-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Mixed inclusion and exclusion should return a match",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace: "this-namespace",
+						PodName:   "!other-pod",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Mixed inclusion and exclusion shouldn't return a match",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace: "this-namespace",
+						PodName:   "!this-pod",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "this-container",
+					},
+				},
+			},
+		},
+		{
+			description: "Several container names with match",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "c1,c2,c3",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c2",
+					},
+				},
+			},
+		},
+		{
+			description: "Several container names without match",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "c1,c2,c3",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c4",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude multiple container names retuns a result without the excluded container names",
+			match:       true,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "!c1,!c2",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c3",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude multiple container names shouldn't return a result with the excluded container names",
+			match:       false,
+			selector: &ContainerSelector{
+				K8s: K8sSelector{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: "!c1,!c2",
+					},
+				},
+			},
+			container: &Container{
+				K8s: K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     "this-namespace",
+						PodName:       "this-pod",
+						ContainerName: "c1",
+					},
+				},
+			},
+		},
+		{
+			description: "Several runtime container names with match",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerName: "rc1,rc2,rc3",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerName: "rc2",
+					},
+				},
+			},
+		},
+		{
+			description: "Several runtime container names without match",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerName: "rc1,rc2,rc3",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerName: "rc4",
+					},
+				},
+			},
+		},
 	}
 
 	for i, entry := range table {
