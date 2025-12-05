@@ -103,11 +103,11 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
 		}
 	}
 	if (op == READ) {
-		valuep->reads++;
-		valuep->rbytes_raw += count;
+		__sync_fetch_and_add(&valuep->reads, 1);
+		__sync_fetch_and_add(&valuep->rbytes_raw, count);
 	} else { /* op == WRITE */
-		valuep->writes++;
-		valuep->wbytes_raw += count;
+		__sync_fetch_and_add(&valuep->writes, 1);
+		__sync_fetch_and_add(&valuep->wbytes_raw, count);
 	}
 	return 0;
 };
