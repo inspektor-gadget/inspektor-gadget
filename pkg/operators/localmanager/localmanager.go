@@ -18,13 +18,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/containerd/containerd/pkg/cri/constants"
-	securejoin "github.com/cyphar/filepath-securejoin"
+	pathrslite "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -184,14 +185,8 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 
 		socketPath := socketPathParam.AsString()
 		socketPathIsSet := socketPathParam.IsSet()
-
-		cleanSocketPath, err := securejoin.SecureJoin(host.HostRoot, socketPath)
+		socketFile, err := pathrslite.OpenInRoot(host.HostRoot, socketPath)
 		if err != nil {
-			log.Debugf("securejoin failed: %s", err)
-			continue
-		}
-
-		if _, err := os.Stat(cleanSocketPath); err != nil {
 			if socketPathIsSet || runtimesIsSet {
 				return fmt.Errorf("runtime %q with non-existent socketPath %q", runtimeName, socketPath)
 			}
@@ -201,7 +196,7 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 
 		r := &containerutilsTypes.RuntimeConfig{
 			Name:            runtimeName,
-			SocketPath:      cleanSocketPath,
+			SocketPath:      filepath.Join("/proc", "self", "fd", fmt.Sprint(socketFile.Fd())),
 			RuntimeProtocol: operatorParams.Get(RuntimeProtocol).AsString(),
 			Extra: containerutilsTypes.ExtraConfig{
 				Namespace: namespace,
