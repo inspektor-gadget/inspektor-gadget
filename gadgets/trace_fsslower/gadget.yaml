@@ -36,12 +36,12 @@ datasources:
           columns.width: 10
 params:
   ebpf:
-    min_lat_ms:
+    min_lat_us:
       key: min
       alias: m
       title: Minimum Latency
-      defaultValue: "10"
-      description: Minimum latency in ms to trace
+      defaultValue: "10000"
+      description: Minimum latency in µs to trace
   wasm:
     filesystem:
       key: filesystem
