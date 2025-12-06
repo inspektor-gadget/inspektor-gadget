@@ -64,6 +64,7 @@ GADGETS ?= \
 	ci/sched_cls_drop \
 	ci/image_inspect \
 	ci/container_filtering \
+	snapshot_file \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
