@@ -245,6 +245,10 @@ func (c *Container) K8sPodLabelsAsString() string {
 	return c.podLabelsAsString
 }
 
+func (c *Container) K8sPodUID() string {
+	return c.K8s.PodUID
+}
+
 func (c *Container) SetPodLabels(podLabels map[string]string) {
 	if len(podLabels) == 0 {
 		// IsEnriched relies on c.K8s.PodLabels == nil to know if it
