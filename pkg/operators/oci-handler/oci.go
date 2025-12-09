@@ -477,6 +477,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		log.Debugf("layer > %+v", layer)
 		op, ok := operators.GetImageOperatorForMediaType(layer.MediaType)
 		if !ok {
+			log.Warnf("no operator found for media type %q, skipping layer", layer.MediaType)
 			continue
 		}
 
