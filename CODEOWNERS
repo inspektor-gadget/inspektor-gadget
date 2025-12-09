@@ -38,7 +38,7 @@
 /gadgets/profile_tcprtt/ @blanquicet
 /gadgets/snapshot_process/ @alban @mauriciovasquezbernal
 /gadgets/snapshot_socket/ @alban @blanquicet
-/gadgets/testing/ @mauriciovasquezbernal
+/gadgets/testing/ @mauriciovasquezbernal @matthyx
 /gadgets/top_blockio/ @burak-ok
 /gadgets/top_file/ @blanquicet @mauriciovasquezbernal
 /gadgets/top_tcp/ @burak-ok
@@ -64,10 +64,10 @@
 /internal/test/ @mauriciovasquezbernal
 /pkg/columns/ @flyth
 /pkg/container-collection/ @alban @blanquicet @mqasimsarfraz
-/pkg/container-hook/ @alban
+/pkg/container-hook/ @alban @matthyx
 /pkg/container-utils/ @blanquicet @mqasimsarfraz
 /pkg/container-utils/containerd/ @burak-ok
-/pkg/datasource/ @flyth
+/pkg/datasource/ @flyth @matthyx
 /pkg/gadget-context/ @flyth
 /pkg/gadget-service/ @flyth
 /pkg/gadgettracermanager/ @mauriciovasquezbernal
@@ -92,6 +92,7 @@
 /pkg/operators/localmanager/ @mauriciovasquezbernal @flyth
 /pkg/operators/oci-handler/ @flyth
 /pkg/operators/otel-metrics/ @blanquicet @flyth
+/pkg/operators/otel-logs/ @matthyx
 /pkg/operators/simple/ @flyth
 /pkg/operators/socketenricher/ @alban
 /pkg/operators/sort/ @flyth
