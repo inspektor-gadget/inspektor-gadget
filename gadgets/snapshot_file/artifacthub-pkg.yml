@@ -1,0 +1,31 @@
+# Artifact Hub package metadata file
+version: 0.46.0
+name: "snapshot file"
+category: monitoring-logging
+displayName: "snapshot file"
+createdAt: "2025-11-14T02:10:08Z"
+digest: "2025-11-14T02:10:08Z"
+description: "Show open files for running processes"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/snapshot_file"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/snapshot_file:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - files
+    - snapshot
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_file"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/snapshot_file:latest
+    ```
+provider:
+    name: Inspektor Gadget
