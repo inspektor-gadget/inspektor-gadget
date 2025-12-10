@@ -89,7 +89,7 @@ func TestTraceTCPretrans(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntries := &traceTCPretransEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("wget", 0, 0),
 				Src: utils.L4Endpoint{
 					Addr:    utils.NormalizedStr,

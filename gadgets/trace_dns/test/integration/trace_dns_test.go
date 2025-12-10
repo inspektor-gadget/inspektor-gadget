@@ -148,7 +148,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 			expectedEntries := []*traceDNSEvent{
 				// A query from client
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
@@ -187,7 +187,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 				},
 				// A response from server
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,
@@ -227,7 +227,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 				},
 				// AAAA query from client
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    clientIP,
@@ -266,7 +266,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 				},
 				// AAAA response from server
 				{
-					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, clientContainerName, commonDataOpts...),
 					Proc:       utils.BuildProc(tc.clientExpectedCmd, tc.clientUID, tc.clientGID),
 					Src: utils.L4Endpoint{
 						Addr:    serverIP,

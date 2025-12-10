@@ -103,7 +103,7 @@ func TestTopTcp(t *testing.T) {
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &topTcpEntry{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 
 					Src: utils.L4Endpoint{
 						Addr:    "127.0.0.1",
