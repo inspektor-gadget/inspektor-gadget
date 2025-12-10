@@ -12,6 +12,9 @@ IG_RUNTIME ?= docker
 IG_FLAGS ?=
 IG_DEBUG_LOGS ?= true
 COSIGN ?= cosign
+# Force using legacy .sig format.
+# TODO Switch to bundle format.
+COSIGN_FLAGS ?= --new-bundle-format=false --use-signing-config=false
 CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
@@ -148,14 +151,14 @@ push-existing: $(addsuffix -push-existing,$(GADGETS))
 %-sign: %-push
 	@echo "Signing $*"
 	digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing:
 	@echo "Signing existing $*"
 	digest=$$(sudo -E $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
