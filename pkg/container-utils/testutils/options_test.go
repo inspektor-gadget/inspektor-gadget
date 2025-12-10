@@ -2,31 +2,19 @@ package testutils
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestContainerOptions(t *testing.T) {
 	opts := defaultContainerOptions()
 
-	if opts.image != DefaultContainerImage {
-		t.Errorf("Expected default container image to be %q", DefaultContainerImage)
-	}
-	if opts.imageTag != DefaultContainerImageTag {
-		t.Errorf("Expected default container image tag to be %q", DefaultContainerImageTag)
-	}
-	if opts.seccompProfile != "" {
-		t.Errorf("Expected default seccompProfile to be empty")
-	}
-	if opts.sysctls != nil {
-		t.Errorf("Expected default sysctls to be nil")
-	}
+	require.Equal(t, DefaultContainerImage, opts.image)
+	require.Equal(t, DefaultContainerImageTag, opts.imageTag)
+	require.Empty(t, opts.seccompProfile, "Expected default seccompProfile to be empty")
+	require.Nil(t, opts.sysctls, "Expected default sysctls to be nil")
 
-	if !opts.logs {
-		t.Errorf("Expected default logs to be true")
-	}
-	if !opts.wait {
-		t.Errorf("Expected default wait to be true")
-	}
-	if !opts.removal {
-		t.Errorf("Expected default removal to be true")
-	}
+	require.True(t, opts.logs, "Expected default logs to be true")
+	require.True(t, opts.wait, "Expected default wait to be true")
+	require.True(t, opts.removal, "Expected default removal to be true")
 }

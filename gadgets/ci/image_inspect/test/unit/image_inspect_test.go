@@ -58,9 +58,7 @@ func TestInspectCmd(t *testing.T) {
 	t.Parallel()
 
 	info, err := extractGadgetInfo(true)
-	if err != nil {
-		t.Fatalf("Error getting gadget info: %v\n", err)
-	}
+	require.NoError(t, err, "Error getting gadget info")
 
 	// Validate keys
 	expectedKeys := []string{

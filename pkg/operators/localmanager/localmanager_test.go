@@ -112,7 +112,7 @@ func checkFdList(t *testing.T, initialFdList string, attempts int, sleep time.Du
 		}
 
 		if i >= (attempts - 1) {
-			t.Fatalf("After %d attempts, fd leaked:\n%s\n%s", attempts, initialFdList, finalFdList)
+			require.Failf(t, "fd leaked", "After %d attempts, fd leaked:\n%s\n%s", attempts, initialFdList, finalFdList)
 		}
 
 		time.Sleep(sleep)

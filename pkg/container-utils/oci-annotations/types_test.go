@@ -15,8 +15,9 @@
 package ociannotations
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewResolver(t *testing.T) {
@@ -48,12 +49,11 @@ func TestNewResolver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewResolver(tt.runtime)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewResolver() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err == nil && !reflect.DeepEqual(got.Runtime().String(), tt.want) {
-				t.Errorf("NewResolverFromAnnotations().Runtime() got = %v, want %v", got.Runtime(), tt.want)
+			if tt.wantErr {
+				require.Error(t, err, "NewResolver() error")
+			} else {
+				require.NoError(t, err, "NewResolver() error")
+				require.Equal(t, tt.want, got.Runtime().String(), "NewResolverFromAnnotations().Runtime()")
 			}
 		})
 	}
@@ -88,12 +88,11 @@ func TestNewResolverFromAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewResolverFromAnnotations(tt.annotations)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewResolverFromAnnotations() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err == nil && !reflect.DeepEqual(got.Runtime().String(), tt.want) {
-				t.Errorf("NewResolverFromAnnotations().Runtime() got = %s, want %s", got.Runtime(), tt.want)
+			if tt.wantErr {
+				require.Error(t, err, "NewResolverFromAnnotations() error")
+			} else {
+				require.NoError(t, err, "NewResolverFromAnnotations() error")
+				require.Equal(t, tt.want, got.Runtime().String(), "NewResolverFromAnnotations().Runtime()")
 			}
 		})
 	}

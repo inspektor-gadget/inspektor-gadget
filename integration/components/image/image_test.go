@@ -37,9 +37,10 @@ func TestImage(t *testing.T) {
 	t.Cleanup(func() {
 		r.Stop(t)
 	})
-	if len(r.PortBindings()) == 0 || r.PortBindings()["5000/tcp"] == nil {
-		t.Fatal("registry port not exposed")
-	}
+
+	require.NotEmpty(t, r.PortBindings(), "registry port bindings are empty")
+	require.NotNil(t, r.PortBindings()["5000/tcp"], "registry port 5000/tcp not found in port bindings")
+
 	pb := r.PortBindings()["5000/tcp"][0]
 	registryAddr := fmt.Sprintf("%s:%s", pb.HostIP, pb.HostPort)
 

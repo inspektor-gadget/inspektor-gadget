@@ -221,12 +221,9 @@ func TestMustCreateHelper(t *testing.T) {
 	}
 	MustCreateColumns[testStruct]()
 
-	defer func() {
-		if err := recover(); err == nil {
-			t.Errorf("Expected panic")
-		}
-	}()
-	MustCreateColumns[int]()
+	require.Panics(t, func() {
+		MustCreateColumns[int]()
+	})
 }
 
 func TestExtractor(t *testing.T) {

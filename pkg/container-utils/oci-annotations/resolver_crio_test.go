@@ -14,7 +14,11 @@
 
 package ociannotations
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func Test_crioResolver(t *testing.T) {
 	annotations := map[string]string{
@@ -27,17 +31,12 @@ func Test_crioResolver(t *testing.T) {
 	}
 
 	resolver := crioResolver{}
-	assert := func(got string, want string) {
-		if got != want {
-			t.Fatalf("Assertion failed got=%s, want=%s", got, want)
-		}
-	}
 
 	t.Logf("Test resolving annotations for %s", resolver.Runtime())
-	assert(resolver.PodName(annotations), "test-pod-name")
-	assert(resolver.PodNamespace(annotations), "test-pod-namespace")
-	assert(resolver.PodUID(annotations), "test-pod-uid")
-	assert(resolver.ContainerName(annotations), "test-container-name")
-	assert(resolver.ContainerType(annotations), "test-container-type")
-	assert(resolver.ContainerImageName(annotations), "test-container-image-name")
+	require.Equal(t, "test-pod-name", resolver.PodName(annotations))
+	require.Equal(t, "test-pod-namespace", resolver.PodNamespace(annotations))
+	require.Equal(t, "test-pod-uid", resolver.PodUID(annotations))
+	require.Equal(t, "test-container-name", resolver.ContainerName(annotations))
+	require.Equal(t, "test-container-type", resolver.ContainerType(annotations))
+	require.Equal(t, "test-container-image-name", resolver.ContainerImageName(annotations))
 }

@@ -15,10 +15,10 @@
 package cri_test
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
@@ -185,22 +185,15 @@ func TestParseExtraInfo(t *testing.T) {
 		err := cri.ParseExtraInfoTest(entry.info, containerDetailsData)
 		// Expected error.
 		if err != nil {
-			if entry.expected != nil {
-				t.Fatalf("Failed test %q: unexpected error: %s", entry.description, err.Error())
-			}
-
+			require.Nil(t, entry.expected, "Failed test %q: unexpected error", entry.description)
 			// An error was returned, no point in checking rest of fields.
 			continue
 		}
 
 		// Make sure expected field was filled.
-		if entry.expected == nil {
-			t.Fatalf("Failed test %q: unexpected success (expected error)", entry.description)
-		}
+		require.NotNil(t, entry.expected, "Failed test %q: unexpected success (expected error)", entry.description)
 
-		if !reflect.DeepEqual(entry.expected, containerDetailsData) {
-			t.Fatalf("%q: event doesn't match:\n%s", entry.description,
-				cmp.Diff(entry.expected, containerDetailsData))
-		}
+		require.Equal(t, entry.expected, containerDetailsData, "%q: event doesn't match:\n%s", entry.description,
+			cmp.Diff(entry.expected, containerDetailsData))
 	}
 }

@@ -14,7 +14,11 @@
 
 package snapshotcombiner
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestSnapshotCombiner(t *testing.T) {
 	ttl := 2
@@ -101,8 +105,6 @@ func TestSnapshotCombiner(t *testing.T) {
 			sc.AddSnapshot(nodeName, nodeStats)
 		}
 		res, _ := sc.GetSnapshots()
-		if len(res) != step.ExpectedEntries {
-			t.Errorf("expected %d, got %d", step.ExpectedEntries, len(res))
-		}
+		require.Len(t, res, step.ExpectedEntries, "expected %d, got %d", step.ExpectedEntries, len(res))
 	}
 }
