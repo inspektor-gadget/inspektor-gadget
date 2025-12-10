@@ -83,7 +83,7 @@ func TestTraceOomKill(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOomKillEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Timestamp:  utils.NormalizedStr,
 				TMntNsID:   utils.NormalizedInt,
 				Pages:      utils.NormalizedInt,
