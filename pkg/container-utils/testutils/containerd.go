@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -75,25 +76,19 @@ func (c *ContainerdContainer) initClientAndCtx() error {
 }
 
 func (c *ContainerdContainer) Run(t *testing.T) {
-	if err := c.initClientAndCtx(); err != nil {
-		t.Fatalf("Failed to initialize client: %s", err)
-	}
+	err := c.initClientAndCtx()
+	require.NoError(t, err, "Failed to initialize client")
 
 	// Download and unpack the image
 	fullImage := getFullImage(c.options)
 	image, err := c.client.Pull(c.nsCtx, fullImage)
-	if err != nil {
-		t.Fatalf("Failed to pull the image %q: %s", fullImage, err)
-	}
+	require.NoError(t, err, "Failed to pull the image %q", fullImage)
 
 	unpacked, err := image.IsUnpacked(c.nsCtx, "")
-	if err != nil {
-		t.Fatalf("image.IsUnpacked: %v", err)
-	}
+	require.NoError(t, err, "image.IsUnpacked")
 	if !unpacked {
-		if err := image.Unpack(c.nsCtx, ""); err != nil {
-			t.Fatalf("image.Unpack: %v", err)
-		}
+		err := image.Unpack(c.nsCtx, "")
+		require.NoError(t, err, "image.Unpack")
 	}
 
 	// Create the container
@@ -107,24 +102,12 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.privileged {
 		specOpts = append(specOpts, oci.WithPrivileged)
 	}
-	if c.options.seccompProfile != "" {
-		t.Fatalf("testutils/containerd: seccomp profiles are not supported yet")
-	}
-	if c.options.portBindings != nil {
-		t.Fatalf("testutils/containerd: Port bindings are not supported yet")
-	}
-	if len(c.options.mounts) > 0 {
-		t.Fatalf("testutils/containerd: Mounts are not supported yet")
-	}
-	if c.options.expectStartError {
-		t.Fatalf("testutils/containerd: ExpectStartError is not supported yet")
-	}
-	if c.options.expectedExitCode != nil {
-		t.Fatalf("testutils/containerd: ExpectedExitCode is not supported yet")
-	}
-	if c.options.sysctls != nil {
-		t.Fatalf("testutils/containerd: Sysctls are not supported yet")
-	}
+	require.Empty(t, c.options.seccompProfile, "testutils/containerd: seccomp profiles are not supported yet")
+	require.Nil(t, c.options.portBindings, "testutils/containerd: Port bindings are not supported yet")
+	require.Empty(t, c.options.mounts, "testutils/containerd: Mounts are not supported yet")
+	require.False(t, c.options.expectStartError, "testutils/containerd: ExpectStartError is not supported yet")
+	require.Nil(t, c.options.expectedExitCode, "testutils/containerd: ExpectedExitCode is not supported yet")
+	require.Nil(t, c.options.sysctls, "testutils/containerd: Sysctls are not supported yet")
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,
@@ -136,9 +119,7 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 		containerd.WithImageStopSignal(image, "SIGTERM"),
 		containerd.WithSpec(&spec, specOpts...),
 	)
-	if err != nil {
-		t.Fatalf("Failed to create container %q: %s", c.name, err)
-	}
+	require.NoError(t, err, "Failed to create container %q", c.name)
 	c.id = container.ID()
 
 	containerIO := cio.NullIO
@@ -150,19 +131,17 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	task, err := container.NewTask(c.nsCtx, containerIO)
 	if err != nil {
 		container.Delete(c.nsCtx, containerd.WithSnapshotCleanup)
-		t.Fatalf("Failed to create task %q: %s", c.name, err)
+		require.NoError(t, err, "Failed to create task %q", c.name)
 	}
 
 	err = task.Start(c.nsCtx)
 	if err != nil {
 		container.Delete(c.nsCtx, containerd.WithSnapshotCleanup)
-		t.Fatalf("Failed to start task %q: %s", c.name, err)
+		require.NoError(t, err, "Failed to start task %q", c.name)
 	}
 
 	c.exitStatus, err = task.Wait(c.nsCtx)
-	if err != nil {
-		t.Fatalf("Failed to wait on task %q: %s", c.name, err)
-	}
+	require.NoError(t, err, "Failed to wait on task %q", c.name)
 	c.pid = int(task.Pid())
 
 	if c.options.wait {
@@ -178,9 +157,7 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 
 	if c.options.removal {
 		err := c.deleteAndClose(t, task, container)
-		if err != nil {
-			t.Fatalf("Failed to delete container %q: %s", c.name, err)
-		}
+		require.NoError(t, err, "Failed to delete container %q", c.name)
 	}
 }
 
@@ -208,11 +185,10 @@ func (c *ContainerdContainer) Stop(t *testing.T) {
 	if c.client == nil {
 		if c.options.forceDelete {
 			t.Logf("Warn(%s): trying to stop container with nil client. Forcing deletion\n", c.name)
-			if err := c.initClientAndCtx(); err != nil {
-				t.Fatalf("Failed to initialize client: %s", err)
-			}
+			err := c.initClientAndCtx()
+			require.NoError(t, err, "Failed to initialize client")
 		} else {
-			t.Fatalf("Client is not initialized")
+			require.Fail(t, "Client is not initialized")
 		}
 	}
 
@@ -253,19 +229,13 @@ func (c *ContainerdContainer) deleteAndClose(t *testing.T, task containerd.Task,
 
 func (c *ContainerdContainer) stop(t *testing.T) {
 	container, err := c.client.LoadContainer(c.nsCtx, c.name)
-	if err != nil {
-		t.Fatalf("Failed to get container %q: %s", c.name, err)
-	}
+	require.NoError(t, err, "Failed to get container %q", c.name)
 
 	task, err := container.Task(c.nsCtx, nil)
-	if err != nil {
-		t.Fatalf("Failed to get task %q: %s", c.name, err)
-	}
+	require.NoError(t, err, "Failed to get task %q", c.name)
 
 	err = c.deleteAndClose(t, task, container)
-	if err != nil {
-		t.Fatalf("Failed to delete container %q: %s", c.name, err)
-	}
+	require.NoError(t, err, "Failed to delete container %q", c.name)
 }
 
 func getFullImage(options *containerOptions) string {

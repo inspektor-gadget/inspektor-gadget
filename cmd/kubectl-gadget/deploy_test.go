@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -39,9 +38,7 @@ func TestPrintOnly(t *testing.T) {
 	var stdErr bytes.Buffer
 	cmd.SetErr(&stdErr)
 	cmd.Execute()
-	if stdErr.Len() != 0 {
-		t.Fatalf("Error while running command: %s", stdErr.String())
-	}
+	require.Empty(t, stdErr.String(), "Error while running command")
 }
 
 func TestApplyConfigToConfgMap(t *testing.T) {
@@ -56,12 +53,9 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 
 	tmpFileWith := func(content string) (string, func()) {
 		f, err := os.CreateTemp("", "ig-config-*.yaml")
-		if err != nil {
-			t.Fatalf("failed to create temp file: %v", err)
-		}
-		if _, err := f.WriteString(content); err != nil {
-			t.Fatalf("failed to write temp file: %v", err)
-		}
+		require.NoError(t, err, "failed to create temp file")
+		_, err = f.WriteString(content)
+		require.NoError(t, err, "failed to write temp file")
 		return f.Name(), func() { os.Remove(f.Name()) }
 	}
 
@@ -174,9 +168,7 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 			require.NoError(t, err)
 			got := tt.cm.Data["config.yaml"]
 			for _, want := range tt.wantContains {
-				if !strings.Contains(got, want) {
-					t.Errorf("config.yaml does not contain %q, got:\n%s", want, got)
-				}
+				require.Contains(t, got, want, "config.yaml should contain %q", want)
 			}
 		})
 	}

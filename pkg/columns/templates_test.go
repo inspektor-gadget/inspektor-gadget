@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func uniqueTemplateName(t *testing.T, suffix ...string) string {
@@ -31,107 +33,69 @@ func uniqueTemplateName(t *testing.T, suffix ...string) string {
 func TestRegisterTemplate(t *testing.T) {
 	name := uniqueTemplateName(t)
 	err := RegisterTemplate(name, "value")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	require.NoError(t, err, "expected no error")
 
 	value, exists := getTemplate(name)
-	if !exists {
-		t.Fatalf("expected template %q to exist", name)
-	}
-	if value != "value" {
-		t.Fatalf("expected template value 'value', got %q", value)
-	}
+	require.True(t, exists, "expected template %q to exist", name)
+	require.Equal(t, "value", value)
 }
 
 func TestRegisterTemplateWithEmptyName(t *testing.T) {
 	err := RegisterTemplate("", "value")
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	require.Error(t, err, "expected error")
 	expectedErr := "no template name given"
-	if err.Error() != expectedErr {
-		t.Fatalf("expected error %q, got %q", expectedErr, err)
-	}
+	require.EqualError(t, err, expectedErr)
 }
 
 func TestRegisterTemplateWithEmptyValue(t *testing.T) {
 	name := uniqueTemplateName(t)
 	err := RegisterTemplate(name, "")
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	require.Error(t, err, "expected error")
 	expectedErr := fmt.Sprintf("no value given for template %q", name)
-	if err.Error() != expectedErr {
-		t.Fatalf("expected error %q, got %q", expectedErr, err)
-	}
+	require.EqualError(t, err, expectedErr)
 }
 
 func TestRegisterTemplateDuplicate(t *testing.T) {
 	name := uniqueTemplateName(t)
-	if err := RegisterTemplate(name, "value"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	err := RegisterTemplate(name, "value")
+	require.NoError(t, err, "unexpected error")
 
-	err := RegisterTemplate(name, "new_value")
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	err = RegisterTemplate(name, "new_value")
+	require.Error(t, err, "expected error")
 	expectedErr := fmt.Sprintf("template with name %q already exists", name)
-	if err.Error() != expectedErr {
-		t.Fatalf("expected error %q, got %q", expectedErr, err)
-	}
+	require.EqualError(t, err, expectedErr)
 }
 
 func TestMustRegisterTemplate(t *testing.T) {
 	name := uniqueTemplateName(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("unexpected panic: %v", r)
-		}
-	}()
-	MustRegisterTemplate(name, "value")
+	require.NotPanics(t, func() {
+		MustRegisterTemplate(name, "value")
+	}, "unexpected panic")
 
 	value, exists := getTemplate(name)
-	if !exists {
-		t.Fatalf("expected template %q to exist", name)
-	}
-	if value != "value" {
-		t.Fatalf("expected template value 'value', got %q", value)
-	}
+	require.True(t, exists, "expected template %q to exist", name)
+	require.Equal(t, "value", value)
 }
 
 func TestMustRegisterTemplatePanics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic, but did not panic")
-		}
-	}()
-	MustRegisterTemplate("", "value")
+	require.Panics(t, func() {
+		MustRegisterTemplate("", "value")
+	}, "expected panic")
 }
 
 func TestGetTemplate(t *testing.T) {
 	name := uniqueTemplateName(t)
-	if err := RegisterTemplate(name, "value"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	err := RegisterTemplate(name, "value")
+	require.NoError(t, err, "unexpected error")
 
 	tpl, exists := getTemplate(name)
-	if !exists {
-		t.Fatalf("expected template %q to exist", name)
-	}
-	if tpl != "value" {
-		t.Fatalf("expected template value 'value', got %q", tpl)
-	}
+	require.True(t, exists, "expected template %q to exist", name)
+	require.Equal(t, "value", tpl)
 }
 
 func TestGetTemplateNonexistent(t *testing.T) {
 	name := uniqueTemplateName(t, "nonexistent")
 	tpl, exists := getTemplate(name)
-	if exists {
-		t.Fatalf("expected template %q to not exist", name)
-	}
-	if tpl != "" {
-		t.Fatalf("expected empty template value, got %q", tpl)
-	}
+	require.False(t, exists, "expected template %q to not exist", name)
+	require.Equal(t, "", tpl)
 }

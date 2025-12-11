@@ -17,6 +17,7 @@ package containercollection
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -262,8 +263,13 @@ func TestGetExpectedOwnerReference(t *testing.T) {
 
 	for i, entry := range table {
 		result := getExpectedOwnerReference(entry.ownerReferences)
-		if (entry.expectedResult == nil && result != nil) || (entry.expectedResult != nil && entry.expectedResult.UID != result.UID) {
-			t.Fatalf("Failed test %q (index %d): result %+v expected %+v",
+		if entry.expectedResult == nil {
+			require.Nil(t, result, "Failed test %q (index %d): result %+v expected %+v",
+				entry.description, i, result, entry.expectedResult)
+		} else {
+			require.NotNil(t, result, "Failed test %q (index %d): result %+v expected %+v",
+				entry.description, i, result, entry.expectedResult)
+			require.Equal(t, entry.expectedResult.UID, result.UID, "Failed test %q (index %d): result %+v expected %+v",
 				entry.description, i, result, entry.expectedResult)
 		}
 	}

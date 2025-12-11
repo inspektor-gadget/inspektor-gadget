@@ -377,7 +377,7 @@ func TestSpecUpdateAddressesSymbolResolution(t *testing.T) {
 		// Second attempt - should return cached error without calling resolver
 		secondResolver := &mockSymbolResolver{
 			resolveFunc: func(symbol string) (uint64, error) {
-				t.Fatal("resolver should not be called when error is cached")
+				require.Fail(t, "resolver should not be called when error is cached")
 				return 0, nil
 			},
 		}

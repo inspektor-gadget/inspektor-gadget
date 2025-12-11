@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	processhelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/process-helpers"
 )
 
@@ -123,18 +125,12 @@ func (m *statsRecorder) Start(t *testing.T) {
 
 		var err error
 		m.prevCPUStats, err = readCPUStats()
-		if err != nil {
-			t.Errorf("failed to read initial CPU stats: %v", err)
-			return
-		}
+		require.NoError(t, err, "failed to read initial CPU stats")
 
 		last := time.Now()
 		if m.processCpu != nil {
 			m.processesCpu, err = m.processCpu.getProcessCpu(0.0)
-			if err != nil {
-				t.Errorf("failed to read initial process CPU: %v", err)
-				return
-			}
+			require.NoError(t, err, "failed to read initial process CPU")
 		}
 
 		ticker := time.NewTicker(1 * time.Second)
@@ -151,19 +147,13 @@ func (m *statsRecorder) Start(t *testing.T) {
 		}
 
 		m.systemCpu, err = m.getSystemCPU()
-		if err != nil {
-			t.Errorf("failed to read system CPU: %v", err)
-			return
-		}
+		require.NoError(t, err, "failed to read system CPU")
 
 		now := time.Now()
 		delta := now.Sub(last).Seconds()
 		if m.processCpu != nil {
 			m.processesCpu, err = m.processCpu.getProcessCpu(delta)
-			if err != nil {
-				t.Errorf("failed to read process CPU: %v", err)
-				return
-			}
+			require.NoError(t, err, "failed to read process CPU")
 		}
 
 		m.running = false
@@ -171,9 +161,7 @@ func (m *statsRecorder) Start(t *testing.T) {
 }
 
 func (m *statsRecorder) Stop(t *testing.T) {
-	if m.running {
-		t.Fatal("recorder is still running, cannot stop it")
-	}
+	require.False(t, m.running, "recorder is still running, cannot stop it")
 }
 
 func (m *statsRecorder) IsStartAndStop() bool {

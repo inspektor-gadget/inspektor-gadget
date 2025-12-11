@@ -148,7 +148,7 @@ func TestCliOperators(t *testing.T) {
 					assert.Equal(t, removeNewLineAndTabs(tc.expectedJson), buf.String())
 
 				default:
-					t.Errorf("Unknown mode: %s", mode)
+					require.Failf(t, "Unknown mode", "Unknown mode: %s", mode)
 				}
 			})
 		}
