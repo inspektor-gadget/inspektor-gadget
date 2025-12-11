@@ -1461,8 +1461,6 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4.2.2
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-        with:
-          cosign-release: 'v2.6.0'
       - name: Check if public key is up-to-date.
         env:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
@@ -1569,8 +1567,6 @@ jobs:
       - name: Install Cosign
         if: needs.check-secrets.outputs.cosign == 'true'
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-        with:
-          cosign-release: 'v2.6.0'
       - name: Verify gadget builder image
         if: needs.check-secrets.outputs.cosign == 'true'
         run: |
@@ -2359,8 +2355,6 @@ jobs:
     - name: Install Cosign
       if: needs.check-secrets.outputs.cosign == 'true'
       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-      with:
-        cosign-release: 'v2.6.0'
     - name: Sign checksums file
       if: needs.check-secrets.outputs.cosign == 'true'
       shell: bash
@@ -2370,9 +2364,11 @@ jobs:
       run: |
         checksums_file=SHA256SUMS
 
-        cosign sign-blob --key env://COSIGN_PRIVATE_KEY --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
+        # Force using legacy .sig format.
+        # TODO Switch to bundle format.
+        cosign sign-blob --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
 
-        # Derivate public key from private key to publish it as release
+        # Derive public key from private key to publish it as release
         # artifact, so people can verify our signature.
         cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
     - name: Login to Container Registry
