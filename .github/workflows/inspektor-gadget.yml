@@ -1024,19 +1024,43 @@ jobs:
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.dockerfile }}
+        # tar=false is mandatory to avoid Trivy complaining:
+        # https://docs.docker.com/build/exporters/oci-docker/
+        outputs: type=oci,tar=false,dest=/tmp/${{ matrix.image.name }}/
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.image.platform }}
+    - name: Scan ${{ matrix.image.name }} image for CVEs
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+      with:
+        input: /tmp/${{ matrix.image.name }}
+        format: 'table'
+        exit-code: 1
+        severity: CRITICAL,HIGH
+        # uncomment to ignore vulnerabilities
+        ignore-unfixed: true
+        # ignore-policy: .github/trivy/ignore-policy.yaml
+    - name: Push ${{ matrix.image.name }} image
+      id: push-image
+      if: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
+      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+      with:
+        context: ${{ matrix.image.context }}
+        file: ${{ matrix.image.dockerfile }}
         # The repository should have the variable PUSH_HELPERS set to
         # ENABLE_PUSH_HELPERS, see:
         # https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository
         push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        # Build artifacts are taken from cache, so only the push will occur.
+        cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.image.platform }}
     - name: Save ${{ matrix.image.name }} image tag output
       id: image-tag
       env:
         CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        DIGEST: ${{ steps.build-image.outputs.digest }}
+        DIGEST: ${{ steps.push-image.outputs.digest }}
       run: |
         if [ -n "$DIGEST" ]; then
           image="${CONTAINER_REPO}@${DIGEST}"
@@ -1060,7 +1084,7 @@ jobs:
       with:
         password: '${{ secrets.COSIGN_PASSWORD }}'
         private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-        image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.build-image.outputs.digest }}"
+        image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.push-image.outputs.digest }}"
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
