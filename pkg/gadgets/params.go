@@ -18,6 +18,7 @@ import "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 const (
 	LocalContainer   params.ValueHint = "local:container"
+	LocalImageDigest params.ValueHint = "local:image-digest"
 	K8SNodeName      params.ValueHint = "k8s:node"
 	K8SNodeList      params.ValueHint = "k8s:node-list"
 	K8SPodName       params.ValueHint = "k8s:pod"
