@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
-	traceexec "github.com/inspektor-gadget/inspektor-gadget/gadgets/trace_exec/consts"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
@@ -37,7 +35,7 @@ import (
 type ExpectedTraceExecEvent struct {
 	Proc  utils.Process `json:"proc"`
 	Error string        `json:"error"`
-	Args  string        `json:"args"`
+	Args  []string      `json:"args"`
 }
 
 type testDef struct {
@@ -56,8 +54,7 @@ func TestTraceExecGadget(t *testing.T) {
 			argv:         []string{"/bin/echo", "hello", "world"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, inputArgs, events[0].Args)
 			},
 		},
 		"large_argument_list": {
@@ -66,8 +63,7 @@ func TestTraceExecGadget(t *testing.T) {
 			argv: []string{"/bin/echo", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10", "arg11", "arg12", "arg13", "arg14", "arg15", "arg16", "arg17", "arg18", "arg19", "arg20", "arg21"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs[:20], traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, inputArgs[:20], events[0].Args)
 			},
 		},
 		"uid_gid": {
@@ -79,8 +75,7 @@ func TestTraceExecGadget(t *testing.T) {
 			argv: []string{"/bin/ls", "-l", "/"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, inputArgs, events[0].Args)
 				require.Equal(t, uint32(info.Uid), events[0].Proc.Creds.Uid)
 				require.Equal(t, uint32(info.Gid), events[0].Proc.Creds.Gid)
 			},
@@ -100,8 +95,7 @@ func TestTraceExecGadget(t *testing.T) {
 			argv:         []string{"/bin/foobar", "hello"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, inputArgs, events[0].Args)
 				require.Equal(t, "ENOENT", events[0].Error)
 			},
 		},
@@ -112,9 +106,9 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
 				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
-				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[1].Args)
+				require.Contains(t, events[0].Args, "/bin/python3")
+				require.Contains(t, events[0].Args, "-c")
+				require.Equal(t, inputArgs, events[1].Args)
 			},
 		},
 		"failed_exec_from_thread": {
@@ -124,9 +118,9 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
 				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
-				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[1].Args)
+				require.Contains(t, events[0].Args, "/bin/python3")
+				require.Contains(t, events[0].Args, "-c")
+				require.Equal(t, inputArgs, events[1].Args)
 				require.Equal(t, "ENOENT", events[1].Error)
 			},
 		},

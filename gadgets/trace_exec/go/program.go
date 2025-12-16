@@ -15,9 +15,6 @@
 package main
 
 import (
-	"strings"
-
-	"github.com/inspektor-gadget/inspektor-gadget/gadgets/trace_exec/consts"
 	api "github.com/inspektor-gadget/inspektor-gadget/wasmapi/go"
 )
 
@@ -88,10 +85,8 @@ func gadgetInit() int32 {
 			}
 		}
 
-		// TODO: The datasource doesn't support arrays yet, hence we have to
-		// join the args in a single string. We are using a non-breaking space
-		// as separator to avoid collisions with arguments that contain spaces.
-		argsF.SetString(data, strings.Join(args, consts.ArgsSeparator))
+		// Store args as an array of strings directly (no joining necessary).
+		argsF.SetStringArray(data, args)
 	}, 0)
 
 	return 0

@@ -181,6 +181,24 @@ func (f Field) SetBytes(data Data, buf []byte) error {
 	return err
 }
 
+func (f Field) SetStringArray(data Data, strs []string) error {
+	// Encode strings as NUL-separated sequences (each string terminated by a NUL),
+	// which matches how exec args are represented by the tracer.
+	total := 0
+	for _, s := range strs {
+		total += len(s) + 1 // include terminating NUL
+	}
+	buf := make([]byte, 0, total)
+	for _, s := range strs {
+		buf = append(buf, s...)
+		buf = append(buf, 0)
+	}
+
+	err := f.set(data, Kind_StringArray, uint64(bytesToBufPtr(buf)))
+	runtime.KeepAlive(buf)
+	return err
+}
+
 func (f Field) Bool(data Data) (bool, error) {
 	val, err := f.getScalar(data, Kind_Bool)
 	return val == 1, err

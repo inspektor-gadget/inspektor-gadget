@@ -299,6 +299,17 @@ func (f *Formatter) addSubFields(accessors []datasource.FieldAccessor, prefix st
 				fn = writeFloatArrFn(accessor.Float32Array, f.fieldSep, newIndent)
 			case api.ArrayOf(api.Kind_Float64):
 				fn = writeFloatArrFn(accessor.Float64Array, f.fieldSep, newIndent)
+			case api.ArrayOf(api.Kind_String):
+				fn = func(e *encodeState, data datasource.Data) {
+					vals, _ := accessor.StringArray(data)
+					for i, v := range vals {
+						if i > 0 {
+							e.Write(f.fieldSep)
+						}
+						e.WriteString(newIndent)
+						writeString(e, v)
+					}
+				}
 			default:
 				fn = func(e *encodeState, data datasource.Data) {
 					e.Write(fieldName)

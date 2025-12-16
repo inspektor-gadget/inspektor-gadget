@@ -198,7 +198,7 @@ func (i *wasmOperatorInstance) fieldGetBuffer(ctx context.Context, m wapi.Module
 	}
 
 	switch fieldKind {
-	case api.Kind_String, api.Kind_Bytes:
+	case api.Kind_String, api.Kind_Bytes, api.Kind_StringArray:
 		bytes := field.Get(data)
 		if err := i.writeToDstBuffer(bytes, dst); err != nil {
 			i.logger.Warnf("fieldGetBuffer: %v", err)
@@ -273,6 +273,28 @@ func (i *wasmOperatorInstance) fieldSet(ctx context.Context, m wapi.Module, stac
 			return
 		}
 		err = field.PutString(data, str)
+	case api.Kind_StringArray:
+		var buf []byte
+		buf, err = bufFromStack(m, value)
+		if err != nil {
+			i.logger.Warnf("reading bytes from stack: %v", err)
+			stack[0] = 1
+			return
+		}
+		// Parse NUL-separated strings into a []string
+		parts := make([]string, 0)
+		start := 0
+		for idx := 0; idx < len(buf); idx++ {
+			if buf[idx] == 0 {
+				parts = append(parts, string(buf[start:idx]))
+				start = idx + 1
+			}
+		}
+		// If there's remaining data without a trailing NUL, include it too.
+		if start < len(buf) {
+			parts = append(parts, string(buf[start:]))
+		}
+		err = field.PutStringArray(data, parts)
 	case api.Kind_Bytes:
 		var buf []byte
 		buf, err = bufFromStack(m, value)

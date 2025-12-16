@@ -121,9 +121,17 @@ func getFieldKind(typ reflect.Type, tags []string) api.Kind {
 	case reflect.Float64:
 		return api.Kind_Float64
 	case reflect.Array:
-		// Special case to handle char arrays as strings
-		// TODO: Handle other cases once we support arrays
+		// Special case to handle char arrays as strings.
+		// Historically, char arrays were treated as C strings. However, some
+		// char buffers (notably the exec `args` buffer) are actually a sequence
+		// of NUL-separated strings (arg0\0arg1\0...). If a char array is
+		// named "args" we represent it as an array of strings so consumers get
+		// a real string array instead of a single (joined) string.
 		if typ.Elem().Kind() == reflect.Int8 && slices.Contains(tags, "type:char") {
+			// tags include the field name as "name:<fieldname>"
+			if slices.Contains(tags, "name:args") {
+				return api.ArrayOf(api.Kind_String)
+			}
 			return api.Kind_CString
 		}
 		kind := getFieldKind(typ.Elem(), tags)

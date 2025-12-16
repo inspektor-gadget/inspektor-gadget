@@ -299,19 +299,20 @@ type FieldKind uint32
 
 // Keep in sync with pkg/gadget-service/api/api.proto
 const (
-	Kind_Invalid FieldKind = 0
-	Kind_Bool    FieldKind = 1
-	Kind_Int8    FieldKind = 2
-	Kind_Int16   FieldKind = 3
-	Kind_Int32   FieldKind = 4
-	Kind_Int64   FieldKind = 5
-	Kind_Uint8   FieldKind = 6
-	Kind_Uint16  FieldKind = 7
-	Kind_Uint32  FieldKind = 8
-	Kind_Uint64  FieldKind = 9
-	Kind_Float32 FieldKind = 10
-	Kind_Float64 FieldKind = 11
-	Kind_String  FieldKind = 12
-	Kind_CString FieldKind = 13
-	Kind_Bytes   FieldKind = 14
+	Kind_Invalid     FieldKind = 0
+	Kind_Bool        FieldKind = 1
+	Kind_Int8        FieldKind = 2
+	Kind_Int16       FieldKind = 3
+	Kind_Int32       FieldKind = 4
+	Kind_Int64       FieldKind = 5
+	Kind_Uint8       FieldKind = 6
+	Kind_Uint16      FieldKind = 7
+	Kind_Uint32      FieldKind = 8
+	Kind_Uint64      FieldKind = 9
+	Kind_Float32     FieldKind = 10
+	Kind_Float64     FieldKind = 11
+	Kind_String      FieldKind = 12
+	Kind_CString     FieldKind = 13
+	Kind_Bytes       FieldKind = 14
+	Kind_StringArray FieldKind = 15
 )

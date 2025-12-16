@@ -158,6 +158,9 @@ enum Kind {
   String = 12;
   CString = 13;
   Bytes = 14;
+  // StringArray represents an array of strings. Use this kind when a field
+  // contains multiple string values.
+  StringArray = 15;
 }
 
 message Field {

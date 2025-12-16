@@ -164,6 +164,14 @@ type FieldAccessor interface {
 	PutString(Data, string) error
 	PutBytes(Data, []byte) error
 	PutBool(Data, bool) error
+
+	// StringArray returns a slice of strings encoded in the field as NUL-terminated
+	// strings (e.g., "arg0\0arg1\0...").
+	StringArray(Data) ([]string, error)
+
+	// PutStringArray stores a slice of strings as NUL-terminated sequences
+	// (each string is terminated by a NUL byte).
+	PutStringArray(Data, []string) error
 }
 
 type fieldAccessor struct {
@@ -590,6 +598,45 @@ func (a *fieldAccessor) String(data Data) (string, error) {
 
 func (a *fieldAccessor) Bytes(data Data) ([]byte, error) {
 	return a.Get(data), nil
+}
+
+// StringArray parses the field as a sequence of NUL-terminated strings and
+// returns them as a slice. It tolerates either a trailing NUL or no trailing
+// NUL for the last element.
+func (a *fieldAccessor) StringArray(data Data) ([]string, error) {
+	val := a.Get(data)
+	if len(val) == 0 {
+		return []string{}, nil
+	}
+
+	res := make([]string, 0)
+	start := 0
+	for i := 0; i < len(val); i++ {
+		if val[i] == 0 {
+			res = append(res, string(val[start:i]))
+			start = i + 1
+		}
+	}
+	// If there's remaining bytes without trailing NUL, include them as the last string.
+	if start < len(val) {
+		res = append(res, string(val[start:]))
+	}
+	return res, nil
+}
+
+// PutStringArray encodes the given slice of strings as NUL-terminated
+// strings and sets the field value accordingly.
+func (a *fieldAccessor) PutStringArray(data Data, vals []string) error {
+	total := 0
+	for _, s := range vals {
+		total += len(s) + 1 // include terminating NUL
+	}
+	buf := make([]byte, 0, total)
+	for _, s := range vals {
+		buf = append(buf, s...)
+		buf = append(buf, 0)
+	}
+	return a.Set(data, buf)
 }
 
 func (a *fieldAccessor) Bool(data Data) (bool, error) {
