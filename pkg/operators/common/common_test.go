@@ -30,7 +30,7 @@ import (
 )
 
 func TestStartIncrementsUseCount(t *testing.T) {
-	fakeClientSet := fake.NewSimpleClientset()
+	fakeClientSet := fake.NewClientset()
 	cache := &inventoryCache{
 		clientset: fakeClientSet,
 	}
