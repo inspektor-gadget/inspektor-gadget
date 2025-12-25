@@ -21,22 +21,30 @@ import (
 // matchFilterString checks if a value matches a filter string. The filter string can
 // contain multiple comma-separated values. A value can be excluded by prefixing
 // it with a '!'. If the filter is empty, it matches any value.
-func matchFilterString(filter, value string) bool {
+func matchFilterString(filter string, values ...string) bool {
 	if filter == "" {
 		return true
 	}
-	parts := strings.Split(filter, ",")
+	return matchFilterParts(strings.Split(filter, ","), values...)
+}
+
+func matchFilterParts(parts []string, values ...string) bool {
 	matched := false
 	hasInclusion := false
 	for _, part := range parts {
 		if strings.HasPrefix(part, "!") {
-			if value == part[1:] {
-				return false // Explicit exclusion
+			excl := part[1:]
+			for _, v := range values {
+				if v == excl {
+					return false // Explicit exclusion
+				}
 			}
 		} else {
 			hasInclusion = true
-			if value == part {
-				matched = true
+			for _, v := range values {
+				if v == part {
+					matched = true
+				}
 			}
 		}
 	}
@@ -44,6 +52,17 @@ func matchFilterString(filter, value string) bool {
 		return false
 	}
 	return true
+}
+
+func cleanDigest(d string) string {
+	// Strip algo prefix if present (e.g. sha256:...)
+	if idx := strings.Index(d, ":"); idx != -1 {
+		d = d[idx+1:]
+	}
+	if len(d) > 12 {
+		return d[:12]
+	}
+	return d
 }
 
 // ContainerSelectorMatches tells if a container matches the criteria in a
@@ -63,6 +82,20 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 
 	if !matchFilterString(s.Runtime.ContainerName, c.Runtime.ContainerName) {
 		return false
+	}
+
+	if s.Runtime.ContainerImageDigest != "" {
+		parts := strings.Split(s.Runtime.ContainerImageDigest, ",")
+		for i, p := range parts {
+			if strings.HasPrefix(p, "!") {
+				parts[i] = "!" + cleanDigest(p[1:])
+			} else {
+				parts[i] = cleanDigest(p)
+			}
+		}
+		if !matchFilterParts(parts, cleanDigest(c.Runtime.ContainerImageDigest), cleanDigest(c.Runtime.ContainerImageName)) {
+			return false
+		}
 	}
 
 	for sk, sv := range s.K8s.PodLabels {

@@ -214,6 +214,10 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
+	log.Debugf("Adding container: %s/%s/%s (ID: %s, Image: %s, Digest: %s)",
+		container.K8s.Namespace, container.K8s.PodName, container.K8s.ContainerName,
+		container.Runtime.ContainerID, container.Runtime.ContainerImageName, container.Runtime.ContainerImageDigest)
+
 	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
 		return
