@@ -93,7 +93,7 @@ func TestTraceMount(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceMountEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("mount", 0, 0),
 				Op:         "MOUNT",
 				Src:        "/mnt",
