@@ -413,6 +413,9 @@ func (o *cliOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 					continue
 				}
 				ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
+					if lostSampleCount := data.LostSampleCount(); lostSampleCount > 0 {
+						gadgetCtx.Logger().Warnf("reading event: lost %d samples", lostSampleCount)
+					}
 					handler(datasource.NewDataTuple(ds, data))
 					return nil
 				}, Priority)

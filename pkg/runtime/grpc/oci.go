@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
+
+type dsInfo struct {
+	datasource  datasource.DataSource
+	lostSamples uint64
+}
 
 func (r *Runtime) GetGadgetInfo(gadgetCtx runtime.GadgetContext, runtimeParams *params.Params, paramValues api.ParamValues) (*api.GadgetInfo, error) {
 	if runtimeParams == nil {
@@ -192,7 +197,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	expectedSeq := uint32(1)
 
 	go func() {
-		dsMap := make(map[uint32]datasource.DataSource)
+		dsMap := make(map[uint32]dsInfo)
 		dsNameMap := make(map[string]uint32)
 		initialized := false
 		for {
@@ -216,7 +221,8 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 					gadgetCtx.Logger().Warnf("%-20s | expected seq %d, got %d, %d messages dropped", target.node, expectedSeq, ev.Seq, ev.Seq-expectedSeq)
 				}
 				expectedSeq = ev.Seq + 1
-				if ds, ok := dsMap[ev.DataSourceID]; ok && ds != nil {
+				if di, ok := dsMap[ev.DataSourceID]; ok && di.datasource != nil {
+					ds := di.datasource
 					var p datasource.Packet
 					switch ds.Type() {
 					case datasource.TypeSingle:
@@ -227,6 +233,11 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 						gadgetCtx.Logger().Warnf("unknown datasource type %d", ds.Type())
 						continue
 					}
+
+					// Move lostSampleCount back to the packet level
+					p.SetLostSampleCount(ev.LostSamples - di.lostSamples)
+					di.lostSamples = ev.LostSamples
+
 					if err != nil {
 						gadgetCtx.Logger().Debugf("error unmarshaling payload: %v", err)
 						continue
@@ -259,7 +270,10 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 				for _, ds := range gadgetCtx.GetAllDataSources() {
 					gadgetCtx.Logger().Debugf("registered ds %s", ds.Name())
 					if dsId, ok := dsNameMap[ds.Name()]; ok {
-						dsMap[dsId] = ds
+						dsMap[dsId] = dsInfo{
+							datasource:  ds,
+							lostSamples: 0,
+						}
 					} else {
 						gadgetCtx.Logger().Debugf("datasource %s not found in gadget info", ds.Name())
 					}
