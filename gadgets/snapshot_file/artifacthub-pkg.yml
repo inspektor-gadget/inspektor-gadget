@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.46.0
+version: 0.48.0
 name: "snapshot file"
 category: monitoring-logging
 displayName: "snapshot file"
-createdAt: "2025-11-14T02:10:08Z"
-digest: "2025-11-14T02:10:08Z"
+createdAt: "2026-01-05T16:31:55Z"
+digest: "2026-01-05T16:31:55Z"
 description: "Show open files for running processes"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
