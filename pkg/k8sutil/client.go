@@ -17,6 +17,7 @@ package k8sutil
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -29,12 +30,20 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 )
 
+var ErrNoKubeConfig = errors.New("no kubeconfig found")
+
 func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 	if kubeconfigPath != "" {
-		// kubeconfig is set explicitly (-kubeconfig flag or $KUBECONFIG variable)
+		// kubeconfig is set explicitly (via --kubeconfig flag or by the caller)
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			return nil, err
+		}
+	} else if envKube := os.Getenv("KUBECONFIG"); envKube != "" {
+		// Honor KUBECONFIG environment variable when provided
+		config, err = clientcmd.BuildConfigFromFlags("", envKube)
 		if err != nil {
 			return nil, err
 		}
@@ -46,6 +55,9 @@ func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error
 			if home := homedir.HomeDir(); home != "" {
 				config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(home, ".kube", "config"))
 				if err != nil {
+					if os.IsNotExist(err) {
+						return nil, fmt.Errorf("%w: %w", ErrNoKubeConfig, err)
+					}
 					return nil, err
 				}
 			}
@@ -54,7 +66,7 @@ func NewKubeConfig(kubeconfigPath, userAgentComment string) (*rest.Config, error
 		}
 	}
 	if config == nil {
-		return nil, errors.New("no kubeconfig found, please set the KUBECONFIG environment variable or use the --kubeconfig flag")
+		return nil, fmt.Errorf("%w: please set the KUBECONFIG environment variable or use the --kubeconfig flag", ErrNoKubeConfig)
 	}
 	config.UserAgent = version.UserAgent()
 	if userAgentComment != "" {
