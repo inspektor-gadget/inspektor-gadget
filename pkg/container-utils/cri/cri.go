@@ -404,11 +404,13 @@ type CRIContainer interface {
 
 func digestFromRef(imageRef string) string {
 	splitted := strings.Split(imageRef, "@")
-	if len(splitted) == 1 {
-		return imageRef
-	} else {
+	if len(splitted) > 1 {
 		return splitted[1]
 	}
+	if idx := strings.Index(imageRef, "sha256:"); idx != -1 {
+		return imageRef[idx:]
+	}
+	return ""
 }
 
 func getFilteredPodLabels(podSandbox *runtime.PodSandbox) map[string]string {
