@@ -402,6 +402,110 @@ func TestDataSourceStaticFieldsStrings(t *testing.T) {
 	}
 }
 
+func TestDataSourceStaticFieldsCStringWithOffset(t *testing.T) {
+	t.Parallel()
+
+	// Simulate a struct similar to trace_open's event struct:
+	// - some fields before fname (let's say 100 bytes)
+	// - fname[255]
+	// - fpath[512]
+	const prefixSize = 100
+	const fnameSize = 255
+	const fpathSize = 512
+	const totalSize = prefixSize + fnameSize + fpathSize
+
+	ds, err := New(TypeSingle, "event")
+	require.NoError(t, err)
+
+	fieldsAcc, err := ds.AddStaticFields(totalSize, []StaticField{
+		&dummyField{
+			name:   "prefix",
+			size:   prefixSize,
+			offset: 0,
+			kind:   api.Kind_Bytes,
+		},
+		&dummyField{
+			name:   "fname",
+			size:   fnameSize,
+			offset: prefixSize,
+			kind:   api.Kind_CString,
+		},
+		&dummyField{
+			name:   "fpath",
+			size:   fpathSize,
+			offset: prefixSize + fnameSize,
+			kind:   api.Kind_CString,
+		},
+	})
+	require.NoError(t, err)
+
+	fnameAcc := ds.GetField("fname")
+	require.NotNil(t, fnameAcc)
+	fpathAcc := ds.GetField("fpath")
+	require.NotNil(t, fpathAcc)
+
+	// Verify the accessor properties
+	require.Equal(t, uint32(fnameSize), fnameAcc.Size())
+	require.Equal(t, uint32(fpathSize), fpathAcc.Size())
+	require.Equal(t, api.Kind_CString, fnameAcc.Type())
+	require.Equal(t, api.Kind_CString, fpathAcc.Type())
+
+	d, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	defer ds.Release(d)
+
+	// Create test data with specific strings at the right offsets
+	testData := make([]byte, totalSize)
+	fnameStr := "/dev/null2"
+	fpathStr := "/dev/null"
+
+	// Copy fname at offset prefixSize
+	copy(testData[prefixSize:], fnameStr)
+	// Copy fpath at offset prefixSize + fnameSize
+	copy(testData[prefixSize+fnameSize:], fpathStr)
+
+	// Set the container data
+	err = fieldsAcc.Set(d, testData)
+	require.NoError(t, err)
+
+	// Now test reading via accessor
+	fnameRaw := fnameAcc.Get(d)
+	require.Equal(t, fnameSize, len(fnameRaw), "fname raw length should be %d", fnameSize)
+
+	fpathRaw := fpathAcc.Get(d)
+	require.Equal(t, fpathSize, len(fpathRaw), "fpath raw length should be %d", fpathSize)
+
+	// Verify the raw bytes start with expected data
+	require.Equal(t, []byte(fnameStr), fnameRaw[:len(fnameStr)], "fname raw data mismatch")
+	require.Equal(t, []byte(fpathStr), fpathRaw[:len(fpathStr)], "fpath raw data mismatch")
+
+	// Test String() method
+	fnameResult, err := fnameAcc.String(d)
+	require.NoError(t, err)
+	require.Equal(t, fnameStr, fnameResult, "fname string mismatch")
+
+	fpathResult, err := fpathAcc.String(d)
+	require.NoError(t, err)
+	require.Equal(t, fpathStr, fpathResult, "fpath string mismatch")
+
+	// Test case: fpath starts with null byte (should return empty string)
+	testData2 := make([]byte, totalSize)
+	copy(testData2[prefixSize:], fnameStr)
+	// fpath area is all zeros (null bytes)
+
+	err = fieldsAcc.Set(d, testData2)
+	require.NoError(t, err)
+
+	fpathResult2, err := fpathAcc.String(d)
+	require.NoError(t, err)
+	require.Equal(t, "", fpathResult2, "fpath should be empty when starting with null byte")
+
+	// fname should still work
+	fnameResult2, err := fnameAcc.String(d)
+	require.NoError(t, err)
+	require.Equal(t, fnameStr, fnameResult2, "fname should still work")
+}
+
 // TODO(Jose): Repeat this for all the types
 func TestDataSourceSubscribePriorities(t *testing.T) {
 	t.Parallel()

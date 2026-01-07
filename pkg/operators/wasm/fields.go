@@ -24,6 +24,14 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
+// writeToDstBufferFn is a package-level hook that delegates to the instance
+// method `writeToDstBuffer`. Tests can override this to avoid instantiating a
+// full wazero module with memory when exercising host functions that write to
+// guest memory.
+var writeToDstBufferFn = func(i *wasmOperatorInstance, src []byte, dstBuf uint64) error {
+	return i.writeToDstBuffer(src, dstBuf)
+}
+
 func (i *wasmOperatorInstance) addFieldFuncs(env wazero.HostModuleBuilder) {
 	exportFunction(env, "fieldGetScalar", i.fieldGetScalar,
 		[]wapi.ValueType{
@@ -198,9 +206,9 @@ func (i *wasmOperatorInstance) fieldGetBuffer(ctx context.Context, m wapi.Module
 	}
 
 	switch fieldKind {
-	case api.Kind_String, api.Kind_Bytes:
+	case api.Kind_String, api.Kind_CString, api.Kind_Bytes:
 		bytes := field.Get(data)
-		if err := i.writeToDstBuffer(bytes, dst); err != nil {
+		if err := writeToDstBufferFn(i, bytes, dst); err != nil {
 			i.logger.Warnf("fieldGetBuffer: %v", err)
 			stack[0] = wapi.EncodeI32(-1)
 			return
