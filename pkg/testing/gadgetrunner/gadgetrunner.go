@@ -132,6 +132,11 @@ func (g *GadgetRunner[T]) RunGadget() {
 			event := new(T)
 			jsonOutput := g.JsonFormatter.Marshal(data)
 			err := json.Unmarshal(jsonOutput, event)
+			if err != nil {
+				// Log the raw JSON for easier debugging of unmarshal failures.
+				g.testCtx.Logf("failed to unmarshal event JSON: %v", err)
+				g.testCtx.Logf("json output: %s", string(jsonOutput))
+			}
 			require.NoError(g.testCtx, err, "unmarshalling event")
 
 			if g.normalizeEvent != nil {

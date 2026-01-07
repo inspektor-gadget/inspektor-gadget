@@ -123,7 +123,9 @@ func getFieldKind(typ reflect.Type, tags []string) api.Kind {
 	case reflect.Array:
 		// Special case to handle char arrays as strings
 		// TODO: Handle other cases once we support arrays
-		if typ.Elem().Kind() == reflect.Uint8 && slices.Contains(tags, "type:char") {
+		// Accept both uint8 and int8 element kinds because different BTF toolchains or
+		// previous mappings may represent `char` as signed or unsigned 8-bit values.
+		if (typ.Elem().Kind() == reflect.Uint8 || typ.Elem().Kind() == reflect.Int8) && slices.Contains(tags, "type:char") {
 			return api.Kind_CString
 		}
 		kind := getFieldKind(typ.Elem(), tags)
@@ -235,6 +237,16 @@ func (i *ebpfInstance) getFieldsFromMember(member btf.Member, fields *[]*Field, 
 	}
 
 	kind := getFieldKind(refType, tags)
+	if member.Name == "file" || member.Name == "fname" || member.Name == "fpath" {
+		var elemKind reflect.Kind
+		if refType.Kind() == reflect.Array {
+			elemKind = refType.Elem().Kind()
+		} else {
+			elemKind = reflect.Invalid
+		}
+		i.logger.Debugf("btf member %q: tags=%v, refType=%s, elemKind=%s, computed kind=%s",
+			member.Name, tags, refType.String(), elemKind.String(), kind.String())
+	}
 
 	field := newField(fsize, kind)
 

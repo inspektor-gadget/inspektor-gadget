@@ -34,6 +34,13 @@ func GetType(typ btf.Type) (reflect.Type, []string) {
 		typeNames = append(typeNames, typ.TypeName())
 	}
 
+	// Ensure anonymous 'char' basic types show up in the type names so that callers
+	// (for example the eBPF struct introspection) can detect C string arrays even
+	// when the underlying BTF basic type has no explicit name set.
+	if i, ok := typ.(*btf.Int); ok && i.Encoding == btf.Char && typ.TypeName() == "" {
+		typeNames = append(typeNames, "char")
+	}
+
 	switch typed := typ.(type) {
 	case *btf.Array:
 		arrType, arrayTypeNames := GetType(typed.Type)

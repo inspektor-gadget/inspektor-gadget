@@ -138,6 +138,15 @@ func TestGetType(t *testing.T) {
 			expectedNames: []string{"char"},
 		},
 		{
+			name: "char unnamed",
+			typ: &btf.Int{
+				Encoding: btf.Char,
+				Size:     1,
+			},
+			expectedType:  reflect.TypeOf(uint8(0)),
+			expectedNames: []string{"char"},
+		},
+		{
 			name: "float32",
 			typ: &btf.Float{
 				Size: 4,
