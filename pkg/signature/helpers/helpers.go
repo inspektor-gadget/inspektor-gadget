@@ -58,25 +58,64 @@ func CraftCosignSignatureTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
 }
 
-const BundleV03MediaType = "application/vnd.dev.sigstore.bundle.v0.3+json" // https://github.com/sigstore/cosign/blob/ee3d9fe1c55e/pkg/cosign/bundle/protobundle.go#L36
+const (
+	BundleV03MediaType = "application/vnd.dev.sigstore.bundle.v0.3+json" // https://github.com/sigstore/cosign/blob/ee3d9fe1c55e/pkg/cosign/bundle/protobundle.go#L36
+
+	CosignSignatureMediaType = "application/vnd.dev.cosign.artifact.sig.v1+json" // https://github.com/sigstore/cosign/blob/45bda40b8ef4/internal/pkg/oci/remote/remote.go#L24
+
+	NotationSignatureMediatype = "application/vnd.cncf.notary.signature" // https://github.com/notaryproject/notation-go/blob/a48f22835cb5/registry/mediatype.go#L18
+)
 
 func FindBundleTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
+	return findReferrerTag(ctx, imageStore, imageDigest, BundleV03MediaType)
+}
+
+func FindOCI11SignatureTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
+	// OCI 1.1 can be used with both notation and cosign, in these two cases this
+	// will store different kind of signature (one for notation and one for
+	// cosign).
+	// Let's first try to find the signature tag using the referrers API for both
+	// type and default to crafting it.
+	// This can occur if the registry does not support the referrers API:
+	// https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#referrers-tag-schema
+	signingInfoTag, err := FindCosignSignatureTag(ctx, imageStore, imageDigest)
+	if err == nil {
+		return signingInfoTag, nil
+	}
+
+	signingInfoTag, err = FindNotationSignatureTag(ctx, imageStore, imageDigest)
+	if err == nil {
+		return signingInfoTag, nil
+	}
+
+	return CraftSignatureIndexTag(imageDigest)
+}
+
+func FindNotationSignatureTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
+	return findReferrerTag(ctx, imageStore, imageDigest, NotationSignatureMediatype)
+}
+
+func FindCosignSignatureTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
+	return findReferrerTag(ctx, imageStore, imageDigest, CosignSignatureMediaType)
+}
+
+func findReferrerTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string, artifactType string) (string, error) {
 	desc, err := imageStore.Resolve(ctx, imageDigest)
 	if err != nil {
 		return "", fmt.Errorf("resolving %s: %w", imageDigest, err)
 	}
 
-	descriptors, err := registry.Referrers(ctx, imageStore, desc, BundleV03MediaType)
+	descriptors, err := registry.Referrers(ctx, imageStore, desc, artifactType)
 	if err != nil {
-		return "", fmt.Errorf("searching for bundle referring %q: %w", imageDigest, err)
+		return "", fmt.Errorf("searching for %q referring %q: %w", artifactType, imageDigest, err)
 	}
 
 	if len(descriptors) == 0 {
-		return "", errors.New("no bundle found")
+		return "", errors.New("no referrers found")
 	}
 
 	if len(descriptors) > 1 {
-		return "", errors.New("images with several bundles are not supported")
+		return "", fmt.Errorf("images with several %q referrers are not supported", artifactType)
 	}
 
 	signingInfoTag := descriptors[0].Digest.String()
