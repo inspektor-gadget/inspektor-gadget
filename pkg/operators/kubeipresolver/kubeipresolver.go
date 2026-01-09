@@ -23,6 +23,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	metadatav1 "github.com/inspektor-gadget/inspektor-gadget/pkg/metadata/v1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
@@ -232,6 +233,14 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 
 	k8sInventory, err := common.GetK8sInventoryCache()
 	if err != nil {
+		// If there's no kubeconfig available, make this operator a no-op
+		// instead of failing gadget initialization. Treat both sentinel and
+		// file-not-found errors as equivalent conditions to be robust across
+		// different error shapes returned by the client-go utilities.
+		if errors.Is(err, k8sutil.ErrNoKubeConfig) {
+			logger.Warnf("KubeIPResolver: skipping operator because no kubeconfig was found; IP->pod/service enrichment disabled: %v", err)
+			return nil, nil
+		}
 		return nil, fmt.Errorf("creating k8s inventory cache: %w", err)
 	}
 
