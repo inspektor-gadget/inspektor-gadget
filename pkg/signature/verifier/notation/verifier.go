@@ -49,7 +49,7 @@ const maxSignatureAttempts = 50
 func getAndValidateTrustPolicy(policy string) (*trustpolicy.Document, error) {
 	policyDocument := &trustpolicy.Document{}
 	if err := json.Unmarshal([]byte(policy), policyDocument); err != nil {
-		return nil, fmt.Errorf("unmarshalling trust policy Document: %w", err)
+		return nil, fmt.Errorf("unmarshalling trust policy OCIDocument: %w", err)
 	}
 
 	if err := policyDocument.Validate(); err != nil {
