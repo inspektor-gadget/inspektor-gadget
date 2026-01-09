@@ -46,10 +46,10 @@ type Verifier struct {
 
 const maxSignatureAttempts = 50
 
-func getAndValidateTrustPolicy(policy string) (*trustpolicy.Document, error) {
-	policyDocument := &trustpolicy.Document{}
+func getAndValidateTrustPolicy(policy string) (*trustpolicy.OCIDocument, error) {
+	policyDocument := &trustpolicy.OCIDocument{}
 	if err := json.Unmarshal([]byte(policy), policyDocument); err != nil {
-		return nil, fmt.Errorf("unmarshalling trust policy Document: %w", err)
+		return nil, fmt.Errorf("unmarshalling trust policy OCIDocument: %w", err)
 	}
 
 	if err := policyDocument.Validate(); err != nil {
@@ -108,7 +108,7 @@ func NewVerifier(opts VerifierOptions) (*Verifier, error) {
 		return nil, fmt.Errorf("adding certificates to trust store: %w", err)
 	}
 
-	verif, err := verifier.New(policy, truststore.NewX509TrustStore(dir.NewSysFS(trustStoreDir)), nil)
+	verif, err := verifier.NewVerifierWithOptions(truststore.NewX509TrustStore(dir.NewSysFS(trustStoreDir)), verifier.VerifierOptions{OCITrustPolicy: policy})
 	if err != nil {
 		return nil, err
 	}
