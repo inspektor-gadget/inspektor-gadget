@@ -26,7 +26,9 @@ import (
 type Puller struct{} // Empty type only to respect the interface.
 
 func (*Puller) PullSigningInformation(ctx context.Context, repo *remote.Repository, imageStore oras.Target, digest string) error {
-	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, helpers.CraftSignatureIndexTag)
+	return helpers.CopySigningInformation(ctx, repo, imageStore, digest, func(digest string) (string, error) {
+		return helpers.FindOCI11SignatureTag(ctx, repo, digest)
+	})
 }
 
 func (*Puller) Name() string {
