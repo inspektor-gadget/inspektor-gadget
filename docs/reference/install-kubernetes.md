@@ -298,17 +298,23 @@ operator:
     allowed-gadgets: []
     disallow-pulling: false
     insecure-registries: []
-    public-keys:
-      - |
-        -----BEGIN PUBLIC KEY-----
-        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
-        Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
-        -----END PUBLIC KEY-----
+    public-keys: []
     verify-image: true
   otel-metrics:
     otel-metrics-listen: false
     otel-metrics-listen-address: 0.0.0.0:2224
 podman-socketpath: /run/podman/podman.sock
+```
+Note: The default public key for verifying Inspektor Gadget images is maintained in the repository at `pkg/resources/inspektor-gadget.pub`. When using `kubectl gadget deploy`, this public key is automatically used for image verification. To include this key in a custom configuration, you can:
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml --public-key="$(cat pkg/resources/inspektor-gadget.pub)"
+```
+
+Or add it directly to your `daemon-config.yaml`:
+
+```bash
+$ cat pkg/resources/inspektor-gadget.pub | sed 's/^/      - /' | sed '1s/^      /    public-keys:\n      /' >> daemon-config.yaml
 ```
 
 ##### Other Deploy Options
