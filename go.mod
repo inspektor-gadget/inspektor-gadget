@@ -61,8 +61,8 @@ require (
 	golang.org/x/net v0.48.0
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0
-	golang.org/x/term v0.38.0
-	golang.org/x/text v0.32.0
+	golang.org/x/term v0.39.0
+	golang.org/x/text v0.33.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
@@ -214,6 +214,6 @@ require (
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
-	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/mod v0.31.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
