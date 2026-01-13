@@ -7,7 +7,7 @@ COPY . /go/src/github.com/inspektor-gadget/inspektor-gadget/tools/bench/
 RUN GOARCH=${TARGETARCH} go build -o /bench /go/src/github.com/inspektor-gadget/inspektor-gadget/tools/bench
 
 # Final image
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:e8a4044e0b4ae4257efa45fc026c0bc30ad320d43bd4c1a7d5271bd241e386d0
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:cba10d7abd3e203428e86f5b2d7fd5eb7d8987c387864ae4996cf97191b33764
 COPY --from=builder /bench /bench
 
 CMD ["/bench"]

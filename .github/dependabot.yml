@@ -37,6 +37,10 @@ updates:
         patterns:
           - "github.com/containers/*"
   - package-ecosystem: "docker"
+    directories:
+      - "/Dockerfiles"
+      - "/tools/dnstester"
+      - "/tools/bench"
     directory: "/Dockerfiles"
     schedule:
       interval: "daily"

@@ -7,7 +7,7 @@ COPY go.mod go.sum dnstester.go /go/src/github.com/inspektor-gadget/inspektor-ga
 RUN GOARCH=${TARGETARCH} go build -o /dnstester /go/src/github.com/inspektor-gadget/inspektor-gadget/tools/dnstester
 
 # Final image
-FROM alpine:3.18@sha256:1875c923b73448b558132e7d4a44b815d078779ed7a73f76209c6372de95ea8d
+FROM alpine:3.23@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62
 COPY --from=builder /dnstester /dnstester
 RUN apk --no-cache upgrade -a && apk --no-cache add bind-tools
 
