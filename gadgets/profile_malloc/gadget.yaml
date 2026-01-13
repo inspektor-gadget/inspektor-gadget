@@ -1,5 +1,5 @@
-name: trace malloc
-description: Profile memory allocations in libc.so
+name: trace cuda malloc
+description: Profile CUDA memory allocations in libcuda.so (Driver API)
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_malloc
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_malloc

@@ -14,18 +14,13 @@
 #define MAX_ENTRIES 10240
 
 enum memop {
-	malloc,
-	free,
-	calloc,
-	realloc,
-	realloc_free,
-	mmap,
-	munmap,
-	posix_memalign,
-	aligned_alloc,
-	valloc,
-	memalign,
-	pvalloc,
+	cuMemAlloc,
+	cuMemFree,
+	cuMemAllocHost,
+	cuMemFreeHost,
+	cuMemAllocManaged,
+	cuMemAllocPitch,
+	cuMemAlloc3D,
 };
 
 /* used for context between uprobes and uretprobes of allocations */
@@ -136,121 +131,153 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	return 0;
 }
 
-/* common macros */
-#define PROBE_RET_VAL_FOR_ALLOC(func)                              \
-	SEC("uretprobe/libc:" #func)                               \
-	int trace_uretprobe_##func(struct pt_regs *ctx)            \
-	{                                                          \
-		return gen_alloc_exit(ctx, func, PT_REGS_RC(ctx)); \
-	}
-
-/* malloc */
-SEC("uprobe/libc:malloc")
-int BPF_UPROBE(trace_uprobe_malloc, size_t size)
+/*
+ * cuMemAlloc_v2 - Allocate device memory (CUDA Driver API)
+ * CUresult cuMemAlloc_v2(CUdeviceptr *dptr, size_t bytesize)
+ */
+SEC("uprobe/libcuda:cuMemAlloc_v2")
+int BPF_UPROBE(trace_uprobe_cuMemAlloc_v2, void **dptr, size_t bytesize)
 {
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(malloc)
-
-/* calloc */
-SEC("uprobe/libc:calloc")
-int BPF_UPROBE(trace_uprobe_calloc, size_t nmemb, size_t size)
-{
-	return gen_alloc_enter(nmemb * size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(calloc)
-
-/* realloc */
-SEC("uprobe/libc:realloc")
-int BPF_UPROBE(trace_uprobe_realloc, void *ptr, size_t size)
-{
-	// TODO: should this count the difference?
-	//gen_free_enter(ctx, realloc_free, (u64)ptr);
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(realloc)
-
-/* mmap */
-SEC("uprobe/libc:mmap")
-int BPF_UPROBE(trace_uprobe_mmap, void *address, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(mmap)
-
-/* posix_memalign */
-SEC("uprobe/libc:posix_memalign")
-int BPF_UPROBE(trace_uprobe_posix_memalign, void **memptr, size_t alignment,
-	       size_t size)
-{
-	u64 memptr64;
+	u64 dptr64;
 	u32 tid;
 
 	tid = (u32)bpf_get_current_pid_tgid();
-	memptr64 = (u64)memptr;
-	bpf_map_update_elem(&memptrs, &tid, &memptr64, BPF_ANY);
+	dptr64 = (u64)dptr;
+	bpf_map_update_elem(&memptrs, &tid, &dptr64, BPF_ANY);
 
-	return gen_alloc_enter(size);
+	return gen_alloc_enter(bytesize);
 }
 
-SEC("uretprobe/libc:posix_memalign")
-int trace_uretprobe_posix_memalign(struct pt_regs *ctx)
+SEC("uretprobe/libcuda:cuMemAlloc_v2")
+int trace_uretprobe_cuMemAlloc_v2(struct pt_regs *ctx)
 {
-	u64 *memptr64;
+	u64 *dptr64;
 	void *addr;
 	u32 tid;
 
 	tid = (u32)bpf_get_current_pid_tgid();
 
-	memptr64 = bpf_map_lookup_elem(&memptrs, &tid);
-	if (!memptr64)
+	dptr64 = bpf_map_lookup_elem(&memptrs, &tid);
+	if (!dptr64)
 		return 0;
 	bpf_map_delete_elem(&memptrs, &tid);
 
-	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*memptr64))
+	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*dptr64))
 		return 0;
 
-	return gen_alloc_exit(ctx, posix_memalign, (u64)addr);
+	return gen_alloc_exit(ctx, cuMemAlloc, (u64)addr);
 }
 
-/* aligned_alloc */
-SEC("uprobe/libc:aligned_alloc")
-int BPF_UPROBE(trace_uprobe_aligned_alloc, size_t alignment, size_t size)
+/*
+ * cuMemAllocHost_v2 - Allocate page-locked host memory (CUDA Driver API)
+ * CUresult cuMemAllocHost_v2(void **pp, size_t bytesize)
+ */
+SEC("uprobe/libcuda:cuMemAllocHost_v2")
+int BPF_UPROBE(trace_uprobe_cuMemAllocHost_v2, void **pp, size_t bytesize)
 {
+	u64 pp64;
+	u32 tid;
+
+	tid = (u32)bpf_get_current_pid_tgid();
+	pp64 = (u64)pp;
+	bpf_map_update_elem(&memptrs, &tid, &pp64, BPF_ANY);
+
+	return gen_alloc_enter(bytesize);
+}
+
+SEC("uretprobe/libcuda:cuMemAllocHost_v2")
+int trace_uretprobe_cuMemAllocHost_v2(struct pt_regs *ctx)
+{
+	u64 *pp64;
+	void *addr;
+	u32 tid;
+
+	tid = (u32)bpf_get_current_pid_tgid();
+
+	pp64 = bpf_map_lookup_elem(&memptrs, &tid);
+	if (!pp64)
+		return 0;
+	bpf_map_delete_elem(&memptrs, &tid);
+
+	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*pp64))
+		return 0;
+
+	return gen_alloc_exit(ctx, cuMemAllocHost, (u64)addr);
+}
+
+/*
+ * cuMemAllocManaged - Allocate managed memory (CUDA Driver API)
+ * CUresult cuMemAllocManaged(CUdeviceptr *dptr, size_t bytesize, unsigned int flags)
+ */
+SEC("uprobe/libcuda:cuMemAllocManaged")
+int BPF_UPROBE(trace_uprobe_cuMemAllocManaged, void **dptr, size_t bytesize, unsigned int flags)
+{
+	u64 dptr64;
+	u32 tid;
+
+	tid = (u32)bpf_get_current_pid_tgid();
+	dptr64 = (u64)dptr;
+	bpf_map_update_elem(&memptrs, &tid, &dptr64, BPF_ANY);
+
+	return gen_alloc_enter(bytesize);
+}
+
+SEC("uretprobe/libcuda:cuMemAllocManaged")
+int trace_uretprobe_cuMemAllocManaged(struct pt_regs *ctx)
+{
+	u64 *dptr64;
+	void *addr;
+	u32 tid;
+
+	tid = (u32)bpf_get_current_pid_tgid();
+
+	dptr64 = bpf_map_lookup_elem(&memptrs, &tid);
+	if (!dptr64)
+		return 0;
+	bpf_map_delete_elem(&memptrs, &tid);
+
+	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*dptr64))
+		return 0;
+
+	return gen_alloc_exit(ctx, cuMemAllocManaged, (u64)addr);
+}
+
+/*
+ * cuMemAllocPitch_v2 - Allocate pitched device memory (CUDA Driver API)
+ * CUresult cuMemAllocPitch_v2(CUdeviceptr *dptr, size_t *pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes)
+ */
+SEC("uprobe/libcuda:cuMemAllocPitch_v2")
+int BPF_UPROBE(trace_uprobe_cuMemAllocPitch_v2, void **dptr, size_t *pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes)
+{
+	u64 dptr64;
+	u32 tid;
+	size_t size = WidthInBytes * Height; // Approximate size
+
+	tid = (u32)bpf_get_current_pid_tgid();
+	dptr64 = (u64)dptr;
+	bpf_map_update_elem(&memptrs, &tid, &dptr64, BPF_ANY);
+
 	return gen_alloc_enter(size);
 }
 
-PROBE_RET_VAL_FOR_ALLOC(aligned_alloc)
-
-/* valloc */
-SEC("uprobe/libc:valloc")
-int BPF_UPROBE(trace_uprobe_valloc, size_t size)
+SEC("uretprobe/libcuda:cuMemAllocPitch_v2")
+int trace_uretprobe_cuMemAllocPitch_v2(struct pt_regs *ctx)
 {
-	return gen_alloc_enter(size);
+	u64 *dptr64;
+	void *addr;
+	u32 tid;
+
+	tid = (u32)bpf_get_current_pid_tgid();
+
+	dptr64 = bpf_map_lookup_elem(&memptrs, &tid);
+	if (!dptr64)
+		return 0;
+	bpf_map_delete_elem(&memptrs, &tid);
+
+	if (bpf_probe_read_user(&addr, sizeof(void *), (void *)*dptr64))
+		return 0;
+
+	return gen_alloc_exit(ctx, cuMemAllocPitch, (u64)addr);
 }
-
-PROBE_RET_VAL_FOR_ALLOC(valloc)
-
-/* memalign */
-SEC("uprobe/libc:memalign")
-int BPF_UPROBE(trace_uprobe_memalign, size_t alignment, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(memalign)
-
-/* pvalloc */
-SEC("uprobe/libc:pvalloc")
-int BPF_UPROBE(trace_uprobe_pvalloc, size_t size)
-{
-	return gen_alloc_enter(size);
-}
-
-PROBE_RET_VAL_FOR_ALLOC(pvalloc)
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
