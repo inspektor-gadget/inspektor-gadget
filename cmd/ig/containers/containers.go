@@ -58,7 +58,8 @@ func NewListContainersCmd() *cobra.Command {
 
 			selector := containercollection.ContainerSelector{
 				Runtime: containercollection.RuntimeSelector{
-					ContainerName: commonFlags.Containername,
+					ContainerName:        commonFlags.Containername,
+					ContainerImageDigest: commonFlags.ContainerImageDigest,
 				},
 				K8s: containercollection.K8sSelector{
 					BasicK8sMetadata: types.BasicK8sMetadata{

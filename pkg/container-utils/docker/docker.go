@@ -242,18 +242,18 @@ func (c *DockerClient) getContainerImageDigest(imageId string) string {
 	imageInspect, err := c.client.ImageInspect(context.Background(), imageId)
 	if err != nil {
 		log.Warnf("Failed to get image digest for image %s: %s", imageId, err)
-		return ""
+		return imageId
 	}
 
 	if len(imageInspect.RepoDigests) == 0 {
 		log.Warnf("No digest found for image %s", imageId)
-		return ""
+		return imageId
 	}
 
 	imageAndDigest := strings.Split(imageInspect.RepoDigests[0], "@")
 	if len(imageAndDigest) < 2 {
 		log.Warnf("Digest is in wrong format for image %s", imageId)
-		return ""
+		return imageId
 	}
 
 	return imageAndDigest[1]
@@ -277,7 +277,7 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 }
 
 func DockerContainerToContainerData(container *container.Summary) *runtimeclient.ContainerData {
-	imageDigest := ""
+	imageDigest := container.ImageID
 	containerName := ""
 	if len(container.Names) > 0 {
 		containerName = container.Names[0]

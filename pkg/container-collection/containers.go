@@ -110,7 +110,8 @@ type K8sSelector struct {
 
 type RuntimeSelector struct {
 	// TODO: Support filtering by all the fields in BasicRuntimeMetadata
-	ContainerName string
+	ContainerName        string
+	ContainerImageDigest string
 }
 
 type ContainerSelector struct {
