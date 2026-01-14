@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2026 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package uidgidresolver
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +31,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/cachedmap"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
+
+// ErrNoUserGroupFiles is returned when /etc/passwd or /etc/group files are not found
+var ErrNoUserGroupFiles = errors.New("user/group files not found")
 
 // UserGroupCache is a cache of user names, uids, group names and gids
 type UserGroupCache interface {
@@ -63,6 +67,19 @@ var (
 		return &userGroupCache{}
 	})
 )
+
+// FilesAvailable checks if /etc/passwd and /etc/group files exist
+func FilesAvailable() error {
+	if _, err := os.Stat(fullPasswdPath); os.IsNotExist(err) {
+		return fmt.Errorf("%w: %s does not exist", ErrNoUserGroupFiles, fullPasswdPath)
+	}
+
+	if _, err := os.Stat(fullGroupPath); os.IsNotExist(err) {
+		return fmt.Errorf("%w: %s does not exist", ErrNoUserGroupFiles, fullGroupPath)
+	}
+
+	return nil
+}
 
 func (cache *userGroupCache) Start() error {
 	cache.useCountMutex.Lock()
