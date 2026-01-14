@@ -25,6 +25,7 @@ import (
 	"strings"
 	"syscall"
 
+	pathrslite "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vishvananda/netlink"
 
@@ -51,6 +52,20 @@ var AvailableRuntimeProtocols = []string{
 	containerutilsTypes.RuntimeProtocolCRI,
 }
 
+func socketToProc(socketPath string) (*os.File, string, error) {
+	// Maybe the file was already OpenInRoot(), in this case let's return now.
+	if socketPath == "" || strings.HasPrefix(socketPath, "/proc/self/fd") {
+		return nil, socketPath, nil
+	}
+
+	socketFile, err := pathrslite.OpenInRoot(host.HostRoot, socketPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("opening %q with root %q: %w", socketPath, host.HostRoot, err)
+	}
+
+	return socketFile, filepath.Join("/proc", "self", "fd", fmt.Sprint(socketFile.Fd())), nil
+}
+
 func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	switch runtime.Name {
 	case types.RuntimeNameDocker:
@@ -58,24 +73,60 @@ func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runt
 		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
+
+		socketFile, socketPath, err := socketToProc(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("getting procfs path from socket %q: %w", socketPath, err)
+		}
+		if socketFile != nil {
+			defer socketFile.Close()
+		}
+
 		return docker.NewDockerClient(socketPath, runtime.RuntimeProtocol)
 	case types.RuntimeNameContainerd:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
+
+		socketFile, socketPath, err := socketToProc(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("getting procfs path from socket %q: %w", socketPath, err)
+		}
+		if socketFile != nil {
+			defer socketFile.Close()
+		}
+
 		return containerd.NewContainerdClient(socketPath, runtime.RuntimeProtocol, &runtime.Extra)
 	case types.RuntimeNameCrio:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
+
+		socketFile, socketPath, err := socketToProc(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("getting procfs path from socket %q: %w", socketPath, err)
+		}
+		if socketFile != nil {
+			defer socketFile.Close()
+		}
+
 		return crio.NewCrioClient(socketPath)
 	case types.RuntimeNamePodman:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_PODMAN_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
+
+		socketFile, socketPath, err := socketToProc(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("getting procfs path from socket %q: %w", socketPath, err)
+		}
+		if socketFile != nil {
+			defer socketFile.Close()
+		}
+
 		return podman.NewPodmanClient(socketPath), nil
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
