@@ -147,29 +147,30 @@ func TestVerify(t *testing.T) {
 		shouldErr bool
 	}
 
-	signedImage := "ttl.sh/signed_with_notation:latest"
+	joseSignedImage := "ttl.sh/signed_with_notation_jose:latest"
+	coseSignedImage := "ttl.sh/signed_with_notation_cose:latest"
 	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/unsigned:francis-signature-unit-tests"
 
 	goodCertificate := `
 -----BEGIN CERTIFICATE-----
-MIIDQTCCAimgAwIBAgICAI0wDQYJKoZIhvcNAQELBQAwTzELMAkGA1UEBhMCVVMx
-CzAJBgNVBAgTAldBMRAwDgYDVQQHEwdTZWF0dGxlMQ8wDQYDVQQKEwZOb3Rhcnkx
-EDAOBgNVBAMTB3Rlc3QuaW8wHhcNMjUxMDIwMTE0MTIyWhcNMjUxMDIxMTE0MTIy
-WjBPMQswCQYDVQQGEwJVUzELMAkGA1UECBMCV0ExEDAOBgNVBAcTB1NlYXR0bGUx
-DzANBgNVBAoTBk5vdGFyeTEQMA4GA1UEAxMHdGVzdC5pbzCCASIwDQYJKoZIhvcN
-AQEBBQADggEPADCCAQoCggEBAOcAupoQ84+vVMG0X8KQLlOXnMkjqlPUp6H1gVdw
-kC8Y5+gVH1EYHJBLCEtMAzlYVeAGzLU57OzNGuvQAEjM4D1qn8aK3dLXAdWwnMhK
-hM0z8rLxEhsq8FmEh0KyiHPAc/d+/BWZA/3XaLOQF2zwiPiv8lvAe5fCgFYUGVKN
-v2bBKwqK/GpPc/tu7NmW8hC6zFX/YMlJm0DOTWMqY/ImAfQjdv/AgB3phIcQqQ+9
-rx7i1Bl/sYMuGt+H2jZJFuDLWzzOVW8M9qnioys++t2moErvpHXYiiGRt7uxrBfu
-K9BAGcOfJs5ADuM03IsmusCiJrNe3xQRSmBaaYjZHw0v8I0CAwEAAaMnMCUwDgYD
-VR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMDMA0GCSqGSIb3DQEBCwUA
-A4IBAQDbehncKzzbvJ1L8P2cAg7QtF9LEDOq+ypyVUGNuv28ca+FonHjGdCi3886
-zJjnOa0l6QPU8r9ti8QEJySKk9yZydk3n+vprYN1Zacxet0iEM2O4pf4fGzWFCHH
-vX8cb7WBkfIyuhfRAV8v2un0uzD7QxbF4f75a+x2AHnQY30PQGSZjH17gdP+6Yhj
-Pq2QcU9/k44awV4epqkfJ8TEAXGFodNcYQpXi8083cqU2HU6ZuG1KrYv4QD+fRN2
-ijWKpF3SZxgNcAkNFM1IBiELVwBlfrN7u4dwMztSawRa5zqF844EV1gfY4iTtV1Y
-OyOnKVarkBtpU+66K4TbWOK7Ptlo
+MIIDQDCCAiigAwIBAgIBYDANBgkqhkiG9w0BAQsFADBPMQswCQYDVQQGEwJVUzEL
+MAkGA1UECBMCV0ExEDAOBgNVBAcTB1NlYXR0bGUxDzANBgNVBAoTBk5vdGFyeTEQ
+MA4GA1UEAxMHdGVzdC5pbzAeFw0yNjAxMTIwNzI0NTNaFw0yNjAxMTMwNzI0NTNa
+ME8xCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJXQTEQMA4GA1UEBxMHU2VhdHRsZTEP
+MA0GA1UEChMGTm90YXJ5MRAwDgYDVQQDEwd0ZXN0LmlvMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEApd4HxnVv+v9uQWx30/V5t/SZhCXPDPg8xb6cNoUG
+C84NbCv3YztIE5FIjMI+5ohfVv0Z7V0eIe9tEavq813OMZF6P460PAB47Y1NhiJg
+gFdvcienzoCij4PA61DSRibymkJ65Ttyi1mTcubiVD1A1V3hK3HaiEhkInoPW1x7
+PA9O1WiFGRPw2j6mEX4PMc8Fwha0j8XnHi5tTkH2/Q5e4dPUoetbS5N7LGXqhiQZ
+uOapLUpZPqAzJx2EIfuIlnxNPYAm4SqLgC+eg5Q1EJBmdnXCEN/ToK3IlezGDTF8
+otXqCDY4tmCuaJ3/2/vDfFXpn4iWYTE4ba5YAOG/YDPejQIDAQABoycwJTAOBgNV
+HQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwMwDQYJKoZIhvcNAQELBQAD
+ggEBAKAxOI0tjts87oWDiixJfZeItawevvqnX0HgFKHeABRX8/iuPlZLX2ZXktrg
+xtMVp0e56x7V/P/GuTbdPAnARVwsBqd/n1Ys75QuJ3TM9oGXwAOMBkZQU9NjRabL
+8RynIgiGXAVu34Aoe7RFq+DcQ4knacxvd2u7P5+wAv6aa1IbkzcZ/uU+7hpkNUtH
+qaArAlk8DEd+45JqWgFNoNxe2i0Kfy32wUNfKs9vUBlwmfeU5fIqo4T5aXP2R/kc
+zkaZFq9RnIBPFIM0E/huud7zCtg24RTwpkRM5goVA9zV0B8JrDp8T3/qF7dfexJt
+jceYI7OFeAzfAuX8RQwtWyK982Y=
 -----END CERTIFICATE-----
 `
 	wrongCertificate := `
@@ -217,19 +218,26 @@ S//euSjbohacaQzTb8ZQqRLKfg==
 `
 
 	tests := map[string]testDefinition{
-		"good_certificate_with_signed_image": {
+		"good_certificate_with_jose_signed_image": {
 			opts: VerifierOptions{
 				Certificates:   []string{goodCertificate},
 				PolicyDocument: policyDocument,
 			},
-			image: signedImage,
+			image: joseSignedImage,
+		},
+		"good_certificate_with_cose_signed_image": {
+			opts: VerifierOptions{
+				Certificates:   []string{goodCertificate},
+				PolicyDocument: policyDocument,
+			},
+			image: coseSignedImage,
 		},
 		"wrong_certificate_with_signed_image": {
 			opts: VerifierOptions{
 				Certificates:   []string{wrongCertificate},
 				PolicyDocument: policyDocument,
 			},
-			image:     signedImage,
+			image:     joseSignedImage,
 			shouldErr: true,
 		},
 		"certificate_with_unsigned_image": {
@@ -248,7 +256,7 @@ S//euSjbohacaQzTb8ZQqRLKfg==
 				},
 				PolicyDocument: policyDocument,
 			},
-			image: signedImage,
+			image: joseSignedImage,
 		},
 	}
 
