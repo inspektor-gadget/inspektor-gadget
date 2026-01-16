@@ -8,7 +8,7 @@ require (
 	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
 	github.com/containerd/containerd v1.7.30
 	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/nri v0.9.0
+	github.com/containerd/nri v0.11.0
 	github.com/containers/common v0.64.2
 	github.com/containers/image/v5 v5.36.2
 	github.com/coreos/go-systemd/v22 v22.6.0
@@ -32,7 +32,7 @@ require (
 	github.com/moby/moby v28.5.2+incompatible
 	github.com/notaryproject/notation-go v1.3.2
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/packetcap/go-pcap v0.0.0-20250723190045-d00b185f30b7
 	github.com/prometheus/client_golang v1.23.2
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
