@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2026 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package uidgidresolver
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
@@ -45,7 +46,10 @@ type GidResolverInterface interface {
 	SetGroupName(string)
 }
 
-type UidGidResolver struct{}
+type UidGidResolver struct {
+	availableErr error
+	logOnce      sync.Once
+}
 
 func (k *UidGidResolver) Name() string {
 	return OperatorName
@@ -72,6 +76,9 @@ func (k *UidGidResolver) ParamDescs() params.ParamDescs {
 }
 
 func (k *UidGidResolver) Init(params *params.Params) error {
+	// Check if user/group files are available at startup.
+	// If not, disable the operator (e.g., Talos Linux doesn't have /etc/passwd).
+	k.availableErr = FilesAvailable()
 	return nil
 }
 
@@ -89,6 +96,13 @@ type fieldAccPair struct {
 }
 
 func (k *UidGidResolver) InstantiateDataOperator(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) (operators.DataOperatorInstance, error) {
+	if k.availableErr != nil {
+		k.logOnce.Do(func() {
+			gadgetCtx.Logger().Infof("UidGidResolver: operator not available: %s", k.availableErr)
+		})
+		return nil, nil
+	}
+
 	logger := gadgetCtx.Logger()
 	fieldsUid := make(map[datasource.DataSource][]fieldAccPair)
 	fieldsGid := make(map[datasource.DataSource][]fieldAccPair)
