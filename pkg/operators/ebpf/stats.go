@@ -258,7 +258,7 @@ func (o *ebpfOperator) InstanceParams() api.Params {
 			Description:  "Show only gadget-related eBPF programs",
 			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
-			Title:        "All programs statistics",
+			Title:        "Gadgets only",
 		},
 	}
 }
