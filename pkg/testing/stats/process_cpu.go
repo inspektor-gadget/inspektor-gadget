@@ -39,6 +39,8 @@ func (m *processCpu) WithVmRSS() bool            { return false }
 func (m *processCpu) WithMemoryRelative() bool   { return false }
 func (m *processCpu) WithThreadCount() bool      { return false }
 func (m *processCpu) WithStartTime() bool        { return false }
+func (m *processCpu) WithCPUWait() bool 		 { return false }
+func (m *processCpu) WithCPUPressure() bool 	 { return false }
 
 func (m *processCpu) TotalMemory() uint64 {
 	return 0
@@ -82,3 +84,4 @@ func (m *processCpu) getProcessCpu(timeDelta float64) (map[string]float64, error
 
 	return ret, nil
 }
+
