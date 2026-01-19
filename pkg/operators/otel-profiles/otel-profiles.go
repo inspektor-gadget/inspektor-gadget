@@ -360,7 +360,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 				}
 
 				value := valueFn(d)
-				sample := prof.Sample().AppendEmpty()
+				sample := prof.Samples().AppendEmpty()
 				sample.Values().Append(value)
 
 				for attrName, getter := range attributesGetter {
@@ -410,7 +410,7 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			locationTable.EnsureCapacity(len(locationSet))
 			for _, val := range locationSet.ToSlice() {
 				location := locationTable.AppendEmpty()
-				line := location.Line().AppendEmpty()
+				line := location.Lines().AppendEmpty()
 				line.SetFunctionIndex(val.functionIdx)
 			}
 
