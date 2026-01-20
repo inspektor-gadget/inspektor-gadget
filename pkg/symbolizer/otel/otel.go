@@ -17,7 +17,6 @@ package otel
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
-	oteltracehandler "go.opentelemetry.io/ebpf-profiler/tracehandler"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
 	oteltracertypes "go.opentelemetry.io/ebpf-profiler/tracer/types"
 
@@ -192,11 +190,25 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		return nil
 	}
 
-	_, err = oteltracehandler.Start(ctx, rep, trc.TraceProcessor(),
-		traceCh, intervals, uint32(16*os.Getpagesize()))
-	if err != nil {
-		return fmt.Errorf("starting OpenTelemetry trace handler: %w", err)
-	}
+	//_, err = oteltracehandler.Start(ctx, rep, trc.TraceProcessor(),
+	//	traceCh, intervals, uint32(16*os.Getpagesize()))
+	//if err != nil {
+	//	return fmt.Errorf("starting OpenTelemetry trace handler: %w", err)
+	//}
+
+	go func() {
+		// Poll the output channels
+		for {
+			select {
+			case trace := <-traceCh:
+				if trace != nil {
+					trc.HandleTrace(trace)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	return nil
 }
