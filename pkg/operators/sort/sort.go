@@ -227,6 +227,14 @@ func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 
 			field := ds.GetField(fieldName)
 			if field == nil {
+				for _, f := range ds.Fields() {
+					if strings.EqualFold(f.FullName, fieldName) {
+						field = ds.GetField(f.FullName)
+						break
+					}
+				}
+			}
+			if field == nil {
 				return fmt.Errorf("field %s not found", fieldName)
 			}
 
