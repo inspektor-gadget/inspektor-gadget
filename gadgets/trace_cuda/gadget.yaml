@@ -1,0 +1,129 @@
+name: trace_cuda
+description: Traces CUDA driver API operations using eBPF uprobes
+homepageURL: 'TODO: Fill the gadget homepage URL'
+documentationURL: 'TODO: Fill the gadget documentation URL'
+sourceURL: 'TODO: Fill the gadget source code URL'
+datasources:
+  cuda_mytracer:
+    annotations:
+      cli.default-output-mode: jsonpretty
+    fields:
+      block_x:
+        annotations:
+          description: CUDA block dimension in X axis
+      block_y:
+        annotations:
+          description: CUDA block dimension in Y axis
+      block_z:
+        annotations:
+          description: CUDA block dimension in Z axis
+      comm:
+        annotations:
+          description: Name of the process invoking the CUDA kernel
+          template: comm
+      correlation_id:
+        annotations:
+          description: Unique CUDA correlation identifier used to match kernel launch
+            and completion events
+      end:
+        annotations:
+          description: Kernel completion timestamp in nanoseconds
+      grid_x:
+        annotations:
+          description: CUDA grid dimension in X axis
+      grid_y:
+        annotations:
+          description: CUDA grid dimension in Y axis
+      grid_z:
+        annotations:
+          description: CUDA grid dimension in Z axis
+      mntns_id:
+        annotations:
+          columns.hidden: "true"
+          description: Mount namespace inode id
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      ret_val:
+        annotations:
+          description: CUDA return value for the kernel launch (CUresult)
+      start:
+        annotations:
+          description: Kernel start timestamp in nanoseconds
+      stream:
+        annotations:
+          description: CUDA stream identifier used for kernel launch
+      timestamp:
+        annotations:
+          description: Timestamp when the kernel launch was observed
+      ustack:
+        annotations:
+          description: User-space stack trace at kernel launch
+  memalloc_tracer:
+    annotations:
+      cli.default-output-mode: jsonpretty
+    fields:
+      byte_size:
+        annotations:
+          description: Number of bytes requested for GPU memory allocation
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      mntns_id:
+        annotations:
+          columns.hidden: "true"
+          description: Mount namespace inode id
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      ret_val:
+        annotations:
+          description: 'TODO: Fill field description'
+      timestamp:
+        annotations:
+          description: Timestamp when the memory allocation occurred
+  memcpy_tracer:
+    annotations:
+      cli.default-output-mode: jsonpretty
+    fields:
+      byte_size:
+        annotations:
+          description: Number of bytes transferred in the memory copy
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+      kind:
+        annotations:
+          description: Direction of the memory transfer (HtoD or DtoH)
+      mntns_id:
+        annotations:
+          columns.hidden: "true"
+          description: Mount namespace inode id
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      ret_val:
+        annotations:
+          description: 'TODO: Fill field description'
+      timestamp:
+        annotations:
+          description: Timestamp when the memory copy occurred
+params:
+  ebpf:
+    collect_build_id:
+      key: collect_build_id
+      defaultValue: ""
+      description: Enable collection of build IDs for user-space symbol resolution
+    collect_ustack:
+      key: collect_ustack
+      defaultValue: ""
+      description: Enable collection of user-space stack traces
+    ig_build_id_max_entries:
+      key: ig_build_id_max_entries
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
