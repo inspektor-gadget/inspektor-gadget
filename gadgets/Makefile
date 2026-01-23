@@ -48,6 +48,7 @@ GADGETS ?= \
 	trace_malloc \
 	trace_mount \
 	trace_oomkill \
+	trace_init \
 	trace_open \
 	trace_signal \
 	trace_sni \
