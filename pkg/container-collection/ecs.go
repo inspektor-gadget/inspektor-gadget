@@ -71,7 +71,7 @@ func discoverECSConfig() (clusterName, region string, err error) {
 	}
 
 	if clusterName == "" || region == "" {
-		return "", "", fmt.Errorf("could not discover ECS config: cluster=%q, region=%q", clusterName, region)
+		return "", "", fmt.Errorf("discovering ECS config: cluster=%q, region=%q", clusterName, region)
 	}
 
 	log.Debugf("ecs enricher: discovered config from env/metadata (cluster=%s, region=%s)", clusterName, region)
@@ -84,7 +84,7 @@ func discoverFromECSAgent() (clusterName, region string, err error) {
 
 	resp, err := client.Get(ecsAgentEndpoint)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to connect to ECS agent: %w", err)
+		return "", "", fmt.Errorf("connecting to ECS agent: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -94,12 +94,12 @@ func discoverFromECSAgent() (clusterName, region string, err error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read ECS agent response: %w", err)
+		return "", "", fmt.Errorf("reading ECS agent response: %w", err)
 	}
 
 	var metadata ecsAgentMetadata
 	if err := json.Unmarshal(body, &metadata); err != nil {
-		return "", "", fmt.Errorf("failed to parse ECS agent response: %w", err)
+		return "", "", fmt.Errorf("parsing ECS agent response: %w", err)
 	}
 
 	clusterName, region = parseClusterARN(metadata.Cluster)
@@ -118,7 +118,7 @@ func discoverRegionFromEC2Metadata() (string, error) {
 
 	resp, err := client.Get(ec2MetadataRegionEndpoint)
 	if err != nil {
-		return "", fmt.Errorf("failed to connect to EC2 metadata: %w", err)
+		return "", fmt.Errorf("connecting to EC2 metadata: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -128,7 +128,7 @@ func discoverRegionFromEC2Metadata() (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read EC2 metadata response: %w", err)
+		return "", fmt.Errorf("reading EC2 metadata response: %w", err)
 	}
 
 	return strings.TrimSpace(string(body)), nil
@@ -229,7 +229,7 @@ func withEcsEnrichment(cc *ContainerCollection, clusterName, region string) erro
 	// Enrich on AddContainer using the latest cache snapshot (mirrors the K8s enricher model).
 	cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 		// Skip if already enriched
-		if container.Ecs.BasicEcsMetadata.IsEnriched() {
+		if container.Ecs.IsEnriched() {
 			return true
 		}
 
@@ -291,7 +291,7 @@ func ecsDiscoveryLoop(cc *ContainerCollection, clusterName, region string, cache
 func updateExistingContainersWithEcs(cc *ContainerCollection, cache *ecsCache) {
 	cc.containers.Range(func(key, value any) bool {
 		container := value.(*Container)
-		if container.Ecs.BasicEcsMetadata.IsEnriched() {
+		if container.Ecs.IsEnriched() {
 			return true
 		}
 		runtimeID := container.Runtime.ContainerID
