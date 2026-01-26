@@ -993,3 +993,31 @@ func WithKubeconfigPath(kubeconfigPath string) ContainerCollectionOption {
 		return nil
 	}
 }
+
+// WithECSEnrichment automatically adds ECS metadata to containers.
+// Auto-discovers config from: ECS Agent endpoint > env vars > EC2 metadata.
+// Silently skips if not running on ECS. Only works with EC2 launch type (not Fargate).
+func WithECSEnrichment(clusterName, region string) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		if clusterName == "" || region == "" {
+			discoveredCluster, discoveredRegion, err := discoverECSConfig()
+			if err != nil {
+				log.Debugf("ecs enricher: skipping - %v", err)
+				return nil
+			}
+			if clusterName == "" {
+				clusterName = discoveredCluster
+			}
+			if region == "" {
+				region = discoveredRegion
+			}
+		}
+
+		if clusterName == "" || region == "" {
+			log.Debugf("ecs enricher: skipping - cluster or region not available")
+			return nil
+		}
+
+		return withEcsEnrichment(cc, clusterName, region)
+	}
+}

@@ -561,6 +561,46 @@ func TestSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "ECS cluster/service/container match",
+			match:       true,
+			selector: &ContainerSelector{
+				Ecs: EcsSelector{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						ClusterName:   "c1",
+						ServiceName:   "s1",
+						ContainerName: "cn1",
+					},
+				},
+			},
+			container: &Container{
+				Ecs: types.EcsMetadata{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						ClusterName:   "c1",
+						ServiceName:   "s1",
+						ContainerName: "cn1",
+					},
+				},
+			},
+		},
+		{
+			description: "ECS service mismatch",
+			match:       false,
+			selector: &ContainerSelector{
+				Ecs: EcsSelector{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						ServiceName: "s1",
+					},
+				},
+			},
+			container: &Container{
+				Ecs: types.EcsMetadata{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						ServiceName: "s2",
+					},
+				},
+			},
+		},
 	}
 
 	for i, entry := range table {
