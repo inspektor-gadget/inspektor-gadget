@@ -59,7 +59,6 @@ type buildFile struct {
 	EBPFSource string `yaml:"ebpfsource"`
 	Wasm       string `yaml:"wasm"`
 	Metadata   string `yaml:"metadata"`
-	CFlags     string `yaml:"cflags"`
 }
 
 type cmdOpts struct {
@@ -122,12 +121,12 @@ func NewBuildCmd() *cobra.Command {
 
 type buildOptions struct {
 	outputDir         string
-	cFlags            string
 	forceColorsFlag   string
 	ebpfSourcePath    string
 	wasmSourcePath    string
 	btfgen            bool
 	btfHubArchivePath string
+	useInTreeHeaders  string
 }
 
 func buildCmd(options buildOptions) []string {
@@ -135,8 +134,8 @@ func buildCmd(options buildOptions) []string {
 		"make", "-f", filepath.Join(options.outputDir, "Makefile.build"),
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
 		"OUTPUTDIR=" + options.outputDir,
-		"CFLAGS=" + options.cFlags,
 		"FORCE_COLORS=" + options.forceColorsFlag,
+		"USE_IN_TREE_HEADERS=" + options.useInTreeHeaders,
 	}
 
 	if options.ebpfSourcePath != "" {
@@ -284,7 +283,6 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 				outputDir:         opts.outputDir,
 				ebpfSourcePath:    conf.EBPFSource,
 				wasmSourcePath:    conf.Wasm,
-				cFlags:            conf.CFlags,
 				btfHubArchivePath: opts.btfhubarchive,
 				btfgen:            opts.btfgen,
 			})
@@ -450,6 +448,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	pathHost := cwd
 
 	inspektorGadetSrcPath := os.Getenv("IG_SOURCE_PATH")
+	useInTreeHeaders := "false"
 	if inspektorGadetSrcPath != "" {
 		pathHost = inspektorGadetSrcPath
 		// find the gadget relative path to the inspektor-gadget source
@@ -460,14 +459,14 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		gadgetSourcePath = filepath.Join("/work", gadgetRelativePath)
 
 		// use in-tree headers too
-		conf.CFlags += " -I /work/include/ -I /work/include/gadget/@ARCH@/ "
+		useInTreeHeaders = "true"
 	}
 
 	buildOpts := buildOptions{
 		outputDir:         "/out",
-		cFlags:            conf.CFlags,
 		btfgen:            opts.btfgen,
 		btfHubArchivePath: "/btfhub-archive",
+		useInTreeHeaders:  useInTreeHeaders,
 	}
 
 	if conf.Wasm != "" {
@@ -476,10 +475,6 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	if conf.EBPFSource != "" {
 		buildOpts.ebpfSourcePath = filepath.Join(gadgetSourcePath, conf.EBPFSource)
-	}
-
-	if cflags, set := os.LookupEnv("CFLAGS"); set {
-		buildOpts.cFlags += " " + cflags
 	}
 
 	if term.IsTerminal(int(os.Stdout.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) {
