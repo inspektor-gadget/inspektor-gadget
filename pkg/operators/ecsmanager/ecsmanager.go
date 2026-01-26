@@ -299,11 +299,10 @@ func newEcsContainerSelector(params *params.Params) containercollection.Containe
 		// Empty cluster/service name means match all
 		containerSelector.Ecs.ClusterName = ""
 		containerSelector.Ecs.ServiceName = ""
-	} else {
-		// For now, we'll filter by cluster name if provided
-		// Service name filtering can be added later as a parameter
-		// The actual ECS metadata will be populated by the discovery engine
 	}
+	// For now, we'll filter by cluster name if provided
+	// Service name filtering can be added later as a parameter
+	// The actual ECS metadata will be populated by the discovery engine
 
 	return containerSelector
 }
