@@ -54,6 +54,8 @@ const (
 
 	CompressionNone = "none"
 	CompressionGZIP = "gzip"
+
+	TagGroupOtelLogs = "group:OpenTelemetry Logs"
 )
 
 var supportedExporters = []string{ExporterOTLPGRPC}
@@ -131,8 +133,10 @@ func (o *otelLogsOperator) InstanceParams() api.Params {
 	return api.Params{
 		&api.Param{
 			Key:          ParamOtelLogsExporter,
+			Title:        "Logs Exporter",
 			Description:  "Exporter to use for log exporting",
 			DefaultValue: "",
+			Tags:         []string{TagGroupOtelLogs},
 		},
 	}
 }
@@ -196,6 +200,39 @@ func (o *otelLogsOperatorInstance) init(gadgetCtx operators.GadgetContext) error
 	return nil
 }
 
+// copyBytesToLogValue copies the bytes and returns an otellog.Value.
+// This complies with otellog.BytesValue docs which state that the
+// passed slice must not be modified after the call.
+func copyBytesToLogValue(b []byte) otellog.Value {
+	cp := make([]byte, len(b))
+	copy(cp, b)
+	return otellog.BytesValue(cp)
+}
+
+// makeAttrPrep returns a function that will produce an otellog.KeyValue for the provided field.
+// It handles Bytes (raw string if valid UTF-8, base64 otherwise) and Bool (Int64Value 0/1) specially and falls back
+// to datasource.GetKeyValueFunc for supported scalar kinds.
+func makeAttrPrep(f datasource.FieldAccessor, nameOverride string) (func(data datasource.Data) otellog.KeyValue, error) {
+	name := f.FullName()
+	if nameOverride != "" {
+		name = nameOverride
+	}
+
+	// If the field cannot contain a value or is an empty/container, return nil preparer
+	if f.Type() == api.Kind_Invalid || datasource.FieldFlagEmpty.In(f.Flags()) || datasource.FieldFlagContainer.In(f.Flags()) {
+		return nil, nil
+	}
+
+	kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, name, otellog.Int64Value, otellog.Float64Value, otellog.StringValue, otellog.BoolValue, copyBytesToLogValue)
+	if err != nil {
+		return nil, err
+	}
+	return func(data datasource.Data) otellog.KeyValue {
+		key, val := kvf(data)
+		return otellog.KeyValue{Key: key, Value: val}
+	}, nil
+}
+
 func (o *otelLogsOperatorInstance) Name() string {
 	return "otel-logs"
 }
@@ -207,6 +244,8 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 
 		prep := make([]func(data datasource.Data) otellog.KeyValue, 0)
 		kvCount := 0
+
+		var bodySet bool
 
 		fns := make([]func(datasource.Data, *otellog.Record), 0)
 
@@ -234,12 +273,26 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				}
 				record.SetBody(otellog.StringValue(s.(string)))
 			})
+			bodySet = true
 		}
 
+		// First, collect any explicitly annotated fields (those with `logs.name` per-field).
 		for _, f := range fields {
+			// Skip parent fields that have subfields — their children fully represent the data.
+			if len(f.SubFields()) > 0 {
+				continue
+			}
+
 			fieldAnnotations := f.Annotations()
 			name, ok := fieldAnnotations[AnnotationLogsName]
 			if !ok {
+				continue
+			}
+
+			// Skip fields that don't carry a value (invalid/empty/container)
+			if f.Type() == api.Kind_Invalid ||
+				datasource.FieldFlagEmpty.In(f.Flags()) ||
+				datasource.FieldFlagContainer.In(f.Flags()) {
 				continue
 			}
 
@@ -249,18 +302,21 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 					str, _ := f.String(data)
 					record.SetBody(otellog.StringValue(str))
 				})
+				bodySet = true
+				continue
 			case FieldNameTimestamp:
 				ts, err := datasource.AsInt64(f)
 				if err != nil {
-					return fmt.Errorf("using field %q as %q: %w", f.Name(), name, err)
+					return fmt.Errorf("using field %q as %q: %w", f.FullName(), name, err)
 				}
 				fns = append(fns, func(data datasource.Data, record *otellog.Record) {
 					record.SetObservedTimestamp(time.Unix(0, ts(data)*int64(time.Microsecond)))
 				})
+				continue
 			case FieldNameSeverity:
 				severity, err := datasource.AsInt64(f)
 				if err != nil {
-					return fmt.Errorf("using field %q as %q: %w", f.Name(), name, err)
+					return fmt.Errorf("using field %q as %q: %w", f.FullName(), name, err)
 				}
 				fns = append(fns, func(data datasource.Data, record *otellog.Record) {
 					record.SetSeverity(otellog.Severity(severity(data)))
@@ -268,18 +324,39 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 				continue
 			}
 
-			kvf, err := datasource.GetKeyValueFunc[string, otellog.Value](f, name, otellog.Int64Value, otellog.Float64Value, otellog.StringValue)
+			// Build attribute prep function via helper.
+			p, err := makeAttrPrep(f, name)
 			if err != nil {
-				return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.Name(), err)
+				return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.FullName(), err)
 			}
-			prep = append(prep, func(data datasource.Data) otellog.KeyValue {
-				key, val := kvf(data)
-				return otellog.KeyValue{
-					Key:   key,
-					Value: val,
-				}
-			})
+			if p == nil {
+				continue
+			}
+			prep = append(prep, p)
 			kvCount++
+		}
+
+		// If there were no annotated fields producing attributes and no body setter,
+		// fall back to encoding the entire event as attributes by adding all fields.
+		// This ensures the event is represented via attributes even when `logs.body`
+		// isn't set and no per-field annotations exist.
+		if kvCount == 0 && !bodySet {
+			for _, f := range fields {
+				// Skip parent fields that have subfields — their children fully represent the data.
+				if len(f.SubFields()) > 0 {
+					continue
+				}
+				// Build attr prep using full field name
+				p, err := makeAttrPrep(f, "")
+				if err != nil {
+					return fmt.Errorf("getting key/val func for %s.%s: %w", ds.Name(), f.FullName(), err)
+				}
+				if p == nil {
+					continue
+				}
+				prep = append(prep, p)
+				kvCount++
+			}
 		}
 
 		ds.Subscribe(func(ds datasource.DataSource, data datasource.Data) error {
@@ -296,6 +373,14 @@ func (o *otelLogsOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) e
 			for _, f := range fns {
 				f(data, &rec)
 			}
+
+			// If no body setter was provided, ensure the record still has a body
+			// (empty string). This makes the exporter emit the event encoded via
+			// attributes even when `logs.body` isn't set.
+			if !bodySet {
+				rec.SetBody(otellog.StringValue(""))
+			}
+
 			rec.SetTimestamp(time.Now())
 
 			logger.Emit(gadgetCtx.Context(), rec)

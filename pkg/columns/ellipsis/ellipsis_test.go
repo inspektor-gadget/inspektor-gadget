@@ -17,6 +17,8 @@ package ellipsis
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestEllipsis(t *testing.T) {
@@ -176,9 +178,8 @@ func TestEllipsis(t *testing.T) {
 
 	for _, test := range ellipsisTests {
 		t.Run(fmt.Sprintf("%s_%d@%s", test.Input, test.MaxLength, test.Type.String()), func(t *testing.T) {
-			if res := Shorten([]rune(test.Input), test.MaxLength, test.Type); string(res) != test.Result {
-				t.Errorf("%q (%d): got %q, expected %q", test.Input, test.MaxLength, res, test.Result)
-			}
+			res := Shorten([]rune(test.Input), test.MaxLength, test.Type)
+			require.Equal(t, test.Result, string(res), "%q (%d)", test.Input, test.MaxLength)
 		})
 	}
 }
@@ -190,17 +191,16 @@ func FuzzEllipsis(f *testing.F) {
 		if maxLength < 0 {
 			correctedLength = 0
 		}
-		if out := Shorten([]rune(inputString), maxLength, None); len(out) > correctedLength {
-			t.Errorf("None of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
-		}
-		if out := Shorten([]rune(inputString), maxLength, End); len(out) > correctedLength {
-			t.Errorf("End of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
-		}
-		if out := Shorten([]rune(inputString), maxLength, Start); len(out) > correctedLength {
-			t.Errorf("Start of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
-		}
-		if out := Shorten([]rune(inputString), maxLength, Middle); len(out) > correctedLength {
-			t.Errorf("Middle of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
-		}
+		out := Shorten([]rune(inputString), maxLength, None)
+		require.LessOrEqual(t, len(out), correctedLength, "None of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
+
+		out = Shorten([]rune(inputString), maxLength, End)
+		require.LessOrEqual(t, len(out), correctedLength, "End of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
+
+		out = Shorten([]rune(inputString), maxLength, Start)
+		require.LessOrEqual(t, len(out), correctedLength, "Start of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
+
+		out = Shorten([]rune(inputString), maxLength, Middle)
+		require.LessOrEqual(t, len(out), correctedLength, "Middle of %q (%d): wrong output %q of length %d", inputString, maxLength, out, len(out))
 	})
 }

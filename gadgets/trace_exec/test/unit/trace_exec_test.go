@@ -57,7 +57,7 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[0].Args)
 			},
 		},
 		"large_argument_list": {
@@ -67,7 +67,7 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs[:20], traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[0].Args)
 			},
 		},
 		"uid_gid": {
@@ -80,7 +80,7 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[0].Args)
 				require.Equal(t, uint32(info.Uid), events[0].Proc.Creds.Uid)
 				require.Equal(t, uint32(info.Gid), events[0].Proc.Creds.Gid)
 			},
@@ -101,7 +101,7 @@ func TestTraceExecGadget(t *testing.T) {
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[0].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[0].Args)
 				require.Equal(t, "ENOENT", events[0].Error)
 			},
 		},
@@ -114,7 +114,7 @@ func TestTraceExecGadget(t *testing.T) {
 				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
 				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[1].Args, "Expected Args %q, got %q", expectedArgs, events[0].Args)
+				require.Equal(t, expectedArgs, events[1].Args)
 			},
 		},
 		"failed_exec_from_thread": {
@@ -126,7 +126,7 @@ func TestTraceExecGadget(t *testing.T) {
 				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
 				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
-				require.Equal(t, expectedArgs, events[1].Args, "Expected Args %q, got %q", expectedArgs, events[1].Args)
+				require.Equal(t, expectedArgs, events[1].Args)
 				require.Equal(t, "ENOENT", events[1].Error)
 			},
 		},

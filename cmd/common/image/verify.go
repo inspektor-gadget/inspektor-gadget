@@ -1,0 +1,66 @@
+package image
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
+)
+
+func NewVerifyCmd() *cobra.Command {
+	var notationCertificates string
+	var authOpts oci.AuthOptions
+	var cosignPublicKeys string
+	var notationPolicy string
+
+	cmd := &cobra.Command{
+		Use:   "verify [gadget]",
+		Short: "Verify gadget signature using local store",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			image := args[0]
+
+			verifier, err := verifier.NewSignatureVerifier(verifier.VerifierOptions{
+				CosignVerifierOpts: cosign.VerifierOptions{
+					PublicKeys: strings.Split(cosignPublicKeys, ","),
+				},
+				NotationVerifierOpts: notation.VerifierOptions{
+					Certificates:   strings.Split(notationCertificates, ","),
+					PolicyDocument: notationPolicy,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("initializing verifier: %w", err)
+			}
+
+			fmt.Printf("Verifying image: %s\n", image)
+			err = oci.VerifyGadgetImage(context.Background(), image, &oci.ImageOptions{
+				AuthOptions: authOpts,
+				VerifyOptions: oci.VerifyOptions{
+					VerifySignature: true,
+					Verifier:        verifier,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("verifying %q: %w", image, err)
+			}
+			fmt.Println("Image verified successfully!")
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&cosignPublicKeys, "public-keys", resources.InspektorGadgetPublicKey, "Public keys used to verify the gadgets with cosign")
+	cmd.Flags().StringVar(&notationCertificates, "notation-certificates", "", "Certificates used to verify the gadgets with notation")
+	cmd.Flags().StringVar(&notationPolicy, "notation-policy-document", "", "Policy Document used to verify the gadgets with notation")
+	utils.AddRegistryAuthVariablesAndFlags(cmd, &authOpts)
+
+	return cmd
+}

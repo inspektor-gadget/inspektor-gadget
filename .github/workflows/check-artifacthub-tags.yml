@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6.0.2
 
     - name: Gather valid gadgets
       id: filter-gadgets

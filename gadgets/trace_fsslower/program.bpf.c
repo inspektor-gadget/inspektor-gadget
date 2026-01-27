@@ -36,8 +36,8 @@ struct event {
 
 #define MAX_ENTRIES 8192
 
-const volatile __u64 min_lat_ms = 0;
-GADGET_PARAM(min_lat_ms);
+const volatile __u64 min_lat_us = 0;
+GADGET_PARAM(min_lat_us);
 
 GADGET_TRACER_MAP(events, 1024 * 256);
 GADGET_TRACER(malloc, events, event);
@@ -108,7 +108,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 
 	end_ns = bpf_ktime_get_ns();
 	delta_ns = end_ns - datap->ts;
-	if (delta_ns <= 1000 * 1000 * min_lat_ms)
+	if (delta_ns <= 1000 * min_lat_us)
 		return 0;
 
 	event = gadget_reserve_buf(&events, sizeof(*event));

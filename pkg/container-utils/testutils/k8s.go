@@ -57,21 +57,10 @@ func (c *K8sContainer) Run(t *testing.T) {
 
 func (c *K8sContainer) Start(t *testing.T) {
 	// TODO: handle pid, portBindings.
-	if c.options.seccompProfile != "" {
-		t.Fatalf("testutils/kubernetes: seccomp profiles are not supported yet")
-	}
-
-	if c.options.sysctls != nil {
-		t.Fatalf("testutils/kubernetes: sysctls are not supported yet")
-	}
-
-	if c.options.privileged {
-		t.Fatalf("testutils/kubernetes: privileged containers are not supported yet")
-	}
-
-	if c.options.portBindings != nil {
-		t.Fatalf("testutils/kubernetes: port bindings are not supported yet")
-	}
+	require.Empty(t, c.options.seccompProfile, "testutils/kubernetes: seccomp profiles are not supported yet")
+	require.Nil(t, c.options.sysctls, "testutils/kubernetes: sysctls are not supported yet")
+	require.False(t, c.options.privileged, "testutils/kubernetes: privileged containers are not supported yet")
+	require.Nil(t, c.options.portBindings, "testutils/kubernetes: port bindings are not supported yet")
 
 	waitCommand := waitUntilPodReadyCommand(t, c.options.namespace, c.name)
 	if c.options.waitOrOomKilled {
@@ -80,7 +69,6 @@ func (c *K8sContainer) Start(t *testing.T) {
 
 	testSteps := []igtesting.TestStep{
 		podCommand(t, c.name, c.options.image, c.options.namespace, `["/bin/sh", "-c"]`, c.cmd, c.options.limits),
-		sleepForSecondsCommand(2),
 		waitCommand,
 	}
 	if !c.options.useExistingNamespace {
@@ -152,12 +140,8 @@ spec:
 // commandArgs will automatically be escaped
 func podCommand(t *testing.T, podname, image, namespace, cmd, commandArgs string, limits map[string]string) *command.Command {
 	if cmd != "" {
-		if strings.Contains(cmd, "\n") {
-			t.Fatalf("cmd contains new lines: %q", cmd)
-		}
-		if cmd[0] != '[' {
-			t.Fatalf("cmd is not a yaml array: %q", cmd)
-		}
+		require.NotContains(t, cmd, "\n", "cmd contains new lines: %q", cmd)
+		require.Equal(t, byte('['), cmd[0], "cmd is not a yaml array: %q", cmd)
 	}
 	podYaml := createPodYaml(podname, image, namespace, cmd, commandArgs, limits)
 
@@ -235,7 +219,7 @@ func deleteK8sNamespace(t *testing.T, namespace string) {
 func waitUntilPodReadyCommand(t *testing.T, namespace string, podname string) *command.Command {
 	return &command.Command{
 		Name:           "WaitForTestPod",
-		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname)),
+		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("timeout 10 bash -c 'until kubectl get pod -n %s %s > /dev/null 2>&1; do sleep 1; done' && kubectl wait pod --for condition=ready --timeout=60s -n %s %s", namespace, podname, namespace, podname)),
 		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
 	}
 }
@@ -245,7 +229,7 @@ func waitUntilPodReadyCommand(t *testing.T, namespace string, podname string) *c
 func waitUntilPodReadyOrOOMKilledCommand(t *testing.T, namespace string, podname string) *command.Command {
 	return &command.Command{
 		Name:           "WaitForTestPod",
-		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("kubectl wait pod --for condition=ready --timeout=60s -n %s %s || kubectl wait pod --for jsonpath='{.status.containerStatuses[0].state.terminated.reason}'=OOMKilled -n %s %s", namespace, podname, namespace, podname)),
+		Cmd:            exec.Command("/bin/sh", "-c", fmt.Sprintf("timeout 10 bash -c 'until kubectl get pod -n %s %s > /dev/null 2>&1; do sleep 1; done' && (kubectl wait pod --for condition=ready --timeout=60s -n %s %s || kubectl wait pod --for jsonpath='{.status.containerStatuses[0].state.terminated.reason}'=OOMKilled -n %s %s)", namespace, podname, namespace, podname, namespace, podname)),
 		ValidateOutput: match.EqualString(t, fmt.Sprintf("pod/%s condition met\n", podname)),
 	}
 }

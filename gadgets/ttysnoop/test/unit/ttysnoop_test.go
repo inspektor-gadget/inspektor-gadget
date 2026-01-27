@@ -57,8 +57,8 @@ func TestTtysnoopFull(t *testing.T) {
 			text:         "hello world",
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTtysnoopEvent, text string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				require.Equal(t, len(text), events[0].Len, "Expected Len %d, got %d", len(text), events[0].Len)
-				require.Equal(t, text, events[0].Buf, "Expected Args %q, got %q", text, events[0].Buf)
+				require.Equal(t, len(text), events[0].Len)
+				require.Equal(t, text, events[0].Buf)
 			},
 		},
 	}
@@ -91,17 +91,13 @@ func TestTtysnoopFull(t *testing.T) {
 
 func generateEventFromThread(t *testing.T, text string) {
 	ptmx, tty, err := pty.Open()
-	if err != nil {
-		// Fails when /dev/pts is not mounted.
-		// It can happen with old versions of vimto.
-		// See https://github.com/lmb/vimto/pull/26
-		t.Fatalf("Failed to open pty: %v", err)
-	}
+	// Fails when /dev/pts is not mounted.
+	// It can happen with old versions of vimto.
+	// See https://github.com/lmb/vimto/pull/26
+	require.NoError(t, err, "Failed to open pty")
 	defer ptmx.Close()
 	defer tty.Close()
 
 	_, err = ptmx.WriteString(text)
-	if err != nil {
-		t.Fatalf("Failed to write to pty: %v", err)
-	}
+	require.NoError(t, err, "Failed to write to pty")
 }

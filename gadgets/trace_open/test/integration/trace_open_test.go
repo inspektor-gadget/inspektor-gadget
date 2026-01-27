@@ -39,6 +39,7 @@ type traceOpenEvent struct {
 	Flags string `json:"flags"`
 	Mode  string `json:"mode"`
 	FName string `json:"fname"`
+	FPath string `json:"fpath"`
 }
 
 func TestTraceOpen(t *testing.T) {
@@ -60,7 +61,7 @@ func TestTraceOpen(t *testing.T) {
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"while true; do setuidgid 1000:1111 cat /dev/null; sleep 1; done",
+		"ln -s /dev/null /dev/null2 ; while true; do setuidgid 1000:1111 cat /dev/null2; sleep 1; done",
 		containerOpts...,
 	)
 
@@ -75,9 +76,9 @@ func TestTraceOpen(t *testing.T) {
 
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags("--paths", fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), "--timeout=5"))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags("--paths", fmt.Sprintf("-n=%s", ns), "--timeout=5"))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
@@ -87,7 +88,8 @@ func TestTraceOpen(t *testing.T) {
 			expectedEntry := &traceOpenEvent{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("cat", 1000, 1111),
-				FName:      "/dev/null",
+				FName:      "/dev/null2",
+				FPath:      "/dev/null",
 				Fd:         3,
 				Error:      "",
 				Flags:      "O_RDONLY",

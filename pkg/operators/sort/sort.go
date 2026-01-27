@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ func (s *sortOperator) InstanceParams() api.Params {
 			Title: "Sort By",
 			Description: "Sort by fields. Join multiple fields with ','. Prefix a field with '-' to sort in descending order. " +
 				"If using multiple data sources, prefix fields with 'datasourcename:' and separate with ';'",
+			Tags: []string{api.TagGroupDataFiltering},
 		},
 	}
 }
@@ -175,8 +176,7 @@ func getCompareFunc(f datasource.FieldAccessor, negate bool) func(i, j datasourc
 	}
 }
 
-func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
-	s.sorters = make(map[datasource.DataSource][]func(i datasource.Data, j datasource.Data) bool)
+func (s *sortOperatorInstance) getFieldsByDs() map[string][]string {
 	dsSorts := make(map[string][]string)
 	for _, srt := range strings.Split(s.sortBy, ";") {
 		dsFields := strings.Split(srt, ":")
@@ -188,9 +188,15 @@ func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 		fields := strings.Split(fieldList, ",")
 		if len(fields) > 2 || fields[0] != "" {
-			dsSorts[dsName] = fields
+			dsSorts[dsName] = append(dsSorts[dsName], fields...)
 		}
 	}
+	return dsSorts
+}
+
+func (s *sortOperatorInstance) init(gadgetCtx operators.GadgetContext) error {
+	s.sorters = make(map[datasource.DataSource][]func(i datasource.Data, j datasource.Data) bool)
+	dsSorts := s.getFieldsByDs()
 
 	// Check edge cases
 	dsSpecific := true

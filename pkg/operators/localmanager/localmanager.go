@@ -20,6 +20,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
@@ -144,9 +145,11 @@ func (l *localManager) ParamDescs() params.ParamDescs {
 	return append(common.GetContainerSelectorParams(false),
 		&params.ParamDesc{
 			Key:          Host,
+			Title:        "Host Data",
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+			Tags:         []string{api.TagGroupDataCollection},
 		})
 }
 
@@ -315,6 +318,7 @@ type localManagerTrace struct {
 	subscriptionKey string
 
 	// Keep a map to attached containers, so we can clean up properly
+	containerMutex     sync.Mutex
 	attachedContainers map[*containercollection.Container]struct{}
 	attacher           Attacher
 	params             *params.Params
@@ -403,7 +407,9 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 				return
 			}
 
+			l.containerMutex.Lock()
 			l.attachedContainers[container] = struct{}{}
+			l.containerMutex.Unlock()
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
 				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
@@ -411,6 +417,10 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.DetachContainer()")
+			l.containerMutex.Lock()
+			delete(l.attachedContainers, container)
+			l.containerMutex.Unlock()
+
 			err := attacher.DetachContainer(container)
 			if err != nil {
 				log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
@@ -579,9 +589,11 @@ func (l *localManagerTrace) ParamDescs() params.ParamDescs {
 	return append(common.GetContainerSelectorParams(false),
 		&params.ParamDesc{
 			Key:          Host,
+			Title:        "Host Data",
 			Description:  "Show data from both the host and containers",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+			Tags:         []string{api.TagGroupDataCollection},
 		})
 }
 

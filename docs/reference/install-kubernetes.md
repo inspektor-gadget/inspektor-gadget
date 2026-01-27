@@ -50,7 +50,7 @@ $ kubectl gadget version
 ### Compilation from source
 
 To build Inspektor Gadget from source, you'll need to have a Golang version
-1.24.6 or higher installed.
+1.25 or higher installed
 
 ```bash
 $ git clone https://github.com/inspektor-gadget/inspektor-gadget.git
@@ -316,7 +316,7 @@ podman-socketpath: /run/podman/podman.sock
 Please check the following documents to learn more about different options:
 - [Restricting the Gadgets that can be run](./restricting-gadgets.mdx)
 - [Using Insecure Registries](./insecure-registries.mdx)
-- [Verifying Gadget Images](./verify-assets.mdx#verify-image-based-gadgets)
+- [Verifying Gadget Images](./verify-gadgets.mdx)
 
 ### Installation with the Helm chart
 

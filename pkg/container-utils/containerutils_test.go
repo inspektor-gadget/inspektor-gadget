@@ -72,25 +72,15 @@ func TestParseOCIState(t *testing.T) {
 	t.Parallel()
 
 	match, err := filepath.Glob("testdata/*.input")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, inputFile := range match {
 		t.Logf("Parsing OCI state from file %s", inputFile)
 		stateBuf, err := os.ReadFile(inputFile)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ID, PID, err := ParseOCIState(stateBuf)
-		if err != nil {
-			t.Errorf("Cannot parse file %s: %s", inputFile, err)
-		}
-		if ID != "92646e8e819a27d43a9435cd195dc1f38a0c5ff897b4ca660fcbfbfe7502b47a" {
-			t.Errorf("Cannot get ID in %s", inputFile)
-		}
-		if PID != 210223 {
-			t.Errorf("Cannot get PID in %s", inputFile)
-		}
+		require.NoError(t, err, "Cannot parse file %s", inputFile)
+		require.Equal(t, "92646e8e819a27d43a9435cd195dc1f38a0c5ff897b4ca660fcbfbfe7502b47a", ID, "Cannot get ID in %s", inputFile)
+		require.Equal(t, 210223, PID, "Cannot get PID in %s", inputFile)
 	}
 }

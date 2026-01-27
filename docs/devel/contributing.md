@@ -124,6 +124,17 @@ $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
 
+### Testing gadgets from a local registry
+
+You can use minikube to test gadgets from a local registry. Once [Inspektor Gadget is deployed](#development-environment-on-minikube) you can run a gadget using:
+
+```bash
+# build and run the gadget, in this case trace_dns
+GADGETS=trace_dns make -C gadgets minikube-gadget-run
+# run the gadget with a timeout of 10 seconds
+GADGETS=trace_dns GADGET_PARAMS="--timeout 10" make -C gadgets minikube-gadget-run
+```
+
 ### Integration tests for `ig`
 
 #### Kubernetes

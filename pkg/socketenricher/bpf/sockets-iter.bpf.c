@@ -52,6 +52,7 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 		bpf_probe_read_kernel(&socket_value.ptask,
 				      sizeof(socket_value.ptask), parent->comm);
 		socket_value.ppid = (__u32)BPF_CORE_READ(parent, tgid);
+		socket_value.ptid = (__u32)BPF_CORE_READ(parent, pid);
 	}
 
 	socket_value.sock = (__u64)sock;
@@ -107,8 +108,16 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 SEC("iter/task_file")
 int ig_sockets_it(struct bpf_iter__task_file *ctx)
 {
+	struct seq_file *seq = ctx->meta->seq;
+	__u32 seq_num = ctx->meta->seq_num;
 	struct file *file = ctx->file;
 	struct task_struct *task = ctx->task;
+
+	// Don't spend more than 1 million iterations without printing something to
+	// avoid EAGAIN errors. Output is ignored by userspace.
+	// https://github.com/torvalds/linux/commit/e679654a704e5bd676ea6446fa7b764cbabf168a
+	if (seq_num % 100000 == 0)
+		BPF_SEQ_PRINTF(seq, ".");
 
 	if (!file || !task)
 		return 0;
@@ -144,6 +153,12 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 	struct gadget_socket_key *socket_key = ctx->key;
 	struct gadget_socket_key tmp_key;
 	struct gadget_socket_value *socket_value = ctx->value;
+
+	// Don't spend more than 1 million iterations without printing something to
+	// avoid EAGAIN errors. Output is ignored by userspace.
+	// https://github.com/torvalds/linux/commit/e679654a704e5bd676ea6446fa7b764cbabf168a
+	if (seq_num % 100000 == 0)
+		BPF_SEQ_PRINTF(seq, ".");
 
 	if (!socket_key || !socket_value)
 		return 0;

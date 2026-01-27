@@ -44,7 +44,9 @@ import (
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/exporter"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/puller"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier"
 )
 
 type AuthOptions struct {
@@ -62,7 +64,7 @@ type AllowedGadgetsOptions struct {
 
 type VerifyOptions struct {
 	VerifySignature bool
-	Verifier        *signature.SignatureVerifier
+	Verifier        *verifier.SignatureVerifier
 }
 
 type ImageOptions struct {
@@ -122,6 +124,67 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 	})
 
 	return desc, err
+}
+
+func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions) error {
+	return retry("VerifyGadgetImage", func() error {
+		if !imgOpts.VerifySignature {
+			log.Warnf("gadget signature verification is disabled due to using corresponding option")
+
+			return nil
+		}
+
+		if imgOpts.Verifier == nil {
+			return errors.New("signature verification requested but no verifier provided")
+		}
+
+		imageStore, err := newLocalOciStore()
+		if err != nil {
+			return fmt.Errorf("getting oci store: %w", err)
+		}
+
+		imageRef, err := normalizeImageName(image)
+		if err != nil {
+			return fmt.Errorf("normalizing image name: %w", err)
+		}
+
+		err = imgOpts.Verifier.Verify(ctx, imageStore, imageRef)
+		if err != nil {
+			if !errors.Is(err, errdef.ErrNotFound) {
+				return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+			}
+
+			log.Warn("signature not found, will pull signing information and try verification again")
+
+			repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
+			if err != nil {
+				return fmt.Errorf("creating remote repository: %w", err)
+			}
+
+			desc, err := imageStore.Resolve(ctx, imageRef.String())
+			if err != nil {
+				return fmt.Errorf("resolving %q in local store: %w", image, err)
+			}
+
+			// The signature may not be present locally, let's pull it and verify
+			// again.
+			err = puller.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, desc.Digest.String())
+			if err != nil {
+				return fmt.Errorf("pulling gadget signature %q: %w", image, err)
+			}
+
+			if err := imageStore.saveIndexWithLock(); err != nil {
+				return err
+			}
+
+			err = imgOpts.Verifier.Verify(ctx, imageStore, imageRef)
+			if err != nil {
+				return fmt.Errorf("verifying gadget signature %q: %w", image, err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func pullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
@@ -205,7 +268,7 @@ func pullImage(ctx context.Context, targetImage reference.Named, imageStore oras
 	}
 
 	imageDigest := desc.Digest.String()
-	if err := signature.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
+	if err := puller.DefaultSignaturePuller.PullSigningInformation(ctx, repo, imageStore, imageDigest); err != nil {
 		log.Warnf("error pulling signature: %v", err)
 		// it's not a requirement to have a signature for pulling the image
 		return &desc, nil
@@ -356,7 +419,7 @@ func ExportGadgetImages(ctx context.Context, dstFile string, images ...string) e
 			return fmt.Errorf("copying image to remote repository: %w", err)
 		}
 
-		err = signature.DefaultSignatureExporter.ExportSigningInformation(ctx, ociStore, dstStore, desc)
+		err = exporter.DefaultSignatureExporter.ExportSigningInformation(ctx, ociStore, dstStore, desc)
 		if errors.Is(err, errdef.ErrNotFound) {
 			continue
 		}
@@ -708,7 +771,12 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	if err != nil {
 		return nil, fmt.Errorf("getting host string: %w", err)
 	}
-	authConfig, err := cfg.GetAuthConfig(hostString)
+	authKey := hostString
+	// Special case for docker.io
+	if authKey == "docker.io" {
+		authKey = "index.docker.io"
+	}
+	authConfig, err := cfg.GetAuthConfig(authKey)
 	if err != nil {
 		return nil, fmt.Errorf("getting auth config: %w", err)
 	}
@@ -838,27 +906,6 @@ func ensureImage(ctx context.Context, imageStore oras.GraphTarget, image string,
 		if !found {
 			return fmt.Errorf("%s is not part of allowed gadgets: %v", image, strings.Join(imgOpts.AllowedGadgets, ", "))
 		}
-	}
-
-	if !imgOpts.VerifySignature {
-		log.Warnf("gadget signature verification is disabled due to using corresponding option")
-
-		return nil
-	}
-
-	imageRef, err := normalizeImageName(image)
-	if err != nil {
-		return fmt.Errorf("normalizing image name: %w", err)
-	}
-
-	repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
-	if err != nil {
-		return fmt.Errorf("creating remote repository: %w", err)
-	}
-
-	err = imgOpts.Verifier.Verify(ctx, repo, imageStore, imageRef)
-	if err != nil {
-		return fmt.Errorf("verifying gadget signature %q: %w", image, err)
 	}
 
 	return nil

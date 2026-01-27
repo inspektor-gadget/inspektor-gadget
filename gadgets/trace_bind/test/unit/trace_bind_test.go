@@ -138,11 +138,15 @@ func TestTraceBind(t *testing.T) {
 				return nil
 			}
 
+			normalizeEvent := func(event *ExpectedTraceBindEvent) {
+				utils.NormalizeParentTid(&event.Proc)
+			}
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceBindEvent]{
 				Image:          "trace_bind",
 				Timeout:        5 * time.Second,
 				MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
 				OnGadgetRun:    onGadgetRun,
+				NormalizeEvent: normalizeEvent,
 				ParamValues: api.ParamValues{
 					"operator.oci.ebpf.ignore-errors": "false",
 				},
@@ -153,6 +157,8 @@ func TestTraceBind(t *testing.T) {
 
 			utils.ExpectOneEvent(
 				func(info *utils.RunnerInfo, fd int) *ExpectedTraceBindEvent {
+					proc := info.Proc
+					utils.NormalizeParentTid(&proc)
 					return &ExpectedTraceBindEvent{
 						Addr: utils.L4Endpoint{
 							Addr:    tc.addr,
@@ -160,7 +166,7 @@ func TestTraceBind(t *testing.T) {
 							Port:    tc.port,
 							Proto:   tc.network,
 						},
-						Proc:  info.Proc,
+						Proc:  proc,
 						Error: "",
 					}
 				},

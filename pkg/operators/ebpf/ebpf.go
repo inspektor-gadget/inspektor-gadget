@@ -26,8 +26,10 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -67,9 +69,10 @@ const (
 
 	kernelTypesVar = "kernelTypes"
 
-	AnnotationFlushOnStop = "ebpf.map.flush-on-stop"
-	AnnotationRestName    = "ebpf.rest.name"
-	AnnotationRestLen     = "ebpf.rest.len"
+	AnnotationMapFlushOnStop  = "ebpf.map.flush-on-stop"
+	AnnotationIterFetchOnStop = "ebpf.iter.fetch-on-stop"
+	AnnotationRestName        = "ebpf.rest.name"
+	AnnotationRestLen         = "ebpf.rest.len"
 )
 
 type gadgetObjects struct {
@@ -121,11 +124,11 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		program: program,
 
 		// Preallocate maps
-		tracers:      make(map[string]*Tracer),
-		structs:      make(map[string]*Struct),
-		snapshotters: make(map[string]*Snapshotter),
-		params:       make(map[string]*param),
-		mapIters:     make(map[string]*mapIter),
+		tracers:   make(map[string]*Tracer),
+		structs:   make(map[string]*Struct),
+		iterators: make(map[string]*Iterator),
+		params:    make(map[string]*param),
+		mapIters:  make(map[string]*mapIter),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -173,12 +176,12 @@ type ebpfInstance struct {
 	collectionSpec *ebpf.CollectionSpec
 	collection     *ebpf.Collection
 
-	tracers      map[string]*Tracer
-	structs      map[string]*Struct
-	snapshotters map[string]*Snapshotter
-	mapIters     map[string]*mapIter
-	params       map[string]*param
-	paramValues  map[string]string
+	tracers     map[string]*Tracer
+	structs     map[string]*Struct
+	iterators   map[string]*Iterator
+	mapIters    map[string]*mapIter
+	params      map[string]*param
+	paramValues map[string]string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -220,7 +223,7 @@ func (i *ebpfInstance) loadSpec() error {
 	return nil
 }
 
-func (i *ebpfInstance) analyze() error {
+func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues api.ParamValues) error {
 	prefixLookups := []populateEntry{
 		{
 			prefixFunc:   hasPrefix(tracerInfoPrefix),
@@ -228,9 +231,17 @@ func (i *ebpfInstance) analyze() error {
 			populateFunc: i.populateTracer,
 		},
 		{
-			prefixFunc:   hasPrefix(snapshottersPrefix),
+			prefixFunc: hasPrefix(snapshottersPrefix),
+			validator:  i.validateGlobalConstVoidPtrVar,
+			populateFunc: func(b btf.Type, s string) error {
+				gadgetCtx.Logger().Warnf("%s prefix is deprecated; please use %s instead", snapshottersPrefix, iteratorsPrefix)
+				return i.populateIterators(b, s)
+			},
+		},
+		{
+			prefixFunc:   hasPrefix(iteratorsPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
-			populateFunc: i.populateSnapshotter,
+			populateFunc: i.populateIterators,
 		},
 		{
 			prefixFunc:   hasPrefix(paramPrefix),
@@ -332,7 +343,7 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
-	err = i.analyze()
+	err = i.analyze(gadgetCtx, i.paramValues)
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)
 	}
@@ -448,8 +459,11 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	i.params[ParamTraceKernel] = &param{
 		Param: &api.Param{
 			Key:          ParamTraceKernel,
+			Title:        "Print Kernel Tracing Messages",
+			Description:  "Prints kernel messages from the trace pipe (e.g. coming from bpf_trace_printk)",
 			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
+			Tags:         []string{api.TagAdvanced, "group:eBPF"},
 		},
 	}
 
@@ -507,7 +521,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		}
 		m.ds = ds
 	}
-	for name, m := range i.snapshotters {
+	for name, m := range i.iterators {
 		ds, accessor, err := i.addDataSource(gadgetCtx, datasource.TypeArray, name, i.structs[m.structName].Size, i.structs[m.structName].Fields)
 		if err != nil {
 			return fmt.Errorf("adding datasource: %w", err)
@@ -516,11 +530,30 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.accessor = accessor
 		m.ds = ds
 
-		// Configure fetch-count and fetch-interval annotations to make the
+		annotations := ds.Annotations()
+
+		// Configure fetch-count and fetch-interval annotations (if not present) to make the
 		// combiner operator handle the data correctly
-		// TODO: Make this configurable
-		m.ds.AddAnnotation(api.FetchIntervalAnnotation, "0")
-		m.ds.AddAnnotation(api.FetchCountAnnotation, "1")
+		if annotations[api.FetchIntervalAnnotation] != "" {
+			m.interval, err = time.ParseDuration(annotations[api.FetchIntervalAnnotation])
+			if err != nil {
+				return fmt.Errorf("parsing %s: %w", api.FetchIntervalAnnotation, err)
+			}
+		} else {
+			m.ds.AddAnnotation(api.FetchIntervalAnnotation, "0")
+			m.interval = time.Duration(0)
+		}
+		if annotations[api.FetchCountAnnotation] != "" {
+			m.count, err = strconv.Atoi(annotations[api.FetchCountAnnotation])
+			if err != nil {
+				return fmt.Errorf("parsing %s: %w", api.FetchCountAnnotation, err)
+			}
+		} else {
+			m.ds.AddAnnotation(api.FetchCountAnnotation, "1")
+			m.count = 1
+		}
+
+		m.fetchOnStop = annotations[AnnotationIterFetchOnStop] == "true"
 	}
 	for name, m := range i.mapIters {
 		fields := make([]*Field, 0)
@@ -553,7 +586,7 @@ func (i *ebpfInstance) register(gadgetCtx operators.GadgetContext) error {
 		m.valAccessor = accessor
 
 		annotations := ds.Annotations()
-		if flushOnStop := annotations[AnnotationFlushOnStop]; flushOnStop == "true" {
+		if flushOnStop := annotations[AnnotationMapFlushOnStop]; flushOnStop == "true" {
 			i.logger.Debugf("flushing on stop enabled")
 			m.flushOnStop = true
 		}
@@ -892,9 +925,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			}
 
 			found := false
-			for _, snapshotter := range i.snapshotters {
-				if _, ok := snapshotter.iterators[progName]; ok {
-					snapshotter.links[progName] = &linkSnapshotter{
+			for _, iter := range i.iterators {
+				if _, ok := iter.iterators[progName]; ok {
+					iter.links[progName] = &linkIterator{
 						link: lIter,
 						typ:  p.AttachTo,
 					}
@@ -903,14 +936,14 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 				}
 			}
 			if !found {
-				i.logger.Warnf("None snapshotter will run iterator %q", progName)
+				i.logger.Warnf("No iterator will run iterator program %q", progName)
 			}
 		}
 	}
 
-	err = i.runSnapshotters()
+	err = i.runIterators()
 	if err != nil {
-		return fmt.Errorf("running snapshotters: %w", err)
+		return fmt.Errorf("running iterators: %w", err)
 	}
 
 	err = i.runMapIterators()

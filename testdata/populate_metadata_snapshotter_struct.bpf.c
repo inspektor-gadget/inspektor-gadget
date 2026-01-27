@@ -11,7 +11,7 @@ struct event {
 	__u8 filename[NAME_MAX];
 };
 
-GADGET_SNAPSHOTTER(events, event, ig_snap_proc);
+GADGET_ITER(events, event, ig_snap_proc);
 
 SEC("iter/task")
 int ig_snap_proc(struct bpf_iter__task *ctx)

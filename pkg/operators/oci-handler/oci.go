@@ -39,9 +39,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/cosign"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/notation"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/cosign"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/verifier/notation"
 )
 
 const (
@@ -57,6 +57,8 @@ const (
 	certificates            = "notation-certificates"
 	policyDocument          = "notation-policy-document"
 	allowedGadgets          = "allowed-gadgets"
+
+	TagGroupOCI = "group:OCI"
 )
 
 const (
@@ -87,8 +89,8 @@ func (o *ociHandler) Init(params *params.Params) error {
 	}
 
 	if verifyOptions.VerifySignature {
-		verifier, err := signature.NewSignatureVerifier(
-			signature.VerifierOptions{
+		verifier, err := verifier.NewSignatureVerifier(
+			verifier.VerifierOptions{
 				CosignVerifierOpts: cosign.VerifierOptions{
 					PublicKeys: o.globalParams.Get(publicKeys).AsStringSlice(),
 				},
@@ -186,6 +188,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 			Description:  "Validate the gadget metadata before running the gadget",
 			DefaultValue: "true",
 			TypeHint:     api.TypeBool,
+			Tags:         []string{api.TagAdvanced, TagGroupOCI},
 		},
 		{
 			Key:          pullParam,
@@ -198,6 +201,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 				oci.PullImageNever,
 			},
 			TypeHint: api.TypeString,
+			Tags:     []string{api.TagAdvanced, TagGroupOCI},
 		},
 		{
 			Key:   annotate,
@@ -206,6 +210,7 @@ func (o *ociHandler) InstanceParams() api.Params {
 				"  'datasource:annotation=value' to add an annotation to a datasource.\n" +
 				"  'datasource.field:annotation=value' to add an annotation to the field of a datasource\n",
 			TypeHint: api.TypeStringSlice,
+			Tags:     []string{api.TagAdvanced, TagGroupOCI},
 		},
 	}
 }
@@ -403,6 +408,11 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		if err != nil {
 			return fmt.Errorf("ensuring image: %w", err)
 		}
+
+		err = oci.VerifyGadgetImage(gadgetCtx.Context(), gadgetCtx.ImageName(), imgOpts)
+		if err != nil {
+			return fmt.Errorf("verifying image: %w", err)
+		}
 	}
 
 	manifest, err := oci.GetManifestForHost(gadgetCtx.Context(), target, gadgetCtx.ImageName())
@@ -467,6 +477,7 @@ func (o *OciHandlerInstance) init(gadgetCtx operators.GadgetContext) error {
 		log.Debugf("layer > %+v", layer)
 		op, ok := operators.GetImageOperatorForMediaType(layer.MediaType)
 		if !ok {
+			log.Warnf("no operator found for media type %q, skipping layer", layer.MediaType)
 			continue
 		}
 

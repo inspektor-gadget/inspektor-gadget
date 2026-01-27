@@ -122,9 +122,8 @@ func TestWithTracerCollection(t *testing.T) {
 	cc := ContainerCollection{}
 	f := &fakeTracerMapsUpdater{containers: make(map[string]*Container)}
 
-	if err := cc.Initialize(WithTracerCollection(f)); err != nil {
-		t.Fatalf("Failed to initialize container collection: %s", err)
-	}
+	err := cc.Initialize(WithTracerCollection(f))
+	require.NoError(t, err, "Failed to initialize container collection")
 
 	nContainers := 5
 
@@ -135,9 +134,7 @@ func TestWithTracerCollection(t *testing.T) {
 
 	for i := 0; i < nContainers; i++ {
 		runner, err := utils.NewRunner(nil)
-		if err != nil {
-			t.Fatalf("Creating runner: %s", err)
-		}
+		require.NoError(t, err, "Creating runner")
 		t.Cleanup(runner.Close)
 
 		runners[i] = runner

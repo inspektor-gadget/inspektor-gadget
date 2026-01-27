@@ -16,13 +16,15 @@ package helpers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 )
 
-func GetImageDigest(ctx context.Context, store oras.Target, imageRef string) (string, error) {
+func GetImageDigest(ctx context.Context, store oras.ReadOnlyGraphTarget, imageRef string) (string, error) {
 	desc, err := store.Resolve(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("resolving image %q: %w", imageRef, err)
@@ -47,7 +49,42 @@ func CraftSignatureIndexTag(digest string) (string, error) {
 	return fmt.Sprintf("%s-%s", parts[0], parts[1]), nil
 }
 
-func CopySigningInformation(ctx context.Context, src oras.ReadOnlyTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
+func CraftCosignSignatureTag(digest string) (string, error) {
+	parts := strings.Split(digest, ":")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("wrong digest, expected two parts, got %d", len(parts))
+	}
+
+	return fmt.Sprintf("%s-%s.sig", parts[0], parts[1]), nil
+}
+
+const BundleV03MediaType = "application/vnd.dev.sigstore.bundle.v0.3+json" // https://github.com/sigstore/cosign/blob/ee3d9fe1c55e/pkg/cosign/bundle/protobundle.go#L36
+
+func FindBundleTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
+	desc, err := imageStore.Resolve(ctx, imageDigest)
+	if err != nil {
+		return "", fmt.Errorf("resolving %s: %w", imageDigest, err)
+	}
+
+	descriptors, err := registry.Referrers(ctx, imageStore, desc, BundleV03MediaType)
+	if err != nil {
+		return "", fmt.Errorf("searching for bundle referring %q: %w", imageDigest, err)
+	}
+
+	if len(descriptors) == 0 {
+		return "", errors.New("no bundle found")
+	}
+
+	if len(descriptors) > 1 {
+		return "", errors.New("images with several bundles are not supported")
+	}
+
+	signingInfoTag := descriptors[0].Digest.String()
+
+	return signingInfoTag, nil
+}
+
+func CopySigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
 	signingInfoTag, err := craftSigningInfoTag(digest)
 	if err != nil {
 		return fmt.Errorf("crafting signing information tag: %w", err)

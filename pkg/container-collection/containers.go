@@ -79,14 +79,18 @@ type Container struct {
 
 // close releases any resources (like  file descriptors) the container is using.
 func (c *Container) close() {
-	if c.mntNsFd != 0 {
-		unix.Close(c.mntNsFd)
-		c.mntNsFd = 0
-	}
-	if c.netNsFd != 0 {
-		unix.Close(c.netNsFd)
-		c.netNsFd = 0
-	}
+	// we run this in a goroutine to avoid blocking the caller as it can happen
+	// if the container has an NFS mount
+	go func() {
+		if c.mntNsFd != 0 {
+			unix.Close(c.mntNsFd)
+			c.mntNsFd = 0
+		}
+		if c.netNsFd != 0 {
+			unix.Close(c.netNsFd)
+			c.netNsFd = 0
+		}
+	}()
 }
 
 type RuntimeMetadata struct {

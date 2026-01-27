@@ -149,8 +149,14 @@ func BuildProc(comm string, uid, gid uint32) Process {
 		Parent: Parent{
 			Comm: NormalizedStr,
 			Pid:  NormalizedInt,
+			Tid:  NormalizedInt,
 		},
 	}
+}
+
+// NormalizeParentTid normalizes the parent TID on p.
+func NormalizeParentTid(p *Process) {
+	NormalizeInt(&p.Parent.Tid)
 }
 
 // NormalizeProc normalizes the pid, tid, parent pid and parent comm fields on
@@ -160,6 +166,7 @@ func NormalizeProc(p *Process) {
 	NormalizeInt(&p.Tid)
 	NormalizeInt(&p.MntNsID)
 	NormalizeInt(&p.Parent.Pid)
+	NormalizeInt(&p.Parent.Tid)
 	NormalizeString(&p.Parent.Comm)
 }
 

@@ -1,10 +1,10 @@
-// Copyright 2019-2024 The Inspektor Gadget authors
+// Copyright 2019-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -103,6 +103,13 @@ func TestSnapshotSocket(t *testing.T) {
 				Status:      0,
 				NetNsID:     utils.NormalizedInt,
 				InodeNumber: utils.NormalizedInt,
+			}
+
+			if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
+				expectedEntry.SrcEndpoint.K8s = utils.K8s{
+					Kind: "raw",
+				}
+				expectedEntry.DstEndpoint.K8s = expectedEntry.SrcEndpoint.K8s
 			}
 
 			normalize := func(e *snapshotSocketEntry) {

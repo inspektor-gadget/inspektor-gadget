@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,8 +32,8 @@ const (
 	// Prefix used to mark tracer maps
 	tracerInfoPrefix = "gadget_tracer_"
 
-	// Prefix used to mark snapshotters structs
-	snapshottersPrefix = "gadget_snapshotter_"
+	// Prefix used to mark iterator structs
+	snapshottersPrefix = "gadget_iter_"
 
 	// Prefix used to mark mapIters info
 	mapIterInfoPrefix = "gadget_mapiter_"

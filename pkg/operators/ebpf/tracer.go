@@ -123,13 +123,15 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 
 	switch t.mapType {
 	case ebpf.RingBuf:
+		var rec ringbuf.Record
 		readCb = func() ([]byte, uint64, error) {
-			rec, err := t.ringbufReader.Read()
+			err := t.ringbufReader.ReadInto(&rec)
 			return rec.RawSample, 0, err
 		}
 	case ebpf.PerfEventArray:
+		var rec perf.Record
 		readCb = func() ([]byte, uint64, error) {
-			rec, err := t.perfReader.Read()
+			err := t.perfReader.ReadInto(&rec)
 			return rec.RawSample, rec.LostSamples, err
 		}
 	default:

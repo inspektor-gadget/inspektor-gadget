@@ -14,7 +14,11 @@
 
 package textcolumns
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestOptions(t *testing.T) {
 	opts := &Options{
@@ -26,27 +30,18 @@ func TestOptions(t *testing.T) {
 	}
 
 	WithAutoScale(true)(opts)
-	if !opts.AutoScale {
-		t.Errorf("Expected AutoScale to be true")
-	}
+	require.True(t, opts.AutoScale, "Expected AutoScale to be true")
 
 	WithColumnDivider("X")(opts)
-	if opts.ColumnDivider != "X" {
-		t.Errorf("Expected ColumnDivider to be X")
-	}
+	require.Equal(t, "X", opts.ColumnDivider)
 
 	WithDefaultColumns([]string{"abc"})(opts)
-	if len(opts.DefaultColumns) != 1 || opts.DefaultColumns[0] != "abc" {
-		t.Errorf("Expected DefaultColumns to have exactly 'abc' as value")
-	}
+	require.Len(t, opts.DefaultColumns, 1)
+	require.Equal(t, "abc", opts.DefaultColumns[0])
 
 	WithHeaderStyle(HeaderStyleLowercase)(opts)
-	if opts.HeaderStyle != HeaderStyleLowercase {
-		t.Errorf("Expected HeaderStyle to be HeaderStyleLowercase")
-	}
+	require.Equal(t, HeaderStyleLowercase, opts.HeaderStyle)
 
 	WithRowDivider("X")(opts)
-	if opts.RowDivider != "X" {
-		t.Errorf("Expected RowDivider to be X")
-	}
+	require.Equal(t, "X", opts.RowDivider)
 }
