@@ -130,9 +130,9 @@ static __always_inline int trace_done(struct request *req)
 
 	if (valp) {
 		/* save stats */
-		valp->us += delta_us;
-		valp->bytes += startp->data_len;
-		valp->io++;
+		__sync_fetch_and_add(&valp->us, delta_us);
+		__sync_fetch_and_add(&valp->bytes, startp->data_len);
+		__sync_fetch_and_add(&valp->io, 1);
 	}
 
 end:

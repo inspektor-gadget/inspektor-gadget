@@ -54,7 +54,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
 						Parent: utils.Parent{
-							Pid:  uint32(info.Tid),
+							Pid:  uint32(info.Pid),
+							Tid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},
 						MntNsID: info.MountNsID,
@@ -85,7 +86,8 @@ func TestSnapshotProcessGadget(t *testing.T) {
 						Pid:  uint32(sleepPid),
 						Tid:  uint32(sleepPid),
 						Parent: utils.Parent{
-							Pid:  uint32(info.Tid),
+							Pid:  uint32(info.Pid),
+							Tid:  uint32(info.Tid),
 							Comm: info.Comm,
 						},
 						MntNsID: info.MountNsID,
@@ -97,9 +99,7 @@ func TestSnapshotProcessGadget(t *testing.T) {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utils.RunnerInfo, sleepPid int, events []ExpectedSnapshotProcessEvent) {
-				if len(events) == 0 {
-					t.Fatalf("no events were captured")
-				}
+				require.NotEmpty(t, events, "no events were captured")
 				for _, event := range events {
 					require.Equal(t, event.Pid, event.Tid)
 				}

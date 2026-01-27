@@ -17,14 +17,14 @@ package containercollection
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestPubSub(t *testing.T) {
 	p := NewGadgetPubSub()
-	if p == nil {
-		t.Fatalf("Failed to create new pubsub")
-	}
+	require.NotNil(t, p, "Failed to create new pubsub")
 
 	var event PubSubEvent
 	done := make(chan struct{}, 1)
@@ -49,16 +49,10 @@ func TestPubSub(t *testing.T) {
 		},
 	)
 	_, ok := <-done
-	if !ok {
-		t.Fatalf("Failed to receive event from callback")
-	}
+	require.True(t, ok, "Failed to receive event from callback")
 
-	if event.Type != EventTypeRemoveContainer {
-		t.Fatalf("Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
-	}
-	if event.Container.Runtime.ContainerID != "container1" {
-		t.Fatalf("Failed to receive correct event")
-	}
+	require.Equal(t, EventTypeRemoveContainer, event.Type, "Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
+	require.Equal(t, "container1", event.Container.Runtime.ContainerID, "Failed to receive correct event")
 
 	p.Unsubscribe(key)
 	p.Publish(
@@ -71,16 +65,12 @@ func TestPubSub(t *testing.T) {
 			},
 		},
 	)
-	if counter != 1 {
-		t.Fatalf("Callback called too many times")
-	}
+	require.Equal(t, 1, counter, "Callback called too many times")
 }
 
 func TestPubSubVerifyPointerToContainer(t *testing.T) {
 	p := NewGadgetPubSub()
-	if p == nil {
-		t.Fatalf("Failed to create new pubsub")
-	}
+	require.NotNil(t, p, "Failed to create new pubsub")
 
 	c := &Container{
 		Runtime: RuntimeMetadata{
@@ -103,13 +93,9 @@ func TestPubSubVerifyPointerToContainer(t *testing.T) {
 	p.Publish(EventTypeAddContainer, c)
 
 	_, ok := <-done
-	if !ok {
-		t.Fatalf("Failed to receive event from callback")
-	}
+	require.True(t, ok, "Failed to receive event from callback")
 
 	p.Unsubscribe(key)
 
-	if receivedC != c {
-		t.Fatalf("Pointer doesn't correspond to original object")
-	}
+	require.Same(t, c, receivedC, "Pointer doesn't correspond to original object")
 }

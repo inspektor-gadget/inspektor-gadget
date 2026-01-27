@@ -7,6 +7,7 @@ datasources:
   qdisc:
     annotations:
       metrics.print: "true"
+      cli.clear-screen-before: "true"
     fields:
       latency:
         annotations:
@@ -16,7 +17,7 @@ params:
     ifindex:
       key: ifindex
       defaultValue: "-1"
-      description: 'Interface index to collect metrics for. To collect metric for all interfaces, set to -1.'
+      description: "Interface index to collect metrics for. To collect metric for all interfaces, set to -1."
     targ_ms:
       key: ms
       defaultValue: "false"

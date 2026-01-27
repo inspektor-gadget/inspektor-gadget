@@ -30,7 +30,7 @@ import (
 )
 
 func TestStartIncrementsUseCount(t *testing.T) {
-	fakeClientSet := fake.NewSimpleClientset()
+	fakeClientSet := fake.NewClientset()
 	cache := &inventoryCache{
 		clientset: fakeClientSet,
 	}
@@ -331,9 +331,7 @@ func TestInventoryCacheDelete(t *testing.T) {
 				}
 				time.Sleep(time.Nanosecond)
 
-				if time.Since(start) > 1*time.Second {
-					t.Fatalf("Timed out waiting for object to be deleted")
-				}
+				require.False(t, time.Since(start) > 1*time.Second, "Timed out waiting for object to be deleted")
 			}
 		})
 	}

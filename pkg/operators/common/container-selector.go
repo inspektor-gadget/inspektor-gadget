@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -71,29 +72,39 @@ func parseLabelsSelector(selectorSlice []string) map[string]string {
 func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 	k8sPodName := params.ParamDesc{
 		Key:         ParamK8sPodName,
-		Description: "Show only data from Kubernetes pods with that name",
+		Title:       "K8s Pod Name",
+		Description: "Kubernetes pods to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SPodName,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sNamespace := params.ParamDesc{
 		Key:         ParamK8sNamespace,
-		Description: "Show only data from pods in a given Kubernetes namespace",
+		Title:       "K8s Namespace",
+		Description: "Kubernetes namespaces to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SNamespace,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sSelector := params.ParamDesc{
 		Key:         ParamK8sSelector,
-		Description: "Kubernetes Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
+		Title:       "K8s Label Selector",
+		Description: "Kubernetes Labels selector to filter on. Supports comma-separated list and exclusion using '!' (e.g. '!key=value' or 'key=!value').",
 		ValueHint:   gadgets.K8SLabels,
 		Validator:   labelSelectorValidator,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	k8sContainerNameParam := params.ParamDesc{
 		Key:         ParamK8sContainerName,
-		Description: "Show data only from containers with the name defined in the pod spec",
+		Title:       "K8s Container Name",
+		Description: "Kubernetes container names to filter on. Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.K8SContainerName,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 	runtimeContainerParam := params.ParamDesc{
 		Key:         ParamRuntimeContainerName,
-		Description: "Show data only from containers with the runtime-assigned name (not the name defined in the pod spec)",
+		Title:       "Runtime Container Name",
+		Description: "runtime-assigned name container names to filter on (not the name defined in the pod spec). Supports comma-separated list and exclusion using '!'.",
 		ValueHint:   gadgets.LocalContainer,
+		Tags:        []string{api.TagGroupDataFiltering},
 	}
 
 	// For backward compatibility, we swap the main keys and alternative keys, ensuring

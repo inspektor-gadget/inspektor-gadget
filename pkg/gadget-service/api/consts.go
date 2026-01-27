@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -78,7 +78,11 @@ const (
 
 const (
 	// TagSrcEbpf defines that a field was extracted from eBPF
-	TagSrcEbpf = "src:ebpf"
+	TagSrcEbpf               = "src:ebpf"
+	TagAdvanced              = "advanced"
+	TagGroupDataCollection   = "group:Data Collection"
+	TagGroupDataManipulation = "group:Data Manipulation"
+	TagGroupDataFiltering    = "group:Data Filtering"
 )
 
 const (

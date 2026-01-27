@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/containers"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -59,9 +61,6 @@ func InitTest(t *testing.T) {
 
 	if strings.Contains(os.Getenv("IG_PATH"), string(KubectlGadgetTestComponent)) {
 		CurrentTestComponent = KubectlGadgetTestComponent
-
-		if Runtime != containers.RuntimeKubernetes {
-			t.Fatalf("invalid value of runtime for kubectl-gadget. Valid value is %s", containers.RuntimeKubernetes)
-		}
+		require.Equal(t, containers.RuntimeKubernetes, Runtime, "invalid value of runtime for kubectl-gadget")
 	}
 }

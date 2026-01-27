@@ -34,7 +34,8 @@ import (
 type tcpdumpEvent struct {
 	utils.CommonData
 
-	Timestamp string `json:"timestamp"`
+	Timestamp  string `json:"timestamp"`
+	PacketType int    `json:"packet_type"`
 }
 
 const (
@@ -103,11 +104,19 @@ func newTCPDumpStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting.
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntries := []*tcpdumpEvent{
-				// A DNS packet
+				// A DNS request
 				{
 					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
 
-					Timestamp: utils.NormalizedStr,
+					Timestamp:  utils.NormalizedStr,
+					PacketType: 0,
+				},
+				// A DNS response
+				{
+					CommonData: utils.BuildCommonData(clientContainerName, commonDataOpts...),
+
+					Timestamp:  utils.NormalizedStr,
+					PacketType: 1,
 				},
 			}
 

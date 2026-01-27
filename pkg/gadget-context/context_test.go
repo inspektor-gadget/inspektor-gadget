@@ -114,7 +114,7 @@ paramDefaults:
 		}
 	}
 
-	t.Fatalf("param not found")
+	require.Fail(t, "param not found")
 }
 
 func TestProcessCustomParams(t *testing.T) {

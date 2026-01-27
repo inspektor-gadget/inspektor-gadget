@@ -17,8 +17,9 @@ package sort
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
@@ -46,9 +47,7 @@ type testData struct {
 
 func getTestCol(t *testing.T) *columns.Columns[testData] {
 	cols, err := columns.NewColumns[testData]()
-	if err != nil {
-		t.Errorf("Failed to initialize %v", err)
-	}
+	require.NoError(t, err, "Failed to initialize")
 	cols.MustSetExtractor("extractor", func(t *testData) any {
 		return fmt.Sprint(t.Extractor)
 	})
@@ -85,114 +84,75 @@ func TestSorter(t *testing.T) {
 		r.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
 	}
 
-	if !CanSortBy(cmap, []string{"uint"}) {
-		t.Errorf("expected sort to be able to sort by \"uint\" (struct field without custom extractor)")
-	}
-	if !CanSortBy(cmap, []string{"extractor"}) {
-		t.Errorf("expected sort to be able to sort by \"extractor\" (struct field with custom extractor)")
-	}
-	if CanSortBy(cmap, []string{"virtual_column"}) {
-		t.Errorf("expected sort to not be able to sort by \"virtual_column\" (virtual column)")
-	}
-	if CanSortBy(cmap, []string{"non_existent_column"}) {
-		t.Errorf("expected sort to not be able to sort by \"non_existent_column\" (column doesn't exist)")
-	}
+	require.True(t, CanSortBy(cmap, []string{"uint"}), "expected sort to be able to sort by \"uint\" (struct field without custom extractor)")
+	require.True(t, CanSortBy(cmap, []string{"extractor"}), "expected sort to be able to sort by \"extractor\" (struct field with custom extractor)")
+	require.False(t, CanSortBy(cmap, []string{"virtual_column"}), "expected sort to not be able to sort by \"virtual_column\" (virtual column)")
+	require.False(t, CanSortBy(cmap, []string{"non_existent_column"}), "expected sort to not be able to sort by \"non_existent_column\" (column doesn't exist)")
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"uint"})
-	if testEntries[0].Uint != 1 {
-		t.Errorf("expected value to be 1")
-	}
+	require.Equal(t, uint(1), testEntries[0].Uint)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-uint"})
-	if testEntries[0].Uint != 5 {
-		t.Errorf("expected value to be 5")
-	}
+	require.Equal(t, uint(5), testEntries[0].Uint)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"int"})
-	if testEntries[0].Int != 1 {
-		t.Errorf("expected value to be 1")
-	}
+	require.Equal(t, 1, testEntries[0].Int)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-int"})
-	if testEntries[0].Int != 5 {
-		t.Errorf("expected value to be 5")
-	}
+	require.Equal(t, 5, testEntries[0].Int)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"float32"})
-	if testEntries[0].Float32 != 1 {
-		t.Errorf("expected value to be 1")
-	}
+	require.Equal(t, float32(1), testEntries[0].Float32)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-float32"})
-	if testEntries[0].Float32 != 5 {
-		t.Errorf("expected value to be 5")
-	}
+	require.Equal(t, float32(5), testEntries[0].Float32)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"float64"})
-	if testEntries[0].Float64 != 1 {
-		t.Errorf("expected value to be 1")
-	}
+	require.Equal(t, float64(1), testEntries[0].Float64)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-float64"})
-	if testEntries[0].Float64 != 5 {
-		t.Errorf("expected value to be 5")
-	}
+	require.Equal(t, float64(5), testEntries[0].Float64)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"group", "string"})
-	if testEntries[0].Group != "a" || testEntries[0].String != "a" {
-		t.Errorf("expected value to be a (group) and a (string)")
-	}
+	require.Equal(t, "a", testEntries[0].Group)
+	require.Equal(t, "a", testEntries[0].String)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-embeddedInt"})
-	if testEntries[0].EmbeddedInt != 7 {
-		t.Errorf("expected embedded value to be a 7")
-	}
+	require.Equal(t, 7, testEntries[0].EmbeddedInt)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-embeddedPtrInt"})
-	if testEntries[0].EmbeddedPtrInt != 7 {
-		t.Errorf("expected embedded ptr value to be a 7")
-	}
+	require.Equal(t, 7, testEntries[0].EmbeddedPtrInt)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"-extractor"})
-	if testEntries[0].Extractor != 5 {
-		t.Errorf("expected value to be 5")
-	}
+	require.Equal(t, 5, testEntries[0].Extractor)
 
 	shuffle()
 	SortEntries(cmap, testEntries, []string{"string"})
-	if testEntries[0].String != "a" {
-		t.Errorf("expected value to be a")
-	}
+	require.Equal(t, "a", testEntries[0].String)
 
 	// Sort by unsupported column - should result in noop
 	SortEntries(cmap, testEntries, []string{"bool"})
-	if testEntries[0].String != "a" {
-		t.Errorf("expected value to be a")
-	}
+	require.Equal(t, "a", testEntries[0].String)
 
 	// Sort by invalid column - should result in noop
 	SortEntries(cmap, testEntries, []string{"invalid"})
-	if testEntries[0].String != "a" {
-		t.Errorf("expected value to be a")
-	}
+	require.Equal(t, "a", testEntries[0].String)
 
 	// Sort by empty column - should result in noop
 	SortEntries(cmap, testEntries, []string{""})
-	if testEntries[0].String != "a" {
-		t.Errorf("expected value to be a")
-	}
+	require.Equal(t, "a", testEntries[0].String)
 
 	// Sort nil array - should result in noop
 	SortEntries(cmap, nil, []string{""})
@@ -201,42 +161,32 @@ func TestSorter(t *testing.T) {
 func TestCanSortBy(t *testing.T) {
 	cmap := getTestCol(t).GetColumnMap()
 
-	if !CanSortBy(cmap, []string{"uint"}) {
-		t.Errorf("expected sort to be able to sort by \"uint\" (struct field without custom extractor)")
-	}
-	if !CanSortBy(cmap, []string{"extractor"}) {
-		t.Errorf("expected sort to be able to sort by \"extractor\" (struct field with custom extractor)")
-	}
-	if CanSortBy(cmap, []string{"virtual_column"}) {
-		t.Errorf("expected sort to not be able to sort by \"virtual_column\" (virtual column)")
-	}
-	if CanSortBy(cmap, []string{"non_existent_column"}) {
-		t.Errorf("expected sort to not be able to sort by \"non_existent_column\" (column doesn't exist)")
-	}
+	require.True(t, CanSortBy(cmap, []string{"uint"}), "expected sort to be able to sort by \"uint\" (struct field without custom extractor)")
+	require.True(t, CanSortBy(cmap, []string{"extractor"}), "expected sort to be able to sort by \"extractor\" (struct field with custom extractor)")
+	require.False(t, CanSortBy(cmap, []string{"virtual_column"}), "expected sort to not be able to sort by \"virtual_column\" (virtual column)")
+	require.False(t, CanSortBy(cmap, []string{"non_existent_column"}), "expected sort to not be able to sort by \"non_existent_column\" (column doesn't exist)")
 }
 
 func TestFilterSortableColumns(t *testing.T) {
 	cmap := getTestCol(t).GetColumnMap()
 
 	valid, invalid := FilterSortableColumns(cmap, []string{"uint"})
-	if !reflect.DeepEqual(valid, []string{"uint"}) || len(invalid) != 0 {
-		t.Errorf("expected FilterSortableColumns to return \"uint\" in the valid array (struct field without custom extractor)")
-	}
+	require.Equal(t, []string{"uint"}, valid)
+	require.Empty(t, invalid)
+
 	valid, invalid = FilterSortableColumns(cmap, []string{"extractor"})
-	if !reflect.DeepEqual(valid, []string{"extractor"}) || len(invalid) != 0 {
-		t.Errorf("expected FilterSortableColumns to return \"extractor\" in the valid array (struct field with custom extractor)")
-	}
+	require.Equal(t, []string{"extractor"}, valid)
+	require.Empty(t, invalid)
+
 	valid, invalid = FilterSortableColumns(cmap, []string{"virtual_column"})
-	if len(valid) != 0 || !reflect.DeepEqual(invalid, []string{"virtual_column"}) {
-		t.Errorf("expected FilterSortableColumns to return \"virtual_column\" in the invalid array (virtual column)")
-	}
+	require.Empty(t, valid)
+	require.Equal(t, []string{"virtual_column"}, invalid)
+
 	valid, invalid = FilterSortableColumns(cmap, []string{"non_existent_column"})
-	if len(valid) != 0 || !reflect.DeepEqual(invalid, []string{"non_existent_column"}) {
-		t.Errorf("expected FilterSortableColumns to return \"non_existent_column\" in the invalid array (column doesn't exist)")
-	}
+	require.Empty(t, valid)
+	require.Equal(t, []string{"non_existent_column"}, invalid)
 
 	valid, _ = FilterSortableColumns(cmap, []string{"uint", "extractor"})
-	if len(valid) != 2 || !reflect.DeepEqual(valid, []string{"uint", "extractor"}) {
-		t.Errorf("expected FilterSortableColumns to not change the ordering")
-	}
+	require.Len(t, valid, 2)
+	require.Equal(t, []string{"uint", "extractor"}, valid)
 }

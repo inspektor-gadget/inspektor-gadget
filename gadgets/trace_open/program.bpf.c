@@ -12,6 +12,7 @@
 #include <gadget/macros.h>
 #include <gadget/types.h>
 #include <gadget/user_stack_map.h>
+#include <gadget/filesystem.h>
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255
@@ -32,10 +33,14 @@ struct event {
 	gadget_file_mode mode_raw;
 	struct gadget_user_stack ustack;
 	char fname[NAME_MAX];
+	char fpath[GADGET_PATH_MAX];
 };
 
 const volatile bool targ_failed = false;
+const volatile bool paths = false;
+
 GADGET_PARAM(targ_failed);
+GADGET_PARAM(paths);
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -108,6 +113,13 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 	errval = 0;
 	if (ret >= 0) {
 		fd = ret;
+
+		if (paths) {
+			long r = read_full_path_of_open_file_fd(
+				fd, (char *)event->fpath, sizeof(event->fpath));
+			if (r <= 0)
+				event->fpath[0] = '\0';
+		}
 	} else {
 		errval = -ret;
 	}

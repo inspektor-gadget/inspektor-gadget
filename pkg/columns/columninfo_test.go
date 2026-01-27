@@ -18,44 +18,35 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
 
 func expectColumnsSuccess[T any](t *testing.T, options ...Option) *Columns[T] {
 	cols, err := NewColumns[T](options...)
-	if err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
+	require.NoError(t, err, "Failed to initialize")
 	return cols
 }
 
 func expectColumnsFail[T any](t *testing.T, name string, options ...Option) {
 	t.Run(name, func(t *testing.T) {
 		_, err := NewColumns[T](options...)
-		if err == nil {
-			t.Errorf("Succeeded to initialize but expected error")
-		}
+		require.Error(t, err, "Succeeded to initialize but expected error")
 	})
 }
 
 func expectColumn[T any](t *testing.T, cols *Columns[T], columnName string) *Column[T] {
 	col, ok := cols.GetColumn(columnName)
-	if !ok {
-		t.Fatalf("Expected column with name %q", columnName)
-	}
+	require.True(t, ok, "Expected column with name %q", columnName)
 	return col
 }
 
 func expectColumnValue[T any](t *testing.T, col *Column[T], fieldName string, expectedValue interface{}) {
 	columnValue := reflect.ValueOf(col).Elem()
 	fieldValue := columnValue.FieldByName(fieldName)
-	if !fieldValue.IsValid() {
-		t.Errorf("Expected field %q", fieldName)
-		return
-	}
-	if fieldValue.Interface() != expectedValue {
-		t.Errorf("Expected field %q to equal %+v, got %+v", fieldName, expectedValue, fieldValue.Interface())
-	}
+	require.True(t, fieldValue.IsValid(), "Expected field %q", fieldName)
+	require.Equal(t, expectedValue, fieldValue.Interface())
 }
 
 func TestColumnsInvalid(t *testing.T) {
@@ -406,9 +397,8 @@ func TestColumnFilters(t *testing.T) {
 	expectColumn := func(columnName string, name string, filters ...ColumnFilter) {
 		t.Run(name, func(t *testing.T) {
 			colMap := cols.GetColumnMap(filters...)
-			if _, ok := colMap.GetColumn(columnName); !ok {
-				t.Errorf("Expected column %q to exist after applying filters", columnName)
-			}
+			_, ok := colMap.GetColumn(columnName)
+			require.True(t, ok, "Expected column %q to exist after applying filters", columnName)
 		})
 	}
 
@@ -418,14 +408,12 @@ func TestColumnFilters(t *testing.T) {
 	expectColumn("mainString", "WithTags(test2) and WithoutTags(test)", And(WithTags([]string{"test2"}), WithoutTags([]string{"test"})))
 
 	orderedColumns := cols.GetOrderedColumns(WithoutTags([]string{"test"})) // missing path
-	if len(orderedColumns) != 2 || orderedColumns[0].Name != "mainString" {
-		t.Errorf("Expected a mainString column after getting ordered columns using filters")
-	}
+	require.Len(t, orderedColumns, 2)
+	require.Equal(t, "mainString", orderedColumns[0].Name)
 
 	orderedColumns = cols.GetOrderedColumns(WithNoTags())
-	if len(orderedColumns) != 1 || orderedColumns[0].Name != "noTags" {
-		t.Errorf("Expected a noTags column after getting ordered columns using filters")
-	}
+	require.Len(t, orderedColumns, 1)
+	require.Equal(t, "noTags", orderedColumns[0].Name)
 }
 
 func TestColumnMatcher(t *testing.T) {
@@ -440,39 +428,25 @@ func TestColumnMatcher(t *testing.T) {
 	cols := expectColumnsSuccess[Main](t)
 
 	c := expectColumn(t, cols, "embeddedString")
-	if !c.IsEmbedded() {
-		t.Errorf("Expected the embedded field to be identified as embedded")
-	}
-	if !c.HasTag("test") {
-		t.Errorf("Expected the embedded field to have tag 'test'")
-	}
-	if c.HasTag("test2") {
-		t.Errorf("Didn't expect the embedded field to have tag 'test2'")
-	}
+	require.True(t, c.IsEmbedded(), "Expected the embedded field to be identified as embedded")
+	require.True(t, c.HasTag("test"), "Expected the embedded field to have tag 'test'")
+	require.False(t, c.HasTag("test2"), "Didn't expect the embedded field to have tag 'test2'")
 
 	c = expectColumn(t, cols, "mainString")
-	if c.IsEmbedded() {
-		t.Errorf("Expected mainString to not be identified as embedded")
-	}
-	if !c.HasTag("test2") {
-		t.Errorf("Expected mainString to have tag 'test2'")
-	}
-	if c.HasTag("test") {
-		t.Errorf("Didn't expect mainString to have tag 'test'")
-	}
+	require.False(t, c.IsEmbedded(), "Expected mainString to not be identified as embedded")
+	require.True(t, c.HasTag("test2"), "Expected mainString to have tag 'test2'")
+	require.False(t, c.HasTag("test"), "Didn't expect mainString to have tag 'test'")
 }
 
 func TestColumnTemplates(t *testing.T) {
-	if RegisterTemplate("", "width:789") == nil {
-		t.Errorf("Expected error because of empty name")
-	}
-	if RegisterTemplate("demo", "") == nil {
-		t.Errorf("Expected error because of empty value")
-	}
+	err := RegisterTemplate("", "width:789")
+	require.Error(t, err, "Expected error because of empty name")
 
-	if err := RegisterTemplate("numbers", "width:123"); err != nil {
-		t.Errorf("Expected success, got %v", err)
-	}
+	err = RegisterTemplate("demo", "")
+	require.Error(t, err, "Expected error because of empty value")
+
+	err = RegisterTemplate("numbers", "width:123")
+	require.NoError(t, err, "Expected success")
 
 	type testSuccess1 struct {
 		Int16 int16 `column:",template:numbers"`
@@ -498,12 +472,9 @@ func TestColumnTemplates(t *testing.T) {
 
 func TestColumnTemplatesRegisterExisting(t *testing.T) {
 	t.Run("untyped", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("expected panic")
-			}
-		}()
 		MustRegisterTemplate("abc", "width:123")
-		MustRegisterTemplate("abc", "width:123")
+		require.Panics(t, func() {
+			MustRegisterTemplate("abc", "width:123")
+		}, "expected panic")
 	})
 }

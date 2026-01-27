@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,6 +82,7 @@ func (i *ebpfInstance) mapParams() api.Params {
 			DefaultValue: mapIterIntervalDefault,
 			TypeHint:     api.TypeString,
 			Title:        "Map fetch interval",
+			Tags:         []string{api.TagGroupDataCollection},
 		},
 		{
 			Key:          ParamMapIterCount,
@@ -89,6 +90,7 @@ func (i *ebpfInstance) mapParams() api.Params {
 			DefaultValue: "0",
 			TypeHint:     api.TypeInt,
 			Title:        "Map fetch count",
+			Tags:         []string{api.TagGroupDataCollection},
 		},
 	}
 }

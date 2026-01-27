@@ -222,10 +222,8 @@ func TestSocketEnricherOptionalFields(t *testing.T) {
 						return
 					}
 				}
-				t.Fatal("entry not found")
-			}
-
-			// Start the late tracer after the event has been generated
+				require.Fail(t, "entry not found")
+			} // Start the late tracer after the event has been generated
 			lateTracer, err := NewSocketEnricher(tc.seConfig)
 			require.NoError(t, err)
 			t.Cleanup(lateTracer.Close)

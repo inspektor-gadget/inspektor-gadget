@@ -12,6 +12,9 @@ IG_RUNTIME ?= docker
 IG_FLAGS ?=
 IG_DEBUG_LOGS ?= true
 COSIGN ?= cosign
+# Force using legacy .sig format.
+# TODO Switch to bundle format.
+COSIGN_FLAGS ?= --new-bundle-format=false --use-signing-config=false
 CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
@@ -19,6 +22,8 @@ DOCKER ?= docker
 
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
+
+include minikube.mk
 
 GADGETS ?= \
 	advise_networkpolicy \
@@ -62,6 +67,7 @@ GADGETS ?= \
 	ci/sched_cls_drop \
 	ci/image_inspect \
 	ci/container_filtering \
+	snapshot_file \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -137,7 +143,7 @@ push: $(addsuffix -push,$(GADGETS))
 
 %-push-existing: %
 	@echo "Pushing existing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS)
 
 .PHONY:
 push-existing: $(addsuffix -push-existing,$(GADGETS))
@@ -145,14 +151,14 @@ push-existing: $(addsuffix -push-existing,$(GADGETS))
 %-sign: %-push
 	@echo "Signing $*"
 	digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing:
 	@echo "Signing existing $*"
 	digest=$$(sudo -E $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
-	cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
@@ -185,7 +191,8 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		sudo -E $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		# use PATH preservation to find **right** go binary inside vimto as it's run as sudo \
+		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
 		go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...)
 
@@ -198,7 +205,8 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		sudo -E $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		# use PATH preservation to find **right** go binary inside vimto as it's run as sudo \
+		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
 		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
 
