@@ -161,10 +161,10 @@ func TestOtelProfilesOperator(t *testing.T) {
 	require.Equal(t, 1, sp.Profiles().Len(), "Expected one Profile")
 
 	prof := sp.Profiles().At(0)
-	require.Equal(t, 3, prof.Sample().Len(), "Expected three samples")
+	require.Equal(t, 3, prof.Samples().Len(), "Expected three samples")
 
 	// Check the sample
-	sample := prof.Sample().At(0)
+	sample := prof.Samples().At(0)
 	require.Equal(t, 1, sample.Values().Len(), "Expected one value in sample")
 	require.Equal(t, int64(42), sample.Values().At(0), "Bad sample value")
 
@@ -188,9 +188,9 @@ func TestOtelProfilesOperator(t *testing.T) {
 		for i, expectedFunc := range expectedFunctions {
 			locationIdx := stack.LocationIndices().At(i)
 			location := dic.LocationTable().At(int(locationIdx))
-			require.Equal(t, 1, location.Line().Len(), "Expected one line per location")
+			require.Equal(t, 1, location.Lines().Len(), "Expected one line per location")
 
-			functionIdx := location.Line().At(0).FunctionIndex()
+			functionIdx := location.Lines().At(0).FunctionIndex()
 			function := dic.FunctionTable().At(int(functionIdx))
 
 			nameStrIndex := function.NameStrindex()
