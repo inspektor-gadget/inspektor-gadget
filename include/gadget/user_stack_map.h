@@ -28,6 +28,9 @@ struct {
 const volatile bool collect_build_id = false;
 GADGET_PARAM(collect_build_id);
 
+const volatile bool collect_otel_stack = false;
+GADGET_PARAM(collect_otel_stack);
+
 const volatile int ig_build_id_max_entries = 1024;
 GADGET_PARAM(ig_build_id_max_entries);
 
@@ -41,6 +44,25 @@ struct {
 
 static const struct bpf_stack_build_id
 	ig_empty_build_id[GADGET_USER_MAX_STACK_DEPTH] = {};
+
+struct generic_param {
+	u64 correlation_id;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct generic_param);
+} otel_generic_params SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, u32);
+	__array(values, int());
+} otel_tc_kprobe SEC(".maps");
 
 // Linux v4.0 - v4.17
 struct timespec___obsolete {
@@ -148,6 +170,14 @@ static __always_inline u32 gadget_get_base_addr_hash(struct task_struct *task)
 	return hash;
 }
 
+static __attribute__((noinline)) int
+gadget_fetch_otel_stack_from_kprobe(void *ctx)
+{
+	u32 key = 0;
+	bpf_tail_call(ctx, &otel_tc_kprobe, key);
+	return 0;
+}
+
 /* gadget_get_user_stack gets the user stack into ustack if collect_ustack is
  * true, or initialize ustack to 0 otherwise.
  */
@@ -167,8 +197,10 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 		ustack->pidns_level0 = 0;
 		ustack->pid_level1 = 0;
 		ustack->pidns_level1 = 0;
+		ustack->otel_correlation_id = 0;
 		return;
 	}
+
 	ustack->stack_id = bpf_get_stackid(
 		ctx, &ig_ustack, BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK);
 
@@ -225,6 +257,20 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 				      BPF_F_USER_STACK | BPF_F_USER_BUILD_ID);
 		if (ret < 0)
 			return;
+	}
+
+	if (collect_otel_stack) {
+		u64 ts = bpf_ktime_get_boot_ns();
+		ustack->otel_correlation_id = ts;
+		struct generic_param param = {
+			.correlation_id = ts,
+		};
+		u32 zero = 0;
+		if (bpf_map_update_elem(&otel_generic_params, &zero, &param,
+					BPF_ANY) < 0) {
+			return;
+		}
+		gadget_fetch_otel_stack_from_kprobe(ctx);
 	}
 }
 

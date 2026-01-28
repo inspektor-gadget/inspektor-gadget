@@ -24,6 +24,7 @@ type Resolver interface {
 }
 
 type ResolverInstance interface {
+	GetEbpfReplacements() map[string]interface{}
 	Resolve(task Task, stackQueries []StackItemQuery, stackResponses []StackItemResponse) error
 	IsPruningNeeded() bool
 	PruneOldObjects(now time.Time, ttl time.Duration)

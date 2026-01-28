@@ -66,7 +66,7 @@ func (s *symtabResolver) NewInstance(options symbolizer.SymbolizerOptions) (symb
 }
 
 func (s *symtabResolver) Priority() int {
-	return 0
+	return 1000
 }
 
 type symtabResolverInstance struct {
@@ -105,6 +105,10 @@ func (s *symtabResolverInstance) PruneOldObjects(now time.Time, ttl time.Duratio
 			len(s.symbolTables), s.symbolCountTotal)
 	}
 	s.lockSymbolTables.Unlock()
+}
+
+func (d *symtabResolverInstance) GetEbpfReplacements() map[string]interface{} {
+	return nil
 }
 
 func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) error {

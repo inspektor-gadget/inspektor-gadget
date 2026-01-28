@@ -36,9 +36,11 @@ client-side and server-side symbolization.
   `--symbolizers=debuginfod-cache` to enable it on the client or on the
   standalone ig. Use `--symbolizers=debuginfod-cache-on-ig-server` to enable it
   on the server only.
+- **OpenTelemetry**: Uses OpenTelemetry eBPF profiler to resolve user addresses
+  (server-side only). This requires `--collect-otel-stack`. This is disabled by
+  default for performance reasons. Use `--symbolizers=otel` to enable it.
 
 ### Examples
-
 
 ```bash
 kubectl gadget run trace_capabilities:%IG_TAG% \
@@ -117,7 +119,17 @@ miss important context.
     Build ID: 54d277fac459da46ee1a054d1ef6a5d02a3d9346
   ```
 
+### Limitations specific to the OpenTelemetry eBPF Profiler
+
+The OpenTelemetry symbolization method requires hostPid=true due to limitations in
+the OpenTelemetry eBPF profiler library.
+
+It cannot resolve symbols when it does not know about the process in advance.
+Once the process is noticed, it can resolve the symbols correctly.
+
 ## Guide
+
+### C Programs
 
 Prepare a simple program:
 ```c
@@ -249,3 +261,161 @@ Here is the output:
 COMM             KSTACK
 chroot           [0]security_capable; [1]ns_capable; [2]__x64_sys_chroot; [3]do_syscall_64; [4]entry_SYSCALL_64_after_hwframe;
 ```
+
+### Using OpenTelemetry eBPF Profiler
+
+For interpreted languages like Python, Ruby, or Java, we need the OpenTelemetry
+symbolizer. It uses the OpenTelemetry eBPF profiler to collect and symbolize
+the user stack traces. It requires `--collect-otel-stack` and `--symbolizers
+=otel`. Note that it needs hostPid=true due to limitations in the OpenTelemetry
+eBPF profiler.
+
+Prepare a simple program:
+```python
+#!/usr/bin/python3
+
+import os
+import time
+import sys
+
+def level3():
+    for _ in range(2):
+        try:
+            # attempt to chroot to "/", report success or failure
+            os.chroot("/")
+            print("chroot succeeded")
+        except Exception as e:
+            print("chroot failed:", e)
+        time.sleep(2)
+    sys.exit(0)
+
+
+def level2():
+    level3()
+    level3()
+
+
+def level1():
+    level2()
+    level2()
+
+
+def main():
+    level1()
+    time.sleep(1)
+    level1()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+```bash
+sudo ig run \
+    ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% \
+    --collect-ustack --collect-otel-stack \
+    --symbolizers otel-ebpf-profiler \
+    --host --comm=pychroot.py -v
+```
+
+```
+DEBU[0069] Received OpenTelemetry trace (correlation ID 1650940607864638, pid 3716492, tid 3716492):
+  #0: security_capable +0x6e94c0
+  #1: ns_capable +0x11eeea
+  #2: __x64_sys_chroot +0x457bdf
+  #3: do_syscall_64 +0xfbe46c
+  #4: entry_SYSCALL_64_after_hwframe +0x10000e9
+  #5:  +0x107d8a
+  #6:  +0x189e87
+  #7:  +0x1c8349
+  #8:  +0x1c82b6
+  #9: level3 +0x0
+    /home/alban/test/mychroot/python/pychroot.py:11
+  #10: level2 +0x0
+    /home/alban/test/mychroot/python/pychroot.py:20
+  #11: level1 +0x0
+    /home/alban/test/mychroot/python/pychroot.py:25
+  #12: main +0x0
+    /home/alban/test/mychroot/python/pychroot.py:30
+  #13: <module> +0x0
+    /home/alban/test/mychroot/python/pychroot.py:36
+  #14:  +0x1bae8c
+  #15:  +0x1b7159
+  #16:  +0x23d27b
+  #17:  +0x25a722
+  #18:  +0x256c89
+  #19:  +0x26bfc1
+  #20:  +0x26b7a7
+  #21:  +0x26b467
+  #22:  +0x265d77
+  #23:  +0x22d43a
+  #24:  +0x27b89
+  #25:  +0x27c4a
+  #26:  +0x1094
+```
+
+Note that the stack has more entries compared to the findings from
+bpf_get_stack(). This is because:
+- It gets the kernel frames and the user frames together
+- It is able to get the frames from the Python interpreter
+
+OpenTelemetry is also able to collect stack traces from stripped GO binaries
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"syscall"
+	"time"
+)
+
+func level3() {
+	for range 2 {
+		err := syscall.Chroot("/")
+		fmt.Printf("chroot: %v\n", err)
+		time.Sleep(2 * time.Second)
+	}
+	os.Exit(0)
+}
+
+func level2() {
+	level3()
+	level3()
+}
+func level1() {
+	level2()
+	level2()
+}
+
+func main() {
+	level1()
+	time.Sleep(time.Second)
+	level1()
+}
+```
+Compile it:
+```bash
+go build -o gochroot gochroot.go
+strip gochroot
+```
+
+```bash
+sudo ig run \
+    ghcr.io/inspektor-gadget/gadget/trace_capabilities:%IG_TAG% \
+    --collect-ustack --collect-otel-stack \
+    --symbolizers otel-ebpf-profiler \
+    --host --comm=gochroot3 \
+    --fields proc.comm,ustack.symbols
+```
+
+```
+COMM             USTACK.SYMBOLS
+gochroot         [0]; [1]; [2]; [3]; [4]; [5]; [6]; [7]; [8];
+gochroot         [0]internal/runtime/syscall.Syscall6; [1]syscall.RawSyscall6; [2]syscall.Syscall; [3]syscall.Chroot; [4]main.level3; [5]main.level2; [6]main.level1; [7]main.main; [8]runtime.main;
+```
+
+The first line shows a limitation of OpenTelemetry eBPF profiler: it cannot
+resolve symbols when it does not know about the process in advance. Once the
+process is noticed, it can resolve the symbols correctly.

@@ -127,6 +127,10 @@ func (d *debuginfodResolverInstance) newSymbolTableFromPath(path string, buildID
 	return symbolizer.NewSymbolTableFromFile(file)
 }
 
+func (d *debuginfodResolverInstance) GetEbpfReplacements() map[string]interface{} {
+	return nil
+}
+
 func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) error {
 	for i, query := range stackQueries {
 		if !query.ValidBuildID {
