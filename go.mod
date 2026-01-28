@@ -30,7 +30,7 @@ require (
 	github.com/gopacket/gopacket v1.5.0
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v28.5.2+incompatible
-	github.com/notaryproject/notation-go v1.3.2
+	github.com/notaryproject/notation-go v1.2.0-beta.1.0.20250512015818-2bc67e7695ef
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.2.1
 	github.com/packetcap/go-pcap v0.0.0-20250723190045-d00b185f30b7
@@ -204,9 +204,9 @@ require (
 require github.com/in-toto/in-toto-golang v0.9.0
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.10 // indirect
+	github.com/Azure/go-ntlmssp v0.1.0 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
+	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/notaryproject/notation-core-go v1.3.0 // indirect

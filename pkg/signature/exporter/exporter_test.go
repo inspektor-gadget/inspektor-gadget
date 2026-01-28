@@ -51,9 +51,14 @@ func TestExportSigningInformation(t *testing.T) {
 			dst:       "signed_with_cosign_bundle",
 			searchFor: "application/vnd.dev.sigstore.bundle",
 		},
-		"notation_signed_image": {
-			src:       "ttl.sh/signed_with_notation:latest",
-			dst:       "signed_with_cosign_notation",
+		"first_notation_signed_image": {
+			src:       "ttl.sh/signed_with_notation_config_media_type_signature:latest",
+			dst:       "signed_with_notation_config_media_type_signature",
+			searchFor: "io.cncf.notary.signingAgent",
+		},
+		"second_notation_signed_image": {
+			src:       "ttl.sh/signed_with_notation_config_media_type_empty:latest",
+			dst:       "signed_with_notation_config_media_type_empty",
 			searchFor: "io.cncf.notary.signingAgent",
 		},
 	}
