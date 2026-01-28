@@ -99,6 +99,132 @@ func TestSelector(t *testing.T) {
 			},
 		},
 		{
+			description: "Digest matches (full)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:e3652a00a2fabd16ce889f0aa32c38eec347b997e73bd09e69c962ec7f8732ee",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:e3652a00a2fabd16ce889f0aa32c38eec347b997e73bd09e69c962ec7f8732ee",
+					},
+				},
+			},
+		},
+		{
+			description: "Digest match (short filter)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "e3652a00a2fa",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:e3652a00a2fabd16ce889f0aa32c38eec347b997e73bd09e69c962ec7f8732ee",
+					},
+				},
+			},
+		},
+		{
+			description: "Digest match (implicit sha256 removal in filter)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:e3652a00a2fa",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:e3652a00a2fabd16ce889f0aa32c38eec347b997e73bd09e69c962ec7f8732ee",
+					},
+				},
+			},
+		},
+		{
+			description: "Digest mismatch",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:ffffffffffff",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:e3652a00a2fabd16ce889f0aa32c38eec347b997e73bd09e69c962ec7f8732ee",
+					},
+				},
+			},
+		},
+		{
+			description: "Digest filter but container digest empty",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:e3652a00a2fa",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{},
+				},
+			},
+		},
+		{
+			description: "ImageID matches (full)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageID: "sha256:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageID: "sha256:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+					},
+				},
+			},
+		},
+		{
+			description: "ImageID matches (short)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageID: "abcdabcdabcd",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageID: "sha256:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+					},
+				},
+			},
+		},
+		{
+			description: "ImageID mismatch",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageID: "sha256:ffffffffffff",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageID: "sha256:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+					},
+				},
+			},
+		},
+		{
 			description: "One label doesn't match",
 			match:       false,
 			selector: &ContainerSelector{
@@ -557,6 +683,167 @@ func TestSelector(t *testing.T) {
 				Runtime: RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 						ContainerName: "rc4",
+					},
+				},
+			},
+		},
+		{
+			description: "Match by image digest",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "digest1",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "digest1",
+					},
+				},
+			},
+		},
+		{
+			description: "Image digest does not match",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "digest1",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "digest2",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by image digest shouldn't return a result with the excluded image digest",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "!digest1",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "digest1",
+					},
+				},
+			},
+		},
+		{
+			description: "Exclude container by image digest returns a result without the excluded image digest",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "!digest1",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "digest2",
+					},
+				},
+			},
+		},
+		{
+			description: "Several image digests with match",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "digest1,digest2",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "digest2",
+					},
+				},
+			},
+		},
+		{
+			description: "Match by partial image digest (12 chars)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:123456789012",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:1234567890123456",
+					},
+				},
+			},
+		},
+		{
+			description: "Match by long image digest (truncated to 12 chars)",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:1234567890123456",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:1234567890123456",
+					},
+				},
+			},
+		},
+		{
+			description: "Match by image digest without prefix",
+			match:       true,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "123456789012",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:1234567890123456",
+					},
+				},
+			},
+		},
+		{
+			description: "Digest filter does not match ContainerImageName (no fallback)",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "123456789012",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "",
+						ContainerImageName:   "sha256:1234567890123456",
+					},
+				},
+			},
+		},
+		{
+			description: "Mismatch by partial image digest",
+			match:       false,
+			selector: &ContainerSelector{
+				Runtime: RuntimeSelector{
+					ContainerImageDigest: "sha256:12345",
+				},
+			},
+			container: &Container{
+				Runtime: RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerImageDigest: "sha256:6789067890123456",
 					},
 				},
 			},

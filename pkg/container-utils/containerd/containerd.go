@@ -330,6 +330,7 @@ func (c *ContainerdClient) buildContainerData(container containerd.Container, ta
 			ContainerName:        getContainerName(container, labels),
 			RuntimeName:          types.RuntimeNameContainerd,
 			ContainerImageName:   image.Name(),
+			ContainerImageID:     image.Metadata().Target.Digest.String(),
 			ContainerImageDigest: image.Metadata().Target.Digest.String(),
 			State:                taskState,
 		},
