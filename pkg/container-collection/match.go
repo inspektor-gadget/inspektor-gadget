@@ -77,5 +77,22 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 		}
 	}
 
+	// ECS selector matching
+	if !matchFilterString(s.Ecs.ClusterName, c.Ecs.ClusterName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.ServiceName, c.Ecs.ServiceName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.ContainerName, c.Ecs.ContainerName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.TaskFamily, c.Ecs.TaskFamily) {
+		return false
+	}
+
 	return true
 }

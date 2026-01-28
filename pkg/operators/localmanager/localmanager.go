@@ -291,6 +291,8 @@ func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, 
 		ccOpts = append(ccOpts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
 
+	ccOpts = append(ccOpts, containercollection.WithECSEnrichment("", ""))
+
 	err = cc.Initialize(ccOpts...)
 	if err != nil {
 		return fmt.Errorf("initializing container collection: %w", err)

@@ -38,6 +38,11 @@ func init() {
 	columns.MustRegisterTemplate("containerImageName", "width:30")
 	columns.MustRegisterTemplate("containerImageDigest", "width:30")
 	columns.MustRegisterTemplate("containerStartedAt", "width:35,hide")
+
+	// ECS templates
+	columns.MustRegisterTemplate("ecsCluster", "width:30")
+	columns.MustRegisterTemplate("taskFamily", "width:30")
+	columns.MustRegisterTemplate("ecsService", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("uid", "minWidth:8")
@@ -107,6 +112,7 @@ func String2RuntimeName(name string) RuntimeName {
 type Container interface {
 	K8sMetadata() *BasicK8sMetadata
 	RuntimeMetadata() *BasicRuntimeMetadata
+	EcsMetadata() *EcsMetadata
 	UsesHostNetwork() bool
 	K8sOwnerReference() *K8sOwnerReference
 	ContainerPid() uint32
@@ -179,6 +185,31 @@ type K8sMetadata struct {
 	Owner K8sOwnerReference `json:"owner,omitempty" column:"owner,hide"`
 }
 
+type BasicEcsMetadata struct {
+	ClusterName   string `json:"clusterName,omitempty" column:"ecsCluster,template:ecsCluster"`
+	TaskFamily    string `json:"taskFamily,omitempty" column:"taskFamily,template:taskFamily"`
+	TaskRevision  string `json:"taskRevision,omitempty" column:"taskRevision,width:10,hide"`
+	ServiceName   string `json:"serviceName,omitempty" column:"ecsService,template:ecsService"`
+	ContainerName string `json:"containerName,omitempty" column:"ecsContainerName,width:30"`
+	LaunchType    string `json:"launchType,omitempty" column:"launchType,width:10,hide"` // EC2 or FARGATE
+}
+
+func (b *BasicEcsMetadata) IsEnriched() bool {
+	return b.ClusterName != "" && b.TaskFamily != "" && b.ContainerName != ""
+}
+
+// EcsMetadata extends BasicEcsMetadata with full ARNs and additional fields
+type EcsMetadata struct {
+	BasicEcsMetadata `json:",inline"`
+
+	ClusterARN        string `json:"clusterArn,omitempty" column:"clusterArn,hide"`
+	TaskARN           string `json:"taskArn,omitempty" column:"taskArn,hide"`
+	TaskDefinitionARN string `json:"taskDefinitionArn,omitempty" column:"taskDefinitionArn,hide"`
+	ContainerARN      string `json:"containerArn,omitempty" column:"containerArn,hide"`
+	AvailabilityZone  string `json:"availabilityZone,omitempty" column:"az,width:15,hide"`
+	ContainerInstance string `json:"containerInstance,omitempty" column:"containerInstance,hide"`
+}
+
 type CommonData struct {
 	// Runtime contains the container runtime metadata of the container
 	// that generated the event
@@ -187,6 +218,10 @@ type CommonData struct {
 	// K8s contains the Kubernetes metadata of the object that generated the
 	// event
 	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
+
+	// Ecs contains the ECS metadata of the container that generated the
+	// event
+	Ecs EcsMetadata `json:"ecs,omitempty" column:"ecs" columnTags:"ecs"`
 }
 
 func (k *K8sMetadata) UnmarshalJSON(data []byte) error {
