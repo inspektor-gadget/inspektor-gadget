@@ -76,7 +76,7 @@ const (
 	fieldStartTime        = "startTime"
 	fieldStartTimeStr     = "startTimeStr"
 	fieldMountNsID        = "mountnsid"
-	fieldCPUWait  		  = "CPUWait"
+	fieldCPUWait          = "CPUWait"
 	fieldCPUPressure      = "CPUPressure"
 )
 
@@ -341,22 +341,22 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 				return nil, fmt.Errorf("adding startTimeStr field: %w", err)
 			}
 		case fieldCPUWait:
-            instance.CPUWaitField, err = ds.AddField(fieldCPUWait, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
-                metadatav1.ColumnsAlignmentAnnotation: "right",
-                metadatav1.DescriptionAnnotation:      "Time the process spent waiting on the runqueue (schedstat field 2).",
-            }))
-            if err != nil {
-                return nil, fmt.Errorf("adding cpu_wait field: %w", err)
-            }
-		
+			instance.CPUWaitField, err = ds.AddField(fieldCPUWait, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
+				metadatav1.ColumnsAlignmentAnnotation: "right",
+				metadatav1.DescriptionAnnotation:      "Time the process spent waiting on the runqueue (schedstat field 2).",
+			}))
+			if err != nil {
+				return nil, fmt.Errorf("adding cpu_wait field: %w", err)
+			}
+
 		case fieldCPUPressure:
-            instance.CPUPressureField, err = ds.AddField(fieldCPUPressure, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
-                metadatav1.ColumnsAlignmentAnnotation: "right",
-                metadatav1.DescriptionAnnotation:      "System-wide CPU pressure (avg60 from /proc/pressure/cpu).",
-            }))
-            if err != nil {
-                return nil, fmt.Errorf("adding cpu_pressure field: %w", err)
-            }
+			instance.CPUPressureField, err = ds.AddField(fieldCPUPressure, api.Kind_Float64, datasource.WithAnnotations(map[string]string{
+				metadatav1.ColumnsAlignmentAnnotation: "right",
+				metadatav1.DescriptionAnnotation:      "System-wide CPU pressure (avg60 from /proc/pressure/cpu).",
+			}))
+			if err != nil {
+				return nil, fmt.Errorf("adding cpu_pressure field: %w", err)
+			}
 		}
 	}
 
@@ -705,7 +705,7 @@ func (p *processOperatorInstance) collectProcessInfo(gadgetCtx operators.GadgetC
 		}
 		if p.CPUPressureField != nil {
 			p.CPUPressureField.PutFloat64(packet, proc.CPUPressure)
-		}		
+		}
 
 		// Always emit mount namespace ID
 		p.mountNsIDField.PutUint64(packet, proc.MountNsID)

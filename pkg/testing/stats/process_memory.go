@@ -39,8 +39,8 @@ func (m *processMemory) WithVmRSS() bool            { return true }
 func (m *processMemory) WithMemoryRelative() bool   { return true }
 func (m *processMemory) WithThreadCount() bool      { return false }
 func (m *processMemory) WithStartTime() bool        { return false }
-func (m *processMemory) WithCPUWait() bool 			{ return false }
-func (m *processMemory) WithCPUPressure() bool 		{ return false }
+func (m *processMemory) WithCPUWait() bool          { return false }
+func (m *processMemory) WithCPUPressure() bool      { return false }
 
 func (m *processMemory) TotalMemory() uint64 {
 	return m.totalMemory
@@ -78,4 +78,3 @@ func (m *processMemory) getProcessMemory() (map[string]uint64, error) {
 
 	return ret, nil
 }
-
