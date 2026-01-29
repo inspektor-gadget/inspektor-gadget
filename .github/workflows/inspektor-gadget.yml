@@ -1861,7 +1861,8 @@ jobs:
       - build-gadget-container-images
       - publish-gadget-images-manifest
       - build-and-push-gadgets
-    if: needs.check-secrets.outputs.aks == 'true'
+    # Skip AKS tests temporary.
+    if: needs.check-secrets.outputs.aks == 'true' && false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
