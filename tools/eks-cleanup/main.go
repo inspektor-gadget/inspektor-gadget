@@ -161,37 +161,40 @@ func getTagValue(tags []ec2types.Tag, key string) string {
 }
 
 func detachAndDeleteInternetGateways(ctx context.Context, svc *ec2.Client, vpcId string) error {
-	gateways, err := svc.DescribeInternetGateways(ctx, &ec2.DescribeInternetGatewaysInput{})
+	// Use server-side filter to only fetch gateways attached to this VPC
+	gateways, err := svc.DescribeInternetGateways(ctx, &ec2.DescribeInternetGatewaysInput{
+		Filters: []ec2types.Filter{
+			{
+				Name:   aws.String("attachment.vpc-id"),
+				Values: []string{vpcId},
+			},
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("describing internet gateways: %w", err)
 	}
+
 	for _, gateway := range gateways.InternetGateways {
 		if !hasIgciTag(gateway.Tags) {
 			continue
 		}
 
-		for _, attachment := range gateway.Attachments {
-			if aws.ToString(attachment.VpcId) != vpcId {
-				// not attached to this vpc
-				return nil
-			}
-			fmt.Printf("detaching internet gateway: %s\n", aws.ToString(gateway.InternetGatewayId))
-			input := &ec2.DetachInternetGatewayInput{
-				InternetGatewayId: gateway.InternetGatewayId,
-				VpcId:             aws.String(vpcId),
-				DryRun:            dryRun,
-			}
-			if _, err := svc.DetachInternetGateway(ctx, input); err != nil {
-				return fmt.Errorf("detaching internet gateway: %w", err)
-			}
+		fmt.Printf("detaching internet gateway: %s\n", aws.ToString(gateway.InternetGatewayId))
+		detachInput := &ec2.DetachInternetGatewayInput{
+			InternetGatewayId: gateway.InternetGatewayId,
+			VpcId:             aws.String(vpcId),
+			DryRun:            dryRun,
+		}
+		if _, err := svc.DetachInternetGateway(ctx, detachInput); err != nil {
+			return fmt.Errorf("detaching internet gateway: %w", err)
 		}
 
 		fmt.Printf("deleting internet gateway: %s\n", aws.ToString(gateway.InternetGatewayId))
-		input := &ec2.DeleteInternetGatewayInput{
+		deleteInput := &ec2.DeleteInternetGatewayInput{
 			InternetGatewayId: gateway.InternetGatewayId,
 			DryRun:            dryRun,
 		}
-		if _, err := svc.DeleteInternetGateway(ctx, input); err != nil {
+		if _, err := svc.DeleteInternetGateway(ctx, deleteInput); err != nil {
 			return fmt.Errorf("deleting internet gateway: %w", err)
 		}
 	}
