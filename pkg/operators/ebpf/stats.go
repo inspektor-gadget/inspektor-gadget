@@ -37,7 +37,7 @@ import (
 const (
 	ParamGadgetStatisticsInterval = "statistics-interval"
 	EmitStatsAnn                  = "emitstats"
-	ParamAllProgramsStats         = "all"
+	ParamGadgetsOnly              = "gadgets-only"
 	StatsDSName                   = "bpfstats"
 )
 
@@ -71,10 +71,11 @@ func (o *ebpfOperator) InstantiateDataOperator(
 		return nil, fmt.Errorf("creating processMap: %w", err)
 	}
 
+	gadgetsOnly := paramValues[ParamGadgetsOnly] == "true"
 	instance := &ebpfOperatorDataInstance{
 		bpfOperator:      o,
 		done:             make(chan struct{}),
-		allProgramsStats: paramValues[ParamAllProgramsStats] == "true",
+		allProgramsStats: !gadgetsOnly,
 		processMap:       processMap,
 	}
 
@@ -253,11 +254,11 @@ func (o *ebpfOperator) InstanceParams() api.Params {
 			Title:        "Gadget statistics interval",
 		},
 		{
-			Key:          ParamAllProgramsStats,
-			Description:  "Collect statistics for all eBPF programs",
+			Key:          ParamGadgetsOnly,
+			Description:  "Show only gadget-related eBPF programs",
 			DefaultValue: "false",
 			TypeHint:     api.TypeBool,
-			Title:        "All programs statistics",
+			Title:        "Gadgets only",
 		},
 	}
 }
