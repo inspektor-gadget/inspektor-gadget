@@ -558,11 +558,17 @@ func (ds *dataSource) GetField(name string) FieldAccessor {
 	ds.lock.RLock()
 	defer ds.lock.RUnlock()
 
-	f, ok := ds.fieldMap[name]
-	if !ok {
-		return nil
+	if f, ok := ds.fieldMap[name]; ok {
+		return &fieldAccessor{ds: ds, f: f}
 	}
-	return &fieldAccessor{ds: ds, f: f}
+
+	for existingName, f := range ds.fieldMap {
+		if strings.EqualFold(existingName, name) {
+			return &fieldAccessor{ds: ds, f: f}
+		}
+	}
+
+	return nil
 }
 
 func (ds *dataSource) GetFieldsWithTag(tag ...string) []FieldAccessor {
