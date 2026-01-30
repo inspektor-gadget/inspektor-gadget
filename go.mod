@@ -11,7 +11,7 @@ require (
 	github.com/containerd/nri v0.9.0
 	github.com/containers/common v0.64.2
 	github.com/containers/image/v5 v5.36.2
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.5.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.6.0
