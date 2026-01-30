@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.48.0
+name: "profile cuda"
+category: monitoring-logging
+displayName: "profile cuda"
+createdAt: "2026-01-21T00:00:00Z"
+digest: "2026-01-21T00:00:00Z"
+description: "Profile CUDA memory allocations"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/profile_cuda/"
+containersImages:
+  - name: gadget
+    image: "ghcr.io/inspektor-gadget/gadget/profile_cuda:latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+keywords:
+  - gadget
+  - cuda
+  - gpu
+  - memory
+  - profiling
+links:
+  - name: source
+    url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cuda"
+install: |
+  # Run
+  ```bash
+  sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cuda:latest
+  ```
+provider:
+  name: Inspektor Gadget
