@@ -107,16 +107,9 @@ type K8sMetadata struct {
 	ownerReference *metav1.OwnerReference
 }
 
-type EcsMetadata struct {
-	types.BasicEcsMetadata `json:",inline"`
-
-	ClusterARN        string `json:"clusterArn,omitempty"`
-	TaskARN           string `json:"taskArn,omitempty"`
-	TaskDefinitionARN string `json:"taskDefinitionArn,omitempty"`
-	ContainerARN      string `json:"containerArn,omitempty"`
-	AvailabilityZone  string `json:"availabilityZone,omitempty"`
-	ContainerInstance string `json:"containerInstance,omitempty"`
-}
+// EcsMetadata is an alias to types.EcsMetadata to avoid duplication.
+// It contains both basic and extended ECS metadata (ARNs, availability zone, etc.)
+type EcsMetadata = types.EcsMetadata
 
 type K8sSelector struct {
 	types.BasicK8sMetadata
@@ -127,9 +120,14 @@ type RuntimeSelector struct {
 	ContainerName string
 }
 
+type EcsSelector struct {
+	types.BasicEcsMetadata
+}
+
 type ContainerSelector struct {
 	K8s     K8sSelector
 	Runtime RuntimeSelector
+	Ecs     EcsSelector
 }
 
 // GetOwnerReference returns the owner reference information of the
