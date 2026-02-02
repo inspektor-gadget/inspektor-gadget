@@ -52,13 +52,27 @@ func Read(iter *link.Iter) ([]byte, error) {
 
 // ReadOnCurrentPidNs reads the iterator in the current pid namespace.
 func ReadOnCurrentPidNs(iter *link.Iter) ([]byte, error) {
+	var b bytes.Buffer
+	err := ReadOnCurrentPidNsInto(iter, &b)
+	if err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// DiscardOnCurrentPidNs reads the iterator in the current pid namespace and discards the output.
+func DiscardOnCurrentPidNs(iter *link.Iter) error {
+	return ReadOnCurrentPidNsInto(iter, io.Discard)
+}
+
+// ReadOnCurrentPidNsInto reads the iterator in the current pid namespace and writes it to w.
+func ReadOnCurrentPidNsInto(iter *link.Iter, w io.Writer) error {
 	file, err := iter.Open()
 	if err != nil {
-		return nil, fmt.Errorf("open BPF iterator: %w", err)
+		return fmt.Errorf("open BPF iterator: %w", err)
 	}
 	defer file.Close()
 
-	var b bytes.Buffer
 	r := bufio.NewReader(file)
 	buf := make([]byte, 8192)
 	// we cannot use io.ReadAll() since reading from the BPF iterator file could return more than
@@ -68,7 +82,10 @@ func ReadOnCurrentPidNs(iter *link.Iter) ([]byte, error) {
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
-			b.Write(buf[:n])
+			_, err := w.Write(buf[:n])
+			if err != nil {
+				return fmt.Errorf("write BPF iterator output: %w", err)
+			}
 		}
 		if errors.Is(err, io.EOF) {
 			break
@@ -77,10 +94,10 @@ func ReadOnCurrentPidNs(iter *link.Iter) ([]byte, error) {
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("read BPF iterator: %w", err)
+			return fmt.Errorf("read BPF iterator: %w", err)
 		}
 	}
-	return b.Bytes(), nil
+	return nil
 }
 
 // ReadOnHostPidNs reads the iterator in the host pid namespace.

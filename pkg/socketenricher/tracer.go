@@ -387,8 +387,7 @@ func (se *SocketEnricher) cleanupDeletedSockets(cleanupIter *link.Iter) {
 func (se *SocketEnricher) cleanupDeletedSocketsNow(cleanupIter *link.Iter) error {
 	// No need to change pidns for this iterator because cleanupIter is an
 	// iterator on a map, not on tasks.
-	_, err := bpfiterns.ReadOnCurrentPidNs(cleanupIter)
-	return err
+	return bpfiterns.DiscardOnCurrentPidNs(cleanupIter)
 }
 
 func (se *SocketEnricher) Close() {
