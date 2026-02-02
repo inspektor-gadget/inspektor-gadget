@@ -63,6 +63,16 @@ type EcsManager struct {
 	tracerCollection    *tracercollection.TracerCollection
 }
 
+// GetContainerCollection returns the container collection managed by this operator
+func (e *EcsManager) GetContainerCollection() *containercollection.ContainerCollection {
+	return e.containerCollection
+}
+
+// GetTracerCollection returns the tracer collection managed by this operator
+func (e *EcsManager) GetTracerCollection() *tracercollection.TracerCollection {
+	return e.tracerCollection
+}
+
 func (e *EcsManager) Name() string {
 	return OperatorName
 }
