@@ -37,6 +37,9 @@ type Container struct {
 	// K8s contains the Kubernetes metadata of the container.
 	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
 
+	// Ecs contains the ECS metadata of the container.
+	Ecs EcsMetadata `json:"ecs,omitempty" column:"ecs" columnTags:"ecs"`
+
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
 	OciConfig string `json:"ociConfig,omitempty"`
@@ -104,6 +107,10 @@ type K8sMetadata struct {
 	ownerReference *metav1.OwnerReference
 }
 
+// EcsMetadata is an alias to types.EcsMetadata to avoid duplication.
+// It contains both basic and extended ECS metadata (ARNs, availability zone, etc.)
+type EcsMetadata = types.EcsMetadata
+
 type K8sSelector struct {
 	types.BasicK8sMetadata
 }
@@ -113,9 +120,14 @@ type RuntimeSelector struct {
 	ContainerName string
 }
 
+type EcsSelector struct {
+	types.BasicEcsMetadata
+}
+
 type ContainerSelector struct {
 	K8s     K8sSelector
 	Runtime RuntimeSelector
+	Ecs     EcsSelector
 }
 
 // GetOwnerReference returns the owner reference information of the
@@ -225,6 +237,10 @@ func (c *Container) K8sMetadata() *types.BasicK8sMetadata {
 
 func (c *Container) RuntimeMetadata() *types.BasicRuntimeMetadata {
 	return &c.Runtime.BasicRuntimeMetadata
+}
+
+func (c *Container) EcsMetadata() *types.BasicEcsMetadata {
+	return &c.Ecs.BasicEcsMetadata
 }
 
 func (c *Container) UsesHostNetwork() bool {

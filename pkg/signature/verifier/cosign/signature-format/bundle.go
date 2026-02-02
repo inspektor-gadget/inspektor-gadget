@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	spb "github.com/in-toto/attestation/go/v1"
+	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 	sigstorebundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
@@ -33,14 +33,14 @@ import (
 type BundleFormat struct{}
 
 func (*BundleFormat) CheckPayloadImage(payloadBytes []byte, imageDigest string) error {
-	var statement spb.Statement
+	var statement intoto.Statement
 	err := json.Unmarshal(payloadBytes, &statement)
 	if err != nil {
 		return fmt.Errorf("unmarshalling payload: %w", err)
 	}
 
 	if len(statement.Subject) == 0 {
-		return fmt.Errorf("payload has no subject: %v", payloadBytes)
+		return fmt.Errorf("payload has no subject: %v", statement)
 	}
 
 	for algorithm, hash := range statement.Subject[0].Digest {

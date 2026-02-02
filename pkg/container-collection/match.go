@@ -65,6 +65,27 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 		return false
 	}
 
+	// ECS selector matching
+	if !matchFilterString(s.Ecs.ClusterName, c.Ecs.ClusterName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.ServiceName, c.Ecs.ServiceName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.ContainerName, c.Ecs.ContainerName) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.TaskFamily, c.Ecs.TaskFamily) {
+		return false
+	}
+
+	if !matchFilterString(s.Ecs.LaunchType, c.Ecs.LaunchType) {
+		return false
+	}
+
 	for sk, sv := range s.K8s.PodLabels {
 		if strings.HasPrefix(sk, "!") {
 			if cv, ok := c.K8s.PodLabels[sk[1:]]; ok && matchFilterString(sv, cv) {

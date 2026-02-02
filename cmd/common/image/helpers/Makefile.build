@@ -14,19 +14,14 @@ LLVM_STRIP ?= llvm-strip
 # Since Ubuntu does not install it in a standard path, add a compiler flag for
 # it.
 BASECFLAGS = -target bpf -Wall -g -O2 -I/usr/include/$(shell uname -m)-linux-gnu
+CFLAGS ?=
 OUTPUTDIR ?= /tmp
 EBPFSOURCE ?= program.bpf.c
-CARGOFLAGS =
-INCLUDEFLAGS =
+CARGOFLAGS ?=
 FORCE_COLORS ?= false
-USE_IN_TREE_HEADERS ?= false
 
 ifeq ($(FORCE_COLORS), true)
     CARGOFLAGS += --color always
-endif
-
-ifeq ($(USE_IN_TREE_HEADERS), true)
-    INCLUDEFLAGS += -I /work/include/ -I /work/include/gadget/@ARCH@/
 endif
 
 ARCHS = amd64 arm64
@@ -36,7 +31,7 @@ TARGETS = $(foreach ARCH,$(ARCHS),$(OUTPUTDIR)/$(ARCH).bpf.o)
 ebpf: $(TARGETS)
 
 $(OUTPUTDIR)/%.bpf.o: $(EBPFSOURCE)
-	$(CLANG) $(BASECFLAGS) $(subst @ARCH@,$*,$(INCLUDEFLAGS)) -D __TARGET_ARCH_$(subst amd64,x86,$*) \
+	$(CLANG) $(BASECFLAGS) $(subst @ARCH@,$*,$(CFLAGS)) -D __TARGET_ARCH_$(subst amd64,x86,$*) \
 		-c $< -I /usr/include/gadget/$*/ -o $@
 	$(LLVM_STRIP) -g $@
 

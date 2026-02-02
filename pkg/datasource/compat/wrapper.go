@@ -54,6 +54,14 @@ type EventWrapperBase struct {
 	podLabelsAccessor            datasource.FieldAccessor
 	ownerKindAccessor            datasource.FieldAccessor
 	ownerNameAccessor            datasource.FieldAccessor
+
+	// ECS accessors
+	ecsClusterAccessor       datasource.FieldAccessor
+	ecsServiceAccessor       datasource.FieldAccessor
+	ecsTaskFamilyAccessor    datasource.FieldAccessor
+	ecsTaskRevisionAccessor  datasource.FieldAccessor
+	ecsContainerNameAccessor datasource.FieldAccessor
+	ecsLaunchTypeAccessor    datasource.FieldAccessor
 }
 
 type (
@@ -334,6 +342,85 @@ func WrapAccessors(source datasource.DataSource, mntnsidAccessor datasource.Fiel
 		runtime.SetHidden(true, true)
 	}
 
+	// ECS fields
+	ecs, err := source.AddField("ecs", api.Kind_Invalid, datasource.WithFlags(datasource.FieldFlagEmpty))
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsClusterAccessor, err = ecs.AddSubField(
+		"clusterName",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.TemplateAnnotation: "ecsCluster",
+		}),
+		datasource.WithOrder(-20),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsServiceAccessor, err = ecs.AddSubField(
+		"serviceName",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.TemplateAnnotation: "ecsService",
+		}),
+		datasource.WithOrder(-19),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsTaskFamilyAccessor, err = ecs.AddSubField(
+		"taskFamily",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.TemplateAnnotation: "taskFamily",
+		}),
+		datasource.WithOrder(-18),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsTaskRevisionAccessor, err = ecs.AddSubField(
+		"taskRevision",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-17),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsContainerNameAccessor, err = ecs.AddSubField(
+		"containerName",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsWidthAnnotation: "30",
+		}),
+		datasource.WithOrder(-16),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ev.ecsLaunchTypeAccessor, err = ecs.AddSubField(
+		"launchType",
+		api.Kind_String,
+		datasource.WithTags("ecs"),
+		datasource.WithFlags(datasource.FieldFlagHidden),
+		datasource.WithOrder(-15),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Hide ECS fields by default in Kubernetes environment
+	if environment.Environment == environment.Kubernetes {
+		ecs.SetHidden(true, true)
+	}
+
 	return ev, nil
 }
 
@@ -414,6 +501,29 @@ func (ev *EventWrapper) SetPodMetadata(container types.Container) {
 		}
 		if ev.containerStartedAtAccessor.IsRequested() {
 			ev.containerStartedAtAccessor.PutInt64(ev.Data, int64(rt.ContainerStartedAt))
+		}
+	}
+
+	// ECS metadata
+	ecs := container.EcsMetadata()
+	if ecs != nil && ecs.IsEnriched() {
+		if ev.ecsClusterAccessor.IsRequested() {
+			ev.ecsClusterAccessor.Set(ev.Data, []byte(ecs.ClusterName))
+		}
+		if ev.ecsServiceAccessor.IsRequested() {
+			ev.ecsServiceAccessor.Set(ev.Data, []byte(ecs.ServiceName))
+		}
+		if ev.ecsTaskFamilyAccessor.IsRequested() {
+			ev.ecsTaskFamilyAccessor.Set(ev.Data, []byte(ecs.TaskFamily))
+		}
+		if ev.ecsTaskRevisionAccessor.IsRequested() {
+			ev.ecsTaskRevisionAccessor.Set(ev.Data, []byte(ecs.TaskRevision))
+		}
+		if ev.ecsContainerNameAccessor.IsRequested() {
+			ev.ecsContainerNameAccessor.Set(ev.Data, []byte(ecs.ContainerName))
+		}
+		if ev.ecsLaunchTypeAccessor.IsRequested() {
+			ev.ecsLaunchTypeAccessor.Set(ev.Data, []byte(ecs.LaunchType))
 		}
 	}
 }

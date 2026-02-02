@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.48.1
+version: 0.48.0
 name: "trace mount"
 category: monitoring-logging
 displayName: "trace mount"
-createdAt: "2026-01-29T11:53:16Z"
-digest: "2026-01-29T11:53:16Z"
+createdAt: "2026-01-05T16:31:55Z"
+digest: "2026-01-05T16:31:55Z"
 description: "trace mount syscalls"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""
