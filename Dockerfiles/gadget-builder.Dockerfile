@@ -7,7 +7,7 @@ ARG RUST_VERSION=1.87.0
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM debian:bookworm-slim@sha256:56ff6d36d4eb3db13a741b342ec466f121480b5edded42e4b7ee850ce7a418ee AS builder
+FROM dhi.io/debian-base:bookworm AS builder
 ARG BPFTOOL_VERSION
 ARG LIBBPF_VERSION
 
@@ -19,6 +19,8 @@ RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/lib
 	&& cd libbpf/src && make install_headers
 
 # Install bpftool
+# /usr/local/bin does not exist by default in DHI
+RUN mkdir -p /usr/local/bin
 RUN \
 	ARCH=$(dpkg --print-architecture) && \
 	wget --quiet https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_VERSION}/bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
@@ -27,7 +29,7 @@ RUN \
 	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
 	chmod +x /usr/local/bin/bpftool
 
-FROM debian:bookworm-slim@sha256:56ff6d36d4eb3db13a741b342ec466f121480b5edded42e4b7ee850ce7a418ee
+FROM dhi.io/debian-base:bookworm
 ARG CLANG_LLVM_VERSION
 ARG GOLANG_VERSION
 ARG RUST_VERSION
@@ -45,6 +47,8 @@ RUN apt-get update \
 
 # Install clang
 # Add the keys and repository for the LLVM packages
+# /usr/local/bin does not exist by default in DHI
+RUN mkdir -p /usr/local/bin
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && codename=$(lsb_release -cs) \
 	# We need to call add-apt-repository twice in debian-bookworm because of a bug: https://github.com/llvm/llvm-project/issues/62475#issuecomment-1579252282
     && add-apt-repository -y "deb http://apt.llvm.org/${codename}/ llvm-toolchain-${codename}-${CLANG_LLVM_VERSION} main" \
