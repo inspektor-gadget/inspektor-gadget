@@ -107,8 +107,10 @@ struct remembered_args {
 #error "Traceloop is not supported on your architecture."
 #endif
 
-/* Uncomment the following line to show debug messages. */
-/* #define SHOW_DEBUG */
+/*
+ * Add the following in build.yaml to print debug messages:
+ *  cflags: '-DSHOW_DEBUG'
+ */
 #if defined(SHOW_DEBUG)
 #define bpf_debug_printk(fmt, ...) bpf_printk(fmt, ##__VA_ARGS__)
 #else /* !defined(SHOW_DEBUG) */
@@ -117,8 +119,10 @@ struct remembered_args {
 	} while (0)
 #endif /* !defined(SHOW_DEBUG) */
 
-/* Uncomment the following line to show errors. */
-/* #define SHOW_ERROR */
+/*
+ * Add the following in build.yaml to print error messages:
+ *  cflags: '-DSHOW_ERROR'
+ */
 #if defined(SHOW_ERROR)
 #define bpf_error_printk(fmt, ...) bpf_printk(fmt, ##__VA_ARGS__)
 #else /* !defined(SHOW_ERROR) */

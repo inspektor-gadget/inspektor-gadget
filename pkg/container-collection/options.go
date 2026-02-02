@@ -993,3 +993,16 @@ func WithKubeconfigPath(kubeconfigPath string) ContainerCollectionOption {
 		return nil
 	}
 }
+
+// WithEcsEnrichment enables ECS metadata enrichment for containers.
+//
+// This mirrors the Kubernetes architecture: the API client + enrichment logic
+// lives inside container-collection (similar to WithKubernetesEnrichment),
+// while the ECS operator simply enables it.
+//
+// ContainerCollection.Initialize(WithEcsEnrichment(clusterName, region))
+func WithEcsEnrichment(clusterName, region string) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		return withEcsEnrichment(cc, clusterName, region)
+	}
+}

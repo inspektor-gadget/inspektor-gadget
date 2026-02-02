@@ -46,7 +46,7 @@ type ExpectedBpfstatsEvent struct {
 
 type testDef struct {
 	runnerConfig   *utils.RunnerConfig
-	gadgetsOnly    bool
+	allPrograms    bool
 	generateEvent  func(t *testing.T)
 	expectedEvents []ExpectedBpfstatsEvent
 }
@@ -69,7 +69,6 @@ func TestBpfstatsGadget(t *testing.T) {
 		"by_gadget": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			gadgetsOnly:   true,
 			expectedEvents: []ExpectedBpfstatsEvent{
 				{
 					GadgetImage: gadgetrunner.GetGadgetImageName(testGadgetImage),
@@ -80,7 +79,7 @@ func TestBpfstatsGadget(t *testing.T) {
 		"by_programs": {
 			runnerConfig:  runnerConfig,
 			generateEvent: generateEvent,
-			gadgetsOnly:   false,
+			allPrograms:   true,
 			expectedEvents: []ExpectedBpfstatsEvent{
 				// programs from trace_open gadget. This introduces a dependency
 				// on the trace_open gadget, but it's almost guaranteed that this
@@ -130,8 +129,8 @@ func TestBpfstatsGadget(t *testing.T) {
 			}
 
 			var paramValues map[string]string
-			if testCase.gadgetsOnly {
-				paramValues = map[string]string{"operator.ebpf.gadgets-only": "true"}
+			if testCase.allPrograms {
+				paramValues = map[string]string{"operator.ebpf.all": "true"}
 			}
 
 			opts := gadgetrunner.GadgetRunnerOpts[ExpectedBpfstatsEvent]{

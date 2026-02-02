@@ -216,10 +216,7 @@ func (i *ebpfInstance) runMapIterators() error {
 					break
 				}
 			}
-			if err := iter.ds.EmitAndRelease(p); err != nil {
-				i.logger.Errorf("emitting and releasing %q data: %v", iter.name, err)
-				return
-			}
+			iter.ds.EmitAndRelease(p)
 		}
 		i.wg.Add(1)
 		go func() {

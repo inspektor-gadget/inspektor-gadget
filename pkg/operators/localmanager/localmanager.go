@@ -61,6 +61,10 @@ const (
 	RuntimeProtocol        = "runtime-protocol"
 	EnrichWithK8sApiserver = "enrich-with-k8s-apiserver"
 	KubeconfigPath         = "kubeconfig"
+
+	// ECS parameters
+	EcsClusterName = "ecs-cluster-name"
+	AwsRegion      = "aws-region"
 )
 
 type MountNsMapSetter interface {
@@ -137,6 +141,16 @@ func (l *localManager) GlobalParamDescs() params.ParamDescs {
 			Key:          KubeconfigPath,
 			DefaultValue: "", // Try in-cluster config by default
 			Description:  "Path to kubeconfig file. If not set, in-cluster config will be used.",
+		},
+		{
+			Key:          EcsClusterName,
+			DefaultValue: "",
+			Description:  "ECS cluster name for container enrichment. Can also be set via ECS_CLUSTER_NAME env var.",
+		},
+		{
+			Key:          AwsRegion,
+			DefaultValue: "",
+			Description:  "AWS region for ECS enrichment. Can also be set via AWS_REGION env var.",
 		},
 	}
 }
@@ -235,7 +249,18 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 
 	kubeconfig := operatorParams.Get(KubeconfigPath).AsString()
 	enrichWithK8s := operatorParams.Get(EnrichWithK8sApiserver).AsBool()
-	if err := l.initCollections(rc, kubeconfig, enrichWithK8s); err != nil {
+
+	// ECS enrichment params - support both flag and env var
+	ecsCluster := operatorParams.Get(EcsClusterName).AsString()
+	if ecsCluster == "" {
+		ecsCluster = os.Getenv("ECS_CLUSTER_NAME")
+	}
+	awsRegion := operatorParams.Get(AwsRegion).AsString()
+	if awsRegion == "" {
+		awsRegion = os.Getenv("AWS_REGION")
+	}
+
+	if err := l.initCollections(rc, kubeconfig, enrichWithK8s, ecsCluster, awsRegion); err != nil {
 		log.Warnf("Failed to create container-collection")
 		log.Debugf("Failed to create container-collection: %s", err)
 	}
@@ -244,7 +269,7 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 }
 
 // initCollections initializes the container collection and tracer collection.
-func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, kubeconfig string, enrichWithK8s bool) error {
+func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, kubeconfig string, enrichWithK8s bool, ecsCluster, awsRegion string) error {
 	var cc containercollection.ContainerCollection
 
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -289,6 +314,13 @@ func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, 
 		}
 		ccOpts = append(ccOpts, containercollection.WithNodeName(nodeName))
 		ccOpts = append(ccOpts, containercollection.WithKubernetesEnrichment(nodeName))
+	}
+
+	// ECS enrichment - enable when both cluster name and region are provided
+	if ecsCluster != "" && awsRegion != "" {
+		ccOpts = append(ccOpts, containercollection.WithNodeName(ecsCluster))
+		ccOpts = append(ccOpts, containercollection.WithEcsEnrichment(ecsCluster, awsRegion))
+		log.Infof("ECS enrichment enabled for cluster: %s, region: %s", ecsCluster, awsRegion)
 	}
 
 	err = cc.Initialize(ccOpts...)

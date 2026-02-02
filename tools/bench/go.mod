@@ -3,7 +3,7 @@ module github.com/inspektor-gadget/inspektor-gadget/tools/bench
 go 1.25.0
 
 require (
-	github.com/miekg/dns v1.1.72
+	github.com/miekg/dns v1.1.70
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/time v0.14.0
 )

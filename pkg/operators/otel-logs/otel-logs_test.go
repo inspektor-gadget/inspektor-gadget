@@ -22,10 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
+	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
-	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/testing/gadget-context"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type mockExporter struct {
@@ -40,6 +41,34 @@ func (m *mockExporter) Export(ctx context.Context, records []sdklog.Record) erro
 
 func (m *mockExporter) Shutdown(ctx context.Context) error   { return nil }
 func (m *mockExporter) ForceFlush(ctx context.Context) error { return nil }
+
+type mockGadgetContext struct {
+	ctx         context.Context
+	dataSources map[string]datasource.DataSource
+}
+
+func (m *mockGadgetContext) ID() string               { return "test-id" }
+func (m *mockGadgetContext) Name() string             { return "test-gadget" }
+func (m *mockGadgetContext) Context() context.Context { return m.ctx }
+func (m *mockGadgetContext) Logger() logger.Logger    { return logger.DefaultLogger() }
+func (m *mockGadgetContext) ExtraInfo() bool          { return false }
+func (m *mockGadgetContext) Cancel()                  {}
+func (m *mockGadgetContext) SerializeGadgetInfo(requestExtraInfo bool) (*api.GadgetInfo, error) {
+	return nil, nil
+}
+func (m *mockGadgetContext) ImageName() string { return "test-image" }
+func (m *mockGadgetContext) RegisterDataSource(t datasource.Type, name string) (datasource.DataSource, error) {
+	return nil, nil
+}
+func (m *mockGadgetContext) GetDataSources() map[string]datasource.DataSource { return m.dataSources }
+func (m *mockGadgetContext) SetVar(name string, value any)                    {}
+func (m *mockGadgetContext) GetVar(name string) (any, bool)                   { return nil, false }
+func (m *mockGadgetContext) Params() []*api.Param                             { return nil }
+func (m *mockGadgetContext) SetParams(params []*api.Param)                    {}
+func (m *mockGadgetContext) SetMetadata(metadata []byte) error                { return nil }
+func (m *mockGadgetContext) OrasTarget() oras.ReadOnlyTarget                  { return nil }
+func (m *mockGadgetContext) IsRemoteCall() bool                               { return false }
+func (m *mockGadgetContext) IsClient() bool                                   { return false }
 
 func TestPreStart_NoAnnotations(t *testing.T) {
 	// Create a datasource with no annotations
@@ -63,9 +92,9 @@ func TestPreStart_NoAnnotations(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-ds": ds,
 		},
 	}
@@ -133,9 +162,9 @@ func TestPreStart_WithAnnotations(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-ds": ds,
 		},
 	}
@@ -200,9 +229,9 @@ func TestPreStart_BodyAnnotation(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-ds": ds,
 		},
 	}
@@ -262,9 +291,9 @@ func TestPreStart_BytesField(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-ds-bytes": ds,
 		},
 	}
@@ -320,9 +349,9 @@ func TestPreStart_BoolField(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-ds-bool": ds,
 		},
 	}
@@ -386,9 +415,9 @@ func TestPreStart_ParentWithChildren_NotEmitted(t *testing.T) {
 		},
 	}
 
-	gadgetCtx := &gadgetcontext.MockGadgetContext{
-		Ctx: context.Background(),
-		DataSources: map[string]datasource.DataSource{
+	gadgetCtx := &mockGadgetContext{
+		ctx: context.Background(),
+		dataSources: map[string]datasource.DataSource{
 			"test-parent": ds,
 		},
 	}
