@@ -14,7 +14,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/Azure/go-ntlmssp v0.1.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -50,9 +50,9 @@ require (
 	github.com/florianl/go-tc v0.4.7 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.10 // indirect
+	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
@@ -96,7 +96,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/notaryproject/notation-core-go v1.3.0 // indirect
-	github.com/notaryproject/notation-go v1.3.2 // indirect
+	github.com/notaryproject/notation-go v1.2.0-beta.1.0.20250512015818-2bc67e7695ef // indirect
 	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -183,3 +183,5 @@ require (
 
 // use current code of inspektor-gadget
 replace github.com/inspektor-gadget/inspektor-gadget => ../
+
+replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
