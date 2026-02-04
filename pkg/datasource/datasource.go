@@ -51,13 +51,16 @@ type Data interface {
 }
 
 type DataArray interface {
-	// New returns a newly allocated data element. Use Append to add it to the array
+	// New returns a newly allocated data element from the pool. Use Append to add it to the array.
+	// The returned Data MUST be released via DataSource.Release() or DataArray.Release() when no longer needed.
 	New() Data
 
 	// Append appends Data to the array
 	Append(Data)
 
-	// Release releases the memory of Data; Data may not be used after calling this
+	// Release returns a Data item to the pool for reuse.
+	// The Data instance MUST NOT be used after calling Release.
+	// This delegates to the underlying DataSource's Release method.
 	Release(Data)
 
 	// Len returns the number of elements in the array
@@ -121,26 +124,36 @@ type DataSource interface {
 	// AddField adds a field as a new payload
 	AddField(fieldName string, kind api.Kind, options ...FieldOption) (FieldAccessor, error)
 
-	// NewPacketSingle builds a new PacketSingle that can be written to
+	// NewPacketSingle builds a new PacketSingle that can be written to.
+	// The returned packet uses pooled memory and MUST be released via Release() when done.
 	NewPacketSingle() (PacketSingle, error)
 	// NewPacketSingleFromRaw builds a new PacketSingle from a raw bytes slice coming from protobuf
 	NewPacketSingleFromRaw(b []byte) (PacketSingle, error)
 
 	// NewPacketArray and NewPacketArrayFromRaw are analogous to NewPacketSingle and NewPacketSingleFromRaw, but for
-	// PacketArray
+	// PacketArray. The returned packet uses pooled memory and MUST be released via Release() when done.
 	NewPacketArray() (PacketArray, error)
 	NewPacketArrayFromRaw(b []byte) (PacketArray, error)
 
 	GetField(fieldName string) FieldAccessor
 	GetFieldsWithTag(tag ...string) []FieldAccessor
 
+	// DeepCopy creates a deep copy of the Data using a pooled instance from this DataSource.
+	// WARNING: The returned Data MUST be released by calling DataSource.Release() when no longer needed.
+	// Failure to release will prevent the instance from being returned to the pool, leading to
+	// increased memory usage in high-throughput scenarios.
+	DeepCopy(Data) Data
+
 	// EmitAndRelease sends Packet through the operator chain and releases it afterward;
 	// Packet may not be used after calling this. This should only be used in the running phase of the gadget, not
 	// in the initialization phase.
 	EmitAndRelease(Packet) error
 
-	// Release releases the memory of Packet; Packet may not be used after calling this
-	Release(Packet)
+	// Release returns a Packet or Data to the pool for reuse, reducing allocations.
+	// The instance MUST NOT be used after calling Release.
+	// This must be called for all packets/data created via NewPacketSingle(), NewPacketArray(),
+	// NewPacketSingleFromRaw(), NewPacketArrayFromRaw(), or obtained via DeepCopy().
+	Release(interface{})
 
 	// ReportLostData reports a number of lost data cases
 	ReportLostData(lostSampleCount uint64)
