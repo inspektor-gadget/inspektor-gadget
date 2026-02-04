@@ -47,6 +47,7 @@ type RuntimeContainerData struct {
 	ContainerID          string
 	ContainerName        string
 	ContainerImageName   string
+	ContainerImageID     string
 	ContainerImageDigest string
 	ContainerStartedAt   types.Time
 

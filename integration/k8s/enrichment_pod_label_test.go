@@ -104,6 +104,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				c.Runtime.ContainerPID = 0
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerStartedAt = 0
+				c.Runtime.ContainerImageID = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
@@ -179,6 +180,7 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
+				e.Container.Runtime.ContainerImageID = ""
 
 				// CRI-O uses a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in

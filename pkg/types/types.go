@@ -37,6 +37,7 @@ func init() {
 	columns.MustRegisterTemplate("containerPid", "width:6,hide")
 	columns.MustRegisterTemplate("containerImageName", "width:30")
 	columns.MustRegisterTemplate("containerImageDigest", "width:30")
+	columns.MustRegisterTemplate("containerImageID", "width:30")
 	columns.MustRegisterTemplate("containerStartedAt", "width:35,hide")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
@@ -138,6 +139,9 @@ type BasicRuntimeMetadata struct {
 	// OR
 	// i.e. 6e38f40d628d, when truncated
 	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName,hide"`
+
+	// ContainerImageID is the runtime-provided image ID (opaque to users)
+	ContainerImageID string `json:"containerImageId,omitempty" column:"containerImageID,hide"`
 
 	// ContainerImageDigest is the (repo) digest of the container image where the event comes from
 	// containerd: events from both initial and new containers are enriched
