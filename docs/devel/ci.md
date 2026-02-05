@@ -186,6 +186,8 @@ $ app_name=<myAppName>
 $ federated_name=<myFederatedCredentialName>
 $ organization=<myGitHubOrganization>
 $ repository=<myGitHubRepository>
+# You first need to add an environment to your repository:
+# https://docs.github.com/fr/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
 $ environment=<myCIJobEnvironment>
 $ service_management_reference=<myServiceManagementReference>
 
