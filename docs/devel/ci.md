@@ -175,7 +175,28 @@ will also run on
 
 As Inspektor Gadget support both `amd64` and `arm64`, two clusters will be
 created when the CI is triggered.
-To be able to create them in the CI, you need to follow [these instructions](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux):
+There are some requirements before creating the needed components in Azure:
+1. You should have created an [environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) in GitHub for your repository.
+2. Your account should have the "[Application Developer](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference#application-developer)" as Microsoft Entra role, you can check this with the following:
+
+```bash
+# First, get your user object ID.
+$ your_oid=$(az ad signed-in-user show --query id -o tsv)
+# Then, get the "Application Developer" role ID.
+$ app_dev_role_id=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/roleManagement/directory/roleDefinitions?\$filter=displayName%20eq%20'Application%20Developer'&\$select=id,displayName" --query 'value[0].id' -o tsv)
+# If the response is different than this, you need to contact your administrator
+# to ask for this role.
+$ az rest --method GET --url "https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?\$filter=principalId%20eq%20'${your_oid}'%20and%20roleDefinitionId%20eq%20'${app_dev_role_id}'&\$select=id,principalId,roleDefinitionId" --query 'value' -o json
+[
+  {
+    "id": "...",
+    "principalId": "...", # Should contain $your_oid.
+    "roleDefinitionId": "..." # Should contain $app_dev_role_id.
+  }
+]
+```
+
+You can now follow [these instructions](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux) to enable your CI to create these clusters:
 
 ```bash
 $ subscription_id=<mySubscriptionID>
@@ -204,7 +225,7 @@ $ az ad app create --display-name $app_name --service-management-reference $serv
 }
 
 # Let's get the ID of the created application
-$ app_id=$(az ad app list --display-name $app_name --query [0].id | tr -d '"')
+$ app_id=$(az ad app list --filter "displayName eq '$app_name'" --query '[0].id' -o tsv)
 
 # Let's create a service principal for the corresponding application.
 $ az ad sp create --id $app_id
@@ -213,7 +234,7 @@ $ az ad sp create --id $app_id
 }
 
 # We now want to get the service principal ID.
-$ sp_id=$(az ad sp list --display-name $app_name --query [0].id | tr -d '"')
+$ sp_id=$(az ad sp list --filter "displayName eq '$app_name'" --query '[0].id' -o tsv)
 
 # Let's create a new role for this service principal.
 $ az role assignment create --role contributor --assignee-object-id $sp_id --assignee-principal-type ServicePrincipal --scope /subscriptions/$subscription_id/resourceGroups/$resourcegroup
