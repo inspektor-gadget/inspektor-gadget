@@ -82,10 +82,10 @@ authenticated) and that the image was pushed successfully.
 After publishing a gadget, consider:
 
 * [Signing the gadget image][signing]
-* Adding automated tests for the gadget
 * Providing usage examples for end users
 
 [artifacthub]: https://artifacthub.io/
-[building]: https://inspektor-gadget.io/docs/latest/gadget-devel/building
+[building]: ./building.md
 [signing]: ./signing.md
+
 
