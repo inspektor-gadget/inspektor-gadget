@@ -17,6 +17,7 @@ package textcolumns
 import (
 	"bytes"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -36,6 +37,9 @@ func (tf *TextColumnsFormatter[T]) buildFixedString(s string, length int, ellips
 		return ""
 	}
 
+	// Escape the string to avoid the terminal to interpret escape sequence when
+	// printing.
+	s = strconv.Quote(s)
 	if !tf.options.ShouldTruncate {
 		return s
 	}
