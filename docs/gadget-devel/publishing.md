@@ -82,10 +82,10 @@ authenticated) and that the image was pushed successfully.
 After publishing a gadget, consider:
 
 * [Signing the gadget image][signing]
-* Providing usage examples for end users
 
 [artifacthub]: https://artifacthub.io/
 [building]: ./building.md
 [signing]: ./signing.md
+
 
 
