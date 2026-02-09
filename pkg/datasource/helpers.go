@@ -16,6 +16,7 @@ package datasource
 
 import (
 	"fmt"
+	"math"
 
 	"golang.org/x/exp/constraints"
 
@@ -51,7 +52,17 @@ func AsInt64(f FieldAccessor) (func(Data) int64, error) {
 	case api.Kind_Uint32:
 		return AsInt64Func(f.Uint32), nil
 	case api.Kind_Uint64:
-		return AsInt64Func(f.Uint64), nil
+		// protect against overflow
+		return func(d Data) int64 {
+			v, err := f.Uint64(d)
+			if err != nil {
+				return 0
+			}
+			if v > math.MaxInt64 {
+				return math.MaxInt64
+			}
+			return int64(v)
+		}, nil
 	}
 }
 
