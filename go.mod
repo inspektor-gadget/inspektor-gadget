@@ -203,9 +203,9 @@ require (
 )
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.10 // indirect
+	github.com/Azure/go-ntlmssp v0.1.0 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
+	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
 	github.com/notaryproject/notation-core-go v1.3.0 // indirect
@@ -220,3 +220,5 @@ require (
 	golang.org/x/mod v0.32.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
+
+replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
