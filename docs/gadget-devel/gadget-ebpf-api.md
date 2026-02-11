@@ -530,7 +530,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 Then, you can interact with the buffer using these functions:
 
-1. `void *gadget_reserve_buf(void *map, __u64 size)`: Reserves memory in the corresponding buffer.
+1. `void *gadget_reserve_buf(void *map, __u64 size)`: Reserves memory in the corresponding buffer. This is actually a macro and you must call it by taking the address of the map, like `gadget_reserve_buf(&events, 256)`.
 1. `long gadget_submit_buf(void *ctx, void *map, void *buf, __u64 size)`: Writes the previously reserved memory in the corresponding buffer.
 1. `void gadget_discard_buf(void *buf)`: Discards the previously reserved buffer. This is needed to avoid wasting memory.
 1. `long gadget_output_buf(void *ctx, void *map, void *buf, __u64 size)`: Reserves and writes the buffer in the corresponding map. This is equivalent to calling `gadget_reserve_buf()` and `gadget_submit_buf()`.
