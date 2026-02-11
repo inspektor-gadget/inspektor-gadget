@@ -40,7 +40,6 @@ ARG RUST_VERSION
 # make and git is needed for make ebpf-objects and make clang-format
 # clang-format is needed for make clang-format
 RUN apt-get update \
-	&& apt-get upgrade -y --with-new-pkgs \
 	&& apt-get install -y --no-install-recommends libc-dev lsb-release wget xz-utils software-properties-common make git
 
 # Install clang
@@ -97,3 +96,7 @@ WORKDIR /work
 
 # Add files used to build containerized gadgets
 ADD include /usr/include
+
+ARG WITHOUT_CACHE
+RUN apt-get -y update \
+	&& apt-get upgrade -y --with-new-pkgs
