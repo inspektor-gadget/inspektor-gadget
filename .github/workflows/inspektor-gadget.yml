@@ -990,6 +990,18 @@ jobs:
               include/**
               Dockerfiles/gadget-builder.Dockerfile
               cmd/common/image/Makefile.build
+            # By default docker cache layers which are already built in order to
+            # reduce the build time. This can impedes the freshness of the
+            # packages in docker images, particularly for the gadget-builder
+            # which relies on debian as base image.
+            # So, this variables controls whether the last layer of
+            # gadget-builder, i.e. the one upgrading the packages to be run
+            # without cache.
+            # Changing this value in the repository will force this behaviorn,
+            # this is particularly useful if trivy reports a CVE in the image
+            # and fixed versions exist in debian repository.
+            build-args: |
+              WITHOUT_CACHE=${{ vars.WITHOUT_CACHE }}
           - name: "benchmark"
             context: "tools/bench"
             dockerfile: "tools/bench/Dockerfile"
@@ -1031,6 +1043,9 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.image.platform }}
+        # We define the build-args only for the gadget-builder, default to empty
+        # string for others.
+        build-args: ${{ matrix.image.build-args || '' }}
     - name: Scan ${{ matrix.image.name }} image for CVEs
       uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
       with:
