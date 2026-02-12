@@ -1,0 +1,156 @@
+name: cuda memory metrics
+description: Track CUDA memory allocations and frees per process, split by library (libcuda driver API vs libcudart runtime API) and by memory type (GPU device vs host pinned).
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/cuda_memory_metrics
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/cuda_memory_metrics
+datasources:
+  libcuda_mem_stats:
+    annotations:
+      metrics.collect: "true"
+      metrics.print: "false"
+    fields:
+      pid:
+        annotations:
+          metrics.type: "key"
+          description: Process ID
+          columns.width: 8
+      comm:
+        annotations:
+          metrics.type: "key"
+          description: Process name
+          columns.width: 16
+      gpu_alloc_bytes:
+        annotations:
+          description: GPU device memory bytes allocated (driver API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_free_bytes:
+        annotations:
+          description: GPU device memory bytes freed (driver API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_alloc_calls:
+        annotations:
+          description: GPU device memory allocation calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_free_calls:
+        annotations:
+          description: GPU device memory free calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_implicit_free_bytes:
+        annotations:
+          description: GPU device bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      gpu_implicit_free_calls:
+        annotations:
+          description: GPU device implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      host_alloc_bytes:
+        annotations:
+          description: Host pinned memory bytes allocated (driver API)
+          columns.width: 16
+          columns.alignment: right
+      host_free_bytes:
+        annotations:
+          description: Host pinned memory bytes freed (driver API)
+          columns.width: 16
+          columns.alignment: right
+      host_alloc_calls:
+        annotations:
+          description: Host pinned memory allocation calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      host_free_calls:
+        annotations:
+          description: Host pinned memory free calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      host_implicit_free_bytes:
+        annotations:
+          description: Host pinned bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      host_implicit_free_calls:
+        annotations:
+          description: Host pinned implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+  libcudart_mem_stats:
+    annotations:
+      metrics.collect: "true"
+      metrics.print: "false"
+    fields:
+      pid:
+        annotations:
+          metrics.type: "key"
+          description: Process ID
+          columns.width: 8
+      comm:
+        annotations:
+          metrics.type: "key"
+          description: Process name
+          columns.width: 16
+      gpu_alloc_bytes:
+        annotations:
+          description: GPU device memory bytes allocated (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_free_bytes:
+        annotations:
+          description: GPU device memory bytes freed (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_alloc_calls:
+        annotations:
+          description: GPU device memory allocation calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_free_calls:
+        annotations:
+          description: GPU device memory free calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      gpu_implicit_free_bytes:
+        annotations:
+          description: GPU device bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      gpu_implicit_free_calls:
+        annotations:
+          description: GPU device implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      host_alloc_bytes:
+        annotations:
+          description: Host pinned memory bytes allocated (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      host_free_bytes:
+        annotations:
+          description: Host pinned memory bytes freed (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      host_alloc_calls:
+        annotations:
+          description: Host pinned memory allocation calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      host_free_calls:
+        annotations:
+          description: Host pinned memory free calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      host_implicit_free_bytes:
+        annotations:
+          description: Host pinned bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      host_implicit_free_calls:
+        annotations:
+          description: Host pinned implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
