@@ -70,6 +70,7 @@ GADGETS ?= \
 	ci/image_inspect \
 	ci/container_filtering \
 	snapshot_file \
+	cuda_memory_metrics \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
