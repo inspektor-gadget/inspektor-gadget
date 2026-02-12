@@ -87,7 +87,7 @@ func TestTraceloop(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceloopEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				MntnsID:    utils.NormalizedInt,
 				CPU:        utils.NormalizedInt,
 				PID:        utils.NormalizedInt,

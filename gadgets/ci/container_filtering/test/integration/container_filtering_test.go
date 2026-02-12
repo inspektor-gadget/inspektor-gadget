@@ -100,7 +100,7 @@ func TestContainerFiltering(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedContainer := &containerFilteringEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 			}
 
 			normalize := func(e *containerFilteringEvent) {
