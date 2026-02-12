@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -73,6 +74,28 @@ func getWidth(refType reflect.Type, value string) (int, error) {
 	}
 
 	return res, nil
+}
+
+func numArrExtract[T any](m func(d Data) ([]T, error)) func(d *DataTuple) any {
+	return func(d *DataTuple) any {
+		if d.data == nil {
+			return ""
+		}
+
+		val, _ := m(d.data)
+		return numArrToStr(val)
+	}
+}
+
+func numArrToStr[T any](arr []T) string {
+	sb := &strings.Builder{}
+	for i, v := range arr {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		fmt.Fprintf(sb, "%v", v)
+	}
+	return sb.String()
 }
 
 func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
@@ -168,23 +191,66 @@ func (ds *dataSource) Columns() (*columns.Columns[DataTuple], error) {
 			}
 		}
 
-		if f.Kind == api.Kind_CString || f.Kind == api.Kind_String {
-			acc := &fieldAccessor{
-				ds: ds,
-				f:  f,
-			}
+		acc := &fieldAccessor{
+			ds: ds,
+			f:  f,
+		}
 
-			err := cols.AddColumn(*df.Attributes, func(d *DataTuple) any {
+		var fn func(d *DataTuple) any
+
+		switch f.Kind {
+		case api.Kind_CString, api.Kind_String:
+			fn = func(d *DataTuple) any {
 				if d.data == nil {
 					return ""
 				}
 				str, _ := acc.String(d.data)
 				return str
-			})
+			}
+		case api.ArrayOf(api.Kind_Uint8):
+			fn = numArrExtract(acc.Uint8Array)
+		case api.ArrayOf(api.Kind_Uint16):
+			fn = numArrExtract(acc.Uint16Array)
+		case api.ArrayOf(api.Kind_Uint32):
+			fn = numArrExtract(acc.Uint32Array)
+		case api.ArrayOf(api.Kind_Uint64):
+			fn = numArrExtract(acc.Uint64Array)
+		case api.ArrayOf(api.Kind_Int8):
+			fn = numArrExtract(acc.Int8Array)
+		case api.ArrayOf(api.Kind_Int16):
+			fn = numArrExtract(acc.Int16Array)
+		case api.ArrayOf(api.Kind_Int32):
+			fn = numArrExtract(acc.Int32Array)
+		case api.ArrayOf(api.Kind_Int64):
+			fn = numArrExtract(acc.Int64Array)
+		case api.ArrayOf(api.Kind_Float32):
+			fn = numArrExtract(acc.Float32Array)
+		case api.ArrayOf(api.Kind_Float64):
+			fn = numArrExtract(acc.Float64Array)
+		case api.ArrayOf(api.Kind_Uint64):
+			fn = numArrExtract(acc.Uint64Array)
+		case api.ArrayOf(api.Kind_String), api.ArrayOf(api.Kind_CString):
+			fn = func(d *DataTuple) any {
+				if d.data == nil {
+					return ""
+				}
+				strs, _ := acc.StringArray(d.data)
+				return strings.Join(strs, ",")
+			}
+		case api.ArrayOf(api.Kind_Bytes):
+			fn = func(d *DataTuple) any {
+				if d.data == nil {
+					return ""
+				}
+				return "<bytes>"
+			}
+		}
+
+		if fn != nil {
+			err := cols.AddColumn(*df.Attributes, fn)
 			if err != nil {
 				return nil, fmt.Errorf("creating columns: %w", err)
 			}
-
 			continue
 		}
 
