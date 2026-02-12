@@ -365,6 +365,38 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 	// Create network tracers, one for each socket filter program
 	// The same applies to uprobe / uretprobe as well.
 	for _, p := range i.collectionSpec.Programs {
+
+		// Scan for pcap filters
+		for idx := 0; idx < len(p.Instructions); idx++ {
+			inst := p.Instructions[idx]
+			name, ok := strings.CutPrefix(inst.Symbol(), packetFilterPrefix)
+			if !ok {
+				continue
+			}
+			filter := i.paramValues[packetFilterParam+"-"+name]
+
+			// If the name is empty, we'll use `pf` as the parameter name directly
+			if name == "" {
+				filter = i.paramValues[packetFilterParam]
+			}
+			if filter == "" {
+				i.logger.Debugf("skipping pcap filter %q at %d: no filter set", filter, idx)
+				continue
+			}
+			injectIdx := idx
+			i.logger.Debugf("injecting pcap filter %q at %d", filter, idx)
+			insns := p.Instructions
+			filterInsns, err := libpcap_compiler.CompileEbpf(filter, inst.Symbol())
+			if err != nil {
+				return fmt.Errorf("adding filter: %w", err)
+			}
+			filterInsns[0] = filterInsns[0].WithMetadata(insns[injectIdx].Metadata)
+			insns[injectIdx] = insns[injectIdx].WithMetadata(asm.Metadata{})
+			p.Instructions = append(insns[:injectIdx], append(filterInsns, insns[injectIdx:]...)...)
+
+			idx = injectIdx
+		}
+
 		switch p.Type {
 		case ebpf.Kprobe:
 			if strings.HasPrefix(p.SectionName, "uprobe/") ||
@@ -388,36 +420,6 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 			parts := strings.Split(p.SectionName, "/")
 			if len(parts) != 3 {
 				return fmt.Errorf("invalid section name %q", p.SectionName)
-			}
-
-			for idx := 0; idx < len(p.Instructions); idx++ {
-				inst := p.Instructions[idx]
-				name, ok := strings.CutPrefix(inst.Symbol(), packetFilterPrefix)
-				if !ok {
-					continue
-				}
-				filter := i.paramValues[packetFilterParam+"-"+name]
-
-				// If the name is empty, we'll use `pf` as the parameter name directly
-				if name == "" {
-					filter = i.paramValues[packetFilterParam]
-				}
-				if filter == "" {
-					i.logger.Debugf("skipping pcap filter %q at %d: no filter set", filter, idx)
-					continue
-				}
-				injectIdx := idx
-				i.logger.Debugf("injecting pcap filter %q at %d", filter, idx)
-				insns := p.Instructions
-				filterInsns, err := libpcap_compiler.CompileEbpf(filter, inst.Symbol())
-				if err != nil {
-					return fmt.Errorf("adding filter: %w", err)
-				}
-				filterInsns[0] = filterInsns[0].WithMetadata(insns[injectIdx].Metadata)
-				insns[injectIdx] = insns[injectIdx].WithMetadata(asm.Metadata{})
-				p.Instructions = append(insns[:injectIdx], append(filterInsns, insns[injectIdx:]...)...)
-
-				idx = injectIdx
 			}
 
 			switch parts[0] {
