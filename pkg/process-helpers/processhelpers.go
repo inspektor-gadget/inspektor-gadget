@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,6 +59,8 @@ type ProcessInfo struct {
 	StartTime        uint64    `json:"startTime"`        // Process start time (clock ticks since system boot)
 	StartTimeStr     time.Time `json:"startTimeStr"`     // Process start time as a formatted string
 	MountNsID        uint64    `json:"mountnsid"`        // Mount namespace ID
+	CPUWait          float64   `json:"CPUWait"`          // Waiting time for the process
+	CPUPressure      float64   `json:"CPUPressure"`      // CPU pressure of the cgroup
 }
 
 type Options interface {
@@ -72,6 +75,8 @@ type Options interface {
 	WithMemoryRelative() bool
 	WithThreadCount() bool
 	WithStartTime() bool
+	WithCPUWait() bool
+	WithCPUPressure() bool
 
 	TotalMemory() uint64
 	NumCPU() int
@@ -186,6 +191,81 @@ func GetTotalMemory() (uint64, error) {
 		return b * 1024, nil
 	}
 	return 0, fmt.Errorf("getting total memory from meminfo")
+}
+
+// getCPUWait returns per-process CPU wait time (in milliseconds) using /proc/<pid>/schedstat.
+func getCPUWait(pid int) float64 {
+	path := filepath.Join("/proc", strconv.Itoa(pid), "schedstat")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+
+	fields := strings.Fields(string(data))
+	if len(fields) < 2 {
+		return 0
+	}
+
+	// Second value = time spent waiting to run (nanoseconds)
+	waitNs, err := strconv.ParseUint(fields[1], 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	// Convert nanoseconds to milliseconds for readability
+	return float64(waitNs) / 1e6
+}
+
+// getCPUPressure reads CPU pressure dynamically.
+// It checks the cgroup-specific path first, then falls back to /proc/pressure/cpu.
+func getCPUPressure() float64 {
+	// 1. Try to detect cgroup path for current process
+	cgroupPath := "/sys/fs/cgroup"
+	cgroupFile := "/proc/self/cgroup"
+
+	data, err := os.ReadFile(cgroupFile)
+	if err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(data))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "cpu") {
+				parts := strings.Split(line, ":")
+				if len(parts) == 3 {
+					relPath := parts[2]
+					// Build path like /sys/fs/cgroup/<relPath>/cpu.pressure
+					psiPath := filepath.Join(cgroupPath, relPath, "cpu.pressure")
+					val := readCPUPressureFile(psiPath)
+					return val
+				}
+			}
+		}
+	}
+	return readCPUPressureFile("/proc/pressure/cpu")
+}
+
+func readCPUPressureFile(path string) float64 {
+	psiFile, err := os.Open(path)
+	if err != nil {
+		return 0
+	}
+	defer psiFile.Close()
+
+	scanner := bufio.NewScanner(psiFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "some avg10=") {
+			parts := strings.Fields(line)
+			if len(parts) > 1 {
+				keyVal := strings.Split(parts[1], "=")
+				if len(keyVal) == 2 {
+					if val, err := strconv.ParseFloat(keyVal[1], 64); err == nil {
+						return val
+					}
+				}
+			}
+		}
+	}
+	return 0
 }
 
 // readBytes fully reads s into a byte slice provided by bufPool; in case of error, it also
@@ -366,13 +446,21 @@ func GetProcessInfo(pid int, timeDelta float64, options Options) (ProcessInfo, e
 			}
 		}
 
+		// Collect CPUWait and CPUPressure
+		if options.WithCPUWait() {
+			pi.CPUWait = getCPUWait(pid)
+		}
+
+		if options.WithCPUPressure() {
+			pi.CPUPressure = getCPUPressure()
+		}
+
 		if options.WithStartTime() {
 			pi.StartTime = ticks
 			sec := float64(ticks) / clockTicksPerSecond
 			pi.StartTimeStr = options.BootTime().Add(time.Duration(sec * float64(time.Second)))
 		}
 	}
-
 	return pi, nil
 }
 
