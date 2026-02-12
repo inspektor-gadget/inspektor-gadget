@@ -1,0 +1,118 @@
+name: profile cpupressure
+description: Profile CPU pressure via runqueue latency histograms and CFS throttling events
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_cpupressure
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cpupressure
+
+dataSources:
+  # Runqueue latency histogram (aggregated via MAPITER)
+  runqlat:
+    annotations:
+      metrics.print: "true"
+      cli.clear-screen-before: "true"
+      description: "Runqueue latency histogram - time processes wait before being scheduled"
+    fields:
+      pid:
+        annotations:
+          description: Process ID (0 when per-container mode)
+          template: pid
+          columns.width: 8
+      comm:
+        annotations:
+          description: Process name
+          template: comm
+          columns.width: 16
+      mntns_id:
+        annotations:
+          description: Mount namespace ID for container correlation
+          template: mntns_id
+      latency:
+        annotations:
+          description: Latency histogram buckets (us or ms based on --ms flag)
+          metrics.unit: us
+          metrics.type: histogram
+      total_ns:
+        annotations:
+          description: Total wait time in nanoseconds
+          columns.hidden: "true"
+      count:
+        annotations:
+          description: Number of scheduling events
+          columns.width: 10
+          columns.alignment: right
+
+  # CFS throttle events (real-time via TRACER)
+  cfs_throttle:
+    annotations:
+      description: "CFS bandwidth throttling events"
+      views.modes.flamegraph: true
+      views.defaults.mode: flamegraph
+    fields:
+      runtime.containerName:
+        annotations:
+          flamegraph.level: 0
+          flamegraph.type: single
+      timestamp_raw:
+        annotations:
+          description: Event timestamp
+          template: timestamp
+      proc.mntns_id:
+        annotations:
+          description: Mount namespace ID
+          template: mntns_id
+      proc.pid:
+        annotations:
+          description: Process ID
+          template: pid
+          columns.width: 8
+      proc.tid:
+        annotations:
+          description: Thread ID
+          template: pid
+          columns.hidden: "true"
+      proc.comm:
+        annotations:
+          description: Process name
+          template: comm
+          columns.width: 16
+          flamegraph.level: 10
+          flamegraph.type: single
+      is_throttle:
+        annotations:
+          description: "1 = throttle start, 0 = unthrottle"
+          columns.width: 10
+      throttle_duration_ns:
+        annotations:
+          description: Duration throttled in nanoseconds (only on unthrottle events)
+          columns.width: 18
+          columns.alignment: right
+      kern_stack:
+        annotations:
+          description: Kernel stack trace
+          columns.hidden: "true"
+          flamegraph.level: 30
+          flamegraph.type: stack
+      user_stack:
+        annotations:
+          description: User stack trace
+          columns.hidden: "true"
+          flamegraph.level: 20
+          flamegraph.type: stack
+params:
+  ebpf:
+    collect_kernel_stacks:
+      key: kernel-stacks
+      defaultValue: "false"
+      description: Collect kernel stack traces (adds overhead)
+    collect_ustack:
+      key: user-stacks
+      defaultValue: "false"
+      description: Collect user stack traces (adds significant overhead)
+    per_process:
+      key: per-process
+      defaultValue: "true"
+      description: "Aggregate runqueue latency per-process (true) or per-container only (false)"
+    targ_ms:
+      key: ms
+      defaultValue: "false"
+      description: "Show latency in milliseconds (default: microseconds)"

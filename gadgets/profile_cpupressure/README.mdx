@@ -1,0 +1,383 @@
+---
+title: profile_cpupressure
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# profile_cpupressure
+
+The `profile_cpupressure` gadget profiles CPU pressure by measuring two key metrics:
+
+1. **Runqueue Latency**: The time processes spend waiting in the CPU run queue before being scheduled. This indicates CPU contention - when tasks are runnable but no CPU is available.
+
+2. **CFS Throttling Events**: Real-time events when the CFS (Completely Fair Scheduler) bandwidth control throttles or unthrottles processes due to cgroup CPU quota limits.
+
+## Use Cases
+
+- **Detecting CPU contention**: High runqueue latency indicates processes are waiting for CPU time, suggesting the system or container is overcommitted.
+- **Identifying throttled containers**: CFS throttling events show when containers hit their CPU limits, helping diagnose slow application performance.
+- **Capacity planning**: Understanding CPU pressure patterns helps right-size container resource limits.
+- **Performance debugging**: Correlate application latency with CPU scheduling delays.
+
+## Requirements
+
+- Minimum Kernel Version: 5.4*
+
+*This is the minimal kernel version we have tested. The gadget uses `sched_wakeup` and `sched_switch` tracepoints which are widely available.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--per-process` | `true` | Aggregate runqueue latency per-process. Set to `false` for per-container aggregation only. |
+| `--ms` | `false` | Show latency in milliseconds instead of microseconds. |
+| `--kernel-stacks` | `false` | Collect kernel stack traces for CFS throttle events (adds overhead). |
+| `--user-stacks` | `false` | Collect user stack traces for CFS throttle events (adds significant overhead). |
+
+## Guide
+
+### Understanding Runqueue Latency
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        Run the gadget to see the runqueue latency histogram:
+
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% --timeout 10
+        ```
+
+        On an idle system, you'll see most scheduling events complete quickly (under 10 microseconds):
+
+        ```
+        latency
+              µs               : count    distribution
+               0 -> 1          : 102      |**                                      |
+               1 -> 2          : 289      |******                                  |
+               2 -> 4          : 1827     |****************************************|
+               4 -> 8          : 1101     |************************                |
+               8 -> 16         : 387      |********                                |
+              16 -> 32         : 261      |*****                                   |
+              32 -> 64         : 97       |**                                      |
+              64 -> 128        : 67       |*                                       |
+             128 -> 256        : 42       |                                        |
+             256 -> 512        : 18       |                                        |
+             512 -> 1024       : 15       |                                        |
+            1024 -> 2048       : 4        |                                        |
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Run the gadget to see the runqueue latency histogram:
+
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% --timeout 10
+        ```
+
+        On an idle system, you'll see most scheduling events complete quickly (under 10 microseconds):
+
+        ```
+        latency
+              µs               : count    distribution
+               0 -> 1          : 102      |**                                      |
+               1 -> 2          : 289      |******                                  |
+               2 -> 4          : 1827     |****************************************|
+               4 -> 8          : 1101     |************************                |
+               8 -> 16         : 387      |********                                |
+              16 -> 32         : 261      |*****                                   |
+              32 -> 64         : 97       |**                                      |
+              64 -> 128        : 67       |*                                       |
+             128 -> 256        : 42       |                                        |
+             256 -> 512        : 18       |                                        |
+             512 -> 1024       : 15       |                                        |
+            1024 -> 2048       : 4        |                                        |
+        ```
+    </TabItem>
+</Tabs>
+
+### Generating CPU Pressure
+
+To see the effect of CPU contention, create more runnable processes than available CPUs:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        # Create a namespace for testing
+        $ kubectl create ns test-cpupressure
+
+        # Run a CPU-intensive workload (adjust --cpu count as needed)
+        $ kubectl run --restart=Never --image=polinux/stress stress-cpu -n test-cpupressure -- stress --cpu 8
+
+        # Run the gadget
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% --timeout 10
+
+        # You'll see higher latency values when CPU is contended:
+        latency
+              µs               : count    distribution
+               0 -> 1          : 45       |                                        |
+               1 -> 2          : 203      |**                                      |
+               2 -> 4          : 1542     |*******************                     |
+               4 -> 8          : 3201     |****************************************|
+               8 -> 16         : 2847     |***********************************     |
+              16 -> 32         : 1523     |*******************                     |
+              32 -> 64         : 892      |***********                             |
+              64 -> 128        : 445      |*****                                   |
+             128 -> 256        : 234      |**                                      |
+             256 -> 512        : 156      |*                                       |
+             512 -> 1024       : 89       |*                                       |
+            1024 -> 2048       : 34       |                                        |
+            2048 -> 4096       : 12       |                                        |
+        ```
+
+        Clean up:
+
+        ```bash
+        $ kubectl delete ns test-cpupressure
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        # Run a CPU-intensive container (adjust --cpu count as needed)
+        $ docker run -d --rm --name stress-cpu polinux/stress stress --cpu 8
+
+        # Run the gadget
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% --timeout 10
+
+        # You'll see higher latency values when CPU is contended:
+        latency
+              µs               : count    distribution
+               0 -> 1          : 45       |                                        |
+               1 -> 2          : 203      |**                                      |
+               2 -> 4          : 1542     |*******************                     |
+               4 -> 8          : 3201     |****************************************|
+               8 -> 16         : 2847     |***********************************     |
+              16 -> 32         : 1523     |*******************                     |
+              32 -> 64         : 892      |***********                             |
+              64 -> 128        : 445      |*****                                   |
+             128 -> 256        : 234      |**                                      |
+             256 -> 512        : 156      |*                                       |
+             512 -> 1024       : 89       |*                                       |
+            1024 -> 2048       : 34       |                                        |
+            2048 -> 4096       : 12       |                                        |
+        ```
+
+        Clean up:
+
+        ```bash
+        $ docker rm -f stress-cpu
+        ```
+    </TabItem>
+</Tabs>
+
+### Observing CFS Throttling
+
+CFS throttling occurs when a container exceeds its CPU quota. To observe throttling events:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        # Create a CPU-limited pod that will be throttled
+        $ kubectl run --restart=Never --image=polinux/stress stress-throttle \
+            --limits="cpu=500m" -- stress --cpu 2
+
+        # Run the gadget - you'll see throttle events
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG%
+        K8S.NAMESPACE  K8S.PODNAME       K8S.CONTAINERNAME  COMM      PID   THROTTLE_DURATION_NS  IS_THROTTLE
+        default        stress-throttle   stress-throttle    stress    12345 0                     1
+        default        stress-throttle   stress-throttle    stress    12345 50000000              0
+        default        stress-throttle   stress-throttle    stress    12345 0                     1
+        default        stress-throttle   stress-throttle    stress    12345 48500000              0
+        ```
+
+        The `IS_THROTTLE=1` indicates throttle start, `IS_THROTTLE=0` indicates unthrottle with
+        the duration in nanoseconds.
+
+        Clean up:
+
+        ```bash
+        $ kubectl delete pod stress-throttle
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        # Create a CPU-limited container that will be throttled
+        $ docker run -d --rm --name stress-throttle --cpus="0.5" polinux/stress stress --cpu 2
+
+        # Run the gadget - you'll see throttle events
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% --runtimes docker
+        RUNTIME.CONTAINERNAME  COMM      PID   THROTTLE_DURATION_NS  IS_THROTTLE
+        stress-throttle        stress    12345 0                     1
+        stress-throttle        stress    12345 50000000              0
+        stress-throttle        stress    12345 0                     1
+        stress-throttle        stress    12345 48500000              0
+        ```
+
+        The `IS_THROTTLE=1` indicates throttle start, `IS_THROTTLE=0` indicates unthrottle with
+        the duration in nanoseconds.
+
+        Clean up:
+
+        ```bash
+        $ docker rm -f stress-throttle
+        ```
+    </TabItem>
+</Tabs>
+
+## Interpreting Results
+
+### Runqueue Latency Histogram
+
+The histogram shows the distribution of time processes spend waiting in the run queue:
+
+| Latency Range | Interpretation |
+|---------------|----------------|
+| 0-10 µs | Normal - minimal CPU contention |
+| 10-100 µs | Moderate - some CPU pressure |
+| 100-1000 µs | High - significant CPU contention |
+| > 1000 µs (1ms) | Severe - system is CPU overcommitted |
+
+**Key indicators of CPU pressure:**
+- Shift of the distribution to higher latency buckets
+- Long tail in the histogram (events > 100µs)
+- Increasing count of high-latency events over time
+
+### CFS Throttling Events
+
+| Field | Description |
+|-------|-------------|
+| `IS_THROTTLE=1` | Throttle started - cgroup hit its CPU quota |
+| `IS_THROTTLE=0` | Throttle ended - new period started, quota replenished |
+| `THROTTLE_DURATION_NS` | Time spent throttled (only on unthrottle events) |
+
+**What throttling means:**
+- **Frequent throttling**: Container CPU limits are too low for the workload
+- **Long throttle durations**: Container is significantly exceeding its allocated CPU
+- **No throttling under load**: Container limits are appropriately sized
+
+## Exporting Metrics
+
+The gadget can export metrics to Prometheus/OpenTelemetry endpoints:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        WIP: Headless mode for kubectl gadget is under development
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        Enable the metrics listener and run the gadget with metrics collection:
+
+        ```bash
+        $ gadgetctl run ghcr.io/inspektor-gadget/gadget/profile_cpupressure:%IG_TAG% \
+                    --annotate=runqlat:metrics.collect=true \
+                    --otel-metrics-name=runqlat:cpupressure-metrics \
+                    --detach
+        ```
+
+        Query the metrics:
+
+        ```bash
+        $ curl http://localhost:2224/metrics -s | grep cpupressure-metrics
+        latency_bucket{otel_scope_name="cpupressure-metrics",...,le="8"} 1523
+        latency_bucket{otel_scope_name="cpupressure-metrics",...,le="16"} 2847
+        ...
+        ```
+    </TabItem>
+</Tabs>
+
+## Caveats and Limitations
+
+### Runqueue Latency
+
+1. **Overhead**: The gadget attaches to `sched_wakeup` and `sched_switch` tracepoints which fire frequently. On very busy systems, there may be measurable overhead.
+
+2. **Per-process vs aggregate**: By default, histograms are per-process. For high-cardinality environments, use `--per-process=false` to aggregate by container only.
+
+3. **Voluntary vs involuntary waits**: The histogram includes all runqueue wait time, including both:
+   - Involuntary waits (CPU contention)
+   - Brief scheduling delays (normal scheduler behavior)
+
+### CFS Throttling
+
+1. **Process context**: The process information captured during throttle events may not be the actual throttled process, as throttling happens at the cgroup level. The captured process is the one running when the throttle/unthrottle occurs.
+
+2. **Kernel internal functions**: The kprobes attach to `throttle_cfs_rq` and `unthrottle_cfs_rq` which are internal kernel functions. These may change between kernel versions.
+
+3. **Cgroup v2**: CFS throttling works with both cgroup v1 and v2, but the behavior and configuration differ between versions.
+
+### Stack Traces
+
+1. **Overhead**: Collecting stack traces (`--kernel-stacks` or `--user-stacks`) adds significant overhead and should only be used for debugging, not continuous monitoring.
+
+2. **CFS context**: Stack traces captured during CFS throttle events show the code path that triggered the throttle, which may be the scheduler itself rather than application code.
+
+## Related Tools
+
+- **profile_cpu**: For CPU profiling with stack traces (what code is using CPU)
+- **top_process**: For per-process CPU usage statistics
+- **profile_blockio**: For I/O latency profiling (similar histogram approach)
+
+## Comparison with profile_qdisc_latency
+
+Both `profile_cpupressure` and `profile_qdisc_latency` use histogram-based latency profiling, but they measure fundamentally different things:
+
+| Aspect | profile_cpupressure | profile_qdisc_latency |
+|--------|---------------------|----------------------|
+| **What it measures** | CPU scheduler latency | Network scheduler (qdisc) latency |
+| **Resource type** | CPU time | Network bandwidth |
+| **Queue type** | CPU run queue | Network transmit queue |
+| **What waits** | Processes/threads | Network packets |
+| **Latency source** | Process waiting for CPU | Packet waiting to be sent |
+| **Throttling** | CFS bandwidth control (cgroup CPU limits) | Traffic shaping (tc/netem) |
+| **Use case** | Diagnosing slow applications due to CPU contention | Diagnosing network delays due to traffic shaping |
+| **Tracepoints** | `sched_wakeup`, `sched_switch` | `qdisc_enqueue`, `qdisc_dequeue` |
+
+### When to use which?
+
+**Use `profile_cpupressure` when:**
+- Applications are slow but not doing I/O
+- You suspect CPU overcommitment
+- Containers may be hitting CPU limits
+- You see high CPU utilization but poor application performance
+
+**Use `profile_qdisc_latency` when:**
+- Network operations are slow
+- You've configured traffic shaping (tc qdisc)
+- You suspect network queuing delays
+- Packets are being delayed before transmission
+
+### Key insight
+
+A slow application could be affected by both:
+1. **CPU pressure** - the application's threads wait to get scheduled
+2. **Network qdisc latency** - the application's network packets wait to be transmitted
+
+If you see latency but can't explain it with one gadget, try the other. They complement each other in diagnosing end-to-end application latency.
+
+## Further Reading
+
+- [Linux PSI (Pressure Stall Information)](https://docs.kernel.org/accounting/psi.html)
+- [CFS Bandwidth Control](https://docs.kernel.org/scheduler/sched-bwc.html)
+- [Kubernetes CPU Limits and Throttling](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
