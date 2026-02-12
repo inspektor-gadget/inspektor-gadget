@@ -85,6 +85,10 @@ func (i *ebpfInstance) initEnumFormatter(gadgetCtx operators.GadgetContext) erro
 
 func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf.Spec, lg logger.Logger) ([]func(ds datasource.DataSource, data datasource.Data) error, error) {
 	formatters := []func(ds datasource.DataSource, data datasource.Data) error{}
+	// Track target field names already added for this datasource so that
+	// duplicate enum entries (e.g. from two maps sharing the same key struct
+	// layout but with distinct BTF types) don't cause an "already exists" error.
+	addedTargets := make(map[string]struct{})
 	for _, en := range enums {
 		enum := en.Enum
 		name := en.memberName
@@ -107,6 +111,12 @@ func getFormattersForEnums(enums []*enum, ds datasource.DataSource, btfSpec *btf
 			lg.Warnf("getting target name for enum field %q: %v", in.Name(), err)
 			continue
 		}
+
+		if _, already := addedTargets[targetName]; already {
+			lg.Debugf("enum: skipping duplicate target field %q for datasource %q", targetName, ds.Name())
+			continue
+		}
+		addedTargets[targetName] = struct{}{}
 
 		out, err := ds.AddField(targetName, api.Kind_String, datasource.WithSameParentAs(in))
 		if err != nil {

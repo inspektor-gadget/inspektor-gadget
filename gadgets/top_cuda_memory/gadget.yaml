@@ -1,0 +1,120 @@
+name: top cuda memory
+description: Track CUDA memory allocations and frees per process, split by library (libcuda driver API vs libcudart runtime API) and by memory type (GPU device vs host pinned).
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_cuda_memory
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cuda_memory
+datasources:
+  libcuda_mem_stats:
+    annotations:
+      metrics.collect: "true"
+      metrics.print: "false"
+    fields:
+      pid:
+        annotations:
+          metrics.type: "key"
+          description: Process ID
+          columns.width: 8
+      host_raw:
+        annotations:
+          metrics.type: "key"
+          columns.hidden: true
+      host:
+        annotations:
+          metrics.type: "key"
+          description: "Memory class (DEVICE=GPU, HOST=pinned)"
+          columns.width: 8
+      pad:
+        annotations:
+          columns.hidden: true
+      comm:
+        annotations:
+          metrics.type: "key"
+          description: Process name
+          columns.width: 16
+      mem_alloc_bytes:
+        annotations:
+          description: Memory bytes allocated (driver API)
+          columns.width: 16
+          columns.alignment: right
+      mem_free_bytes:
+        annotations:
+          description: Memory bytes freed (driver API)
+          columns.width: 16
+          columns.alignment: right
+      mem_alloc_calls:
+        annotations:
+          description: Memory allocation calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      mem_free_calls:
+        annotations:
+          description: Memory free calls (driver API)
+          columns.width: 16
+          columns.alignment: right
+      mem_implicit_free_bytes:
+        annotations:
+          description: Memory bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      mem_implicit_free_calls:
+        annotations:
+          description: Implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+  libcudart_mem_stats:
+    annotations:
+      metrics.collect: "true"
+      metrics.print: "false"
+    fields:
+      pid:
+        annotations:
+          metrics.type: "key"
+          description: Process ID
+          columns.width: 8
+      host_raw:
+        annotations:
+          metrics.type: "key"
+          columns.hidden: true
+      host:
+        annotations:
+          metrics.type: "key"
+          description: "Memory class (DEVICE=GPU, HOST=pinned)"
+          columns.width: 8
+      pad:
+        annotations:
+          columns.hidden: true
+      comm:
+        annotations:
+          metrics.type: "key"
+          description: Process name
+          columns.width: 16
+      mem_alloc_bytes:
+        annotations:
+          description: Memory bytes allocated (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      mem_free_bytes:
+        annotations:
+          description: Memory bytes freed (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      mem_alloc_calls:
+        annotations:
+          description: Memory allocation calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      mem_free_calls:
+        annotations:
+          description: Memory free calls (runtime API)
+          columns.width: 16
+          columns.alignment: right
+      mem_implicit_free_bytes:
+        annotations:
+          description: Memory bytes freed implicitly (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
+      mem_implicit_free_calls:
+        annotations:
+          description: Implicit free events (ctx destroy / process exit)
+          columns.width: 24
+          columns.alignment: right
