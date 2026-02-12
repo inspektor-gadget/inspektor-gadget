@@ -108,6 +108,7 @@ message Param {
   bool isMandatory = 10;
   string prefix = 11;
   string alternativeKey = 12;
+  map<string, string> annotations = 13;
 }
 
 message GadgetInfo {
