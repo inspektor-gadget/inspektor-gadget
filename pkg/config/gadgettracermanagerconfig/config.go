@@ -30,15 +30,6 @@ const (
 	PodmanSocketPath      = "podman-socketpath"
 	GadgetNamespace       = "gadget-namespace"
 	DaemonLogLevel        = "daemon-log-level"
-
-	VerifyImage        = "verify-image"
-	PublicKeys         = "public-keys"
-	InsecureRegistries = "insecure-registries"
-	DisallowPulling    = "disallow-pulling"
-	AllowedGadgets     = "allowed-gadgets"
-
-	OtelMetricsListen        = "otel-metrics-listen"
-	OtelMetricsListenAddress = "otel-metrics-listen-address"
 )
 
 func Init() error {
@@ -52,54 +43,4 @@ func Init() error {
 		return fmt.Errorf("reading config: %w", err)
 	}
 	return nil
-}
-
-// IsValidKey checks if the given key is a valid configuration key for the GadgetTracerManager.
-// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
-func IsValidKey(key string) bool {
-	return isRootKey(key) || isOciKey(key) || isOtelKey(key)
-}
-
-// FullKeyPath returns the full key path for the given key.
-// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
-func FullKeyPath(key string) string {
-	if isRootKey(key) {
-		return key
-	} else if isOciKey(key) {
-		return "operator.oci." + key
-	} else if isOtelKey(key) {
-		return "operator.otel-metrics." + key
-	}
-	return ""
-}
-
-// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
-func isRootKey(key string) bool {
-	switch key {
-	case EventsBufferLengthKey, ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
-		PodmanSocketPath, GadgetNamespace, DaemonLogLevel:
-		return true
-	default:
-		return false
-	}
-}
-
-// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
-func isOciKey(key string) bool {
-	switch key {
-	case VerifyImage, PublicKeys, AllowedGadgets, InsecureRegistries, DisallowPulling:
-		return true
-	default:
-		return false
-	}
-}
-
-// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
-func isOtelKey(key string) bool {
-	switch key {
-	case OtelMetricsListen, OtelMetricsListenAddress:
-		return true
-	default:
-		return false
-	}
 }
