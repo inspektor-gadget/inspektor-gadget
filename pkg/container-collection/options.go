@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
+	pathrslite "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	corev1 "k8s.io/api/core/v1"
@@ -828,11 +828,7 @@ func WithOCIConfigForInitialContainer() ContainerCollectionOption {
 				bPath = filepath.Join(filepath.Dir(bPath), filepath.Base(container.Runtime.ContainerID))
 			}
 
-			cfgPath, err := securejoin.SecureJoin(host.HostRoot, filepath.Join(bPath, "config.json"))
-			if err != nil {
-				log.Errorf("OCIConfig enricher: failed to join config.json path for container %s: %s", container.Runtime.ContainerID, err)
-				continue
-			}
+			cfgPath := filepath.Join(bPath, "config.json")
 			cfg, err := readOciConfigFromPath(cfgPath)
 			if err != nil {
 				log.Errorf("OCIConfig enricher: failed to get OCI config for container %s: %s", container.Runtime.ContainerID, err)
@@ -845,15 +841,21 @@ func WithOCIConfigForInitialContainer() ContainerCollectionOption {
 }
 
 func readOciConfigFromPath(cfgPath string) (string, error) {
-	cfgData, err := os.Open(cfgPath)
+	cfgFileOPath, err := pathrslite.OpenInRoot(host.HostRoot, cfgPath)
 	if err != nil {
-		return "", fmt.Errorf("reading config.json for pid %s: %w", cfgPath, err)
+		return "", fmt.Errorf("opening %s with root %s: %w", cfgPath, host.HostRoot, err)
 	}
-	defer cfgData.Close()
+	defer cfgFileOPath.Close()
 
-	cfg, err := io.ReadAll(io.LimitReader(cfgData, configJsonMaxSize))
+	cfgFile, err := pathrslite.Reopen(cfgFileOPath, 0)
 	if err != nil {
-		return "", fmt.Errorf("reading config.json for pid %s: %w", cfgPath, err)
+		return "", fmt.Errorf("reopening %s as read-only: %w", cfgPath, err)
+	}
+	defer cfgFile.Close()
+
+	cfg, err := io.ReadAll(io.LimitReader(cfgFile, configJsonMaxSize))
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", cfgPath, err)
 	}
 	return string(cfg), nil
 }

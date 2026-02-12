@@ -45,7 +45,6 @@ var podLabelFilter = map[string]struct{}{
 // plugin interface to communicate with the different container runtimes.
 type CRIClient struct {
 	Name        types.RuntimeName
-	SocketPath  string
 	ConnTimeout time.Duration
 
 	conn   *grpc.ClientConn
@@ -68,7 +67,6 @@ func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Durati
 
 	return &CRIClient{
 		Name:        name,
-		SocketPath:  socketPath,
 		ConnTimeout: timeout,
 		conn:        conn,
 		client:      runtime.NewRuntimeServiceClient(conn),
