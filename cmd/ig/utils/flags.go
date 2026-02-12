@@ -59,8 +59,8 @@ type CommonFlags struct {
 	// with their specific socket path.
 	RuntimeConfigs []*containerutilsTypes.RuntimeConfig
 
-	// Number of seconds that the gadget will run for
-	Timeout int
+	// Time in duration that the gadget will run for
+	Timeout string
 
 	// ContainerdNamespace is the namespace used by containerd
 	ContainerdNamespace string
@@ -174,11 +174,11 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			strings.Join(containerutils.AvailableRuntimes, ", ")),
 	)
 
-	command.PersistentFlags().IntVar(
+	command.PersistentFlags().StringVar(
 		&commonFlags.Timeout,
 		"timeout",
-		0,
-		"Number of seconds that the gadget will run for",
+		"",
+		"Time in duration that the gadget will run for",
 	)
 
 	command.PersistentFlags().StringVar(
