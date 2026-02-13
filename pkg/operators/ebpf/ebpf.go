@@ -335,6 +335,12 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("initializing: %w", err)
 	}
 
+	// Verify BPF policy before proceeding
+	err = i.verifyPolicy()
+	if err != nil {
+		return fmt.Errorf("verifying BPF policy: %w", err)
+	}
+
 	// add extra info to gadgetcontext if requested
 	if gadgetCtx.ExtraInfo() {
 		err = i.addExtraInfo(gadgetCtx)
