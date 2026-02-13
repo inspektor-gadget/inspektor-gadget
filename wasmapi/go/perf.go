@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	_ "unsafe"
@@ -51,7 +50,7 @@ func NewPerfReader(m Map, size uint32, isOverwritable bool) (PerfReader, error) 
 
 	ret := newPerfReader(uint32(m), size, isOverwritableUint32)
 	if ret == 0 {
-		return 0, errors.New("creating perf reader")
+		return 0, fmt.Errorf("creating perf reader for map handle %d", m)
 	}
 
 	return PerfReader(ret), nil
@@ -60,7 +59,7 @@ func NewPerfReader(m Map, size uint32, isOverwritable bool) (PerfReader, error) 
 func (p PerfReader) Pause() error {
 	ret := perfReaderPause(uint32(p))
 	if ret != 0 {
-		return errors.New("pausing perf reader")
+		return fmt.Errorf("pausing perf reader handle %d", p)
 	}
 
 	return nil
@@ -69,7 +68,7 @@ func (p PerfReader) Pause() error {
 func (p PerfReader) Resume() error {
 	ret := perfReaderResume(uint32(p))
 	if ret != 0 {
-		return errors.New("resuming perf reader")
+		return fmt.Errorf("resuming perf reader handle %d", p)
 	}
 
 	return nil
@@ -81,18 +80,18 @@ func (p PerfReader) Read(dst []byte) error {
 	case 0:
 		return nil
 	case 1:
-		return errors.New("reading perf reader record")
+		return fmt.Printf("reading perf reader record from perf reader handle %d", p)
 	case 2:
 		return os.ErrDeadlineExceeded
 	default:
-		return fmt.Errorf("bad return value: expected 0, 1 or 2, got %d", ret)
+		return fmt.Errorf("bad return value from perfReaderRead: expected 0, 1 or 2, got %d", ret)
 	}
 }
 
 func (p PerfReader) Close() error {
 	ret := perfReaderClose(uint32(p))
 	if ret != 0 {
-		return errors.New("closing perf reader")
+		return fmt.Errorf("closing perf reader handle %d", p)
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-// Copyright 2024 The Inspektor Gadget authors
+// Copyright 2024-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 package api
 
 import (
-	"errors"
+	"fmt"
 	_ "unsafe"
 )
 
@@ -29,7 +29,7 @@ func GetParamValue(key string, maxSize uint64) (string, error) {
 	k := uint64(stringToBufPtr(key))
 	ret := getParamValue(k, uint64(bytesToBufPtr(dst)))
 	if ret == 1 {
-		return "", errors.New("error getting param value")
+		return "", fmt.Errorf("getting param value %q", key)
 	}
 
 	return fromCString(dst), nil
