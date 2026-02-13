@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
@@ -796,4 +797,235 @@ func randBytes(n int) []byte {
 	ret := make([]byte, n)
 	rand.Read(ret)
 	return ret
+}
+
+func TestNewPacketSingleFromRawValidation(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeSingle, "event")
+	require.NoError(t, err)
+
+	acc, err := ds.AddField("foo", api.Kind_Int32)
+	require.NoError(t, err)
+
+	original, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	acc.PutInt32(original, 12345)
+
+	marshaled, err := proto.Marshal(original.Raw())
+	require.NoError(t, err)
+	ds.Release(original)
+
+	t.Run("valid data", func(t *testing.T) {
+		p, err := ds.NewPacketSingleFromRaw(marshaled)
+		require.NoError(t, err)
+		defer ds.Release(p)
+
+		val, err := acc.Int32(p)
+		require.NoError(t, err)
+		require.Equal(t, int32(12345), val)
+	})
+
+	t.Run("invalid field size", func(t *testing.T) {
+		ds2, err := New(TypeSingle, "event2")
+		require.NoError(t, err)
+
+		testFields := []StaticField{
+			&dummyField{
+				name:   "f1",
+				size:   4,
+				offset: 0,
+			},
+		}
+		_, err = ds2.AddStaticFields(4, testFields)
+		require.NoError(t, err)
+
+		badData := &api.GadgetData{
+			Data: &api.DataElement{
+				Payload: [][]byte{{0x01, 0x02}},
+			},
+		}
+		badMarshaled, err := proto.Marshal(badData)
+		require.NoError(t, err)
+
+		_, err = ds2.NewPacketSingleFromRaw(badMarshaled)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "exceeds payload length")
+	})
+}
+
+func TestNewPacketArrayFromRawValidation(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeArray, "events")
+	require.NoError(t, err)
+
+	acc, err := ds.AddField("foo", api.Kind_Int32)
+	require.NoError(t, err)
+
+	original, err := ds.NewPacketArray()
+	require.NoError(t, err)
+
+	for i := 0; i < 3; i++ {
+		data := original.New()
+		acc.PutInt32(data, int32(i*100))
+		original.Append(data)
+	}
+
+	marshaled, err := proto.Marshal(original.Raw())
+	require.NoError(t, err)
+	ds.Release(original)
+
+	t.Run("valid data", func(t *testing.T) {
+		p, err := ds.NewPacketArrayFromRaw(marshaled)
+		require.NoError(t, err)
+		defer ds.Release(p)
+
+		require.Equal(t, 3, p.Len())
+		for i := 0; i < 3; i++ {
+			val, err := acc.Int32(p.Get(i))
+			require.NoError(t, err)
+			require.Equal(t, int32(i*100), val)
+		}
+	})
+
+	t.Run("invalid element in array", func(t *testing.T) {
+		ds2, err := New(TypeArray, "events2")
+		require.NoError(t, err)
+
+		staticFields := []StaticField{
+			&dummyField{
+				name:   "f1",
+				size:   4,
+				offset: 0,
+			},
+		}
+		_, err = ds2.AddStaticFields(4, staticFields)
+		require.NoError(t, err)
+
+		badData := &api.GadgetDataArray{
+			DataArray: []*api.DataElement{
+				{Payload: [][]byte{{0x01, 0x02, 0x03, 0x04}}},
+				{Payload: [][]byte{{0x01, 0x02}}},
+			},
+		}
+		badMarshaled, err := proto.Marshal(badData)
+		require.NoError(t, err)
+
+		_, err = ds2.NewPacketArrayFromRaw(badMarshaled)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "exceeds payload length")
+	})
+}
+
+func TestProtobufUnmarshalWithPooling(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeSingle, "event")
+	require.NoError(t, err)
+
+	acc, err := ds.AddField("foo", api.Kind_Int32)
+	require.NoError(t, err)
+
+	original, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	acc.PutInt32(original, 12345)
+
+	marshaled, err := proto.Marshal(original.Raw())
+	require.NoError(t, err)
+	ds.Release(original)
+
+	p, err := ds.NewPacketSingleFromRaw(marshaled)
+	require.NoError(t, err)
+	defer ds.Release(p)
+
+	val, err := acc.Int32(p)
+	require.NoError(t, err)
+	require.Equal(t, int32(12345), val)
+}
+
+func TestClientServerRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("single packet", func(t *testing.T) {
+		ds, err := New(TypeSingle, "event")
+		require.NoError(t, err)
+
+		acc, err := ds.AddField("foo", api.Kind_Int32)
+		require.NoError(t, err)
+
+		original, err := ds.NewPacketSingle()
+		require.NoError(t, err)
+		acc.PutInt32(original, 12345)
+
+		marshaled, err := proto.Marshal(original.Raw())
+		require.NoError(t, err)
+		ds.Release(original)
+
+		p, err := ds.NewPacketSingleFromRaw(marshaled)
+		require.NoError(t, err)
+		defer ds.Release(p)
+
+		val, err := acc.Int32(p)
+		require.NoError(t, err)
+		require.Equal(t, int32(12345), val)
+	})
+
+	t.Run("array packet", func(t *testing.T) {
+		ds, err := New(TypeArray, "events")
+		require.NoError(t, err)
+
+		acc, err := ds.AddField("foo", api.Kind_Int32)
+		require.NoError(t, err)
+
+		original, err := ds.NewPacketArray()
+		require.NoError(t, err)
+
+		for i := 0; i < 5; i++ {
+			data := original.New()
+			acc.PutInt32(data, int32(i*100))
+			original.Append(data)
+		}
+
+		marshaled, err := proto.Marshal(original.Raw())
+		require.NoError(t, err)
+		ds.Release(original)
+
+		p, err := ds.NewPacketArrayFromRaw(marshaled)
+		require.NoError(t, err)
+		defer ds.Release(p)
+
+		require.Equal(t, 5, p.Len())
+		for i := 0; i < 5; i++ {
+			val, err := acc.Int32(p.Get(i))
+			require.NoError(t, err)
+			require.Equal(t, int32(i*100), val)
+		}
+	})
+
+	t.Run("multiple round trips", func(t *testing.T) {
+		ds, err := New(TypeSingle, "event")
+		require.NoError(t, err)
+
+		acc, err := ds.AddField("foo", api.Kind_Int32)
+		require.NoError(t, err)
+
+		for i := 0; i < 10; i++ {
+			original, err := ds.NewPacketSingle()
+			require.NoError(t, err)
+			acc.PutInt32(original, int32(i))
+
+			marshaled, err := proto.Marshal(original.Raw())
+			require.NoError(t, err)
+			ds.Release(original)
+
+			p, err := ds.NewPacketSingleFromRaw(marshaled)
+			require.NoError(t, err)
+			defer ds.Release(p)
+
+			val, err := acc.Int32(p)
+			require.NoError(t, err)
+			require.Equal(t, int32(i), val)
+		}
+	})
 }
