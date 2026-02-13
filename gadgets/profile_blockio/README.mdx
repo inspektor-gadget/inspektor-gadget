@@ -28,6 +28,32 @@ that will generate a given number of workers to spin on the [sync()
 syscall](https://man7.org/linux/man-pages/man2/sync.2.html). In this way, we will generate disk I/O
 that we will analyse using the `profile_blockio` gadget.
 
+## Use Cases
+
+### I/O Performance Bottleneck Analysis
+
+- Identify containers or processes causing high disk I/O latency.
+- Determine if I/O wait is slowing down applications.
+
+### Container-Level I/O Profiling
+
+- Visualize block device I/O patterns per container.
+- Compare read/write IOPS and bandwidth across containers.
+
+### Resource Abuse Detection
+
+- Spot containers monopolizing disk access, which could degrade performance for others.
+- Useful in multi-tenant environments to ensure fairness.
+
+### Tuning & Optimization
+
+- Optimize storage layer configurations based on real usage.
+- Correlate slow file access with underlying block device operations.
+
+### Debugging Storage-Related Issues
+
+- Investigate issues like slow database queries or delayed file access due to backend storage delays.
+
 ##  Requirements
 
 - Minimum Kernel Version : 5.10
