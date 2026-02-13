@@ -45,3 +45,10 @@ pkg/btfgen/btfs/arm64/*
 
 !gadgets/*.o
 !testdata/*.o
+
+# Example binaries
+examples/trace_dns
+examples/container-hook/container-hook
+examples/container-hook/container-hook-static
+examples/kube-container-collection/kube-container-collection
+examples/container-collection/container-collection
