@@ -329,12 +329,17 @@ func getSizeForKind(kind api.Kind) int {
 }
 
 func (ds *dataSource) addToAllocatorFields(f *field) {
-	if FieldFlagEmpty.In(f.Flags) || FieldFlagStaticMember.In(f.Flags) ||
-		FieldFlagContainer.In(f.Flags) {
+	if FieldFlagEmpty.In(f.Flags) || FieldFlagStaticMember.In(f.Flags) {
 		return
 	}
 
-	size := getSizeForKind(f.Kind)
+	var size int
+	if FieldFlagContainer.In(f.Flags) {
+		size = int(f.Size)
+	} else {
+		size = getSizeForKind(f.Kind)
+	}
+
 	if size == 0 {
 		return
 	}
@@ -359,7 +364,13 @@ func (ds *dataSource) newDataElement() *dataElement {
 			continue
 		}
 
-		size := getSizeForKind(f.Kind)
+		var size int
+		if FieldFlagContainer.In(f.Flags) {
+			size = int(f.Size)
+		} else {
+			size = getSizeForKind(f.Kind)
+		}
+
 		if size == 0 {
 			continue
 		}
@@ -388,6 +399,32 @@ func (ds *dataSource) NewPacketSingle() (PacketSingle, error) {
 	return d, nil
 }
 
+func (ds *dataSource) validateDataElement(elem *api.DataElement) error {
+	if elem == nil {
+		return nil
+	}
+
+	for _, f := range ds.fields {
+		if FieldFlagEmpty.In(f.Flags) || FieldFlagContainer.In(f.Flags) {
+			continue
+		}
+
+		if int(f.PayloadIndex) >= len(elem.Payload) {
+			return fmt.Errorf("field %q: payload index %d out of range (max %d)", f.FullName, f.PayloadIndex, len(elem.Payload)-1)
+		}
+
+		payload := elem.Payload[f.PayloadIndex]
+
+		if FieldFlagStaticMember.In(f.Flags) {
+			if f.Offs+f.Size > uint32(len(payload)) {
+				return fmt.Errorf("field %q: offset+size %d exceeds payload length %d)", f.FullName, f.Offs+f.Size, len(payload))
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
 	if ds.dType != TypeSingle {
 		return nil, errors.New("only single data sources can create single packets")
@@ -400,8 +437,10 @@ func (ds *dataSource) NewPacketSingleFromRaw(b []byte) (PacketSingle, error) {
 		return nil, fmt.Errorf("unmarshaling payload: %w", err)
 	}
 
-	// TODO: check that size fields matches the size of the fields in the
-	// DataSource
+	if validateErr := ds.validateDataElement(d.Data); validateErr != nil {
+		ds.dataPool.Put(d)
+		return nil, fmt.Errorf("validating unmarshaled data: %w", validateErr)
+	}
 
 	return d, nil
 }
@@ -432,8 +471,11 @@ func (ds *dataSource) NewPacketArrayFromRaw(b []byte) (PacketArray, error) {
 		return nil, fmt.Errorf("unmarshaling payload: %w", err)
 	}
 
-	// TODO: check that size fields matches the size of the fields in the
-	// DataSource
+	for _, elem := range dataArray.DataArray {
+		if validateErr := ds.validateDataElement(elem); validateErr != nil {
+			return nil, fmt.Errorf("validating unmarshaled data element: %w", validateErr)
+		}
+	}
 
 	return dataArray, nil
 }
