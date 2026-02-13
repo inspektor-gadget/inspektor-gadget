@@ -1,0 +1,19 @@
+name: trace init_module
+description: trace init_module syscalls
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_init_module
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_init_module
+datasources:
+  init:
+    fields:
+      len:
+        annotations:
+          description: Module image length (bytes)
+          columns.alignment: right
+          columns.minwidth: 3
+          columns.maxwidth: 12
+      param_values:
+        annotations:
+          description: Parameter string passed to init_module (truncated)
+          columns.width: 32
+          columns.minwidth: 16
