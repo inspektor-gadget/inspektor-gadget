@@ -25,10 +25,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
 const (
@@ -41,9 +43,9 @@ const (
 
 var dryRun = flag.Bool("dryrun", false, "don't remove anything")
 
-func hasCloudFormationIgCiTag(tags []*cloudformation.Tag) bool {
+func hasCloudFormationIgCiTag(tags []cftypes.Tag) bool {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == igCiTagKey {
+		if aws.ToString(tag.Key) == igCiTagKey {
 			return true
 		}
 	}
@@ -51,10 +53,10 @@ func hasCloudFormationIgCiTag(tags []*cloudformation.Tag) bool {
 	return false
 }
 
-func getCloudFormationIgCiTimestampTag(tags []*cloudformation.Tag) string {
+func getCloudFormationIgCiTimestampTag(tags []cftypes.Tag) string {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == igCiTimestampTagKey {
-			return aws.StringValue(tag.Value)
+		if aws.ToString(tag.Key) == igCiTimestampTagKey {
+			return aws.ToString(tag.Value)
 		}
 	}
 
@@ -62,13 +64,13 @@ func getCloudFormationIgCiTimestampTag(tags []*cloudformation.Tag) string {
 }
 
 // getOldStacks returns all stacks created by the CI that are older than 3 hours
-func getOldStacks(svc *cloudformation.CloudFormation) (map[string]*cloudformation.Stack, error) {
-	result, err := svc.DescribeStacks(&cloudformation.DescribeStacksInput{})
+func getOldStacks(ctx context.Context, svc *cloudformation.Client) (map[string]cftypes.Stack, error) {
+	result, err := svc.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{})
 	if err != nil {
 		return nil, fmt.Errorf("describing stacks: %w", err)
 	}
 
-	ret := map[string]*cloudformation.Stack{}
+	ret := map[string]cftypes.Stack{}
 	for _, stack := range result.Stacks {
 		// Only include stacks with the ig-ci tag
 		if !hasCloudFormationIgCiTag(stack.Tags) {
@@ -84,22 +86,22 @@ func getOldStacks(svc *cloudformation.CloudFormation) (map[string]*cloudformatio
 		createdAt, err := time.Parse(time.RFC3339, timestamp)
 		if err != nil {
 
-			return nil, fmt.Errorf("parsing timestamp for stack %s: %v", aws.StringValue(stack.StackName), err)
+			return nil, fmt.Errorf("parsing timestamp for stack %s: %v", aws.ToString(stack.StackName), err)
 		}
 		if createdAt.After(time.Now().Add(-1 * lifetime)) {
-			fmt.Printf("skipping stack %s\n", aws.StringValue(stack.StackName))
+			fmt.Printf("skipping stack %s\n", aws.ToString(stack.StackName))
 			continue
 		}
 
-		ret[aws.StringValue(stack.StackName)] = stack
+		ret[aws.ToString(stack.StackName)] = stack
 	}
 
 	return ret, nil
 }
 
-func hasIgciTag(tags []*ec2.Tag) bool {
+func hasIgciTag(tags []ec2types.Tag) bool {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == igCiTagKey {
+		if aws.ToString(tag.Key) == igCiTagKey {
 			return true
 		}
 	}
@@ -107,11 +109,11 @@ func hasIgciTag(tags []*ec2.Tag) bool {
 	return false
 }
 
-func getOldVpcs(svc *ec2.EC2) (map[string]*ec2.Vpc, error) {
+func getOldVpcs(ctx context.Context, svc *ec2.Client) (map[string]ec2types.Vpc, error) {
 	input := &ec2.DescribeVpcsInput{}
 
-	ret := map[string]*ec2.Vpc{}
-	result, err := svc.DescribeVpcs(input)
+	ret := map[string]ec2types.Vpc{}
+	result, err := svc.DescribeVpcs(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("describing VPCs: %w", err)
 	}
@@ -138,28 +140,28 @@ func getOldVpcs(svc *ec2.EC2) (map[string]*ec2.Vpc, error) {
 			continue
 		}
 		if createdAt.After(time.Now().Add(-1 * lifetime)) {
-			fmt.Printf("skipping VPC %s\n", aws.StringValue(vpc.VpcId))
+			fmt.Printf("skipping VPC %s\n", aws.ToString(vpc.VpcId))
 			continue
 		}
 
-		ret[aws.StringValue(vpc.VpcId)] = vpc
+		ret[aws.ToString(vpc.VpcId)] = vpc
 	}
 
 	return ret, nil
 }
 
-func getTagValue(tags []*ec2.Tag, key string) string {
+func getTagValue(tags []ec2types.Tag, key string) string {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == key {
-			return aws.StringValue(tag.Value)
+		if aws.ToString(tag.Key) == key {
+			return aws.ToString(tag.Value)
 		}
 	}
 
 	return ""
 }
 
-func detachAndDeleteInternetGateways(svc *ec2.EC2, vpcId string) error {
-	gateways, err := svc.DescribeInternetGateways(&ec2.DescribeInternetGatewaysInput{})
+func detachAndDeleteInternetGateways(ctx context.Context, svc *ec2.Client, vpcId string) error {
+	gateways, err := svc.DescribeInternetGateways(ctx, &ec2.DescribeInternetGatewaysInput{})
 	if err != nil {
 		return fmt.Errorf("describing internet gateways: %w", err)
 	}
@@ -169,27 +171,27 @@ func detachAndDeleteInternetGateways(svc *ec2.EC2, vpcId string) error {
 		}
 
 		for _, attachment := range gateway.Attachments {
-			if aws.StringValue(attachment.VpcId) != vpcId {
+			if aws.ToString(attachment.VpcId) != vpcId {
 				// not attached to this vpc
 				return nil
 			}
-			fmt.Printf("detaching internet gateway: %s\n", aws.StringValue(gateway.InternetGatewayId))
+			fmt.Printf("detaching internet gateway: %s\n", aws.ToString(gateway.InternetGatewayId))
 			input := &ec2.DetachInternetGatewayInput{
 				InternetGatewayId: gateway.InternetGatewayId,
 				VpcId:             aws.String(vpcId),
 				DryRun:            dryRun,
 			}
-			if _, err := svc.DetachInternetGateway(input); err != nil {
+			if _, err := svc.DetachInternetGateway(ctx, input); err != nil {
 				return fmt.Errorf("detaching internet gateway: %w", err)
 			}
 		}
 
-		fmt.Printf("deleting internet gateway: %s\n", aws.StringValue(gateway.InternetGatewayId))
+		fmt.Printf("deleting internet gateway: %s\n", aws.ToString(gateway.InternetGatewayId))
 		input := &ec2.DeleteInternetGatewayInput{
 			InternetGatewayId: gateway.InternetGatewayId,
 			DryRun:            dryRun,
 		}
-		if _, err := svc.DeleteInternetGateway(input); err != nil {
+		if _, err := svc.DeleteInternetGateway(ctx, input); err != nil {
 			return fmt.Errorf("deleting internet gateway: %w", err)
 		}
 	}
@@ -197,12 +199,12 @@ func detachAndDeleteInternetGateways(svc *ec2.EC2, vpcId string) error {
 	return nil
 }
 
-func deleteNetworkInterfaces(svc *ec2.EC2, subnetId *string) error {
-	networkInterfaces, err := svc.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
-		Filters: []*ec2.Filter{
+func deleteNetworkInterfaces(ctx context.Context, svc *ec2.Client, subnetId *string) error {
+	networkInterfaces, err := svc.DescribeNetworkInterfaces(ctx, &ec2.DescribeNetworkInterfacesInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("subnet-id"),
-				Values: []*string{subnetId},
+				Values: []string{aws.ToString(subnetId)},
 			},
 		},
 	})
@@ -211,12 +213,12 @@ func deleteNetworkInterfaces(svc *ec2.EC2, subnetId *string) error {
 	}
 
 	for _, networkInterface := range networkInterfaces.NetworkInterfaces {
-		fmt.Printf("deleting network interface: %s\n", aws.StringValue(networkInterface.NetworkInterfaceId))
+		fmt.Printf("deleting network interface: %s\n", aws.ToString(networkInterface.NetworkInterfaceId))
 		input := &ec2.DeleteNetworkInterfaceInput{
 			NetworkInterfaceId: networkInterface.NetworkInterfaceId,
 			DryRun:             dryRun,
 		}
-		if _, err := svc.DeleteNetworkInterface(input); err != nil {
+		if _, err := svc.DeleteNetworkInterface(ctx, input); err != nil {
 			return fmt.Errorf("deleting network interface: %w", err)
 		}
 	}
@@ -224,12 +226,12 @@ func deleteNetworkInterfaces(svc *ec2.EC2, subnetId *string) error {
 	return nil
 }
 
-func deleteSubnets(svc *ec2.EC2, vpcId string) error {
-	subnets, err := svc.DescribeSubnets(&ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
+func deleteSubnets(ctx context.Context, svc *ec2.Client, vpcId string) error {
+	subnets, err := svc.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: []*string{aws.String(vpcId)},
+				Values: []string{vpcId},
 			},
 		},
 	})
@@ -242,16 +244,16 @@ func deleteSubnets(svc *ec2.EC2, vpcId string) error {
 			continue
 		}
 
-		if err := deleteNetworkInterfaces(svc, subnet.SubnetId); err != nil {
+		if err := deleteNetworkInterfaces(ctx, svc, subnet.SubnetId); err != nil {
 			return fmt.Errorf("deleting network interfaces: %w", err)
 		}
 
-		fmt.Printf("deleting subnet: %s\n", aws.StringValue(subnet.SubnetId))
+		fmt.Printf("deleting subnet: %s\n", aws.ToString(subnet.SubnetId))
 		input := &ec2.DeleteSubnetInput{
 			SubnetId: subnet.SubnetId,
 			DryRun:   dryRun,
 		}
-		if _, err = svc.DeleteSubnet(input); err != nil {
+		if _, err = svc.DeleteSubnet(ctx, input); err != nil {
 			return fmt.Errorf("deleting subnet: %w", err)
 		}
 	}
@@ -259,12 +261,12 @@ func deleteSubnets(svc *ec2.EC2, vpcId string) error {
 	return nil
 }
 
-func deleteSecurityGroups(svc *ec2.EC2, vpcId string) error {
-	securityGroups, err := svc.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		Filters: []*ec2.Filter{
+func deleteSecurityGroups(ctx context.Context, svc *ec2.Client, vpcId string) error {
+	securityGroups, err := svc.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("vpc-id"),
-				Values: []*string{aws.String(vpcId)},
+				Values: []string{vpcId},
 			},
 		},
 	})
@@ -278,16 +280,16 @@ func deleteSecurityGroups(svc *ec2.EC2, vpcId string) error {
 		//	continue
 		//}
 
-		if aws.StringValue(securityGroup.GroupName) == "default" {
+		if aws.ToString(securityGroup.GroupName) == "default" {
 			continue
 		}
 
-		fmt.Printf("deleting security group: %s\n", aws.StringValue(securityGroup.GroupId))
+		fmt.Printf("deleting security group: %s\n", aws.ToString(securityGroup.GroupId))
 		input := &ec2.DeleteSecurityGroupInput{
 			GroupId: securityGroup.GroupId,
 			DryRun:  dryRun,
 		}
-		if _, err := svc.DeleteSecurityGroup(input); err != nil {
+		if _, err := svc.DeleteSecurityGroup(ctx, input); err != nil {
 			return fmt.Errorf("deleting security group: %w", err)
 		}
 	}
@@ -295,16 +297,16 @@ func deleteSecurityGroups(svc *ec2.EC2, vpcId string) error {
 	return nil
 }
 
-func deleteVpc(svc *ec2.EC2, vpcId string) error {
-	if err := detachAndDeleteInternetGateways(svc, vpcId); err != nil {
+func deleteVpc(ctx context.Context, svc *ec2.Client, vpcId string) error {
+	if err := detachAndDeleteInternetGateways(ctx, svc, vpcId); err != nil {
 		return fmt.Errorf("deleting internet gateway: %w", err)
 	}
 
-	if err := deleteSubnets(svc, vpcId); err != nil {
+	if err := deleteSubnets(ctx, svc, vpcId); err != nil {
 		return fmt.Errorf("deleting subnets: %w", err)
 	}
 
-	if err := deleteSecurityGroups(svc, vpcId); err != nil {
+	if err := deleteSecurityGroups(ctx, svc, vpcId); err != nil {
 		return fmt.Errorf("deleting security groups: %w", err)
 	}
 
@@ -312,23 +314,23 @@ func deleteVpc(svc *ec2.EC2, vpcId string) error {
 		VpcId:  aws.String(vpcId),
 		DryRun: dryRun,
 	}
-	if _, err := svc.DeleteVpc(input); err != nil {
+	if _, err := svc.DeleteVpc(ctx, input); err != nil {
 		return fmt.Errorf("deleting VPC: %w", err)
 	}
 
 	return nil
 }
 
-func do() error {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Config:            aws.Config{Region: aws.String(region)},
-	}))
+func do(ctx context.Context) error {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return fmt.Errorf("loading AWS config: %w", err)
+	}
 
-	ec2Svc := ec2.New(sess)
-	cloudformationSvc := cloudformation.New(sess)
+	ec2Svc := ec2.NewFromConfig(cfg)
+	cloudformationSvc := cloudformation.NewFromConfig(cfg)
 
-	stacks, err := getOldStacks(cloudformationSvc)
+	stacks, err := getOldStacks(ctx, cloudformationSvc)
 	if err != nil {
 		return fmt.Errorf("describing stacks: %w", err)
 	}
@@ -343,35 +345,32 @@ func do() error {
 		input := &cloudformation.DeleteStackInput{
 			StackName: aws.String(name),
 		}
-		if _, err := cloudformationSvc.DeleteStack(input); err != nil {
+		if _, err := cloudformationSvc.DeleteStack(ctx, input); err != nil {
 			return fmt.Errorf("deleting stack: %w", err)
 		}
 	}
 
 	// Wait for the deletions to go through
+	waiter := cloudformation.NewStackDeleteCompleteWaiter(cloudformationSvc)
 	for name := range stacks {
 		fmt.Printf("waiting for stack to be deleted: %s\n", name)
 
-		context, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		if err := cloudformationSvc.WaitUntilStackDeleteCompleteWithContext(context,
-			&cloudformation.DescribeStacksInput{
-				StackName: aws.String(name),
-			}); err != nil {
-			cancel()
+		if err := waiter.Wait(ctx, &cloudformation.DescribeStacksInput{
+			StackName: aws.String(name),
+		}, 10*time.Minute); err != nil {
 			fmt.Printf("waiting for stack to be deleted: %v", err)
 		}
-		cancel()
 	}
 
-	vpcs, err := getOldVpcs(ec2Svc)
+	vpcs, err := getOldVpcs(ctx, ec2Svc)
 	if err != nil {
 		return fmt.Errorf("describing VPCs: %w", err)
 	}
 
 	// Delete vpcs
 	for _, vpc := range vpcs {
-		fmt.Printf("deleting VPC: %s\n", aws.StringValue(vpc.VpcId))
-		if err := deleteVpc(ec2Svc, aws.StringValue(vpc.VpcId)); err != nil {
+		fmt.Printf("deleting VPC: %s\n", aws.ToString(vpc.VpcId))
+		if err := deleteVpc(ctx, ec2Svc, aws.ToString(vpc.VpcId)); err != nil {
 			fmt.Printf("deleting VPC: %s", err)
 		}
 	}
@@ -382,7 +381,8 @@ func do() error {
 func main() {
 	flag.Parse()
 
-	if err := do(); err != nil {
+	ctx := context.Background()
+	if err := do(ctx); err != nil {
 		fmt.Printf("error: %v\n", err)
 		os.Exit(1)
 	}
