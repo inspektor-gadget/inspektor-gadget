@@ -446,7 +446,7 @@ func buildContainerData(runtimeName types.RuntimeName, container CRIContainer, p
 	// CRI-O does not use the same container name of Kubernetes as containerd.
 	// Instead, it uses a composed name as Docker does, but such name is not
 	// available in the container metadata.
-	if runtimeName == types.RuntimeNameCrio {
+	if runtimeName == types.RuntimeNameCrio || runtimeName == types.RuntimeNameDocker {
 		containerData.Runtime.ContainerName = fmt.Sprintf("k8s_%s_%s_%s_%s_%d",
 			containerData.K8s.ContainerName,
 			containerData.K8s.PodName,
