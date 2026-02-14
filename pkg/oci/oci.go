@@ -688,7 +688,13 @@ func deleteGadgetImage(ctx context.Context, image string) error {
 	}
 
 	// TODO: GC() could race with other processes calling it a the same time.
-	return ociStore.GC(ctx)
+	if err := ociStore.GC(ctx); err != nil {
+		if !errors.Is(err, errdef.ErrNotFound) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SplitIGDomain splits a repository name to domain and remote-name.
