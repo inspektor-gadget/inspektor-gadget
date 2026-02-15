@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.48.0
+version: 0.49.1
 name: "deadlock"
 category: monitoring-logging
 displayName: "deadlock"
-createdAt: "2026-01-05T16:31:55Z"
-digest: "2026-01-05T16:31:55Z"
+createdAt: "2026-02-12T11:20:18Z"
+digest: "2026-02-12T11:20:18Z"
 description: "use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in libc.so and detect potential deadlocks"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

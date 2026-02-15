@@ -25,10 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/signature/helpers"
 )
 
-// Taken from:
-// https://github.com/sigstore/cosign/blob/45bda40b8ef4/internal/pkg/oci/remote/remote.go#L24
-const signatureArtifactType = "application/vnd.dev.cosign.artifact.sig.v1+json"
-
 type OCI11Format struct{}
 
 func (*OCI11Format) CheckPayloadImage(payloadBytes []byte, imageDigest string) error {
@@ -36,13 +32,29 @@ func (*OCI11Format) CheckPayloadImage(payloadBytes []byte, imageDigest string) e
 }
 
 func (*OCI11Format) CraftSigningInfoTag(imageDigest string) (string, error) {
-	return helpers.CraftSignatureIndexTag(imageDigest)
+	// The OCI 1.1 format uses the image digest to find referrers in the registry,
+	// not a tag.
+	// Return the imageDigest here, since the logic for finding the signature tag
+	// is handled in FindSignatureTag().
+	return imageDigest, nil
 }
 
-func (*OCI11Format) FindSignatureTag(ctx context.Context, imageStore oras.GraphTarget, signingInfoTag string) (string, error) {
+func (*OCI11Format) FindSignatureTag(ctx context.Context, imageStore oras.GraphTarget, imageDigest string) (string, error) {
+	// Let's first try finding the tag using the referrers API and then default
+	// to sha256-digest tag.
+	signingInfoTag, err := helpers.FindCosignSignatureTag(ctx, imageStore, imageDigest)
+	if err == nil {
+		return signingInfoTag, nil
+	}
+
+	signingInfoTag, err = helpers.CraftSignatureIndexTag(imageDigest)
+	if err != nil {
+		return "", fmt.Errorf("finding signature tag using referrers API and tag: %w", err)
+	}
+
 	_, indexBytes, err := oras.FetchBytes(ctx, imageStore, signingInfoTag, oras.DefaultFetchBytesOptions)
 	if err != nil {
-		return "", fmt.Errorf("getting index bytes: %w", err)
+		return "", fmt.Errorf("getting manifest bytes: %w", err)
 	}
 
 	index := &ocispec.Index{}
@@ -51,8 +63,10 @@ func (*OCI11Format) FindSignatureTag(ctx context.Context, imageStore oras.GraphT
 		return "", fmt.Errorf("decoding index: %w", err)
 	}
 
+	// With the sha256-digest tag, we get an index, we then need to find the
+	// corresponding manifest from this index.
 	for _, manifest := range index.Manifests {
-		if manifest.ArtifactType == signatureArtifactType {
+		if manifest.ArtifactType == helpers.CosignSignatureMediaType {
 			return manifest.Digest.String(), nil
 		}
 	}

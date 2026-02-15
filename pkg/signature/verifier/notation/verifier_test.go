@@ -147,31 +147,48 @@ func TestVerify(t *testing.T) {
 		shouldErr bool
 	}
 
-	signedImage := "ttl.sh/signed_with_notation:latest"
+	// Signed with older notation, i.e. 6c5c35a0207eebf8d4d6d2efad66b798457a6622:
+	// {
+	// "schemaVersion": 2,
+	// "mediaType": "application/vnd.oci.image.manifest.v1+json",
+	// "config": {
+	// 	"mediaType": "application/vnd.cncf.notary.signature",
+	// ...
+	firstSignedImage := "ttl.sh/signed_with_notation_config_media_type_signature:latest"
+	// Signed with newer notation, i.e. a71c2d9d879cbdf219cb82814f8779d1a60403bf:
+	// {
+	// "schemaVersion": 2,
+	// "mediaType": "application/vnd.oci.image.manifest.v1+json",
+	// "artifactType": "application/vnd.cncf.notary.signature",
+	// "config": {
+	// 	"mediaType": "application/vnd.oci.empty.v1+json",
+	// ...
+	secondSignedImage := "ttl.sh/signed_with_notation_config_media_type_empty:latest"
 	nonSignedImage := "ghcr.io/inspektor-gadget/gadget/unsigned:francis-signature-unit-tests"
 
 	goodCertificate := `
 -----BEGIN CERTIFICATE-----
-MIIDQTCCAimgAwIBAgICAI0wDQYJKoZIhvcNAQELBQAwTzELMAkGA1UEBhMCVVMx
-CzAJBgNVBAgTAldBMRAwDgYDVQQHEwdTZWF0dGxlMQ8wDQYDVQQKEwZOb3Rhcnkx
-EDAOBgNVBAMTB3Rlc3QuaW8wHhcNMjUxMDIwMTE0MTIyWhcNMjUxMDIxMTE0MTIy
-WjBPMQswCQYDVQQGEwJVUzELMAkGA1UECBMCV0ExEDAOBgNVBAcTB1NlYXR0bGUx
-DzANBgNVBAoTBk5vdGFyeTEQMA4GA1UEAxMHdGVzdC5pbzCCASIwDQYJKoZIhvcN
-AQEBBQADggEPADCCAQoCggEBAOcAupoQ84+vVMG0X8KQLlOXnMkjqlPUp6H1gVdw
-kC8Y5+gVH1EYHJBLCEtMAzlYVeAGzLU57OzNGuvQAEjM4D1qn8aK3dLXAdWwnMhK
-hM0z8rLxEhsq8FmEh0KyiHPAc/d+/BWZA/3XaLOQF2zwiPiv8lvAe5fCgFYUGVKN
-v2bBKwqK/GpPc/tu7NmW8hC6zFX/YMlJm0DOTWMqY/ImAfQjdv/AgB3phIcQqQ+9
-rx7i1Bl/sYMuGt+H2jZJFuDLWzzOVW8M9qnioys++t2moErvpHXYiiGRt7uxrBfu
-K9BAGcOfJs5ADuM03IsmusCiJrNe3xQRSmBaaYjZHw0v8I0CAwEAAaMnMCUwDgYD
-VR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMDMA0GCSqGSIb3DQEBCwUA
-A4IBAQDbehncKzzbvJ1L8P2cAg7QtF9LEDOq+ypyVUGNuv28ca+FonHjGdCi3886
-zJjnOa0l6QPU8r9ti8QEJySKk9yZydk3n+vprYN1Zacxet0iEM2O4pf4fGzWFCHH
-vX8cb7WBkfIyuhfRAV8v2un0uzD7QxbF4f75a+x2AHnQY30PQGSZjH17gdP+6Yhj
-Pq2QcU9/k44awV4epqkfJ8TEAXGFodNcYQpXi8083cqU2HU6ZuG1KrYv4QD+fRN2
-ijWKpF3SZxgNcAkNFM1IBiELVwBlfrN7u4dwMztSawRa5zqF844EV1gfY4iTtV1Y
-OyOnKVarkBtpU+66K4TbWOK7Ptlo
+MIIDQDCCAiigAwIBAgIBHjANBgkqhkiG9w0BAQsFADBPMQswCQYDVQQGEwJVUzEL
+MAkGA1UECBMCV0ExEDAOBgNVBAcTB1NlYXR0bGUxDzANBgNVBAoTBk5vdGFyeTEQ
+MA4GA1UEAxMHdGVzdC5pbzAeFw0yNjAxMjAxNDQwNTNaFw0yNjAxMjExNDQwNTNa
+ME8xCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJXQTEQMA4GA1UEBxMHU2VhdHRsZTEP
+MA0GA1UEChMGTm90YXJ5MRAwDgYDVQQDEwd0ZXN0LmlvMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEAtlupXrTX7KVO7rFc+6Cn27dKF43gczIGYoxzCGeO
+G7UrNq+AsnBvHjZAZDPe2LIhK+E+pQGGXnWgA9y6hUIHrkffH4jwhSiGZiQL6rAl
+dSKFOG1FCEkfA9TsKCs7RCR8mSCxn4H0JsldF1mv8z7MlzAvGhoszeD6sEfsgqWK
+og3LTmRxmqWMKJar1wOdpXLLquKRbgHhNMFLE9eiekeqndb365kv/32h3PtzFMga
+Y8fDKrbmPRS5dloR2gWNm6kizU3sns0GbDVpReQolTrYEZNXQWm4hY7urfU1eBXe
+A2XqOLbB9WNx5fS1rrTIdlo7QYMQoOwLoNHcMXd6BKElpQIDAQABoycwJTAOBgNV
+HQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwMwDQYJKoZIhvcNAQELBQAD
+ggEBABRsxy2tnl1D2WmI2I/3wFa0+AnzEhAN3by0B3QfSBa4uYUJzeFfT+ImMjvA
+/cuDe/J4MXgkZiCQmSfC51lIEOZH73TX988h1CLAgnWAvUqTavnof2uOqlhSFsGf
+OgEmUMA9Cek0YAvIsD9hPxQLQpMjDkfwLVcLmEgiGaSaB3wX94H+iio/hgE8iems
+Rmxuh0CWu/yOhFY2HMoyHl448fAqfg1dIDP4N29HBD9oOPtmVN1rGksMpl9fyxWL
+EPUwm6JVfxOUj/5d6HCpIA674eNGXeGmaXBnc2GdGwhBE+zLmOozim+tjheza3H7
+rJ/aJWNv7+e5taVw6EYyA9eT8L4=
 -----END CERTIFICATE-----
 `
+
 	wrongCertificate := `
 -----BEGIN CERTIFICATE-----
 MIIDPzCCAiegAwIBAgICAK8wDQYJKoZIhvcNAQELBQAwTjELMAkGA1UEBhMCVVMx
@@ -217,19 +234,26 @@ S//euSjbohacaQzTb8ZQqRLKfg==
 `
 
 	tests := map[string]testDefinition{
-		"good_certificate_with_signed_image": {
+		"good_certificate_with_first_signed_image": {
 			opts: VerifierOptions{
 				Certificates:   []string{goodCertificate},
 				PolicyDocument: policyDocument,
 			},
-			image: signedImage,
+			image: firstSignedImage,
+		},
+		"good_certificate_with_second_signed_image": {
+			opts: VerifierOptions{
+				Certificates:   []string{goodCertificate},
+				PolicyDocument: policyDocument,
+			},
+			image: secondSignedImage,
 		},
 		"wrong_certificate_with_signed_image": {
 			opts: VerifierOptions{
 				Certificates:   []string{wrongCertificate},
 				PolicyDocument: policyDocument,
 			},
-			image:     signedImage,
+			image:     firstSignedImage,
 			shouldErr: true,
 		},
 		"certificate_with_unsigned_image": {
@@ -248,7 +272,7 @@ S//euSjbohacaQzTb8ZQqRLKfg==
 				},
 				PolicyDocument: policyDocument,
 			},
-			image: signedImage,
+			image: firstSignedImage,
 		},
 	}
 
