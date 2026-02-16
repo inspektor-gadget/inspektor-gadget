@@ -21,22 +21,30 @@ import (
 // matchFilterString checks if a value matches a filter string. The filter string can
 // contain multiple comma-separated values. A value can be excluded by prefixing
 // it with a '!'. If the filter is empty, it matches any value.
-func matchFilterString(filter, value string) bool {
+func matchFilterString(filter string, values ...string) bool {
 	if filter == "" {
 		return true
 	}
-	parts := strings.Split(filter, ",")
+	return matchFilterParts(strings.Split(filter, ","), values...)
+}
+
+func matchFilterParts(parts []string, values ...string) bool {
 	matched := false
 	hasInclusion := false
 	for _, part := range parts {
 		if strings.HasPrefix(part, "!") {
-			if value == part[1:] {
-				return false // Explicit exclusion
+			excl := part[1:]
+			for _, v := range values {
+				if v == excl {
+					return false // Explicit exclusion
+				}
 			}
 		} else {
 			hasInclusion = true
-			if value == part {
-				matched = true
+			for _, v := range values {
+				if v == part {
+					matched = true
+				}
 			}
 		}
 	}
@@ -44,6 +52,46 @@ func matchFilterString(filter, value string) bool {
 		return false
 	}
 	return true
+}
+
+func matchFilterWithCleaner(filter string, cleaner func(string) string, values ...string) bool {
+	if filter == "" {
+		return true
+	}
+
+	parts := strings.Split(filter, ",")
+	for i, p := range parts {
+		if strings.HasPrefix(p, "!") {
+			parts[i] = "!" + cleaner(p[1:])
+		} else {
+			parts[i] = cleaner(p)
+		}
+	}
+
+	cleanedValues := make([]string, len(values))
+	for i, v := range values {
+		cleanedValues[i] = cleaner(v)
+	}
+
+	return matchFilterParts(parts, cleanedValues...)
+}
+
+// cleanDigest trims a digest to its first 12 characters, stripping
+// any algorithm prefix if present.
+func cleanDigest(d string) string {
+	// Strip algo prefix if present (e.g. sha256:...)
+	if idx := strings.Index(d, ":"); idx != -1 {
+		d = d[idx+1:]
+	}
+	if len(d) > 12 {
+		return d[:12]
+	}
+	return d
+}
+
+// cleanImageID is a convenience function to clean image IDs (the same way as digests)
+func cleanImageID(id string) string {
+	return cleanDigest(id)
 }
 
 // ContainerSelectorMatches tells if a container matches the criteria in a
@@ -62,6 +110,14 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 	}
 
 	if !matchFilterString(s.Runtime.ContainerName, c.Runtime.ContainerName) {
+		return false
+	}
+
+	if !matchFilterWithCleaner(s.Runtime.ContainerImageID, cleanImageID, c.Runtime.ContainerImageID) {
+		return false
+	}
+
+	if !matchFilterWithCleaner(s.Runtime.ContainerImageDigest, cleanDigest, c.Runtime.ContainerImageDigest) {
 		return false
 	}
 

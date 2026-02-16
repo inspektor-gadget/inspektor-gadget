@@ -184,6 +184,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		containerJSON.ID,
 		containerJSON.Name,
 		containerJSON.Config.Image,
+		containerJSON.Image,
 		c.getContainerImageDigest(containerJSON.Image),
 		containerJSON.State.Status,
 		containerJSON.Config.Labels)
@@ -286,6 +287,7 @@ func DockerContainerToContainerData(container *container.Summary) *runtimeclient
 		container.ID,
 		containerName,
 		container.Image,
+		container.ImageID,
 		imageDigest,
 		container.State,
 		container.Labels)
@@ -318,13 +320,14 @@ func getContainerImageNamefromImage(image string) string {
 // `buildContainerData` takes in basic metadata about a Docker container and
 // constructs a `runtimeclient.ContainerData` struct with this information. I also
 // enriches containers with the data and returns a pointer the created struct.
-func buildContainerData(containerID string, containerName string, containerImage string, containerImageDigest string, state string, labels map[string]string) *runtimeclient.ContainerData {
+func buildContainerData(containerID string, containerName string, containerImage string, containerImageID string, containerImageDigest string, state string, labels map[string]string) *runtimeclient.ContainerData {
 	containerData := runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			ContainerID:          containerID,
 			ContainerName:        strings.TrimPrefix(containerName, "/"),
 			RuntimeName:          types.RuntimeNameDocker,
 			ContainerImageName:   getContainerImageNamefromImage(containerImage),
+			ContainerImageID:     containerImageID,
 			ContainerImageDigest: containerImageDigest,
 			State:                containerStatusStateToRuntimeClientState(state),
 		},
