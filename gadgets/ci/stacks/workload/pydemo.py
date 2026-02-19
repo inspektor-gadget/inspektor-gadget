@@ -13,26 +13,49 @@ mylib = ctypes.CDLL(lib_path)
 mylib.allocate_memory.argtypes = [ctypes.c_size_t]
 mylib.allocate_memory.restype = ctypes.c_void_p
 
-def level3():
-    for _ in range(50):
-        mylib.print_hello_world()
-        mylib.sleep_one_second()
-        mylib.busy_loop_500ms()
+def eat_apple():
+    for _ in range(2):
+        ptr = mylib.allocate_memory(64)
+
+def eat_banana():
+    for _ in range(2):
+        ptr = mylib.allocate_memory(512)
+
+def eat_orange():
+    for _ in range(2):
         ptr = mylib.allocate_memory(1024)
 
+def try_chroot():
+    """Attempt chroot to trigger cap_capable (CAP_SYS_CHROOT).
+    This will fail with EPERM when running as non-root."""
+    try:
+        os.chroot("/")
+    except OSError:
+        pass
+
+def pick_up_fruits():
+    eat_apple()
+    eat_banana()
+    eat_orange()
+    mylib.sleep_one_second()
+    mylib.sleep_one_second()
     sys.exit(0)
 
-def level2():
-    level3()
-    level3()
-
-def level1():
-    level2()
-    level2()
+def my_garden():
+    pick_up_fruits()
+    pick_up_fruits()
 
 
 def main():
-    level1()
+    mylib.print_hello_world()
+    ptr = mylib.allocate_memory(8)
+    try_chroot()  # 1st chroot: OTel hasn't analyzed us yet, will fail to unwind
+    mylib.sleep_one_second()
+    mylib.sleep_one_second()
+    mylib.busy_loop_500ms()
+
+    try_chroot()  # 2nd chroot: OTel should be ready now
+    my_garden()
     time.sleep(1)
 
 if __name__ == "__main__":
