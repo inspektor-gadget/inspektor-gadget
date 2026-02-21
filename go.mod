@@ -20,7 +20,7 @@ require (
 	github.com/docker/go-connections v0.6.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/expr-lang/expr v1.17.7
+	github.com/expr-lang/expr v1.17.8
 	github.com/florianl/go-tc v0.4.7
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/godbus/dbus/v5 v5.2.2
@@ -48,7 +48,7 @@ require (
 	github.com/tklauser/numcpus v0.11.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
-	go.opentelemetry.io/collector/pdata/pprofile v0.145.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.146.1
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.65.0
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.16.0
@@ -65,7 +65,7 @@ require (
 	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
-	google.golang.org/grpc v1.79.0
+	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -213,8 +213,8 @@ require (
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.51.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.51.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.52.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.52.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.32.0 // indirect

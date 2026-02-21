@@ -185,6 +185,7 @@ pull:
 
 .PHONY:
 test-unit: build
+	# use PATH preservation to find **right** go binary inside vimto as it's run as sudo
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	IG_DEBUG_LOGS=$(IG_DEBUG_LOGS) \
 	GADGET_TAG=$(GADGET_TAG) \
@@ -192,13 +193,13 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		# use PATH preservation to find **right** go binary inside vimto as it's run as sudo \
 		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
 		go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...)
 
 .PHONY:
 %/test-unit: %
+	# use PATH preservation to find **right** go binary inside vimto as it's run as sudo
 	IG_VERIFY_IMAGE=$(IG_VERIFY_IMAGE) \
 	IG_DEBUG_LOGS=$(IG_DEBUG_LOGS) \
 	GADGET_TAG=$(GADGET_TAG) \
@@ -206,7 +207,6 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		# use PATH preservation to find **right** go binary inside vimto as it's run as sudo \
 		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
 		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
