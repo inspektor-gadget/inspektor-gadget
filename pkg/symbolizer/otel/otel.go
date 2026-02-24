@@ -177,6 +177,8 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		TraceReporter:          rep,
 	})
 	if err != nil {
+		// FIXME: report the error correctly instead of panic or silent error
+		panic(fmt.Sprintf("panic: loading OpenTelemetry eBPF tracer: %s", err))
 		return fmt.Errorf("loading OpenTelemetry eBPF tracer: %w", err)
 	}
 	o.trc = trc
