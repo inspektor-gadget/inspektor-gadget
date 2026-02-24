@@ -260,21 +260,14 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 	}
 
 	if (collect_otel_stack) {
-		u64 ts = bpf_ktime_get_boot_ns();
-		struct generic_param param = {
-			.correlation_id = ts,
-		};
-		struct generic_param *ret_param;
-		u32 zero = 0;
-		if (bpf_map_update_elem(&otel_generic_params, &zero, &param,
-					BPF_ANY) < 0) {
-			return;
-		}
 		gadget_fetch_otel_stack_from_kprobe(ctx);
 
+		struct generic_param *ret_param;
+		u32 zero = 0;
 		ret_param = bpf_map_lookup_elem(&otel_generic_params, &zero);
 		if (!ret_param)
 			return;
+
 		ustack->otel_correlation_id = ret_param->correlation_id;
 	}
 }
