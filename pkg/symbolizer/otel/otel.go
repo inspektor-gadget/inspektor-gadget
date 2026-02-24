@@ -45,7 +45,9 @@ func (d *otelResolver) NewInstance(options symbolizer.SymbolizerOptions) (symbol
 		options:        options,
 		correlationMap: make(map[uint64]libpf.Frames),
 	}
-	o.startOtelEbpfProfiler(context.TODO())
+	if err := o.startOtelEbpfProfiler(context.TODO()); err != nil {
+		return nil, fmt.Errorf("starting OTel eBPF profiler: %w", err)
+	}
 	return o, nil
 }
 
