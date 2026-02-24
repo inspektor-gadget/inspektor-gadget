@@ -234,5 +234,4 @@ require (
 
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260128111326-e4ee7b154d47
-//replace go.opentelemetry.io/ebpf-profiler => ../../open-telemetry/opentelemetry-ebpf-profiler
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260224155738-1d92ff419559
