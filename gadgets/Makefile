@@ -43,6 +43,7 @@ GADGETS ?= \
 	trace_dns \
 	trace_exec \
 	trace_fsslower \
+	trace_link \
 	trace_lsm \
 	traceloop \
 	trace_malloc \
