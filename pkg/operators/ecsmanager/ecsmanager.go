@@ -60,6 +60,15 @@ type Attacher interface {
 type EcsManager struct {
 	containerCollection *containercollection.ContainerCollection
 	tracerCollection    *tracercollection.TracerCollection
+	externalCollections bool
+}
+
+func NewEcsManager(containerCollection *containercollection.ContainerCollection, tracerCollection *tracercollection.TracerCollection) *EcsManager {
+	return &EcsManager{
+		containerCollection: containerCollection,
+		tracerCollection:    tracerCollection,
+		externalCollections: true,
+	}
 }
 
 func (e *EcsManager) Name() string {
@@ -99,6 +108,10 @@ func (e *EcsManager) ParamDescs() params.ParamDescs {
 }
 
 func (e *EcsManager) Init(params *params.Params) error {
+	if e.externalCollections {
+		return nil
+	}
+
 	clusterName := params.Get(ParamEcsClusterName).AsString()
 	awsRegion := params.Get(ParamAwsRegion).AsString()
 
