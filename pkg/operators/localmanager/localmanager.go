@@ -75,8 +75,20 @@ type Attacher interface {
 type localManager struct {
 	containerCollection *containercollection.ContainerCollection
 	tracerCollection    *tracercollection.TracerCollection
+	externalCollections bool
 
 	fakeContainer *containercollection.Container
+}
+
+// NewLocalManager creates a new LocalManager operator skipping the Init() method.
+// This can be used when the operator is used as a library and the caller wants to manage the lifecycle of the collections.
+// It also means that all initialization steps in Init() are skipped, so the caller is responsible for initializing the collections.
+func NewLocalManager(containerCollection *containercollection.ContainerCollection, tracerCollection *tracercollection.TracerCollection) *localManager {
+	return &localManager{
+		containerCollection: containerCollection,
+		tracerCollection:    tracerCollection,
+		externalCollections: true,
+	}
 }
 
 func (l *localManager) Name() string {
@@ -154,6 +166,10 @@ func (l *localManager) ParamDescs() params.ParamDescs {
 }
 
 func (l *localManager) Init(operatorParams *params.Params) error {
+	if l.externalCollections {
+		return nil
+	}
+
 	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 
 	runtimesParam := operatorParams.Get(Runtimes)
