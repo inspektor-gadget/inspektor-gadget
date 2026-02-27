@@ -48,6 +48,23 @@ struct {
 	__type(value, struct alloc_val);
 } allocs SEC(".maps");
 
+/*
+ * Heap-allocated scratch space to avoid blowing the 256-byte stack limit
+ * required for tail calls. struct alloc_val (~152 B) and
+ * struct gadget_user_stack (~64 B) are too large to live on the BPF stack.
+ */
+struct heap_data {
+	struct gadget_user_stack ustack;
+	struct alloc_val val;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct heap_data);
+} heap SEC(".maps");
+
 GADGET_MAPITER(allocs, allocs);
 
 /**
@@ -100,23 +117,32 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	size = *size_ptr;
 	bpf_map_delete_elem(&sizes, &tid);
 
-	struct gadget_user_stack ustack_raw;
-	gadget_get_user_stack(ctx, &ustack_raw);
+	/*
+	 * Use a per-CPU array as heap space for the large structs that would
+	 * otherwise push the stack frame well beyond the 256-byte limit
+	 * enforced by the verifier when tail calls are reachable.
+	 */
+	u32 zero = 0;
+	struct heap_data *heap_ptr = bpf_map_lookup_elem(&heap, &zero);
+	if (!heap_ptr)
+		return 0;
+
+	gadget_get_user_stack(ctx, &heap_ptr->ustack);
 
 	struct alloc_key key = {
-		.stack_id_key = ustack_raw.stack_id,
+		.stack_id_key = heap_ptr->ustack.stack_id,
 	};
 
 	struct alloc_val *val = bpf_map_lookup_elem(&allocs, &key);
 	if (!val) {
-		struct alloc_val new_val = {
-			.count = size,
-			.ustack_raw = ustack_raw,
-		};
+		__builtin_memset(&heap_ptr->val, 0, sizeof(heap_ptr->val));
+		heap_ptr->val.count = size;
+		heap_ptr->val.ustack_raw = heap_ptr->ustack;
 
-		gadget_process_populate(&new_val.proc);
+		gadget_process_populate(&heap_ptr->val.proc);
 
-		bpf_map_update_elem(&allocs, &key, &new_val, BPF_NOEXIST);
+		bpf_map_update_elem(&allocs, &key, &heap_ptr->val,
+				    BPF_NOEXIST);
 	} else {
 		__sync_fetch_and_add(&val->count, size);
 	}
