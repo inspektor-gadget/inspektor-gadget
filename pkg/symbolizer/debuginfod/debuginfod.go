@@ -131,7 +131,7 @@ func (d *debuginfodResolverInstance) GetEbpfReplacements() map[string]interface{
 	return nil
 }
 
-func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) error {
+func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
 	for i, query := range stackQueries {
 		if !query.ValidBuildID {
 			continue
@@ -158,7 +158,7 @@ func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries 
 		var err error
 		table, err = d.newSymbolTableFromPath(debuginfoPath, buildIDStr, task)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if table == nil {
 			// The debuginfo file was not available, but it is not a fatal error.
@@ -179,5 +179,5 @@ func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries 
 		d.lockSymbolTablesFromBuildID.Unlock()
 	}
 
-	return nil
+	return nil, nil
 }
