@@ -79,14 +79,15 @@ func (o *otelResolverInstance) GetEbpfReplacements() map[string]interface{} {
 	}
 }
 
-func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) error {
-	log.Debugf("OtelResolverInstance.Resolve called for task %+v", task)
+func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
+	log.Infof("OtelResolverInstance.Resolve called for task %+v", task)
+	log.Infof("there are %d stack queries", len(stackQueries))
 	if task.CorrelationID == 0 {
-		return nil
+		return nil, nil
 	}
-	if task.CorrelationID == 0 {
-		return nil
-	}
+	//if task.CorrelationID == 0 {
+	//	return nil, nil
+	//}
 	frames, ok := o.correlationMap[task.CorrelationID]
 	if !ok {
 		log.Debugf("OtelResolverInstance.Resolve: no frames found for correlation ID %d, waiting a bit", task.CorrelationID)
@@ -95,30 +96,56 @@ func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symb
 		frames, ok = o.correlationMap[task.CorrelationID]
 	}
 	if !ok {
-		log.Debugf("OtelResolverInstance.Resolve: still no frames found for correlation ID %d. Give up.", task.CorrelationID)
-		return nil
+		log.Warnf("OtelResolverInstance.Resolve: still no frames found for correlation ID %d. Give up.", task.CorrelationID)
+		return nil, nil
 	}
-	userFrameIdx := 0
+
+	// Collect user (non-kernel) frames from the otel profiler.
+	type userFrame struct {
+		functionName string
+	}
+	var userFrames []userFrame
 	for _, f := range frames {
 		v := f.Value()
 		if v.Type == libpf.KernelFrame {
+			log.Infof("skipping kernel frame %+v", v)
 			continue
 		}
-		if userFrameIdx >= len(stackResponses) {
-			break
-		}
-		if v.FunctionName.String() != "" {
-			// TODO: add other fields:
-			// v.AddressOrLineno, v.SourceFile, v.SourceLine
-			stackResponses[userFrameIdx].Symbol = v.FunctionName.String()
-			stackResponses[userFrameIdx].Found = true
-
-			fmt.Printf("OtelResolverInstance.Resolve: resolved frame %d:\n%s\n", userFrameIdx, v.FunctionName.String())
-		}
-		userFrameIdx++
+		userFrames = append(userFrames, userFrame{
+			functionName: v.FunctionName.String(),
+		})
 	}
 
-	return nil
+	log.Infof("OtelResolverInstance.Resolve: otel has %d user frames, native stack has %d entries",
+		len(userFrames), len(stackResponses))
+
+	// The otel profiler captures the full interpreted stack (e.g., 20 Python
+	// frames) while bpf_get_stackid only sees the native C stack (e.g., 2
+	// CPython interpreter frames). When otel has more frames, build a new
+	// response of the right size and return it as a replacement.
+	result := stackResponses
+	if len(userFrames) > len(stackResponses) {
+		result = make([]symbolizer.StackItemResponse, len(userFrames))
+	}
+
+	for i, uf := range userFrames {
+		if i >= len(result) {
+			break
+		}
+		if uf.functionName != "" {
+			result[i].Symbol = uf.functionName
+			result[i].Found = true
+			log.Infof("OtelResolverInstance.Resolve: resolved frame %d: %s", i, uf.functionName)
+		}
+	}
+
+	// Return non-nil replacement only if we built a new, larger slice.
+	// This signals the orchestrator to use otel's stack and skip remaining
+	// resolvers (native addresses don't correspond to these frames).
+	if len(userFrames) > len(stackResponses) {
+		return result, nil
+	}
+	return nil, nil
 }
 
 type traceReporter struct {
@@ -152,7 +179,7 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 			}
 		}
 		stackStr := stackBuilder.String()
-		fmt.Printf("Received OpenTelemetry trace (correlation ID %d, pid %d, tid %d):\n%s\n",
+		log.Infof("Received OpenTelemetry trace (correlation ID %d, pid %d, tid %d):\n%s\n",
 			meta.CorrelationID, meta.PID, meta.TID, stackStr)
 
 		o.correlationMap[meta.CorrelationID] = t.Frames
