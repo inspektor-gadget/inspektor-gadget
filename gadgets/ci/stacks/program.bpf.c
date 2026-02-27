@@ -123,14 +123,14 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx)
 	return 0;
 }
 
-SEC("uprobe//home/alban/go/src/github.com/inspektor-gadget/inspektor-gadget/gadgets/ci/stacks/workload/libmylib.so:allocate_memory")
+SEC("uprobe//home/mauriciov/kinvolk/ebpf/inspektor-gadget/gadgets/ci/stacks/workload/libmylib.so:allocate_memory")
 int BPF_UPROBE(trace_uprobe_alloc, size_t bytesize)
 {
 	bpf_printk("alloc enter: size=%lu", bytesize);
 	return gen_alloc_enter(bytesize);
 }
 
-SEC("uretprobe//home/alban/go/src/github.com/inspektor-gadget/inspektor-gadget/gadgets/ci/stacks/workload/libmylib.so:allocate_memory")
+SEC("uretprobe//home/mauriciov/kinvolk/ebpf/inspektor-gadget/gadgets/ci/stacks/workload/libmylib.so:allocate_memory")
 int trace_uretprobe_alloc(struct pt_regs *ctx)
 {
 	bpf_printk("alloc exit");
