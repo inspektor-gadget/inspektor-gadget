@@ -203,9 +203,17 @@ func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackI
 
 	// Iterate over all resolvers in order of priority.
 	for _, r := range s.resolvers {
-		err := r.Resolve(task, stackQueries, res)
+		replacement, err := r.Resolve(task, stackQueries, res)
 		if err != nil {
 			return nil, err
+		}
+		if replacement != nil {
+			// The resolver provided a complete stack (e.g., interpreted
+			// language frames from otel-ebpf-profiler). Use it directly
+			// and skip remaining resolvers, since the native addresses
+			// in stackQueries don't correspond to these frames.
+			res = replacement
+			break
 		}
 	}
 
