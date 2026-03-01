@@ -252,6 +252,7 @@ func (c *GadgetContext) Run(paramValues api.ParamValues) error {
 	}
 
 	c.Logger().Debugf("running...")
+	c.watchDataSources()
 	WaitForTimeoutOrDone(c)
 
 	var errs []error

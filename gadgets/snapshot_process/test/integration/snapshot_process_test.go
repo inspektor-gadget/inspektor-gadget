@@ -17,7 +17,6 @@ package tests
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -66,14 +65,17 @@ func TestSnapshotProcess(t *testing.T) {
 	var testingOpts []igtesting.Option
 	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
 
-	// TODO: timeout shouldn't be required. We need to use something big like 5
-	// seconds to avoid the message being lost.
-	const timeoutParam = "--timeout=5"
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), timeoutParam))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-r=%s", utils.Runtime),
+			"--count=1",
+		))
 	case utils.KubectlGadgetTestComponent:
-		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", ns), timeoutParam))
+		runnerOpts = append(runnerOpts, igrunner.WithFlags(
+			fmt.Sprintf("-n=%s", ns),
+			"--count=1",
+		))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
 	}
@@ -96,5 +98,5 @@ func TestSnapshotProcess(t *testing.T) {
 
 	snashotProcessCmd := igrunner.New("snapshot_process", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{utils.Sleep(5 * time.Second), snashotProcessCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{snashotProcessCmd}, t, testingOpts...)
 }

@@ -178,6 +178,9 @@ type dataSource struct {
 	lock      sync.RWMutex
 
 	config *viper.Viper
+
+	doneCh   chan struct{}
+	doneOnce sync.Once
 }
 
 func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSource, error) {
@@ -196,6 +199,7 @@ func newDataSource(t Type, name string, options ...DataSourceOption) (*dataSourc
 		byteOrder:       binary.NativeEndian,
 		tags:            make([]string, 0),
 		annotations:     make(map[string]string),
+		doneCh:          make(chan struct{}),
 	}
 
 	for _, option := range options {
@@ -719,6 +723,16 @@ func (ds *dataSource) Dump(p Packet, wr io.Writer) {
 			ds.dumpData(wr, (*dataElement)(d))
 		}
 	}
+}
+
+func (ds *dataSource) Done() {
+	ds.doneOnce.Do(func() {
+		close(ds.doneCh)
+	})
+}
+
+func (ds *dataSource) WaitDone() <-chan struct{} {
+	return ds.doneCh
 }
 
 func (ds *dataSource) Fields() []*api.Field {
