@@ -527,9 +527,6 @@ int trace_sched_process_exit(void *ctx)
 		.mntns_id = mntns_id,
 	};
 
-	struct gpu_metrics_value *val;
-	val = bpf_map_lookup_elem(&gpu_metrics, &key);
-
 	bpf_map_delete_elem(&gpu_metrics, &key);
 
 	return 0;
