@@ -35,6 +35,7 @@ GADGETS ?= \
 	fsnotify \
 	profile_blockio \
 	profile_cpu \
+	profile_cuda \
 	profile_qdisc_latency \
 	profile_tcprtt \
 	tcpdump \
