@@ -45,7 +45,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION_DOC_CHECK }}
         cache: true
@@ -99,7 +99,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
       id: go
@@ -197,7 +197,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -300,7 +300,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -358,7 +358,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -389,7 +389,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -713,7 +713,7 @@ jobs:
         platform: [amd64, arm64]
     steps:
       - name: Set up Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -752,7 +752,7 @@ jobs:
       - build-and-push-gadgets
     steps:
       - name: Set up Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1153,7 +1153,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1173,7 +1173,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1198,7 +1198,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1405,7 +1405,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1530,7 +1530,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Setup go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1652,7 +1652,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Setup go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1700,7 +1700,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1792,7 +1792,7 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/gadgetctl-linux-amd64.tar.gz
         sudo mv gadgetctl /usr/bin/gadgetctl
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1836,7 +1836,7 @@ jobs:
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
       - name: Setup go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -1894,7 +1894,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -1982,7 +1982,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -2038,7 +2038,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -2122,7 +2122,7 @@ jobs:
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
       - name: Setup go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -2207,7 +2207,7 @@ jobs:
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.2.2
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -2326,7 +2326,7 @@ jobs:
     - name: Get all artifacts.
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
     - name: Setup go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
