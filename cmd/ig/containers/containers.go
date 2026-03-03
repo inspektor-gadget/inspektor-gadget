@@ -198,6 +198,7 @@ func initContainerCollection(runtimes []*containerutilsTypes.RuntimeConfig) (*co
 		containercollection.WithOCIConfigForInitialContainer(),
 		containercollection.WithContainerFanotifyEbpf(),
 		containercollection.WithProcEnrichment(),
+		containercollection.WithECSEnrichment("", ""),
 	}
 
 	if err := containerCollection.Initialize(opts...); err != nil {
