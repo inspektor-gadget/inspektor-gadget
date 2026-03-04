@@ -15,6 +15,7 @@ CONTAINER_IMAGES = \
 
 GADGET_BUILDER ?= $(CONTAINER_REPO_NAMESPACE)/gadget-builder:main
 DNSTESTER_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/dnstester:main
+KUBELETGETCA_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/kubelet-get-ca:$(IMAGE_TAG)
 CI_KERNELS_IMAGE ?= $(CONTAINER_REPO_NAMESPACE)/ci-kernels:6.15.5-debug
 
 MINIKUBE ?= minikube
@@ -223,6 +224,10 @@ install/gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/gadgetctl
 
+.PHONY: kubelet-get-ca-container
+kubelet-get-ca-container:
+	$(BUILD_COMMAND) --load -t $(KUBELETGETCA_IMAGE) -f tools/kubelet-get-ca/Dockerfile tools/kubelet-get-ca/
+
 .PHONY: gadget-container
 gadget-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
@@ -334,11 +339,12 @@ clang-format-outside-docker:
 # minikube
 LIVENESS_PROBE ?= true
 .PHONY: minikube-deploy
-minikube-deploy: minikube-start gadget-container kubectl-gadget
+minikube-deploy: minikube-start gadget-container kubectl-gadget kubelet-get-ca-container
 	# Remove all resources created by Inspektor Gadget
 	./kubectl-gadget undeploy || true
-	# Remove the image from Minikube
+	# Remove the images from Minikube
 	$(MINIKUBE) image rm $(CONTAINER_REPO):$(IMAGE_TAG) || true
+	$(MINIKUBE) image rm $(KUBELETGETCA_IMAGE) || true
 	@echo "Image on the host:"
 	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
 	@echo
@@ -350,6 +356,11 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 		docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $$($(MINIKUBE) docker-env | grep =) && docker load) ; \
 	else \
 		$(MINIKUBE) image load $(CONTAINER_REPO):$(IMAGE_TAG) ; \
+	fi
+	if $(MINIKUBE) docker-env >/dev/null 2>&1 ; then \
+		docker save $(KUBELETGETCA_IMAGE) $(PV) | (eval $$($(MINIKUBE) docker-env | grep =) && docker load) ; \
+	else \
+		$(MINIKUBE) image load $(KUBELETGETCA_IMAGE) ; \
 	fi
 	@echo "Image in Minikube:"
 	$(MINIKUBE) image ls --format=json | jq -e \
@@ -452,6 +463,7 @@ help:
 	@echo  'o kubectl-gadget		- Build the kubectl plugin'
 	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'
 	@echo  '  kubectl-gadget-container	- Build container for kubectl-gadget'
+	@echo  '  kubelet-get-ca-container	- Build the gadget container image for the host architecture'
 	@echo  'o gadget-container		- Build the gadget container image for the host architecture'
 	@echo  '  cross-gadget-container	- Build the gadget container image for all supported architectures'
 	@echo  '  ebpf-objects			- Build eBPF objects file inside docker'
