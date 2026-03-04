@@ -22,9 +22,6 @@ config:
   # -- Daemon Log Level. Valid values are: "trace", "debug", "info", "warning", "error", "fatal", "panic"
   daemonLogLevel: "info"
 
-  # -- Namespace where Inspektor Gadget is running
-  gadgetNamespace: "gadget"
-
   # -- Operator configuration, this will only be used if deprecated values are not set.
   operator:
     kubemanager:
