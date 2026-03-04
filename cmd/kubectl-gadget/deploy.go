@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -718,6 +719,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		log.Warnf("You used --verify-image=false, the container image will not be verified")
 	}
 
+	serverVersion := &k8sversion.Version{}
+	if !printOnly {
+		serverInfo, err := discoveryClient.ServerVersion()
+		if err != nil {
+			return fmt.Errorf("getting server version: %w", err)
+		}
+
+		serverVersion = k8sversion.MustParseSemantic(serverInfo.String())
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -749,13 +760,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			if !printOnly {
-				serverInfo, err := discoveryClient.ServerVersion()
-				if err != nil {
-					return fmt.Errorf("getting server version: %w", err)
-				}
-
-				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
-
 				// The "kubernetes.io/os" node label was introduced in v1.14.0
 				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
 				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
@@ -882,6 +886,20 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
 			rBinding.Namespace = gadgetNamespace
+		}
+		if clusterRole, isRole := object.(*rbacv1.ClusterRole); isRole {
+			// nodes/proxy is dangerous, even with the get verb:
+			// https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes
+			// We only need access to configz. Unfortunately, this is only available
+			// in k8s 1.36 and above:
+			// https://github.com/kubernetes/kubernetes/pull/136116
+			if !printOnly && serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.36.0-alpha.1")) {
+				for i, rule := range clusterRole.Rules {
+					if slices.Contains(rule.Resources, "nodes/proxy") {
+						clusterRole.Rules[i].Resources = []string{"nodes/configz"}
+					}
+				}
+			}
 		}
 
 		if cm, isCm := object.(*v1.ConfigMap); isCm {
