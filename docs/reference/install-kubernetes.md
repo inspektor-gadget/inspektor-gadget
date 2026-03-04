@@ -311,6 +311,42 @@ operator:
 podman-socketpath: /run/podman/podman.sock
 ```
 
+##### Container Runtime Socket Path Detection
+
+Inspektor Gadget automatically detects the container runtime socket path by
+querying the kubelet's `/configz` endpoint on each node. This requires the
+`nodes/configz` RBAC permission, which is granted automatically on clusters
+running Kubernetes v1.33 or later (where fine-grained kubelet API authorization
+is enabled by default, see
+[KEP-2862](https://github.com/kubernetes/enhancements/issues/2862)).
+
+On older clusters (before v1.33), or on distributions where the kubelet API
+authorization feature gate has been explicitly disabled, socket path
+auto-detection is not available. Inspektor Gadget will log a warning and fall
+back to the configured socket path:
+
+```
+time="2026-08-10T14:36:21Z" level=warning msg="Failed to retrieve socket path for runtime client from kubelet: getting /configz: fetching /configz from \"minikube-docker\": kubelet /configz status is 403, expected: 200. Falling back to default container runtime"
+time="2026-08-10T14:36:21Z" level=warning msg="Failed to retrieve socket path for runtime client from kubelet: getting /configz: fetching /configz from \"minikube-docker\": kubelet /configz status is 403, expected: 200. Falling back to default container runtime"
+```
+
+If the default path does not match your setup, you can set it explicitly in a
+daemon configuration file:
+
+```yaml
+# daemon-config.yaml
+containerd-socketpath: /run/containerd/containerd.sock
+crio-socketpath:       /run/crio/crio.sock
+docker-socketpath:     /run/docker.sock
+podman-socketpath:     /run/podman/podman.sock
+```
+
+Then deploy with:
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+```
+
 ##### Other Deploy Options
 
 Please check the following documents to learn more about different options:
