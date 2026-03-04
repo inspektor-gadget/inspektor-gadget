@@ -77,9 +77,11 @@ func (p *PodmanClient) listContainers(containerID string) ([]*runtimeclient.Cont
 	}
 
 	var containers []struct {
-		ID    string   `json:"Id"`
-		Names []string `json:"Names"`
-		State string   `json:"State"`
+		ID      string   `json:"Id"`
+		Names   []string `json:"Names"`
+		State   string   `json:"State"`
+		Image   string   `json:"Image"`
+		ImageID string   `json:"ImageID"`
 	}
 	if err = json.NewDecoder(resp.Body).Decode(&containers); err != nil {
 		return nil, fmt.Errorf("decoding containers: %w", err)
@@ -89,10 +91,13 @@ func (p *PodmanClient) listContainers(containerID string) ([]*runtimeclient.Cont
 	for i, c := range containers {
 		ret[i] = &runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
-				ContainerID:   c.ID,
-				ContainerName: c.Names[0],
-				RuntimeName:   types.RuntimeNamePodman,
-				State:         containerStatusStateToRuntimeClientState(c.State),
+				ContainerID:          c.ID,
+				ContainerName:        c.Names[0],
+				RuntimeName:          types.RuntimeNamePodman,
+				ContainerImageName:   c.Image,
+				ContainerImageID:     c.ImageID,
+				ContainerImageDigest: "",
+				State:                containerStatusStateToRuntimeClientState(c.State),
 			},
 		}
 	}
@@ -132,6 +137,7 @@ func (p *PodmanClient) GetContainerDetails(containerID string) (*runtimeclient.C
 	var container struct {
 		ID    string `json:"Id"`
 		Name  string `json:"Name"`
+		Image string `json:"Image"`
 		State struct {
 			Status     string `json:"Status"`
 			Pid        int    `json:"Pid"`
@@ -146,10 +152,13 @@ func (p *PodmanClient) GetContainerDetails(containerID string) (*runtimeclient.C
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
-				ContainerID:   container.ID,
-				ContainerName: container.Name,
-				RuntimeName:   types.RuntimeNamePodman,
-				State:         containerStatusStateToRuntimeClientState(container.State.Status),
+				ContainerID:          container.ID,
+				ContainerName:        container.Name,
+				RuntimeName:          types.RuntimeNamePodman,
+				ContainerImageName:   container.Image,
+				ContainerImageID:     container.Image,
+				ContainerImageDigest: "",
+				State:                containerStatusStateToRuntimeClientState(container.State.Status),
 			},
 		},
 		Pid:         container.State.Pid,

@@ -36,6 +36,9 @@ updates:
       containers:
         patterns:
           - "github.com/containers/*"
+      aws-sdk:
+        patterns:
+          - "github.com/aws/aws-sdk-go-v2/*"
   - package-ecosystem: "docker"
     directory: "/Dockerfiles"
     schedule:

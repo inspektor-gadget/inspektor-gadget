@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.49.1
+version: 0.50.0
 name: "trace bind"
 category: monitoring-logging
 displayName: "trace bind"
-createdAt: "2026-02-12T11:20:18Z"
-digest: "2026-02-12T11:20:18Z"
+createdAt: "2026-03-02T09:49:04Z"
+digest: "2026-03-02T09:49:04Z"
 description: "trace stream socket binding syscalls"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

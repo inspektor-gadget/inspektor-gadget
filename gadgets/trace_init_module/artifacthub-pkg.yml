@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.48.0
+version: 0.50.0
 name: "trace init_module"
 category: monitoring-logging
 displayName: "trace init_module"
-createdAt: "2026-01-12T00:00:00Z"
-digest: "2026-01-12T00:00:00Z"
+createdAt: "2026-03-02T09:49:04Z"
+digest: "2026-03-02T09:49:04Z"
 description: "trace init_module syscalls"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

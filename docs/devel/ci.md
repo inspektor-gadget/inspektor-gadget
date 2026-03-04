@@ -65,7 +65,7 @@ $ az provider register -n Microsoft.Storage --wait
 $ az provider register -n Microsoft.Authorization --wait
 
 # Create resource group
-$ az group create --name $RESOURCEGROUP --location $LOCATION
+$ az group create --name $RESOURCEGROUP --location $LOCATION --tags DO-NOT-DELETE='Inspektor Gadget CI, contact hello@inspektor-gadget.io'
 
 # Create virtual network and two empty subnets for the master and the worker nodes.
 $ az network vnet create --resource-group $RESOURCEGROUP --name $VNET --address-prefixes 10.0.0.0/22

@@ -42,6 +42,12 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name.
 	Containername string
 
+	// ContainerImageDigest allows to filter containers by image digest.
+	ContainerImageDigest string
+
+	// ContainerImageID allows to filter containers by image ID.
+	ContainerImageID string
+
 	// Kubernetes-related filters
 	K8sPodName       string
 	K8sNamespace     string
@@ -157,6 +163,32 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"runtime-containername", "", "", "",
 	)
 	command.PersistentFlags().MarkHidden("runtime-containername")
+
+	command.PersistentFlags().StringVarP(
+		&commonFlags.ContainerImageDigest,
+		"containerimage-digest",
+		"",
+		"",
+		"Show data only from containers with the runtime-assigned image digest (alias: runtime-containerimage-digest)",
+	)
+	command.PersistentFlags().StringVarP(
+		&commonFlags.ContainerImageDigest,
+		"runtime-containerimage-digest", "", "", "",
+	)
+	command.PersistentFlags().MarkHidden("runtime-containerimage-digest")
+
+	command.PersistentFlags().StringVarP(
+		&commonFlags.ContainerImageID,
+		"containerimage-id",
+		"",
+		"",
+		"Show data only from containers with the runtime-assigned image ID (alias: runtime-containerimage-id)",
+	)
+	command.PersistentFlags().StringVarP(
+		&commonFlags.ContainerImageID,
+		"runtime-containerimage-id", "", "", "",
+	)
+	command.PersistentFlags().MarkHidden("runtime-containerimage-id")
 
 	command.PersistentFlags().BoolVarP(
 		&commonFlags.Host,

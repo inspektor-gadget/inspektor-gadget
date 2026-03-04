@@ -52,9 +52,9 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 	podUID := GetPodUID(t, ns, pod)
 
 	// Containerd and docker shim name the container with the Kubernetes container
-	// name, while CRI-O use a composed name.
+	// name, while CRI-O and Docker use a composed name.
 	runtimeContainerName := cn
-	if containerRuntime == ContainerRuntimeCRIO {
+	if containerRuntime == ContainerRuntimeCRIO || containerRuntime == ContainerRuntimeDocker {
 		// Test container shouldn't have been restarted, so append "0".
 		runtimeContainerName = "k8s_" + cn + "_" + pod + "_" + ns + "_" + podUID + "_" + "0"
 	}
@@ -104,6 +104,7 @@ func TestEnrichmentPodLabelExistingPod(t *testing.T) {
 				c.Runtime.ContainerPID = 0
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerStartedAt = 0
+				c.Runtime.ContainerImageID = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
@@ -179,14 +180,15 @@ func TestEnrichmentPodLabelNewPod(t *testing.T) {
 				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
+				e.Container.Runtime.ContainerImageID = ""
 
-				// CRI-O uses a custom container name composed, among
+				// CRI-O and Docker use a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in
 				// advance, so we can't match the expected container name.
 				// TODO: Create a test for this once we support filtering by k8s
 				// container name. See
 				// https://github.com/inspektor-gadget/inspektor-gadget/issues/1403.
-				if e.Container.Runtime.RuntimeName == ContainerRuntimeCRIO {
+				if e.Container.Runtime.RuntimeName == ContainerRuntimeCRIO || e.Container.Runtime.RuntimeName == ContainerRuntimeDocker {
 					e.Container.Runtime.ContainerName = cn
 				}
 

@@ -84,6 +84,7 @@ func newListContainerTestStep(
 				c.Runtime.ContainerPID = 0
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerStartedAt = 0
+				c.Runtime.ContainerImageID = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
@@ -198,6 +199,46 @@ func TestListContainers(t *testing.T) {
 			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
 			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
 				match.MatchAllEntries(t, match.JSONSingleArrayMode, output, f, c)
+			},
+		)
+		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("FilteredListByDigest", func(t *testing.T) {
+		t.Parallel()
+
+		var digest string
+
+		// 1. Get the digest first
+		cmd := &Command{
+			Name: "GetDigest",
+			Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", containerRuntime, runtimeContainerName),
+			ValidateOutput: func(t *testing.T, output string) {
+				var containers []*containercollection.Container
+				err := json.Unmarshal([]byte(output), &containers)
+				require.NoError(t, err, "unmarshalling list-containers output")
+
+				// Find the correct container
+				found := false
+				for _, c := range containers {
+					if c.Runtime.ContainerName == runtimeContainerName {
+						digest = c.Runtime.ContainerImageDigest
+						found = true
+						break
+					}
+				}
+				require.True(t, found, "container not found")
+				require.NotEmpty(t, digest, "container image digest is empty")
+			},
+		}
+		RunTestSteps([]TestStep{cmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+		// 2. Filter by digest
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --runtime-containerimage-digest=%s", containerRuntime, digest),
+			cn, pod, podUID, ns, containerRuntime, runtimeContainerName,
+			func(t *testing.T, output string, f func(*containercollection.Container), c *containercollection.Container) {
+				match.MatchEntries(t, match.JSONSingleArrayMode, output, f, c)
 			},
 		)
 		RunTestSteps([]TestStep{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -326,6 +367,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
+				e.Container.Runtime.ContainerImageID = ""
 
 				// Docker and CRI-O use a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in
@@ -422,6 +464,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
+				e.Container.Runtime.ContainerImageID = ""
 
 				// Docker and CRI-O use a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in
@@ -519,6 +562,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Container.Runtime.ContainerPID = 0
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerStartedAt = 0
+				e.Container.Runtime.ContainerImageID = ""
 				e.Container.K8s.PodLabels = addPodLabels(po)
 				e.Container.K8s.PodUID = ""
 

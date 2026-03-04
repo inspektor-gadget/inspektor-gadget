@@ -26,15 +26,17 @@ import (
 )
 
 const (
-	ParamContainerName        = "containername"
-	ParamPodName              = "podname"
-	ParamNamespace            = "namespace"
-	ParamSelector             = "selector"
-	ParamK8sContainerName     = "k8s-containername"
-	ParamK8sPodName           = "k8s-podname"
-	ParamK8sNamespace         = "k8s-namespace"
-	ParamK8sSelector          = "k8s-selector"
-	ParamRuntimeContainerName = "runtime-containername"
+	ParamContainerName               = "containername"
+	ParamPodName                     = "podname"
+	ParamNamespace                   = "namespace"
+	ParamSelector                    = "selector"
+	ParamK8sContainerName            = "k8s-containername"
+	ParamK8sPodName                  = "k8s-podname"
+	ParamK8sNamespace                = "k8s-namespace"
+	ParamK8sSelector                 = "k8s-selector"
+	ParamRuntimeContainerName        = "runtime-containername"
+	ParamRuntimeContainerImageDigest = "runtime-containerimage-digest"
+	ParamRuntimeContainerImageID     = "runtime-containerimage-id"
 )
 
 // NewContainerSelector creates a ContainerSelector from parameter values
@@ -43,7 +45,9 @@ func NewContainerSelector(params *params.Params) containercollection.ContainerSe
 
 	containerSelector := containercollection.ContainerSelector{
 		Runtime: containercollection.RuntimeSelector{
-			ContainerName: params.Get(ParamRuntimeContainerName).AsString(),
+			ContainerName:        params.Get(ParamRuntimeContainerName).AsString(),
+			ContainerImageID:     params.Get(ParamRuntimeContainerImageID).AsString(),
+			ContainerImageDigest: params.Get(ParamRuntimeContainerImageDigest).AsString(),
 		},
 		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
@@ -106,6 +110,20 @@ func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 		ValueHint:   gadgets.LocalContainer,
 		Tags:        []string{api.TagGroupDataFiltering},
 	}
+	runtimeContainerImageDigestParam := params.ParamDesc{
+		Key:         ParamRuntimeContainerImageDigest,
+		Title:       "Runtime Container Image Digest",
+		Description: "runtime-assigned container image digest to filter on. Supports comma-separated list and exclusion using '!'.",
+		ValueHint:   gadgets.LocalImageDigest,
+		Tags:        []string{api.TagGroupDataFiltering},
+	}
+	runtimeContainerImageIDParam := params.ParamDesc{
+		Key:         ParamRuntimeContainerImageID,
+		Title:       "Runtime Container Image ID",
+		Description: "runtime-assigned container image ID to filter on. Supports comma-separated list and exclusion using '!'.",
+		ValueHint:   gadgets.LocalImageID,
+		Tags:        []string{api.TagGroupDataFiltering},
+	}
 
 	// For backward compatibility, we swap the main keys and alternative keys, ensuring
 	// things like '--podname' (vs '--k8s-podname') or 'operator.KubeManager.podname' (vs 'operator.KubeManager.k8s-podname')
@@ -142,7 +160,7 @@ func GetContainerSelectorParams(isKubeManager bool) params.ParamDescs {
 		runtimeContainerParam.Alias = "c"
 	}
 
-	return params.ParamDescs{&k8sPodName, &k8sNamespace, &k8sSelector, &k8sContainerNameParam, &runtimeContainerParam}
+	return params.ParamDescs{&k8sPodName, &k8sNamespace, &k8sSelector, &k8sContainerNameParam, &runtimeContainerParam, &runtimeContainerImageDigestParam, &runtimeContainerImageIDParam}
 }
 
 func labelSelectorValidator(value string) error {
