@@ -15,14 +15,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	log "github.com/sirupsen/logrus"
 
@@ -80,9 +90,21 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
+const (
+	// Written by --kubelet-certificate (read-only Secret mount), if present.
+	secretKubeletCAPath = "/var/run/secrets/gadget/kubelet-certificate/ca.crt"
+
+	// The single path the main container (k8s.go) reads. Backed by a shared
+	// memory emptyDir so the initContainer can hand the CA to -serve.
+	kubeletCAPath = "/var/run/gadget/kubelet-ca/ca.crt"
+
+	kubeletPort = "10250"
+)
+
 var (
 	serve             bool
 	liveness          bool
+	fetchKubeletCA    bool
 	socketfile        string
 	gadgetServiceHost string
 )
@@ -95,6 +117,65 @@ func init() {
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
+	flag.BoolVar(&fetchKubeletCA, "fetch-kubelet-ca", false, "Fetch the kubelet CA certificate and exit. Meant to run as an initContainer.")
+}
+
+func getNodeInternalIP(nodeName string) (string, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return "", fmt.Errorf("in-cluster config: %w", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("creating clientset: %w", err)
+	}
+
+	node, err := clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("getting node %q: %w", nodeName, err)
+	}
+
+	for _, a := range node.Status.Addresses {
+		if a.Type == v1.NodeInternalIP && a.Address != "" {
+			return a.Address, nil
+		}
+	}
+
+	return "", fmt.Errorf("no internal IP found for node %q", nodeName)
+}
+
+func fetchKubeletCACert(hostIP string) ([]byte, error) {
+	addr := net.JoinHostPort(hostIP, kubeletPort)
+
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{
+		InsecureSkipVerify: true, //nolint:gosec // one-shot bootstrap to capture the kubelet's own cert
+	})
+	if err != nil {
+		return nil, fmt.Errorf("TLS dial %s: %w", addr, err)
+	}
+	defer conn.Close()
+
+	certs := conn.ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("no peer certificates received from %s", addr)
+	}
+
+	// Store ALL certificates from the chain.
+	// This mirrors what kubelet CA files (e.g. minikube's ca.crt) contain:
+	// the full trust chain needed to verify the TLS connection.
+	var buf bytes.Buffer
+	for _, c := range certs {
+		if err := pem.Encode(&buf, &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: c.Raw,
+		}); err != nil {
+			return nil, fmt.Errorf("PEM encode: %w", err)
+		}
+	}
+
+	return buf.Bytes(), nil
 }
 
 func main() {
@@ -148,6 +229,43 @@ func main() {
 		}
 
 		fmt.Printf("Gadget Tracer Manager healthy: %s", resp.GetStatus().String())
+		os.Exit(0)
+	}
+
+	if fetchKubeletCA {
+		if err := os.MkdirAll(filepath.Dir(kubeletCAPath), 0o700); err != nil {
+			log.Fatalf("creating CA directory: %v", err)
+		}
+
+		certificate, err := os.ReadFile(secretKubeletCAPath)
+		// Certificate was not given at deploy time, let's gather it
+		// ourselves.
+		if err != nil {
+			log.Warnf("no kubelet CA provided; capturing it via TLS")
+
+			nodeName := os.Getenv("NODE_NAME")
+			if nodeName == "" {
+				log.Fatalf("environment variable NODE_NAME not set")
+			}
+
+			nodeIP, err := getNodeInternalIP(nodeName)
+			if err != nil {
+				log.Fatalf("getting node internal IP: %v", err)
+			}
+
+			certificate, err = fetchKubeletCACert(nodeIP)
+			if err != nil {
+				log.Fatalf("fetching kubelet CA: %v", err)
+			}
+		} else {
+			log.Info("using kubelet CA certificate given at deploy time")
+		}
+
+		err = os.WriteFile(kubeletCAPath, certificate, 0o600)
+		if err != nil {
+			log.Fatalf("writing kubelet certificate to %q: %v", kubeletCAPath, err)
+		}
+
 		os.Exit(0)
 	}
 

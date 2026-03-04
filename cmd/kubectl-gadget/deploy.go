@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,6 +72,9 @@ import (
 const (
 	gadgetPullSecret = "gadget-pull-secret"
 	configYamlKey    = "config.yaml"
+
+	gadgetKubeletCertSecret = "gadget-kubelet-certificate"
+	kubeletCertKey          = "ca.crt"
 )
 
 var deployCmd = &cobra.Command{
@@ -112,6 +116,7 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	kubeletCertificate    string
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -263,6 +268,12 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().StringVar(
+		&kubeletCertificate,
+		"kubelet-certificate",
+		"",
+		"PEM-encoded kubelet CA certificate. If set, it is stored as a Secret and used to verify the kubelet when fetching configz; otherwise the CA is captured automatically at deploy time",
+	)
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -603,6 +614,12 @@ func flagToConfigValue(flagName string, value pflag.Value) any {
 	return value
 }
 
+// This was added as beta in k8s 1.33 and there is no feature gate for
+// features in beta.
+func hasNodesConfigz(serverVersion *k8sversion.Version) bool {
+	return serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.33.0"))
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 	if !printOnly {
@@ -718,6 +735,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		log.Warnf("You used --verify-image=false, the container image will not be verified")
 	}
 
+	serverVersion := &k8sversion.Version{}
+	if !printOnly {
+		serverInfo, err := discoveryClient.ServerVersion()
+		if err != nil {
+			return fmt.Errorf("getting server version: %w", err)
+		}
+
+		serverVersion = k8sversion.MustParseSemantic(serverInfo.String())
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -749,13 +776,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			if !printOnly {
-				serverInfo, err := discoveryClient.ServerVersion()
-				if err != nil {
-					return fmt.Errorf("getting server version: %w", err)
-				}
-
-				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
-
 				// The "kubernetes.io/os" node label was introduced in v1.14.0
 				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
 				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
@@ -856,6 +876,85 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					ReadOnly:  true,
 				})
 			}
+
+			if !printOnly && hasNodesConfigz(serverVersion) {
+				daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, v1.Volume{
+					Name: "kubelet-certificate-path",
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{Medium: v1.StorageMediumMemory},
+					},
+				})
+				gadgetContainer.VolumeMounts = append(gadgetContainer.VolumeMounts, v1.VolumeMount{
+					Name:      "kubelet-certificate-path",
+					MountPath: "/var/run/gadget/kubelet-ca",
+					ReadOnly:  true,
+				})
+
+				initContainer := v1.Container{
+					Name:            "fetch-kubelet-ca",
+					Image:           image,
+					ImagePullPolicy: policy,
+					Command:         []string{"/bin/gadgettracermanager", "-fetch-kubelet-ca"},
+					Env: []v1.EnvVar{
+						{
+							Name: "NODE_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.nodeName"},
+							},
+						},
+					},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      "kubelet-certificate-path",
+							MountPath: "/var/run/gadget/kubelet-ca",
+							ReadOnly:  false,
+						},
+					},
+				}
+
+				if kubeletCertificate != "" {
+					daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, v1.Volume{
+						Name: "kubelet-certificate-secret",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{SecretName: gadgetKubeletCertSecret},
+						},
+					})
+
+					initContainer.VolumeMounts = append(initContainer.VolumeMounts, v1.VolumeMount{
+						Name:      "kubelet-certificate-secret",
+						MountPath: "/var/run/secrets/gadget/kubelet-certificate",
+						ReadOnly:  true,
+					})
+
+					// User gives the certificate, let's create the secret from this
+					// value.
+					secret := &v1.Secret{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "v1",
+							Kind:       "Secret",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      gadgetKubeletCertSecret,
+							Namespace: gadgetNamespace,
+							Labels: map[string]string{
+								"k8s-app": "gadget",
+							},
+						},
+						Type: v1.SecretTypeOpaque,
+						Data: map[string][]byte{
+							kubeletCertKey: []byte(kubeletCertificate),
+						},
+					}
+
+					_, err := createOrUpdateResource(dynamicClient, mapper, secret)
+					if err != nil {
+						return fmt.Errorf("problem while creating kubelet CA certificate secret: %w", err)
+					}
+				}
+
+				daemonSet.Spec.Template.Spec.InitContainers = append(
+					daemonSet.Spec.Template.Spec.InitContainers, initContainer)
+			}
 		}
 
 		if ns, isNs := object.(*v1.Namespace); isNs {
@@ -882,6 +981,20 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
 			rBinding.Namespace = gadgetNamespace
+		}
+		if clusterRole, isRole := object.(*rbacv1.ClusterRole); isRole {
+			// nodes/proxy is dangerous, even with the get verb:
+			// https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes
+			// We only need access to configz. Unfortunately, this is only available
+			// in k8s 1.33 and above:
+			// https://github.com/kubernetes/kubernetes/pull/129656
+			if !printOnly && hasNodesConfigz(serverVersion) {
+				for i, rule := range clusterRole.Rules {
+					if slices.Contains(rule.Resources, "nodes/proxy") {
+						clusterRole.Rules[i].Resources = []string{"nodes/configz"}
+					}
+				}
+			}
 		}
 
 		if cm, isCm := object.(*v1.ConfigMap); isCm {
