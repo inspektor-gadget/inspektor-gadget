@@ -164,7 +164,7 @@ int main(int argc, char *argv[], char **envp) {
 				expectedEntries := []*traceExecEvent{
 					// inner script.sh
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:  utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:        utils.BuildProc("sh2", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        "/dev/script.sh",
@@ -184,7 +184,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:  utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:  utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:        utils.BuildProc("sh2", 1000, 1111),
 						Cwd:         "/tmp",
 						Args:        "/bin/script.sh",
@@ -204,7 +204,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("with_shebeng.sh", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          "/bin/with_shebeng.sh",
@@ -226,7 +226,7 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// inner sh
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sh2", 1000, 1111),
 						Cwd:           "/",
 						Args:          strings.Join(innerShArgs, consts.ArgsSeparator),
@@ -247,7 +247,7 @@ int main(int argc, char *argv[], char **envp) {
 					},
 					// sleeps
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          strings.Join(sleep1Args, consts.ArgsSeparator),
@@ -267,7 +267,7 @@ int main(int argc, char *argv[], char **envp) {
 						Sessionid: utils.NormalizedInt,
 					},
 					{
-						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
+						CommonData:    utils.BuildCommonData(t, containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("sleep", 1000, 1111),
 						Cwd:           "/tmp",
 						Args:          strings.Join(sleep2Args, consts.ArgsSeparator),
