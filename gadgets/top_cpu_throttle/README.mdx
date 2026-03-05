@@ -1,0 +1,110 @@
+---
+title: top_cpu_throttle
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# top_cpu_throttle
+
+The top_cpu_throttle gadget periodically reports cgroup v2 CPU throttling
+statistics, making it easy to identify which containers, pods, or namespaces
+are the worst CFS (Completely Fair Scheduler) throttle offenders.
+
+This is particularly useful when PSI (Pressure Stall Information) shows high
+CPU pressure on a node but `top`/`htop` shows available CPU time — the
+pressure is likely caused by too-tight cgroup CPU limits rather than genuine
+CPU overutilization.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_cpu_throttle:%IG_TAG%
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_cpu_throttle:%IG_TAG%
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+The gadget reads the following cgroup v2 files for every cgroup that has a
+CPU bandwidth limit:
+
+| File | Data |
+|---|---|
+| `cpu.max` | Quota and period (the CPU limit) |
+| `cpu.stat` | `nr_periods`, `nr_throttled`, `throttled_usec` (cumulative throttle counters) |
+| `cpu.pressure` | PSI averages (optional — gracefully skipped if unavailable) |
+
+### Reported fields
+
+| Column | Description |
+|---|---|
+| `CGROUP` | Cgroup v2 path (hidden by default) |
+| `PERIODS` | Number of CFS enforcement intervals elapsed in the reporting period |
+| `THROTTLED` | Number of times the cgroup was throttled |
+| `THROTTLED_TIME` | Total time spent throttled (human-readable duration) |
+| `%THROT` | Throttle percentage (`THROTTLED / PERIODS × 100`, 0–100) |
+| `QUOTA` | CPU quota per CFS period (human-readable duration) |
+| `LIMIT` | Effective CPU core limit (`quota / period`) |
+| `%PSI10` | CPU pressure % over 10 s (PSI "some" avg) |
+| `%PSI60` | CPU pressure % over 60 s (PSI "some" avg) |
+
+Only cgroups with an explicit CPU bandwidth limit are shown — cgroups
+without a `cpu.max` quota (i.e., unlimited) are filtered out.
+
+PSI "full" is omitted because CFS throttling is all-or-nothing at the cgroup
+level — "full" is always identical to "some" for CPU pressure.
+
+All throttle counters are **per-interval deltas**, not cumulative totals —
+they reflect what happened since the last report.
+
+### Sorting by worst offenders
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_cpu_throttle:%IG_TAG% --sort -throttleRatio
+        K8S.NODE     K8S.NAMESPACE K8S.PODNAME     K8S.CONTAINER  PERIODS THROTTLED THROTTLED_TIME %THROT   QUOTA  LIMIT %PSI10 %PSI60
+        minikube     default       heavy-web       heavy-web           50        50       7.24511s 100.00  5.00ms   0.05  79.43  29.55
+        minikube     default       api-server      api-server          50        50       2.87386s 100.00 20.00ms   0.20  60.54  24.27
+        minikube     default       light-load      light-load          50         8       62.72ms   16.00 10.00ms   0.10   0.27   0.08
+        minikube     default       batch-job       batch-job           50         0           0ns    0.00 100.00m   1.00   0.00   0.00
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run top_cpu_throttle --sort -throttleRatio
+        RUNTIME.CONTAINERNAME  PERIODS THROTTLED THROTTLED_TIME %THROT   QUOTA  LIMIT %PSI10 %PSI60
+        heavy-web                   50        50       7.24511s 100.00  5.00ms   0.05  79.43  29.55
+        api-server                  50        50       2.87386s 100.00 20.00ms   0.20  60.54  24.27
+        light-load                  50         8       62.72ms   16.00 10.00ms   0.10   0.27   0.08
+        batch-job                   50         0           0ns    0.00 100.00m   1.00   0.00   0.00
+        ```
+    </TabItem>
+</Tabs>
+
+### Adjusting the interval
+
+```bash
+$ sudo ig run top_cpu_throttle --interval 3s
+```
+
+## Requirements
+
+* **cgroup v2** — the host must use cgroup v2 (unified hierarchy). Cgroup v1
+  is not supported.
+* **PSI** — PSI metrics require `CONFIG_PSI=y` in the kernel (Linux 4.20+).
+  If PSI is not available, the PSI columns will report 0 and the gadget will
+  continue to work normally.

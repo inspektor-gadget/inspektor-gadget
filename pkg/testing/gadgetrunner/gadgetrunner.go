@@ -43,6 +43,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
 	// TODO: create a common package with all operators
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cgroup"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
