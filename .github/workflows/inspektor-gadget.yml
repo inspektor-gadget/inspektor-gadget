@@ -1118,11 +1118,11 @@ jobs:
           image="${CONTAINER_REPO}@${DIGEST}"
         else
           if [ ${{ matrix.image.name }} == "dnstester" ]; then
-            image=${{ env.DEFAULT_DNSTESTER_IMAGE }}
+            image=${DEFAULT_DNSTESTER_IMAGE}
           elif [ ${{ matrix.image.name }} == "gadget-builder" ]; then
-            image=${{ env.DEFAULT_GADGET_BUILDER_IMAGE }}
+            image=${DEFAULT_GADGET_BUILDER_IMAGE}
           elif [ ${{ matrix.image.name }} == "benchmark" ]; then
-            image=${{ env.DEFAULT_TOOLS_BENCH_IMAGE }}
+            image=${DEFAULT_TOOLS_BENCH_IMAGE}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
             exit 1
@@ -1442,7 +1442,7 @@ jobs:
         # Final name of the chart will be REGISTRY/CONTAINER_REPO/charts/CHART_NAME:CHART_VERSION
         # where CHART_NAME and CHART_VERSION are derived from the Chart.yaml packaged in the tgz
         helm push gadget-*.tgz \
-          oci://${{ env.REGISTRY }}/${CONTAINER_REPO}/charts
+          oci://${REGISTRY}/${CONTAINER_REPO}/charts
 
   test-components:
     name: Test components
@@ -1981,7 +1981,7 @@ jobs:
     - name: Craft cluster name
       shell: bash
       run: |
-        echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}-${RANDOM}" >> $GITHUB_ENV
+        echo "CLUSTER_NAME=${AZURE_AKS_CLUSTER_PREFIX}${{ matrix.arch }}-${{ matrix.os-sku }}-${RANDOM}" >> $GITHUB_ENV
     - name: Create AKS cluster ${{ env.CLUSTER_NAME }}
       shell: bash
       run: |
@@ -2123,7 +2123,7 @@ jobs:
     - name: Craft cluster name
       shell: bash
       run: |
-        echo "CLUSTER_NAME=${{ env.AWS_EKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${RANDOM}" >> $GITHUB_ENV
+        echo "CLUSTER_NAME=${AWS_EKS_CLUSTER_PREFIX}${{ matrix.arch }}-${RANDOM}" >> $GITHUB_ENV
     # Install eksctl following https://eksctl.io/installation/#for-unix
     - name: Install eksctl
       run: |
@@ -2217,7 +2217,7 @@ jobs:
       - name: Craft cluster name
         shell: bash
         run: |
-            echo "CLUSTER_NAME=${{ env.GKE_CLUSTER_PREFIX }}${{ matrix.flavor.arch }}-${RANDOM}" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=${GKE_CLUSTER_PREFIX}${{ matrix.flavor.arch }}-${RANDOM}" >> $GITHUB_ENV
       - name: Create GKE cluster
         run: |
           # arm64 machine types are only available in zones (us-central1-a, us-central1-b, us-central1-f, us-central1-d) in us-central1 region
@@ -2393,7 +2393,7 @@ jobs:
       env:
         IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
-        export IMAGE="${{ env.REGISTRY }}/${CONTAINER_REPO}:${IMAGE_TAG}"
+        export IMAGE="${REGISTRY}/${CONTAINER_REPO}:${IMAGE_TAG}"
         cp pkg/resources/manifests/deploy.yaml "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
     - name: Create Draft Release

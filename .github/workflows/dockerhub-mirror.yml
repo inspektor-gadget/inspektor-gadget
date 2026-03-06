@@ -53,4 +53,4 @@ jobs:
         run: |
           crane copy \
             ${{ matrix.repo }}/${{ matrix.image }} \
-            ${{ env.REGISTRY }}/${CONTAINER_REPO}/ci/${{ matrix.image }}
+            ${REGISTRY}/${CONTAINER_REPO}/ci/${{ matrix.image }}
