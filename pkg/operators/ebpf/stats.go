@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -171,6 +172,48 @@ func (o *ebpfOperator) InstantiateDataOperator(
 	}
 
 	// stats fields
+
+	// CPU Usage Percentage
+	instance.cpuUsageField, err = instance.ds.AddField("cpuUsage", api.Kind_Float64,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsAliasAnnotation:     "%CPU",
+			metadatav1.ColumnsPrecisionAnnotation: "2",
+			metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+			metadatav1.DescriptionAnnotation:      "CPU usage percentage of the eBPF program",
+			metadatav1.ColumnsWidthAnnotation:     "8",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Relative CPU Usage
+	instance.cpuRelativeField, err = instance.ds.AddField("cpuUsageRelative", api.Kind_Float64,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsAliasAnnotation:     "%RELCPU",
+			metadatav1.ColumnsPrecisionAnnotation: "2",
+			metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+			metadatav1.DescriptionAnnotation:      "CPU usage relative to the number of available CPUs",
+			metadatav1.ColumnsWidthAnnotation:     "8",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Human Readable Time Format
+	instance.cpuTimeStrField, err = instance.ds.AddField("cpuTimeStr", api.Kind_String,
+		datasource.WithAnnotations(map[string]string{
+			metadatav1.ColumnsAliasAnnotation:     "TIME+",
+			metadatav1.ColumnsAlignmentAnnotation: string(metadatav1.AlignmentRight),
+			metadatav1.DescriptionAnnotation:      "Total CPU time formatted as duration",
+			metadatav1.ColumnsWidthAnnotation:     "12",
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	instance.runtimeField, err = instance.ds.AddField("runtime_raw", api.Kind_Uint64,
 		datasource.WithAnnotations(map[string]string{
 			metadatav1.ColumnsWidthAnnotation:     "12",
@@ -294,10 +337,13 @@ type ebpfOperatorDataInstance struct {
 	progTypeField datasource.FieldAccessor
 
 	// stats fields
-	runtimeField   datasource.FieldAccessor
-	runcountField  datasource.FieldAccessor
-	mapMemoryField datasource.FieldAccessor
-	mapCountField  datasource.FieldAccessor
+	runtimeField     datasource.FieldAccessor
+	runcountField    datasource.FieldAccessor
+	mapMemoryField   datasource.FieldAccessor
+	mapCountField    datasource.FieldAccessor
+	cpuUsageField    datasource.FieldAccessor
+	cpuRelativeField datasource.FieldAccessor
+	cpuTimeStrField  datasource.FieldAccessor
 
 	// process fields
 	commsField datasource.FieldAccessor
@@ -317,10 +363,13 @@ type stat struct {
 	programName string
 	programType string
 
-	runtime   uint64
-	runcount  uint64
-	mapMemory uint64
-	mapCount  uint64
+	runtime          uint64
+	runcount         uint64
+	mapMemory        uint64
+	mapCount         uint64
+	totalRuntime     uint64
+	cpuUsage         float64
+	cpuUsageRelative float64
 
 	comms string
 	pids  string
@@ -352,6 +401,13 @@ func (i *ebpfOperatorDataInstance) sendStats(stats []stat) error {
 			i.progTypeField.PutString(d, stat.programType)
 		}
 		i.runtimeField.PutUint64(d, stat.runtime)
+		i.cpuUsageField.PutFloat64(d, stat.cpuUsage)
+
+		duration := time.Duration(stat.totalRuntime)
+		timeStr := duration.String()
+
+		i.cpuRelativeField.PutFloat64(d, stat.cpuUsageRelative)
+		i.cpuTimeStrField.PutString(d, timeStr)
 		i.runcountField.PutUint64(d, stat.runcount)
 		i.mapMemoryField.PutUint64(d, stat.mapMemory)
 		i.mapCountField.PutUint64(d, stat.mapCount)
@@ -407,6 +463,7 @@ func enrichStat(stat *stat, processMap map[uint32][]processmaptypes.Process) {
 
 func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 	stats := make([]stat, 0)
+	numCPUs := runtime.NumCPU()
 
 	mapSizes, err := bpfstats.GetMapsMemUsage()
 	if err != nil {
@@ -442,6 +499,7 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 					return nil, fmt.Errorf("getting program stats: %w", err)
 				}
 
+				stat.totalRuntime += progStat.runtime
 				i.oldProgStats[id] = progStat
 				oldProgStats := oldStats[id]
 
@@ -452,6 +510,14 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 			for _, mapID := range gadgetObjs.mapIDs {
 				stat.mapMemory += mapSizes[mapID]
 				stat.mapCount += 1
+			}
+
+			if i.interval > 0 {
+				stat.cpuUsage = (float64(stat.runtime) / float64(i.interval.Nanoseconds())) * 100.0
+			}
+
+			if numCPUs > 0 {
+				stat.cpuUsageRelative = stat.cpuUsage / float64(numCPUs)
 			}
 
 			enrichStat(&stat, processMap)
@@ -505,6 +571,7 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 		stat.programType = pi.Type.String()
 		stat.runtime = uint64(programStats.Runtime)
 		stat.runcount = programStats.RunCount
+		stat.totalRuntime = stat.runtime
 
 		i.oldProgStats[curID] = progStat{
 			runtime:  stat.runtime,
@@ -514,6 +581,14 @@ func (i *ebpfOperatorDataInstance) getStats() ([]stat, error) {
 		oldProgStat := oldStats[curID]
 		stat.runtime -= oldProgStat.runtime
 		stat.runcount -= oldProgStat.runcount
+
+		if i.interval > 0 {
+			stat.cpuUsage = (float64(stat.runtime) / float64(i.interval.Nanoseconds())) * 100.0
+		}
+
+		if numCPUs > 0 {
+			stat.cpuUsageRelative = stat.cpuUsage / float64(numCPUs)
+		}
 
 		mapIDs, _ := pi.MapIDs()
 		for _, mapID := range mapIDs {
