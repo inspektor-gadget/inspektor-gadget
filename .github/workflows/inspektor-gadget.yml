@@ -1,5 +1,6 @@
 name: Inspektor Gadget CI
 env:
+  IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
   GO_VERSION: 1.25.8
@@ -48,7 +49,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION_DOC_CHECK }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Check that there are not broken links
       uses: gaurav-nelson/github-action-markdown-link-check@3c3b66f1f7d0900e37b71eca45b63ea9eedfce31 # v1.0.17
@@ -98,6 +99,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Lint
       uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
@@ -196,7 +198,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
@@ -266,6 +268,7 @@ jobs:
       id: cache-btfgen
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
         # key is composed by
         # - arch: amd64 or arm64
@@ -299,7 +302,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
@@ -310,6 +313,7 @@ jobs:
       id: cache-btfgen
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
         # key is composed by
         # - arch: amd64 or arm64
@@ -357,7 +361,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - uses: github/codeql-action/init@38697555549f1db7851b81482ff19f1fa5c4fedc # v3.29.5
       with:
@@ -388,7 +392,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - uses: github/codeql-action/init@38697555549f1db7851b81482ff19f1fa5c4fedc # v3.29.5
       with:
@@ -432,6 +436,7 @@ jobs:
     - name: Cache Docker layers
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gadget.Dockerfile') }}
         restore-keys: |
@@ -457,6 +462,7 @@ jobs:
       id: cache-btfgen
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
         # key is composed by
         # - arch: amd64 or arm64
@@ -582,6 +588,7 @@ jobs:
     - name: Cache Docker layers
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/ig.Dockerfile') }}
         restore-keys: |
@@ -607,6 +614,7 @@ jobs:
       id: cache-btfgen
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
         # key is composed by
         # - arch: amd64 or arm64
@@ -1010,6 +1018,7 @@ jobs:
     - name: Cache Docker layers
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-docker-${{ matrix.image.name }}-${{ hashFiles(matrix.image.key-files) }}
         restore-keys: |
@@ -1152,7 +1161,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Build gadgets example binaries
       run: |
         cd examples
@@ -1172,7 +1181,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Get ig-linux-amd64.tar.gz from artifact
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1197,7 +1206,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Show repository setup
       env:
@@ -1262,7 +1271,7 @@ jobs:
       uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
     # chart version needs to be semver compliant so we remove the leading 'v'
     - name: Set Chart Version for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: env.IS_RELEASE == 'true'
       env:
         TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
@@ -1398,7 +1407,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Run component tests
       env:
         GADGET_BUILDER: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
@@ -1523,7 +1532,7 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
+          cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       - name: Get ig-linux-amd64.tar.gz from artifact.
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -1645,7 +1654,7 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
+          cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
         id: go
       - name: Gadgets tests
         id: gadgets-tests
@@ -1693,7 +1702,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
@@ -1785,7 +1794,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Gadgets tests
       id: gadgets-tests
@@ -1829,7 +1838,7 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
+          cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       - name: Get ig-linux-amd64.tar.gz from artifact.
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -1887,7 +1896,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -1975,7 +1984,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Authenticate and set ARO cluster context
       # NOTE: This action generates the Kubernetes config file in the current
       # directory. Therefore, it must be run after checking out code otherwise
@@ -2031,7 +2040,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -2115,7 +2124,7 @@ jobs:
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
+          cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       - name: Set container repository and determine image tag
         id: set-repo-determine-image-tag
         uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -2200,7 +2209,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
     - name: Setup minikube
       uses: ./.github/actions/setup-minikube
       with:
@@ -2319,7 +2328,7 @@ jobs:
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: true
+        cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
     - name: Build ig distributions packages
       run: |
