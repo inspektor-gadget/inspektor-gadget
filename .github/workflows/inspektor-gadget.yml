@@ -1398,8 +1398,8 @@ jobs:
         # Install the Helm chart
         helm install gadget gadget-*.tgz \
           --namespace gadget --create-namespace \
-          --set image.repository=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
-          --set image.tag=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+          --set image.repository=${STEPS_SET_REPO_DETERMINE_IMAGE_TAG_OUTPUTS_CONTAINER_REPO} \
+          --set image.tag=${STEPS_SET_REPO_DETERMINE_IMAGE_TAG_OUTPUTS_IMAGE_TAG} \
           --set image.pullPolicy=Never
 
         # Validate the installation
@@ -1414,6 +1414,9 @@ jobs:
 
         # Uninstall the chart
         helm uninstall gadget --namespace gadget
+      env:
+        STEPS_SET_REPO_DETERMINE_IMAGE_TAG_OUTPUTS_CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        STEPS_SET_REPO_DETERMINE_IMAGE_TAG_OUTPUTS_IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
   publish-helm-charts:
     name: Publish Helm charts
@@ -1672,7 +1675,9 @@ jobs:
       - name: Verify gadget builder image
         if: needs.check-secrets.outputs.cosign == 'true'
         run: |
-          cosign verify --key pkg/resources/inspektor-gadget.pub ${{ needs.build-helper-images.outputs.gadget_builder_image }}
+          cosign verify --key pkg/resources/inspektor-gadget.pub ${NEEDS_BUILD_HELPER_IMAGES_OUTPUTS_GADGET_BUILDER_IMAGE}
+        env:
+          NEEDS_BUILD_HELPER_IMAGES_OUTPUTS_GADGET_BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
       - name: Build gadgets
         env:
           BUILDER_IMAGE: ${{ needs.build-helper-images.outputs.gadget_builder_image }}
