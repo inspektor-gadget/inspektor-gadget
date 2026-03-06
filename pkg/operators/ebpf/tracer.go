@@ -139,6 +139,7 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 	}
 
 	t.slowBuf = make([]byte, t.eventSize)
+	lostSinceLast := uint64(0)
 	for {
 		sample, lost, err := readCb()
 		if err != nil {
@@ -150,23 +151,25 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 		}
 
 		if lost > 0 {
-			gadgetCtx.Logger().Warnf("reading event: lost %d samples", lost)
 			t.ds.ReportLostData(lost)
+			lostSinceLast += lost
 			continue
 		}
 
-		if err := t.processEvent(gadgetCtx, sample); err != nil {
+		if err := t.processEvent(gadgetCtx, sample, lostSinceLast); err != nil {
 			gadgetCtx.Logger().Warnf("error processing event: %v", err)
-			continue
 		}
+		lostSinceLast = 0
 	}
 }
 
-func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []byte) error {
+func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []byte, lostSinceLast uint64) error {
 	pSingle, err := t.ds.NewPacketSingle()
 	if err != nil {
 		return fmt.Errorf("creating new packet: %w", err)
 	}
+
+	pSingle.SetLostSampleCount(lostSinceLast)
 
 	sample := fullSample
 	sampleLen := uint32(len(fullSample))
