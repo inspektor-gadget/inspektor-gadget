@@ -308,8 +308,12 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					if !ok {
 						return
 					}
+
+					log.Debugf("Pod informer: received delete event for pod %s", key)
+
 					if containerIDs, ok := containerIDsByKey[key]; ok {
 						for containerID := range containerIDs {
+							log.Debugf("Pod informer: removing container %s for pod %s", containerID, key)
 							cc.RemoveContainer(containerID)
 						}
 					}
@@ -319,31 +323,41 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						return
 					}
 					key, _ := cache.MetaNamespaceKeyFunc(pod)
-					containerIDs, ok := containerIDsByKey[key]
+					log.Debugf("Pod informer: received update event for pod %s", key)
+					trackedIDs, ok := containerIDsByKey[key]
 					if !ok {
-						containerIDs = make(map[string]struct{})
-						containerIDsByKey[key] = containerIDs
+						trackedIDs = make(map[string]struct{})
+						containerIDsByKey[key] = trackedIDs
 					}
 
-					// first: remove containers that are not running anymore
-					nonrunning := k8sClient.GetNonRunningContainers(pod)
-					for _, id := range nonrunning {
-						// container had not been added, no need to remove it
-						if _, ok := containerIDs[id]; !ok {
-							continue
-						}
-						cc.RemoveContainer(id)
+					// Get currently running containers from the runtime
+					runningContainers := k8sClient.GetRunningContainers(pod)
+
+					// Build a set of currently running container IDs
+					runningIDs := make(map[string]struct{}, len(runningContainers))
+					for _, c := range runningContainers {
+						runningIDs[c.Runtime.ContainerID] = struct{}{}
 					}
 
-					// second: add containers that are in running state
-					containers := k8sClient.GetRunningContainers(pod)
-					for _, container := range containers {
-						// The container is already registered, there is not any chance the
-						// PID will change, so ignore it.
-						if _, ok := containerIDs[container.Runtime.ContainerID]; ok {
+					// Reconcile: remove containers that were tracked but are
+					// no longer in the running set. This handles restarts
+					// where the old container ID disappears (even if the
+					// ContainerStatus.ContainerID becomes empty during the
+					// transition).
+					for id := range trackedIDs {
+						if _, ok := runningIDs[id]; !ok {
+							log.Debugf("Pod informer: removing container %s for pod %s", id, key)
+							cc.RemoveContainer(id)
+							delete(trackedIDs, id)
+						}
+					}
+
+					// Add containers that are running but not yet tracked
+					for _, container := range runningContainers {
+						if _, ok := trackedIDs[container.Runtime.ContainerID]; ok {
 							continue
 						}
-						containerIDs[container.Runtime.ContainerID] = struct{}{}
+						trackedIDs[container.Runtime.ContainerID] = struct{}{}
 
 						// Make a copy instead of passing the same pointer at
 						// each iteration of the loop
@@ -356,6 +370,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
 								container.K8s.Namespace, container.K8s.PodName, container.K8s.ContainerName)
 						}
+						log.Debugf("Pod informer: adding container %s for pod %s", container.Runtime.ContainerID, key)
 						cc.AddContainer(&newContainer)
 					}
 				}
