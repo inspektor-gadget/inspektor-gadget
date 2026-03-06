@@ -1439,7 +1439,7 @@ jobs:
         # Final name of the chart will be REGISTRY/CONTAINER_REPO/charts/CHART_NAME:CHART_VERSION
         # where CHART_NAME and CHART_VERSION are derived from the Chart.yaml packaged in the tgz
         helm push gadget-*.tgz \
-          oci://${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}/charts
+          oci://${{ env.REGISTRY }}/${CONTAINER_REPO}/charts
 
   test-components:
     name: Test components
@@ -1992,7 +1992,7 @@ jobs:
         # GitHub Action.
         az extension add --name aks-preview
 
-        az aks create -l eastus2 -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${{ env.CLUSTER_NAME }} -s "$node_size" --os-sku ${{ matrix.os-sku }} --no-ssh-key
+        az aks create -l eastus2 -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${CLUSTER_NAME} -s "$node_size" --os-sku ${{ matrix.os-sku }} --no-ssh-key
     - uses: azure/aks-set-context@c7eb093e5a5d47caa333f64974d5fd1cd4bf069d # v4.0.3
       name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
       with:
@@ -2021,7 +2021,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        az aks delete -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${{ env.CLUSTER_NAME }} --no-wait --yes
+        az aks delete -g "${AZURE_AKS_RESOURCE_GROUP}" -n ${CLUSTER_NAME} --no-wait --yes
 
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
@@ -2142,7 +2142,7 @@ jobs:
         if [ ${{ matrix.arch }} = 'arm64' ]; then
           node_type='t4g.xlarge'
         fi
-        eksctl create cluster --name ${{ env.CLUSTER_NAME }} --tags "ig-ci=true,ig-ci-timestamp=$(date -u +'%Y-%m-%dT%H:%M:%S%:z')" --node-type $node_type
+        eksctl create cluster --name ${CLUSTER_NAME} --tags "ig-ci=true,ig-ci-timestamp=$(date -u +'%Y-%m-%dT%H:%M:%S%:z')" --node-type $node_type
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
@@ -2157,7 +2157,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        eksctl delete cluster --name ${{ env.CLUSTER_NAME }} --force
+        eksctl delete cluster --name ${CLUSTER_NAME} --force
 
   test-integration-gke:
     name: Integration tests on GKE
@@ -2221,7 +2221,7 @@ jobs:
                 extra_args="--node-locations us-central1-a,us-central1-b,us-central1-f"
           fi
 
-          gcloud container clusters create ${{ env.CLUSTER_NAME }} --project ${{ secrets.GKE_PROJECT }} \
+          gcloud container clusters create ${CLUSTER_NAME} --project ${{ secrets.GKE_PROJECT }} \
             --region ${{ matrix.flavor.region }} --machine-type ${{ matrix.flavor.machine_type }} --num-nodes 1 --disk-size 50 $extra_args
       - name: Set GKE cluster ${{ env.CLUSTER_NAME }} context
         uses: google-github-actions/get-gke-credentials@3da1e46a907576cefaa90c484278bb5b259dd395 # v3.0.0
@@ -2252,12 +2252,12 @@ jobs:
         run: |
           while [ "$(gcloud container operations list \
             --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} \
-            --filter="status=RUNNING AND targetLink~${{ env.CLUSTER_NAME }}" --format="value(name)")" ]
+            --filter="status=RUNNING AND targetLink~${CLUSTER_NAME}" --format="value(name)")" ]
           do
             echo "cluster has an ongoing operation, waiting for all operations to finish"
             sleep 15
           done
-          gcloud container clusters delete --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} ${{ env.CLUSTER_NAME }} --async --quiet
+          gcloud container clusters delete --project ${{ secrets.GKE_PROJECT }} --region ${{ matrix.flavor.region }} ${CLUSTER_NAME} --async --quiet
 
   test-integration-minikube:
     name: Integr. tests
@@ -2388,7 +2388,7 @@ jobs:
       env:
         IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
       run: |
-        export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
+        export IMAGE="${{ env.REGISTRY }}/${CONTAINER_REPO}:${IMAGE_TAG}"
         cp pkg/resources/manifests/deploy.yaml "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
     - name: Create Draft Release
