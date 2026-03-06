@@ -23,6 +23,4 @@ runs:
         COSIGN_PRIVATE_KEY: '${{ inputs.private_key }}'
       shell: bash
       run: |
-        # Force using legacy .sig format.
-        # TODO Switch to bundle format.
-        cosign sign --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ inputs.image }}"
+        cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ inputs.image }}"

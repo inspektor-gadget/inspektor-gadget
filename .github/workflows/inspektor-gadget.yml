@@ -2401,10 +2401,7 @@ jobs:
         COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
       run: |
         checksums_file=SHA256SUMS
-
-        # Force using legacy .sig format.
-        # TODO Switch to bundle format.
-        cosign sign-blob --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
+        cosign sign-blob --key env://COSIGN_PRIVATE_KEY --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
 
         # Derive public key from private key to publish it as release
         # artifact, so people can verify our signature.
