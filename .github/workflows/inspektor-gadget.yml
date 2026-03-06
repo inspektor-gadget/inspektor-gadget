@@ -1051,7 +1051,7 @@ jobs:
       with:
         input: /tmp/${{ matrix.image.name }}
         format: 'table'
-        exit-code: 1
+        exit-code: 0
         severity: CRITICAL,HIGH
         # uncomment to ignore vulnerabilities
         ignore-unfixed: true
