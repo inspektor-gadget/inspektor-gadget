@@ -491,7 +491,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
-	count := 0
+	count := 1
 
 	for {
 		select {
@@ -504,6 +504,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 			}
 			count++
 			if p.count > 0 && count >= p.count {
+				p.dataSource.Done()
 				return
 			}
 		}

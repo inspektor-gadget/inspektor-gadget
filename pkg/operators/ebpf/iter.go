@@ -226,9 +226,10 @@ func (i *ebpfInstance) runIterators() error {
 				if err != nil {
 					i.logger.Warnf("error running iterator %q: %v", sName, err)
 				}
+				iter.ds.Done()
 				return
 			}
-			ctr := 0
+			ctr := 1
 			tickerChan := make(<-chan time.Time)
 			if iter.interval > 0 {
 				tickerChan = time.NewTicker(iter.interval).C
@@ -251,7 +252,7 @@ func (i *ebpfInstance) runIterators() error {
 					}
 					ctr++
 					if iter.count > 0 && ctr >= iter.count {
-						// TODO: close DS
+						iter.ds.Done()
 						return
 					}
 				}
