@@ -179,6 +179,11 @@ func (p *ParamDescs) Get(key string) *ParamDesc {
 			return param
 		}
 	}
+	for _, param := range *p {
+		if strings.EqualFold(key, param.Key) || strings.EqualFold(key, param.AlternativeKey) {
+			return param
+		}
+	}
 	return nil
 }
 
@@ -212,12 +217,22 @@ func (p *Params) Get(key string) *Param {
 			return param
 		}
 	}
+	for _, param := range *p {
+		if strings.EqualFold(key, param.Key) || strings.EqualFold(key, param.AlternativeKey) {
+			return param
+		}
+	}
 	return nil
 }
 
 func (p *Params) Set(key, val string) error {
 	for _, e := range *p {
 		if e.Key == key || e.AlternativeKey == key {
+			return e.Set(val)
+		}
+	}
+	for _, e := range *p {
+		if strings.EqualFold(e.Key, key) || strings.EqualFold(e.AlternativeKey, key) {
 			return e.Set(val)
 		}
 	}
@@ -310,9 +325,11 @@ func (p *Params) CopyToMapExt(target map[string]any, prefix string) {
 }
 
 func (p *Params) CopyFromMap(source map[string]string, prefix string) error {
+	lowerPrefix := strings.ToLower(prefix)
 	for k, v := range source {
-		if strings.HasPrefix(k, prefix) {
-			param := p.Get(strings.TrimPrefix(k, prefix))
+		lowerK := strings.ToLower(k)
+		if strings.HasPrefix(lowerK, lowerPrefix) {
+			param := p.Get(strings.TrimPrefix(lowerK, lowerPrefix))
 			if param == nil || param.value == v {
 				continue
 			}
