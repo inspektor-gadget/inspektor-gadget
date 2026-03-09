@@ -48,8 +48,8 @@ type extraInfoProgram struct {
 
 type extraInfoVariable struct {
 	Name   string
-	Offset uint64
-	Size   uint64
+	Offset uint32
+	Size   uint32
 	Map    string
 }
 

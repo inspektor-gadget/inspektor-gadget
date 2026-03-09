@@ -154,7 +154,7 @@ func getSimpleType(typ btf.Type) reflect.Type {
 }
 
 func BuildSpec(types []btf.Type) (*btf.Spec, error) {
-	builder, err := btf.NewBuilder(types)
+	builder, err := btf.NewBuilder(types, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating BTF builder: %w", err)
 	}

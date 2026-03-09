@@ -69,6 +69,18 @@ type Attacher interface {
 type KubeManager struct {
 	containerCollection *containercollection.ContainerCollection
 	tracerCollection    *tracercollection.TracerCollection
+	externalCollections bool
+}
+
+// NewKubeManager creates a new KubeManager operator skipping the Init() method.
+// This can be used when the operator is used as a library and the caller wants to manage the lifecycle of the collections.
+// It also means that all initialization steps in Init() are skipped, so the caller is responsible for initializing the collections.
+func NewKubeManager(containerCollection *containercollection.ContainerCollection, tracerCollection *tracercollection.TracerCollection) *KubeManager {
+	return &KubeManager{
+		containerCollection: containerCollection,
+		tracerCollection:    tracerCollection,
+		externalCollections: true,
+	}
 }
 
 func (k *KubeManager) Name() string {
@@ -115,6 +127,10 @@ func (k *KubeManager) ParamDescs() params.ParamDescs {
 }
 
 func (k *KubeManager) Init(params *params.Params) error {
+	if k.externalCollections {
+		return nil
+	}
+
 	hookMode := params.Get(ParamHookMode).AsString()
 	fallbackPodInformer := params.Get(ParamFallbackPodInformer).AsBool()
 	socketPath := params.Get(ParamHookLivenessSocketFile).AsString()

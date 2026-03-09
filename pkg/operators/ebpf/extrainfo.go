@@ -42,8 +42,8 @@ type extraInfoProgram struct {
 
 type extraInfoVariable struct {
 	Name   string
-	Offset uint64
-	Size   uint64
+	Offset uint32
+	Size   uint32
 	Map    string
 }
 
@@ -89,9 +89,9 @@ func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
 	for name, v := range i.collectionSpec.Variables {
 		variables = append(variables, &extraInfoVariable{
 			Name:   name,
-			Offset: v.Offset(),
+			Offset: v.Offset,
 			Size:   v.Size(),
-			Map:    v.MapName(),
+			Map:    v.SectionName,
 		})
 	}
 	variablesJson, _ := json.Marshal(variables)

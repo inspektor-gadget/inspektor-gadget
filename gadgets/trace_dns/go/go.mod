@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	// Version doesn't matter because of the replace directive below.
 	github.com/inspektor-gadget/inspektor-gadget v0.0.0
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 )
 
 // Only needed by in-tree gadgets
