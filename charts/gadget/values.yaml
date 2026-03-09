@@ -78,6 +78,12 @@ skipLabels: false
 additionalLabels:
   labels: {}
 
+# -- Use the host PID namespace
+hostPID: false
+
+# -- Use the host network namespace
+hostNetwork: false
+
 # -- RuntimeClassName used by daemonset
 runtimeClassName: ""
 

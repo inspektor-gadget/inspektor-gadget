@@ -168,7 +168,7 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccount: gadget
-      hostPID: false
+      hostPID: true
       hostNetwork: false
       containers:
         - name: gadget
