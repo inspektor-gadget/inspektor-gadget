@@ -86,6 +86,17 @@ int ig_openat_e(struct syscall_trace_enter *ctx)
 			   (__u16)ctx->args[3]);
 }
 
+SEC("tracepoint/syscalls/sys_enter_openat2")
+int ig_openat2_e(struct syscall_trace_enter *ctx)
+{
+	struct open_how how = {};
+
+	if (bpf_probe_read_user(&how, sizeof(how), (void*)ctx->args[2]))
+		return 0;
+
+	return trace_enter((const char *)ctx->args[1], how.flags, how.mode);
+}
+
 static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 {
 	struct event *event;
@@ -153,6 +164,12 @@ int ig_open_x(struct syscall_trace_exit *ctx)
 
 SEC("tracepoint/syscalls/sys_exit_openat")
 int ig_openat_x(struct syscall_trace_exit *ctx)
+{
+	return trace_exit(ctx);
+}
+
+SEC("tracepoint/syscalls/sys_exit_openat2")
+int ig_openat2_x(struct syscall_trace_exit *ctx)
 {
 	return trace_exit(ctx);
 }

@@ -115,6 +115,48 @@ func TestTraceOpenGadget(t *testing.T) {
 				require.Equal(t, events[0].FlagsRaw, unix.O_CREAT|unix.O_RDWR, "flags")
 			},
 		},
+		"test_openat": {
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
+			},
+			generateEvent: func() (int, error) {
+				filename := "/tmp/test_openat"
+				fd, err := unix.OpenAt(0, flename, unix.O_CREAT|unix.O_RDWR, 0)
+				if err != nil {
+					return 0, err
+				}
+				defer os.Remove(filename)
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				require.Len(t, events, 1, "expected one event")
+				require.Equal(t, events[0].FName, "/tmp/test_openat", "filename")
+			},
+		},
+		"test_openat2": {
+			runnerConfig: &utils.RunnerConfig{},
+			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
+				return utils.CreateMntNsFilterMap(t, info.MountNsID)
+			},
+			generateEvent: func() (int, error) {
+				filename := "/tmp/test_openat2"
+				fd, err := unix.OpenAt2(0, flename, &unix.OpenHow{Flags: unix.O_CREAT|unix.O_RDWR})
+				if err != nil {
+					return 0, err
+				}
+				defer os.Remove(filename)
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: func(t *testing.T, info *utils.RunnerInfo, fd int, events []ExpectedTraceOpenEvent) {
+				require.Len(t, events, 1, "expected one event")
+				require.Equal(t, events[0].FName, "/tmp/test_openat2", "filename")
+			},
+		},
 		"test_symbolic_links": {
 			runnerConfig: &utils.RunnerConfig{},
 			mntnsFilterMap: func(info *utils.RunnerInfo) *ebpf.Map {
