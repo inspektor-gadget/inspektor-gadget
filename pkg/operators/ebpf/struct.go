@@ -79,10 +79,15 @@ func (f *Field) FieldAnnotations() map[string]string {
 func (i *ebpfInstance) populateStructDirect(btfStruct *btf.Struct) error {
 	gadgetStruct := i.structs[btfStruct.Name]
 
-	if gadgetStruct == nil {
-		gadgetStruct = &Struct{}
-		i.logger.Debugf("adding struct %q", btfStruct.Name)
+	if gadgetStruct != nil {
+		// Struct already populated (e.g., multiple map iterators sharing
+		// the same key/value struct type).  Skip to avoid appending
+		// duplicate fields.
+		return nil
 	}
+
+	gadgetStruct = &Struct{}
+	i.logger.Debugf("adding struct %q", btfStruct.Name)
 
 	i.getFieldsFromStruct(btfStruct, &gadgetStruct.Fields, "", 0, -1)
 
