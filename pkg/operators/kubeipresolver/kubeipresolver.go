@@ -107,6 +107,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 			endpoint.Name = svc.Name
 			endpoint.Namespace = svc.Namespace
 			endpoint.PodLabels = svc.Labels
+			endpoint.PodSelector = svc.Spec.Selector
 		}
 	}
 }
@@ -125,11 +126,12 @@ func (k *KubeIPResolver) InstanceParams() api.Params {
 }
 
 type endpointAccessors struct {
-	root            datasource.FieldAccessor
-	subK8sKind      datasource.FieldAccessor
-	subK8sName      datasource.FieldAccessor
-	subK8sNamespace datasource.FieldAccessor
-	subK8sLabels    datasource.FieldAccessor
+	root              datasource.FieldAccessor
+	subK8sKind        datasource.FieldAccessor
+	subK8sName        datasource.FieldAccessor
+	subK8sNamespace   datasource.FieldAccessor
+	subK8sLabels      datasource.FieldAccessor
+	subK8sPodSelector datasource.FieldAccessor
 
 	column datasource.FieldAccessor
 	port   datasource.FieldAccessor
@@ -202,6 +204,10 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			if err != nil {
 				return nil, fmt.Errorf("adding field %q: %w", "labels", err)
 			}
+			k8sPodSelectorAcc, err := k8sSubAcc.AddSubField("podSelector", api.Kind_String, datasource.WithFlags(datasource.FieldFlagHidden))
+			if err != nil {
+				return nil, fmt.Errorf("adding field %q: %w", "podSelector", err)
+			}
 
 			// control how the field is displayed
 			var endpointColAcc datasource.FieldAccessor
@@ -214,13 +220,14 @@ func (k *KubeIPResolver) InstantiateDataOperator(gadgetCtx operators.GadgetConte
 			}
 
 			ea := endpointAccessors{
-				root:            ep,
-				subK8sKind:      k8sKindAcc,
-				subK8sName:      k8sNameAcc,
-				subK8sNamespace: k8sNamespaceAcc,
-				subK8sLabels:    k8sLabelsAcc,
-				column:          endpointColAcc,
-				port:            portAcc,
+				root:              ep,
+				subK8sKind:        k8sKindAcc,
+				subK8sName:        k8sNameAcc,
+				subK8sNamespace:   k8sNamespaceAcc,
+				subK8sLabels:      k8sLabelsAcc,
+				subK8sPodSelector: k8sPodSelectorAcc,
+				column:            endpointColAcc,
+				port:              portAcc,
 			}
 			epAccessors[ds] = append(epAccessors[ds], ea)
 		}
@@ -302,6 +309,14 @@ func (m *KubeIPResolverInstance) PreStart(gadgetCtx operators.GadgetContext) err
 						labels = append(labels, fmt.Sprintf("%s=%s", key, val))
 					}
 					a.subK8sLabels.Set(data, []byte(strings.Join(labels, ",")))
+
+					// Store the service's pod selector so downstream consumers
+					// (e.g. network policy generation) can select the backing pods.
+					var selectorLabels []string
+					for key, val := range svc.Spec.Selector {
+						selectorLabels = append(selectorLabels, fmt.Sprintf("%s=%s", key, val))
+					}
+					a.subK8sPodSelector.Set(data, []byte(strings.Join(selectorLabels, ",")))
 
 					if a.column != nil && a.port != nil {
 						p, _ := a.port.Uint16(data)
