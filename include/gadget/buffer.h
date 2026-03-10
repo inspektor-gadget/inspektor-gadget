@@ -37,8 +37,8 @@ struct {
 #define gadget_reserve_buf(map, size) \
 	__gadget_reserve_buf(map, map##_lost_samples, size)
 
-static __always_inline void *
-__gadget_reserve_buf(void *map, void *lost_samples, __u64 size)
+static __always_inline void *__gadget_reserve_buf(void *map, void *lost_samples,
+						  __u64 size)
 {
 	const int zero = 0;
 
