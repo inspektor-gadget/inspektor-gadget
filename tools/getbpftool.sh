@@ -2,7 +2,14 @@
 
 set -euo pipefail
 
-VERSION=$(curl -s "https://api.github.com/repos/libbpf/bpftool/releases/latest" | jq -r '.tag_name')
+VERSION="v7.6.0"
+latest=$(curl -s "https://api.github.com/repos/libbpf/bpftool/releases/latest" | jq -r '.tag_name')
+
+if [ "${VERSION}" != "${latest}" ]; then
+        echo "${VERSION} does not correspond to the latest version: ${latest}. This script need to be updated." >&2
+        exit 1
+fi
+
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
         ARCH="amd64"
