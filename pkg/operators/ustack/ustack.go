@@ -434,7 +434,11 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						if !res.Found && i < len(alreadyKnownSymbols) {
 							s = alreadyKnownSymbols[i]
 						}
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, s)
+						if s == "" {
+							continue
+						}
+						//fmt.Fprint(&symbolsBuilder, s)
+						fmt.Fprintf(&symbolsBuilder, "%s; ", s)
 					}
 					symbolsField.PutString(data, symbolsBuilder.String())
 				}
