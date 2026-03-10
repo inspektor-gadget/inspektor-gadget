@@ -74,10 +74,23 @@ func main() {
 		}
 	}
 
+	// Add --direct flag to switch connection mode
+	rootCmd.PersistentFlags().Bool("direct", false,
+		"Connect directly to gadget pods via DNS (headless service) instead of using kube-apiserver proxy")
+
 	// save the root flags for later use before we modify them (e.g. add runtime flags)
 	rootFlags := commonutils.CopyFlagSet(rootCmd.PersistentFlags())
 
-	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	// Check if --direct was passed (need to peek at args since cobra hasn't parsed yet)
+	connectOption := grpcruntime.WithConnectUsingK8SProxy
+	for _, arg := range os.Args[1:] {
+		if arg == "--direct" {
+			connectOption = grpcruntime.WithConnectUsingK8SDirect
+			break
+		}
+	}
+
+	grpcRuntime = grpcruntime.New(connectOption)
 	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
 	grpcRuntime.Init(runtimeGlobalParams)
