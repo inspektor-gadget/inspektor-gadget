@@ -286,6 +286,11 @@ func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (
 
 	serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
 	if serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.36.0-alpha.1")) {
+		kubeletCA, err := os.ReadFile("/var/run/secrets/gadget/kubelet-certificate/ca.crt")
+		if err != nil {
+			return nil, fmt.Errorf("reading kubelet certificate: %w", err)
+		}
+
 		ctx := context.TODO()
 		node, err := clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 		if err != nil {
@@ -302,18 +307,9 @@ func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (
 			return nil, fmt.Errorf("reading service account token: %w", err)
 		}
 
-		certificate, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
-		if err != nil {
-			return nil, fmt.Errorf("reading service account certificate: %w", err)
-		}
-
-		certificatesPool, err := x509.SystemCertPool()
-		if err != nil {
-			return nil, fmt.Errorf("getting system certificate pool: %w", err)
-		}
-
-		if !certificatesPool.AppendCertsFromPEM(certificate) {
-			return nil, errors.New("parsing certificate")
+		rootCAs := x509.NewCertPool()
+		if !rootCAs.AppendCertsFromPEM(kubeletCA) {
+			return nil, errors.New("parsing kubelet certificate")
 		}
 
 		// Let's dialog with the kubelet through HTTP.
@@ -321,10 +317,7 @@ func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
 					MinVersion: tls.VersionTLS12,
-					RootCAs:    certificatesPool,
-					ServerName: node.Name,
-					// TODO
-					// https://github.com/kubernetes-sigs/node-feature-discovery/blob/ab02c315dec99fef9e2bac10f3f82c103c425b4a/pkg/utils/kubeconf/kubelet_configz.go#L75
+					RootCAs:    rootCAs,
 				},
 				Proxy: http.ProxyFromEnvironment,
 			},
