@@ -1,4 +1,4 @@
-FROM golang:1.25.7-trixie@sha256:dfdd969010ba978942302cee078235da13aef030d22841e873545001d68a61a7 AS builder
+FROM golang:1.25.8-trixie@sha256:bc16125656839ffe56154c675f7a9662bec2ef7d4060177239914e7c6d2fd8a8 AS builder
 
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/

@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: 1.25.6
+  go: 1.25.8
   build-tags:
     - docs
 linters:
