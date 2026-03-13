@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,6 +72,9 @@ import (
 const (
 	gadgetPullSecret = "gadget-pull-secret"
 	configYamlKey    = "config.yaml"
+
+	gadgetKubeletCertSecret = "gadget-kubelet-certificate"
+	kubeletCertKey          = "ca.crt"
 )
 
 var deployCmd = &cobra.Command{
@@ -112,6 +116,8 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	kubeletCertificate    string
+	dropNodesProxy        bool
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -263,6 +269,18 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().StringVar(
+		&kubeletCertificate,
+		"kubelet-certificate",
+		"",
+		"TODO",
+	)
+	deployCmd.PersistentFlags().BoolVar(
+		&dropNodesProxy,
+		"drop-nodes-proxy",
+		false,
+		"TODO",
+	)
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -620,6 +638,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if quiet && debug {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
+	if dropNodesProxy && kubeletCertificate == "" {
+		return fmt.Errorf("--drop-nodes-proxy requires --kubelet-certificate")
+	}
 
 	objects, err := parseK8sYaml(resources.GadgetDeployment)
 	if err != nil {
@@ -718,6 +739,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		log.Warnf("You used --verify-image=false, the container image will not be verified")
 	}
 
+	serverVersion := &k8sversion.Version{}
+	if !printOnly {
+		serverInfo, err := discoveryClient.ServerVersion()
+		if err != nil {
+			return fmt.Errorf("getting server version: %w", err)
+		}
+
+		serverVersion = k8sversion.MustParseSemantic(serverInfo.String())
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -749,13 +780,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			if !printOnly {
-				serverInfo, err := discoveryClient.ServerVersion()
-				if err != nil {
-					return fmt.Errorf("getting server version: %w", err)
-				}
-
-				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
-
 				// The "kubernetes.io/os" node label was introduced in v1.14.0
 				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
 				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
@@ -856,6 +880,22 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					ReadOnly:  true,
 				})
 			}
+
+			if dropNodesProxy && kubeletCertificate != "" {
+				daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, v1.Volume{
+					Name: "kubelet-certificate",
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
+							SecretName: gadgetKubeletCertSecret,
+						},
+					},
+				})
+				gadgetContainer.VolumeMounts = append(gadgetContainer.VolumeMounts, v1.VolumeMount{
+					Name:      "kubelet-certificate",
+					MountPath: "/var/run/secrets/gadget/kubelet-certificate",
+					ReadOnly:  true,
+				})
+			}
 		}
 
 		if ns, isNs := object.(*v1.Namespace); isNs {
@@ -882,6 +922,45 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
 			rBinding.Namespace = gadgetNamespace
+		}
+		if clusterRole, isRole := object.(*rbacv1.ClusterRole); isRole {
+			// nodes/proxy is dangerous, even with the get verb:
+			// https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes
+			// We only need access to configz. Unfortunately, this is only available
+			// in k8s 1.36 and above:
+			// https://github.com/kubernetes/kubernetes/pull/136116
+			if !printOnly && serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.36.0-alpha.1")) && kubeletCertificate != "" && dropNodesProxy {
+				// Let's first replace nodes/proxy by nodes/configz.
+				for i, rule := range clusterRole.Rules {
+					if slices.Contains(rule.Resources, "nodes/proxy") {
+						clusterRole.Rules[i].Resources = []string{"nodes/configz"}
+					}
+				}
+
+				// Now, we need to give the certificate as secret.
+				secret := &v1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "Secret",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      gadgetKubeletCertSecret,
+						Namespace: gadgetNamespace,
+						Labels: map[string]string{
+							"k8s-app": "gadget",
+						},
+					},
+					Type: v1.SecretTypeOpaque,
+					Data: map[string][]byte{
+						kubeletCertKey: []byte(kubeletCertificate),
+					},
+				}
+
+				_, err := createOrUpdateResource(dynamicClient, mapper, secret)
+				if err != nil {
+					return fmt.Errorf("problem while creating kubelet CA certificate secret: %w", err)
+				}
+			}
 		}
 
 		if cm, isCm := object.(*v1.ConfigMap); isCm {

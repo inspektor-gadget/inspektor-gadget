@@ -16,12 +16,18 @@ package containercollection
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -29,6 +35,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	k8sversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/kubernetes"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 
@@ -257,18 +264,99 @@ func getContainerRuntimeSocketPath(clientset *kubernetes.Clientset, nodeName str
 	return socketPath, nil
 }
 
+func getNodeInternalIP(node *v1.Node) (string, error) {
+	for _, a := range node.Status.Addresses {
+		if a.Type == v1.NodeInternalIP && a.Address != "" {
+			return a.Address, nil
+		}
+	}
+	return "", fmt.Errorf("no internal IP found for node %q", node.Name)
+}
+
 // The /configz endpoint isn't officially documented. It was introduced in Kubernetes 1.26 and been around for a long time
 // as stated in https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/configz/OWNERS
 func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (*kubeletconfigv1beta1.KubeletConfiguration, error) {
-	resp, err := clientset.CoreV1().RESTClient().Get().Resource("nodes").
-		Name(nodeName).Suffix("proxy", "configz").DoRaw(context.TODO())
+	resp := []byte{}
+	var configzErr error
+
+	serverInfo, err := clientset.Discovery().ServerVersion()
 	if err != nil {
-		return nil, fmt.Errorf("fetching /configz from %q: %w", nodeName, err)
+		return nil, fmt.Errorf("getting server version: %w", err)
 	}
+
+	serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
+	if serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.36.0-alpha.1")) {
+		kubeletCA, err := os.ReadFile("/var/run/secrets/gadget/kubelet-certificate/ca.crt")
+		if err != nil {
+			return nil, fmt.Errorf("reading kubelet certificate: %w", err)
+		}
+
+		ctx := context.TODO()
+		node, err := clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("getting node %q: %w", nodeName, err)
+		}
+
+		address, err := getNodeInternalIP(node)
+		if err != nil {
+			return nil, err
+		}
+
+		token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+		if err != nil {
+			return nil, fmt.Errorf("reading service account token: %w", err)
+		}
+
+		rootCAs := x509.NewCertPool()
+		if !rootCAs.AppendCertsFromPEM(kubeletCA) {
+			return nil, errors.New("parsing kubelet certificate")
+		}
+
+		// Let's dialog with the kubelet through HTTP.
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					MinVersion: tls.VersionTLS12,
+					RootCAs:    rootCAs,
+				},
+				Proxy: http.ProxyFromEnvironment,
+			},
+			Timeout: 5 * time.Second,
+		}
+		url := fmt.Sprintf("https://%s:10250/configz", address)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("building http request to kubelet %q: %w", url, err)
+		}
+		req.Header.Set("Authorization", "Bearer "+string(token))
+
+		response, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("getting kubelet /configz at %q: %w", url, err)
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("kubelet /configz returned: %s", response.Status)
+		}
+
+		resp, configzErr = io.ReadAll(io.LimitReader(response.Body, 5<<20 /* 5MiB */))
+	} else {
+		// Let's use the API server as proxy to query the kubelet and get the
+		// configz for older versions.
+		resp, configzErr = clientset.CoreV1().RESTClient().Get().Resource("nodes").
+			Name(nodeName).Suffix("proxy", "configz").DoRaw(context.TODO())
+	}
+	if configzErr != nil {
+		return nil, fmt.Errorf("fetching /configz from %q: %w", nodeName, configzErr)
+	}
+
 	kubeCfg, err := decodeConfigz(resp)
 	if err != nil {
 		return nil, err
 	}
+
 	return kubeCfg, nil
 }
 
