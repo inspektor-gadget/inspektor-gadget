@@ -417,6 +417,42 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
  * cuMemAlloc_v2 - Allocate device memory (CUDA Driver API)
  * CUresult cuMemAlloc_v2(CUdeviceptr *dptr, size_t bytesize)
  */
+/*
+ * Handle activity during decode phase — cuGraphLaunch keeps
+ * the state machine in DECODE and updates last_activity_ns.
+ */
+static __always_inline int handle_decode_activity(void *ctx)
+{
+	u64 pid_tgid;
+	u32 tgid;
+	u64 now;
+	struct inference_state *state;
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	tgid = (u32)(pid_tgid >> 32);
+	now = bpf_ktime_get_ns();
+
+	state = bpf_map_lookup_elem(&inference_states, &tgid);
+	if (!state)
+		return 0;
+
+	if (state->phase == PHASE_DECODE) {
+		u64 gap = now - state->last_activity_ns;
+		if (gap > cooldown_ns) {
+			maybe_complete_inference(ctx, state, tgid, now);
+			return 0;
+		}
+		state->last_activity_ns = now;
+	} else if (state->phase == PHASE_PREFILL) {
+		state->last_activity_ns = now;
+	}
+
+	return 0;
+}
+
 /* ── Inference metric uprobes ─────────────────────────────────── */
 
 SEC("uprobe/libcuda:cuLaunchKernel")
@@ -429,6 +465,58 @@ SEC("uprobe/libcuda:cuLaunchKernelEx")
 int BPF_UPROBE(trace_uprobe_cuLaunchKernelEx)
 {
 	return handle_kernel_launch(ctx);
+}
+
+SEC("uprobe/libcuda:cuGraphLaunch")
+int BPF_UPROBE(trace_uprobe_cuGraphLaunch)
+{
+	return handle_decode_activity(ctx);
+}
+
+SEC("uprobe/libcuda:cuGraphLaunch_ptsz")
+int BPF_UPROBE(trace_uprobe_cuGraphLaunch_ptsz)
+{
+	return handle_decode_activity(ctx);
+}
+
+SEC("uprobe/libcuda:cuStreamBeginCapture_v2")
+int BPF_UPROBE(trace_uprobe_cuStreamBeginCapture_v2)
+{
+	u64 pid_tgid;
+	u32 tgid;
+	struct inference_state *state;
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	tgid = (u32)(pid_tgid >> 32);
+
+	state = bpf_map_lookup_elem(&inference_states, &tgid);
+	if (state)
+		state->in_graph_capture = 1;
+
+	return 0;
+}
+
+SEC("uprobe/libcuda:cuStreamEndCapture")
+int BPF_UPROBE(trace_uprobe_cuStreamEndCapture)
+{
+	u64 pid_tgid;
+	u32 tgid;
+	struct inference_state *state;
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	tgid = (u32)(pid_tgid >> 32);
+
+	state = bpf_map_lookup_elem(&inference_states, &tgid);
+	if (state)
+		state->in_graph_capture = 0;
+
+	return 0;
 }
 
 /* ── Memory allocation uprobes ────────────────────────────────── */
