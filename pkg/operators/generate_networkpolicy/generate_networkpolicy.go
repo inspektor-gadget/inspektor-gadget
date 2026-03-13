@@ -100,7 +100,7 @@ func networkPeerKey(e NetworkEvent) (string, error) {
 	case types.EndpointKindPod:
 		ret = string(e.endpoint.Kind) + ":" + e.endpoint.Namespace + ":" + labelKeyString(e.endpoint.PodLabels)
 	case types.EndpointKindService:
-		ret = string(e.endpoint.Kind) + ":" + e.endpoint.Namespace + ":" + labelKeyString(e.endpoint.PodLabels)
+		ret = string(e.endpoint.Kind) + ":" + e.endpoint.Namespace + ":" + labelKeyString(e.endpoint.PodSelector)
 	case types.EndpointKindRaw:
 		ret = string(e.endpoint.Kind) + ":" + e.endpoint.Addr
 	default:
@@ -140,7 +140,7 @@ func eventToRule(e NetworkEvent) ([]networkingv1.NetworkPolicyPort, []networking
 	case types.EndpointKindService:
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
-				PodSelector: &metav1.LabelSelector{MatchLabels: e.endpoint.PodLabels},
+				PodSelector: &metav1.LabelSelector{MatchLabels: e.endpoint.PodSelector},
 			},
 		}
 		if e.K8s.Namespace != e.endpoint.Namespace {

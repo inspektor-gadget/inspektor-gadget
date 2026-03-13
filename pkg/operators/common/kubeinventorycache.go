@@ -87,7 +87,8 @@ type SlimService struct {
 }
 
 type SlimServiceSpec struct {
-	ClusterIP string `json:"clusterIP"`
+	ClusterIP string            `json:"clusterIP"`
+	Selector  map[string]string `json:"selector,omitempty"`
 }
 
 func NewSlimService(s *v1.Service) *SlimService {
@@ -102,6 +103,7 @@ func NewSlimService(s *v1.Service) *SlimService {
 		},
 		Spec: SlimServiceSpec{
 			ClusterIP: s.Spec.ClusterIP,
+			Selector:  s.Spec.Selector,
 		},
 	}
 }
@@ -190,6 +192,7 @@ func transformObject(obj any) (any, error) {
 			},
 			Spec: v1.ServiceSpec{
 				ClusterIP: t.Spec.ClusterIP,
+				Selector:  t.Spec.Selector,
 			},
 		}
 		return s, nil
