@@ -1,0 +1,452 @@
+---
+title: 'Limiting Permissions of Gadgets'
+sidebar_position: 650
+description: How to restrict BPF helpers and program types that gadgets can use
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Inspektor Gadget provides a policy mechanism to limit the BPF helpers and program types that gadgets are allowed to use. This feature enhances security by ensuring that gadgets can only perform specific operations and use approved kernel functionality.
+
+## Overview
+
+The eBPF operator in Inspektor Gadget enforces policies that control:
+1. **BPF Helpers**: Which BPF helper functions gadgets can call (e.g., `bpf_map_lookup_elem`, `bpf_probe_read`)
+2. **Program Types**: Which BPF program types gadgets can use (e.g., `kprobe`, `tracepoint`, `xdp`)
+
+By default, Inspektor Gadget allows all BPF helpers and program types. You can customize these policies to:
+- Use the `readonly` keyword to allow only a predefined set of safe helpers and program types for observability
+- Add specific helpers or program types individually
+- Use the `all` keyword to explicitly allow everything
+- Remove specific helpers or program types using the `drop` list
+
+## Readonly Policy
+
+The `readonly` keyword provides a convenient way to restrict gadgets to a predefined set of helpers and program types that are considered safe for read-only observability use cases. These cannot modify kernel behavior, network traffic, or bypass security mechanisms.
+
+### Readonly Helpers
+
+The `readonly` policy includes commonly used helpers for tracing and monitoring:
+
+**Map operations**: `bpf_map_lookup_elem`, `bpf_map_update_elem`, `bpf_map_delete_elem`, etc.
+
+**Ring buffer operations**: `bpf_ringbuf_output`, `bpf_ringbuf_reserve`, `bpf_ringbuf_submit`, etc.
+
+**Process/task information**: `bpf_get_current_pid_tgid`, `bpf_get_current_uid_gid`, `bpf_get_current_comm`, etc.
+
+**Time operations**: `bpf_ktime_get_ns`, `bpf_ktime_get_boot_ns`, etc.
+
+**Memory operations (read-only)**: `bpf_probe_read`, `bpf_probe_read_str`, `bpf_probe_read_user`, etc.
+
+**Stack traces**: `bpf_get_stackid`, `bpf_get_stack`
+
+:::note
+Potentially dangerous helpers like `bpf_override_return`, `bpf_send_signal`, and helpers that can modify network packets are **not** included in the `readonly` set.
+:::
+
+### Readonly Program Types
+
+The `readonly` policy includes program types typically used for tracing and monitoring:
+
+- `kprobe` (also used for uprobes)
+- `tracepoint`
+- `raw_tracepoint`
+- `raw_tracepoint_writable`
+- `tracing` (fentry/fexit)
+- `perf_event`
+- `lsm` (Linux Security Module)
+- `syscall`
+- `socket_filter` (read-only packet inspection)
+
+:::note
+Program types that can modify network traffic (like `xdp`, `sched_cls`) or affect process behavior (like `cgroup_*` types) are **not** included in the `readonly` set.
+:::
+
+## Configuration
+
+The policy is configured using the `operator.ebpf.policy` configuration key. The configuration structure includes:
+
+```yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - bpf_helper_name
+        drop:
+          - bpf_helper_name
+      programTypes:
+        add:
+          - program_type_name
+        drop:
+          - program_type_name
+```
+
+### Configuration Methods
+
+You can configure the policy using:
+
+1. **Configuration file** (e.g., `~/.ig/config.yaml`)
+2. **Command-line flags** (at deploy or daemon start time)
+
+See the [Configuration](./configuration.md) guide for more details on the configuration precedence.
+
+## Usage Examples
+
+### Adding Dangerous Helpers
+
+If your use case requires helpers that can modify system behavior, you can explicitly add them:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+Create a configuration file with the additional helpers:
+
+```yaml
+# gadget-policy.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - bpf_override_return
+          - bpf_send_signal
+      programTypes:
+        add:
+          - xdp
+```
+
+Deploy Inspektor Gadget with this configuration:
+
+```bash
+$ kubectl gadget deploy --daemon-config=gadget-policy.yaml
+...
+Inspektor Gadget successfully deployed
+```
+
+Now gadgets that use `bpf_override_return`, `bpf_send_signal`, or XDP program types will be allowed to run.
+</TabItem>
+
+<TabItem value="ig" label="ig">
+Create a configuration file:
+
+```yaml
+# ~/.ig/config.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - bpf_override_return
+          - bpf_send_signal
+      programTypes:
+        add:
+          - xdp
+```
+
+Then run your gadget:
+
+```bash
+$ sudo ig run your_gadget
+...
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+Create a configuration file and start the daemon:
+
+```yaml
+# /etc/ig/config.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - bpf_override_return
+          - bpf_send_signal
+      programTypes:
+        add:
+          - xdp
+```
+
+```bash
+$ sudo ig daemon --config=/etc/ig/config.yaml
+...
+# In another terminal
+$ gadgetctl run your_gadget
+...
+```
+</TabItem>
+</Tabs>
+
+### Restricting to Specific Helpers
+
+To create a more restrictive policy, you can drop specific helpers:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```yaml
+# restrictive-policy.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        drop:
+          - bpf_probe_write_user
+          - bpf_tail_call
+      programTypes:
+        drop:
+          - lsm
+```
+
+```bash
+$ kubectl gadget deploy --daemon-config=restrictive-policy.yaml
+...
+Inspektor Gadget successfully deployed
+```
+
+Gadgets that attempt to use the dropped helpers or program types will fail with a policy violation error.
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```yaml
+# ~/.ig/config.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        drop:
+          - bpf_probe_write_user
+          - bpf_tail_call
+      programTypes:
+        drop:
+          - lsm
+```
+
+```bash
+$ sudo ig run trace_open
+...
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+
+```bash
+$ sudo ig daemon --config=/etc/ig/config.yaml
+...
+```
+</TabItem>
+</Tabs>
+
+### Allowing All Helpers and Program Types
+
+For development or testing environments where you want to allow any BPF functionality, you can use the special `all` keyword:
+
+<Tabs groupId="env">
+<TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```yaml
+# permissive-policy.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - all
+      programTypes:
+        add:
+          - all
+```
+
+```bash
+$ kubectl gadget deploy --daemon-config=permissive-policy.yaml
+...
+Inspektor Gadget successfully deployed
+```
+
+:::warning
+Using `all` disables the policy protection and allows gadgets to use any BPF functionality. This should only be used in trusted development environments.
+:::
+</TabItem>
+
+<TabItem value="ig" label="ig">
+
+```yaml
+# ~/.ig/config.yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - all
+      programTypes:
+        add:
+          - all
+```
+
+Then run your gadget:
+
+```bash
+$ sudo ig run any_gadget
+...
+```
+</TabItem>
+
+<TabItem value="ig-daemon" label="ig daemon">
+
+```bash
+$ sudo ig daemon --config=/etc/ig/config.yaml
+...
+```
+</TabItem>
+</Tabs>
+
+## Policy Rules
+
+### The "all" Keyword
+
+The special keyword `all` can be used in either the `add` or `drop` lists:
+
+- In the `add` list: Allows all known BPF helpers or program types
+- In the `drop` list: Clears all helpers or program types (starting with an empty set)
+
+:::warning Important Rules
+- The `all` keyword cannot be combined with other items in the same list
+- You cannot use `all` in both `add` and `drop` lists for the same category
+:::
+
+### The "readonly" Keyword
+
+The special keyword `readonly` can be used in the `add` list to include the predefined set of safe helpers and program types:
+
+- In the `add` list: Adds all helpers/program types from the readonly set
+- **Not supported** in `drop` lists
+
+:::tip
+Use `readonly` when you want to restrict gadgets to observability-only operations. This is the recommended approach for production environments where you want to prevent gadgets from modifying system behavior.
+:::
+
+**Example using readonly:**
+
+```yaml
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - readonly
+      programTypes:
+        add:
+          - readonly
+```
+
+:::warning Important Rules
+- The `readonly` keyword cannot be combined with other items in the same list
+- The `readonly` keyword is only valid in `add` lists, not `drop` lists
+:::
+
+**Examples of invalid configurations:**
+
+```yaml
+# Invalid: "all" with other items
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - all
+          - bpf_map_lookup_elem  # Error: cannot use "all" with other items
+```
+
+```yaml
+# Invalid: "all" in both add and drop
+operator:
+  ebpf:
+    policy:
+      helpers:
+        add:
+          - all
+        drop:
+          - all  # Error: cannot use "all" in both add and drop
+```
+
+```yaml
+# Invalid: "readonly" in drop list
+operator:
+  ebpf:
+    policy:
+      helpers:
+        drop:
+          - readonly  # Error: "readonly" is only supported in add lists
+```
+
+### Policy Computation
+
+The final policy is computed as:
+
+```
+final_allowed = add - drop
+```
+
+1. Start with an empty set
+2. Add items from the `add` list (or use `all`/`readonly` keywords)
+3. Remove items from the `drop` list
+
+Special keyword behavior:
+- `all` in the `add` list: adds all known helpers or program types
+- `readonly` in the `add` list: adds the predefined readonly set
+- `all` in the `drop` list: clears all helpers or program types
+
+## Helper and Program Type Reference
+
+### Helper Name Format
+
+Helper names must use the standard BPF format with the `bpf_` prefix:
+
+- ✅ `bpf_map_lookup_elem`
+- ✅ `bpf_probe_read`
+- ✅ `bpf_get_current_pid_tgid`
+- ❌ `map_lookup_elem` (missing prefix)
+
+### Program Type Name Format
+
+Program type names use lowercase format without the `BPF_PROG_TYPE_` prefix:
+
+- ✅ `kprobe`
+- ✅ `tracepoint`
+- ✅ `xdp`
+- ❌ `BPF_PROG_TYPE_KPROBE` (don't use the prefix)
+- ❌ `Kprobe` (use lowercase)
+
+## Security Considerations
+
+### Default Behavior
+
+By default, Inspektor Gadget allows all BPF helpers and program types. For production environments, it is **strongly recommended** to use the `readonly` keyword to restrict gadgets to safe observability operations.
+
+### Readonly Policy Rationale
+
+The `readonly` policy is designed to allow observability and monitoring use cases while preventing gadgets from:
+
+- **Modifying kernel behavior**: Helpers like `bpf_override_return` can change function return values
+- **Affecting processes**: Helpers like `bpf_send_signal` can send signals to processes
+- **Modifying network traffic**: Helpers in XDP and TC programs can drop or redirect packets
+- **Writing to memory**: Helpers like `bpf_probe_write_user` can modify user-space memory
+
+### Recommended Practices
+
+1. **Use readonly in production**: The `readonly` policy is suitable for most observability use cases and should be the baseline for production
+2. **Minimize additions**: Only add helpers and program types that your specific use case requires
+3. **Audit regularly**: Periodically review your policy configuration and remove unnecessary permissions
+4. **Use `all` sparingly**: The `all` keyword should only be used in trusted development environments
+5. **Combine with other restrictions**: Use policy limits together with [gadget restrictions](./restricting-gadgets.mdx) and [signature verification](./verify-gadgets.mdx) for defense in depth
+
+
+## See Also
+
+- [Configuration Guide](./configuration.md) - How to configure Inspektor Gadget
+- [Restricting Gadgets](./restricting-gadgets.mdx) - Limiting which gadgets can run
+- [Verifying Gadgets](./verify-gadgets.mdx) - Ensuring gadget authenticity
+- [BPF Helpers Man Page](https://man7.org/linux/man-pages/man7/bpf-helpers.7.html) - Complete BPF helpers reference
