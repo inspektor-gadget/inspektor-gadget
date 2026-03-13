@@ -58,6 +58,7 @@ GADGETS ?= \
 	trace_tcpdrop \
 	trace_tcpretrans \
 	top_blockio \
+	top_cpu_throttle \
 	top_file \
 	top_process \
 	top_tcp \
