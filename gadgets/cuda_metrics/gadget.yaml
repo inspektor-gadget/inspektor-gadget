@@ -1,0 +1,118 @@
+name: cuda_metrics
+description: Traces CUDA driver API operations using eBPF uprobes to generate metrics
+homepageURL: 'TODO: Fill the gadget homepage URL'
+documentationURL: 'TODO: Fill the gadget documentation URL'
+sourceURL: 'TODO: Fill the gadget source code URL'
+datasources:
+  gpu_metrics:
+    annotations:
+      metrics.collect: "true"
+      metrics.print: "true"
+    fields:
+      block_threads_hist:
+        annotations:
+          description: Histogram of the number of threads per CUDA block used in kernel
+            launches
+          metrics.type: histogram
+          metrics.unit: threads
+      grid_blocks_hist:
+        annotations:
+          description: Histogram of the number of blocks per CUDA grid used in kernel
+            launches
+          metrics.type: histogram
+          metrics.unit: blocks
+      kernel_execution_time_hist:
+        annotations:
+          description: Histogram of CUDA kernel execution durations measured in nanoseconds
+          metrics.type: Histogram
+          metrics.unit: ns
+      kernel_launch_errors:
+        annotations:
+          description: Total number of CUDA kernel launch attempts that returned a
+            non-zero error code
+          metrics.type: counter
+          metrics.unit: errors
+      kernel_launches:
+        annotations:
+          description: Total number of CUDA kernel launches observed
+          metrics.type: counter
+          metrics.unit: calls
+      mem_alloc_errors:
+        annotations:
+          description: Total number of CUDA memory allocation calls that returned
+            a non-zero error code
+          metrics.type: counter
+          metrics.unit: errors
+      memcpy_dtoh_bytes:
+        annotations:
+          description: Total number of bytes transferred from device to host via CUDA
+            memory copy operations
+          metrics.type: counter
+          metrics.unit: By
+      memcpy_dtoh_errors:
+        annotations:
+          description: Total number of device to host CUDA memory copy operations
+            that returned a non-zero error code
+          metrics.type: counter
+          metrics.unit: errors
+      memcpy_htod_bytes:
+        annotations:
+          description: Total number of bytes transferred from host to device via CUDA
+            memory copy operations
+          metrics.type: counter
+          metrics.unit: By
+      memcpy_htod_errors:
+        annotations:
+          description: Total number of host to device CUDA memory copy operations
+            that returned a non-zero error code
+          metrics.type: counter
+          metrics.unit: errors
+      mntns_id:
+        annotations:
+          description: Mount namespace inode id
+      num_memalloc:
+        annotations:
+          description: Total number of CUDA device memory allocation calls observed
+          metrics.type: counter
+          metrics.unit: calls
+      num_memcpy_dtoh:
+        annotations:
+          description: Total number of CUDA memory copy operations from device to
+            host
+          metrics.type: counter
+          metrics.unit: calls
+      num_memcpy_htod:
+        annotations:
+          description: Total number of CUDA memory copy operations from host to device
+          metrics.type: counter
+          metrics.unit: calls
+      pid:
+        annotations:
+          description: Process ID
+          template: pid
+      total_mem_alloc:
+        annotations:
+          description: Total number of bytes allocated on the GPU via CUDA memory
+            allocation calls
+          metrics.type: counter
+          metrics.unit: By
+      total_threads_hist:
+        annotations:
+          description: Histogram of the total number of threads launched per CUDA
+            kernel
+          metrics.type: histogram
+          metrics.unit: threads
+params:
+  ebpf:
+    collect_build_id:
+      key: collect_build_id
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
+    collect_ustack:
+      key: collect_ustack
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
+    ig_build_id_max_entries:
+      key: ig_build_id_max_entries
+      defaultValue: ""
+      description: 'TODO: Fill parameter description'
