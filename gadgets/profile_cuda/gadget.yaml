@@ -1,5 +1,5 @@
 name: profile cuda
-description: Profiles CUDA memory allocations in libcuda.so (Driver API)
+description: Profiles CUDA memory allocations and LLM inference metrics (TTFT, E2EL, TGT, TPOT, ITL, Tokens/sec, Requests/sec) via libcuda.so Driver API uprobes
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_cuda
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_cuda
@@ -18,3 +18,93 @@ datasources:
           flamegraph.level: 10
           flamegraph.type: single
           profiles.sample-attribute: "true"
+  ttft:
+    annotations:
+      description: "Time To First Token events for LLM inference requests"
+    fields:
+      ttft_ns:
+        annotations:
+          description: "Time To First Token in nanoseconds"
+          columns.width: 16
+      prefill_kernels:
+        annotations:
+          description: "Number of CUDA kernel launches during prefill phase"
+          columns.width: 16
+      prefill_start:
+        annotations:
+          description: "Absolute timestamp of prefill start (ns since boot)"
+          columns.hidden: "true"
+      prefill_end:
+        annotations:
+          description: "Absolute timestamp of prefill end (ns since boot)"
+          columns.hidden: "true"
+  inference:
+    annotations:
+      description: "LLM inference summary events (emitted on request completion)"
+    fields:
+      ttft_ns:
+        annotations:
+          description: "Time To First Token (prefill duration) in nanoseconds"
+          columns.width: 14
+      e2el_ns:
+        annotations:
+          description: "End-to-End Latency in nanoseconds"
+          columns.width: 14
+      tgt_ns:
+        annotations:
+          description: "Token Generation Time (decode phase) in nanoseconds"
+          columns.width: 14
+      avg_tpot_ns:
+        annotations:
+          description: "Average Time Per Output Token in nanoseconds"
+          columns.width: 14
+      avg_itl_ns:
+        annotations:
+          description: "Average Inter-Token Latency in nanoseconds"
+          columns.width: 14
+      output_tokens:
+        annotations:
+          description: "Number of output tokens generated"
+          columns.width: 14
+      prefill_kernels:
+        annotations:
+          description: "Number of CUDA kernel launches during prefill"
+          columns.width: 16
+      completed_reqs:
+        annotations:
+          description: "Total completed inference requests"
+          columns.width: 14
+      tokens_per_sec:
+        annotations:
+          description: "Decode throughput in milli-tokens/sec (divide by 1000 for tokens/sec)"
+          columns.width: 16
+      wall_time_ns:
+        annotations:
+          description: "Wall time since first request in nanoseconds"
+          columns.hidden: "true"
+  itl:
+    annotations:
+      description: "Per-token Inter-Token Latency events during decode"
+    fields:
+      itl_ns:
+        annotations:
+          description: "Inter-token latency in nanoseconds"
+          columns.width: 14
+      token_index:
+        annotations:
+          description: "Token index within this request (0-based)"
+          columns.width: 12
+params:
+  ebpf:
+    gap_threshold_ns:
+      key: gap_threshold_ns
+      description: "Gap threshold (ns) between kernel launches to detect prefill-to-decode transition"
+      defaultValue: "200000"
+    min_prefill_kernels:
+      key: min_prefill_kernels
+      description: "Minimum kernel launches to consider a burst as prefill phase"
+      defaultValue: "10"
+    cooldown_ns:
+      key: cooldown_ns
+      description: "Cooldown period (ns) after decode to detect inference completion"
+      defaultValue: "100000000"

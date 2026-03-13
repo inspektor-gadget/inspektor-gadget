@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
 /* Copyright (c) 2025 The Inspektor Gadget authors */
 
+/*
+ * profile_cuda: CUDA Driver API profiling for LLM inference metrics
+ *
+ * Tracks 7 key LLM inference metrics via uprobes on libcuda.so:
+ *   1. TTFT  - Time To First Token (prefill duration)
+ *   2. E2EL  - End-to-End Latency (full inference)
+ *   3. TGT   - Token Generation Time (decode phase only)
+ *   4. TPOT  - Time Per Output Token (average)
+ *   5. ITL   - Inter-Token Latency (per-token)
+ *   6. Tokens/sec - decode throughput
+ *   7. Requests/sec - completed inferences per second
+ *
+ * Detection strategy:
+ *   - cuLaunchKernel/cuLaunchKernelEx: prefill burst detection
+ *   - cuGraphLaunch: CUDA Graph decode step detection
+ *   - cuMemcpyDtoHAsync_v2: token boundary (logits transfer)
+ *   - cuStreamBeginCapture_v2 / cuStreamEndCapture: graph capture filtering
+ *
+ * State machine per process (keyed by tgid):
+ *   IDLE -> PREFILL:  first kernel launch
+ *   PREFILL -> DECODE: gap > threshold AND kernels >= min
+ *   DECODE -> IDLE:    gap > cooldown (emits summary event)
+ */
+
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
