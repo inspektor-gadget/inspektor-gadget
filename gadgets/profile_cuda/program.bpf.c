@@ -453,6 +453,59 @@ static __always_inline int handle_decode_activity(void *ctx)
 	return 0;
 }
 
+/*
+ * Handle DtoH async copy — token boundary signal.
+ * Each cuMemcpyDtoHAsync during decode approximates one output token
+ * (logits transfer from device to host).
+ */
+static __always_inline int handle_dth_async(void *ctx)
+{
+	u64 pid_tgid;
+	u32 tgid;
+	u64 now;
+	struct inference_state *state;
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	tgid = (u32)(pid_tgid >> 32);
+	now = bpf_ktime_get_ns();
+
+	state = bpf_map_lookup_elem(&inference_states, &tgid);
+	if (!state)
+		return 0;
+
+	if (state->phase != PHASE_DECODE)
+		return 0;
+
+	u64 gap = now - state->last_activity_ns;
+	if (gap > cooldown_ns) {
+		maybe_complete_inference(ctx, state, tgid, now);
+		return 0;
+	}
+
+	state->last_activity_ns = now;
+	state->decode_token_count++;
+
+	/* Emit ITL event if we have a previous token timestamp */
+	if (state->last_token_ns > 0) {
+		__u64 itl = now - state->last_token_ns;
+		struct itl_event *event;
+		event = gadget_reserve_buf(&itl_events, sizeof(*event));
+		if (event) {
+			__builtin_memset(event, 0, sizeof(*event));
+			gadget_process_populate(&event->proc);
+			event->itl_ns = itl;
+			event->token_index = state->decode_token_count - 1;
+			gadget_submit_buf(ctx, &itl_events, event, sizeof(*event));
+		}
+	}
+
+	state->last_token_ns = now;
+	return 0;
+}
+
 /* ── Inference metric uprobes ─────────────────────────────────── */
 
 SEC("uprobe/libcuda:cuLaunchKernel")
@@ -517,6 +570,12 @@ int BPF_UPROBE(trace_uprobe_cuStreamEndCapture)
 		state->in_graph_capture = 0;
 
 	return 0;
+}
+
+SEC("uprobe/libcuda:cuMemcpyDtoHAsync_v2")
+int BPF_UPROBE(trace_uprobe_cuMemcpyDtoHAsync_v2)
+{
+	return handle_dth_async(ctx);
 }
 
 /* ── Memory allocation uprobes ────────────────────────────────── */
