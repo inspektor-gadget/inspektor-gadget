@@ -1,0 +1,24 @@
+name: trace link
+description: trace hardlink and symlink creation
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_link
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_link
+datasources:
+  link:
+    fields:
+      proc.parent.tid:
+        annotations:
+          columns.hidden: true
+      is_symlink:
+        annotations:
+          description: "True for symlink events, false for hardlink events"
+      target:
+        annotations:
+          description: "For hardlink: source file path. For symlink: raw target string"
+          columns.width: 48
+          columns.minwidth: 24
+      linkpath:
+        annotations:
+          description: Path of the link being created (hardlink destination or symlink path)
+          columns.width: 48
+          columns.minwidth: 24

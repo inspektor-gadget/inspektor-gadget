@@ -1,0 +1,124 @@
+---
+title: trace_link
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_link
+
+The trace_link gadget emits events when a process creates:
+
+- hard links (`link` / `linkat` paths via `security_path_link`)
+- symlinks (`symlink` / `symlinkat` paths via `security_path_symlink`)
+
+## Requirements
+
+- Minimum Kernel Version : 5.4
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_link:%IG_TAG% [flags]
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_link:%IG_TAG% [flags]
+```
+  </TabItem>
+</Tabs>
+
+## Guide
+
+This gadget emits one event per link creation attempt and includes:
+
+- `is_symlink`: `false` for hard links, `true` for symlinks
+- `target`:
+  - hard link: source file path
+  - symlink: raw symlink target string
+- `linkpath`: path of the link being created
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox link-demo -- \
+  sh -c 'while true; do touch /tmp/src; ln -f /tmp/src /tmp/hard; ln -sfn ../tmp/src /tmp/sym; sleep 2; done'
+pod/link-demo created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-trace-link -d --rm busybox /bin/sh -c 'while true; do touch /tmp/src; ln -f /tmp/src /tmp/hard; ln -sfn ../tmp/src /tmp/sym; sleep 2; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run trace_link:%IG_TAG% --podname link-demo
+```
+
+Example output:
+
+```text
+K8S.NODE        K8S.NAMESPACE   K8S.PODNAME    K8S.CONTAINER… COMM        PID     TID IS_S… TARGET                   LINKPATH
+minikube-docker default         link-demo      link-demo      ln        79967   79967 false /tmp/src                 /tmp/hard
+minikube-docker default         link-demo      link-demo      ln        79968   79968 true  ../tmp/src               /tmp/sym
+minikube-docker default         link-demo      link-demo      ln        79986   79986 false /tmp/src                 /tmp/hard
+minikube-docker default         link-demo      link-demo      ln        79987   79987 true  ../tmp/src               /tmp/sym
+```
+
+You should see `IS_SYMLINK=false` events for hard links and `IS_SYMLINK=true` events for symlinks.
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_link:%IG_TAG% --containername test-trace-link
+```
+
+Example output:
+
+```text
+RUNTIME.CONTAINERNAME  COMM  PID    TID    IS_SYMLINK  TARGET       LINKPATH
+test-trace-link        ln    57521  57521  false       /tmp/src     /tmp/hard
+test-trace-link        ln    57522  57522  true        ../tmp/src   /tmp/sym
+test-trace-link        ln    57536  57536  false       /tmp/src     /tmp/hard
+test-trace-link        ln    57537  57537  true        ../tmp/src   /tmp/sym
+```
+
+Notes:
+
+For symlinks, `target` is the raw target string (exactly as passed to `symlink(2)`).
+
+If needed, join it with the parent directory of `linkpath` in userspace.
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod link-demo
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-trace-link
+```
+  </TabItem>
+</Tabs>
