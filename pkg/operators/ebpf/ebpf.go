@@ -896,6 +896,30 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// startSucceeded tracks whether Start() completed successfully. If it
+	// didn't, the deferred cleanup below stops tracer goroutines, closes
+	// attached links, and releases perf FDs so that no resources are leaked
+	// when the caller skips calling Stop() on a failed instance.
+	startSucceeded := false
+	defer func() {
+		if startSucceeded {
+			return
+		}
+		for _, t := range i.tracers {
+			t.close()
+		}
+		for _, l := range i.links {
+			gadgets.CloseLink(l)
+		}
+		i.links = nil
+		for _, fd := range i.perfFds {
+			unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
+			unix.Close(fd)
+		}
+		i.perfFds = nil
+		i.wg.Wait()
+	}()
+
 	for _, tracer := range i.tracers {
 		i.logger.Debugf("starting tracer %q", tracer.mapName)
 		err := i.runTracer(gadgetCtx, tracer)
@@ -951,6 +975,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("running map iterators: %w", err)
 	}
 
+	startSucceeded = true
 	return nil
 }
 
