@@ -6,6 +6,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include <gadget/types.h>
+#include <gadget/buffer.h>
 #include <gadget/common.h>
 #include <gadget/filter.h>
 #include <gadget/macros.h>
@@ -25,6 +26,79 @@ enum memop {
 	cuMemFreeAsync,
 	cuMemPoolCreate,
 };
+
+/* ── Inference phase state machine ─────────────────────────────── */
+enum inference_phase {
+	PHASE_IDLE = 0,
+	PHASE_PREFILL = 1,
+	PHASE_DECODE = 2,
+};
+
+/* Per-process inference tracking state */
+struct inference_state {
+	enum inference_phase phase;
+
+	/* Prefill tracking */
+	__u64 prefill_start_ns;
+	__u64 last_activity_ns;
+	__u32 prefill_kernel_count;
+
+	/* Decode tracking */
+	__u64 decode_start_ns;
+	__u64 last_token_ns;
+	__u32 decode_token_count;
+
+	/* CUDA Graph capture filtering */
+	__u8 in_graph_capture;
+
+	/* Request counting */
+	__u64 first_request_ns;
+	__u32 completed_requests;
+};
+
+/* ── Event structures ──────────────────────────────────────────── */
+
+/* TTFT event: emitted at prefill->decode transition */
+struct ttft_event {
+	struct gadget_process proc;
+	__u64 ttft_ns;
+	__u32 prefill_kernels;
+	__u64 prefill_start;
+	__u64 prefill_end;
+};
+
+/* Inference summary: emitted when decode completes */
+struct inference_event {
+	struct gadget_process proc;
+	__u64 ttft_ns;
+	__u64 e2el_ns;
+	__u64 tgt_ns;
+	__u64 avg_tpot_ns;
+	__u64 avg_itl_ns;
+	__u32 output_tokens;
+	__u32 prefill_kernels;
+	__u32 completed_reqs;
+	__u64 tokens_per_sec;
+	__u64 wall_time_ns;
+};
+
+/* ITL event: emitted per-token during decode */
+struct itl_event {
+	struct gadget_process proc;
+	__u64 itl_ns;
+	__u32 token_index;
+};
+
+/* ── Configurable parameters ───────────────────────────────────── */
+
+const volatile __u64 gap_threshold_ns = 200000; /* 200us */
+GADGET_PARAM(gap_threshold_ns);
+
+const volatile __u32 min_prefill_kernels = 10;
+GADGET_PARAM(min_prefill_kernels);
+
+const volatile __u64 cooldown_ns = 100000000; /* 100ms */
+GADGET_PARAM(cooldown_ns);
 
 /* used for context between uprobes and uretprobes of allocations */
 struct {
@@ -70,6 +144,25 @@ struct {
 
 GADGET_MAPITER(allocs, allocs);
 
+/* Inference state: per-process */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__type(key, u32);
+	__type(value, struct inference_state);
+} inference_states SEC(".maps");
+
+/* Event output buffers */
+GADGET_TRACER_MAP(ttft_events, 262144);
+GADGET_TRACER(ttft, ttft_events, ttft_event);
+
+GADGET_TRACER_MAP(inference_events, 262144);
+GADGET_TRACER(inference, inference_events, inference_event);
+
+GADGET_TRACER_MAP(itl_events, 262144);
+GADGET_TRACER(itl, itl_events, itl_event);
+
+
 /**
  * clean up the maps when a thread terminates,
  * because there may be residual data in the map
@@ -79,9 +172,17 @@ SEC("tracepoint/sched/sched_process_exit")
 int trace_sched_process_exit(void *ctx)
 {
 	u32 tid;
+	u32 tgid;
+	u64 pid_tgid;
 
-	tid = (u32)bpf_get_current_pid_tgid();
+	pid_tgid = bpf_get_current_pid_tgid();
+	tid = (u32)pid_tgid;
+	tgid = (u32)(pid_tgid >> 32);
+
 	bpf_map_delete_elem(&sizes, &tid);
+	if (tid == tgid)
+		bpf_map_delete_elem(&inference_states, &tgid);
+
 	return 0;
 }
 
