@@ -21,6 +21,9 @@ enum memop {
 	cuMemAllocManaged,
 	cuMemAllocPitch,
 	cuMemAlloc3D,
+	cuMemAllocAsync,
+	cuMemFreeAsync,
+	cuMemPoolCreate,
 };
 
 /* used for context between uprobes and uretprobes of allocations */
@@ -216,6 +219,69 @@ SEC("uretprobe/libcuda:cuMemAllocPitch_v2")
 int trace_uretprobe_cuMemAllocPitch_v2(struct pt_regs *ctx)
 {
 	return gen_alloc_exit(ctx, cuMemAllocPitch);
+}
+
+/*
+ * cuMemAllocAsync - Allocate device memory asynchronously (CUDA Driver API)
+ * CUresult cuMemAllocAsync(CUdeviceptr *dptr, size_t bytesize, CUstream hStream)
+ *
+ * Used heavily by PyTorch caching allocator, TensorFlow, and RAPIDS.
+ * The allocation is enqueued on the stream and may be fulfilled from a
+ * memory pool, but the requested size is the meaningful metric to profile.
+ */
+SEC("uprobe/libcuda:cuMemAllocAsync")
+int BPF_UPROBE(trace_uprobe_cuMemAllocAsync, void **dptr, size_t bytesize,
+	       void *hStream)
+{
+	return gen_alloc_enter(bytesize);
+}
+
+SEC("uretprobe/libcuda:cuMemAllocAsync")
+int trace_uretprobe_cuMemAllocAsync(struct pt_regs *ctx)
+{
+	return gen_alloc_exit(ctx, cuMemAllocAsync);
+}
+
+/*
+ * cuMemFreeAsync - Free device memory asynchronously (CUDA Driver API)
+ * CUresult cuMemFreeAsync(CUdeviceptr dptr, CUstream hStream)
+ *
+ * The freed pointer is returned to the memory pool.  We track the call
+ * count (size=1 per call) so the profile shows how frequently async
+ * frees happen and from which call-stacks.
+ */
+SEC("uprobe/libcuda:cuMemFreeAsync")
+int BPF_UPROBE(trace_uprobe_cuMemFreeAsync, void *dptr, void *hStream)
+{
+	/* No byte-size argument; record 1 to count invocations. */
+	return gen_alloc_enter(1);
+}
+
+SEC("uretprobe/libcuda:cuMemFreeAsync")
+int trace_uretprobe_cuMemFreeAsync(struct pt_regs *ctx)
+{
+	return gen_alloc_exit(ctx, cuMemFreeAsync);
+}
+
+/*
+ * cuMemPoolCreate - Create a memory pool (CUDA Driver API)
+ * CUresult cuMemPoolCreate(CUmemoryPool *pool, const CUmemPoolProps *poolProps)
+ *
+ * Tracks pool creation events. Size=1 per call (no byte-size parameter).
+ * Useful for understanding when and how many memory pools are created,
+ * especially in multi-GPU or complex ML workloads.
+ */
+SEC("uprobe/libcuda:cuMemPoolCreate")
+int BPF_UPROBE(trace_uprobe_cuMemPoolCreate, void *pool, void *poolProps)
+{
+	/* No byte-size argument; record 1 to count pool creations. */
+	return gen_alloc_enter(1);
+}
+
+SEC("uretprobe/libcuda:cuMemPoolCreate")
+int trace_uretprobe_cuMemPoolCreate(struct pt_regs *ctx)
+{
+	return gen_alloc_exit(ctx, cuMemPoolCreate);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
