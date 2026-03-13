@@ -168,6 +168,165 @@ GADGET_TRACER(itl, itl_events, itl_event);
  * because there may be residual data in the map
  * if a userspace thread is killed between a uprobe and a uretprobe
  */
+/* ── Inference metric helpers ───────────────────────────────────── */
+
+/*
+ * Check if we should transition DECODE -> IDLE and emit summary.
+ * Called when activity arrives with a gap > cooldown_ns.
+ */
+static __always_inline void
+maybe_complete_inference(void *ctx, struct inference_state *state, __u32 tgid,
+			 __u64 now)
+{
+	if (state->phase != PHASE_DECODE)
+		return;
+
+	__u64 gap = now - state->last_activity_ns;
+	if (gap <= cooldown_ns)
+		return;
+
+	/* DECODE -> IDLE: emit inference summary */
+	state->completed_requests++;
+
+	struct inference_event *event;
+	event = gadget_reserve_buf(&inference_events, sizeof(*event));
+	if (event) {
+		__builtin_memset(event, 0, sizeof(*event));
+		gadget_process_populate(&event->proc);
+
+		__u64 ttft = 0;
+		if (state->decode_start_ns > state->prefill_start_ns)
+			ttft = state->decode_start_ns - state->prefill_start_ns;
+
+		__u64 e2el = state->last_activity_ns - state->prefill_start_ns;
+		__u64 tgt = 0;
+		if (state->last_activity_ns > state->decode_start_ns)
+			tgt = state->last_activity_ns - state->decode_start_ns;
+
+		event->ttft_ns = ttft;
+		event->e2el_ns = e2el;
+		event->tgt_ns = tgt;
+		event->output_tokens = state->decode_token_count;
+		event->prefill_kernels = state->prefill_kernel_count;
+		event->completed_reqs = state->completed_requests;
+
+		/* TPOT: tgt / (tokens - 1), avoid div by 0 */
+		if (state->decode_token_count > 1)
+			event->avg_tpot_ns = tgt / (state->decode_token_count - 1);
+		else if (state->decode_token_count == 1)
+			event->avg_tpot_ns = tgt;
+
+		event->avg_itl_ns = event->avg_tpot_ns;
+
+		/* Tokens/sec * 1000 (milli-tokens/sec for precision) */
+		if (tgt > 0)
+			event->tokens_per_sec =
+				(__u64)state->decode_token_count * 1000000000ULL * 1000ULL / tgt;
+
+		if (state->first_request_ns > 0)
+			event->wall_time_ns = now - state->first_request_ns;
+
+		gadget_submit_buf(ctx, &inference_events, event, sizeof(*event));
+	}
+
+	state->phase = PHASE_IDLE;
+}
+
+/*
+ * Core kernel launch handler — drives IDLE->PREFILL->DECODE->IDLE.
+ * Shared by cuLaunchKernel and cuLaunchKernelEx.
+ */
+static __always_inline int handle_kernel_launch(void *ctx)
+{
+	u64 pid_tgid;
+	u32 tgid;
+	u64 now;
+	struct inference_state *state;
+	struct inference_state new_state = {};
+
+	if (gadget_should_discard_data_current())
+		return 0;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	tgid = (u32)(pid_tgid >> 32);
+	now = bpf_ktime_get_ns();
+
+	state = bpf_map_lookup_elem(&inference_states, &tgid);
+
+	if (!state) {
+		new_state.phase = PHASE_PREFILL;
+		new_state.prefill_start_ns = now;
+		new_state.last_activity_ns = now;
+		new_state.prefill_kernel_count = 1;
+		new_state.first_request_ns = now;
+		bpf_map_update_elem(&inference_states, &tgid, &new_state, BPF_ANY);
+		return 0;
+	}
+
+	if (state->in_graph_capture)
+		return 0;
+
+	u64 gap = now - state->last_activity_ns;
+
+	switch (state->phase) {
+	case PHASE_IDLE:
+		state->phase = PHASE_PREFILL;
+		state->prefill_start_ns = now;
+		state->last_activity_ns = now;
+		state->prefill_kernel_count = 1;
+		state->decode_start_ns = 0;
+		state->last_token_ns = 0;
+		state->decode_token_count = 0;
+		if (state->first_request_ns == 0)
+			state->first_request_ns = now;
+		break;
+
+	case PHASE_PREFILL:
+		if (gap > gap_threshold_ns &&
+		    state->prefill_kernel_count >= min_prefill_kernels) {
+			/* PREFILL -> DECODE: emit TTFT event */
+			struct ttft_event *event;
+			event = gadget_reserve_buf(&ttft_events, sizeof(*event));
+			if (event) {
+				__builtin_memset(event, 0, sizeof(*event));
+				gadget_process_populate(&event->proc);
+				event->ttft_ns = state->last_activity_ns - state->prefill_start_ns;
+				event->prefill_kernels = state->prefill_kernel_count;
+				event->prefill_start = state->prefill_start_ns;
+				event->prefill_end = state->last_activity_ns;
+				gadget_submit_buf(ctx, &ttft_events, event, sizeof(*event));
+			}
+
+			state->phase = PHASE_DECODE;
+			state->decode_start_ns = now;
+			state->last_activity_ns = now;
+			state->last_token_ns = 0;
+			state->decode_token_count = 0;
+		} else {
+			state->last_activity_ns = now;
+			state->prefill_kernel_count++;
+		}
+		break;
+
+	case PHASE_DECODE:
+		if (gap > cooldown_ns) {
+			maybe_complete_inference(ctx, state, tgid, now);
+			state->phase = PHASE_PREFILL;
+			state->prefill_start_ns = now;
+			state->last_activity_ns = now;
+			state->prefill_kernel_count = 1;
+			state->decode_start_ns = 0;
+			state->last_token_ns = 0;
+			state->decode_token_count = 0;
+		} else {
+			state->last_activity_ns = now;
+		}
+		break;
+	}
+
+	return 0;
+}
+
 SEC("tracepoint/sched/sched_process_exit")
 int trace_sched_process_exit(void *ctx)
 {
@@ -258,6 +417,22 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
  * cuMemAlloc_v2 - Allocate device memory (CUDA Driver API)
  * CUresult cuMemAlloc_v2(CUdeviceptr *dptr, size_t bytesize)
  */
+/* ── Inference metric uprobes ─────────────────────────────────── */
+
+SEC("uprobe/libcuda:cuLaunchKernel")
+int BPF_UPROBE(trace_uprobe_cuLaunchKernel)
+{
+	return handle_kernel_launch(ctx);
+}
+
+SEC("uprobe/libcuda:cuLaunchKernelEx")
+int BPF_UPROBE(trace_uprobe_cuLaunchKernelEx)
+{
+	return handle_kernel_launch(ctx);
+}
+
+/* ── Memory allocation uprobes ────────────────────────────────── */
+
 SEC("uprobe/libcuda:cuMemAlloc_v2")
 int BPF_UPROBE(trace_uprobe_cuMemAlloc_v2, void **dptr, size_t bytesize)
 {
