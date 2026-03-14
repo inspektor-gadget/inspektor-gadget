@@ -226,6 +226,7 @@ func (i *ebpfInstance) runIterators() error {
 				if err != nil {
 					i.logger.Warnf("error running iterator %q: %v", sName, err)
 				}
+				iter.ds.Done()
 				return
 			}
 			ctr := 0
@@ -251,7 +252,7 @@ func (i *ebpfInstance) runIterators() error {
 					}
 					ctr++
 					if iter.count > 0 && ctr >= iter.count {
-						// TODO: close DS
+						iter.ds.Done()
 						return
 					}
 				}

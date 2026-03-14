@@ -507,3 +507,26 @@ func WaitForTimeoutOrDone(c gadgets.GadgetContext) {
 	defer cancel()
 	<-ctx.Done()
 }
+
+func (c *GadgetContext) watchDataSources() {
+	dss := c.GetDataSources()
+	if len(dss) == 0 {
+		c.Cancel()
+		return
+	}
+	var wg sync.WaitGroup
+	for _, ds := range dss {
+		wg.Add(1)
+		go func(ds datasource.DataSource) {
+			defer wg.Done()
+			select {
+			case <-ds.WaitDone():
+			case <-c.ctx.Done():
+			}
+		}(ds)
+	}
+	go func() {
+		wg.Wait()
+		c.Cancel()
+	}()
+}

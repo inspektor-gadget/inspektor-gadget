@@ -166,6 +166,15 @@ type DataSource interface {
 	// Subscriptions can know the type of the packet by checking the data source type: TypeSingle, TypeArray, etc.
 	SubscribePacket(packetFn PacketFunc, priority int) error
 
+	// Done signals that this DataSource will no longer emit data.
+	// It must only be called after all data has been emitted, i.e., after
+	// the last EmitAndRelease() call has returned. Once all active
+	// DataSources are done, the gadget will stop automatically.
+	Done()
+
+	// WaitDone returns a channel that is closed when Done() is called
+	WaitDone() <-chan struct{}
+
 	Parser() (parser.Parser, error)
 
 	Fields() []*api.Field
