@@ -209,4 +209,109 @@ static __always_inline bool has_kmem_cache_free()
 	return false;
 }
 
+/**
+ * The inode struct has undergone changes to its ctime field across kernel
+ * versions. These CO-RE flavor structs and the gadget_inode_get_ctime()
+ * helper provide portable access to the inode ctime.
+ *
+ * Kernel < 6.6:    struct timespec64 i_ctime
+ * Kernel 6.6-6.10: struct timespec64 __i_ctime
+ * Kernel >= 6.11:  time64_t i_ctime_sec + u32 i_ctime_nsec
+ *
+ * See also gadget_inode_get_mtime() in gadget/user_stack_map.h for the
+ * equivalent mtime helper.
+ * 
+ * Based on get_ctime_nanosec_timespec from:
+ * https://github.com/aquasecurity/tracee/blob/main/pkg/ebpf/c/common/filesystem.h#L61
+ */
+struct inode___ctime_ts64 {
+	struct timespec64 i_ctime;
+} __attribute__((preserve_access_index));
+
+struct inode___ctime_ts64_underscore {
+	struct timespec64 __i_ctime;
+} __attribute__((preserve_access_index));
+
+struct inode___ctime_separate {
+	time64_t i_ctime_sec;
+	u32 i_ctime_nsec;
+} __attribute__((preserve_access_index));
+
+static __always_inline void
+gadget_inode_get_ctime(struct inode *inode, __u64 *ctime_sec, __u32 *ctime_nsec)
+{
+	// Kernel >= 6.11
+	if (bpf_core_field_exists(struct inode___ctime_separate, i_ctime_sec) &&
+	    bpf_core_field_size(struct inode___ctime_separate, i_ctime_sec) ==
+		    sizeof(time64_t)) {
+		struct inode___ctime_separate *i = (void *)inode;
+		*ctime_sec = BPF_CORE_READ(i, i_ctime_sec);
+		*ctime_nsec = BPF_CORE_READ(i, i_ctime_nsec);
+		return;
+	}
+
+	// Kernel 6.6 - 6.10
+	if (bpf_core_field_exists(struct inode___ctime_ts64_underscore,
+				  __i_ctime) &&
+	    bpf_core_field_size(struct inode___ctime_ts64_underscore,
+				__i_ctime) == sizeof(struct timespec64)) {
+		struct inode___ctime_ts64_underscore *i = (void *)inode;
+		*ctime_sec = BPF_CORE_READ(i, __i_ctime.tv_sec);
+		*ctime_nsec = BPF_CORE_READ(i, __i_ctime.tv_nsec);
+		return;
+	}
+
+	// Kernel < 6.6
+	if (bpf_core_field_exists(struct inode___ctime_ts64, i_ctime) &&
+	    bpf_core_field_size(struct inode___ctime_ts64, i_ctime) ==
+		    sizeof(struct timespec64)) {
+		struct inode___ctime_ts64 *i = (void *)inode;
+		*ctime_sec = BPF_CORE_READ(i, i_ctime.tv_sec);
+		*ctime_nsec = BPF_CORE_READ(i, i_ctime.tv_nsec);
+		return;
+	}
+}
+
+/**
+ * CO-RE flavor structs for reading pt_regs across architectures.
+ * This allows a single compiled BPF object to work on both x86_64 and arm64
+ * without compile-time architecture detection macros.
+ *
+ * x86_64: orig_ax holds the syscall number, di holds the first argument.
+ * arm64:  syscallno holds the syscall number, regs[0] holds the first argument.
+ */
+struct pt_regs___x86 {
+	long unsigned int di;
+	long unsigned int orig_ax;
+} __attribute__((preserve_access_index));
+
+struct pt_regs___arm64 {
+	u64 regs[31];
+	u64 sp;
+	u64 pc;
+	u64 pstate;
+	u64 orig_x0;
+	s32 syscallno;
+} __attribute__((preserve_access_index));
+
+static __always_inline long gadget_get_syscall_nr(struct pt_regs *regs)
+{
+	if (bpf_core_field_exists(((struct pt_regs___x86 *)0)->orig_ax))
+		return BPF_CORE_READ((struct pt_regs___x86 *)regs, orig_ax);
+	if (bpf_core_field_exists(((struct pt_regs___arm64 *)0)->syscallno))
+		return (long)BPF_CORE_READ((struct pt_regs___arm64 *)regs,
+					   syscallno);
+	return -1;
+}
+
+static __always_inline unsigned long
+gadget_get_syscall_arg1(struct pt_regs *regs)
+{
+	if (bpf_core_field_exists(((struct pt_regs___x86 *)0)->di))
+		return BPF_CORE_READ((struct pt_regs___x86 *)regs, di);
+	if (bpf_core_field_exists(((struct pt_regs___arm64 *)0)->regs))
+		return BPF_CORE_READ((struct pt_regs___arm64 *)regs, regs[0]);
+	return -1;
+}
+
 #endif /* __CORE_FIXES_BPF_H */
