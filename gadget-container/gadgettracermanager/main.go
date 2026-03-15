@@ -109,8 +109,8 @@ func main() {
 		var conn *grpc.ClientConn
 
 		var err error
-		//nolint:staticcheck
-		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+		conn, err = grpc.NewClient("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			fmt.Printf("Gadget Tracer Manager health check failed to dial: %v", err)
 			os.Exit(1)
