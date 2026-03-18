@@ -208,6 +208,9 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
+	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
+	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/notaryproject/notation-core-go v1.3.0 // indirect
 	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
