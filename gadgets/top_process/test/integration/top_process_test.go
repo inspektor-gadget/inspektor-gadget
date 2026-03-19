@@ -1,4 +1,4 @@
-// Copyright 2019-2024 The Inspektor Gadget authors
+// Copyright 2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,31 +28,36 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
 
-type snapshotProcessEntry struct {
+type topProcessEntry struct {
 	utils.CommonData
-	utils.Process
+
+	Comm        string  `json:"comm"`
+	CpuUsage    float64 `json:"cpuUsage"`
+	MemoryRSS   string  `json:"memoryRSS"`
+	State       string  `json:"state"`
+	ThreadCount uint32  `json:"threadCount"`
 }
 
-func TestSnapshotProcess(t *testing.T) {
+func TestTopProcess(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
 
 	containerFactory, err := containers.NewContainerFactory(utils.Runtime)
 	require.NoError(t, err, "new container factory")
-	containerName := "test-snapshot-process"
+	containerName := "test-top-process"
 	containerImage := gadgettesting.BusyBoxImage
 
 	var ns string
 	containerOpts := []containers.ContainerOption{containers.WithContainerImage(containerImage)}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
-		ns = utils.GenerateTestNamespaceName(t, "test-snapshot-process")
+		ns = utils.GenerateTestNamespaceName(t, "test-top-process")
 		containerOpts = append(containerOpts, containers.WithContainerNamespace(ns))
 	}
 
 	testContainer := containerFactory.NewContainer(
 		containerName,
-		"setuidgid 1000:1111 nc -l -p 9090",
+		"nc -l -p 9090",
 		containerOpts...,
 	)
 
@@ -63,18 +68,23 @@ func TestSnapshotProcess(t *testing.T) {
 
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{
+		utils.WithContainerImageName(containerImage),
+		utils.WithContainerID(testContainer.ID()),
+	}
 
+	// --count=2: gadget emits after first-interval (250ms) and once more
+	// after the regular interval (3s), then exits automatically.
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(
 			fmt.Sprintf("-r=%s", utils.Runtime),
-			"--count=1",
+			"--count=2",
 		))
 	case utils.KubectlGadgetTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(
 			fmt.Sprintf("-n=%s", ns),
-			"--count=1",
+			"--count=2",
 		))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(ns)))
 		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(ns))
@@ -82,21 +92,27 @@ func TestSnapshotProcess(t *testing.T) {
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
-			expectedEntry := &snapshotProcessEntry{
+			expectedEntry := &topProcessEntry{
 				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
-				Process:    utils.BuildProc("nc", 1000, 1111),
+				Comm:       "nc",
 			}
 
-			normalize := func(e *snapshotProcessEntry) {
+			normalize := func(e *topProcessEntry) {
 				utils.NormalizeCommonData(&e.CommonData)
-				utils.NormalizeProc(&e.Process)
+				// Zero out runtime-dependent fields that vary between runs
+				e.CpuUsage = 0
+				e.MemoryRSS = ""
+				e.ThreadCount = 0
+				e.State = ""
 			}
 
-			match.MatchEntries(t, match.JSONSingleArrayMode, output, normalize, expectedEntry)
+			match.MatchEntries(t, match.JSONMultiArrayMode, output, normalize, expectedEntry)
 		},
 	))
 
-	snashotProcessCmd := igrunner.New("snapshot_process", runnerOpts...)
+	topProcessCmd := igrunner.New("top_process", runnerOpts...)
 
-	igtesting.RunTestSteps([]igtesting.TestStep{snashotProcessCmd}, t, testingOpts...)
+	igtesting.RunTestSteps([]igtesting.TestStep{
+		topProcessCmd,
+	}, t, testingOpts...)
 }

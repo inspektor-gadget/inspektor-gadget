@@ -474,7 +474,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 	}
 
 	// Run a first interval, if configured, to provide early data
-	if p.firstInterval > 0 {
+	if p.firstInterval > 0 && p.count == 0 {
 		timer := time.NewTimer(p.firstInterval)
 		defer timer.Stop()
 		select {
@@ -504,6 +504,7 @@ func (p *processOperatorInstance) monitorProcesses(gadgetCtx operators.GadgetCon
 			}
 			count++
 			if p.count > 0 && count >= p.count {
+				p.dataSource.Done()
 				return
 			}
 		}
