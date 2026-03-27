@@ -281,6 +281,12 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 				if s == gadgets.FilterByMntNsName {
 					return gadgets.FilterByMntNsName, true
 				}
+				// collect_otel_stack is not a GADGET_PARAM; it is set
+				// automatically by the ustack operator when the
+				// otel-ebpf-profiler symbolizer is selected.
+				if s == "collect_otel_stack" {
+					return "collect_otel_stack", true
+				}
 				return hasPrefix(varPrefix)(s)
 			},
 			validator:    nil,

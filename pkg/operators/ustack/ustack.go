@@ -454,6 +454,9 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 		for name, r := range repl {
 			gadgetCtx.SetVar(name, r)
 		}
+		if o.symbolizerOpts.UseOtelEbpfProfiler {
+			gadgetCtx.SetVar("collect_otel_stack", true)
+		}
 	}
 
 	if len(o.subscriptions) > 0 && !gadgetCtx.IsClient() {
