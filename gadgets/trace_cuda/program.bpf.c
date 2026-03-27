@@ -338,7 +338,7 @@ clean:
 // USDT cupti
 
 //  Arguments amd x86: 4@%eax 8@%rdx 8@%rcx 4@%esi 4@%edi 8@-72(%rbp) -4@%r8d 8@-64(%rbp) -4@%r9d
-//  Arguments arm archh: 4@x1 8@x2 8@x3 4@x4 4@x5 8@[sp, 112] -4@x6 8@[sp, 120] -4@x0
+//  Arguments arm archh: 4@x1 8@x2 8@x3 4@x4 4@x5 8@[sp, 144] -4@x6 8@[sp, 152] -4@x0
 SEC("usdt/libtrace_cuda_cupti:myprov:ig_activity")
 int handle_ig_activity(struct pt_regs *ctx)
 {
@@ -395,10 +395,10 @@ int handle_ig_activity(struct pt_regs *ctx)
 	grid_z = (__u32)ctx->regs[6];
 	block_z = (__u32)ctx->regs[0];
 
-	if (bpf_probe_read_user(&grid_xy, sizeof(grid_xy), sp + 112))
+	if (bpf_probe_read_user(&grid_xy, sizeof(grid_xy), sp + 144))
 		return 0;
 
-	if (bpf_probe_read_user(&block_xy, sizeof(block_xy), sp + 120))
+	if (bpf_probe_read_user(&block_xy, sizeof(block_xy), sp + 152))
 		return 0;
 
 	grid_x = grid_xy >> 32;
@@ -415,8 +415,8 @@ int handle_ig_activity(struct pt_regs *ctx)
 	return 0;
 }
 
-// Arguments amd64 x86: 4@-60(%rbp) 4@-80(%rbp) 8@-40(%rbp) 8@-48(%rbp)
-// Arguments arm AArch64: 4@[sp, 60] 4@[sp, 32] 8@[sp, 80] 8@[sp, 72]
+// Arguments amd64 x86: 4@-72(%rbp) 4@-96(%rbp) 8@-40(%rbp) 8@-48(%rbp)
+// Arguments arm AArch64: 4@[sp, 64] 4@[sp, 32] 8@[sp, 96] 8@[sp, 88]
 SEC("usdt/libtrace_cuda_cupti:myprov:ig_callback")
 int handle_ig_callback(struct pt_regs *ctx)
 {
@@ -430,13 +430,13 @@ int handle_ig_callback(struct pt_regs *ctx)
 	if (!rbp)
 		return 0;
 
-	/* arg1: 4@-60(%rbp) */
+	/* arg1: 4@-72(%rbp) */
 	if (bpf_probe_read_user(&correlation_id, sizeof(correlation_id),
-				(void *)(rbp - 60)))
+				(void *)(rbp - 72)))
 		return 0;
 
-	/* arg2:  4@-80(%rbp) */
-	if (bpf_probe_read_user(&cbid, sizeof(cbid), (void *)(rbp - 80)))
+	/* arg2:  4@-96(%rbp) */
+	if (bpf_probe_read_user(&cbid, sizeof(cbid), (void *)(rbp - 96)))
 		return 0;
 
 	/* arg4: 8@-48(%rbp) */
@@ -451,17 +451,17 @@ int handle_ig_callback(struct pt_regs *ctx)
 	if (!sp)
 		return 0;
 
-	/* arg1: 4@[sp,60] */
+	/* arg1: 4@[sp,64] */
 	if (bpf_probe_read_user(&correlation_id, sizeof(correlation_id),
-				sp + 60))
+				sp + 64))
 		return 0;
 
 	/* arg2: 4@[sp,32] */
 	if (bpf_probe_read_user(&cbid, sizeof(cbid), sp + 32))
 		return 0;
 
-	/* arg4: 8@[sp,72] */
-	if (bpf_probe_read_user(&result, sizeof(result), sp + 72))
+	/* arg4: 8@[sp,88] */
+	if (bpf_probe_read_user(&result, sizeof(result), sp + 88))
 		return 0;
 
 #endif

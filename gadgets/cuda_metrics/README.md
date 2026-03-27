@@ -1,6 +1,6 @@
 # gadget-template
 
-# cuda-ebpf-poc
+# cuda_metrics
 
 cuda_metrics is a [gadget from Inspektor
 Gadget](https://inspektor-gadget.io/). It traces cuda/GPU operation such as LaunchKernel, MemAlloc,Memcpy and generate metrics.

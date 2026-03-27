@@ -24,7 +24,7 @@ datasources:
       kernel_execution_time_hist:
         annotations:
           description: Histogram of CUDA kernel execution durations measured in nanoseconds
-          metrics.type: Histogram
+          metrics.type: histogram
           metrics.unit: ns
       kernel_launch_errors:
         annotations:

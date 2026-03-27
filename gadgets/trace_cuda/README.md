@@ -1,6 +1,6 @@
 # gadget-template
 
-# cuda-ebpf-poc
+# trace_cuda
 
 trace_cuda is a [gadget from Inspektor
 Gadget](https://inspektor-gadget.io/). It traces cuda/GPU operation such as LaunchKernel, MemAlloc,Memcpy.

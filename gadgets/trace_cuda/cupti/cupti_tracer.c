@@ -40,7 +40,12 @@
 static uint64_t startTimestamp = 0;
 static CUpti_SubscriberHandle subscriber = 0;
 
+static size_t outstandingEvents = 0;
+
 static CorrelatorHandle filter = NULL;
+static GraphMapHandle graphMap = NULL;
+
+uint32_t buffer_cycle = 0;
 
 static __thread uint32_t runtimeEnterCorrelationId = 0;
 
@@ -80,19 +85,53 @@ static void CUPTIAPI bufferRequested(uint8_t **buffer , size_t *size,size_t *max
 static void CUPTIAPI  bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer, size_t size, size_t validSize){
   CUptiResult result;
   CUpti_Activity *record = NULL;
-
+  uint32_t currentCycle = buffer_cycle++;
+  if(graphMap){
+    graph_map_cycle_start(graphMap, currentCycle);
+  }
   if(validSize >0){
+    
     do{
       result = cuptiActivityGetNextRecord(buffer, validSize,&record);
       if (result == CUPTI_SUCCESS){
         if(record->kind == CUPTI_ACTIVITY_KIND_KERNEL || record->kind == CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL){
           CUpti_ActivityKernel9 *kernel = (CUpti_ActivityKernel9 *) record;
+          DEBUG_PRINTF(
+            "[kernel] correlation=%u graphId=%u cycle=%u\n",
+            kernel->correlationId,
+            kernel->graphId,
+            currentCycle
+          );
           
           bool send = true;
-          if(filter){
-            send = correlator_check_and_remove(filter, kernel->correlationId);
-          }
 
+          if(kernel->graphId != 0){
+            if(graphMap){
+              send = graph_map_mark_seen_cycle(graphMap, kernel->correlationId, currentCycle);
+              if(!send){
+                 DEBUG_PRINTF(
+                  "[graph_map] MISS: correlation_id=%u graph_id=%u cycle=%u (entry not found)\n",
+                  kernel->correlationId,
+                  kernel->graphId,
+                  currentCycle
+                );
+              }
+              else{
+                DEBUG_PRINTF(
+                  "[graph_map] HIT: correlation_id=%u graph_id=%u cycle=%u map_size=%zu (sending kernel)\n",
+                  kernel->correlationId,
+                  kernel->graphId,
+                  currentCycle,
+                  graph_map_size(graphMap)
+                );
+              }
+            }
+          }
+          else{
+            if(filter){
+              send = correlator_check_and_remove(filter, kernel->correlationId);
+            }
+          }
 
           if (send){
             uint64_t grid_xy =
@@ -146,6 +185,28 @@ static void CUPTIAPI  bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t 
     }while (1);
   }
 
+  if(graphMap){
+    graph_map_finish_cycle(graphMap);
+    size_t map_size = 0;
+    size_t oldest_age = 0;
+    graph_map_get_stat(graphMap, &map_size, &oldest_age);
+    DEBUG_PRINTF(
+      "[graph_map] FINISH_CYCLE: cycle=%u map_size=%zu oldest_age=%zu\n",
+      currentCycle,
+      map_size,
+      oldest_age
+    );
+    if(oldest_age >50 && currentCycle%10 ==0){
+      DEBUG_PRINTF(
+        "[graph_map] WARNING: aged entries detected (oldest_age=%zu > 50) cycle=%u map_size=%zu\n",
+        oldest_age,
+        currentCycle,
+        map_size
+      );
+    }
+  }
+  outstandingEvents = 0;
+
   free(buffer);
 
   size_t dropped;
@@ -189,8 +250,6 @@ static void CUPTIAPI cuptiCallback(void *userdata, CUpti_CallbackDomain domain,
       case CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernel:
       case CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernel_ptsz:
       case CUPTI_DRIVER_TRACE_CBID_cuLaunchCooperativeKernelMultiDevice:
-      case CUPTI_DRIVER_TRACE_CBID_cuGraphLaunch:
-      case CUPTI_DRIVER_TRACE_CBID_cuGraphLaunch_ptsz:
       {
         CUresult result = cbInfo->functionReturnValue? *(CUresult *)cbInfo->functionReturnValue: CUDA_SUCCESS;
 
@@ -205,6 +264,16 @@ static void CUPTIAPI cuptiCallback(void *userdata, CUpti_CallbackDomain domain,
         if(filter)
           correlator_insert(filter, correlationId);
 
+        break;
+      }
+      case CUPTI_DRIVER_TRACE_CBID_cuGraphLaunch:
+      case CUPTI_DRIVER_TRACE_CBID_cuGraphLaunch_ptsz:
+      {
+        CUresult result = cbInfo->functionReturnValue? *(CUresult *)cbInfo->functionReturnValue: CUDA_SUCCESS;
+        result_value = (uint64_t)result;
+        emit = true;
+        if(graphMap)
+          graph_map_insert(graphMap, correlationId);
         break;
       }
     }
@@ -223,8 +292,6 @@ static void CUPTIAPI cuptiCallback(void *userdata, CUpti_CallbackDomain domain,
       case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000:
       case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_ptsz_v9000:
       case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000:
-      case CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000:
-      case CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_ptsz_v10000:
       {
         cudaError_t result = cbInfo->functionReturnValue? *(cudaError_t *)cbInfo->functionReturnValue: cudaSuccess;
 
@@ -241,19 +308,36 @@ static void CUPTIAPI cuptiCallback(void *userdata, CUpti_CallbackDomain domain,
         
         break;
       }
+      case CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000:
+      case CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_ptsz_v10000:
+      {
+        cudaError_t result = cbInfo->functionReturnValue? *(cudaError_t *)cbInfo->functionReturnValue: cudaSuccess;
+        result_value = (uint64_t)result;
+        emit = true;
+        if(graphMap){
+          graph_map_insert(graphMap, correlationId);
+        }
+        break;
+      }
+
     }
-
     runtimeEnterCorrelationId = 0;
-
   }
 
   if(emit){
-     DTRACE_PROBE4(myprov, ig_callback,
+    outstandingEvents ++;
+    DTRACE_PROBE4(myprov, ig_callback,
       correlationId,
       (uint32_t)cbid,
       name,
       result_value);
+    if(outstandingEvents > 3000){
+      CUPTI_CALL(cuptiActivityFlushAll(0));
+      outstandingEvents = 0;
+    }
   }
+
+  
 }
 
 void cleanup(void){
@@ -273,7 +357,7 @@ void cleanup(void){
   }
 
   if(filter){
-     size_t remaining = correlator_size(filter);
+    size_t remaining = correlator_size(filter);
     if (remaining > 0) {
       DEBUG_PRINTF("[CUPTI] Warning: %zu correlation IDs still in filter at cleanup\n", remaining);
     }
@@ -281,12 +365,21 @@ void cleanup(void){
     filter= NULL;
   }
 
+  if(graphMap){
+    size_t remaining = graph_map_size(graphMap);
+    if(remaining > 0){
+      DEBUG_PRINTF("[CUPTI] Warning: %zu correlation IDs still in graph map at cleanup\n", remaining);
+    }
+    graph_map_destroy(graphMap);
+    graphMap = NULL;
+  }
+
   DEBUG_PRINTF("Cleanup complet \n");
 }
 
 int InitializeInjection(void){
 
-  CUPTI_CALL(cuptiActivityFlushAll(1000));
+  CUPTI_CALL(cuptiActivityFlushPeriod(1000));
 
   CUPTI_CALL_ABORT_RET(cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)cuptiCallback, NULL),1);
 
@@ -336,6 +429,8 @@ int InitializeInjection(void){
   CUPTI_CALL(cuptiGetTimestamp(&startTimestamp));
 
   filter = correlator_create();
+
+  graphMap = graph_map_create();
 
   atexit(cleanup);
   return 1;
