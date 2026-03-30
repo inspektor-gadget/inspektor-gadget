@@ -83,7 +83,7 @@ __attribute__((noinline)) void level1() {
 
 int main() {
     level1();
-    usleep(500000); // 500 ms
+    usleep(100000); // 100 ms
     return 0;
 }
 `
@@ -92,6 +92,7 @@ int main() {
 	var ns string
 	containerOpts := []containers.ContainerOption{
 		containers.WithContainerImage(containerImage),
+		containers.WithStartAndStop(),
 	}
 
 	if utils.CurrentTestComponent == utils.KubectlGadgetTestComponent {
@@ -122,14 +123,14 @@ int main() {
 		containerOpts...,
 	)
 
-	testContainer.Start(t)
-	t.Cleanup(func() {
-		testContainer.Stop(t)
-	})
-
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
-	commonDataOpts := []utils.CommonDataOption{utils.WithContainerImageName(containerImage), utils.WithContainerID(testContainer.ID())}
+	commonDataOpts := []utils.CommonDataOption{
+		utils.WithContainerImageName(containerImage),
+		// The container is started after the tracer, so we don't have
+		// the container ID available here.
+		utils.WithContainerID(utils.NormalizedStr),
+	}
 
 	ustackFlag := "--collect-ustack=true"
 	switch utils.CurrentTestComponent {
@@ -234,7 +235,8 @@ int main() {
 	steps := []igtesting.TestStep{
 		traceCapabilitiesCmd,
 		// wait to ensure ig or kubectl-gadget has started
-		utils.Sleep(3 * time.Second),
+		utils.Sleep(10 * time.Second),
+		testContainer,
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }
