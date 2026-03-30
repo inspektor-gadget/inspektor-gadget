@@ -209,4 +209,47 @@ static __always_inline bool has_kmem_cache_free()
 	return false;
 }
 
+/**
+ * commit from net-next ("tcp: trace retransmit failures in
+ * tcp_retransmit_skb") splits the tcp_retransmit_skb tracepoint out of the
+ * shared trace_event_raw_tcp_event_sk_skb struct into its own
+ * trace_event_raw_tcp_retransmit_skb struct (adding an "err" field).
+ * Some distribution kernels (e.g. Ubuntu linux-azure >= 6.14) carry this
+ * patch before it lands in a mainline release.
+ *
+ * see:
+ *     https://lore.kernel.org/all/20250721111607626_BDnIJB0ywk6FghN63bor@zte.com.cn/
+ *
+ * gadget_get_tcp_retransmit_skb_skbaddr() and
+ * gadget_get_tcp_retransmit_skb_skaddr() read the skbaddr/skaddr fields
+ * portably from the tracepoint context.
+ */
+struct trace_event_raw_tcp_retransmit_skb___x {
+	struct trace_entry ent;
+	const void *skbaddr;
+	const void *skaddr;
+} __attribute__((preserve_access_index));
+
+static __always_inline const struct sk_buff *
+gadget_get_tcp_retransmit_skb_skbaddr(void *ctx)
+{
+	if (bpf_core_type_exists(struct trace_event_raw_tcp_retransmit_skb___x))
+		return BPF_CORE_READ(
+			(struct trace_event_raw_tcp_retransmit_skb___x *)ctx,
+			skbaddr);
+	return BPF_CORE_READ((struct trace_event_raw_tcp_event_sk_skb *)ctx,
+			     skbaddr);
+}
+
+static __always_inline const struct sock *
+gadget_get_tcp_retransmit_skb_skaddr(void *ctx)
+{
+	if (bpf_core_type_exists(struct trace_event_raw_tcp_retransmit_skb___x))
+		return BPF_CORE_READ(
+			(struct trace_event_raw_tcp_retransmit_skb___x *)ctx,
+			skaddr);
+	return BPF_CORE_READ((struct trace_event_raw_tcp_event_sk_skb *)ctx,
+			     skaddr);
+}
+
 #endif /* __CORE_FIXES_BPF_H */
