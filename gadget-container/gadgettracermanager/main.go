@@ -49,6 +49,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/gadget-container/entrypoint"
 	// Blank import for some operators
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cgroup"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/env"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"

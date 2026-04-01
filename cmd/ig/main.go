@@ -39,6 +39,7 @@ import (
 
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cgroup"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/env"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
