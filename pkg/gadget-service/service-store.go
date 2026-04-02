@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/moby/moby/pkg/namesgenerator"
-
+	"github.com/inspektor-gadget/inspektor-gadget/internal/namesgenerator"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 

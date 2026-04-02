@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/testing/kernel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/gadgetrunner"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 )
