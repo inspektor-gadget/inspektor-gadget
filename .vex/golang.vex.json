@@ -2,7 +2,7 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/inspektor-gadget/inspektor-gadget/blob/main/.vex/golang.vex.json",
   "author": "Inspektor Gadget Security Team \u003csecurity@inspektor-gadget.io\u003e",
-  "version": 4,
+  "version": 5,
   "statements": [
     {
       "vulnerability": {
@@ -67,8 +67,21 @@
       "status": "not_affected",
       "justification": "component_not_present",
       "timestamp": "2026-04-02T09:27:35.490888846Z"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-34040"
+      },
+      "products": [
+        {
+          "@id": "pkg:golang/github.com/inspektor-gadget/inspektor-gadget@v0.50.1"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "timestamp": "2026-04-02T09:36:45.473227831Z"
     }
   ],
   "timestamp": "2025-11-12T12:27:14Z",
-  "last_updated": "2026-04-02T09:27:35Z"
+  "last_updated": "2026-04-02T09:36:45Z"
 }
