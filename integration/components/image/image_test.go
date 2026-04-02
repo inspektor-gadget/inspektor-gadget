@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moby/moby/api/types/network"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
@@ -39,9 +40,11 @@ func TestImage(t *testing.T) {
 	})
 
 	require.NotEmpty(t, r.PortBindings(), "registry port bindings are empty")
-	require.NotNil(t, r.PortBindings()["5000/tcp"], "registry port 5000/tcp not found in port bindings")
+	port, err := network.ParsePort("5000/tcp")
+	require.NoError(t, err)
+	require.NotNil(t, r.PortBindings()[port], "registry port 5000/tcp not found in port bindings")
 
-	pb := r.PortBindings()["5000/tcp"][0]
+	pb := r.PortBindings()[port][0]
 	registryAddr := fmt.Sprintf("%s:%s", pb.HostIP, pb.HostPort)
 
 	testReg := "reg.com"
@@ -53,7 +56,7 @@ func TestImage(t *testing.T) {
 	tmpFolder := t.TempDir()
 	exportPath := path.Join(tmpFolder, "export.tar")
 	gadgetSrcFolder := path.Join(tmpFolder, "gadget")
-	err := os.MkdirAll(gadgetSrcFolder, 0o755)
+	err = os.MkdirAll(gadgetSrcFolder, 0o755)
 	require.NoError(t, err)
 
 	// create an empty eBPF program for the test as it compiles fine

@@ -17,30 +17,25 @@ package common
 import (
 	"os"
 
-	"github.com/containers/common/pkg/auth"
-	"github.com/containers/image/v5/types"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/auth"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type logoutOptions struct {
-	logoutOpts auth.LogoutOptions
-}
-
 func NewLogoutCmd() *cobra.Command {
-	o := logoutOptions{}
+	opts := &auth.LogoutOptions{}
 	cmd := &cobra.Command{
 		Use:          "logout [command options] REGISTRY",
 		Short:        "Logout of a container registry",
 		Long:         "Logout of a container registry on a specified server.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.logoutOpts.Stdout = os.Stdout
-			return auth.Logout(&types.SystemContext{}, &o.logoutOpts, args)
+			opts.Stdout = os.Stdout
+			return auth.Logout(opts, args)
 		},
 	}
-	logoutFlagSet := auth.GetLogoutFlags(&o.logoutOpts)
+	logoutFlagSet := auth.GetLogoutFlags(opts)
 	logoutFlagSet.Lookup("authfile").Value.Set(oci.DefaultAuthFile)
 	cmd.Flags().AddFlagSet(logoutFlagSet)
 	return cmd

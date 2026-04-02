@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moby/moby/pkg/stringid"
+	"github.com/moby/moby/client/pkg/stringid"
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
