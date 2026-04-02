@@ -1,0 +1,3 @@
+vulnerability:
+  vex:
+    - .vex/golang.vex.json

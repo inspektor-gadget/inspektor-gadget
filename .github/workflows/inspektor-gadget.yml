@@ -835,6 +835,9 @@ jobs:
         os: [ linux ]
         platform: [ amd64 ]
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Download gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -842,6 +845,8 @@ jobs:
           path: ${{ github.workspace }}
       - name: Scan gadget ${{ matrix.os }} ${{ matrix.platform }} container image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        env:
+          TRIVY_DEBUG: "true"
         with:
           input: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           format: 'table'
@@ -849,6 +854,7 @@ jobs:
           severity: CRITICAL,HIGH
           # uncomment to ignore vulnerabilities
           ignore-unfixed: true
+          trivy-config: ./trivy.yaml
           # ignore-policy: .github/trivy/ignore-policy.yaml
 
   publish-gadget-images-manifest:
