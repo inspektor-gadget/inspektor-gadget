@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.50.0
+name: "top cuda memory"
+category: monitoring-logging
+displayName: "top cuda memory"
+createdAt: "2026-04-01T00:00:00Z"
+digest: "2026-04-01T00:00:00Z"
+description: "Periodically report CUDA memory allocation and free activity per process"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/top_cuda_memory:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - cuda
+    - gpu
+    - memory
+    - nvidia
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cuda_memory"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/top_cuda_memory:latest
+    ```
+provider:
+    name: Inspektor Gadget

@@ -1,0 +1,130 @@
+---
+title: top_cuda_memory
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# top_cuda_memory
+
+The `top_cuda_memory` gadget periodically reports CUDA memory allocation and free activity per
+process, split by library (libcuda Driver API vs libcudart Runtime API) and by memory type (GPU
+device memory vs host pinned memory).
+
+It traces alloc/free calls in both libraries independently because the CUDA Runtime (`libcudart`)
+internally calls the Driver API (`libcuda`), and the runtime may cache memory rather than forwarding
+every free to the driver. Tracking both libraries gives an accurate picture of memory usage from
+each perspective.
+
+## Requirements
+
+- Minimum Kernel Version: 5.12 (requires BPF CMPXCHG atomics)
+- CUDA workload using `libcuda.so` (Driver API) and/or `libcudart.so` (Runtime API)
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/top_cuda_memory:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/top_cuda_memory:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+This example shows the gadget running alongside an application that allocates GPU and host-pinned
+memory using the CUDA Driver and Runtime APIs.
+
+Start the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run top_cuda_memory:%IG_TAG% --pod mypod
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run top_cuda_memory:%IG_TAG%
+        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        ```
+    </TabItem>
+</Tabs>
+
+Once a CUDA process starts allocating memory, the gadget will show output like:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        minikube         default         mypod         mypod                1234567 cuda_app               2147483648       1073741824              128               64                        0                        0 DEVICE
+        minikube         default         mypod         mypod                1234567 cuda_app                134217728        134217728               16               16                        0                        0 HOST
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        my-cuda-container               1234567 cuda_app                2147483648       1073741824             128               64                        0                        0 DEVICE
+        my-cuda-container               1234567 cuda_app                 134217728        134217728              16               16                        0                        0 HOST
+        ```
+    </TabItem>
+</Tabs>
+
+The `HOST` column distinguishes memory type:
+- `DEVICE` — GPU device memory (allocated with `cuMemAlloc`, `cudaMalloc`, etc.)
+- `HOST` — Page-locked host memory (allocated with `cuMemAllocHost`, `cudaMallocHost`, `cudaHostAlloc`, etc.)
+
+The gadget reports two separate datasources:
+- `libcuda_mem_stats` — Driver API (`libcuda.so`) view
+- `libcudart_mem_stats` — Runtime API (`libcudart.so`) view
+
+For applications like `ollama` that never call `cuMemFree` explicitly, memory is bulk-freed when
+the CUDA context is destroyed. In that case `MEM_IMPLICIT_FREE_BYTES` and `MEM_IMPLICIT_FREE_CALLS`
+will reflect the released memory:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        K8S.NODE         K8S.NAMESPACE   K8S.PODNAME   K8S.CONTAINERNAME        PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        minikube         default         mypod         mypod                9876543 ollama                17179869184                0             1024                0              17179869184                        1 DEVICE
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        RUNTIME.CONTAINERNAME               PID COMM              MEM_ALLOC_BYTES   MEM_FREE_BYTES  MEM_ALLOC_CALLS   MEM_FREE_CALLS  MEM_IMPLICIT_FREE_BYTES  MEM_IMPLICIT_FREE_CALLS HOST
+        ollama-container                9876543 ollama               17179869184                 0             1024                0              17179869184                        1 DEVICE
+        ```
+    </TabItem>
+</Tabs>
+
+By default the gadget prints a summary each second. Both the number of summaries and the interval
+can be customized with `--map-fetch-count` and `--map-fetch-interval`:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        kubectl gadget run top_cuda_memory:%IG_TAG% --map-fetch-count 5 --map-fetch-interval 2s
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        sudo ig run top_cuda_memory:%IG_TAG% --map-fetch-count 5 --map-fetch-interval 2s
+        ```
+    </TabItem>
+</Tabs>
+
