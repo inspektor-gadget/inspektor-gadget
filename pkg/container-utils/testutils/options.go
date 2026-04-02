@@ -17,7 +17,7 @@ package testutils
 import (
 	"context"
 
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/network"
 )
 
 const (
@@ -40,7 +40,7 @@ type containerOptions struct {
 	waitOrOomKilled      bool
 	logs                 bool
 	removal              bool
-	portBindings         nat.PortMap
+	portBindings         network.PortMap
 	privileged           bool
 	limits               map[string]string
 	expectedExitCode     *int
@@ -152,7 +152,7 @@ func withoutRemoval() Option {
 }
 
 // WithPortBindings sets the exposed ports of the container
-func WithPortBindings(portBindings nat.PortMap) Option {
+func WithPortBindings(portBindings network.PortMap) Option {
 	return func(opts *containerOptions) {
 		opts.portBindings = portBindings
 	}
