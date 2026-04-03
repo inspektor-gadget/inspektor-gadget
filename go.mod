@@ -46,7 +46,7 @@ require (
 	github.com/tklauser/numcpus v0.11.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
-	go.opentelemetry.io/collector/pdata/pprofile v0.147.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.149.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
 	go.opentelemetry.io/otel v1.42.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.18.0
@@ -206,8 +206,8 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.53.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.55.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.55.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
