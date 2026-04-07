@@ -1041,6 +1041,11 @@ jobs:
             dockerfile: "tools/bench/Dockerfile"
             platform: "linux/amd64,linux/arm64"
             key-files: "tools/bench/*"
+          - name: "kubelet-get-ca"
+            context: "tools/kubelet-get-ca"
+            dockerfile: "tools/kubelet-get-ca/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
+            key-files: "tools/kubelet-get-ca/*"
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
