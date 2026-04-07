@@ -10,6 +10,7 @@ CONTAINER_IMAGES = \
 	ig \
 	gadget-builder \
 	dnstester \
+	kubelet-get-ca \
 	#
 
 GADGET_BUILDER ?= $(CONTAINER_REPO_NAMESPACE)/gadget-builder:main
