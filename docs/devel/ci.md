@@ -37,7 +37,7 @@ Note that, you need to [set repository packages as public](https://docs.github.c
 Optionally, we can add the secrets described in this section so that the
 integration tests will also run on a pre-created [Azure Red Hat OpenShift
 (ARO)](https://docs.microsoft.com/en-us/azure/openshift/intro-openshift)
-cluster. Consider that the Inspektor Gadget workflow will still success even if
+cluster. Consider that the Inspektor Gadget workflow will still succeed even if
 no ARO cluster is provided through these secrets.
 
 ### Create a cluster
@@ -116,7 +116,7 @@ documentation](https://docs.microsoft.com/en-us/azure/openshift/tutorial-create-
 
 ### Connect to a cluster
 
-Fist of all, to be able to connect to our cluster, we need the following
+First of all, to be able to connect to our cluster, we need the following
 information:
 
 ```bash
@@ -135,7 +135,7 @@ $ az aro list-credentials --subscription $SUBSCRIPTION -g $RESOURCEGROUP -n $CLU
 #### From GitHub actions
 
 The `test-integration` job is already configured to authenticate and set the
-kubeconf context to the ARO cluster configured in the GitHub repository. So all
+kubeconfig context to the ARO cluster configured in the GitHub repository. So all
 we need to do is to add the following actions secrets:
 
 - `OPENSHIFT_SERVER`: The API server URL: `https://api.server.example.io:1234`.
@@ -282,7 +282,7 @@ to configure your AWS account.
 
 You need to create a role with the [minimum IAM
 policies](https://eksctl.io/usage/minimum-iam-policies/) needed by eksctl. Save the name of this
-role (including the rull `arn:aws..` prefix). in a [repository
+role (including the full `arn:aws..` prefix). in a [repository
 variable](https://docs.github.com/en/actions/learn-github-actions/variables#creating-configuration-variables-for-a-repository)
 named `AWS_ROLE`.
 
