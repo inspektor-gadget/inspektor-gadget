@@ -30,6 +30,7 @@ const (
 	PodmanSocketPath      = "podman-socketpath"
 	GadgetNamespace       = "gadget-namespace"
 	DaemonLogLevel        = "daemon-log-level"
+	NamespaceBlocklist    = "namespace-blocklist"
 
 	VerifyImage        = "verify-image"
 	PublicKeys         = "public-keys"
@@ -77,7 +78,7 @@ func FullKeyPath(key string) string {
 func isRootKey(key string) bool {
 	switch key {
 	case EventsBufferLengthKey, ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
-		PodmanSocketPath, GadgetNamespace, DaemonLogLevel:
+		PodmanSocketPath, GadgetNamespace, DaemonLogLevel, NamespaceBlocklist:
 		return true
 	default:
 		return false
