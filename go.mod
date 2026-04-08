@@ -225,6 +225,6 @@ require (
 
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260224155738-1d92ff419559
-
-//replace go.opentelemetry.io/ebpf-profiler => ../../open-telemetry/opentelemetry-ebpf-profiler
+// alban_ig3 includes syncVariablesToMapSpecs() fix for cilium/ebpf v0.21.0 compat
+// (cherry-picked from upstream commit 7a5ccb22052e4b8e90017ddc571229f35ab8b090)
+replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260408163706-4fcb94dc3444

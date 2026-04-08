@@ -19,8 +19,8 @@ github.com/PaesslerAG/gval v1.0.0/go.mod h1:y/nm5yEyTeX6av0OfKJNp9rBNj2XrGhAf5+v
 github.com/PaesslerAG/jsonpath v0.1.0/go.mod h1:4BzmtoM/PI8fPO4aQGIusjGxGir2BzcV0grWtFzq1Y8=
 github.com/PaesslerAG/jsonpath v0.1.1 h1:c1/AToHQMVsduPAa4Vh6xp2U0evy4t8SWp8imEsylIk=
 github.com/PaesslerAG/jsonpath v0.1.1/go.mod h1:lVboNxFGal/VwW6d9JzIy56bUsYAP6tH/x80vjnCseY=
-github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260224155738-1d92ff419559 h1:RDcrK/KhTuwekAmh317GMu8AhcWWAkTjladE1IdjbXA=
-github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260224155738-1d92ff419559/go.mod h1:/G0uuYPjxU6h0MkkhlZoxWwtinQxYeaymTV80yy+AxM=
+github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260408163706-4fcb94dc3444 h1:AQ3BObmQe/9FX+hUdIAYhyCtarbQdEZpuKwf6PPAX+o=
+github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260408163706-4fcb94dc3444/go.mod h1:/G0uuYPjxU6h0MkkhlZoxWwtinQxYeaymTV80yy+AxM=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e h1:4dAU9FXIyQktpoUAgOJK3OTFc/xug0PCXYCqU0FgDKI=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
