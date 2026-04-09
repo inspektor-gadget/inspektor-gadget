@@ -463,7 +463,7 @@ func ImportGadgetImages(ctx context.Context, srcFile string) ([]string, error) {
 
 	err = src.Tags(ctx, "", func(tags []string) error {
 		for _, tag := range tags {
-			_, err := oras.Copy(ctx, src, tag, ociStore, tag, oras.DefaultCopyOptions)
+			_, err := oras.ExtendedCopy(ctx, src, tag, ociStore, tag, oras.DefaultExtendedCopyOptions)
 			if err != nil {
 				return fmt.Errorf("copying to local repository: %w", err)
 			}
