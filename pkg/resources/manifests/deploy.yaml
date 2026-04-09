@@ -39,6 +39,7 @@ data:
         kubemanager:
           fallback-podinformer: true
           hook-mode: auto
+          exclude-namespaces: []
         oci:
           allowed-gadgets: []
           disallow-pulling: false

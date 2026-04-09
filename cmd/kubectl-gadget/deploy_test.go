@@ -114,6 +114,21 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 			wantContains: []string{"disallow-pulling: true"},
 		},
 		{
+			name: "exclude-namespaces flag sets config",
+			cm:   makeCM("operator:\n  kubemanager:\n    exclude-namespaces: []\n"),
+			flagSetup: func(fs *pflag.FlagSet) {
+				fs.Set("exclude-namespaces", "kube-system,monitoring")
+			},
+			wantContains: []string{"exclude-namespaces"},
+		},
+		{
+			name:          "exclude-namespaces via daemon-config file",
+			cm:            makeCM("operator:\n  kubemanager:\n    exclude-namespaces: []\n"),
+			configContent: "operator:\n  kubemanager:\n    exclude-namespaces:\n    - kube-system\n    - monitoring\n",
+			flagSetup:     func(fs *pflag.FlagSet) {},
+			wantContains:  []string{"exclude-namespaces"},
+		},
+		{
 			name:          "Merge configmap, set-config, and config file",
 			cm:            makeCM("operator:\n  oci:\n    disallow-pulling: false\n"),
 			setConfig:     []string{"operator.oci.verify-image=true"},
@@ -139,6 +154,7 @@ func TestApplyConfigToConfgMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
 			fs.Bool("disallow-gadgets-pulling", false, "")
+			fs.String("exclude-namespaces", "", "")
 
 			if tt.flagSetup != nil {
 				tt.flagSetup(fs)

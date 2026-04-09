@@ -318,6 +318,39 @@ Then, deploy Inspektor Gadget with the following command:
 $ kubectl gadget deploy --daemon-config=daemon-config.yaml
 ```
 
+##### Excluding namespaces
+
+You can exclude Kubernetes namespaces from all gadget events using the
+`operator.kubemanager.exclude-namespaces` parameter. Events coming from
+containers in these namespaces are dropped for every gadget run, in addition to
+any namespace filter given when running a gadget.
+
+Using `kubectl gadget deploy`, set it with the `--exclude-namespaces` flag,
+which takes a comma-separated list:
+
+```bash
+$ kubectl gadget deploy --exclude-namespaces=kube-system,monitoring
+```
+
+It can also be set in the daemon configuration file:
+
+```yaml
+operator:
+  kubemanager:
+    exclude-namespaces:
+      - kube-system
+      - monitoring
+```
+
+When using the [Helm chart](#installation-with-the-helm-chart), set the
+`config.operator.kubemanager.exclude-namespaces` value:
+
+```bash
+$ helm install gadget --namespace=gadget --create-namespace \
+    oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=%IG_CHART% \
+    --set 'config.operator.kubemanager.exclude-namespaces={kube-system,monitoring}'
+```
+
 Following is a sample `daemon-config.yaml` file to showcase the different options:
 
 ```yaml
@@ -331,6 +364,7 @@ operator:
   kubemanager:
     fallback-podinformer: true
     hook-mode: auto
+    exclude-namespaces: []
   oci:
     allowed-gadgets: []
     disallow-pulling: false

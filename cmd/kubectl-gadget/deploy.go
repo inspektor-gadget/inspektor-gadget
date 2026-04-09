@@ -114,6 +114,7 @@ var (
 	daemonConfig          string
 	setDaemonConfig       []string
 	dropCapSysAdmin       bool
+	excludeNamespaces     string
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -269,6 +270,10 @@ func init() {
 		&dropCapSysAdmin,
 		"drop-cap-sys-admin", false,
 		"Drop CAP_SYS_ADMIN and use CAP_BPF and CAP_PERFMON instead. This disables fanotify-based container detection and use a non-fanotify hook-mode (podinformer/nri/crio)")
+	deployCmd.PersistentFlags().StringVar(
+		&excludeNamespaces,
+		"exclude-namespaces", "",
+		"Comma-separated list of Kubernetes namespaces to exclude from all gadget events")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -634,8 +639,15 @@ func flagToConfigKey(flagName string) (string, bool) {
 
 // flagToConfigValue converts a flag value to the corresponding config value.
 func flagToConfigValue(flagName string, value pflag.Value) any {
-	if flagName == gadgettracermanagerconfig.PublicKeys {
+	switch flagName {
+	case gadgettracermanagerconfig.PublicKeys:
 		return strings.Split(value.String(), ",")
+	case gadgettracermanagerconfig.ExcludeNamespaces:
+		v := value.String()
+		if v == "" {
+			return []string{}
+		}
+		return strings.Split(v, ",")
 	}
 	return value
 }

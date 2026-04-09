@@ -58,6 +58,7 @@ const (
 	ParamHookMode               = "hook-mode"
 	ParamFallbackPodInformer    = "fallback-podinformer"
 	ParamHookLivenessSocketFile = "hook-liveness-socketfile"
+	ParamExcludeNamespaces      = "exclude-namespaces"
 
 	// Instance parameter keys
 	ParamAllNamespaces = kubemanagerpolicy.ParamAllNamespaces
@@ -78,6 +79,7 @@ type KubeManager struct {
 	containerCollection *containercollection.ContainerCollection
 	tracerCollection    *tracercollection.TracerCollection
 	externalCollections bool
+	excludeNamespaces   []string
 }
 
 // NewKubeManager creates a new KubeManager operator skipping the Init() method.
@@ -120,6 +122,12 @@ func (k *KubeManager) GlobalParamDescs() params.ParamDescs {
 			Description:  "Path to the socket file for serving hook's requests for adding/removing containers and for liveness checks",
 			TypeHint:     params.TypeString,
 		},
+		{
+			Key:          ParamExcludeNamespaces,
+			DefaultValue: "",
+			Description:  "Comma-separated list of Kubernetes namespaces to exclude from all gadget events",
+			TypeHint:     params.TypeString,
+		},
 	}
 }
 
@@ -135,6 +143,16 @@ func (k *KubeManager) ParamDescs() params.ParamDescs {
 }
 
 func (k *KubeManager) Init(params *params.Params) error {
+	// Read exclude-namespaces regardless of externalCollections so it applies
+	// whenever this KubeManager is used (even in tests with external collections).
+	if excludeNs := params.Get(ParamExcludeNamespaces).AsString(); excludeNs != "" {
+		for _, ns := range strings.Split(excludeNs, ",") {
+			if ns != "" {
+				k.excludeNamespaces = append(k.excludeNamespaces, ns)
+			}
+		}
+	}
+
 	if k.externalCollections {
 		return nil
 	}
@@ -262,7 +280,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 }
 
 func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
-	containerSelector := newContainerSelector(m.params)
+	containerSelector := m.manager.newContainerSelector(m.params)
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
 		err := m.manager.tracerCollection.AddTracer(m.id, containerSelector)
@@ -355,10 +373,24 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 	return nil
 }
 
-func newContainerSelector(params *params.Params) containercollection.ContainerSelector {
-	containerSelector := common.NewContainerSelector(params)
-	if params.Get(ParamAllNamespaces).AsBool() {
+func (k *KubeManager) newContainerSelector(p *params.Params) containercollection.ContainerSelector {
+	containerSelector := common.NewContainerSelector(p)
+	if p.Get(ParamAllNamespaces).AsBool() {
 		containerSelector.K8s.Namespace = ""
+	}
+	// Append global namespace exclusions to any per-run namespace filter.
+	// The matchFilterString function supports "!ns" syntax to exclude namespaces.
+	if len(k.excludeNamespaces) > 0 {
+		exclusions := make([]string, len(k.excludeNamespaces))
+		for i, ns := range k.excludeNamespaces {
+			exclusions[i] = "!" + ns
+		}
+		exclusionStr := strings.Join(exclusions, ",")
+		if containerSelector.K8s.Namespace != "" {
+			containerSelector.K8s.Namespace = containerSelector.K8s.Namespace + "," + exclusionStr
+		} else {
+			containerSelector.K8s.Namespace = exclusionStr
+		}
 	}
 	return containerSelector
 }
@@ -501,7 +533,7 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 		0,
 	)
 
-	containerSelector := newContainerSelector(m.params)
+	containerSelector := m.manager.newContainerSelector(m.params)
 
 	if m.manager.containerCollection == nil {
 		return fmt.Errorf("container-collection isn't available")
@@ -533,7 +565,7 @@ func (m *KubeManagerInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return nil
 	}
 
-	containerSelector := newContainerSelector(m.params)
+	containerSelector := m.manager.newContainerSelector(m.params)
 
 	return m.containersPublisher.PublishContainers(true, []*containercollection.Container{}, containerSelector)
 }
