@@ -39,6 +39,8 @@ const (
 
 	OtelMetricsListen        = "otel-metrics-listen"
 	OtelMetricsListenAddress = "otel-metrics-listen-address"
+
+	ExcludeNamespaces = "exclude-namespaces"
 )
 
 func Init() error {
@@ -57,7 +59,7 @@ func Init() error {
 // IsValidKey checks if the given key is a valid configuration key for the GadgetTracerManager.
 // TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
 func IsValidKey(key string) bool {
-	return isRootKey(key) || isOciKey(key) || isOtelKey(key)
+	return isRootKey(key) || isOciKey(key) || isOtelKey(key) || isKubeManagerKey(key)
 }
 
 // FullKeyPath returns the full key path for the given key.
@@ -69,6 +71,8 @@ func FullKeyPath(key string) string {
 		return "operator.oci." + key
 	} else if isOtelKey(key) {
 		return "operator.otel-metrics." + key
+	} else if isKubeManagerKey(key) {
+		return "operator.kubemanager." + key
 	}
 	return ""
 }
@@ -98,6 +102,16 @@ func isOciKey(key string) bool {
 func isOtelKey(key string) bool {
 	switch key {
 	case OtelMetricsListen, OtelMetricsListenAddress:
+		return true
+	default:
+		return false
+	}
+}
+
+// TODO: Remove in the future once we remove the flags from kubectl-gadget deploy.
+func isKubeManagerKey(key string) bool {
+	switch key {
+	case ExcludeNamespaces:
 		return true
 	default:
 		return false

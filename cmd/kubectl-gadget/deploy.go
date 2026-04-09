@@ -112,6 +112,7 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	excludeNamespaces     string
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -263,6 +264,10 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().StringVar(
+		&excludeNamespaces,
+		"exclude-namespaces", "",
+		"Comma-separated list of Kubernetes namespaces to exclude from all gadget events")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -597,8 +602,15 @@ func flagToConfigKey(flagName string) (string, bool) {
 
 // flagToConfigValue converts a flag value to the corresponding config value.
 func flagToConfigValue(flagName string, value pflag.Value) any {
-	if flagName == gadgettracermanagerconfig.PublicKeys {
+	switch flagName {
+	case gadgettracermanagerconfig.PublicKeys:
 		return strings.Split(value.String(), ",")
+	case gadgettracermanagerconfig.ExcludeNamespaces:
+		v := value.String()
+		if v == "" {
+			return []string{}
+		}
+		return strings.Split(v, ",")
 	}
 	return value
 }
