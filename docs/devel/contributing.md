@@ -319,7 +319,7 @@ Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
 documentation](ci.md) for more details.
 
 Some integration tests (like AKS and ARO) are only run when a commit is pushed to the main branch or
-a new tag is pushed. It's also possible to run those by pusing a branch named `citest/...`. Please
+a new tag is pushed. It's also possible to run those by pushing a branch named `citest/...`. Please
 notice that the container images will be pushed to
 https://github.com/inspektor-gadget/inspektor-gadget/pkgs/container/inspektor-gadget and those
 should be manually cleaned up.
@@ -436,8 +436,7 @@ well-structured. Each commit should contain the following:
   Check how to do it in
   <!-- markdown-link-check-disable-next-line -->
   [this StackOverflow answer](https://stackoverflow.com/a/3828861). This helps
-  maintainers and contributors understand the purpose of each commit and ensures
-traceability for bug fixes.
+  maintainers and contributors understand the purpose of each commit and ensures traceability for bug fixes.
 
 ### Good first issues
 
