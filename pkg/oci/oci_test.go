@@ -15,11 +15,132 @@
 package oci
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 )
+
+func TestExtendedCopyPreservesReferrers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	// 1. Create a source OCI store with a tagged image + untagged referrer
+	srcDir := t.TempDir()
+	srcStore, err := oci.New(srcDir)
+	require.NoError(t, err)
+
+	// Push a minimal image: config + layer + manifest
+	configBlob := []byte(`{"architecture":"amd64","os":"linux"}`)
+	configDesc := pushBlob(t, ctx, srcStore, ocispec.MediaTypeImageConfig, configBlob)
+
+	layerBlob := []byte("fake-layer-data")
+	layerDesc := pushBlob(t, ctx, srcStore, ocispec.MediaTypeImageLayer, layerBlob)
+
+	manifest := ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Config:    configDesc,
+		Layers:    []ocispec.Descriptor{layerDesc},
+	}
+	manifest.SchemaVersion = 2
+	manifestBytes, err := json.Marshal(manifest)
+	require.NoError(t, err)
+	manifestDesc := pushBlob(t, ctx, srcStore, ocispec.MediaTypeImageManifest, manifestBytes)
+
+	imageRef := "test.example.com/image:latest"
+	err = srcStore.Tag(ctx, manifestDesc, imageRef)
+	require.NoError(t, err)
+
+	// Push an untagged referrer manifest (notation-like signature)
+	sigBlob := []byte("fake-notation-signature")
+	sigLayerDesc := pushBlob(t, ctx, srcStore, "application/octet-stream", sigBlob)
+
+	sigManifest := ocispec.Manifest{
+		MediaType:    ocispec.MediaTypeImageManifest,
+		ArtifactType: "application/vnd.cncf.notary.signature",
+		Subject:      &manifestDesc,
+		Config: ocispec.Descriptor{
+			MediaType: "application/vnd.oci.empty.v1+json",
+			Digest:    ocispec.DescriptorEmptyJSON.Digest,
+			Size:      ocispec.DescriptorEmptyJSON.Size,
+		},
+		Layers: []ocispec.Descriptor{sigLayerDesc},
+	}
+	sigManifest.SchemaVersion = 2
+
+	// Push the empty config for the signature manifest
+	emptyJSON := []byte(`{}`)
+	pushBlob(t, ctx, srcStore, "application/vnd.oci.empty.v1+json", emptyJSON)
+
+	sigManifestBytes, err := json.Marshal(sigManifest)
+	require.NoError(t, err)
+	sigManifestDesc := pushBlob(t, ctx, srcStore, ocispec.MediaTypeImageManifest, sigManifestBytes)
+	// Do NOT tag the signature manifest — it's an untagged referrer
+
+	err = srcStore.SaveIndex()
+	require.NoError(t, err)
+
+	// Verify the referrer is discoverable in the source
+	referrers, err := registry.Referrers(ctx, srcStore, manifestDesc, "application/vnd.cncf.notary.signature")
+	require.NoError(t, err)
+	require.Len(t, referrers, 1, "source store should have 1 referrer")
+
+	// 2. Test: oras.Copy does NOT copy the referrer (demonstrates the bug)
+	dstCopyDir := t.TempDir()
+	dstCopy, err := oci.New(dstCopyDir)
+	require.NoError(t, err)
+
+	_, err = oras.Copy(ctx, srcStore, imageRef, dstCopy, imageRef, oras.DefaultCopyOptions)
+	require.NoError(t, err)
+
+	exists, err := dstCopy.Exists(ctx, sigManifestDesc)
+	require.NoError(t, err)
+	assert.False(t, exists, "oras.Copy should NOT copy untagged referrer manifests (this is the bug)")
+
+	// 3. Test: oras.ExtendedCopy DOES copy the referrer (the fix)
+	dstExtDir := t.TempDir()
+	dstExt, err := oci.New(dstExtDir)
+	require.NoError(t, err)
+
+	_, err = oras.ExtendedCopy(ctx, srcStore, imageRef, dstExt, imageRef, oras.DefaultExtendedCopyOptions)
+	require.NoError(t, err)
+
+	exists, err = dstExt.Exists(ctx, sigManifestDesc)
+	require.NoError(t, err)
+	assert.True(t, exists, "oras.ExtendedCopy should copy untagged referrer manifests")
+
+	// Verify the referrer relationship is preserved in the destination
+	dstReferrers, err := registry.Referrers(ctx, dstExt, manifestDesc, "application/vnd.cncf.notary.signature")
+	require.NoError(t, err)
+	require.Len(t, dstReferrers, 1, "destination store should have 1 referrer after ExtendedCopy")
+	assert.Equal(t, sigManifestDesc.Digest, dstReferrers[0].Digest)
+}
+
+func pushBlob(t *testing.T, ctx context.Context, store *oci.Store, mediaType string, data []byte) ocispec.Descriptor {
+	t.Helper()
+	desc := ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digest.FromBytes(data),
+		Size:      int64(len(data)),
+	}
+	err := store.Push(ctx, desc, bytes.NewReader(data))
+	if err != nil {
+		// Blob may already exist (e.g., empty JSON config)
+		existsErr, checkErr := store.Exists(ctx, desc)
+		if checkErr != nil || !existsErr {
+			t.Fatalf("pushing blob: %v", err)
+		}
+	}
+	return desc
+}
 
 func TestSplitIGDomain(t *testing.T) {
 	t.Parallel()
