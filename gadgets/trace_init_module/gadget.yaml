@@ -1,19 +1,44 @@
 name: trace init_module
-description: trace init_module syscalls
+description: trace init_module and finit_module syscalls
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_init_module
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_init_module
 datasources:
   init:
     fields:
+      syscall_raw:
+        annotations:
+          columns.hidden: true
+      syscall:
+        annotations:
+          description: System call name (init_module or finit_module)
+          columns.width: 14
+          columns.minwidth: 12
       len:
         annotations:
-          description: Module image length (bytes)
+          description: Module image length in bytes (init_module only)
           columns.alignment: right
           columns.minwidth: 3
           columns.maxwidth: 12
+      fd:
+        annotations:
+          description: File descriptor (finit_module only)
+          columns.alignment: right
+          columns.width: 6
+          columns.minwidth: 2
+      filepath:
+        annotations:
+          description: Path resolved from fd (finit_module only)
+          columns.width: 32
+          columns.minwidth: 16
+      flags:
+        annotations:
+          description: Flags passed to finit_module
+          columns.alignment: right
+          columns.width: 8
+          columns.minwidth: 5
       param_values:
         annotations:
-          description: Parameter string passed to init_module (truncated)
+          description: Parameter string passed to syscall (truncated)
           columns.width: 32
           columns.minwidth: 16
