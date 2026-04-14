@@ -198,11 +198,14 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 		ustack->pid_level1 = 0;
 		ustack->pidns_level1 = 0;
 		ustack->otel_correlation_id = 0;
+		ustack->boot_timestamp = 0;
 		return;
 	}
 
 	ustack->stack_id = bpf_get_stackid(
 		ctx, &ig_ustack, BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK);
+
+	ustack->boot_timestamp = bpf_ktime_get_boot_ns();
 
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
