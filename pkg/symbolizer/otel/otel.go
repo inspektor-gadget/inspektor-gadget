@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -26,6 +27,7 @@ import (
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
 	oteltracertypes "go.opentelemetry.io/ebpf-profiler/tracer/types"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 )
@@ -44,6 +46,7 @@ func (d *otelResolver) NewInstance(options symbolizer.SymbolizerOptions) (symbol
 	o := &otelResolverInstance{
 		options:        options,
 		correlationMap: make(map[uint64]libpf.Frames),
+		waiters:        make(map[uint64]chan struct{}),
 	}
 	if err := o.startOtelEbpfProfiler(context.TODO()); err != nil {
 		return nil, fmt.Errorf("starting OTel eBPF profiler: %w", err)
@@ -58,9 +61,34 @@ func (d *otelResolver) Priority() int {
 type otelResolverInstance struct {
 	options symbolizer.SymbolizerOptions
 
-	trc            *oteltracer.Tracer
+	trc *oteltracer.Tracer
+
+	// mu protects correlationMap and waiters. There is a single producer
+	// (the traceReporter callback, called from the OTel map monitor
+	// goroutine) but there can be multiple consumers: a gadget may have
+	// several datasources (e.g. multiple eBPF ring buffers or hash maps),
+	// each calling Resolve() concurrently on the same correlation ID.
+	mu             sync.Mutex
 	correlationMap map[uint64]libpf.Frames
+	// waiters holds channels for Resolve() calls waiting on a correlation ID.
+	// The channel is closed by traceReporter when the trace arrives.
+	waiters map[uint64]chan struct{}
 }
+
+// correlationTimeout is how long Resolve() waits for an OTel stack trace
+// to arrive for a given correlation ID.
+//
+// The OTel trace event monitor polls its perf ring buffer every 250ms
+// (TracePollInterval in otel-ebpf-profiler/times). After reading the raw
+// trace, HandleTrace() processes it: this includes symbolization of
+// interpreted frames which may involve reading the target process memory
+// (e.g. via process_vm_readv for Python frame objects). In practice, the
+// end-to-end latency from BPF event to correlationMap insertion has been
+// observed at ~130ms on average.
+//
+// The 800ms timeout provides sufficient headroom over the worst case
+// (one full 250ms poll interval + processing time).
+const correlationTimeout = 800 * time.Millisecond
 
 func (o *otelResolverInstance) IsPruningNeeded() bool {
 	return false
@@ -80,23 +108,14 @@ func (o *otelResolverInstance) GetEbpfReplacements() map[string]interface{} {
 }
 
 func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
-	log.Infof("OtelResolverInstance.Resolve called for task %+v", task)
-	log.Infof("there are %d stack queries", len(stackQueries))
+	log.Debugf("OtelResolverInstance.Resolve called for task %+v", task)
 	if task.CorrelationID == 0 {
 		return nil, nil
 	}
-	//if task.CorrelationID == 0 {
-	//	return nil, nil
-	//}
-	frames, ok := o.correlationMap[task.CorrelationID]
+
+	frames, ok := o.lookupOrWait(task.CorrelationID, task.EventBootTimestamp)
 	if !ok {
-		log.Debugf("OtelResolverInstance.Resolve: no frames found for correlation ID %d, waiting a bit", task.CorrelationID)
-		// Hack: the otel trace comes from a separate path
-		time.Sleep(time.Second)
-		frames, ok = o.correlationMap[task.CorrelationID]
-	}
-	if !ok {
-		log.Warnf("OtelResolverInstance.Resolve: still no frames found for correlation ID %d. Give up.", task.CorrelationID)
+		log.Warnf("OtelResolverInstance.Resolve: no frames found for correlation ID %d after timeout. Give up.", task.CorrelationID)
 		return nil, nil
 	}
 
@@ -108,7 +127,6 @@ func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symb
 	for _, f := range frames {
 		v := f.Value()
 		if v.Type == libpf.KernelFrame {
-			log.Infof("skipping kernel frame %+v", v)
 			continue
 		}
 		userFrames = append(userFrames, userFrame{
@@ -116,7 +134,7 @@ func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symb
 		})
 	}
 
-	log.Infof("OtelResolverInstance.Resolve: otel has %d user frames, native stack has %d entries",
+	log.Debugf("OtelResolverInstance.Resolve: otel has %d user frames, native stack has %d entries",
 		len(userFrames), len(stackResponses))
 
 	// The otel profiler captures the full interpreted stack (e.g., 20 Python
@@ -135,7 +153,7 @@ func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symb
 		if uf.functionName != "" {
 			result[i].Symbol = uf.functionName
 			result[i].Found = true
-			log.Infof("OtelResolverInstance.Resolve: resolved frame %d: %s", i, uf.functionName)
+			log.Debugf("OtelResolverInstance.Resolve: resolved frame %d: %s", i, uf.functionName)
 		}
 	}
 
@@ -154,6 +172,82 @@ type traceReporter struct {
 
 func (r traceReporter) ReportTraceEvent(t *libpf.Trace, meta *samples.TraceEventMeta) error {
 	return r.reportTraceEvent(t, meta)
+}
+
+// lookupOrWait looks up the correlation ID in the map. If not found, it
+// registers a waiter channel and blocks until the trace arrives or a
+// timeout expires.
+//
+// If eventBootTimestamp is non-zero (from bpf_ktime_get_boot_ns in
+// struct gadget_user_stack), the timeout is adaptive: it accounts for
+// time already elapsed since the BPF event was produced. This prevents
+// backlogged events from each waiting the full timeout, which would
+// cause unbounded lag when OTel fails to unwind certain stacks.
+// When eventBootTimestamp is zero (older gadgets without the field, or
+// Linux < 5.8 where bpf_ktime_get_boot_ns is unavailable), the fixed
+// correlationTimeout is used.
+func (o *otelResolverInstance) lookupOrWait(correlationID uint64, eventBootTimestamp uint64) (libpf.Frames, bool) {
+	o.mu.Lock()
+	frames, ok := o.correlationMap[correlationID]
+	if ok {
+		o.mu.Unlock()
+		return frames, true
+	}
+
+	// Register a waiter. If another Resolve() call from a different
+	// datasource is already waiting for the same correlation ID, reuse
+	// its channel so that close() wakes all waiters.
+	ch, exists := o.waiters[correlationID]
+	if !exists {
+		ch = make(chan struct{})
+		o.waiters[correlationID] = ch
+	}
+	o.mu.Unlock()
+
+	timeout := correlationTimeout
+	if eventBootTimestamp != 0 {
+		// The timestamp comes from bpf_ktime_get_boot_ns() stored in
+		// struct gadget_user_stack.boot_timestamp. Compare with
+		// CLOCK_BOOTTIME which uses the same clock source.
+		var ts unix.Timespec
+		_ = unix.ClockGettime(unix.CLOCK_BOOTTIME, &ts)
+		nowBootNs := uint64(ts.Sec)*1e9 + uint64(ts.Nsec)
+		if nowBootNs < eventBootTimestamp {
+			// Clock anomaly: skip waiting entirely.
+			timeout = 0
+			log.Debugf("OtelResolverInstance: clock anomaly for correlation ID %d: skipping wait", correlationID)
+		} else {
+			elapsed := time.Duration(nowBootNs - eventBootTimestamp)
+			timeout = correlationTimeout - elapsed
+			if timeout <= 0 {
+				log.Debugf("OtelResolverInstance: correlation ID %d already past deadline (event age %v): skipping wait", correlationID, elapsed)
+				timeout = 0
+			} else {
+				log.Debugf("OtelResolverInstance: waiting for correlation ID %d (elapsed %v, remaining timeout %v)", correlationID, elapsed, timeout)
+			}
+		}
+	} else {
+		log.Debugf("OtelResolverInstance: waiting for correlation ID %d (no boot timestamp, using fixed timeout %v)", correlationID, timeout)
+	}
+
+	if timeout > 0 {
+		select {
+		case <-ch:
+			log.Debugf("OtelResolverInstance: correlation ID %d arrived after wait", correlationID)
+		case <-time.After(timeout):
+			log.Debugf("OtelResolverInstance: timeout waiting for correlation ID %d after %v", correlationID, timeout)
+		}
+	}
+
+	// Clean up waiter if it's still ours (the traceReporter may have
+	// already removed it by closing the channel).
+	o.mu.Lock()
+	if w, ok := o.waiters[correlationID]; ok && w == ch {
+		delete(o.waiters, correlationID)
+	}
+	frames, ok = o.correlationMap[correlationID]
+	o.mu.Unlock()
+	return frames, ok
 }
 
 func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error {
@@ -179,10 +273,16 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 			}
 		}
 		stackStr := stackBuilder.String()
-		log.Infof("Received OpenTelemetry trace (correlation ID %d, pid %d, tid %d):\n%s\n",
+		log.Debugf("Received OpenTelemetry trace (correlation ID %d, pid %d, tid %d):\n%s\n",
 			meta.CorrelationID, meta.PID, meta.TID, stackStr)
 
+		o.mu.Lock()
 		o.correlationMap[meta.CorrelationID] = t.Frames
+		if ch, ok := o.waiters[meta.CorrelationID]; ok {
+			close(ch)
+			delete(o.waiters, meta.CorrelationID)
+		}
+		o.mu.Unlock()
 		return nil
 	}
 

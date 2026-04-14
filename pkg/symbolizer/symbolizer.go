@@ -161,6 +161,16 @@ type Task struct {
 
 	// Opaque correlation ID from eBPF.
 	CorrelationID uint64
+
+	// EventBootTimestamp is the boot-time timestamp of the BPF event
+	// (from bpf_ktime_get_boot_ns in struct gadget_user_stack). Used by
+	// the OTel resolver to compute an adaptive timeout: if the event is
+	// already old when Resolve() runs, the timeout is shortened to avoid
+	// unbounded lag from backlogged events. Zero if not available (older
+	// gadgets without the field, or Linux < 5.8 where
+	// bpf_ktime_get_boot_ns is unavailable), in which case a fixed
+	// timeout is used.
+	EventBootTimestamp uint64
 }
 
 // StackItemQuery is one item of the stack. It contains the data found from BPF.
