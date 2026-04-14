@@ -1,4 +1,4 @@
-FROM --platform=${BUILDPLATFORM} golang:1.25.8-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.25.9-alpine@sha256:7a00384194cf2cb68924bbb918d675f1517357433c8541bac0ab2f929b9d5447 AS builder
 
 ARG TARGETARCH
 
