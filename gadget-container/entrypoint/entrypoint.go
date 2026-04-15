@@ -81,6 +81,16 @@ func prepareGadgetPullSecret() error {
 		return fmt.Errorf("creating /var/lib/ig: %w", err)
 	}
 
+	// Check if the symlink already exists from a previous container run.
+	// The emptyDir volume persists across container restarts, so the
+	// symlink from the prior run may still be present.
+	if fi, err := os.Lstat(oci.DefaultAuthFile); err == nil {
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+		return fmt.Errorf("%s already exists and is not a symlink", oci.DefaultAuthFile)
+	}
+
 	err = os.Symlink(gadgetPullSecretPath, oci.DefaultAuthFile)
 	if err != nil {
 		return fmt.Errorf("creating symlink %s: %w", oci.DefaultAuthFile, err)
