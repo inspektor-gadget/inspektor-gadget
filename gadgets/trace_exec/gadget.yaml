@@ -48,6 +48,21 @@ datasources:
           columns.width: 5
           columns.hidden: "true"
           columns.alignment: right
+      ctime:
+        annotations:
+          description: The change time of the executable file (interpreter in case of script) in nanoseconds since the epoch. Only initialized when the execution succeeded.
+          columns.width: 16
+          columns.hidden: "true"
+      fctime:
+        annotations:
+          description: The change time of the file being executed (script in case of script) in nanoseconds since the epoch
+          columns.width: 16
+          columns.hidden: "true"
+      pctime:
+        annotations:
+          description: The change time of the parent process executable file in nanoseconds since the epoch. Only initialized when the execution succeeded.
+          columns.width: 16
+          columns.hidden: "true"
       loginuid:
         annotations:
           template: uid

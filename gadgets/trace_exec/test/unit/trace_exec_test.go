@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -35,9 +36,12 @@ import (
 )
 
 type ExpectedTraceExecEvent struct {
-	Proc  utils.Process `json:"proc"`
-	Error string        `json:"error"`
-	Args  string        `json:"args"`
+	Proc   utils.Process `json:"proc"`
+	Error  string        `json:"error"`
+	Args   string        `json:"args"`
+	Ctime  uint64        `json:"ctime"`
+	Fctime uint64        `json:"fctime"`
+	Pctime uint64        `json:"pctime"`
 }
 
 type testDef struct {
@@ -103,6 +107,24 @@ func TestTraceExecGadget(t *testing.T) {
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[0].Args)
 				require.Equal(t, "ENOENT", events[0].Error)
+			},
+		},
+		"ctime": {
+			runnerConfig: &utils.RunnerConfig{},
+			argv:         []string{"/bin/echo", "ctime-test"},
+			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
+				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
+
+				// Get the actual ctime of /bin/echo via stat
+				expectedCtime := getCtimeNs(t, "/bin/echo")
+
+				// ctime and fctime should both match /bin/echo's ctime
+				// (for a non-script binary, exe and file are the same)
+				require.Equal(t, expectedCtime, events[0].Ctime, "ctime should match stat ctime of /bin/echo")
+				require.Equal(t, expectedCtime, events[0].Fctime, "fctime should match stat ctime of /bin/echo")
+
+				// pctime: parent exe ctime should be non-zero
+				require.NotZero(t, events[0].Pctime, "pctime should be non-zero")
 			},
 		},
 		"successful_exec_from_thread": {
@@ -208,4 +230,12 @@ if __name__ == "__main__":
 		// python3 is not available
 		t.Skip("Skipping test, python3 is needed to run the test")
 	}
+}
+
+func getCtimeNs(t *testing.T, path string) uint64 {
+	t.Helper()
+	var stat syscall.Stat_t
+	err := syscall.Stat(path, &stat)
+	require.NoError(t, err, "stat %s", path)
+	return uint64(stat.Ctim.Sec)*1_000_000_000 + uint64(stat.Ctim.Nsec)
 }
