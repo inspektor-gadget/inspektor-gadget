@@ -266,7 +266,7 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 		gadget_fetch_otel_stack_from_kprobe(ctx);
 
 		struct generic_param *ret_param;
-		u32 zero = 0;
+		int zero = 0;
 		ret_param = bpf_map_lookup_elem(&otel_generic_params, &zero);
 		if (!ret_param)
 			return;
