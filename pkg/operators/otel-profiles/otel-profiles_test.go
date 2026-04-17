@@ -154,6 +154,17 @@ func TestOtelProfilesOperator(t *testing.T) {
 
 	// Validate the profile structure
 	rp := profiles.ResourceProfiles().At(0)
+
+	// Validate resource attributes (service.name and service.version)
+	resAttrs := rp.Resource().Attributes()
+	serviceName, ok := resAttrs.Get("service.name")
+	require.True(t, ok, "Expected service.name resource attribute")
+	require.Equal(t, "inspektor-gadget", serviceName.Str(), "Expected service.name to be inspektor-gadget")
+
+	serviceVersion, ok := resAttrs.Get("service.version")
+	require.True(t, ok, "Expected service.version resource attribute")
+	require.NotEmpty(t, serviceVersion.Str(), "Expected service.version to be non-empty")
+
 	require.Equal(t, 1, rp.ScopeProfiles().Len(), "Expected one ScopeProfile")
 
 	sp := rp.ScopeProfiles().At(0)
