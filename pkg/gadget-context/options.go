@@ -53,6 +53,10 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithOrasReadonlyTarget sets the oras target used by image operators to read
+// OCI layers during gadget loading. The target is released once all data
+// operators have been instantiated, so GadgetContext.OrasTarget() only returns
+// a usable value up to that point.
 func WithOrasReadonlyTarget(ociStore oras.ReadOnlyTarget) Option {
 	return func(c *GadgetContext) {
 		c.orasTarget = ociStore
