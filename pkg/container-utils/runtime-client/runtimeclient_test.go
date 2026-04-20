@@ -108,7 +108,11 @@ func TestRuntimeClientInterface(t *testing.T) {
 				for _, eData := range expectedData {
 					found := false
 					for _, cData := range containers {
-						// ContainerImageDigest may vary among versions, so we do not check it for now
+						if cData.Runtime.ContainerID != eData.Runtime.ContainerID {
+							continue
+						}
+						require.NotEmpty(t, cData.Runtime.ContainerImageDigest, "ContainerImageDigest should be populated")
+						// ContainerImageDigest may vary among versions, so we do not check its value
 						cData.Runtime.ContainerImageDigest = ""
 						cData.Runtime.ContainerImageID = ""
 						if cmp.Equal(*cData, eData.ContainerData) {
@@ -126,11 +130,12 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainer(eData.Runtime.ContainerID)
-					// ContainerImageDigest may vary among versions, so we do not check it for now
-					cData.Runtime.ContainerImageDigest = ""
-					cData.Runtime.ContainerImageID = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
+					require.NotEmpty(t, cData.Runtime.ContainerImageDigest, "ContainerImageDigest should be populated")
+					// ContainerImageDigest may vary among versions, so we do not check its value
+					cData.Runtime.ContainerImageDigest = ""
+					cData.Runtime.ContainerImageID = ""
 					require.True(t, cmp.Equal(*cData, eData.ContainerData),
 						"unexpected container data:\n%s", cmp.Diff(*cData, eData.ContainerData))
 				}
@@ -141,11 +146,12 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainerDetails(eData.Runtime.ContainerID)
-					// ContainerImageDigest may vary among versions, so we do not check it for now
-					cData.Runtime.ContainerImageDigest = ""
-					cData.Runtime.ContainerImageID = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
+					require.NotEmpty(t, cData.Runtime.ContainerImageDigest, "ContainerImageDigest should be populated")
+					// ContainerImageDigest may vary among versions, so we do not check its value
+					cData.Runtime.ContainerImageDigest = ""
+					cData.Runtime.ContainerImageID = ""
 
 					// TODO: Is it worth to compare the cgroups path and mounts?
 					require.NotEmpty(t, cData.CgroupsPath)
