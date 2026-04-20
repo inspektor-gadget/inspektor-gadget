@@ -54,7 +54,7 @@ You can specify these options only at start time:
 $ sudo ig image list
 REPOSITORY                                TAG                                       DIGEST       CREATED
 trace_exec                                latest                                    24c0da566661 15 hours ago
-$ sudo ig daemon --disallow-pulling
+$ sudo ig daemon --tls-insecure --disallow-pulling
 ...
 # Switch to another terminal
 $ gadgetctl run trace_exec

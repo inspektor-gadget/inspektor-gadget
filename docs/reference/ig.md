@@ -231,7 +231,7 @@ User=root
 Restart=on-failure
 RestartSec=30
 WorkingDirectory=/usr/local/bin
-ExecStart=/usr/local/bin/ig daemon --group ig
+ExecStart=/usr/local/bin/ig daemon --tls-insecure --group ig
 
 [Install]
 WantedBy=multi-user.target
@@ -268,7 +268,7 @@ Modify the `ig.service` file to something like this:
 
 ```
 ...
-ExecStart=/usr/local/bin/ig daemon -H tcp://127.0.0.1:9999
+ExecStart=/usr/local/bin/ig daemon --tls-insecure -H tcp://127.0.0.1:9999
 ...
 ```
 
@@ -297,7 +297,7 @@ the verbose flag (-v) like so:
 
 ```ini
 ...
-ExecStart=/usr/local/bin/ig daemon -v --group ig
+ExecStart=/usr/local/bin/ig daemon --tls-insecure -v --group ig
 ...
 ```
 
