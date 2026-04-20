@@ -282,7 +282,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
@@ -329,7 +329,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
@@ -458,7 +458,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
     - name: Cache Docker layers
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
@@ -484,7 +484,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
@@ -612,7 +612,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
     - name: Cache Docker layers
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
@@ -638,7 +638,7 @@ jobs:
       shell: bash
     - name: Cache BTFGen
       id: cache-btfgen
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: pkg/btfgen/btfs
@@ -1048,7 +1048,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
     - name: Cache Docker layers
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
         path: /tmp/.buildx-cache
