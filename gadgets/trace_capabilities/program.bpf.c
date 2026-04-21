@@ -157,8 +157,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(struct syscall_context));
-	__uint(max_entries,
-	       1048576); // There can be many threads sleeping in some futex/poll syscalls
+	__uint(max_entries, 10240); // keyed by TID; capability checks are momentary
 } current_syscall SEC(".maps");
 
 GADGET_TRACER_MAP(events, 1024 * 256);
