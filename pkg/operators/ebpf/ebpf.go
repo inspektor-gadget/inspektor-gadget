@@ -343,6 +343,10 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Release the raw ELF/BPF object bytes; loadSpec() and addExtraInfo() are
+	// the only callers and both have completed.
+	i.program = nil
+
 	err = i.analyze(gadgetCtx, i.paramValues)
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)
