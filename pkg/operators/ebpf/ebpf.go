@@ -951,6 +951,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("running map iterators: %w", err)
 	}
 
+	// Release the CollectionSpec after all programs are attached and iterators
+	// are running; it is not referenced at runtime and holds BTF
+	// type/line info that the GC cannot otherwise reclaim.
+	i.collectionSpec = nil
+
 	return nil
 }
 
