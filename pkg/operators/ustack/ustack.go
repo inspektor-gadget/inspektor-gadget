@@ -77,6 +77,7 @@ func (o *Operator) InstantiateDataOperator(gadgetCtx operators.GadgetContext, in
 		subscriptions: make(map[datasource.DataSource][]func(ds datasource.DataSource, data datasource.Data) error),
 		symbolizerOpts: symbolizer.SymbolizerOptions{
 			DebuginfodCachePath: instanceParamValues[debuginfodCachePathParam],
+			Context:             gadgetCtx.Context(),
 		},
 	}
 
