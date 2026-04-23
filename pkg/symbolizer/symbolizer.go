@@ -17,6 +17,7 @@
 package symbolizer
 
 import (
+	"context"
 	"time"
 )
 
@@ -36,6 +37,10 @@ type SymbolizerOptions struct {
 	UseDebugInfodCache  bool
 	DebuginfodCachePath string
 	UseOtelEbpfProfiler bool
+
+	// Context for the symbolizer lifetime. Used by the OTel resolver
+	// to stop its background goroutines when the gadget is closed.
+	Context context.Context
 }
 
 type Symbolizer struct {
