@@ -48,7 +48,11 @@ func (d *otelResolver) NewInstance(options symbolizer.SymbolizerOptions) (symbol
 		correlationMap: make(map[uint64]libpf.Frames),
 		waiters:        make(map[uint64]chan struct{}),
 	}
-	if err := o.startOtelEbpfProfiler(context.TODO()); err != nil {
+	ctx := options.Context
+	if ctx == nil {
+		ctx = context.TODO()
+	}
+	if err := o.startOtelEbpfProfiler(ctx); err != nil {
 		return nil, fmt.Errorf("starting OTel eBPF profiler: %w", err)
 	}
 	return o, nil
@@ -250,6 +254,13 @@ func (o *otelResolverInstance) lookupOrWait(correlationID uint64, eventBootTimes
 	return frames, ok
 }
 
+func bpfVerifierLogLevel() uint32 {
+	if log.IsLevelEnabled(log.DebugLevel) {
+		return 2 // full verifier log
+	}
+	return 0
+}
+
 func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error {
 	includeTracers, err := oteltracertypes.Parse("all")
 	if err != nil {
@@ -295,8 +306,8 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		SamplesPerSecond:       0,
 		MapScaleFactor:         0,
 		KernelVersionCheck:     false,
-		VerboseMode:            true,
-		BPFVerifierLogLevel:    2, // 0=none, 1=basic, 2=full
+		VerboseMode:            log.IsLevelEnabled(log.DebugLevel),
+		BPFVerifierLogLevel:    bpfVerifierLogLevel(),
 		ProbabilisticInterval:  0,
 		ProbabilisticThreshold: 0,
 		OffCPUThreshold:        0,
