@@ -101,11 +101,17 @@ func (o *otelResolverInstance) IsPruningNeeded() bool {
 func (o *otelResolverInstance) PruneOldObjects(now time.Time, ttl time.Duration) {
 }
 
-func (o *otelResolverInstance) GetEbpfReplacements() map[string]interface{} {
+func (o *otelResolverInstance) Close() {
+	if o.trc != nil {
+		o.trc.Close()
+	}
+}
+
+func (o *otelResolverInstance) GetEbpfReplacements() map[string]any {
 	if o.trc == nil {
 		return nil
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		symbolizer.OtelEbpfProgramKprobe:    o.trc.GetProbeEntryEbpfProgram(),
 		symbolizer.OtelGenericParamsMapName: o.trc.GetGenericParamsEbpfMap(),
 	}

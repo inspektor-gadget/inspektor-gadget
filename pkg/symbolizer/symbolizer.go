@@ -124,6 +124,9 @@ type BaseAddrCacheKey struct {
 
 func (s *Symbolizer) Close() {
 	close(s.exit)
+	for _, r := range s.resolvers {
+		r.Close()
+	}
 }
 
 func (s *Symbolizer) pruneLoop() {
@@ -194,8 +197,8 @@ type StackItemResponse struct {
 	Symbol string
 }
 
-func (s *Symbolizer) GetEbpfReplacements() map[string]interface{} {
-	ret := make(map[string]interface{})
+func (s *Symbolizer) GetEbpfReplacements() map[string]any {
+	ret := make(map[string]any)
 	for _, r := range s.resolvers {
 		replacements := r.GetEbpfReplacements()
 		if replacements == nil {

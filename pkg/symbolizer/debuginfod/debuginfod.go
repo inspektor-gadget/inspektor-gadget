@@ -127,8 +127,11 @@ func (d *debuginfodResolverInstance) newSymbolTableFromPath(path string, buildID
 	return symbolizer.NewSymbolTableFromFile(file)
 }
 
-func (d *debuginfodResolverInstance) GetEbpfReplacements() map[string]interface{} {
+func (d *debuginfodResolverInstance) GetEbpfReplacements() map[string]any {
 	return nil
+}
+
+func (d *debuginfodResolverInstance) Close() {
 }
 
 func (d *debuginfodResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
