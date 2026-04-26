@@ -47,6 +47,7 @@ func (d *otelResolver) NewInstance(options symbolizer.SymbolizerOptions) (symbol
 		options:        options,
 		correlationMap: make(map[uint64]libpf.Frames),
 		waiters:        make(map[uint64]chan struct{}),
+		pruneCandidate: make(map[uint64]bool),
 	}
 	ctx := options.Context
 	if ctx == nil {
@@ -67,16 +68,22 @@ type otelResolverInstance struct {
 
 	trc *oteltracer.Tracer
 
-	// mu protects correlationMap and waiters. There is a single producer
-	// (the traceReporter callback, called from the OTel map monitor
-	// goroutine) but there can be multiple consumers: a gadget may have
-	// several datasources (e.g. multiple eBPF ring buffers or hash maps),
-	// each calling Resolve() concurrently on the same correlation ID.
+	// mu protects correlationMap, waiters, and pruneCandidate.
+	// There is a single producer (the traceReporter callback, called
+	// from the OTel map monitor goroutine) but there can be multiple
+	// consumers: a gadget may have several datasources (e.g. multiple
+	// eBPF ring buffers or hash maps), each calling Resolve()
+	// concurrently on the same correlation ID.
 	mu             sync.Mutex
 	correlationMap map[uint64]libpf.Frames
 	// waiters holds channels for Resolve() calls waiting on a correlation ID.
 	// The channel is closed by traceReporter when the trace arrives.
 	waiters map[uint64]chan struct{}
+	// pruneCandidate holds correlation IDs that were absent from the
+	// BPF stack cache map on the previous prune cycle. An entry is
+	// deleted from correlationMap only if it remains absent for two
+	// consecutive prune cycles.
+	pruneCandidate map[uint64]bool
 }
 
 // correlationTimeout is how long Resolve() waits for an OTel stack trace
@@ -95,10 +102,83 @@ type otelResolverInstance struct {
 const correlationTimeout = 800 * time.Millisecond
 
 func (o *otelResolverInstance) IsPruningNeeded() bool {
-	return false
+	return true
 }
 
+// PruneOldObjects removes stale entries from correlationMap by
+// cross-referencing the BPF LRU stack cache map. A correlation ID is
+// deleted only after being absent from the BPF map for two consecutive
+// prune cycles, ensuring that in-flight events referencing that ID have
+// time to be consumed by lookupOrWait.
 func (o *otelResolverInstance) PruneOldObjects(now time.Time, ttl time.Duration) {
+	if o.trc == nil {
+		return
+	}
+	stackCacheMap := o.trc.GetStackCacheMap()
+	if stackCacheMap == nil {
+		return
+	}
+
+	// Collect all correlation IDs currently active in the BPF map.
+	// The iterator uses GetNextKey internally with a ~24 KiB cursor
+	// buffer (the TraceCache key), reused across iterations (O(1)
+	// memory). We only read the u64 correlation ID values.
+	//
+	// If iteration is aborted (ErrIterationAborted), skip this prune
+	// cycle entirely. This can happen when the BPF program on another
+	// CPU inserts a new entry, causing the LRU to evict the entry the
+	// iterator was using as its cursor. Since we can't distinguish
+	// "read all entries" from "missed some entries", acting on a
+	// partial result could prematurely delete IDs that are still
+	// active in BPF, leading to timeouts in lookupOrWait.
+	activeBPF := make(map[uint64]bool)
+	iter := stackCacheMap.Iterate()
+	var key []byte
+	var correlationID uint64
+	for iter.Next(&key, &correlationID) {
+		activeBPF[correlationID] = true
+	}
+	if err := iter.Err(); err != nil {
+		log.Debugf("OtelResolverInstance.PruneOldObjects: BPF map iteration aborted, skipping prune cycle: %v", err)
+		return
+	}
+
+	o.pruneCorrelationMap(activeBPF)
+}
+
+// pruneCorrelationMap performs the two-cycle pruning logic given a set
+// of correlation IDs known to be active in the BPF map.
+func (o *otelResolverInstance) pruneCorrelationMap(activeBPF map[uint64]bool) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	// Delete entries that were candidates in the previous cycle and
+	// are still absent from the BPF map.
+	pruned := 0
+	for id := range o.pruneCandidate {
+		if activeBPF[id] {
+			// Re-appeared in BPF map, no longer a candidate.
+			continue
+		}
+		if _, exists := o.correlationMap[id]; exists {
+			delete(o.correlationMap, id)
+			pruned++
+		}
+	}
+
+	// Build new candidate set: correlationMap entries absent from BPF.
+	newCandidates := make(map[uint64]bool)
+	for id := range o.correlationMap {
+		if !activeBPF[id] {
+			newCandidates[id] = true
+		}
+	}
+	o.pruneCandidate = newCandidates
+
+	if pruned > 0 || len(newCandidates) > 0 {
+		log.Debugf("OtelResolverInstance.PruneOldObjects: pruned %d entries, %d new candidates, %d remaining in correlationMap",
+			pruned, len(newCandidates), len(o.correlationMap))
+	}
 }
 
 func (o *otelResolverInstance) Close() {

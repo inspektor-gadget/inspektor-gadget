@@ -43,6 +43,7 @@ func newTestInstance() *otelResolverInstance {
 	return &otelResolverInstance{
 		correlationMap: make(map[uint64]libpf.Frames),
 		waiters:        make(map[uint64]chan struct{}),
+		pruneCandidate: make(map[uint64]bool),
 	}
 }
 
