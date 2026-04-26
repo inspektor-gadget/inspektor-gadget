@@ -414,11 +414,13 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 
 	// Cleanup ebpf maps when a process terminates
 	if err := trc.AttachSchedMonitor(); err != nil {
+		trc.Close()
 		return fmt.Errorf("attaching scheduler monitor: %w", err)
 	}
 
 	traceCh := make(chan *libpf.EbpfTrace)
 	if err := trc.StartMapMonitors(ctx, traceCh); err != nil {
+		trc.Close()
 		return fmt.Errorf("starting map monitors: %w", err)
 	}
 
