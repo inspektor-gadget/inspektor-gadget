@@ -107,8 +107,11 @@ func (s *symtabResolverInstance) PruneOldObjects(now time.Time, ttl time.Duratio
 	s.lockSymbolTables.Unlock()
 }
 
-func (s *symtabResolverInstance) GetEbpfReplacements() map[string]interface{} {
+func (s *symtabResolverInstance) GetEbpfReplacements() map[string]any {
 	return nil
+}
+
+func (s *symtabResolverInstance) Close() {
 }
 
 func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {

@@ -24,7 +24,7 @@ type Resolver interface {
 }
 
 type ResolverInstance interface {
-	GetEbpfReplacements() map[string]interface{}
+	GetEbpfReplacements() map[string]any
 	// Resolve resolves stack symbols for the given task.
 	// If the resolver has a richer stack representation (e.g., interpreted
 	// language frames from otel-ebpf-profiler), it returns a non-nil
@@ -33,4 +33,5 @@ type ResolverInstance interface {
 	Resolve(task Task, stackQueries []StackItemQuery, stackResponses []StackItemResponse) ([]StackItemResponse, error)
 	IsPruningNeeded() bool
 	PruneOldObjects(now time.Time, ttl time.Duration)
+	Close()
 }
