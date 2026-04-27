@@ -15,34 +15,28 @@
 package common
 
 import (
-	"context"
 	"os"
 
-	"github.com/containers/common/pkg/auth"
-	"github.com/containers/image/v5/types"
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/auth"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type loginOptions struct {
-	loginOpts auth.LoginOptions
-}
-
 func NewLoginCmd() *cobra.Command {
-	o := loginOptions{}
+	opts := &auth.LoginOptions{}
 	cmd := &cobra.Command{
 		Use:          "login [command options] REGISTRY",
 		Short:        "Login to a container registry",
 		Long:         "Login to a container registry on a specified server.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.loginOpts.Stdout = os.Stdout
-			o.loginOpts.Stdin = os.Stdin
-			return auth.Login(context.TODO(), &types.SystemContext{}, &o.loginOpts, args)
+			opts.Stdout = os.Stdout
+			opts.Stdin = os.Stdin
+			return auth.Login(cmd.Context(), opts, args)
 		},
 	}
-	loginFlagSet := auth.GetLoginFlags(&o.loginOpts)
+	loginFlagSet := auth.GetLoginFlags(opts)
 	loginFlagSet.Lookup("authfile").Value.Set(oci.DefaultAuthFile)
 	cmd.Flags().AddFlagSet(loginFlagSet)
 	return cmd

@@ -26,10 +26,10 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/google/go-cmp/cmp"
-	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/testing/kernel"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 

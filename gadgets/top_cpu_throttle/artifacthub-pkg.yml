@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.51.0
+name: "top cpu throttle"
+category: monitoring-logging
+displayName: "top cpu throttle"
+createdAt: "2026-04-07T11:03:02Z"
+digest: "2026-04-07T11:03:02Z"
+description: "Periodically report CFS CPU bandwidth throttling per cgroup"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/top_cpu_throttle"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/top_cpu_throttle:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - cpu
+    - throttle
+    - cgroup
+    - monitoring
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cpu_throttle"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/top_cpu_throttle:latest
+    ```
+provider:
+    name: Inspektor Gadget

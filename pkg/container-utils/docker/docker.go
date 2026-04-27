@@ -22,9 +22,8 @@ import (
 	"time"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/docker/docker/api/types/container"
-	dockerfilters "github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
@@ -71,8 +70,7 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 		socketPath = runtimeclient.DockerDefaultSocketPath
 	}
 
-	cli, err := client.NewClientWithOpts(
-		client.WithAPIVersionNegotiation(),
+	cli, err := client.New(
 		client.WithHost("unix://"+socketPath),
 		client.WithTimeout(DefaultTimeout),
 	)
@@ -86,18 +84,18 @@ func NewDockerClient(socketPath string, protocol string) (runtimeclient.Containe
 	}, nil
 }
 
-func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Summary, error) {
-	opts := container.ListOptions{
+func listContainers(c *DockerClient, filter client.Filters) ([]container.Summary, error) {
+	opts := client.ContainerListOptions{
 		// We need to request for all containers (also non-running) because
 		// when we are enriching a container that is being created, it is
 		// not in "running" state yet.
 		All: true,
 	}
 	if filter != nil {
-		opts.Filters = *filter
+		opts.Filters = filter
 	}
 
-	containers, err := c.client.ContainerList(context.Background(), opts)
+	result, err := c.client.ContainerList(context.Background(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("listing containers with options %+v: %w",
 			opts, err)
@@ -108,13 +106,13 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]container.Su
 	// that they are using a given network namespace. See issue
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
 	noPauseContainers := []container.Summary{}
-	for _, c := range containers {
+	for _, c := range result.Items {
 		if c.Labels["io.kubernetes.docker.type"] == "podsandbox" {
 			continue
 		}
 		noPauseContainers = append(noPauseContainers, c)
 	}
-	if filter != nil && len(containers) != 0 && len(noPauseContainers) == 0 {
+	if filter != nil && len(result.Items) != 0 && len(noPauseContainers) == 0 {
 		return nil, runtimeclient.ErrPauseContainer
 	}
 
@@ -137,10 +135,9 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 }
 
 func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.ContainerData, error) {
-	filter := dockerfilters.NewArgs()
-	filter.Add("id", containerID)
+	filter := make(client.Filters).Add("id", containerID)
 
-	containers, err := listContainers(c, &filter)
+	containers, err := listContainers(c, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -162,10 +159,12 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		return nil, err
 	}
 
-	containerJSON, err := c.client.ContainerInspect(context.Background(), containerID)
+	result, err := c.client.ContainerInspect(context.Background(), containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
+
+	containerJSON := result.Container
 
 	if containerJSON.State == nil {
 		return nil, errors.New("container state is nil")
@@ -186,7 +185,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		containerJSON.Config.Image,
 		containerJSON.Image,
 		c.getContainerImageDigest(containerJSON.Image),
-		containerJSON.State.Status,
+		string(containerJSON.State.Status),
 		containerJSON.Config.Labels)
 
 	containerDetailsData := runtimeclient.ContainerDetailsData{
@@ -240,18 +239,18 @@ func (c *DockerClient) Close() error {
 // The digest is usually only available if the image was either pulled from a registry, or if the image was pushed to a registry, which is when the manifest is generated and its digest calculated.
 // Note: This function only works for already running containers and not for containers that are being created.
 func (c *DockerClient) getContainerImageDigest(imageId string) string {
-	imageInspect, err := c.client.ImageInspect(context.Background(), imageId)
+	result, err := c.client.ImageInspect(context.Background(), imageId)
 	if err != nil {
 		log.Warnf("Failed to get image digest for image %s: %s", imageId, err)
 		return ""
 	}
 
-	if len(imageInspect.RepoDigests) == 0 {
+	if len(result.RepoDigests) == 0 {
 		log.Warnf("No digest found for image %s", imageId)
 		return ""
 	}
 
-	imageAndDigest := strings.Split(imageInspect.RepoDigests[0], "@")
+	imageAndDigest := strings.Split(result.RepoDigests[0], "@")
 	if len(imageAndDigest) < 2 {
 		log.Warnf("Digest is in wrong format for image %s", imageId)
 		return ""
@@ -289,7 +288,7 @@ func DockerContainerToContainerData(container *container.Summary) *runtimeclient
 		container.Image,
 		container.ImageID,
 		imageDigest,
-		container.State,
+		string(container.State),
 		container.Labels)
 }
 

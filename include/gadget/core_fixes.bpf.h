@@ -6,6 +6,7 @@
 
 //#include "vmlinux.h"
 #include <bpf/bpf_core_read.h>
+#include <bpf/bpf_tracing.h>
 
 /**
  * kernel commit 9fdc4273b8da ("libbpf: Fix up verifier log for unguarded
@@ -207,6 +208,149 @@ static __always_inline bool has_kmem_cache_free()
 	if (bpf_core_type_exists(struct trace_event_raw_kmem_cache_free___x))
 		return true;
 	return false;
+}
+
+/**
+ * commit from net-next ("tcp: trace retransmit failures in
+ * tcp_retransmit_skb") splits the tcp_retransmit_skb tracepoint out of the
+ * shared trace_event_raw_tcp_event_sk_skb struct into its own
+ * trace_event_raw_tcp_retransmit_skb struct (adding an "err" field).
+ * Some distribution kernels (e.g. Ubuntu linux-azure >= 6.14) carry this
+ * patch before it lands in a mainline release.
+ *
+ * see:
+ *     https://lore.kernel.org/all/20250721111607626_BDnIJB0ywk6FghN63bor@zte.com.cn/
+ *
+ * gadget_get_tcp_retransmit_skb_skbaddr() and
+ * gadget_get_tcp_retransmit_skb_skaddr() read the skbaddr/skaddr fields
+ * portably from the tracepoint context.
+ */
+struct trace_event_raw_tcp_retransmit_skb___x {
+	struct trace_entry ent;
+	const void *skbaddr;
+	const void *skaddr;
+} __attribute__((preserve_access_index));
+
+static __always_inline const struct sk_buff *
+gadget_get_tcp_retransmit_skb_skbaddr(void *ctx)
+{
+	if (bpf_core_type_exists(struct trace_event_raw_tcp_retransmit_skb___x))
+		return BPF_CORE_READ(
+			(struct trace_event_raw_tcp_retransmit_skb___x *)ctx,
+			skbaddr);
+	return BPF_CORE_READ((struct trace_event_raw_tcp_event_sk_skb *)ctx,
+			     skbaddr);
+}
+
+static __always_inline const struct sock *
+gadget_get_tcp_retransmit_skb_skaddr(void *ctx)
+{
+	if (bpf_core_type_exists(struct trace_event_raw_tcp_retransmit_skb___x))
+		return BPF_CORE_READ(
+			(struct trace_event_raw_tcp_retransmit_skb___x *)ctx,
+			skaddr);
+	return BPF_CORE_READ((struct trace_event_raw_tcp_event_sk_skb *)ctx,
+			     skaddr);
+}
+
+/**
+ * The inode struct has undergone changes to its ctime field across kernel
+ * versions. These CO-RE flavor structs and the gadget_inode_get_ctime()
+ * helper provide portable access to the inode ctime.
+ *
+ * Kernel < 6.6:    struct timespec64 i_ctime
+ * Kernel 6.6-6.10: struct timespec64 __i_ctime
+ * Kernel >= 6.11:  time64_t i_ctime_sec + u32 i_ctime_nsec
+ *
+ * See also gadget_inode_get_mtime() in gadget/user_stack_map.h for the
+ * equivalent mtime helper.
+ * 
+ * Based on get_ctime_nanosec_timespec from:
+ * https://github.com/aquasecurity/tracee/blob/main/pkg/ebpf/c/common/filesystem.h#L61
+ */
+// kernel >= v6.6 inode i_ctime field change
+struct inode___older_v66 {
+	struct timespec64 i_ctime;
+};
+
+// kernel >= v6.11 inode i_ctime field change
+struct inode___older_v611 {
+	struct timespec64 __i_ctime;
+};
+
+// Based on get_ctime_nanosec_timespec from:
+// https://github.com/aquasecurity/tracee/blob/main/pkg/ebpf/c/common/filesystem.h#L61
+static __always_inline u64
+gadget_get_ctime_nanosec_from_inode(struct inode *inode)
+{
+	time64_t sec;
+	long nsec;
+
+	// Kernel >= 6.11
+	if (bpf_core_field_exists(inode->i_ctime_sec) &&
+	    bpf_core_field_exists(inode->i_ctime_nsec)) {
+		sec = BPF_CORE_READ(inode, i_ctime_sec);
+		nsec = BPF_CORE_READ(inode, i_ctime_nsec);
+	}
+	// Kernel 6.6 - 6.10
+	else if (bpf_core_field_exists(
+			 ((struct inode___older_v611 *)inode)->__i_ctime)) {
+		struct inode___older_v611 *old_inode_v611 = (void *)inode;
+		sec = BPF_CORE_READ(old_inode_v611, __i_ctime.tv_sec);
+		nsec = BPF_CORE_READ(old_inode_v611, __i_ctime.tv_nsec);
+	}
+	// Kernel < 6.6
+	else {
+		struct inode___older_v66 *old_inode_v66 = (void *)inode;
+		sec = BPF_CORE_READ(old_inode_v66, i_ctime.tv_sec);
+		nsec = BPF_CORE_READ(old_inode_v66, i_ctime.tv_nsec);
+	}
+
+	if (sec < 0)
+		return 0;
+
+	return (u64)sec * 1000000000ULL + (u32)nsec;
+}
+
+/**
+ * Helpers for accessing syscall information from pt_regs.
+ * These use compile-time architecture detection since pt_regs layouts
+ * differ across architectures and CO-RE flavor structs cannot bridge
+ * architectural differences (the base type's BTF only contains
+ * fields for the compilation target).
+ *
+ * x86_64: orig_ax holds the syscall number, di holds the first argument.
+ * arm64:  syscallno holds the syscall number, regs[0] holds the first argument.
+ */
+static __always_inline long gadget_get_syscall_nr(struct pt_regs *regs)
+{
+#if defined(__TARGET_ARCH_x86)
+	return BPF_CORE_READ(regs, orig_ax);
+#elif defined(__TARGET_ARCH_arm64)
+	return (long)BPF_CORE_READ(regs, syscallno);
+#else
+	return -1;
+#endif
+}
+
+static __always_inline unsigned long
+gadget_get_syscall_arg(struct pt_regs *regs, unsigned int arg_id)
+{
+	switch (arg_id) {
+	case 1:
+		return PT_REGS_PARM1_CORE_SYSCALL(regs);
+	case 2:
+		return PT_REGS_PARM2_CORE_SYSCALL(regs);
+	case 3:
+		return PT_REGS_PARM3_CORE_SYSCALL(regs);
+	case 4:
+		return PT_REGS_PARM4_CORE_SYSCALL(regs);
+	case 5:
+		return PT_REGS_PARM5_CORE_SYSCALL(regs);
+	case 6:
+		return PT_REGS_PARM6_CORE_SYSCALL(regs);
+	}
+	return 0;
 }
 
 #endif /* __CORE_FIXES_BPF_H */

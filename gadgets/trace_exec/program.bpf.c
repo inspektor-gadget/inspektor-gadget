@@ -7,6 +7,7 @@
 #define GADGET_NO_BUF_RESERVE
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/core_fixes.bpf.h>
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
@@ -52,6 +53,9 @@ struct event {
 	unsigned int dev_major;
 	unsigned int dev_minor;
 	unsigned long inode;
+	__u64 ctime;
+	__u64 fctime;
+	__u64 pctime;
 	char exepath[GADGET_PATH_MAX];
 	char parent_exepath[GADGET_PATH_MAX];
 	char args[FULL_MAX_ARGS_ARR];
@@ -254,12 +258,16 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 		return 0;
 
 	struct inode *inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
-	if (inode)
+	if (inode) {
 		event->upper_layer = has_upper_layer(inode);
+		event->ctime = gadget_get_ctime_nanosec_from_inode(inode);
+	}
 
 	struct inode *pinode = BPF_CORE_READ(parent, mm, exe_file, f_inode);
-	if (pinode)
+	if (pinode) {
 		event->pupper_layer = has_upper_layer(pinode);
+		event->pctime = gadget_get_ctime_nanosec_from_inode(pinode);
+	}
 
 	struct file *exe_file = BPF_CORE_READ(task, mm, exe_file);
 
@@ -371,8 +379,10 @@ int BPF_KPROBE(security_bprm_check, struct linux_binprm *bprm)
 	event->file_from_rootfs = is_from_rootfs(s_file);
 
 	struct inode *inode = BPF_CORE_READ(s_file, f_inode);
-	if (inode)
+	if (inode) {
 		event->fupper_layer = has_upper_layer(inode);
+		event->fctime = gadget_get_ctime_nanosec_from_inode(inode);
+	}
 
 	if (paths) {
 		f_path = BPF_CORE_READ(bprm, file, f_path);

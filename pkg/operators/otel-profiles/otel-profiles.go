@@ -320,6 +320,8 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			// resource profile
 			rp := profiles.ResourceProfiles().AppendEmpty()
 			rp.SetSchemaUrl(semconv.SchemaURL)
+			rp.Resource().Attributes().PutStr(string(semconv.ServiceNameKey), "inspektor-gadget")
+			rp.Resource().Attributes().PutStr(string(semconv.ServiceVersionKey), version.Version().String())
 
 			// scope profile
 			sp := rp.ScopeProfiles().AppendEmpty()

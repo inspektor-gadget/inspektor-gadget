@@ -1,6 +1,6 @@
 module traceloop
 
-go 1.25.0
+go 1.25.7
 
 // Version doesn't matter because of the replace directive below.
 require github.com/inspektor-gadget/inspektor-gadget v0.0.0

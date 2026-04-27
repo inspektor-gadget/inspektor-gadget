@@ -31,6 +31,28 @@ struct {
 	__type(value, u64);
 } sizes SEC(".maps");
 
+/* Per-CPU temporary storage for gadget_user_stack. Using a per-CPU array
+ * instead of a stack-local variable reduces the BPF stack frame size of
+ * gen_alloc_exit() by sizeof(struct gadget_user_stack) (~72 bytes). This
+ * is needed because gadget_get_user_stack() calls a noinline function
+ * containing bpf_tail_call(), which triggers the BPF verifier's 256-byte
+ * stack frame limit for callers with BPF-to-BPF subprogram calls on
+ * kernels < 6.13 (which lack private stack support).
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct gadget_user_stack);
+} tmp_gadget_user_stack SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct alloc_val);
+} tmp_alloc_val SEC(".maps");
+
 struct alloc_key {
 	__u32 stack_id_key;
 };
@@ -100,23 +122,29 @@ static __always_inline int gen_alloc_exit(struct pt_regs *ctx,
 	size = *size_ptr;
 	bpf_map_delete_elem(&sizes, &tid);
 
-	struct gadget_user_stack ustack_raw;
-	gadget_get_user_stack(ctx, &ustack_raw);
+	u32 zero = 0;
+	struct gadget_user_stack *ustack_raw =
+		bpf_map_lookup_elem(&tmp_gadget_user_stack, &zero);
+	if (ustack_raw == NULL)
+		return 0;
+	gadget_get_user_stack(ctx, ustack_raw);
 
 	struct alloc_key key = {
-		.stack_id_key = ustack_raw.stack_id,
+		.stack_id_key = ustack_raw->stack_id,
 	};
 
 	struct alloc_val *val = bpf_map_lookup_elem(&allocs, &key);
 	if (!val) {
-		struct alloc_val new_val = {
-			.count = size,
-			.ustack_raw = ustack_raw,
-		};
+		struct alloc_val *new_val =
+			bpf_map_lookup_elem(&tmp_alloc_val, &zero);
+		if (new_val == NULL)
+			return 0;
 
-		gadget_process_populate(&new_val.proc);
+		new_val->count = size;
+		new_val->ustack_raw = *ustack_raw;
+		gadget_process_populate(&new_val->proc);
 
-		bpf_map_update_elem(&allocs, &key, &new_val, BPF_NOEXIST);
+		bpf_map_update_elem(&allocs, &key, new_val, BPF_NOEXIST);
 	} else {
 		__sync_fetch_and_add(&val->count, size);
 	}

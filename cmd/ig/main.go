@@ -39,11 +39,13 @@ import (
 
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/btfgen"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cgroup"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/env"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/filter"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/formatters"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/logs"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/otel-profiles"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/process"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/socketenricher"

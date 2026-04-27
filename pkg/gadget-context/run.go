@@ -113,6 +113,11 @@ func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error 
 
 	c.SetParams(params)
 
+	// All data operators have been instantiated; image operators have finished
+	// reading from the OCI store. Release the oras target so its blob cache can
+	// be garbage collected rather than held for the gadget's lifetime.
+	c.orasTarget = nil
+
 	return nil
 }
 

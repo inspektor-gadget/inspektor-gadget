@@ -343,6 +343,10 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Release the raw ELF/BPF object bytes; loadSpec() and addExtraInfo() are
+	// the only callers and both have completed.
+	i.program = nil
+
 	err = i.analyze(gadgetCtx, i.paramValues)
 	if err != nil {
 		return fmt.Errorf("analyzing: %w", err)
@@ -950,6 +954,11 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	if err != nil {
 		return fmt.Errorf("running map iterators: %w", err)
 	}
+
+	// Release the CollectionSpec after all programs are attached and iterators
+	// are running; it is not referenced at runtime and holds BTF
+	// type/line info that the GC cannot otherwise reclaim.
+	i.collectionSpec = nil
 
 	return nil
 }

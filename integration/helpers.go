@@ -17,12 +17,13 @@ package integration
 import (
 	"bytes"
 	"fmt"
+	"net/netip"
 	"os/exec"
 	"strings"
 	"testing"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/require"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -79,11 +80,12 @@ func GetContainerRuntime() (string, error) {
 func StartRegistry(t *testing.T, name string) testutils.Container {
 	t.Helper()
 
+	port, _ := network.ParsePort("5000/tcp")
 	c := testutils.NewDockerContainer(name, "registry serve /etc/docker/registry/config.yml",
 		testutils.WithImage("registry:2"),
 		testutils.WithoutWait(),
-		testutils.WithPortBindings(nat.PortMap{
-			"5000/tcp": []nat.PortBinding{{HostIP: "127.0.0.1"}},
+		testutils.WithPortBindings(network.PortMap{
+			port: []network.PortBinding{{HostIP: netip.MustParseAddr("127.0.0.1")}},
 		}),
 	)
 	c.Start(t)

@@ -1,0 +1,64 @@
+name: top cpu throttle
+description: Periodically report cgroup CPU throttling statistics to identify containers under CFS bandwidth pressure
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_cpu_throttle
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cpu_throttle
+operator:
+  cgroup:
+    emitstats: true
+    interval: 5s
+    first-interval: 500ms
+datasources:
+  cgroups:
+    annotations:
+      cli.clear-screen-before: "true"
+    fields:
+      cgroupPath:
+        annotations:
+          columns.alias: 'CGROUP'
+          columns.hidden: 'true'
+      nrPeriods:
+        annotations:
+          columns.alias: 'PERIODS'
+      nrThrottled:
+        annotations:
+          columns.alias: 'THROTTLED'
+      throttledTime:
+        annotations:
+          columns.alias: 'THROTTLED_TIME'
+      throttleRatio:
+        annotations:
+          columns.alias: '%THROT'
+      cpuQuota:
+        annotations:
+          columns.alias: 'QUOTA'
+      cpuPeriod:
+        annotations:
+          columns.alias: 'PERIOD'
+      cpuLimitCores:
+        annotations:
+          columns.alias: 'LIMIT'
+      psiSomeAvg10:
+        annotations:
+          columns.alias: '%PSI10'
+      psiSomeAvg60:
+        annotations:
+          columns.alias: '%PSI60'
+params:
+  custom:
+    interval:
+      description: "interval to re-read statistics"
+      defaultValue: 5s
+      patch:
+        operator:
+          cgroup:
+            interval: >-
+              {{call .getParamValue "custom.interval"}}
+    count:
+      description: "number of reports (0 = unlimited)"
+      defaultValue: 0
+      patch:
+        operator:
+          cgroup:
+            count: >-
+              {{call .getParamValue "custom.count"}}

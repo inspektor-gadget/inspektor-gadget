@@ -52,20 +52,21 @@ func (s *gnpOperator) InstanceParams() api.Params {
 }
 
 type k8sAccesors struct {
-	k8sHostNetwork       datasource.FieldAccessor
-	k8sNamespace         datasource.FieldAccessor
-	k8sPodLabels         datasource.FieldAccessor
-	k8sPodIP             datasource.FieldAccessor
-	k8sPodName           datasource.FieldAccessor
-	k8sOwnerName         datasource.FieldAccessor
-	endpointAddr         datasource.FieldAccessor
-	endpointPort         datasource.FieldAccessor
-	endpointK8sKind      datasource.FieldAccessor
-	endpointK8sName      datasource.FieldAccessor
-	endpointK8sNamespace datasource.FieldAccessor
-	endpointK8sLabels    datasource.FieldAccessor
-	endpointProto        datasource.FieldAccessor
-	egress               datasource.FieldAccessor
+	k8sHostNetwork         datasource.FieldAccessor
+	k8sNamespace           datasource.FieldAccessor
+	k8sPodLabels           datasource.FieldAccessor
+	k8sPodIP               datasource.FieldAccessor
+	k8sPodName             datasource.FieldAccessor
+	k8sOwnerName           datasource.FieldAccessor
+	endpointAddr           datasource.FieldAccessor
+	endpointPort           datasource.FieldAccessor
+	endpointK8sKind        datasource.FieldAccessor
+	endpointK8sName        datasource.FieldAccessor
+	endpointK8sNamespace   datasource.FieldAccessor
+	endpointK8sLabels      datasource.FieldAccessor
+	endpointK8sPodSelector datasource.FieldAccessor
+	endpointProto          datasource.FieldAccessor
+	egress                 datasource.FieldAccessor
 
 	adviseDS    datasource.DataSource
 	adviseField datasource.FieldAccessor
@@ -132,6 +133,8 @@ func (s *gnpOperator) getAccessors(gadgetCtx operators.GadgetContext) (map[datas
 		if acc.endpointK8sLabels == nil {
 			return nil, fmt.Errorf("no endpoint.k8s.labels field found")
 		}
+		// podSelector is optional: it is only set for service endpoints
+		acc.endpointK8sPodSelector = ds.GetField("endpoint.k8s.podSelector")
 		acc.endpointProto = ds.GetField("endpoint.proto")
 		if acc.endpointProto == nil {
 			return nil, fmt.Errorf("no endpoint.proto field found")
@@ -239,6 +242,21 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 						continue
 					}
 					e.endpoint.PodLabels[kv[0]] = kv[1]
+				}
+
+				// Parse the service's pod selector if available
+				if acc.endpointK8sPodSelector != nil {
+					podSelectorRaw, _ := acc.endpointK8sPodSelector.String(data)
+					if podSelectorRaw != "" {
+						e.endpoint.PodSelector = map[string]string{}
+						for _, pair := range strings.Split(podSelectorRaw, ",") {
+							kv := strings.Split(pair, "=")
+							if len(kv) != 2 {
+								continue
+							}
+							e.endpoint.PodSelector[kv[0]] = kv[1]
+						}
+					}
 				}
 
 				e.K8s.PodName, _ = acc.k8sPodName.String(data)

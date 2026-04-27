@@ -17,6 +17,7 @@
 
 #include <gadget/buffer.h>
 #include <gadget/common.h>
+#include <gadget/core_fixes.bpf.h>
 #include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
@@ -177,12 +178,10 @@ cleanup:
 }
 
 SEC("tracepoint/tcp/tcp_retransmit_skb")
-int ig_tcpretrans(struct trace_event_raw_tcp_event_sk_skb *ctx)
+int ig_tcpretrans(void *ctx)
 {
-	// struct trace_event_raw_tcp_event_sk_skb is described in:
-	// /sys/kernel/tracing/events/tcp/tcp_retransmit_skb/format
-	const struct sk_buff *skb = ctx->skbaddr;
-	const struct sock *sk = ctx->skaddr;
+	const struct sk_buff *skb = gadget_get_tcp_retransmit_skb_skbaddr(ctx);
+	const struct sock *sk = gadget_get_tcp_retransmit_skb_skaddr(ctx);
 
 	return __trace_tcp_retrans(ctx, sk, skb, RETRANS);
 }

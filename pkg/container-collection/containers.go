@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moby/moby/pkg/stringid"
+	"github.com/moby/moby/client/pkg/stringid"
 	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"

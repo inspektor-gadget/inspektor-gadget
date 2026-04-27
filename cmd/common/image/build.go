@@ -16,25 +16,19 @@ package image
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/moby/moby/pkg/jsonmessage"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
+	"github.com/moby/moby/client/pkg/jsonmessage"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
@@ -42,9 +36,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
-
-//go:embed helpers
-var helpersFS embed.FS
 
 // It can be overridden at build time
 var builderImage = "ghcr.io/inspektor-gadget/gadget-builder:main"
@@ -121,34 +112,82 @@ func NewBuildCmd() *cobra.Command {
 
 type buildOptions struct {
 	outputDir         string
-	forceColorsFlag   string
 	ebpfSourcePath    string
 	wasmSourcePath    string
-	btfgen            bool
 	btfHubArchivePath string
-	useInTreeHeaders  string
+	btfgen            bool
+	forceColorsFlag   bool
+	useInTreeHeaders  bool
 }
 
-func buildCmd(options buildOptions) []string {
-	cmd := []string{
-		"make", "-f", filepath.Join(options.outputDir, "Makefile.build"),
-		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
-		"OUTPUTDIR=" + options.outputDir,
-		"FORCE_COLORS=" + options.forceColorsFlag,
-		"USE_IN_TREE_HEADERS=" + options.useInTreeHeaders,
+func isFlag(str string) bool {
+	return strings.HasPrefix(str, "-")
+}
+
+func isResponseFile(str string) bool {
+	// Response file starts with @, see:
+	// https://gcc.gnu.org/wiki/Response_Files
+	return strings.HasPrefix(str, "@")
+}
+
+// Ensure the string build options are path to avoid flags injection.
+func checkBuildOptions(buildOpts buildOptions) error {
+	for _, opt := range []string{buildOpts.outputDir, buildOpts.ebpfSourcePath, buildOpts.wasmSourcePath, buildOpts.btfHubArchivePath} {
+		opt = strings.TrimSpace(opt)
+		if isFlag(opt) {
+			return fmt.Errorf("flags are not accepted: %q", opt)
+		}
+
+		if isResponseFile(opt) {
+			return fmt.Errorf("response file are not accepted: %q", opt)
+		}
 	}
 
-	if options.ebpfSourcePath != "" {
-		cmd = append(cmd, "EBPFSOURCE="+options.ebpfSourcePath, "ebpf")
-	}
-	if options.wasmSourcePath != "" {
-		cmd = append(cmd, "WASM="+options.wasmSourcePath, "wasm")
-	}
-	if options.btfgen {
-		cmd = append(cmd, "BTFHUB_ARCHIVE="+options.btfHubArchivePath, "btfgen")
+	return nil
+}
+
+func buildPipeline(opts buildOptions) ([]buildStep, error) {
+	if err := checkBuildOptions(opts); err != nil {
+		return nil, fmt.Errorf("wrong build option detected: %w", err)
 	}
 
-	return cmd
+	var steps []buildStep
+
+	if opts.ebpfSourcePath != "" {
+		for _, arch := range []string{oci.ArchAmd64, oci.ArchArm64} {
+			steps = append(steps, newClangCompileStep(arch, opts))
+		}
+	}
+
+	if opts.wasmSourcePath != "" {
+		switch {
+		case strings.HasSuffix(opts.wasmSourcePath, ".go"):
+			steps = append(steps, newGoBuildStep(opts))
+		case strings.HasSuffix(opts.wasmSourcePath, ".rs"):
+			steps = append(steps, newCargoBuildStep(opts))
+		case strings.HasSuffix(opts.wasmSourcePath, ".wasm"):
+			// Already compiled, nothing to do.
+		default:
+			return nil, fmt.Errorf("unsupported wasm file type: %s", opts.wasmSourcePath)
+		}
+	}
+
+	if opts.btfgen {
+		for _, arch := range []string{oci.ArchAmd64, oci.ArchArm64} {
+			steps = append(steps, newBtfgenStep(arch, opts))
+		}
+	}
+
+	return steps, nil
+}
+
+func runPipeline(runner commandRunner, steps []buildStep) error {
+	for _, step := range steps {
+		if err := step.run(runner); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
@@ -256,43 +295,28 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 		return fmt.Errorf("at least one of ebpf source (program.bpf.c), metadata (gadget.yaml), .go files (present in go folder) or wasm module is required")
 	}
 
-	// copy helper files
-	files, err := helpersFS.ReadDir("helpers")
-	if err != nil {
-		return fmt.Errorf("reading helpers: %w", err)
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		data, err := helpersFS.ReadFile(filepath.Join("helpers", file.Name()))
-		if err != nil {
-			return fmt.Errorf("reading helper file: %w", err)
-		}
-
-		if err := os.WriteFile(filepath.Join(opts.outputDir, file.Name()), data, 0o600); err != nil {
-			return fmt.Errorf("writing helper file: %w", err)
-		}
-	}
-
 	if conf.EBPFSource != "" || conf.Wasm != "" {
 		if opts.local {
-			cmd := buildCmd(buildOptions{
+			steps, err := buildPipeline(buildOptions{
 				outputDir:         opts.outputDir,
 				ebpfSourcePath:    conf.EBPFSource,
 				wasmSourcePath:    conf.Wasm,
 				btfHubArchivePath: opts.btfhubarchive,
 				btfgen:            opts.btfgen,
 			})
-			command := exec.Command(cmd[0], cmd[1:]...)
-			out, err := command.CombinedOutput()
 			if err != nil {
-				return fmt.Errorf("build script: %w: %s", err, out)
+				return fmt.Errorf("building build pipeline: %w", err)
+			}
+
+			runner := &localRunner{verbose: common.Verbose}
+			if common.Verbose {
+				fmt.Printf("Build logs start:\n")
+			}
+			if err := runPipeline(runner, steps); err != nil {
+				return fmt.Errorf("local build: %w", err)
 			}
 			if common.Verbose {
-				fmt.Printf("Build logs start:\n%s\nBuild logs end\n", string(out))
+				fmt.Printf("Build logs end\n")
 			}
 		} else {
 			if err := buildInContainer(opts, conf); err != nil {
@@ -364,7 +388,7 @@ func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 
 func pullImage(ctx context.Context, cli *client.Client, imageReference string) error {
 	fmt.Printf("Pulling builder image %s\n", imageReference)
-	reader, err := cli.ImagePull(ctx, imageReference, image.PullOptions{})
+	reader, err := cli.ImagePull(ctx, imageReference, client.ImagePullOptions{})
 	if err != nil {
 		return fmt.Errorf("pulling builder image: %w", err)
 	}
@@ -377,15 +401,14 @@ func pullImage(ctx context.Context, cli *client.Client, imageReference string) e
 }
 
 func isImageLocallyAvailable(ctx context.Context, cli *client.Client, imageReference string) (bool, error) {
-	f := filters.NewArgs()
-	f.Add("reference", imageReference)
+	f := make(client.Filters).Add("reference", imageReference)
 
-	images, err := cli.ImageList(ctx, image.ListOptions{Filters: f})
+	result, err := cli.ImageList(ctx, client.ImageListOptions{Filters: f})
 	if err != nil {
 		return false, fmt.Errorf("listing images: %w", err)
 	}
 
-	for _, img := range images {
+	for _, img := range result.Items {
 		for _, tag := range img.RepoTags {
 			if tag == imageReference {
 				return true, nil
@@ -433,7 +456,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	}
 
 	ctx := context.TODO()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("creating docker client: %w", err)
 	}
@@ -448,7 +471,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	pathHost := cwd
 
 	inspektorGadetSrcPath := os.Getenv("IG_SOURCE_PATH")
-	useInTreeHeaders := "false"
+	useInTreeHeaders := false
 	if inspektorGadetSrcPath != "" {
 		pathHost = inspektorGadetSrcPath
 		// find the gadget relative path to the inspektor-gadget source
@@ -459,7 +482,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		gadgetSourcePath = filepath.Join("/work", gadgetRelativePath)
 
 		// use in-tree headers too
-		useInTreeHeaders = "true"
+		useInTreeHeaders = true
 	}
 
 	buildOpts := buildOptions{
@@ -478,10 +501,13 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	}
 
 	if term.IsTerminal(int(os.Stdout.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) {
-		buildOpts.forceColorsFlag = "true"
+		buildOpts.forceColorsFlag = true
 	}
 
-	cmd := buildCmd(buildOpts)
+	steps, err := buildPipeline(buildOpts)
+	if err != nil {
+		return fmt.Errorf("building build pipeline: %w", err)
+	}
 
 	// The work mount ReadOnly field is updated as false, to allow Cargo.lock to compiled in /work folder for rust source code.
 	mounts := []mount.Mount{
@@ -508,58 +534,46 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 
 	resp, err := cli.ContainerCreate(
 		ctx,
-		&container.Config{
-			Image:      opts.builderImage,
-			Cmd:        cmd,
-			WorkingDir: gadgetSourcePath,
-			User:       fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		client.ContainerCreateOptions{
+			Config: &container.Config{
+				Image:      opts.builderImage,
+				Cmd:        []string{"sleep", "inf"},
+				WorkingDir: gadgetSourcePath,
+				User:       fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			},
+			HostConfig: &container.HostConfig{
+				Mounts: mounts,
+			},
 		},
-		&container.HostConfig{
-			Mounts: mounts,
-		},
-		nil, nil, "",
 	)
 	if err != nil {
 		return fmt.Errorf("creating builder container: %w", err)
 	}
 	defer func() {
-		if err := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{}); err != nil {
+		if _, err := cli.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{Force: true}); err != nil {
 			fmt.Printf("Failed to remove builder container: %s\n", err)
 		}
 	}()
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if _, err := cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("starting builder container: %w", err)
 	}
 
-	var status container.WaitResponse
-
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return fmt.Errorf("waiting for builder container: %w", err)
-		}
-	case status = <-statusCh:
+	runner := &containerRunner{
+		ctx:         ctx,
+		cli:         cli,
+		containerID: resp.ID,
+		verbose:     common.Verbose,
 	}
 
-	outputOpts := container.LogsOptions{ShowStderr: true}
-
-	if status.StatusCode != 0 || common.Verbose {
-		outputOpts.ShowStdout = true
+	if common.Verbose {
+		fmt.Println("Build logs start:")
 	}
-
-	out, err := cli.ContainerLogs(ctx, resp.ID, outputOpts)
-	if err != nil {
-		return fmt.Errorf("getting builder container logs: %w", err)
+	if err := runPipeline(runner, steps); err != nil {
+		return fmt.Errorf("container build: %w", err)
 	}
-
-	fmt.Println("Build logs start:")
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-	fmt.Println("Build logs end")
-
-	if status.StatusCode != 0 {
-		return fmt.Errorf("builder container exited with status %d", status.StatusCode)
+	if common.Verbose {
+		fmt.Println("Build logs end")
 	}
 
 	return nil

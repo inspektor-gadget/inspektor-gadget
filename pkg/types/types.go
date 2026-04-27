@@ -245,6 +245,10 @@ type L3Endpoint struct {
 	Name      string            `json:"podname,omitempty" column:"name,hide"`
 	Kind      EndpointKind      `json:"kind,omitempty" column:"kind,hide"`
 	PodLabels map[string]string `json:"podlabels,omitempty" column:"podLabels,hide"`
+
+	// PodSelector contains the service's spec.selector when Kind is
+	// EndpointKindService. It holds the labels that select the backing pods
+	PodSelector map[string]string `json:"podSelector,omitempty" column:"podSelector,hide"`
 }
 
 type L4Endpoint struct {
