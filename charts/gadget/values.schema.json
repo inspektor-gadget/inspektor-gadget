@@ -68,6 +68,56 @@
         },
         "operator": {
           "type": "object"
+        },
+        "gadgetConfigMaps": {
+          "type": "array",
+          "description": "Gadget ConfigMaps to create. Each entry creates a ConfigMap with label type=gadget-instance.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "imageName"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Human-readable name for the gadget instance"
+              },
+              "imageName": {
+                "type": "string",
+                "description": "OCI image name for the gadget"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Tags for the gadget instance"
+              },
+              "timeout": {
+                "type": "integer",
+                "description": "Timeout in nanoseconds (0 means no timeout)"
+              },
+              "logLevel": {
+                "type": "integer",
+                "description": "Log level (0=default)"
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Restrict gadget to specific nodes"
+              },
+              "paramValues": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Gadget parameters as key-value pairs"
+              }
+            }
+          }
         }
       }
     },

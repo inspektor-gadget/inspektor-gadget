@@ -379,6 +379,48 @@ helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspekto
 
 For more information you can check the [values.yaml](https://github.com/inspektor-gadget/inspektor-gadget/blob/%IG_BRANCH%/charts/gadget/values.yaml) file for full list of options available in the Helm chart.
 
+#### Pre-configuring Gadget Instances
+
+You can pre-configure [Gadget Instances](./headless.mdx) that will be created as ConfigMaps and automatically
+started by the gadget daemon. This is useful for deploying a standard set of gadgets as part of your cluster setup.
+
+Add entries to the `config.gadgetConfigMaps` list in your `values.yaml`:
+
+```yaml
+config:
+  gadgetConfigMaps:
+    - name: my-trace-open
+      imageName: ghcr.io/inspektor-gadget/gadget/trace_open:latest
+
+    - name: my-trace-exec
+      imageName: ghcr.io/inspektor-gadget/gadget/trace_exec:latest
+      tags:
+        - security
+        - audit
+      timeout: 300
+      logLevel: 2
+      paramValues:
+        operator.filter.filter: "fname~/proc.*"
+```
+
+Each entry supports the following fields:
+
+| Field | Required | Description |
+|---|---|---|
+| `name` | Yes | Human-readable name for the gadget instance |
+| `imageName` | Yes | OCI image reference for the gadget |
+| `tags` | No | List of tags for the gadget instance |
+| `timeout` | No | Timeout in nanoseconds (0 means no timeout, e.g. 300000000000 for 5 minutes) |
+| `logLevel` | No | Log level (0 = default) |
+| `nodes` | No | Restrict the gadget to specific nodes |
+| `paramValues` | No | Key-value pairs for gadget parameters |
+
+After deploying, you can verify the instances with:
+
+```bash
+$ kubectl gadget list
+```
+
 ### Installation on Minikube with the Inspektor Gadget Addon
 
 In addition to the deploy command and the Helm chart, Inspektor Gadget offers another alternative to install on Minikube using the [Inspektor Gadget Addon](https://minikube.sigs.k8s.io/docs/handbook/addons/inspektor-gadget/) available

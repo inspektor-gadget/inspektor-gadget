@@ -11,6 +11,11 @@ Instead of running Gadgets interactively, you can also install Gadget Instances 
 even if you are no longer connected. This also ensures that Gadgets will be resumed after a node restart or - depending
 on the environment - when nodes are added to your cluster.
 
+:::tip
+If you are deploying Inspektor Gadget with Helm, you can pre-configure Gadget Instances directly in your
+`values.yaml` using the `config.gadgetConfigMaps` option. See [Pre-configuring Gadget Instances](./install-kubernetes.md#pre-configuring-gadget-instances) for details.
+:::
+
 ## Creating Gadget Instances
 
 To create a new Gadget Instance on your server / cluster, you can use the `run` command with the `--detach` option:
