@@ -128,7 +128,7 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = DockerContainerToContainerData(&container)
+		ret[i] = c.dockerContainerToContainerData(&container)
 	}
 
 	return ret, nil
@@ -150,7 +150,7 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 			len(containers), containerID, containers)
 	}
 
-	return DockerContainerToContainerData(&containers[0]), nil
+	return c.dockerContainerToContainerData(&containers[0]), nil
 }
 
 func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.ContainerDetailsData, error) {
@@ -237,7 +237,6 @@ func (c *DockerClient) Close() error {
 
 // Gets the image digest for the given image ID, if the digest exists.
 // The digest is usually only available if the image was either pulled from a registry, or if the image was pushed to a registry, which is when the manifest is generated and its digest calculated.
-// Note: This function only works for already running containers and not for containers that are being created.
 func (c *DockerClient) getContainerImageDigest(imageId string) string {
 	result, err := c.client.ImageInspect(context.Background(), imageId)
 	if err != nil {
@@ -276,8 +275,7 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 	return
 }
 
-func DockerContainerToContainerData(container *container.Summary) *runtimeclient.ContainerData {
-	imageDigest := ""
+func (c *DockerClient) dockerContainerToContainerData(container *container.Summary) *runtimeclient.ContainerData {
 	containerName := ""
 	if len(container.Names) > 0 {
 		containerName = container.Names[0]
@@ -287,7 +285,7 @@ func DockerContainerToContainerData(container *container.Summary) *runtimeclient
 		containerName,
 		container.Image,
 		container.ImageID,
-		imageDigest,
+		c.getContainerImageDigest(container.ImageID),
 		string(container.State),
 		container.Labels)
 }
