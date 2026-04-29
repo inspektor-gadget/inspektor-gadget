@@ -19,6 +19,7 @@ package generate_networkpolicy
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
@@ -209,7 +210,7 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 				if hostNetwork {
 					continue
 				}
-
+				node := os.Getenv("NODE_NAME")
 				e := NetworkEvent{
 					endpoint: types.L4Endpoint{
 						L3Endpoint: types.L3Endpoint{
@@ -217,6 +218,7 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 						},
 					},
 					K8s: types.K8sMetadata{
+						Node: node,
 						BasicK8sMetadata: types.BasicK8sMetadata{
 							PodLabels: map[string]string{},
 						},
