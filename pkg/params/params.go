@@ -73,6 +73,9 @@ type ParamDesc struct {
 	// Tags can be used to skip parameters not needed for a specific environment
 	Tags []string `json:"tags" yaml:"tags,omitempty"`
 
+	// Annotations can be used by operators to interpret parameters in a specific way
+	Annotations map[string]string `json:"annotations" yaml:"annotations,omitempty"`
+
 	// Validator is an optional function that will be called upon validation; may or may
 	// not be called in user interfaces. Setting TypeHint is preferred, but can also be used
 	// in combination with the Validator. Example: additionally to setting the TypeHint to
