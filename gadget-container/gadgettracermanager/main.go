@@ -90,7 +90,7 @@ var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "liveness-socketfile", kubemanagertypes.DefaultHookAndLivenessSocketFile, "Path to socket file for liveness checks")
-	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
+	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://0.0.0.0:%d", api.GadgetServicePort), "Socket address for gadget service")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
