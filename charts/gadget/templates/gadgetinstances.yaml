@@ -1,0 +1,27 @@
+{{- range .Values.config.gadgetConfigMaps }}
+{{- $id := .name | sha256sum | trunc 32 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $id }}
+  namespace: {{ include "gadget.namespace" $ }}
+  labels:
+    {{- if not $.Values.skipLabels }}
+    {{- include "gadget.labels" $ | nindent 4 }}
+    {{- end }}
+    type: gadget-instance
+    name: {{ .name }}
+  annotations:
+    gadgetImage: {{ .imageName | quote }}
+    gadgetTags: {{ default (list) .tags | join "," | quote }}
+    gadgetTimeout: {{ default 0 .timeout | quote }}
+    gadgetLogLevel: {{ default 0 .logLevel | quote }}
+    gadgetNodes: {{ default (list) .nodes | join "," | quote }}
+{{- if .paramValues }}
+data:
+  {{- range $key, $value := .paramValues }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

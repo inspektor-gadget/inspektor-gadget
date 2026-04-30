@@ -44,6 +44,24 @@ config:
       otel-metrics-listen: false
       otel-metrics-listen-address: "0.0.0.0:2224"
 
+  # -- Gadget ConfigMaps to create. Each entry creates a ConfigMap with
+  # label `type: gadget-instance` that the gadget daemon will reconcile and run
+  # automatically.
+  gadgetConfigMaps: []
+    # - name: my-trace-open
+    #   imageName: ghcr.io/inspektor-gadget/trace_open:latest
+    #   # -- Optional: tags for the gadget instance
+    #   tags: []
+    #   # -- Optional: timeout in nanoseconds (0 means no timeout, e.g. 300000000000 for 5 minutes)
+    #   timeout: 0
+    #   # -- Optional: log level (0=default)
+    #   logLevel: 0
+    #   # -- Optional: restrict to specific nodes
+    #   nodes: []
+    #   # -- Optional: gadget parameters as key-value pairs
+    #   paramValues: {}
+    #     # operator.filter.filter: "fname~/proc.*"
+
 # -- All configurations below are specific to Kubernetes resources created by the gadget chart.
 image:
   # -- Container repository for the container image
