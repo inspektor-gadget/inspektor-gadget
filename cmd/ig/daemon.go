@@ -52,6 +52,7 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 	var serverKey string
 	var serverCert string
 	var clientCA string
+	var useInsecureTLS bool
 
 	daemonCmd.PersistentFlags().StringVarP(
 		&group,
@@ -91,6 +92,12 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		&clientCA,
 		"tls-client-ca-file",
 		"",
+		"Path to CA certificate for client validation")
+
+	daemonCmd.PersistentFlags().BoolVar(
+		&useInsecureTLS,
+		"tls-insecure",
+		false,
 		"Path to CA certificate for client validation")
 
 	service := gadgetservice.NewService(log.StandardLogger())
@@ -168,7 +175,11 @@ All these options should be set at the same time to enable TLS connection`,
 
 			log.Debugf("TLS is enabled using %v, %v and %v", serverKey, serverCert, clientCA)
 		} else if !strings.HasPrefix(socketPath, "unix") {
-			log.Warnf("no TLS configuration provided, communication between daemon and CLI will not be encrypted")
+			if useInsecureTLS {
+				log.Warnf("no TLS configuration provided, communication between daemon and CLI will not be encrypted")
+			} else {
+				return fmt.Errorf("no TLS configuration provided, will not proceed until running with --tls-insecure")
+			}
 		}
 
 		mgr, err := instancemanager.New(runtime)
