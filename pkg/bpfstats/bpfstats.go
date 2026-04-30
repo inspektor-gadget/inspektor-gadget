@@ -116,6 +116,8 @@ func DisableBPFStats() error {
 		}
 	}
 
+	method = MethodNone
+
 	return nil
 }
 
