@@ -16,11 +16,14 @@ package helpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -100,27 +103,94 @@ func FindCosignSignatureTag(ctx context.Context, imageStore oras.ReadOnlyGraphTa
 }
 
 func findReferrerTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string, artifactType string) (string, error) {
+	descriptors, err := findReferrerTags(ctx, imageStore, imageDigest, artifactType)
+	if err != nil {
+		return "", err
+	}
+
+	return descriptors[0], nil
+}
+
+func findReferrerTags(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string, artifactType string) ([]string, error) {
 	desc, err := imageStore.Resolve(ctx, imageDigest)
 	if err != nil {
-		return "", fmt.Errorf("resolving %s: %w", imageDigest, err)
+		return nil, fmt.Errorf("resolving %s: %w", imageDigest, err)
 	}
 
 	descriptors, err := registry.Referrers(ctx, imageStore, desc, artifactType)
 	if err != nil {
-		return "", fmt.Errorf("searching for %q referring %q: %w", artifactType, imageDigest, err)
+		return nil, fmt.Errorf("searching for %q referring %q: %w", artifactType, imageDigest, err)
 	}
 
 	if len(descriptors) == 0 {
-		return "", errors.New("no referrers found")
+		descriptors, err = findReferrersByManifestInspection(ctx, imageStore, desc, artifactType)
+		if err != nil {
+			return nil, fmt.Errorf("searching for %q referring %q by manifest inspection: %w", artifactType, imageDigest, err)
+		}
 	}
 
-	if len(descriptors) > 1 {
-		return "", fmt.Errorf("images with several %q referrers are not supported", artifactType)
+	if len(descriptors) == 0 {
+		return nil, errors.New("no referrers found")
 	}
 
-	signingInfoTag := descriptors[0].Digest.String()
+	tags := make([]string, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		tags = append(tags, descriptor.Digest.String())
+	}
 
-	return signingInfoTag, nil
+	return tags, nil
+}
+
+func findReferrersByManifestInspection(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+	// Some registries return incomplete referrer descriptors. For example, GHCR
+	// currently omits the manifest artifact type from the descriptor, which makes
+	// server-side filtering return no matches even though the referenced manifests
+	// are valid signatures. Fall back to listing all referrers and checking the
+	// manifest artifact type directly.
+	descriptors, err := registry.Referrers(ctx, imageStore, desc, "")
+	if err != nil {
+		return nil, fmt.Errorf("listing referrers without artifact type filter: %w", err)
+	}
+
+	matches := make([]ocispec.Descriptor, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		if descriptor.ArtifactType == artifactType {
+			matches = append(matches, descriptor)
+			continue
+		}
+
+		referrerArtifactType, err := getManifestArtifactType(ctx, imageStore, descriptor.Digest.String())
+		if err != nil {
+			if errors.Is(err, errdef.ErrNotFound) {
+				continue
+			}
+
+			return nil, fmt.Errorf("getting manifest artifact type for %q: %w", descriptor.Digest, err)
+		}
+
+		if referrerArtifactType != artifactType {
+			continue
+		}
+
+		descriptor.ArtifactType = referrerArtifactType
+		matches = append(matches, descriptor)
+	}
+
+	return matches, nil
+}
+
+func getManifestArtifactType(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, reference string) (string, error) {
+	_, manifestBytes, err := oras.FetchBytes(ctx, imageStore, reference, oras.DefaultFetchBytesOptions)
+	if err != nil {
+		return "", fmt.Errorf("fetching manifest: %w", err)
+	}
+
+	manifest := &ocispec.Manifest{}
+	if err := json.Unmarshal(manifestBytes, manifest); err != nil {
+		return "", fmt.Errorf("decoding manifest: %w", err)
+	}
+
+	return manifest.ArtifactType, nil
 }
 
 func CopySigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
