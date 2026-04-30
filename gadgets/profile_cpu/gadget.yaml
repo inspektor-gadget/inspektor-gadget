@@ -21,6 +21,9 @@ datasources:
       # profiling exporter annotations
       profiles.stack-fields: kern_stack,user_stack_raw.symbols
       profiles.value-field: samples
+      profiles.name: process_cpu
+      profiles.type: samples
+      profiles.unit: count
     fields:
       runtime.containerName:
         annotations:
