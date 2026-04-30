@@ -1788,7 +1788,16 @@ jobs:
         sudo chmod 666 /dev/kvm
     - name: Install vimto
       run: |
-        CGO_ENABLED=0 GOBIN=$(go env GOPATH)/bin go install lmb.io/vimto@latest
+        COMMIT='fc25e09ed4cd35afaa77eb340cc5879397aa484d'
+        VERSION='v0.4.0'
+        latest=$(curl -s "https://api.github.com/repos/lmb/vimto/releases/latest" | jq -r '.tag_name')
+
+        if [ "${latest}" != "${VERSION}" ]; then
+          echo "${VERSION} does not correspond to the latest version: ${latest}. This script needs to be updated." >&2
+          exit 1
+        fi
+
+        CGO_ENABLED=0 GOBIN=$(go env GOPATH)/bin go install lmb.io/vimto@${COMMIT} # v0.4.0
         ls $(go env GOPATH)/bin | grep vimto
     - name: Run gadget unit tests for kernel ${{ matrix.kernel }}
       id: gadgets-kernel-tests
