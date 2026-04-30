@@ -146,6 +146,10 @@ var wellKnownParams = map[wellKnownParamKey]wellKnownParamVal{
 		Description: "Collect build IDs",
 		Tags:        []string{TagGroupProcess},
 	},
+	{TypeName: "bool", VarName: "collect_otel_stack"}: {
+		Key:         "collect-otel-stack",
+		Description: "Collect OpenTelemetry stack traces",
+	},
 }
 
 func handleWellKnownParam(btfVar *btf.Var, p *param) {

@@ -54,6 +54,7 @@ import (
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
@@ -266,6 +267,9 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 				}
 				if s == socketenricher.SocketsMapName {
 					return socketenricher.SocketsMapName, true
+				}
+				if s == symbolizer.OtelGenericParamsMapName {
+					return symbolizer.OtelGenericParamsMapName, true
 				}
 				return "", false
 			},
@@ -857,6 +861,36 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("creating eBPF collection: %w", err)
 	}
 	i.collection = collection
+
+	if otelEbpfProgramI, ok := gadgetCtx.GetVar(symbolizer.OtelEbpfProgramKprobe); ok {
+		otelEbpfProgram, ok := otelEbpfProgramI.(*ebpf.Program)
+		if !ok {
+			return fmt.Errorf("invalid otel ebpf program: expected *ebpf.Program, got %T", otelEbpfProgramI)
+		}
+		if progMap, ok := collection.Maps[symbolizer.OtelTailCallForKprobeMapName]; ok {
+			err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny)
+			if err != nil {
+				return fmt.Errorf("updating %s map: %w", symbolizer.OtelTailCallForKprobeMapName, err)
+			}
+
+			// Warn if non-kprobe programs reference the otel tail call
+			// map. OTel symbolization uses BPF tail calls which require
+			// matching program types. Only BPF_PROG_TYPE_KPROBE (used by
+			// kprobes, kretprobes, uprobes, uretprobes) is compatible
+			// with the OTel profiler programs.
+			for name, prog := range i.collectionSpec.Programs {
+				if prog.Type == ebpf.Kprobe {
+					continue
+				}
+				refs := prog.Instructions.ReferenceOffsets()
+				if _, ok := refs[symbolizer.OtelTailCallForKprobeMapName]; ok {
+					i.logger.Warnf("program %q (type %s) uses OTel user stack collection, but OTel eBPF Profiler symbolization only supports kprobe/uprobe programs", name, prog.Type)
+				}
+			}
+		} else {
+			i.logger.Warnf("%s map not found in gadget collection", symbolizer.OtelTailCallForKprobeMapName)
+		}
+	}
 
 	// collect program IDs and map IDs for this gadget
 	gadgetObjs := gadgetObjects{}

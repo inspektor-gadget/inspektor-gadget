@@ -104,6 +104,16 @@ struct gadget_user_stack {
 	__u32 pidns_level0;
 	__u32 pid_level1;
 	__u32 pidns_level1;
+
+	// OpenTelemetry correlation ID
+	__u64 otel_correlation_id;
+
+	// Boot-time timestamp (from bpf_ktime_get_boot_ns) of when
+	// gadget_get_user_stack() was called. Used for adaptive correlation
+	// timeout in userspace. We use a dedicated field rather than the
+	// gadget's main timestamp because the formatter operator may convert
+	// that timestamp to wall time before the ustack operator reads it.
+	__u64 boot_timestamp;
 };
 
 #ifndef TASK_COMM_LEN
