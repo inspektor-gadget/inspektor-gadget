@@ -1,0 +1,20 @@
+---
+title: Gadget limitations
+sidebar_position: 1
+---
+
+This guide covers the known limitations of gadgets.
+
+### Uprobes on statically compiled binaries
+
+Uprobe-based gadgets, such as `trace_malloc`, cannot trace statically compiled
+binaries. They also cannot trace binaries that invoke syscalls directly via
+`syscall(syscall_id, ...)`, since this bypasses the standard C library wrappers
+that uprobes attach to.
+
+### Tracing I/O performed via `io_uring`
+
+Gadgets that trace I/O operations, such as `trace_open`, rely on hooking
+individual syscalls (e.g., `open()`). These gadgets cannot observe operations
+submitted via `io_uring`, because `io_uring` bypasses the normal syscall entry
+path and dispatches requests directly within the kernel.
