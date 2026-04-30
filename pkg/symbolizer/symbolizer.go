@@ -17,7 +17,14 @@
 package symbolizer
 
 import (
+	"context"
 	"time"
+)
+
+const (
+	OtelGenericParamsMapName     = "otel_generic_params"
+	OtelTailCallForKprobeMapName = "otel_tc_kprobe"
+	OtelEbpfProgramKprobe        = "otel_ebpf_program_kprobe"
 )
 
 const (
@@ -29,6 +36,11 @@ type SymbolizerOptions struct {
 	UseSymtab           bool
 	UseDebugInfodCache  bool
 	DebuginfodCachePath string
+	UseOtelEbpfProfiler bool
+
+	// Context for the symbolizer lifetime. Used by the OTel resolver
+	// to stop its background goroutines when the gadget is closed.
+	Context context.Context
 }
 
 type Symbolizer struct {
@@ -112,6 +124,9 @@ type BaseAddrCacheKey struct {
 
 func (s *Symbolizer) Close() {
 	close(s.exit)
+	for _, r := range s.resolvers {
+		r.Close()
+	}
 }
 
 func (s *Symbolizer) pruneLoop() {
@@ -151,6 +166,19 @@ type Task struct {
 
 	// Opaque hash from ebpf representing the base address to check if it needs to be recalculated.
 	BaseAddrHash uint32
+
+	// Opaque correlation ID from eBPF.
+	CorrelationID uint64
+
+	// EventBootTimestamp is the boot-time timestamp of the BPF event
+	// (from bpf_ktime_get_boot_ns in struct gadget_user_stack). Used by
+	// the OTel resolver to compute an adaptive timeout: if the event is
+	// already old when Resolve() runs, the timeout is shortened to avoid
+	// unbounded lag from backlogged events. Zero if not available (older
+	// gadgets without the field, or Linux < 5.8 where
+	// bpf_ktime_get_boot_ns is unavailable), in which case a fixed
+	// timeout is used.
+	EventBootTimestamp uint64
 }
 
 // StackItemQuery is one item of the stack. It contains the data found from BPF.
@@ -169,6 +197,20 @@ type StackItemResponse struct {
 	Symbol string
 }
 
+func (s *Symbolizer) GetEbpfReplacements() map[string]any {
+	ret := make(map[string]any)
+	for _, r := range s.resolvers {
+		replacements := r.GetEbpfReplacements()
+		if replacements == nil {
+			continue
+		}
+		for name, repl := range replacements {
+			ret[name] = repl
+		}
+	}
+	return ret
+}
+
 func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackItemResponse, error) {
 	if len(stackQueries) == 0 || len(s.resolvers) == 0 {
 		return nil, nil
@@ -177,9 +219,17 @@ func (s *Symbolizer) Resolve(task Task, stackQueries []StackItemQuery) ([]StackI
 
 	// Iterate over all resolvers in order of priority.
 	for _, r := range s.resolvers {
-		err := r.Resolve(task, stackQueries, res)
+		replacement, err := r.Resolve(task, stackQueries, res)
 		if err != nil {
 			return nil, err
+		}
+		if replacement != nil {
+			// The resolver provided a complete stack (e.g., interpreted
+			// language frames from otel-ebpf-profiler). Use it directly
+			// and skip remaining resolvers, since the native addresses
+			// in stackQueries don't correspond to these frames.
+			res = replacement
+			break
 		}
 	}
 

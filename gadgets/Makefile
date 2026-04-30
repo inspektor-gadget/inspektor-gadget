@@ -70,6 +70,7 @@ GADGETS ?= \
 	ci/sched_cls_drop \
 	ci/image_inspect \
 	ci/container_filtering \
+	ci/stacks \
 	snapshot_file \
 	top_cuda_memory \
 	#

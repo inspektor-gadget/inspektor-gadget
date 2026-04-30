@@ -66,7 +66,7 @@ func (s *symtabResolver) NewInstance(options symbolizer.SymbolizerOptions) (symb
 }
 
 func (s *symtabResolver) Priority() int {
-	return 0
+	return 1000
 }
 
 type symtabResolverInstance struct {
@@ -107,7 +107,14 @@ func (s *symtabResolverInstance) PruneOldObjects(now time.Time, ttl time.Duratio
 	s.lockSymbolTables.Unlock()
 }
 
-func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) error {
+func (s *symtabResolverInstance) GetEbpfReplacements() map[string]any {
+	return nil
+}
+
+func (s *symtabResolverInstance) Close() {
+}
+
+func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []symbolizer.StackItemQuery, stackResponses []symbolizer.StackItemResponse) ([]symbolizer.StackItemResponse, error) {
 	pid := uint32(0)
 	for _, pidnr := range task.PidNumbers {
 		if pidnr.PidNsId == s.hostProcFsPidNs {
@@ -116,7 +123,7 @@ func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []sy
 		}
 	}
 	if pid == 0 {
-		return fmt.Errorf("procfs for %q not found", task.Name)
+		return nil, fmt.Errorf("procfs for %q not found", task.Name)
 	}
 
 	var err error
@@ -126,21 +133,21 @@ func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []sy
 		err = s.resolveStackItemsWithTable(task, table, pid, stackQueries, stackResponses)
 		s.lockSymbolTables.RUnlock()
 		if err != nil {
-			return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
+			return nil, fmt.Errorf("resolving stack for %q: %w", task.Name, err)
 		}
-		return nil
+		return nil, nil
 	}
 	s.lockSymbolTables.RUnlock()
 
 	table, err = newSymbolTableFromPid(pid, task.Exe)
 	if err != nil {
-		return fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
+		return nil, fmt.Errorf("creating new symbolTable for %q: %w", task.Name, err)
 	}
 
 	s.lockSymbolTables.Lock()
 	defer s.lockSymbolTables.Unlock()
 	if len(table.Symbols)+s.symbolCountTotal > symbolizer.MaxSymbolCountTotal {
-		return fmt.Errorf("too many symbols in all symbol tables: %d (max: %d)",
+		return nil, fmt.Errorf("too many symbols in all symbol tables: %d (max: %d)",
 			len(table.Symbols)+s.symbolCountTotal, symbolizer.MaxSymbolCountTotal)
 	}
 
@@ -152,10 +159,10 @@ func (s *symtabResolverInstance) Resolve(task symbolizer.Task, stackQueries []sy
 
 	err = s.resolveStackItemsWithTable(task, table, pid, stackQueries, stackResponses)
 	if err != nil {
-		return fmt.Errorf("resolving stack for %q: %w", task.Name, err)
+		return nil, fmt.Errorf("resolving stack for %q: %w", task.Name, err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // symbolTableKeyFromFile computes a key for the symbol table from the
