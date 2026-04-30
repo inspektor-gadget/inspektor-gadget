@@ -225,6 +225,9 @@ require (
 
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
 
-// alban_ig3 includes syncVariablesToMapSpecs() fix for cilium/ebpf v0.21.0 compat
-// (cherry-picked from upstream commit 7a5ccb22052e4b8e90017ddc571229f35ab8b090)
-replace go.opentelemetry.io/ebpf-profiler => github.com/alban/opentelemetry-ebpf-profiler v0.0.202602-0.20260429133007-22507d0fd2e3
+// Fork with Inspektor Gadget patches:
+// - syncVariablesToMapSpecs() fix for cilium/ebpf v0.21.0 compat
+// - correlation ID for stack cache with LRU hash map
+// - u32 key type for generic_params map
+// - GetStackCacheMap() accessor for userspace cleanup
+replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.0-20260430134622-e646a1926f6c

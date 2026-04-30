@@ -74,13 +74,13 @@ func (w *workloadStep) Running() bool        { return false }
 //
 // TODO: This test only runs in --host mode with a local Python workload.
 // It does not yet work in Kubernetes container mode because:
-// - The ci/stacks gadget attaches uprobes to libmylib.so at a well-known
-//   host path (/tmp/ig-tests/ci-stacks-workload/libmylib.so). The uprobe
-//   is installed at container-start time, so the library must exist on
-//   disk before the container starts. Compiling the library inside the
-//   container (like trace_capabilities does with its C workload) would
-//   not work because the uprobe would miss the library.
-// - A Python container image would be needed in the CI test images.
+// The ci/stacks gadget attaches uprobes to libmylib.so at a well-known
+// host path (/tmp/ig-tests/ci-stacks-workload/libmylib.so). The uprobe
+// is installed at container-start time, so the library must exist on
+// disk before the container starts. Compiling the library inside the
+// container (like trace_capabilities does with its C workload) would
+// not work because the uprobe would miss the library.
+// A Python container image would also be needed in the CI test images.
 func TestCiStacks(t *testing.T) {
 	gadgettesting.RequireEnvironmentVariables(t)
 	utils.InitTest(t)
