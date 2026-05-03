@@ -52,6 +52,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/secureopen"
 )
 
+var errSymbolNotFound = errors.New("symbol not found")
+
 type ProgType uint32
 
 const (
@@ -190,19 +192,37 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 		return nil, fmt.Errorf("opening %q: %w", attachPath, err)
 	}
 	switch t.progType {
-	case ProgUprobe, ProgUretprobe:
+	case ProgUprobe:
 		// Resolve symbol in IG's hardened code, then pass the file offset
 		// to cilium/ebpf. This bypasses cilium/ebpf's Symbols()/
 		// DynamicSymbols() path which doesn't limit memory consumption.
 		offset, err := resolveSymbolOffset(file, t.attachSymbol)
+		if err == nil {
+			return ex.Uprobe("", t.prog, &link.UprobeOptions{Address: offset})
+		}
+		if !errors.Is(err, errSymbolNotFound) {
+			return nil, fmt.Errorf("resolving symbol %q: %w", t.attachSymbol, err)
+		}
+		// If the symbol was not found in the ELF symbol table, try
+		// resolving it from Go's .gopclntab section. This allows
+		// attaching uprobes to stripped Go binaries.
+		t.logger.Debugf("uprobe attach by symbol failed (%s), trying .gopclntab fallback", err)
+		offset, goErr := resolveGoSymbol(file, t.attachSymbol)
+		if goErr != nil {
+			return nil, fmt.Errorf("attaching uprobe (ELF: %w; gopclntab: %w)", err, goErr)
+		}
+		t.logger.Debugf("resolved %q from .gopclntab at offset 0x%x", t.attachSymbol, offset)
+		return ex.Uprobe("", t.prog, &link.UprobeOptions{Address: offset})
+	case ProgUretprobe:
+		// Go uretprobes need Go-aware return handling because goroutine stacks can move.
+		// See https://github.com/inspektor-gadget/inspektor-gadget/pull/3552
+		// Resolve the ELF symbol ourselves to avoid cilium/ebpf's unbounded
+		// symbol table parsing.
+		offset, err := resolveSymbolOffset(file, t.attachSymbol)
 		if err != nil {
 			return nil, fmt.Errorf("resolving symbol %q: %w", t.attachSymbol, err)
 		}
-		opts := &link.UprobeOptions{Address: offset}
-		if t.progType == ProgUprobe {
-			return ex.Uprobe("", t.prog, opts)
-		}
-		return ex.Uretprobe("", t.prog, opts)
+		return ex.Uretprobe("", t.prog, &link.UprobeOptions{Address: offset})
 	case ProgUSDT:
 		attachInfo, err := getUsdtInfo(attachPath, t.attachSymbol)
 		if err != nil {
@@ -247,7 +267,7 @@ func resolveSymbolOffset(file *os.File, symbol string) (uint64, error) {
 			return 0, iterErr
 		}
 	}
-	return 0, fmt.Errorf("symbol %q not found", symbol)
+	return 0, fmt.Errorf("symbol %q: %w", symbol, errSymbolNotFound)
 }
 
 // try attaching to a container, will update `containerPid2Inodes`
