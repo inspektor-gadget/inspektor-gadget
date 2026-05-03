@@ -31,6 +31,12 @@ import (
 const (
 	sdtNoteSectionName = ".note.stapsdt"
 	sdtBaseSectionName = ".stapsdt.base"
+
+	// maxNoteFieldSize limits the size of individual note name/desc fields to
+	// prevent excessive memory allocation from malformed ELF files. There is no
+	// standard upper bound for ELF note fields; 1 MiB is a generous arbitrary
+	// cap — legitimate USDT notes are typically under 1 KB.
+	maxNoteFieldSize = 1024 * 1024
 )
 
 type noteHeader struct {
@@ -107,6 +113,9 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 		wordSize = 8
 	}
 
+	// Minimum desc size for a stapsdt note: 3 address fields.
+	minDescSize := 3 * wordSize
+
 	// walk through USDT notes, and match with providerName and probeName
 	// For details of the structure of ELF notes, please refer to
 	// https://man7.org/linux/man-pages/man5/elf.5.html, the `Notes (Nhdr)` section
@@ -120,13 +129,23 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 			return nil, fmt.Errorf("reading USDT note header: %w", err)
 		}
 
-		name := make([]byte, alignUp(uint64(header.NameSize), 4))
+		alignedNameSize := alignUp(uint64(header.NameSize), 4)
+		alignedDescSize := alignUp(uint64(header.DescSize), 4)
+
+		if alignedNameSize > maxNoteFieldSize {
+			return nil, fmt.Errorf("USDT note name too large: %d bytes", alignedNameSize)
+		}
+		if alignedDescSize > maxNoteFieldSize {
+			return nil, fmt.Errorf("USDT note desc too large: %d bytes", alignedDescSize)
+		}
+
+		name := make([]byte, alignedNameSize)
 		err = binary.Read(notesReader, elfReader.ByteOrder, &name)
 		if err != nil {
 			return nil, fmt.Errorf("reading USDT note name: %w", err)
 		}
 
-		desc := make([]byte, alignUp(uint64(header.DescSize), 4))
+		desc := make([]byte, alignedDescSize)
 		err = binary.Read(notesReader, elfReader.ByteOrder, &desc)
 		if err != nil {
 			return nil, fmt.Errorf("reading USDT note desc: %w", err)
@@ -134,6 +153,10 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 
 		if string(name) != "stapsdt\x00" || header.Type != 3 {
 			continue
+		}
+
+		if len(desc) < minDescSize {
+			return nil, fmt.Errorf("malformed stapsdt note: desc too short (%d bytes, need %d)", len(desc), minDescSize)
 		}
 
 		elfLocation := elfReader.ByteOrder.Uint64(desc[:wordSize])
