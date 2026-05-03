@@ -58,7 +58,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/sdk/log v0.18.0
 	go.opentelemetry.io/otel/sdk/metric v1.43.0
-	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
 	golang.org/x/net v0.54.0
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0
@@ -198,7 +198,7 @@ require (
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/containers/common v0.62.3 // indirect
 	github.com/elastic/go-freelru v0.16.0 // indirect
-	github.com/elastic/go-perf v0.0.0-20241029065020-30bec95324b8 // indirect
+	github.com/elastic/go-perf v0.0.0-20260224073651-af0ee0c731b7 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
@@ -213,12 +213,12 @@ require (
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
-	go.opentelemetry.io/collector/consumer v1.50.0 // indirect
-	go.opentelemetry.io/collector/consumer/xconsumer v0.144.0 // indirect
+	go.opentelemetry.io/collector/consumer v1.53.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
 	go.opentelemetry.io/collector/pdata v1.53.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/arch v0.23.0 // indirect
+	golang.org/x/arch v0.24.0 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
@@ -230,4 +230,4 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - correlation ID for stack cache with LRU hash map
 // - u32 key type for generic_params map
 // - GetStackCacheMap() accessor for userspace cleanup
-replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.0-20260430134622-e646a1926f6c
+replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260503100916-1bcbf380a5bd
