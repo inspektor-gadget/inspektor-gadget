@@ -59,14 +59,16 @@ struct {
 
 /* Per-process outstanding bytes, split by memory type.
  * Incremented on alloc, decremented on free.  When a CUDA context is
- * destroyed (cuCtxDestroy), the driver bulk-frees all resources —
- * both device and page-locked host memory.  We use these counters to
- * credit the remaining bytes as implicitly freed.  The stats maps use
- * one shared mem_* counter set and distinguish memory class via
- * proc_key.host_raw (DEVICE = GPU/device, HOST = host/pinned). */
+ * destroyed or a process exits without explicit frees, remaining CUDA
+ * allocations are released implicitly. We use these counters to credit
+ * those bytes as implicitly freed. mntns_id and comm are captured when
+ * the outstanding entry is created so process-exit cleanup does not
+ * have to read metadata from an unreliable current task context. */
 struct outstanding_info {
 	u64 gpu;
 	u64 host;
+	gadget_mntns_id mntns_id;
+	char comm[TASK_COMM_LEN];
 };
 
 struct {
@@ -188,9 +190,8 @@ struct {
  *
  * Outstanding tracking (for implicit frees on cuCtxDestroy / process
  * exit) is handled separately in the alloc/free helpers rather than
- * inside update_stats(), because the outstanding counter is a single u64
- * aggregating both gpu and host bytes — it only needs to be adjusted
- * in the alloc/free paths, not in every counter-bump helper.
+ * inside update_stats(), because outstanding state is adjusted only when
+ * tracked CUDA allocations are created or explicitly freed.
  * ================================================================ */
 static __always_inline struct proc_mem_stats *
 get_or_init_stats(void *stats_map, struct proc_key *pkey)
@@ -206,10 +207,6 @@ get_or_init_stats(void *stats_map, struct proc_key *pkey)
 			return NULL;
 	}
 
-	/* Refresh on every alloc: comm can change via execve/prctl,
-	 * mntns_id via setns. */
-	s->mntns_id = gadget_get_current_mntns_id();
-	bpf_get_current_comm(s->comm, sizeof(s->comm));
 	return s;
 }
 
@@ -219,8 +216,30 @@ enum stats_op {
 	STATS_OP_IMPLICIT_FREE = 2,
 };
 
+static __always_inline void
+refresh_current_stats_metadata(struct proc_mem_stats *s)
+{
+	s->mntns_id = gadget_get_current_mntns_id();
+	bpf_get_current_comm(s->comm, sizeof(s->comm));
+}
+
+static __always_inline void
+init_outstanding_metadata(struct outstanding_info *oi)
+{
+	oi->mntns_id = gadget_get_current_mntns_id();
+	bpf_get_current_comm(oi->comm, sizeof(oi->comm));
+}
+
+static __always_inline void
+copy_outstanding_metadata(struct proc_mem_stats *s, struct outstanding_info *oi)
+{
+	s->mntns_id = oi->mntns_id;
+	__builtin_memcpy(s->comm, oi->comm, sizeof(s->comm));
+}
+
 static __always_inline void update_stats(void *stats_map, u32 pid, u8 host,
-					 u64 size, enum stats_op op)
+					 u64 size, enum stats_op op,
+					 struct outstanding_info *oi)
 {
 	struct proc_key pkey;
 	__builtin_memset(&pkey, 0, sizeof(pkey));
@@ -230,6 +249,14 @@ static __always_inline void update_stats(void *stats_map, u32 pid, u8 host,
 
 	if (!s)
 		return;
+
+	/* For implicit frees, current task metadata may be unrelated to the
+	 * CUDA process (for example in sched_process_free), so use metadata
+	 * captured from the CUDA allocation path instead. */
+	if (op == STATS_OP_IMPLICIT_FREE && oi)
+		copy_outstanding_metadata(s, oi);
+	else
+		refresh_current_stats_metadata(s);
 
 	switch (op) {
 	case STATS_OP_ALLOC:
@@ -272,6 +299,7 @@ static __always_inline void outstanding_add(void *outstanding_map, u32 pid,
 		noi.host = size;
 	else
 		noi.gpu = size;
+	init_outstanding_metadata(&noi);
 	if (bpf_map_update_elem(outstanding_map, &pid, &noi, BPF_NOEXIST) == 0)
 		return;
 
@@ -397,7 +425,7 @@ static __always_inline int generic_alloc_exit(int ret, void *ctx_map,
 
 	outstanding_add(outstanding_map, pid, size, is_host);
 
-	update_stats(stats_map, pid, is_host, size, STATS_OP_ALLOC);
+	update_stats(stats_map, pid, is_host, size, STATS_OP_ALLOC, NULL);
 
 	return 0;
 
@@ -466,7 +494,7 @@ static __always_inline int generic_free_exit(int ret, void *free_ptrs_map,
 
 	outstanding_sub(outstanding_map, pid, size, is_host);
 
-	update_stats(stats_map, pid, is_host, size, STATS_OP_FREE);
+	update_stats(stats_map, pid, is_host, size, STATS_OP_FREE, NULL);
 
 	return 0;
 }
@@ -476,15 +504,12 @@ static __always_inline int generic_free_exit(int ret, void *free_ptrs_map,
  * ================================================================ */
 
 /*
- * When a CUDA context is destroyed, the driver bulk-frees all resources
- * associated with it — both device memory and page-locked host memory —
- * without calling cuMemFree/cuMemFreeHost for each allocation.  Credit
- * remaining outstanding bytes as implicitly freed, routing gpu and host
- * bytes to their respective counters, then delete the outstanding entry
- * so a subsequent CUDA context in the same process starts fresh.
- *
- * This is essential for applications like ollama that never explicitly
- * free individual allocations.
+ * When a CUDA context is destroyed, or when the process is finally freed,
+ * remaining CUDA allocations are no longer live even if individual
+ * cuMemFree/cuMemFreeHost calls were never observed. Credit those bytes as
+ * implicitly freed, route gpu and host bytes to their respective counters,
+ * then delete the outstanding entry so a subsequent CUDA context in the
+ * same process starts fresh.
  */
 static __always_inline void handle_ctx_destroy(u32 pid)
 {
@@ -493,10 +518,10 @@ static __always_inline void handle_ctx_destroy(u32 pid)
 	if (lc_oi) {
 		if (lc_oi->gpu > 0)
 			update_stats(&libcuda_mem_stats, pid, 0, lc_oi->gpu,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, lc_oi);
 		if (lc_oi->host > 0)
 			update_stats(&libcuda_mem_stats, pid, 1, lc_oi->host,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, lc_oi);
 		bpf_map_delete_elem(&libcuda_outstanding, &pid);
 	}
 
@@ -505,10 +530,10 @@ static __always_inline void handle_ctx_destroy(u32 pid)
 	if (rt_oi) {
 		if (rt_oi->gpu > 0)
 			update_stats(&libcudart_mem_stats, pid, 0, rt_oi->gpu,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, rt_oi);
 		if (rt_oi->host > 0)
 			update_stats(&libcudart_mem_stats, pid, 1, rt_oi->host,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, rt_oi);
 		bpf_map_delete_elem(&cudart_outstanding, &pid);
 	}
 }
@@ -538,13 +563,12 @@ int BPF_URETPROBE(trace_uretprobe_cuCtxDestroy, int ret)
 /* ================================================================
  * Process exit handlers
  *
- * sched_process_exit fires for every thread as it exits — used to
- * clean up per-thread transient maps so they don't leak for the
- * lifetime of a long-running multi-threaded process.
+ * sched_process_exit fires for every thread as it exits and is used
+ * for per-thread transient map cleanup.
  *
- * sched_process_free fires when the last thread of the process is
- * fully reaped — used to credit any remaining outstanding CUDA bytes
- * as implicitly freed (the process is truly gone at this point).
+ * sched_process_free fires for every released task_struct. It must use the
+ * freed task pid from the tracepoint payload: current can be a reaper or
+ * another task, which can make a live process look as if it exited.
  * ================================================================ */
 SEC("tracepoint/sched/sched_process_exit")
 int trace_sched_process_exit(void *ctx)
@@ -564,21 +588,19 @@ int trace_sched_process_exit(void *ctx)
 }
 
 SEC("tracepoint/sched/sched_process_free")
-int trace_sched_process_free(void *ctx)
+int trace_sched_process_free(struct trace_event_raw_sched_process_template *ctx)
 {
-	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	u32 pid = (u32)(pid_tgid >> 32);
-	u32 tid = (u32)pid_tgid;
+	u32 freed_tid = ctx->pid;
 
 	// Note: we intentionally do NOT clean up libcuda_alloc_sizes /
 	// cudart_alloc_sizes here.  BPF cannot iterate by partial key
 	// (pid) to delete matching entries.  These maps use LRU eviction
 	// to reclaim stale entries from dead processes.
-
-	// sched_process_free fires per-thread; only act when the last
-	// thread (pid == tid) is freed, meaning the process is fully gone.
-	if (pid == tid)
-		handle_ctx_destroy(pid);
+	//
+	// handle_ctx_destroy() is safe to call for every freed task: the
+	// outstanding maps are keyed by thread-group id, so a non-leader tid
+	// simply won't match any entry and the call becomes a no-op.
+	handle_ctx_destroy(freed_tid);
 
 	return 0;
 }
