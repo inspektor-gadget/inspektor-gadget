@@ -431,7 +431,9 @@ jobs:
   build-gadget-container-images:
     name: gadget img
     # level: 1
-    needs: btfgen
+    needs:
+      - btfgen
+      - check-secrets
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -441,8 +443,6 @@ jobs:
     outputs:
       digest-amd64: ${{ steps.published-gadget-container-images.outputs.amd64 }}
       digest-arm64: ${{ steps.published-gadget-container-images.outputs.arm64 }}
-      sbom-digest-amd64: ${{ steps.gadget-container-images-attach-sbom.outputs.sbom-amd64 }}
-      sbom-digest-arm64: ${{ steps.gadget-container-images-attach-sbom.outputs.sbom-arm64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -565,6 +565,13 @@ jobs:
         sbom_digest=$(oras attach "${CONTAINER_REPO}@${image_digest}" /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
 
         echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
+    - name: Sign the SBOM
+      if: github.event_name != 'pull_request' && needs.check-secrets.outputs.cosign == 'true'
+      uses: ./.github/actions/sign-oci-artifact
+      with:
+        password: '${{ secrets.COSIGN_PASSWORD }}'
+        private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.gadget-container-images-attach-sbom.outputs[format('sbom-{0}', matrix.platform)] }}"
     - name: Save gadget ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
@@ -586,6 +593,7 @@ jobs:
     needs:
       - btfgen
       - build-helper-images
+      - check-secrets
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -595,8 +603,6 @@ jobs:
     outputs:
       digest-amd64: ${{ steps.published-ig-container-images.outputs.amd64 }}
       digest-arm64: ${{ steps.published-ig-container-images.outputs.arm64 }}
-      sbom-digest-amd64: ${{ steps.ig-container-images-attach-sbom.outputs.sbom-amd64 }}
-      sbom-digest-arm64: ${{ steps.ig-container-images-attach-sbom.outputs.sbom-arm64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -719,6 +725,13 @@ jobs:
         sbom_digest=$(oras attach "${CONTAINER_REPO}@${image_digest}" /tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
 
         echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
+    - name: Sign the SBOM
+      if: github.event_name != 'pull_request' && needs.check-secrets.outputs.cosign == 'true'
+      uses: ./.github/actions/sign-oci-artifact
+      with:
+        password: '${{ secrets.COSIGN_PASSWORD }}'
+        private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.ig-container-images-attach-sbom.outputs[format('sbom-{0}', matrix.platform)] }}"
     - name: Save ig ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-ig-container-images
       if: github.event_name != 'pull_request'
@@ -892,8 +905,6 @@ jobs:
           IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.digest-amd64 }}
           DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
-          SBOM_DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }}
-          SBOM_DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
         run: |
           IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -910,9 +921,7 @@ jobs:
               --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
               "${CONTAINER_REPO}@${DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${DIGEST_ARM64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}"
+              "${CONTAINER_REPO}@${DIGEST_ARM64}"
 
           image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_REF | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
@@ -962,8 +971,6 @@ jobs:
           IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.digest-amd64 }}
           DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.digest-arm64 }}
-          SBOM_DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }}
-          SBOM_DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }}
         run: |
           IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -975,9 +982,7 @@ jobs:
           docker buildx imagetools create \
             -t "$IMAGE_REF" \
               "${CONTAINER_REPO}@${DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
               "${CONTAINER_REPO}@${DIGEST_ARM64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}" \
             --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
             --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
             --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
