@@ -31,6 +31,8 @@ func (procOpts) WithVmRSS() bool            { return false }
 func (procOpts) WithMemoryRelative() bool   { return false }
 func (procOpts) WithThreadCount() bool      { return false }
 func (procOpts) WithStartTime() bool        { return false }
+func (procOpts) WithCPUWait() bool          { return true }
+func (procOpts) WithCPUPressure() bool      { return true }
 
 func (procOpts) TotalMemory() uint64              { return 0 }
 func (procOpts) NumCPU() int                      { return 0 }
