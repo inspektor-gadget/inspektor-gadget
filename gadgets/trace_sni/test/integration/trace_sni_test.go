@@ -86,7 +86,7 @@ func TestTraceSNI(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceSNIEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("wget", 1000, 1111),
 				Name:       "inspektor-gadget.io",
 

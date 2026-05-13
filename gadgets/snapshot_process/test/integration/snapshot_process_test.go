@@ -81,7 +81,7 @@ func TestSnapshotProcess(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &snapshotProcessEntry{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Process:    utils.BuildProc("nc", 1000, 1111),
 			}
 

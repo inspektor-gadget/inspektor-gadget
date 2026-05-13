@@ -100,7 +100,7 @@ func TestTopFile(t *testing.T) {
 		igrunner.WithValidateOutput(
 			func(t *testing.T, output string) {
 				expectedEntry := &topFileEntry{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("sh", 0, 0),
 
 					// Workload writes "foo" with "echo" (so "sh") command into
