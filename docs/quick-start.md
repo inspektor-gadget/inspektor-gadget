@@ -82,7 +82,7 @@ It's possible to control an `ig` running in Linux from different operating syste
 Run the following on a Linux machine to make `ig` available to clients.
 
 ```bash
-sudo ig daemon --host=tcp://0.0.0.0:1234
+sudo ig daemon --tls-insecure --host=tcp://0.0.0.0:1234
 ```
 
 Download the `gadgetctl` tools for MacOS

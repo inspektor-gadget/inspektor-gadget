@@ -4,7 +4,7 @@ This directory contains docker compose files for spinning up grafana and prometh
 Prometheus is configured to scrape metrics from the `ig` daemon running on the host machine as:
 
 ```bash
-go run -exec sudo ../../cmd/ig daemon --otel-metrics-listen=true
+go run -exec sudo ../../cmd/ig daemon --tls-insecure --otel-metrics-listen=true
 ```
 
 then start the gadget with

@@ -72,7 +72,7 @@ Error: fetching gadget information: initializing and preparing operators: instan
 You can specify these options only at start time:
 
 ```bash
-$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget/your_gadget@sha256:digest_of_your_gadget'
+$ sudo ig daemon --tls-insecure --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec@sha256:e13e3859be5ed8cef676a720274480d2748f66fd98cf8d963af6c4c05121526f,ghcr.io/your-repo/gadget/your_gadget@sha256:digest_of_your_gadget'
 ...
 # Switch to another terminal
 $ gadgetctl run trace_exec
@@ -149,7 +149,7 @@ Error: fetching gadget information: initializing and preparing operators: instan
 You can specify these options only at start time:
 
 ```bash
-$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/your-repo/gadget/your_gadget:latest'
+$ sudo ig daemon --tls-insecure --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_exec:latest,ghcr.io/your-repo/gadget/your_gadget:latest'
 ...
 # Switch to another terminal
 $ gadgetctl run trace_exec:latest
@@ -223,7 +223,7 @@ You can specify these options only at start time:
 
 ```bash
 # Let's allow all the tracers from Inspektor Gadget repository and all the gadgets from your repository.
-$ sudo ig daemon --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_*,ghcr.io/your-repo/gadget/*'
+$ sudo ig daemon --tls-insecure --allowed-gadgets='ghcr.io/inspektor-gadget/gadget/trace_*,ghcr.io/your-repo/gadget/*'
 ...
 # Switch to another terminal
 $ gadgetctl run trace_exec

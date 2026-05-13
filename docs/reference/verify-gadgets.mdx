@@ -122,7 +122,7 @@ This avoids them being tampered by any users.
 By default all image-based gadgets are verified using Inspektor Gadget public key:
 
 ```bash
-$ sudo ig daemon --public-keys="$(cat your-key.pub)"
+$ sudo ig daemon --tls-insecure --public-keys="$(cat your-key.pub)"
 ...
 # Switch to another terminal
 $ gadgetctl run ghcr.io/your_repo/trace_exec
@@ -137,7 +137,7 @@ You can specify several public keys, by using a comma to separate them:
 $ IP='your_ip'
 $ PORT='your_port'
 $ ADDR=tcp://$IP:$PORT
-$ sudo ig daemon --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" --host=$ADDR
+$ sudo ig daemon --tls-insecure --public-keys="$(cat your-key.pub),$(cat inspektor-gadget.pub)" --host=$ADDR
 ...
 # Switch to another terminal
 $ gadgetctl run trace_open:latest
@@ -249,7 +249,7 @@ The signing information are set once when starting `ig` as a daemon.
 This avoids them being tampered by any users.
 
 ```bash
-$ sudo ig daemon --notation-certificates="$(cat your-certificate.crt)" --notation-policy-document="$(cat your-policy-document.json)"
+$ sudo ig daemon --tls-insecure --notation-certificates="$(cat your-certificate.crt)" --notation-policy-document="$(cat your-policy-document.json)"
 ...
 # Switch to another terminal
 $ gadgetctl run ghcr.io/your_repo/trace_exec
@@ -262,7 +262,7 @@ You can specify several certificates, by using a comma to separate them:
 $ IP='your_ip'
 $ PORT='your_port'
 $ ADDR=tcp://$IP:$PORT
-$ sudo ig daemon --notation-certificates="$(cat your-1st-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) --host=$ADDR
+$ sudo ig daemon --tls-insecure --notation-certificates="$(cat your-1st-certificate.crt),$(cat your-2nd-certificate.crt)" --notation-policy-document=$(cat your-policy-document.json) --host=$ADDR
 ...
 # Switch to another terminal
 $ gadgetctl run ghcr.io/your-repo/gadget/trace_open:your_1st_tag
@@ -319,7 +319,7 @@ RUNTIME.CONTAINERNAME  PID          UID          GID          MNTNS_ID RET FL…
 
 <TabItem value="ig-daemon" label="ig daemon">
 ```bash
-$ sudo ig daemon --verify-image=false
+$ sudo ig daemon --tls-insecure --verify-image=false
 ...
 # Switch to another terminal
 $ gadgetctl run ghcr.io/your-repo/gadget/trace_open:latest
