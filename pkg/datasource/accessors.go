@@ -320,6 +320,8 @@ func (a *fieldAccessor) AddSubField(name string, kind api.Kind, opts ...FieldOpt
 
 	a.ds.applyFieldConfig(nf)
 
+	a.ds.addToAllocatorFields(nf)
+
 	a.ds.fields = append(a.ds.fields, nf)
 	a.ds.fieldMap[nf.FullName] = nf
 	return &fieldAccessor{ds: a.ds, f: nf}, nil
@@ -681,6 +683,30 @@ func (a *fieldAccessor) PutFloat64(data Data, val float64) error {
 }
 
 func (a *fieldAccessor) PutString(data Data, val string) error {
+	if FieldFlagStaticMember.In(a.f.Flags) {
+		if a.f.Kind == api.Kind_String || a.f.Kind == api.Kind_CString {
+			if uint32(len(val)) > a.f.Size {
+				return errors.New("string too large for static field")
+			}
+			dest := data.payload()[a.f.PayloadIndex][a.f.Offs : a.f.Offs+a.f.Size]
+			copy(dest, val)
+			if uint32(len(val)) < a.f.Size {
+				for i := uint32(len(val)); i < a.f.Size; i++ {
+					dest[i] = 0
+				}
+			}
+			return nil
+		}
+	}
+
+	buf := data.payload()[a.f.PayloadIndex]
+	if cap(buf) >= len(val) {
+		newBuf := buf[:len(val)]
+		copy(newBuf, val)
+		data.payload()[a.f.PayloadIndex] = newBuf
+		return nil
+	}
+
 	return a.Set(data, []byte(val))
 }
 
