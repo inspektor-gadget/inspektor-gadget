@@ -76,12 +76,23 @@ static __always_inline long gadget_submit_buf(void *ctx, void *map, void *buf,
 }
 #endif /* GADGET_NO_BUF_RESERVE */
 
-static __always_inline long gadget_output_buf(void *ctx, void *map, void *buf,
-					      __u64 size)
+// _lost_samples has to be suffixed because user will give &map as argument.
+#define gadget_output_buf(ctx, map, buf, size) \
+	__gadget_output_buf(ctx, map, map##_lost_samples, buf, size)
+
+static __always_inline long __gadget_output_buf(void *ctx, void *map,
+						void *lost_samples, void *buf,
+						__u64 size)
 {
 	if (bpf_core_enum_value_exists(enum bpf_func_id,
 				       BPF_FUNC_ringbuf_output)) {
-		bpf_ringbuf_output(map, buf, size, 0);
+		long ret = bpf_ringbuf_output(map, buf, size, 0);
+		if (ret) {
+			const int zero = 0;
+			__u64 *cnt = bpf_map_lookup_elem(lost_samples, &zero);
+			if (cnt)
+				*cnt += 1;
+		}
 		return 0;
 	}
 
