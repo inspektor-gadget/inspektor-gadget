@@ -146,12 +146,12 @@ func getSourceWithRelocations(insns asm.Instructions) (relocations string) {
 	iter := insns.Iterate()
 	for iter.Next() {
 		if source := iter.Ins.Source(); source != nil {
-			relocs.WriteString(fmt.Sprintf("; %s\n", source))
+			fmt.Fprintf(&relocs, "; %s\n", source)
 		}
 		if relo := btf.CORERelocationMetadata(iter.Ins); relo != nil {
-			relocs.WriteString(fmt.Sprintf("; %v\n", relo))
+			fmt.Fprintf(&relocs, "; %v\n", relo)
 		}
-		relocs.WriteString(fmt.Sprintf("%v\n", iter.Ins))
+		fmt.Fprintf(&relocs, "%v\n", iter.Ins)
 	}
 	return relocs.String()
 }

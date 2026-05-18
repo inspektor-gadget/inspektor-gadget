@@ -97,13 +97,13 @@ func (h *Histogram) String() string {
 	stars := 40
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%*s%-*s : count    distribution\n", spaceBefore,
-		"", spaceAfter, h.Unit))
+	fmt.Fprintf(&sb, "%*s%-*s : count    distribution\n", spaceBefore,
+		"", spaceAfter, h.Unit)
 
 	for _, b := range h.Intervals {
-		sb.WriteString(fmt.Sprintf("%*d -> %-*d : %-8d |%s|\n", width,
+		fmt.Fprintf(&sb, "%*d -> %-*d : %-8d |%s|\n", width,
 			b.Start, width, b.End, b.Count,
-			starsToString(b.Count, valMax, uint64(stars))))
+			starsToString(b.Count, valMax, uint64(stars)))
 	}
 
 	return sb.String()

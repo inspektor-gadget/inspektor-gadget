@@ -32,7 +32,7 @@ func GenerateFlowchartMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string,
 		return progsList[i].Name < progsList[j].Name
 	})
 	for _, m := range mapsList {
-		graph.WriteString(fmt.Sprintf("%s[(\"%s\")]\n", m.Name, m.Name))
+		fmt.Fprintf(&graph, "%s[(\"%s\")]\n", m.Name, m.Name)
 	}
 
 	for _, prog := range progsList {
@@ -65,10 +65,10 @@ func GenerateFlowchartMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string,
 				fnName = strings.Join(verbs, "+")
 			}
 
-			graph.WriteString(fmt.Sprintf("%s -- \"%s\" --> %s\n", prog.Name, fnName, mapName))
+			fmt.Fprintf(&graph, "%s -- \"%s\" --> %s\n", prog.Name, fnName, mapName)
 		}
 
-		graph.WriteString(fmt.Sprintf("%s[\"%s\"]\n", prog.Name, prog.Name))
+		fmt.Fprintf(&graph, "%s[\"%s\"]\n", prog.Name, prog.Name)
 	}
 
 	return graph.String(), nil
@@ -87,7 +87,7 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 		return progsList[i].Name < progsList[j].Name
 	})
 	for _, p := range progsList {
-		graph.WriteString(fmt.Sprintf("participant %s\n", p.Name))
+		fmt.Fprintf(&graph, "participant %s\n", p.Name)
 	}
 	graph.WriteString("end\n")
 
@@ -126,12 +126,12 @@ func GenerateSequenceMermaidGraph(collectionSpec *ebpf.CollectionSpec) (string, 
 		if mName == ".rodata" || mName == ".bss" {
 			continue
 		}
-		graph.WriteString(fmt.Sprintf("participant %s\n", mName))
+		fmt.Fprintf(&graph, "participant %s\n", mName)
 	}
 	graph.WriteString("end\n")
 
 	for _, e := range events {
-		graph.WriteString(fmt.Sprintf("%s->>%s: %s\n", e.sender, e.receiver, e.label))
+		fmt.Fprintf(&graph, "%s->>%s: %s\n", e.sender, e.receiver, e.label)
 	}
 
 	return graph.String(), nil

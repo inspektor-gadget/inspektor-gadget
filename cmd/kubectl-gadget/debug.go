@@ -45,11 +45,11 @@ func getGadgetPodsDebug(client *kubernetes.Clientset, gadgetNamespace string) st
 		if err != nil {
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("------ Pod %s -------\n", pod.Name))
+		fmt.Fprintf(&sb, "------ Pod %s -------\n", pod.Name)
 		sb.Write(bytes)
 		sb.WriteString("---------------------\n")
 
-		sb.WriteString(fmt.Sprintf("----------------- LOGS START (%s) -----------------\n", pod.Name))
+		fmt.Fprintf(&sb, "----------------- LOGS START (%s) -----------------\n", pod.Name)
 		sb.WriteString(getPodLog(client, gadgetNamespace, pod.Name))
 		sb.WriteString("------------------ LOGS END ------------------\n")
 	}
@@ -100,16 +100,16 @@ func getEvents(client *kubernetes.Clientset, gadgetNamespace string) string {
 		return ""
 	}
 
-	sb.WriteString(fmt.Sprintf("%-12s %-10s %-14s %-30s %s\n",
-		"LAST SEEN", "TYPE", "REASON", "OBJECT", "MESSAGE"))
+	fmt.Fprintf(&sb, "%-12s %-10s %-14s %-30s %s\n",
+		"LAST SEEN", "TYPE", "REASON", "OBJECT", "MESSAGE")
 
 	now := time.Now()
 
 	for _, event := range events.Items {
 		dur := now.Sub(eventTime(event)).Truncate(time.Second)
-		sb.WriteString(fmt.Sprintf("%-12s %-10s %-14s %-30s %s\n",
+		fmt.Fprintf(&sb, "%-12s %-10s %-14s %-30s %s\n",
 			dur, event.Type, event.Reason,
-			event.InvolvedObject.Kind+"\\"+event.InvolvedObject.Name, event.Message))
+			event.InvolvedObject.Kind+"\\"+event.InvolvedObject.Name, event.Message)
 	}
 
 	return sb.String()
