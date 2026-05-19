@@ -20,6 +20,7 @@
 package containercollection
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	kubeletpodsv1alpha1 "k8s.io/kubelet/pkg/apis/pods/v1alpha1"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -45,10 +47,15 @@ type PodInformer struct {
 	queue    workqueue.TypedRateLimitingInterface[string]
 	informer cache.Controller
 
+	// cancel is set for the gRPC path; nil for the REST path.
+	cancel context.CancelFunc
+
 	stop           chan struct{}
 	updatedPodChan chan *v1.Pod
 	deletedPodChan chan string
 	wg             sync.WaitGroup
+
+	emptyContainerIDOnce sync.Once
 }
 
 func NewPodInformer(node string) (*PodInformer, error) {
@@ -111,8 +118,12 @@ func NewPodInformer(node string) (*PodInformer, error) {
 }
 
 func (p *PodInformer) Stop() {
-	// tell all workers to end
-	close(p.stop)
+	// For the gRPC path, cancel the context; for REST, close the stop channel.
+	if p.cancel != nil {
+		p.cancel()
+	} else {
+		close(p.stop)
+	}
 
 	// wait for workers to end before closing channels to avoid
 	// writing to closed channels
@@ -183,6 +194,95 @@ func (p *PodInformer) Run(threadiness int, stopCh chan struct{}) {
 
 	<-stopCh
 	log.Info("Stopping Pod controller")
+}
+
+// newKubeletGRPCPodInformer creates a PodInformer backed by the Kubelet gRPC
+// pods API (KEP-4188, PodsAPI feature gate, Kubernetes 1.36+ alpha). It
+// replaces the kube-apiserver REST watch with a node-local WatchPods stream
+// over the Unix socket.
+func newKubeletGRPCPodInformer(parent context.Context, client kubeletpodsv1alpha1.PodsClient, node string) (*PodInformer, error) {
+	ctx, cancel := context.WithCancel(parent)
+	p := &PodInformer{
+		cancel:         cancel,
+		updatedPodChan: make(chan *v1.Pod),
+		deletedPodChan: make(chan string),
+	}
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
+			p.watchStream(ctx, client, node)
+		}, 1*time.Second, 0.5, true)
+	}()
+	return p, nil
+}
+
+func (p *PodInformer) watchStream(ctx context.Context, client kubeletpodsv1alpha1.PodsClient, node string) {
+	stream, err := client.WatchPods(ctx, &kubeletpodsv1alpha1.WatchPodsRequest{})
+	if err != nil {
+		if ctx.Err() == nil {
+			log.Debugf("Kubelet pods API WatchPods: %v", err)
+		}
+		return
+	}
+	for {
+		ev, err := stream.Recv()
+		if err != nil {
+			if ctx.Err() == nil {
+				log.Debugf("Kubelet pods API stream error: %v", err)
+			}
+			return
+		}
+		p.handleWatchEvent(ctx, ev, node)
+	}
+}
+
+func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alpha1.WatchPodsEvent, node string) {
+	switch ev.GetType() {
+	case kubeletpodsv1alpha1.EventType_ADDED, kubeletpodsv1alpha1.EventType_MODIFIED:
+		var pod v1.Pod
+		if err := pod.Unmarshal(ev.GetPod()); err != nil {
+			log.Warnf("Kubelet pods API: cannot unmarshal pod: %v", err)
+			return
+		}
+		if pod.Spec.NodeName != "" && pod.Spec.NodeName != node {
+			return
+		}
+		allStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
+		if len(allStatuses) > 0 {
+			allEmpty := true
+			for _, cs := range allStatuses {
+				if cs.ContainerID != "" {
+					allEmpty = false
+					break
+				}
+			}
+			if allEmpty {
+				p.emptyContainerIDOnce.Do(func() {
+					log.Warnf("Kubelet pods API: pod %s/%s has no container IDs yet; CRI may not have assigned them", pod.Namespace, pod.Name)
+				})
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case p.updatedPodChan <- &pod:
+		}
+	case kubeletpodsv1alpha1.EventType_DELETED:
+		var pod v1.Pod
+		if err := pod.Unmarshal(ev.GetPod()); err != nil {
+			log.Warnf("Kubelet pods API: cannot unmarshal pod: %v", err)
+			return
+		}
+		key := pod.Namespace + "/" + pod.Name
+		select {
+		case <-ctx.Done():
+			return
+		case p.deletedPodChan <- key:
+		}
+	case kubeletpodsv1alpha1.EventType_INITIAL_SYNC_COMPLETE, kubeletpodsv1alpha1.EventType_UNSPECIFIED:
+		// no-op: sync marker, nothing to propagate
+	}
 }
 
 func (p *PodInformer) runWorker() {

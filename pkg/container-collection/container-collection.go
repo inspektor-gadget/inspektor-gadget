@@ -22,6 +22,7 @@
 package containercollection
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -86,6 +87,10 @@ type ContainerCollection struct {
 	// kubeconfigPath is the path to the kubeconfig file, or empty for in-cluster config.
 	// Some options like WithPodInformer will use it.
 	kubeconfigPath string
+
+	// kubeletPodsAPI holds the probed Kubelet gRPC API connection (KEP-4188).
+	// Probed once at Initialize(); nil or available==false means REST fallback.
+	kubeletPodsAPI *kubeletPodsAPI
 }
 
 // ContainerCollectionOption are options to pass to
@@ -100,6 +105,13 @@ func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) 
 
 	if cc.initialized {
 		panic("Initialize already called")
+	}
+
+	cc.kubeletPodsAPI = probeKubeletPodsAPI(context.Background())
+	if cc.kubeletPodsAPI.conn != nil {
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			_ = cc.kubeletPodsAPI.conn.Close()
+		})
 	}
 
 	// Call functional options. This might fetch initial containers.
