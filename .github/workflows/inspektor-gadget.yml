@@ -2140,7 +2140,7 @@ jobs:
         tar -xzf "eksctl_${PLATFORM}.tar.gz" -C /tmp && rm "eksctl_${PLATFORM}.tar.gz"
         sudo mv /tmp/eksctl /usr/local/bin
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ vars.AWS_ROLE }}
         aws-region: ${{ env.AWS_REGION }}
