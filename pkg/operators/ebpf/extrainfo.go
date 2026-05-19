@@ -16,7 +16,6 @@ package ebpfoperator
 
 import (
 	"bytes"
-	"debug/elf"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	graphutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf2graph"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
 )
 
 type extraInfoMap struct {
@@ -48,7 +48,7 @@ type extraInfoVariable struct {
 }
 
 func (i *ebpfInstance) addExtraInfo(gadgetCtx operators.GadgetContext) error {
-	ef, err := elf.NewFile(bytes.NewReader(i.program))
+	ef, err := safeelf.NewFile(bytes.NewReader(i.program))
 	if err != nil {
 		return fmt.Errorf("parsing elf file: %w", err)
 	}
