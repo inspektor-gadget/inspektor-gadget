@@ -533,7 +533,7 @@ Then, you can interact with the buffer using these functions:
 1. `void *gadget_reserve_buf(void *map, __u64 size)`: Reserves memory in the corresponding buffer. This is actually a macro and you must call it by taking the address of the map, like `gadget_reserve_buf(&events, 256)`.
 1. `long gadget_submit_buf(void *ctx, void *map, void *buf, __u64 size)`: Writes the previously reserved memory in the corresponding buffer.
 1. `void gadget_discard_buf(void *buf)`: Discards the previously reserved buffer. This is needed to avoid wasting memory.
-1. `long gadget_output_buf(void *ctx, void *map, void *buf, __u64 size)`: Reserves and writes the buffer in the corresponding map. This is equivalent to calling `gadget_reserve_buf()` and `gadget_submit_buf()`.
+1. `long gadget_output_buf(void *ctx, void *map, void *buf, __u64 size)`: Reserves and writes the buffer in the corresponding map. This is equivalent to calling `gadget_reserve_buf()` and `gadget_submit_buf()`. Like `gadget_reserve_buf()`, if the ring buffer is full it increments the per-CPU `<map>_lost_samples` counter declared by `GADGET_TRACER_MAP()`, which is reported to userspace by the eBPF operator.
 
 The following snippet demonstrates how to use the code available in `<gadget/buffer.h>`, it is taken from `trace_open`:
 
