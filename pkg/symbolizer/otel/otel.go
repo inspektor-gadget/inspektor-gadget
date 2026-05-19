@@ -362,11 +362,11 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		for i, h := range t.Frames {
 			v := h.Value()
 			if v.SourceLine != 0 {
-				stackBuilder.WriteString(fmt.Sprintf("  #%d: %s +0x%x\n    %s:%d\n",
-					i, v.FunctionName, v.AddressOrLineno, v.SourceFile, v.SourceLine))
+				fmt.Fprintf(&stackBuilder, "  #%d: %s +0x%x\n    %s:%d\n",
+					i, v.FunctionName, v.AddressOrLineno, v.SourceFile, v.SourceLine)
 			} else {
-				stackBuilder.WriteString(fmt.Sprintf("  #%d: %s +0x%x\n",
-					i, v.FunctionName, v.AddressOrLineno))
+				fmt.Fprintf(&stackBuilder, "  #%d: %s +0x%x\n",
+					i, v.FunctionName, v.AddressOrLineno)
 			}
 		}
 		stackStr := stackBuilder.String()
