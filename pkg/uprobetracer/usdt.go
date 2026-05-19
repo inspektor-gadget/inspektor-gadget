@@ -22,6 +22,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
 )
 
 // For details regarding the data format of USDT notes, please refer to:
@@ -77,7 +79,7 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 		return nil, fmt.Errorf("ELF file %q is not regular", filepath)
 	}
 
-	elfReader, err := elf.NewFile(file)
+	elfReader, err := safeelf.NewFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("reading elf file %q: %w", filepath, err)
 	}
@@ -139,13 +141,13 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 		elfSemaphore := elfReader.ByteOrder.Uint64(desc[2*wordSize : 3*wordSize])
 
 		diff := baseSection.Addr - elfBase
-		location, err := vaddr2ElfOffset(elfReader, elfLocation+diff)
+		location, err := vaddr2ElfOffset(elfReader.File, elfLocation+diff)
 		if err != nil {
 			return nil, err
 		}
 
 		if elfSemaphore != 0 {
-			elfSemaphore, err = vaddr2ElfOffset(elfReader, elfSemaphore+diff)
+			elfSemaphore, err = vaddr2ElfOffset(elfReader.File, elfSemaphore+diff)
 			if err != nil {
 				return nil, err
 			}
