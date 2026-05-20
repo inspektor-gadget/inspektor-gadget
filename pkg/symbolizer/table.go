@@ -84,9 +84,9 @@ func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 			Size:  sym.Size,
 		})
 		symbolCount++
-	}
-	if symbolCount > MaxSymbolCount {
-		return nil, fmt.Errorf("too many symbols: %d", symbolCount)
+		if symbolCount > MaxSymbolCount {
+			return nil, fmt.Errorf("too many symbols: %d (exceeds limit %d)", symbolCount, MaxSymbolCount)
+		}
 	}
 	slices.SortFunc(symbols, func(a, b *Symbol) int {
 		if a.Value < b.Value {
