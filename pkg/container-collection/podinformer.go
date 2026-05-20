@@ -56,6 +56,14 @@ type PodInformer struct {
 	wg             sync.WaitGroup
 
 	emptyContainerIDOnce sync.Once
+
+	// liveKeys tracks pod keys (namespace/name) for which an ADDED/MODIFIED
+	// event has been successfully delivered to updatedPodChan. On each stream
+	// reconnect, INITIAL_SYNC_COMPLETE triggers synthetic DELETE events for
+	// any key in liveKeys that kubelet did not replay — those pods were deleted
+	// while the stream was down and will never get a real DELETED event.
+	// Accessed only from the single watchStream goroutine; no mutex needed.
+	liveKeys map[string]struct{}
 }
 
 func NewPodInformer(node string) (*PodInformer, error) {
@@ -206,6 +214,7 @@ func newKubeletGRPCPodInformer(parent context.Context, client kubeletpodsv1alpha
 		cancel:         cancel,
 		updatedPodChan: make(chan *v1.Pod),
 		deletedPodChan: make(chan string),
+		liveKeys:       make(map[string]struct{}),
 	}
 	p.wg.Add(1)
 	go func() {
@@ -225,6 +234,9 @@ func (p *PodInformer) watchStream(ctx context.Context, client kubeletpodsv1alpha
 		}
 		return
 	}
+	// sessionKeys tracks every pod key seen via ADDED/MODIFIED in this stream
+	// session. Passed to handleWatchEvent so INITIAL_SYNC_COMPLETE can reconcile.
+	sessionKeys := make(map[string]struct{})
 	for {
 		ev, err := stream.Recv()
 		if err != nil {
@@ -233,11 +245,11 @@ func (p *PodInformer) watchStream(ctx context.Context, client kubeletpodsv1alpha
 			}
 			return
 		}
-		p.handleWatchEvent(ctx, ev, node)
+		p.handleWatchEvent(ctx, ev, node, sessionKeys)
 	}
 }
 
-func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alpha1.WatchPodsEvent, node string) {
+func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alpha1.WatchPodsEvent, node string, sessionKeys map[string]struct{}) {
 	switch ev.GetType() {
 	case kubeletpodsv1alpha1.EventType_ADDED, kubeletpodsv1alpha1.EventType_MODIFIED:
 		var pod v1.Pod
@@ -248,6 +260,8 @@ func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alp
 		if pod.Spec.NodeName != "" && pod.Spec.NodeName != node {
 			return
 		}
+		key := pod.Namespace + "/" + pod.Name
+		sessionKeys[key] = struct{}{}
 		allStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
 		if len(allStatuses) > 0 {
 			allEmpty := true
@@ -267,6 +281,7 @@ func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alp
 		case <-ctx.Done():
 			return
 		case p.updatedPodChan <- &pod:
+			p.liveKeys[key] = struct{}{}
 		}
 	case kubeletpodsv1alpha1.EventType_DELETED:
 		var pod v1.Pod
@@ -279,9 +294,29 @@ func (p *PodInformer) handleWatchEvent(ctx context.Context, ev *kubeletpodsv1alp
 		case <-ctx.Done():
 			return
 		case p.deletedPodChan <- key:
+			delete(p.liveKeys, key)
 		}
-	case kubeletpodsv1alpha1.EventType_INITIAL_SYNC_COMPLETE, kubeletpodsv1alpha1.EventType_UNSPECIFIED:
-		// no-op: sync marker, nothing to propagate
+	case kubeletpodsv1alpha1.EventType_INITIAL_SYNC_COMPLETE:
+		// Kubelet replays only pods that still exist; pods deleted while the
+		// stream was down are absent from the replay and emit no DELETED event.
+		// Synthesize DELETEs for any key that was live before this session but
+		// not seen in the current replay batch.
+		var stale []string
+		for key := range p.liveKeys {
+			if _, seen := sessionKeys[key]; !seen {
+				stale = append(stale, key)
+			}
+		}
+		for _, key := range stale {
+			delete(p.liveKeys, key)
+			select {
+			case <-ctx.Done():
+				return
+			case p.deletedPodChan <- key:
+			}
+		}
+	case kubeletpodsv1alpha1.EventType_UNSPECIFIED:
+		// no-op
 	}
 }
 

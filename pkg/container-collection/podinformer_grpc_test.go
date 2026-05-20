@@ -338,6 +338,69 @@ func TestKubeletGRPCPodInformer_ContainerIDSanityWarning(t *testing.T) {
 
 // TestProbeKubeletPodsAPI_AbsentSocket verifies that probeKubeletPodsAPI returns
 // available=false (silently) when the Kubelet pods-api socket does not exist.
+func TestKubeletGRPCPodInformer_ReconnectSyntheticDelete(t *testing.T) {
+	t.Parallel()
+	// Regression test: a pod deleted while the stream is down must still trigger
+	// cc.RemoveContainer(). Kubelet replays only surviving pods on reconnect and
+	// emits no DELETED event for the missing one; we must synthesise it at
+	// INITIAL_SYNC_COMPLETE time by diffing liveKeys against the replay set.
+	pod := makePod("ephemeral-pod", "ns1", "")
+	podBytes := marshalPod(t, pod)
+
+	var mu sync.Mutex
+	callCount := 0
+
+	client := startMockPodsServer(t, &mockPodsServer{
+		watchFn: func(_ *kubeletpodsv1alpha1.WatchPodsRequest, stream kubeletpodsv1alpha1.Pods_WatchPodsServer) error {
+			mu.Lock()
+			n := callCount
+			callCount++
+			mu.Unlock()
+
+			switch n {
+			case 0:
+				// First session: deliver the pod, then drop the stream.
+				if err := stream.Send(&kubeletpodsv1alpha1.WatchPodsEvent{
+					Type: kubeletpodsv1alpha1.EventType_ADDED,
+					Pod:  podBytes,
+				}); err != nil {
+					return err
+				}
+				return errors.New("simulated disconnect")
+			case 1:
+				// Second session: pod was deleted while we were down.
+				// Kubelet sends INITIAL_SYNC_COMPLETE with no preceding ADDED.
+				return stream.Send(&kubeletpodsv1alpha1.WatchPodsEvent{
+					Type: kubeletpodsv1alpha1.EventType_INITIAL_SYNC_COMPLETE,
+				})
+			default:
+				<-stream.Context().Done()
+				return nil
+			}
+		},
+	})
+
+	informer, err := newKubeletGRPCPodInformer(context.Background(), client, "")
+	require.NoError(t, err)
+	defer informer.Stop()
+
+	// Step 1: receive the initial ADDED event.
+	select {
+	case got := <-informer.UpdatedChan():
+		require.Equal(t, "ephemeral-pod", got.Name)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for initial ADDED event")
+	}
+
+	// Step 2: after reconnect, INITIAL_SYNC_COMPLETE must trigger a synthetic DELETE.
+	select {
+	case key := <-informer.DeletedChan():
+		require.Equal(t, "ns1/ephemeral-pod", key)
+	case <-time.After(10 * time.Second): // allow time for JitterUntilWithContext backoff
+		t.Fatal("timeout: synthetic DELETE was not emitted for pod deleted during disconnect")
+	}
+}
+
 func TestProbeKubeletPodsAPI_AbsentSocket(t *testing.T) {
 	// Modifies package-level host.HostRoot; must not run in parallel.
 	orig := host.HostRoot
