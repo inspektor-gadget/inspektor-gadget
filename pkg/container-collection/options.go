@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	kubeletpodsv1alpha1 "k8s.io/kubelet/pkg/apis/pods/v1alpha1"
 
 	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -283,7 +284,12 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 			return fmt.Errorf("creating Kubernetes client: %w", err)
 		}
 
-		podInformer, err := NewPodInformer(nodeName)
+		var podInformer *PodInformer
+		if cc.kubeletPodsAPI != nil && cc.kubeletPodsAPI.available {
+			podInformer, err = newKubeletGRPCPodInformer(context.Background(), cc.kubeletPodsAPI.client, nodeName)
+		} else {
+			podInformer, err = NewPodInformer(nodeName)
+		}
 		if err != nil {
 			return fmt.Errorf("creating pod informer: %w", err)
 		}
@@ -407,9 +413,27 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 		}
 		defer k8sClient.Close()
 
-		containers, err := k8sClient.ListContainers()
-		if err != nil {
-			return fmt.Errorf("listing containers: %w", err)
+		var containers []Container
+		if cc.kubeletPodsAPI != nil && cc.kubeletPodsAPI.available {
+			listCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			resp, err := cc.kubeletPodsAPI.client.ListPods(listCtx, &kubeletpodsv1alpha1.ListPodsRequest{})
+			if err != nil {
+				return fmt.Errorf("listing pods via kubelet gRPC: %w", err)
+			}
+			for _, podBytes := range resp.GetPods() {
+				var pod corev1.Pod
+				if err := pod.Unmarshal(podBytes); err != nil {
+					log.Warnf("WithInitialKubernetesContainers: cannot unmarshal pod: %v", err)
+					continue
+				}
+				containers = append(containers, k8sClient.GetRunningContainers(&pod)...)
+			}
+		} else {
+			containers, err = k8sClient.ListContainers()
+			if err != nil {
+				return fmt.Errorf("listing containers: %w", err)
+			}
 		}
 
 		for _, container := range containers {
@@ -506,9 +530,34 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 	return res.GetOwnerReferences(), nil
 }
 
-func getPodByCgroups(clientset *kubernetes.Clientset, nodeName string, container *Container) (*corev1.Pod, error) {
+func getPodByCgroups(cc *ContainerCollection, clientset *kubernetes.Clientset, nodeName string, container *Container) (*corev1.Pod, error) {
 	if container.CgroupV1 == "" && container.CgroupV2 == "" {
 		return nil, fmt.Errorf("need cgroup paths to work")
+	}
+
+	if cc.kubeletPodsAPI != nil && cc.kubeletPodsAPI.available {
+		listCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		resp, err := cc.kubeletPodsAPI.client.ListPods(listCtx, &kubeletpodsv1alpha1.ListPodsRequest{})
+		if err != nil {
+			return nil, fmt.Errorf("listing pods via kubelet gRPC: %w", err)
+		}
+		for _, podBytes := range resp.GetPods() {
+			var pod corev1.Pod
+			if err := pod.Unmarshal(podBytes); err != nil {
+				continue
+			}
+			uid := string(pod.UID)
+			uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
+			if !strings.Contains(container.CgroupV2, uidWithUnderscores) &&
+				!strings.Contains(container.CgroupV2, uid) &&
+				!strings.Contains(container.CgroupV1, uidWithUnderscores) &&
+				!strings.Contains(container.CgroupV1, uid) {
+				continue
+			}
+			return &pod, nil
+		}
+		return nil, fmt.Errorf("no pod found for container %q", container.Runtime.ContainerName)
 	}
 
 	fieldSelector := fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
@@ -553,9 +602,33 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 				var pod *corev1.Pod
 				var err error
 				if container.K8s.PodName == "" || container.K8s.Namespace == "" {
-					pod, err = getPodByCgroups(clientset, nodeName, container)
+					pod, err = getPodByCgroups(cc, clientset, nodeName, container)
 					if err != nil {
 						log.Errorf("kubernetes enricher (from UID): cannot find pod for container %s: %s", container.Runtime.ContainerName, err)
+						return false
+					}
+				} else if cc.kubeletPodsAPI != nil && cc.kubeletPodsAPI.available {
+					listCtx, listCancel := context.WithTimeout(context.Background(), 5*time.Second)
+					resp, grpcErr := cc.kubeletPodsAPI.client.ListPods(listCtx, &kubeletpodsv1alpha1.ListPodsRequest{})
+					listCancel()
+					if grpcErr != nil {
+						log.Errorf("kubernetes enricher (from ns/podname): cannot list pods via gRPC: %s", grpcErr)
+						return false
+					}
+					var found bool
+					for _, podBytes := range resp.GetPods() {
+						var p corev1.Pod
+						if err := p.Unmarshal(podBytes); err != nil {
+							continue
+						}
+						if p.Namespace == container.K8s.Namespace && p.Name == container.K8s.PodName {
+							pod = &p
+							found = true
+							break
+						}
+					}
+					if !found {
+						log.Errorf("kubernetes enricher (from ns/podname): cannot find pod %s/%s via gRPC", container.K8s.Namespace, container.K8s.PodName)
 						return false
 					}
 				} else {
