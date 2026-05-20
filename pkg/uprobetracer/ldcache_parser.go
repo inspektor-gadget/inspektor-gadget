@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/secureopen"
@@ -65,46 +64,50 @@ const (
 	ldCacheMaxSize = int64(16 * 1024 * 1024)
 )
 
-type ldEntry struct {
-	Key   string
-	Value string
-}
+func readCacheFormat1(data []byte, libraryPrefix string) []string {
+	var results []string
 
-func readCacheFormat1(data []byte) []ldEntry {
-	var ldEntries []ldEntry
-
-	ldCache := ldCache1{}
 	if uint32(len(data)) <= ldCache1Size {
 		return nil
 	}
-	err := readFromBytes(&ldCache, data[:ldCache1Size])
+	ldCache := ldCache1{}
+	err := reinterpretBytes(&ldCache, data[:ldCache1Size])
 	if err != nil {
 		return nil
 	}
 	ldEntriesOffset := ldCache1Size
-	ldStringsOffset := ldCache1Size + ldCache1EntrySize*ldCache.EntryCount
+	// Cap entry count based on actual file size to prevent excessive iteration.
+	maxEntries := (uint32(len(data)) - ldEntriesOffset) / ldCache1EntrySize
+	if ldCache.EntryCount > maxEntries {
+		ldCache.EntryCount = maxEntries
+	}
+	ldStringsOffset := ldEntriesOffset + ldCache1EntrySize*ldCache.EntryCount
 	for i := uint32(0); i < ldCache.EntryCount; i++ {
 		entryOffset := ldEntriesOffset + i*ldCache1EntrySize
 		entry := ldCache1Entry{}
 		if uint32(len(data)) <= entryOffset+ldCache1EntrySize {
 			return nil
 		}
-		err := readFromBytes(&entry, data[entryOffset:entryOffset+ldCache1EntrySize])
+		err := reinterpretBytes(&entry, data[entryOffset:entryOffset+ldCache1EntrySize])
 		if err != nil {
 			return nil
 		}
 		keyOffset := ldStringsOffset + entry.Key
-		valueOffset := ldStringsOffset + entry.Value
-		key := readStringFromBytes(data, keyOffset)
-		value := readStringFromBytes(data, valueOffset)
-		ldEntries = append(ldEntries, ldEntry{key, value})
+		if matchStringInBytes(data, keyOffset, libraryPrefix) {
+			valueOffset := ldStringsOffset + entry.Value
+			value := readStringFromBytes(data, valueOffset)
+			results = append(results, value)
+		}
 	}
-	return ldEntries
+	return results
 }
 
-func readCacheFormat2(data []byte) []ldEntry {
-	var ldEntries []ldEntry
+func readCacheFormat2(data []byte, libraryPrefix string) []string {
+	var results []string
 
+	if len(data) < len(cache2Header) {
+		return nil
+	}
 	if !bytes.Equal([]byte(cache2Header), data[:len(cache2Header)]) {
 		return nil
 	}
@@ -112,28 +115,34 @@ func readCacheFormat2(data []byte) []ldEntry {
 	if uint32(len(data)) <= ldCache2Size {
 		return nil
 	}
-	err := readFromBytes(&ldCache, data[:ldCache2Size])
+	err := reinterpretBytes(&ldCache, data[:ldCache2Size])
 	if err != nil {
 		return nil
 	}
 	ldEntriesOffset := ldCache2Size
+	// Cap entry count based on actual file size to prevent excessive iteration.
+	maxEntries := (uint32(len(data)) - ldEntriesOffset) / ldCache2EntrySize
+	if ldCache.EntryCount > maxEntries {
+		ldCache.EntryCount = maxEntries
+	}
 	for i := uint32(0); i < ldCache.EntryCount; i++ {
 		entryOffset := ldEntriesOffset + i*ldCache2EntrySize
 		entry := ldCache2Entry{}
 		if uint32(len(data)) <= entryOffset+ldCache2EntrySize {
 			return nil
 		}
-		err := readFromBytes(&entry, data[entryOffset:entryOffset+ldCache2EntrySize])
+		err := reinterpretBytes(&entry, data[entryOffset:entryOffset+ldCache2EntrySize])
 		if err != nil {
 			return nil
 		}
 		keyOffset := entry.Key
-		valueOffset := entry.Value
-		key := readStringFromBytes(data, keyOffset)
-		value := readStringFromBytes(data, valueOffset)
-		ldEntries = append(ldEntries, ldEntry{key, value})
+		if matchStringInBytes(data, keyOffset, libraryPrefix) {
+			valueOffset := entry.Value
+			value := readStringFromBytes(data, valueOffset)
+			results = append(results, value)
+		}
 	}
-	return ldEntries
+	return results
 }
 
 // simulate the loader's behaviour, find library path in containers' `/etc/ld.so.cache`.
@@ -146,38 +155,33 @@ func parseLdCache(containerPid uint32, ldCachePath string, libraryName string) (
 	}
 	ldCacheFileSize := uint32(len(ldCacheFile))
 
-	var ldEntries []ldEntry
 	var filteredLibraries []string
+	libraryPrefix := libraryName + ".so"
 
-	if bytes.Equal([]byte(cache1Header), ldCacheFile[:len(cache1Header)]) {
+	if len(ldCacheFile) >= len(cache1Header) && bytes.Equal([]byte(cache1Header), ldCacheFile[:len(cache1Header)]) {
 		cache1 := ldCache1{}
 		if uint32(len(ldCacheFile)) <= ldCache1Size {
 			return nil, errors.New("ldCache format error")
 		}
-		err := readFromBytes(&cache1, ldCacheFile[:ldCache1Size])
+		err := reinterpretBytes(&cache1, ldCacheFile[:ldCache1Size])
 		if err != nil {
 			return nil, errors.New("ldCache format error")
 		}
-		cache1Len := ldCache1Size + cache1.EntryCount*ldCache1EntrySize
+		// Use uint64 arithmetic to avoid overflow when computing the
+		// cache1 section length from the untrusted EntryCount field.
+		cache1Len := uint64(ldCache1Size) + uint64(cache1.EntryCount)*uint64(ldCache1EntrySize)
 		cache1Len = (cache1Len + 7) / 8 * 8
-		if ldCacheFileSize > (cache1Len + ldCache2Size) {
-			ldEntries = readCacheFormat2(ldCacheFile)
+		if uint64(ldCacheFileSize) > (cache1Len + uint64(ldCache2Size)) {
+			filteredLibraries = readCacheFormat2(ldCacheFile, libraryPrefix)
 		} else {
-			ldEntries = readCacheFormat1(ldCacheFile)
+			filteredLibraries = readCacheFormat1(ldCacheFile, libraryPrefix)
 		}
 	} else {
-		ldEntries = readCacheFormat2(ldCacheFile)
+		filteredLibraries = readCacheFormat2(ldCacheFile, libraryPrefix)
 	}
 
-	if ldEntries == nil {
+	if filteredLibraries == nil {
 		return nil, errors.New("ldCache format error")
-	}
-
-	// filter library entries with given library name
-	for _, entry := range ldEntries {
-		if strings.HasPrefix(entry.Key, libraryName+".so") {
-			filteredLibraries = append(filteredLibraries, entry.Value)
-		}
 	}
 
 	return filteredLibraries, nil
