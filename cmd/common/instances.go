@@ -102,7 +102,7 @@ func AddInstanceCommands(
 			cols.MustAddColumn(columns.Attributes{
 				Name:         "Gadget",
 				Visible:      true,
-				EllipsisType: ellipsis.End,
+				EllipsisType: ellipsis.Start,
 				Order:        40,
 			}, func(g *GadgetInfo) any {
 				if g.pg == nil {
