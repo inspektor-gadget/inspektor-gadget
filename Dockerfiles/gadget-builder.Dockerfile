@@ -7,7 +7,7 @@ ARG RUST_VERSION=1.87.0
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3 AS builder
+FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb AS builder
 ARG BPFTOOL_VERSION
 ARG LIBBPF_VERSION
 
@@ -27,7 +27,7 @@ RUN \
 	tar -C /usr/local/bin -xzf bpftool-${BPFTOOL_VERSION}-${ARCH}.tar.gz && \
 	chmod +x /usr/local/bin/bpftool
 
-FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
+FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb
 ARG CLANG_LLVM_VERSION
 ARG GOLANG_VERSION
 ARG RUST_VERSION
