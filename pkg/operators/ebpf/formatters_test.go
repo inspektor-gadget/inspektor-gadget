@@ -306,7 +306,7 @@ func TestFetchAndFormatStackTrace(t *testing.T) {
 			stackEntries: [ebpftypes.KernelPerfMaxStackDepth]uint64{
 				0xabcdef, 0x123456, 0x312414, 0,
 			},
-			expectedTrace: "[0]funcA; [1]funcB; [2]unknown; ",
+			expectedTrace: "funcA; funcB; unknown; ",
 		},
 		{
 			name: "Empty stack trace",
@@ -320,7 +320,7 @@ func TestFetchAndFormatStackTrace(t *testing.T) {
 			stackEntries: [ebpftypes.KernelPerfMaxStackDepth]uint64{
 				0xabcdef, 0, 0, 0,
 			},
-			expectedTrace: "[0]funcA; ",
+			expectedTrace: "funcA; ",
 		},
 	}
 
