@@ -222,11 +222,11 @@ func fetchAndFormatStackTrace(stackId uint32, stackLookup func(interface{}, inte
 		return "", err
 	}
 	outString := ""
-	for depth, addr := range stack {
+	for _, addr := range stack {
 		if addr == 0 {
 			break
 		}
-		outString += fmt.Sprintf("[%d]%s; ", depth, lookupByInstructionPointer(addr))
+		outString += fmt.Sprintf("%s; ", lookupByInstructionPointer(addr))
 	}
 	return outString, nil
 }

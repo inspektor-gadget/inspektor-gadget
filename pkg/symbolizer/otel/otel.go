@@ -219,8 +219,15 @@ func (o *otelResolverInstance) Resolve(task symbolizer.Task, stackQueries []symb
 		if v.Type == libpf.KernelFrame {
 			continue
 		}
+		name := v.FunctionName.String()
+		if name == "" && v.Mapping.Valid() {
+			fileName := v.Mapping.Value().File.Value().FileName.String()
+			if fileName != "" {
+				name = fmt.Sprintf("%s+0x%x", fileName, uint64(v.AddressOrLineno))
+			}
+		}
 		userFrames = append(userFrames, userFrame{
-			functionName: v.FunctionName.String(),
+			functionName: name,
 		})
 	}
 
