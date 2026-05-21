@@ -51,7 +51,7 @@ func OpenInContainer(containerPid uint32, unsafePath string) (*os.File, error) {
 	// Open with O_PATH first to avoid blocking on opening the file in case it
 	// is a pipe.
 	howOPath := unix.OpenHow{
-		Flags:   unix.O_PATH,
+		Flags:   unix.O_PATH | unix.O_CLOEXEC,
 		Mode:    0,
 		Resolve: unix.RESOLVE_IN_ROOT | unix.RESOLVE_NO_MAGICLINKS,
 	}
