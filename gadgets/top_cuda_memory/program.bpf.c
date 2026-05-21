@@ -67,6 +67,8 @@ struct {
 struct outstanding_info {
 	u64 gpu;
 	u64 host;
+	gadget_mntns_id mntns_id;
+	char comm[TASK_COMM_LEN];
 };
 
 struct {
@@ -82,6 +84,13 @@ struct {
 	__type(key, u32); // pid
 	__type(value, struct outstanding_info);
 } cudart_outstanding SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, MAX_ENTRIES);
+	__type(key, u32); // thread-group leader pid
+	__type(value, u8);
+} exited_leaders SEC(".maps");
 
 struct proc_mem_stats {
 	gadget_mntns_id mntns_id;
@@ -206,10 +215,6 @@ get_or_init_stats(void *stats_map, struct proc_key *pkey)
 			return NULL;
 	}
 
-	/* Refresh on every alloc: comm can change via execve/prctl,
-	 * mntns_id via setns. */
-	s->mntns_id = gadget_get_current_mntns_id();
-	bpf_get_current_comm(s->comm, sizeof(s->comm));
 	return s;
 }
 
@@ -219,8 +224,30 @@ enum stats_op {
 	STATS_OP_IMPLICIT_FREE = 2,
 };
 
+static __always_inline void
+refresh_current_stats_metadata(struct proc_mem_stats *s)
+{
+	s->mntns_id = gadget_get_current_mntns_id();
+	bpf_get_current_comm(s->comm, sizeof(s->comm));
+}
+
+static __always_inline void
+refresh_outstanding_metadata(struct outstanding_info *oi)
+{
+	oi->mntns_id = gadget_get_current_mntns_id();
+	bpf_get_current_comm(oi->comm, sizeof(oi->comm));
+}
+
+static __always_inline void
+copy_outstanding_metadata(struct proc_mem_stats *s, struct outstanding_info *oi)
+{
+	s->mntns_id = oi->mntns_id;
+	__builtin_memcpy(s->comm, oi->comm, sizeof(s->comm));
+}
+
 static __always_inline void update_stats(void *stats_map, u32 pid, u8 host,
-					 u64 size, enum stats_op op)
+					 u64 size, enum stats_op op,
+					 struct outstanding_info *oi)
 {
 	struct proc_key pkey;
 	__builtin_memset(&pkey, 0, sizeof(pkey));
@@ -230,6 +257,11 @@ static __always_inline void update_stats(void *stats_map, u32 pid, u8 host,
 
 	if (!s)
 		return;
+
+	if (op == STATS_OP_IMPLICIT_FREE && oi)
+		copy_outstanding_metadata(s, oi);
+	else
+		refresh_current_stats_metadata(s);
 
 	switch (op) {
 	case STATS_OP_ALLOC:
@@ -256,6 +288,7 @@ static __always_inline void outstanding_add(void *outstanding_map, u32 pid,
 	struct outstanding_info *oi;
 	oi = bpf_map_lookup_elem(outstanding_map, &pid);
 	if (oi) {
+		refresh_outstanding_metadata(oi);
 		if (is_host)
 			__sync_fetch_and_add(&oi->host, size);
 		else
@@ -272,12 +305,14 @@ static __always_inline void outstanding_add(void *outstanding_map, u32 pid,
 		noi.host = size;
 	else
 		noi.gpu = size;
+	refresh_outstanding_metadata(&noi);
 	if (bpf_map_update_elem(outstanding_map, &pid, &noi, BPF_NOEXIST) == 0)
 		return;
 
 	/* Lost the race — another CPU inserted the entry; add atomically. */
 	oi = bpf_map_lookup_elem(outstanding_map, &pid);
 	if (oi) {
+		refresh_outstanding_metadata(oi);
 		if (is_host)
 			__sync_fetch_and_add(&oi->host, size);
 		else
@@ -292,6 +327,7 @@ static __always_inline void outstanding_sub(void *outstanding_map, u32 pid,
 	oi = bpf_map_lookup_elem(outstanding_map, &pid);
 	if (!oi)
 		return;
+	refresh_outstanding_metadata(oi);
 	u64 *field = is_host ? &oi->host : &oi->gpu;
 	/* Bounded CAS loop: atomically subtract or clamp to 0, fixing the
 	 * TOCTOU race where two CPUs could both pass the >= guard and both
@@ -397,7 +433,7 @@ static __always_inline int generic_alloc_exit(int ret, void *ctx_map,
 
 	outstanding_add(outstanding_map, pid, size, is_host);
 
-	update_stats(stats_map, pid, is_host, size, STATS_OP_ALLOC);
+	update_stats(stats_map, pid, is_host, size, STATS_OP_ALLOC, 0);
 
 	return 0;
 
@@ -466,7 +502,7 @@ static __always_inline int generic_free_exit(int ret, void *free_ptrs_map,
 
 	outstanding_sub(outstanding_map, pid, size, is_host);
 
-	update_stats(stats_map, pid, is_host, size, STATS_OP_FREE);
+	update_stats(stats_map, pid, is_host, size, STATS_OP_FREE, 0);
 
 	return 0;
 }
@@ -493,10 +529,10 @@ static __always_inline void handle_ctx_destroy(u32 pid)
 	if (lc_oi) {
 		if (lc_oi->gpu > 0)
 			update_stats(&libcuda_mem_stats, pid, 0, lc_oi->gpu,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, lc_oi);
 		if (lc_oi->host > 0)
 			update_stats(&libcuda_mem_stats, pid, 1, lc_oi->host,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, lc_oi);
 		bpf_map_delete_elem(&libcuda_outstanding, &pid);
 	}
 
@@ -505,10 +541,10 @@ static __always_inline void handle_ctx_destroy(u32 pid)
 	if (rt_oi) {
 		if (rt_oi->gpu > 0)
 			update_stats(&libcudart_mem_stats, pid, 0, rt_oi->gpu,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, rt_oi);
 		if (rt_oi->host > 0)
 			update_stats(&libcudart_mem_stats, pid, 1, rt_oi->host,
-				     STATS_OP_IMPLICIT_FREE);
+				     STATS_OP_IMPLICIT_FREE, rt_oi);
 		bpf_map_delete_elem(&cudart_outstanding, &pid);
 	}
 }
@@ -538,18 +574,20 @@ int BPF_URETPROBE(trace_uretprobe_cuCtxDestroy, int ret)
 /* ================================================================
  * Process exit handlers
  *
- * sched_process_exit fires for every thread as it exits — used to
- * clean up per-thread transient maps so they don't leak for the
- * lifetime of a long-running multi-threaded process.
+ * sched_process_exit fires for every thread as it exits and is used
+ * for per-thread transient map cleanup. It also records thread-group
+ * leaders so sched_process_free can later do process-level cleanup.
  *
- * sched_process_free fires when the last thread of the process is
- * fully reaped — used to credit any remaining outstanding CUDA bytes
- * as implicitly freed (the process is truly gone at this point).
+ * sched_process_free fires for every released task_struct. The kernel
+ * delays releasing the thread-group leader while other threads still
+ * exist, so consuming a leader marker here means the process is gone.
  * ================================================================ */
 SEC("tracepoint/sched/sched_process_exit")
 int trace_sched_process_exit(void *ctx)
 {
-	u32 tid = (u32)bpf_get_current_pid_tgid();
+	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	u32 pid = (u32)(pid_tgid >> 32);
+	u32 tid = (u32)pid_tgid;
 
 	// Clean up per-thread transient context maps so entries don't
 	// accumulate for threads of long-running processes.
@@ -560,25 +598,30 @@ int trace_sched_process_exit(void *ctx)
 	bpf_map_delete_elem(&cudart_alloc_ctx_map, &tid);
 	bpf_map_delete_elem(&cudart_free_ptrs, &tid);
 
+	if (pid == tid) {
+		u8 exists = 1;
+		bpf_map_update_elem(&exited_leaders, &pid, &exists, BPF_ANY);
+	}
+
 	return 0;
 }
 
 SEC("tracepoint/sched/sched_process_free")
-int trace_sched_process_free(void *ctx)
+int trace_sched_process_free(struct trace_event_raw_sched_process_template *ctx)
 {
-	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	u32 pid = (u32)(pid_tgid >> 32);
-	u32 tid = (u32)pid_tgid;
+	u32 freed_tid = ctx->pid;
+	u8 *exited_leader;
+
+	exited_leader = bpf_map_lookup_elem(&exited_leaders, &freed_tid);
+	if (!exited_leader)
+		return 0;
+	bpf_map_delete_elem(&exited_leaders, &freed_tid);
 
 	// Note: we intentionally do NOT clean up libcuda_alloc_sizes /
 	// cudart_alloc_sizes here.  BPF cannot iterate by partial key
 	// (pid) to delete matching entries.  These maps use LRU eviction
 	// to reclaim stale entries from dead processes.
-
-	// sched_process_free fires per-thread; only act when the last
-	// thread (pid == tid) is freed, meaning the process is fully gone.
-	if (pid == tid)
-		handle_ctx_destroy(pid);
+	handle_ctx_destroy(freed_tid);
 
 	return 0;
 }
