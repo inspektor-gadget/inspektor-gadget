@@ -21,11 +21,16 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sync"
 
 	"github.com/gofrs/flock"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/oci"
 )
+
+// storeMu protects newLocalOciStore from concurrent goroutine access within
+// the same process. The file-based flock only provides inter-process locking.
+var storeMu sync.Mutex
 
 type localOciStore struct {
 	*oci.Store
@@ -38,6 +43,11 @@ type localOciStore struct {
 // newLocalOciStore returns a localOciStore that is safe when executed
 // concurrently, even from different processes.
 func newLocalOciStore() (*localOciStore, error) {
+	// Protect against concurrent goroutines, e.g. multiple headless
+	// gadget instances starting simultaneously.
+	storeMu.Lock()
+	defer storeMu.Unlock()
+
 	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
 		return nil, err
 	}
