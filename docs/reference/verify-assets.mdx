@@ -51,9 +51,8 @@ Digest: sha256:...
 
 Artifact Type   Digest
 example/sbom    sha256:hash_of_sbom_manifest
-# As we include SBOMs in our multi architecture container image, they are also
-# signed.
-# So, let's check the SBOM is signed with our private key:
+# SBOMs are signed individually per platform.
+# Let's check the SBOM is signed with our private key:
 $ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/inspektor-gadget@sha256:hash_of_sbom_manifest
 
 Verification for ghcr.io/inspektor-gadget/inspektor-gadget@sha256:hash_of_sbom_manifest
