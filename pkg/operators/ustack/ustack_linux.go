@@ -60,12 +60,12 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 
 	var addressesBuilder strings.Builder
 	stackQueries := make([]symbolizer.StackItemQuery, 0, ebpftypes.UserPerfMaxStackDepth)
-	for i, addr := range stack {
+	for _, addr := range stack {
 		if addr == 0 {
 			break
 		}
 		stackQueries = append(stackQueries, symbolizer.StackItemQuery{Addr: addr})
-		fmt.Fprintf(&addressesBuilder, "[%d]0x%016x; ", i, addr)
+		fmt.Fprintf(&addressesBuilder, "0x%016x; ", addr)
 	}
 	addressesStr := addressesBuilder.String()
 	buildIDStr := ""
@@ -92,7 +92,6 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 			case unix.BPF_STACK_BUILD_ID_EMPTY:
 				break buildid_iter
 			case unix.BPF_STACK_BUILD_ID_VALID:
-				fmt.Fprintf(&buildIDsBuilder, "[%d]", i)
 				for _, byte := range b.BuildID {
 					fmt.Fprintf(&buildIDsBuilder, "%02x", byte)
 				}
@@ -101,7 +100,7 @@ func readUserStackMap(gadgetCtx operators.GadgetContext, userStackMap, buildIDMa
 				stackQueries[i].BuildID = b.BuildID
 				stackQueries[i].Offset = b.OffsetOrIP
 			case unix.BPF_STACK_BUILD_ID_IP:
-				fmt.Fprintf(&buildIDsBuilder, "[%d]%x; ", i, b.OffsetOrIP)
+				fmt.Fprintf(&buildIDsBuilder, "%x; ", b.OffsetOrIP)
 				stackQueries[i].IP = b.OffsetOrIP
 			}
 

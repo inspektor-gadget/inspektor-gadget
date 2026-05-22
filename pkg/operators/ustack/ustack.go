@@ -366,12 +366,6 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 					buildidList := strings.Split(buildIDStr, "; ")
 					alreadyKnownSymbolsStr, _ := symbolsField.String(data)
 					alreadyKnownSymbols = strings.Split(alreadyKnownSymbolsStr, "; ")
-					for i := range alreadyKnownSymbols {
-						index := strings.IndexByte(alreadyKnownSymbols[i], ']')
-						if index >= 0 {
-							alreadyKnownSymbols[i] = alreadyKnownSymbols[i][index+1:]
-						}
-					}
 
 					for i := range addressesList {
 						if addressesList[i] == "" {
@@ -384,20 +378,19 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 							alreadyKnownSymbols = append(alreadyKnownSymbols, "")
 						}
 
-						var idx int
 						var addr uint64
 						var buildidStr string
 						var buildid [20]byte
 						var validBuildID bool
 						var offset uint64
 						var ip uint64
-						_, err := fmt.Sscanf(addressesList[i], "[%d]0x%x", &idx, &addr)
+						_, err := fmt.Sscanf(addressesList[i], "0x%x", &addr)
 						if err != nil {
 							break
 						}
-						_, err = fmt.Sscanf(buildidList[i], "[%d]%s +%x", &idx, &buildidStr, &offset)
+						_, err = fmt.Sscanf(buildidList[i], "%s +%x", &buildidStr, &offset)
 						if err != nil {
-							_, _ = fmt.Sscanf(buildidList[i], "[%d]%x", &idx, &ip)
+							_, _ = fmt.Sscanf(buildidList[i], "%x", &ip)
 							// It's ok if we don't have a build ID.
 						} else {
 							validBuildID = true
@@ -456,7 +449,10 @@ func (o *OperatorInstance) init(gadgetCtx operators.GadgetContext) error {
 						if !res.Found && i < len(alreadyKnownSymbols) {
 							s = alreadyKnownSymbols[i]
 						}
-						fmt.Fprintf(&symbolsBuilder, "[%d]%s; ", i, s)
+						if s == "" && i < len(stackQueries) {
+							s = fmt.Sprintf("0x%x", stackQueries[i].Addr)
+						}
+						fmt.Fprintf(&symbolsBuilder, "%s; ", s)
 					}
 					symbolsField.PutString(data, symbolsBuilder.String())
 				}
