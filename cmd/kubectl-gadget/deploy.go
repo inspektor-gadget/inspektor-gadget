@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -71,6 +73,9 @@ import (
 const (
 	gadgetPullSecret = "gadget-pull-secret"
 	configYamlKey    = "config.yaml"
+
+	gadgetKubeletCertSecret = "gadget-kubelet-certificate"
+	kubeletCertKey          = "ca.crt"
 )
 
 var deployCmd = &cobra.Command{
@@ -112,6 +117,7 @@ var (
 	otelMetricsListenAddr string
 	daemonConfig          string
 	setDaemonConfig       []string
+	kubeletCertificate    string
 )
 
 var clusterImagePolicyKind = schema.GroupVersionKind{
@@ -263,6 +269,12 @@ func init() {
 	deployCmd.PersistentFlags().StringVar(
 		&daemonConfig,
 		"daemon-config", "", "Path to a config file to override the daemon configuration values. The file must be in YAML format")
+	deployCmd.PersistentFlags().StringVar(
+		&kubeletCertificate,
+		"kubelet-certificate",
+		"",
+		"TODO",
+	)
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -603,6 +615,12 @@ func flagToConfigValue(flagName string, value pflag.Value) any {
 	return value
 }
 
+// This was added as beta in k8s 1.33 and there is no feature gate for
+// features in beta.
+func hasNodesConfigz(serverVersion *k8sversion.Version) bool {
+	return serverVersion.AtLeast(k8sversion.MustParseSemantic("v1.33.0"))
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 	if !printOnly {
@@ -718,6 +736,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		log.Warnf("You used --verify-image=false, the container image will not be verified")
 	}
 
+	serverVersion := &k8sversion.Version{}
+	if !printOnly {
+		serverInfo, err := discoveryClient.ServerVersion()
+		if err != nil {
+			return fmt.Errorf("getting server version: %w", err)
+		}
+
+		serverVersion = k8sversion.MustParseSemantic(serverInfo.String())
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -749,13 +777,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			if !printOnly {
-				serverInfo, err := discoveryClient.ServerVersion()
-				if err != nil {
-					return fmt.Errorf("getting server version: %w", err)
-				}
-
-				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
-
 				// The "kubernetes.io/os" node label was introduced in v1.14.0
 				// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
 				// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
@@ -856,6 +877,22 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					ReadOnly:  true,
 				})
 			}
+
+			if kubeletCertificate != "" {
+				daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, v1.Volume{
+					Name: "kubelet-certificate",
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
+							SecretName: gadgetKubeletCertSecret,
+						},
+					},
+				})
+				gadgetContainer.VolumeMounts = append(gadgetContainer.VolumeMounts, v1.VolumeMount{
+					Name:      "kubelet-certificate",
+					MountPath: "/var/run/secrets/gadget/kubelet-certificate",
+					ReadOnly:  true,
+				})
+			}
 		}
 
 		if ns, isNs := object.(*v1.Namespace); isNs {
@@ -882,6 +919,139 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 		if rBinding, isRole := object.(*rbacv1.RoleBinding); isRole {
 			rBinding.Namespace = gadgetNamespace
+		}
+		if clusterRole, isRole := object.(*rbacv1.ClusterRole); isRole {
+			// nodes/proxy is dangerous, even with the get verb:
+			// https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes
+			// We only need access to configz. Unfortunately, this is only available
+			// in k8s 1.33 and above:
+			// https://github.com/kubernetes/kubernetes/pull/129656
+			if !printOnly && hasNodesConfigz(serverVersion) {
+				// Let's first replace nodes/proxy by nodes/configz.
+				for i, rule := range clusterRole.Rules {
+					if slices.Contains(rule.Resources, "nodes/proxy") {
+						clusterRole.Rules[i].Resources = []string{"nodes/configz"}
+					}
+				}
+
+				if kubeletCertificate != "" {
+					// User gives the certificate, let's create the secret from this
+					// value.
+					secret := &v1.Secret{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "v1",
+							Kind:       "Secret",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      gadgetKubeletCertSecret,
+							Namespace: gadgetNamespace,
+							Labels: map[string]string{
+								"k8s-app": "gadget",
+							},
+						},
+						Type: v1.SecretTypeOpaque,
+						Data: map[string][]byte{
+							kubeletCertKey: []byte(kubeletCertificate),
+						},
+					}
+
+					_, err := createOrUpdateResource(dynamicClient, mapper, secret)
+					if err != nil {
+						return fmt.Errorf("problem while creating kubelet CA certificate secret: %w", err)
+					}
+				} else {
+					// Otherwise, let's run the job to get the kubelet CA and create the
+					// associated secret.
+					kubeletGetCAobjects, err := parseK8sYaml(resources.KubeletGetCAJob)
+					if err != nil {
+						return err
+					}
+
+					for _, obj := range kubeletGetCAobjects {
+						if sa, ok := obj.(*v1.ServiceAccount); ok {
+							sa.Namespace = gadgetNamespace
+						}
+						if role, ok := obj.(*rbacv1.Role); ok {
+							role.Namespace = gadgetNamespace
+						}
+						if rb, ok := obj.(*rbacv1.RoleBinding); ok {
+							rb.Namespace = gadgetNamespace
+							if len(rb.Subjects) == 1 {
+								rb.Subjects[0].Namespace = gadgetNamespace
+							}
+						}
+						if job, ok := obj.(*batchv1.Job); ok {
+							job.Namespace = gadgetNamespace
+							container := &job.Spec.Template.Spec.Containers[0]
+
+							// Adapt the kubelet-get-ca tag to the gadget container one.
+							if idx := strings.LastIndex(image, ":"); idx != -1 {
+								tag := image[idx+1:]
+								if idx := strings.LastIndex(container.Image, ":"); idx != -1 {
+									container.Image = container.Image[:idx+1] + tag
+								} else {
+									container.Image = container.Image + ":" + tag
+								}
+							}
+
+							policy, err := stringToPullPolicy(imagePullPolicy)
+							if err != nil {
+								return err
+							}
+							container.ImagePullPolicy = policy
+						}
+
+						if _, err := createOrUpdateResource(dynamicClient, mapper, obj); err != nil {
+							return fmt.Errorf("creating ca-job resource: %w", err)
+						}
+					}
+
+					jobInterface := k8sClient.BatchV1().Jobs(gadgetNamespace)
+					lw := &cache.ListWatch{
+						ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+							options.FieldSelector = "metadata.name=gadget-ca-job"
+							return jobInterface.List(context.TODO(), options)
+						},
+						WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+							options.FieldSelector = "metadata.name=gadget-ca-job"
+							return jobInterface.Watch(context.TODO(), options)
+						},
+					}
+
+					ctx, cancel := watchtools.ContextWithOptionalTimeout(context.TODO(), deployTimeout)
+					defer cancel()
+
+					_, err = watchtools.UntilWithSync(ctx, lw, &batchv1.Job{}, nil, func(event watch.Event) (bool, error) {
+						switch event.Type {
+						case watch.Deleted:
+							return false, fmt.Errorf("ca-job was deleted unexpectedly")
+						case watch.Modified:
+							job, ok := event.Object.(*batchv1.Job)
+							if !ok {
+								return false, nil
+							}
+							for _, c := range job.Status.Conditions {
+								if c.Type == batchv1.JobComplete && c.Status == v1.ConditionTrue {
+									return true, nil
+								}
+								if c.Type == batchv1.JobFailed && c.Status == v1.ConditionTrue {
+									return false, fmt.Errorf("ca-job failed: %s", c.Message)
+								}
+							}
+							return false, nil
+						case watch.Error:
+							return false, fmt.Errorf("watch error: %v", event)
+						default:
+							return false, nil
+						}
+					})
+					if err != nil {
+						return fmt.Errorf("waiting for ca-job: %w", err)
+					}
+
+					info("Kubelet CA certificate fetched successfully.\n")
+				}
+			}
 		}
 
 		if cm, isCm := object.(*v1.ConfigMap); isCm {
