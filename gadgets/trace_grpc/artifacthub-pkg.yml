@@ -1,0 +1,32 @@
+# Artifact Hub package metadata file
+version: 0.1.0
+name: "trace grpc"
+category: monitoring-logging
+displayName: "trace grpc"
+createdAt: "2026-04-29T09:30:00Z"
+digest: "2026-04-29T09:30:00Z"
+description: "trace gRPC method calls in Go programs"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/docs/latest/gadgets/trace_grpc"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/trace_grpc:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - grpc
+    - kubernetes
+    - kubelet
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_grpc"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/trace_grpc:latest --host
+    ```
+provider:
+    name: Inspektor Gadget
