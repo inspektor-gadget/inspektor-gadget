@@ -62,6 +62,11 @@ const (
 	// ld.so.cache is typically less than 200 KiB.
 	// 16 MiB should be enough.
 	ldCacheMaxSize = int64(16 * 1024 * 1024)
+
+	// A real ld.so.cache has only a handful of entries per library name
+	// (typically 1–3 across architecture variants). Cap results to bound
+	// memory usage when parsing a crafted file.
+	ldCacheMaxResults = 64
 )
 
 func readCacheFormat1(data []byte, libraryPrefix string) []string {
@@ -97,6 +102,9 @@ func readCacheFormat1(data []byte, libraryPrefix string) []string {
 			valueOffset := ldStringsOffset + entry.Value
 			value := readStringFromBytes(data, valueOffset)
 			results = append(results, value)
+			if len(results) >= ldCacheMaxResults {
+				break
+			}
 		}
 	}
 	return results
@@ -140,6 +148,9 @@ func readCacheFormat2(data []byte, libraryPrefix string) []string {
 			valueOffset := entry.Value
 			value := readStringFromBytes(data, valueOffset)
 			results = append(results, value)
+			if len(results) >= ldCacheMaxResults {
+				break
+			}
 		}
 	}
 	return results
