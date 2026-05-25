@@ -12,6 +12,9 @@ datasources:
       profiles.value-field: count
       profiles.type: malloc
       profiles.unit: bytes
+      profiles.period-type: memory
+      profiles.period-unit: bytes
+      profiles.period: "1"
     fields:
       proc.comm:
         annotations:

@@ -21,6 +21,9 @@ datasources:
       # profiling exporter annotations
       profiles.stack-fields: kern_stack,user_stack_raw.symbols
       profiles.value-field: samples
+      profiles.period-type: cpu
+      profiles.period-unit: nanoseconds
+      profiles.period: "1"
     fields:
       runtime.containerName:
         annotations:

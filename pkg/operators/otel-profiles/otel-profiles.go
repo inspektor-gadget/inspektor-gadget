@@ -19,6 +19,7 @@ package otelprofiles
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -49,11 +50,14 @@ const (
 	CompressionNone = "none"
 	CompressionGZIP = "gzip"
 
-	stackFieldsAnnotation     = "profiles.stack-fields"
-	valueFieldAnnotation      = "profiles.value-field"
-	sampleAttributeAnnotation = "profiles.sample-attribute"
-	profilesTypeAnnotation    = "profiles.type"
-	profilesUnitAnnotation    = "profiles.unit"
+	stackFieldsAnnotation        = "profiles.stack-fields"
+	valueFieldAnnotation         = "profiles.value-field"
+	sampleAttributeAnnotation    = "profiles.sample-attribute"
+	profilesTypeAnnotation       = "profiles.type"
+	profilesUnitAnnotation       = "profiles.unit"
+	profilesPeriodTypeAnnotation = "profiles.period-type"
+	profilesPeriodUnitAnnotation = "profiles.period-unit"
+	profilesPeriodAnnotation     = "profiles.period"
 
 	tagGroupOtelProfiles = "group:OpenTelemetry Profiles"
 
@@ -289,6 +293,21 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			profilesUnit = val
 		}
 
+		profilesPeriodType := "cpu"
+		if val, ok := ds.Annotations()[profilesPeriodTypeAnnotation]; ok && val != "" {
+			profilesPeriodType = val
+		}
+
+		profilesPeriodUnit := "nanoseconds"
+		if val, ok := ds.Annotations()[profilesPeriodUnitAnnotation]; ok && val != "" {
+			profilesPeriodUnit = val
+		}
+
+		profilesPeriod := int64(1)
+		if val, ok := ds.Annotations()[profilesPeriodAnnotation]; ok && val != "" {
+			profilesPeriod, _ = strconv.ParseInt(val, 10, 64)
+		}
+
 		client, ok := o.o.clients[exporterName]
 		if !ok {
 			return fmt.Errorf("client not found: %q", exporterName)
@@ -334,6 +353,11 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			st := prof.SampleType()
 			st.SetTypeStrindex(stringSet.Add(profilesType))
 			st.SetUnitStrindex(stringSet.Add(profilesUnit))
+
+			pt := prof.PeriodType()
+			pt.SetTypeStrindex(stringSet.Add(profilesPeriodType))
+			pt.SetUnitStrindex(stringSet.Add(profilesPeriodUnit))
+			prof.SetPeriod(profilesPeriod)
 
 			attributeKeys := make(map[string]int32)
 			for name := range attributesGetter {
