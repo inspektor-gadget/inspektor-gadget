@@ -230,4 +230,4 @@ replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/nota
 // - correlation ID for stack cache with LRU hash map
 // - u32 key type for generic_params map
 // - GetStackCacheMap() accessor for userspace cleanup
-replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260503100916-1bcbf380a5bd
+replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260528153254-79c7c1509ef5
