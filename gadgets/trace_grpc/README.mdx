@@ -1,0 +1,243 @@
+---
+title: trace_grpc
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_grpc
+
+The trace_grpc gadget traces gRPC method calls in Go programs using uprobes.
+
+It attaches uprobes to:
+1. `google.golang.org/grpc.newClientStream` — the internal convergence point for
+   both unary and streaming gRPC calls (captures the method name).
+2. `google.golang.org/grpc.(*csAttempt).sendMsg` — the message send path
+   (captures the serialized protobuf payload).
+
+A WASM module decodes the protobuf wire format and parses the method into
+service and RPC method components.
+
+## Use cases
+
+- **Debugging kubelet ↔ containerd communication** (CRI): see which gRPC
+  methods the kubelet calls on the container runtime, with decoded request
+  payloads.
+- **Debugging kubelet ↔ CSI driver communication**: trace volume
+  provisioning and attachment calls.
+- **Generating sequence diagrams** from captured method traces.
+- **Inspecting protobuf message content** without access to `.proto` files
+  (schema-less wire format decoding).
+
+## Requirements
+
+- The target binary must use the standard `google.golang.org/grpc` library.
+- Works with both stripped and non-stripped Go binaries. For stripped binaries,
+  the symbol is resolved from Go's `.gopclntab` section which is preserved by
+  default.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% --host [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Specifying the target binary
+
+The eBPF program has a default uprobe path compiled in for testing purposes.
+For real targets, override the binary path at runtime using the
+`programs.uprobe_new_client_stream.attach_to` parameter:
+
+<Tabs groupId="env">
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% --host \
+            'programs.uprobe_new_client_stream.attach_to=/usr/bin/kubelet:google.golang.org/grpc.newClientStream'
+        ```
+    </TabItem>
+
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% \
+            'programs.uprobe_new_client_stream.attach_to=/usr/bin/kubelet:google.golang.org/grpc.newClientStream'
+        ```
+    </TabItem>
+</Tabs>
+
+## Example output
+
+Tracing the kubelet's CRI calls to containerd on minikube, with `--proto=cri`:
+
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% --host \
+    --target-path=/var/lib/minikube/binaries/v1.35.1/kubelet \
+    --proto=cri -o yaml
+```
+
+A `RunPodSandbox` event when creating a pod (`kubectl run shell001 --image=busybox`):
+
+```yaml
+---
+method: /runtime.v1.RuntimeService/RunPodSandbox
+payload_len: 564
+type: GRPC_EVENT_SEND
+service: runtime.v1.RuntimeService
+rpc_method: RunPodSandbox
+decoded_payload: >-
+  config:{metadata:{name:"shell001", uid:"27e99f81-d831-4a8d-9d9d-73a619cd30fc",
+  namespace:"default"}, hostname:"shell001",
+  log_directory:"/var/log/pods/default_shell001_27e99f81-d831-4a8d-9d9d-73a619cd30fc",
+  dns_config:{servers:"10.96.0.10", searches:"default.svc.cluster.local",
+  searches:"svc.cluster.local", searches:"cluster.local", options:"ndots:5"},
+  labels:{key:"io.kubernetes.pod.name", value:"shell001"},
+  labels:{key:"io.kubernetes.pod.namespace", value:"default"},
+  linux:{cgroup_parent:"/kubepods/besteffort/pod27e99f81-...",
+  security_context:{namespace_options:{pid:CONTAINER, userns_options:{mode:NODE}},
+  seccomp:bytes()}, resources:{cpu_period:100000, cpu_shares:2}}}
+proc:
+  comm: kubelet
+  pid: 1719370
+  tid: 1719388
+timestamp: "2026-05-05T16:47:56.549215356Z"
+```
+
+The same event **without** `--proto` (schema-less wire format):
+
+```yaml
+---
+method: /runtime.v1.RuntimeService/RunPodSandbox
+payload_len: 564
+type: GRPC_EVENT_SEND
+service: runtime.v1.RuntimeService
+rpc_method: RunPodSandbox
+decoded_payload: >-
+  1:{1:{1:string("shell002"), 2:string("312776b2-e051-44d8-9a57-a9b9f996a2ef"),
+  3:string("default")}, 2:string("shell002"),
+  3:string("/var/log/pods/default_shell002_312776b2-..."),
+  4:{1:string("10.96.0.10"), 2:string("default.svc.cluster.local"),
+  2:string("svc.cluster.local"), 2:string("cluster.local"), 3:string("ndots:5")},
+  6:{1:string("io.kubernetes.pod.name"), 2:string("shell002")},
+  6:{1:string("io.kubernetes.pod.namespace"), 2:string("default")},
+  8:{1:string("/kubepods/besteffort/pod312776b2-..."),
+  2:{1:{2:varint(1), 5:{1:varint(2)}}, 9:bytes()},
+  5:{1:varint(100000), 3:varint(2)}}}
+proc:
+  comm: kubelet
+  pid: 1719370
+  tid: 1719373
+timestamp: "2026-05-05T16:49:30.124826402Z"
+```
+
+A `ListContainers` request filtering for running containers:
+
+```yaml
+---
+method: /runtime.v1.RuntimeService/ListContainers
+type: GRPC_EVENT_SEND
+service: runtime.v1.RuntimeService
+rpc_method: ListContainers
+decoded_payload: "filter:{state:{state:CONTAINER_RUNNING}}"
+```
+
+## Proto-aware decoding
+
+By default, the gadget performs schema-less protobuf wire format decoding,
+showing field numbers and inferred types. With the `--proto` parameter, the
+gadget can decode using embedded `.proto` schemas, showing actual field names,
+enum values, and nested message structure.
+
+Supported values:
+- `--proto=none` (default): schema-less wire format (e.g., `1:string("world")`)
+- `--proto=cri`: Kubernetes CRI (Container Runtime Interface, `runtime.v1`)
+- `--proto=containerd`: containerd API services
+
+As shown in the examples above, the difference is significant for readability:
+- With `--proto=cri`: `config:{metadata:{name:"shell001", ...}, linux:{security_context:{namespace_options:{pid:CONTAINER}}}}`
+- Without: `1:{1:{1:string("shell001"), ...}, 8:{2:{1:{2:varint(1)}}}}`
+
+## Fields
+
+| Field | Description |
+|-------|-------------|
+| `method` | Full gRPC method path (e.g., `/package.Service/Method`) |
+| `type` | Event type: `GRPC_EVENT_CALL` (RPC initiated) or `GRPC_EVENT_SEND` (message sent) |
+| `service` | Parsed service name (e.g., `helloworld.Greeter`) |
+| `rpc_method` | Parsed RPC method name (e.g., `SayHello`) |
+| `payload_len` | Length of the serialized protobuf payload in bytes |
+| `decoded_payload` | Decoded protobuf payload (schema-aware with `--proto`, or wire format) |
+| `compressed` | Whether the payload is compressed (compressed payloads are not decoded) |
+
+## How it works
+
+The gadget uses two uprobes:
+
+1. **`newClientStream`**: Reads the `method` string parameter using the Go
+   register-based calling convention. This function is called for every gRPC
+   client call. The goroutine pointer (R14 on amd64) is stored as a correlation
+   key.
+
+2. **`(*csAttempt).sendMsg`**: Reads the serialized protobuf payload by chasing
+   the `mem.BufferSlice` pointer chain. The goroutine pointer correlates send
+   events back to the originating RPC call.
+
+A WASM module post-processes events:
+- Parses `/package.Service/Method` into separate `service` and `rpc_method` fields.
+- Decodes protobuf wire format without a schema, producing human-readable output
+  like `1:string("world"), 2:varint(42)`.
+- With `--proto=cri` or `--proto=containerd`, decodes using embedded
+  FileDescriptorSets for named fields, enum values, and nested messages.
+
+The Go register ABI assigns:
+- `ctx` (interface) → registers 1-2
+- `desc` (*StreamDesc) → register 3
+- `cc` (*ClientConn) → register 4
+- `method` (string) → registers 5 (pointer) and 6 (length)
+
+## Limitations
+
+- **Client-side only**: currently traces outgoing gRPC calls, not incoming
+  (server-side) requests.
+- **Unary RPCs only**: goroutine-based correlation works reliably for unary
+  RPCs. Streaming RPCs may show incorrect method correlation if the goroutine
+  is reused.
+- **Compressed payloads not decoded**: if the gRPC message is compressed, only
+  the raw length is reported (no decompression in WASM).
+- **Schema-less decoding**: without `--proto`, field names are shown as
+  numbers and types are inferred from wire format (e.g., `int64` vs `sint64`
+  cannot be distinguished). Use `--proto=cri` or `--proto=containerd` for
+  named field output when tracing known protocols.
+
+## Testing with the included workload
+
+A simple gRPC client/server is provided for development testing:
+
+```bash
+# Build and install the test workload (creates symlink in /tmp)
+make -C gadgets/trace_grpc/test/workload install
+
+# Terminal 1: Run the workload
+make -C gadgets/trace_grpc/test/workload run
+
+# Terminal 2: Run the gadget (uses the default path for the test workload)
+sudo ig run ghcr.io/inspektor-gadget/gadget/trace_grpc:%IG_TAG% --host --timeout 10
+```
+
+Expected output:
+```
+RUNTIME.CONTAINERNAME  COMM    PID    TID    METHOD                          TYPE             SERVICE             RPC_METHOD  DECODED_PAYLOAD
+                       client  12345  12350  /helloworld.Greeter/SayHello    GRPC_EVENT_CALL  helloworld.Greeter  SayHello
+                       client  12345  12350  /helloworld.Greeter/SayHello    GRPC_EVENT_SEND  helloworld.Greeter  SayHello    1:string("world")
+```

@@ -1,0 +1,67 @@
+name: trace_grpc
+description: Trace gRPC method calls and decode protobuf payloads in Go programs using uprobes
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_grpc
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_grpc
+params:
+  wasm:
+    target-pid:
+      key: target-pid
+      description: PID of the target process (attaches to /proc/<pid>/exe)
+      title: Target PID
+    target-path:
+      key: target-path
+      description: Absolute path to the target binary
+      title: Target binary path
+    proto:
+      key: proto
+      description: "Proto schema for named field decoding: none (default), cri, or containerd"
+      title: Proto schema
+      defaultValue: "none"
+datasources:
+  grpc:
+    fields:
+      timestamp_raw:
+        annotations:
+          template: timestamp
+      method:
+        annotations:
+          description: Full gRPC method name (e.g. /package.Service/Method)
+          columns.width: 64
+      type_raw:
+        annotations:
+          description: "Event type: 0=call (RPC initiated), 1=send (message sent)"
+          columns.hidden: "true"
+      type:
+        annotations:
+          description: "Event type: GRPC_EVENT_CALL or GRPC_EVENT_SEND"
+          columns.width: 4
+      service:
+        annotations:
+          description: gRPC service name extracted from method
+          columns.width: 32
+      rpc_method:
+        annotations:
+          description: gRPC RPC method name extracted from method
+          columns.width: 24
+      payload_len:
+        annotations:
+          description: Full protobuf payload length from gRPC frame header
+          columns.width: 12
+      compressed:
+        annotations:
+          description: Whether the payload is compressed
+          columns.hidden: "true"
+      captured_len:
+        annotations:
+          description: Bytes of payload actually captured
+          columns.hidden: "true"
+      payload:
+        annotations:
+          description: Raw protobuf payload bytes (internal use)
+          columns.hidden: "true"
+          json.skip: "true"
+      decoded_payload:
+        annotations:
+          description: Decoded protobuf payload (schema-aware with --proto, or wire format)
+          columns.width: 64
