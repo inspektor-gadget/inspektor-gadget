@@ -46,7 +46,8 @@ func newLocalOciStore() (*localOciStore, error) {
 	indexLock := flock.New(path.Join(defaultOciStore, "index.json.lock"))
 
 	// lock the file before reading the index below
-	indexLock.RLock()
+	// RLock can't be used since we might create and init an empty index file in oci.New()
+	indexLock.Lock()
 	defer indexLock.Unlock()
 
 	ociStore, err := oci.New(defaultOciStore)
