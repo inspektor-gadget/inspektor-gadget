@@ -20,6 +20,8 @@ import (
 	"os"
 	"slices"
 	"time"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
 )
 
 const (
@@ -53,7 +55,7 @@ func (e *SymbolTable) LookupByAddr(address uint64) string {
 func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 	var symbols []*Symbol
 
-	elfFile, err := elf.NewFile(file)
+	elfFile, err := safeelf.NewFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("parsing ELF file: %w", err)
 	}
@@ -84,9 +86,9 @@ func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 			Size:  sym.Size,
 		})
 		symbolCount++
-	}
-	if symbolCount > MaxSymbolCount {
-		return nil, fmt.Errorf("too many symbols: %d", symbolCount)
+		if symbolCount > MaxSymbolCount {
+			return nil, fmt.Errorf("too many symbols: %d (exceeds limit %d)", symbolCount, MaxSymbolCount)
+		}
 	}
 	slices.SortFunc(symbols, func(a, b *Symbol) int {
 		if a.Value < b.Value {
