@@ -37,6 +37,11 @@ const (
 	// standard upper bound for ELF note fields; 1 MiB is a generous arbitrary
 	// cap — legitimate USDT notes are typically under 1 KB.
 	maxNoteFieldSize = 1024 * 1024
+
+	// maxNoteCount limits the number of notes iterated to prevent CPU denial
+	// of service from a crafted section with millions of tiny valid notes.
+	// 10,000 is far more than any legitimate binary would have.
+	maxNoteCount = 10000
 )
 
 type noteHeader struct {
@@ -119,6 +124,7 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 	// walk through USDT notes, and match with providerName and probeName
 	// For details of the structure of ELF notes, please refer to
 	// https://man7.org/linux/man-pages/man5/elf.5.html, the `Notes (Nhdr)` section
+	noteCount := 0
 	for {
 		var header noteHeader
 		err = binary.Read(notesReader, elfReader.ByteOrder, &header)
@@ -127,6 +133,11 @@ func getUsdtInfo(filepath string, attachSymbol string) (*usdtAttachInfo, error) 
 				break
 			}
 			return nil, fmt.Errorf("reading USDT note header: %w", err)
+		}
+
+		noteCount++
+		if noteCount > maxNoteCount {
+			return nil, fmt.Errorf("too many USDT notes (%d, max %d)", noteCount, maxNoteCount)
 		}
 
 		alignedNameSize := alignUp(uint64(header.NameSize), 4)
