@@ -41,13 +41,18 @@ runs:
     - name: Deploy Inspektor Gadget
       id: deploy-ig
       shell: bash
+      env:
+        KUBERNETES_DISTRIBUTION: ${{ inputs.kubernetes_distribution }}
+        GADGET_VERIFY_IMAGE: ${{ inputs.gadget_verify_image }}
+        CONTAINER_REPO: ${{ inputs.container_repo }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
       run: |
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        if [[ ${{ inputs.kubernetes_distribution }} == "minikube-github" ]]; then
+        if [[ "${KUBERNETES_DISTRIBUTION}" == "minikube-github" ]]; then
           # Inspektor-Gadget container image is loaded into the cluster using "minikube image load" instead of pushing the container image to a registry.
           EXTRA_FLAGS='--image-pull-policy=Never'
         fi
-        ./kubectl-gadget deploy --set-daemon-config=operator.oci.verify-image=${{ inputs.gadget_verify_image }} $EXTRA_FLAGS --debug --experimental --image=${{ inputs.container_repo }}:${{ inputs.image_tag }}
+        ./kubectl-gadget deploy --set-daemon-config=operator.oci.verify-image="${GADGET_VERIFY_IMAGE}" $EXTRA_FLAGS --debug --experimental --image="${CONTAINER_REPO}:${IMAGE_TAG}"
     - name: Integration tests
       id: integration-tests
       shell: bash
