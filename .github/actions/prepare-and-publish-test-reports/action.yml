@@ -22,19 +22,23 @@ runs:
         go install
     - name: Prepare test report as json
       shell: bash
+      env:
+        TEST_LOG_FILE: ${{ inputs.test-log-file }}
       run: |
-        go tool test2json -t < ./${{ inputs.test-log-file }} > ./test-report.json
+        go tool test2json -t < "./${TEST_LOG_FILE}" > ./test-report.json
     - name: Publish test reports as markdown
       shell: bash
       env:
         PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
         PULL_REQUEST_AUTHOR: ${{ github.event.pull_request.user.login }}
         PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        TEST_SUMMARY_SUFFIX: ${{ inputs.test-summary-suffix }}
+        TEST_STEP_CONCLUSION: ${{ inputs.test-step-conclusion }}
       run: |
         testjson2md -in ./test-report.json \
           -out ./test-report.md \
-          -out_summary ./test-report_${GITHUB_JOB}_${{ inputs.test-summary-suffix }}.json \
-          -conclusion ${{ inputs.test-step-conclusion }}
+          -out_summary "./test-report_${GITHUB_JOB}_${TEST_SUMMARY_SUFFIX}.json" \
+          -conclusion "${TEST_STEP_CONCLUSION}"
         cat test-report.md >> $GITHUB_STEP_SUMMARY
     - name: Upload test reports summary as artifacts
       uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
