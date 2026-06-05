@@ -197,7 +197,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.2
 	github.com/aws/aws-sdk-go-v2/config v1.32.10
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.71.0
-	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
+	go.opentelemetry.io/ebpf-profiler v0.0.202536
 )
 
 require (
@@ -227,6 +227,7 @@ require (
 	github.com/notaryproject/notation-core-go v1.3.0 // indirect
 	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
+	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
