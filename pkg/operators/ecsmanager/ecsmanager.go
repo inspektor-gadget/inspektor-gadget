@@ -17,6 +17,8 @@ package ecsmanager
 import (
 	"errors"
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
@@ -71,6 +73,16 @@ func NewEcsManager(containerCollection *containercollection.ContainerCollection,
 	}
 }
 
+// GetContainerCollection returns the container collection managed by this operator
+func (e *EcsManager) GetContainerCollection() *containercollection.ContainerCollection {
+	return e.containerCollection
+}
+
+// GetTracerCollection returns the tracer collection managed by this operator
+func (e *EcsManager) GetTracerCollection() *tracercollection.TracerCollection {
+	return e.tracerCollection
+}
+
 func (e *EcsManager) Name() string {
 	return OperatorName
 }
@@ -115,6 +127,15 @@ func (e *EcsManager) Init(params *params.Params) error {
 	clusterName := params.Get(ParamEcsClusterName).AsString()
 	awsRegion := params.Get(ParamAwsRegion).AsString()
 
+	if clusterName == "" {
+		// Try to get from environment variable as fallback
+		clusterName = os.Getenv("ECS_CLUSTER_NAME")
+	}
+	if awsRegion == "" {
+		// Try to get from environment variable as fallback
+		awsRegion = os.Getenv("AWS_REGION")
+	}
+
 	if err := e.initCollections(clusterName, awsRegion); err != nil {
 		return fmt.Errorf("initializing collections: %w", err)
 	}
@@ -122,6 +143,7 @@ func (e *EcsManager) Init(params *params.Params) error {
 	return nil
 }
 
+// initCollections initializes the container collection and tracer collection.
 func (e *EcsManager) initCollections(clusterName, awsRegion string) error {
 	var cc containercollection.ContainerCollection
 
@@ -129,6 +151,8 @@ func (e *EcsManager) initCollections(clusterName, awsRegion string) error {
 		return fmt.Errorf("removing memlock rlimit: %w", err)
 	}
 
+	// For ECS, we don't need NODE_NAME like Kubernetes
+	// We'll use cluster name as the node identifier
 	nodeName := clusterName
 	if nodeName == "" {
 		nodeName = "ecs-cluster"
@@ -140,6 +164,7 @@ func (e *EcsManager) initCollections(clusterName, awsRegion string) error {
 		return fmt.Errorf("creating tracer collection: %w", err)
 	}
 
+	// Initialize ContainerCollection with the options
 	ccOpts := []containercollection.ContainerCollectionOption{
 		containercollection.WithOCIConfigEnrichment(),
 		containercollection.WithCgroupEnrichment(),
@@ -147,7 +172,7 @@ func (e *EcsManager) initCollections(clusterName, awsRegion string) error {
 		containercollection.WithNodeName(nodeName),
 		containercollection.WithTracerCollection(e.tracerCollection),
 		containercollection.WithProcEnrichment(),
-		containercollection.WithECSEnrichment(clusterName, awsRegion),
+		containercollection.WithEcsEnrichment(clusterName, awsRegion),
 	}
 
 	err = cc.Initialize(ccOpts...)
@@ -173,7 +198,8 @@ type EcsManagerInstance struct {
 	mountnsmap   *ebpf.Map
 	subscribed   bool
 
-	attachedContainers map[string]*containercollection.Container
+	attachedContainersMu sync.Mutex
+	attachedContainers   map[string]*containercollection.Container
 	attacher           Attacher
 	params             *params.Params
 	gadgetInstance     any
@@ -244,7 +270,9 @@ func (m *EcsManagerInstance) handleGadgetInstance(log logger.Logger) error {
 				return
 			}
 
+			m.attachedContainersMu.Lock()
 			m.attachedContainers[container.Runtime.ContainerID] = container
+			m.attachedContainersMu.Unlock()
 
 			containerName := container.Runtime.ContainerName
 			if container.Ecs.ContainerName != "" {
@@ -256,7 +284,9 @@ func (m *EcsManagerInstance) handleGadgetInstance(log logger.Logger) error {
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.Detach()")
+			m.attachedContainersMu.Lock()
 			delete(m.attachedContainers, container.Runtime.ContainerID)
+			m.attachedContainersMu.Unlock()
 
 			containerName := container.Runtime.ContainerName
 			if container.Ecs.ContainerName != "" {
@@ -312,10 +342,16 @@ func newEcsContainerSelector(params *params.Params) containercollection.Containe
 		// Empty cluster/service name means match all
 		containerSelector.Ecs.ClusterName = ""
 		containerSelector.Ecs.ServiceName = ""
+	} else {
+		// For now, we'll filter by cluster name if provided
+		// Service name filtering can be added later as a parameter
+		// The actual ECS metadata will be populated by the discovery engine
+		if p := params.Get(ParamEcsClusterName); p != nil {
+			if clusterName := p.AsString(); clusterName != "" {
+				containerSelector.Ecs.ClusterName = clusterName
+			}
+		}
 	}
-	// For now, we'll filter by cluster name if provided
-	// Service name filtering can be added later as a parameter
-	// The actual ECS metadata will be populated by the discovery engine
 
 	return containerSelector
 }
@@ -331,7 +367,13 @@ func (m *EcsManagerInstance) PostGadgetRun() error {
 		m.manager.containerCollection.Unsubscribe(m.id)
 
 		// emit detach for all remaining containers
+		m.attachedContainersMu.Lock()
+		remaining := make([]*containercollection.Container, 0, len(m.attachedContainers))
 		for _, container := range m.attachedContainers {
+			remaining = append(remaining, container)
+		}
+		m.attachedContainersMu.Unlock()
+		for _, container := range remaining {
 			m.attacher.DetachContainer(container)
 		}
 	}
