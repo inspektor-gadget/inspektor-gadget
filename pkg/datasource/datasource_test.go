@@ -1029,3 +1029,45 @@ func TestClientServerRoundTrip(t *testing.T) {
 		}
 	})
 }
+
+// TestDataSourcePooledElementReset ensures that a data element reused from the
+// per-DataSource pool does not leak stale data into fields that the producer
+// leaves unwritten. This reproduces the trace_dns regression where a DNS query
+// (which never sets "rcode") inherited the "rcode" value of a previously
+// emitted DNS response because the pooled payload buffers were not reset.
+func TestDataSourcePooledElementReset(t *testing.T) {
+	t.Parallel()
+
+	ds, err := New(TypeSingle, "event")
+	require.NoError(t, err)
+
+	strAcc, err := ds.AddField("str", api.Kind_String)
+	require.NoError(t, err)
+
+	numAcc, err := ds.AddField("num", api.Kind_Uint32)
+	require.NoError(t, err)
+
+	// First packet: write both fields, then release it back to the pool.
+	first, err := ds.NewPacketSingle()
+	require.NoError(t, err)
+	require.NoError(t, strAcc.PutString(first, "Success"))
+	require.NoError(t, numAcc.PutUint32(first, 42))
+	ds.Release(first)
+
+	// Subsequent packets reuse the pooled element. Fields left unwritten must
+	// read back as their zero value, not the value set on a previous packet.
+	for i := 0; i < 8; i++ {
+		d, err := ds.NewPacketSingle()
+		require.NoError(t, err)
+
+		str, err := strAcc.String(d)
+		require.NoError(t, err)
+		assert.Equal(t, "", str, "string field leaked stale data from a pooled element")
+
+		num, err := numAcc.Uint32(d)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(0), num, "fixed-size field leaked stale data from a pooled element")
+
+		ds.Release(d)
+	}
+}

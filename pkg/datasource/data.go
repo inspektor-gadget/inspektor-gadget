@@ -355,7 +355,17 @@ func (ds *dataSource) newDataElement() *dataElement {
 		d.Payload = make([][]byte, int(ds.payloadCount))
 	} else {
 		d.Payload = d.Payload[:int(ds.payloadCount)]
-		// Keep existing payload slices for reuse, don't set to nil
+	}
+
+	// Reset every payload slot to zero length so that fields which are not
+	// explicitly written by the gadget read back as their zero value (e.g. an
+	// empty string), exactly as for a freshly allocated element. The backing
+	// arrays are kept (length 0, capacity preserved) so they can be reused by
+	// the Put* helpers without re-allocating. Without this reset, a pooled
+	// element reused from a previous emission would leak stale data into any
+	// field the gadget leaves untouched.
+	for i := range d.Payload {
+		d.Payload[i] = d.Payload[i][:0]
 	}
 
 	// Allocate or reuse memory for fixed size fields
@@ -379,7 +389,11 @@ func (ds *dataSource) newDataElement() *dataElement {
 		if cap(slot) < size {
 			slot = make([]byte, size)
 		} else {
+			// Reuse the existing buffer but clear it: a fixed size field that
+			// the gadget does not write must read back as zero, not as stale
+			// data from a previous use of this pooled element.
 			slot = slot[:size]
+			clear(slot)
 		}
 		d.payload()[f.PayloadIndex] = slot
 	}
