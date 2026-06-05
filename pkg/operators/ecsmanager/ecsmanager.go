@@ -172,7 +172,7 @@ func (e *EcsManager) initCollections(clusterName, awsRegion string) error {
 		containercollection.WithNodeName(nodeName),
 		containercollection.WithTracerCollection(e.tracerCollection),
 		containercollection.WithProcEnrichment(),
-		containercollection.WithEcsEnrichment(clusterName, awsRegion),
+		containercollection.WithECSEnrichment(clusterName, awsRegion),
 	}
 
 	err = cc.Initialize(ccOpts...)
