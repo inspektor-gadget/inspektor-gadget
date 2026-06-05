@@ -854,7 +854,7 @@ func (ds *dataSource) Release(item interface{}) {
 		if v.Data != nil {
 			elem := (*dataElement)(v.Data)
 			// Keep payload slices for reuse - don't set to nil to reduce GC pressure
-			elem.Payload = nil
+			elem.Payload = elem.Payload[:0]
 			ds.dataElementPool.Put(elem)
 			v.Data = nil
 		}
@@ -863,7 +863,7 @@ func (ds *dataSource) Release(item interface{}) {
 		ds.dataPool.Put(v)
 	case *dataElement:
 		// Keep payload slices for reuse - don't set to nil to reduce GC pressure
-		v.Payload = nil
+		v.Payload = v.Payload[:0]
 		ds.dataElementPool.Put(v)
 	case *dataArray:
 		// Release all elements in the array
