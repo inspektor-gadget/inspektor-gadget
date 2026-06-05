@@ -200,10 +200,10 @@ type EcsManagerInstance struct {
 
 	attachedContainersMu sync.Mutex
 	attachedContainers   map[string]*containercollection.Container
-	attacher           Attacher
-	params             *params.Params
-	gadgetInstance     any
-	gadgetCtx          operators.GadgetContext
+	attacher             Attacher
+	params               *params.Params
+	gadgetInstance       any
+	gadgetCtx            operators.GadgetContext
 
 	eventWrappers map[datasource.DataSource]*compat.EventWrapperBase
 
