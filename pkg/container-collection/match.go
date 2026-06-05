@@ -150,5 +150,9 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 		return false
 	}
 
+	if !matchFilterString(s.Ecs.LaunchType, c.Ecs.LaunchType) {
+		return false
+	}
+
 	return true
 }

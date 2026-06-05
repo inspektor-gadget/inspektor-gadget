@@ -888,6 +888,42 @@ func TestSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "ECS launch type match",
+			match:       true,
+			selector: &ContainerSelector{
+				Ecs: EcsSelector{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						LaunchType: "EC2",
+					},
+				},
+			},
+			container: &Container{
+				Ecs: types.EcsMetadata{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						LaunchType: "EC2",
+					},
+				},
+			},
+		},
+		{
+			description: "ECS launch type mismatch",
+			match:       false,
+			selector: &ContainerSelector{
+				Ecs: EcsSelector{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						LaunchType: "EC2",
+					},
+				},
+			},
+			container: &Container{
+				Ecs: types.EcsMetadata{
+					BasicEcsMetadata: types.BasicEcsMetadata{
+						LaunchType: "FARGATE",
+					},
+				},
+			},
+		},
 	}
 
 	for i, entry := range table {
