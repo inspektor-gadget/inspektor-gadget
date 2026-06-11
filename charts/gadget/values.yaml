@@ -86,6 +86,16 @@ capabilities: {}
 # -- Tolerations used by `gadget` container
 tolerations: {}
 
+# -- Resource requests and limits for the `gadget` container.
+# See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+resources: {}
+  # limits:
+  #   cpu: 1000m
+  #   memory: 1Gi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
 # -- Skip Helm labels
 skipLabels: false
 
