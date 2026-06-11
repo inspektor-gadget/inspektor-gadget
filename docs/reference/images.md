@@ -491,3 +491,22 @@ $ sudo ig image verify ghcr.io/inspektor-gadget/gadget/trace_exec:v0.45.0
 Verifying image: trace_exec:v0.45.0
 Image verified successfully!
 ```
+
+#### Image store location
+
+Gadget images are stored in an OCI store whose location depends on the user:
+`/var/lib/ig/oci-store` for `root`, `~/.ig/oci-store` otherwise. A gadget built
+as your user is therefore not visible to `sudo ig image list`.
+
+All `ig image` subcommands can be run without `root`. Only `ig run` needs it, to
+load eBPF programs. Use `--oci-store-user` to run a gadget from your user store:
+
+```bash
+$ ig image build -t mygadget .
+$ sudo ig run --oci-store-user mygadget
+```
+
+This flag requires `sudo` (the store is located using `SUDO_USER`) and an
+existing user store. The store is opened read-only to avoid creating `root`
+owned files in your home directory: `--pull` is forced to `never` and signatures
+cannot be downloaded, so pull the gadget as your user first.

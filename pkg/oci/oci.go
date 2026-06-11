@@ -76,7 +76,7 @@ type ImageOptions struct {
 }
 
 const (
-	defaultOciStore = "/var/lib/ig/oci-store"
+	rootOciStore    = "/var/lib/ig/oci-store"
 	DefaultAuthFile = "/var/lib/ig/config.json"
 
 	PullImageAlways  = "always"
@@ -155,6 +155,10 @@ func VerifyGadgetImage(ctx context.Context, image string, imgOpts *ImageOptions)
 			}
 
 			log.Warn("signature not found, will pull signing information and try verification again")
+
+			if imageStore.readOnly {
+				return fmt.Errorf("disabling signature pull for %q as --oci-store-user opens the user's store as read only", image)
+			}
 
 			repo, err := newRepository(imageRef, &imgOpts.AuthOptions)
 			if err != nil {
