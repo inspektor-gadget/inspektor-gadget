@@ -34,6 +34,7 @@ import (
 	gadgetmanifest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-manifest"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/combiner"
@@ -163,6 +164,9 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		if err := utils.ParseEarlyFlags(cmd, args); err != nil {
 			return err
 		}
+
+		ociStoreUser, _ := cmd.PersistentFlags().GetBool("oci-store-user")
+		oci.SetUseUserOciStore(ociStoreUser)
 
 		// Before running the gadget, we need to get the gadget info to be able to set
 		// things (like params) up correctly
@@ -431,6 +435,12 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		"t",
 		0,
 		"Number of seconds that the gadget will run for, 0 to run indefinitely",
+	)
+
+	cmd.PersistentFlags().Bool(
+		"oci-store-user",
+		false,
+		"Use user OCI store (~/.ig/oci-store) instead of system-wide store (/var/lib/ig/oci-store)",
 	)
 
 	if commandMode != CommandModeAttach {
