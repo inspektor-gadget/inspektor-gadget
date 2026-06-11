@@ -19,6 +19,7 @@ CRANE ?= crane
 VIMTO ?= vimto
 VIMTO_VM_MEMORY ?= 4096M
 DOCKER ?= docker
+SUDO ?= sudo -E
 
 UNIT_TEST_DIR = test/unit
 INTEGRATION_TEST_DIR = test/integration
@@ -98,7 +99,7 @@ pull-builder-image:
 .PHONY: $(GADGETS)
 $(GADGETS): pull-builder-image
 	@echo "Building $@"
-	@sudo -E \
+	@$(SUDO) \
 		IG_SOURCE_PATH=$(realpath $(ROOT_DIR)/..) \
 		$(IG) image build \
 		--builder-image $(BUILDER_IMAGE) \
@@ -142,34 +143,34 @@ $(GADGETS_README_DEV):
 
 %-push: %-build
 	@echo "Pushing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	@$(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY:
 push: $(addsuffix -push,$(GADGETS))
 
 %-push-existing: %
 	@echo "Pushing existing $*"
-	@sudo -E $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS)
+	@$(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS)
 
 .PHONY:
 push-existing: $(addsuffix -push-existing,$(GADGETS))
 
 %-sign: %-push
 	@echo "Signing $*"
-	digest=$$(sudo -E $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
+	digest=$$($(SUDO) $(IG) image inspect $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) -o json | jq -r .Digest) ; \
 	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing:
 	@echo "Signing existing $*"
-	digest=$$(sudo -E $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
+	digest=$$($(SUDO) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
 	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
 
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
 %-clean:
-	sudo -E $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	$(SUDO) $(IG) image remove $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY:
 clean: $(addsuffix -clean,$(GADGETS))
@@ -179,14 +180,14 @@ pull:
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) && \
 	for GADGET in $(GADGETS); do \
-		sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+		$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
 	done
 
 .PHONY:
 %/pull:
 	GADGET_TAG=$(GADGET_TAG) \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
-	sudo -E $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
+	$(SUDO) $(IG) image pull $(GADGET_REPOSITORY)/$*:$(GADGET_TAG)
 
 .PHONY:
 test-unit: build
@@ -198,9 +199,9 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		$(SUDO) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./.../$(UNIT_TEST_DIR)/..., \
-		go test -v -exec 'sudo -E' ./.../$(UNIT_TEST_DIR)/...)
+		go test -v -exec '$(SUDO)' ./.../$(UNIT_TEST_DIR)/...)
 
 .PHONY:
 %/test-unit: %
@@ -212,9 +213,9 @@ test-unit: build
 	VIMTO=$(VIMTO) \
 	VIMTO_VM_MEMORY=$(VIMTO_VM_MEMORY) \
 	$(if $(KERNEL_VERSION), \
-		sudo -E PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
+		$(SUDO) PATH="$$PATH" $(VIMTO) -kernel $(KERNEL_REPOSITORY):$(KERNEL_VERSION) \
 		-memory $(VIMTO_VM_MEMORY) -- go test -v ./$*/$(UNIT_TEST_DIR)/..., \
-		go test -v -exec 'sudo -E' ./$*/$(UNIT_TEST_DIR)/...)
+		go test -v -exec '$(SUDO)' ./$*/$(UNIT_TEST_DIR)/...)
 
 .PHONY:
 %/test-integration: %
@@ -224,7 +225,7 @@ test-unit: build
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
-	go test -v -exec 'sudo -E' ./$*/$(INTEGRATION_TEST_DIR)/...
+	go test -v -exec '$(SUDO)' ./$*/$(INTEGRATION_TEST_DIR)/...
 
 .PHONY:
 test-integration: build
@@ -234,7 +235,7 @@ test-integration: build
 	GADGET_TAG=$(GADGET_TAG) \
 	IG_FLAGS=$(IG_FLAGS) \
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
-	go test -v -exec 'sudo -E' ./.../$(INTEGRATION_TEST_DIR)/...
+	go test -v -exec '$(SUDO)' ./.../$(INTEGRATION_TEST_DIR)/...
 
 .PHONY:
 test-local: IG_PATH=$(IG)
