@@ -449,6 +449,20 @@ func ensureBuilderImage(ctx context.Context, cli *client.Client, builderImage st
 	return nil
 }
 
+func isRootlessEngine(ctx context.Context, cli *client.Client) (bool, error) {
+	info, err := cli.Info(ctx, client.InfoOptions{})
+	if err != nil {
+		return false, fmt.Errorf("getting engine info: %w", err)
+	}
+
+	for _, opt := range info.Info.SecurityOptions {
+		if strings.Contains(opt, "name=rootless") {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -532,20 +546,30 @@ func buildInContainer(opts *cmdOpts, conf *buildFile) error {
 		})
 	}
 
-	resp, err := cli.ContainerCreate(
-		ctx,
-		client.ContainerCreateOptions{
-			Config: &container.Config{
-				Image:      opts.builderImage,
-				Cmd:        []string{"sleep", "inf"},
-				WorkingDir: gadgetSourcePath,
-				User:       fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-			},
-			HostConfig: &container.HostConfig{
-				Mounts: mounts,
-			},
+	containerCreateOptions := client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image:      opts.builderImage,
+			Cmd:        []string{"sleep", "inf"},
+			WorkingDir: gadgetSourcePath,
 		},
-	)
+		HostConfig: &container.HostConfig{
+			Mounts: mounts,
+		},
+	}
+
+	isRootless, err := isRootlessEngine(ctx, cli)
+	if err != nil {
+		return fmt.Errorf("getting container engine information: %w", err)
+	}
+	if isRootless {
+		if os.Geteuid() == 0 {
+			return errors.New("running build as root user with rootless container engine is not possible, run build as your user.")
+		}
+	} else {
+		containerCreateOptions.Config.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
+	}
+
+	resp, err := cli.ContainerCreate(ctx, containerCreateOptions)
 	if err != nil {
 		return fmt.Errorf("creating builder container: %w", err)
 	}
