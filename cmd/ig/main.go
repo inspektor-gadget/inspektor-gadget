@@ -26,6 +26,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ocihandler "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/oci-handler"
 
@@ -81,6 +82,12 @@ func main() {
 
 	rootCmd.PersistentFlags().String("pprof-addr", "", "Starts a pprof server for profiling at the given address (e.g., 'localhost:6060'), leave empty to disable (default).")
 
+	rootCmd.PersistentFlags().Bool(
+		"oci-store-user",
+		false,
+		"When running as root (e.g. via sudo), use the OCI store of the user behind sudo (~/.ig/oci-store) instead of the system-wide store (/var/lib/ig/oci-store). Has no effect when not running as root, as the per-user store is always used in that case.",
+	)
+
 	// evaluate flags early; this will make sure that flags for host are evaluated before
 	// calling host.Init()
 	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
@@ -89,6 +96,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Configure the local OCI store location based on the --oci-store-user flag.
+	ociStoreUser, _ := rootCmd.PersistentFlags().GetBool("oci-store-user")
+	oci.SetUseUserOciStore(ociStoreUser)
 
 	// save the root flags for later use before we modify them (e.g. add runtime flags)
 	rootFlags := commonutils.CopyFlagSet(rootCmd.PersistentFlags())

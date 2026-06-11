@@ -76,7 +76,9 @@ type ImageOptions struct {
 }
 
 const (
-	defaultOciStore = "/var/lib/ig/oci-store"
+	// rootOciStore is the OCI store used when ig runs as root. Kept as-is for
+	// backward compatibility.
+	rootOciStore    = "/var/lib/ig/oci-store"
 	DefaultAuthFile = "/var/lib/ig/config.json"
 
 	PullImageAlways  = "always"
