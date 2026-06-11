@@ -50,6 +50,10 @@ spec:
           image: {{ .Values.image.repository }}:{{ include "gadget.image.tag" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: [ "/bin/gadgettracermanager", "-serve" ]
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           lifecycle:
             preStop:
               exec:

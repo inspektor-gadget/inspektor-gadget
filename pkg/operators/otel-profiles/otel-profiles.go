@@ -52,6 +52,7 @@ const (
 	stackFieldsAnnotation     = "profiles.stack-fields"
 	valueFieldAnnotation      = "profiles.value-field"
 	sampleAttributeAnnotation = "profiles.sample-attribute"
+	profilesNameAnnotation    = "profiles.name"
 	profilesTypeAnnotation    = "profiles.type"
 	profilesUnitAnnotation    = "profiles.unit"
 
@@ -289,6 +290,11 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			profilesUnit = val
 		}
 
+		profilesName := ds.Name()
+		if val, ok := ds.Annotations()[profilesNameAnnotation]; ok && val != "" {
+			profilesName = val
+		}
+
 		client, ok := o.o.clients[exporterName]
 		if !ok {
 			return fmt.Errorf("client not found: %q", exporterName)
@@ -334,6 +340,14 @@ func (o *otelProfilesOperatorInstance) PreStart(gadgetCtx operators.GadgetContex
 			st := prof.SampleType()
 			st.SetTypeStrindex(stringSet.Add(profilesType))
 			st.SetUnitStrindex(stringSet.Add(profilesUnit))
+
+			// Pyroscope derives the profile name from PeriodType.Type
+			// (see grafana/pyroscope pkg/ingester/otlp/convert.go).
+			// Set PeriodType and Period so the profile is named correctly.
+			pt := prof.PeriodType()
+			pt.SetTypeStrindex(stringSet.Add(profilesName))
+			pt.SetUnitStrindex(stringSet.Add(profilesUnit))
+			prof.SetPeriod(1)
 
 			attributeKeys := make(map[string]int32)
 			for name := range attributesGetter {

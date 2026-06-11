@@ -149,6 +149,24 @@
           }
         }
       }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource requests and limits for the gadget container.",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "integer"]
+          }
+        },
+        "requests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "integer"]
+          }
+        }
+      }
     }
   }
 }

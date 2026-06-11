@@ -10,6 +10,7 @@ datasources:
       cli.clear-screen-before: "true"
       profiles.stack-fields: ustack_raw.symbols
       profiles.value-field: count
+      profiles.name: process_cuda
       profiles.type: malloc
       profiles.unit: bytes
     fields:
