@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The Inspektor Gadget authors
+// Copyright 2023-2025 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ func (s gadgetState) ToGadgetStatus() api.GadgetInstanceStatus {
 type bufferedEvent struct {
 	datasourceID uint32
 	payload      []byte
+	lostSamples  uint64
 }
 
 type GadgetInstance struct {
@@ -166,7 +167,13 @@ func (p *GadgetInstance) Run(
 
 			for _, ds := range gadgetCtx.GetDataSources() {
 				dsID := dsLookup[ds.Name()]
+				lostSamples := uint64(0)
 				ds.SubscribePacket(func(ds datasource.DataSource, data datasource.Packet) error {
+					// We'll be moving the lostSampleCount to the transport level here and have it
+					// increase monotonically
+					currentLostSamples := data.LostSampleCount()
+					data.SetLostSampleCount(0)
+
 					d, _ := proto.Marshal(data.Raw())
 
 					event := &bufferedEvent{
@@ -175,14 +182,22 @@ func (p *GadgetInstance) Run(
 					}
 
 					p.mu.Lock()
+					// Increase global lostSampleCount within the lock to retain order and write it to
+					// the event; if the event goes missing, we can still recover the delta on the client
+					lostSamples += currentLostSamples
+
+					// Store within the event for replays
+					event.lostSamples = lostSamples
+
 					p.eventBuffer[p.eventBufferOffs] = event
 					p.eventBufferOffs = (p.eventBufferOffs + 1) % len(p.eventBuffer)
 					if p.eventBufferOffs == 0 {
 						p.eventOverflow = true
 					}
+
 					for client := range p.clients {
 						// This doesn't block
-						client.SendPayload(dsID, d)
+						client.SendPayload(dsID, d, lostSamples)
 					}
 					p.mu.Unlock()
 					return nil
