@@ -31,6 +31,11 @@ import (
 const (
 	name     = "GenerateNetworkPolicy"
 	Priority = 9200
+
+	ParamPolicyFormat   = "policy-format"
+	PolicyFormatK8s     = "k8s"
+	PolicyFormatCilium  = "cilium"
+	defaultPolicyFormat = PolicyFormatK8s
 )
 
 type gnpOperator struct{}
@@ -48,7 +53,16 @@ func (s *gnpOperator) GlobalParams() api.Params {
 }
 
 func (s *gnpOperator) InstanceParams() api.Params {
-	return nil
+	return api.Params{
+		{
+			Key:            ParamPolicyFormat,
+			Title:          "Policy format",
+			Description:    "Output format for the generated network policies. Possible values: \"k8s\" (networking.k8s.io/v1 NetworkPolicy) or \"cilium\" (cilium.io/v2 CiliumNetworkPolicy).",
+			DefaultValue:   defaultPolicyFormat,
+			TypeHint:       api.TypeString,
+			PossibleValues: []string{PolicyFormatK8s, PolicyFormatCilium},
+		},
+	}
 }
 
 type k8sAccesors struct {
@@ -179,8 +193,18 @@ func (s *gnpOperator) InstantiateDataOperator(gadgetCtx operators.GadgetContext,
 		gadgetCtx.Logger().Debug("GenerateNetworkPolicy: no datasources requiring the operator found")
 		return nil, nil
 	}
+
+	policyFormat := instanceParamValues[ParamPolicyFormat]
+	if policyFormat == "" {
+		policyFormat = defaultPolicyFormat
+	}
+	if policyFormat != PolicyFormatK8s && policyFormat != PolicyFormatCilium {
+		return nil, fmt.Errorf("invalid policy format %q: must be %q or %q", policyFormat, PolicyFormatK8s, PolicyFormatCilium)
+	}
+
 	return &gnpOperatorInstance{
-		accessors: accessors,
+		accessors:    accessors,
+		policyFormat: policyFormat,
 	}, nil
 }
 
@@ -189,7 +213,8 @@ func (s *gnpOperator) Priority() int {
 }
 
 type gnpOperatorInstance struct {
-	accessors map[datasource.DataSource]k8sAccesors
+	accessors    map[datasource.DataSource]k8sAccesors
+	policyFormat string
 }
 
 func (s *gnpOperatorInstance) Name() string {
@@ -284,14 +309,21 @@ func (s *gnpOperatorInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 			}
 
 			if len(eventsBySource) != 0 {
-				// api.Warnf("Got %d events by source", len(eventsBySource))
-				policies, err := handleEvents(eventsBySource)
-				if err != nil {
-					return fmt.Errorf("handling events: %w", err)
+				var policiesStr string
+				switch s.policyFormat {
+				case PolicyFormatCilium:
+					ciliumPolicies, err := handleCiliumEvents(eventsBySource)
+					if err != nil {
+						return fmt.Errorf("handling cilium events: %w", err)
+					}
+					policiesStr = FormatCiliumPolicies(ciliumPolicies)
+				default:
+					k8sPolicies, err := handleEvents(eventsBySource)
+					if err != nil {
+						return fmt.Errorf("handling events: %w", err)
+					}
+					policiesStr = FormatPolicies(k8sPolicies)
 				}
-				// api.Warnf("> Created %d policies", len(policies))
-				policiesStr := FormatPolicies(policies)
-				//// api.Warnf("> Policies:\n%s", policiesStr[:100])
 
 				yamlPack, err := acc.adviseDS.NewPacketSingle()
 				if err != nil {
