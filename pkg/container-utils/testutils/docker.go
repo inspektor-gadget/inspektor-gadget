@@ -80,6 +80,14 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if d.options.sysctls != nil {
 		hostConfig.Sysctls = d.options.sysctls
 	}
+	if d.options.gpus {
+		hostConfig.DeviceRequests = []container.DeviceRequest{
+			{
+				Count:        -1,
+				Capabilities: [][]string{{"gpu"}},
+			},
+		}
+	}
 
 	if d.options.portBindings != nil {
 		hostConfig.PortBindings = d.options.portBindings
