@@ -16,11 +16,14 @@ package helpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -64,6 +67,10 @@ const (
 	CosignSignatureMediaType = "application/vnd.dev.cosign.artifact.sig.v1+json" // https://github.com/sigstore/cosign/blob/45bda40b8ef4/internal/pkg/oci/remote/remote.go#L24
 
 	NotationSignatureMediatype = "application/vnd.cncf.notary.signature" // https://github.com/notaryproject/notation-go/blob/a48f22835cb5/registry/mediatype.go#L18
+
+	// maxReferrersToInspect bounds unfiltered scans so signature discovery does
+	// not inspect an unbounded number of unrelated referrers.
+	maxReferrersToInspect = 42
 )
 
 func FindBundleTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string) (string, error) {
@@ -100,27 +107,130 @@ func FindCosignSignatureTag(ctx context.Context, imageStore oras.ReadOnlyGraphTa
 }
 
 func findReferrerTag(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string, artifactType string) (string, error) {
-	desc, err := imageStore.Resolve(ctx, imageDigest)
+	descriptors, err := findReferrerTags(ctx, imageStore, imageDigest, artifactType)
 	if err != nil {
-		return "", fmt.Errorf("resolving %s: %w", imageDigest, err)
-	}
-
-	descriptors, err := registry.Referrers(ctx, imageStore, desc, artifactType)
-	if err != nil {
-		return "", fmt.Errorf("searching for %q referring %q: %w", artifactType, imageDigest, err)
-	}
-
-	if len(descriptors) == 0 {
-		return "", errors.New("no referrers found")
+		return "", err
 	}
 
 	if len(descriptors) > 1 {
-		return "", fmt.Errorf("images with several %q referrers are not supported", artifactType)
+		return "", multipleReferrersError(artifactType)
 	}
 
-	signingInfoTag := descriptors[0].Digest.String()
+	return descriptors[0], nil
+}
 
-	return signingInfoTag, nil
+func findReferrerTags(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, imageDigest string, artifactType string) ([]string, error) {
+	desc, err := imageStore.Resolve(ctx, imageDigest)
+	if err != nil {
+		return nil, fmt.Errorf("resolving %s: %w", imageDigest, err)
+	}
+
+	descriptors, err := findReferrersByManifestInspection(ctx, imageStore, desc, artifactType)
+	if err != nil {
+		return nil, fmt.Errorf("searching for %q referring %q: %w", artifactType, imageDigest, err)
+	}
+
+	if len(descriptors) == 0 {
+		return nil, errors.New("no referrers found")
+	}
+
+	tags := make([]string, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		tags = append(tags, descriptor.Digest.String())
+	}
+
+	return tags, nil
+}
+
+func findReferrersByManifestInspection(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+	matches := []ocispec.Descriptor{}
+	referrersInspected := 0
+
+	// artifactType filtering is optional for registries, so inspect unfiltered
+	// referrers. Use pagination when available to avoid accumulating pages.
+	if referrerLister, ok := imageStore.(registry.ReferrerLister); ok {
+		err := referrerLister.Referrers(ctx, desc, "", func(referrers []ocispec.Descriptor) error {
+			return processReferrers(ctx, imageStore, referrers, artifactType, &matches, &referrersInspected)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("listing referrers without artifact type filter: %w", err)
+		}
+
+		return matches, nil
+	}
+
+	referrers, err := registry.Referrers(ctx, imageStore, desc, "")
+	if err != nil {
+		return nil, fmt.Errorf("listing referrers without artifact type filter: %w", err)
+	}
+
+	if err := processReferrers(ctx, imageStore, referrers, artifactType, &matches, &referrersInspected); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
+func processReferrers(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, referrers []ocispec.Descriptor, artifactType string, matches *[]ocispec.Descriptor, referrersInspected *int) error {
+	if *referrersInspected+len(referrers) > maxReferrersToInspect {
+		return fmt.Errorf("inspecting more than %d referrers is not supported", maxReferrersToInspect)
+	}
+	*referrersInspected += len(referrers)
+
+	for _, descriptor := range referrers {
+		match, descriptor, err := referrerMatchesArtifactType(ctx, imageStore, descriptor, artifactType)
+		if err != nil {
+			return err
+		}
+		if match {
+			*matches = append(*matches, descriptor)
+			if len(*matches) > 1 {
+				return multipleReferrersError(artifactType)
+			}
+		}
+	}
+
+	return nil
+}
+
+func referrerMatchesArtifactType(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, descriptor ocispec.Descriptor, artifactType string) (bool, ocispec.Descriptor, error) {
+	if descriptor.ArtifactType == artifactType {
+		return true, descriptor, nil
+	}
+
+	referrerArtifactType, err := getManifestArtifactType(ctx, imageStore, descriptor.Digest.String())
+	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			return false, descriptor, nil
+		}
+
+		return false, descriptor, fmt.Errorf("getting manifest artifact type for %q: %w", descriptor.Digest, err)
+	}
+
+	if referrerArtifactType != artifactType {
+		return false, descriptor, nil
+	}
+
+	descriptor.ArtifactType = referrerArtifactType
+	return true, descriptor, nil
+}
+
+func multipleReferrersError(artifactType string) error {
+	return fmt.Errorf("images with several %q referrers are not supported", artifactType)
+}
+
+func getManifestArtifactType(ctx context.Context, imageStore oras.ReadOnlyGraphTarget, reference string) (string, error) {
+	_, manifestBytes, err := oras.FetchBytes(ctx, imageStore, reference, oras.DefaultFetchBytesOptions)
+	if err != nil {
+		return "", fmt.Errorf("fetching manifest: %w", err)
+	}
+
+	manifest := &ocispec.Manifest{}
+	if err := json.Unmarshal(manifestBytes, manifest); err != nil {
+		return "", fmt.Errorf("decoding manifest: %w", err)
+	}
+
+	return manifest.ArtifactType, nil
 }
 
 func CopySigningInformation(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, digest string, craftSigningInfoTag func(digest string) (string, error)) error {
