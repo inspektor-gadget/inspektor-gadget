@@ -145,7 +145,7 @@ int main() {
 		func(t *testing.T, output string) {
 			makeChrootEntry := func(i int) *traceCapabilitiesEvent {
 				return &traceCapabilitiesEvent{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc(fmt.Sprintf("mychroot%d", i), 0, 0),
 					Cap:        "CAP_SYS_CHROOT",
 					Syscall:    "SYS_CHROOT",
@@ -172,7 +172,7 @@ int main() {
 				makeChrootEntry(7),
 				makeChrootEntry(8),
 				{
-					CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+					CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 					Proc:       utils.BuildProc("nice", 0, 0),
 					Cap:        "CAP_SYS_NICE",
 					Syscall:    "SYS_SETPRIORITY",
