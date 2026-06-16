@@ -132,14 +132,14 @@ type watchedContainer struct {
 }
 
 type pendingContainer struct {
-	id             string
-	bundleDir      string
-	configJSONPath string
-	pidFile        string
-	pidFileDir     string
-	mntnsId        uint64
-	timestamp      time.Time
-	removeMarks    []func()
+	id          string
+	bundleDir   string
+	configJSON  []byte
+	pidFile     string
+	pidFileDir  string
+	mntnsId     uint64
+	timestamp   time.Time
+	removeMarks []func()
 }
 
 type futureContainer struct {
@@ -567,18 +567,7 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		return nil
 	}
 
-	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
-	if err != nil {
-		log.Errorf("fanotify: could not open config.json (%q): %s", pc.configJSONPath, err)
-		return nil
-	}
-	defer bundleConfigJSONFile.Close()
-
-	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
-	if err != nil {
-		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
-		return nil
-	}
+	bundleConfigJSON := pc.configJSON
 
 	err = n.AddWatchContainerTermination(pc.id, containerPID)
 	if err != nil {
@@ -644,23 +633,20 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		return fmt.Errorf("checking pidfile existence: %s: %w", pidFile, err)
 	}
 
-	pidFileDir := filepath.Dir(pidFile)
-	err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
-	if err != nil {
-		return fmt.Errorf("marking %s: %w", pidFileDir, err)
-	}
-
-	removeMarks = append(removeMarks, func() {
-		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
-	})
-
-	// watchPidFileIterate() will read config.json and it might be in the
-	// same directory as the pid file. To avoid getting events unrelated to
-	// the pidfile, add an ignore mask.
-	//
-	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
-	// masks on files when the parent directory is the object being watched:
-	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
+	// Resolve config.json and read it into memory BEFORE adding any
+	// fanotify marks on the bundle dir. Once the dir is marked with
+	// FAN_ACCESS_PERM|FAN_EVENT_ON_CHILD, any read() of a file in that
+	// dir generates a permission event. On Linux < 5.9 the
+	// FAN_MARK_IGNORED_MASK we add on config.json below does not work
+	// (kernel commit 497b0c5a7c06 lands in 5.9), so the listener's own
+	// read() of config.json from watchPidFileIterate would generate a
+	// permission event on this same fanotify fd. Since
+	// watchPidFileIterate is the only consumer of that fd, that
+	// read() self-deadlocks until the kernel kills it. Reading the
+	// file *before* the mark avoids generating that event entirely,
+	// and caching the bytes in pendingContainer.configJSON makes the
+	// later open()+read() in watchPidFileIterate /
+	// callPreCreateContainerCallback unnecessary.
 	configJSONPath := filepath.Join(bundleDir, "config.json")
 	if _, err := os.Stat(configJSONPath); errors.Is(err, os.ErrNotExist) {
 		// podman might install config.json in the userdata directory
@@ -669,6 +655,25 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 			return fmt.Errorf("config not found at %s", configJSONPath)
 		}
 	}
+	configJSON, err := readConfigJSON(configJSONPath)
+	if err != nil {
+		return fmt.Errorf("reading config.json (%q): %w", configJSONPath, err)
+	}
+
+	pidFileDir := filepath.Dir(pidFile)
+	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	if err != nil {
+		return fmt.Errorf("marking %s: %w", pidFileDir, err)
+	}
+
+	removeMarks = append(removeMarks, func() {
+		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	})
+
+	// IG no longer reads config.json from the fanotify watcher, so the
+	// ignore mask is only needed to suppress events from runc / runc-init
+	// reading config.json themselves (noise reduction on >= 5.9; ignored
+	// silently on < 5.9 due to the same 497b0c5a7c06 issue noted above).
 	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
@@ -713,14 +718,14 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	// Insert new entry
 	now := time.Now()
 	pc := &pendingContainer{
-		id:             containerID,
-		bundleDir:      bundleDir,
-		configJSONPath: configJSONPath,
-		pidFile:        pidFile,
-		pidFileDir:     pidFileDir,
-		mntnsId:        mntnsId,
-		timestamp:      now,
-		removeMarks:    removeMarks,
+		id:          containerID,
+		bundleDir:   bundleDir,
+		configJSON:  configJSON,
+		pidFile:     pidFile,
+		pidFileDir:  pidFileDir,
+		mntnsId:     mntnsId,
+		timestamp:   now,
+		removeMarks: removeMarks,
 	}
 	n.pendingContainers[pidFile] = pc
 
@@ -729,24 +734,24 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	return nil
 }
 
-func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer) {
-	bundleConfigJSONFile, err := os.Open(pc.configJSONPath)
+// readConfigJSON reads the OCI bundle config.json into memory with a
+// configJsonMaxSize cap. It must be called BEFORE the bundle directory is
+// marked with fanotify, otherwise on Linux < 5.9 it can self-deadlock the
+// fanotify watcher goroutine; see monitorRuntimeInstance for details.
+func readConfigJSON(path string) ([]byte, error) {
+	f, err := os.Open(path)
 	if err != nil {
-		log.Errorf("fanotify: could not open config.json (%q): %s", pc.configJSONPath, err)
-		return
+		return nil, err
 	}
-	defer bundleConfigJSONFile.Close()
-	bundleConfigJSON, err := io.ReadAll(io.LimitReader(bundleConfigJSONFile, configJsonMaxSize))
-	if err != nil {
-		log.Errorf("fanotify: could not read config.json (%q): %s", pc.configJSONPath, err)
-		return
-	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, configJsonMaxSize))
+}
 
-	containerConfig := string(bundleConfigJSON)
+func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer) {
 	n.callback(ContainerEvent{
 		Type:            EventTypePreCreateContainer,
 		ContainerID:     pc.id,
-		ContainerConfig: containerConfig,
+		ContainerConfig: string(pc.configJSON),
 		Bundle:          pc.bundleDir,
 	})
 }
