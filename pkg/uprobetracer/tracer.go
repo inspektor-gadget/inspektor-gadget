@@ -411,13 +411,16 @@ func (t *Tracer[Event]) ReattachContainerPid(containerPid uint32) error {
 	}
 
 	// exe-inode-change guard: if /proc/<pid>/exe still points at the same target
-	// we last re-attached for this pid, there is nothing new to attach.
+	// we last *successfully* re-attached for this pid, there is nothing new to
+	// attach. The target is recorded only after a clean pass below, so a transient
+	// failure (e.g. racing an overlayfs mount) is retried on the next exec instead
+	// of being permanently short-circuited.
 	exeLink := filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "exe")
-	if target, err := os.Readlink(exeLink); err == nil {
-		if last, ok := t.containerPid2ExeTarget[containerPid]; ok && last == target {
+	exeTarget, _ := os.Readlink(exeLink)
+	if exeTarget != "" {
+		if last, ok := t.containerPid2ExeTarget[containerPid]; ok && last == exeTarget {
 			return nil
 		}
-		t.containerPid2ExeTarget[containerPid] = target
 	}
 
 	// At exec time the settled binary is /proc/<pid>/exe: for statically-linked
@@ -442,10 +445,12 @@ func (t *Tracer[Event]) ReattachContainerPid(containerPid uint32) error {
 	for _, inode := range attachedRealInodes {
 		existing[inode] = true
 	}
+	attachFailed := false
 	for _, filePath := range unsecuredAttachFilePaths {
 		realInodePtr, added, err := t.attachOneFile(containerPid, filePath, existing)
 		if err != nil {
 			t.logger.Debugf("%s", err.Error())
+			attachFailed = true
 			continue
 		}
 		if added {
@@ -454,6 +459,12 @@ func (t *Tracer[Event]) ReattachContainerPid(containerPid uint32) error {
 		}
 	}
 	t.containerPid2Inodes[containerPid] = attachedRealInodes
+
+	// Record the settled exe target only after a clean pass so the guard above
+	// does not permanently skip a pid whose attach failed transiently.
+	if exeTarget != "" && !attachFailed {
+		t.containerPid2ExeTarget[containerPid] = exeTarget
+	}
 	return nil
 }
 
