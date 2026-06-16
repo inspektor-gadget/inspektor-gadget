@@ -103,6 +103,14 @@ type Tracer[Event any] struct {
 	// used as a set, keeps PIDs of the pending containers
 	pendingContainerPids map[uint32]bool
 
+	// keeps the OCI runtime config (verbatim config.json) per attached/pending
+	// container PID, recorded at AttachContainer. Used to resolve a container's
+	// intended executable (process.args[0]) when a targeted library is statically
+	// linked into the binary rather than present as a shared object — see
+	// searchForLibrary. Kept here so the pending-attach path (which only has PIDs)
+	// can still resolve the executable once the program loads.
+	containerPid2OciConfig map[uint32]string
+
 	logger logger.Logger
 
 	closed bool
@@ -111,11 +119,12 @@ type Tracer[Event any] struct {
 
 func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 	t := &Tracer[Event]{
-		containerPid2Inodes:  make(map[uint32][]uint64),
-		inodeRefCount:        make(map[uint64]*inodeKeeper),
-		pendingContainerPids: make(map[uint32]bool),
-		logger:               logger,
-		closed:               false,
+		containerPid2Inodes:    make(map[uint32][]uint64),
+		inodeRefCount:          make(map[uint64]*inodeKeeper),
+		pendingContainerPids:   make(map[uint32]bool),
+		containerPid2OciConfig: make(map[uint32]string),
+		logger:                 logger,
+		closed:                 false,
 	}
 	return t, nil
 }
@@ -177,7 +186,54 @@ func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) 
 	if err != nil {
 		return nil, fmt.Errorf("parsing ld cache: %w", err)
 	}
-	return ldCachePaths, nil
+	if len(ldCachePaths) > 0 {
+		return ldCachePaths, nil
+	}
+
+	// The requested library is not a shared object in this container's ld cache.
+	// This is the common case for statically-linked runtimes that embed the
+	// library into their main executable (Node.js, and Go/Rust binaries that
+	// statically link OpenSSL/BoringSSL), where a `libssl`-targeted uprobe gadget
+	// would otherwise find nothing to attach to. Fall back to the container's
+	// intended executable: the symbol may be defined there.
+	//
+	// The executable is resolved from the OCI runtime config (process.args[0]),
+	// NOT from /proc/<pid>/exe: at container-create time (when AttachContainer
+	// fires) the PID still points at the runtime shim, because runc execve's into
+	// the entrypoint in-place slightly later and a uprobe binds an inode without
+	// following execve. The OCI-spec value is the in-rootfs path of the settled
+	// binary, opened via the same OpenInContainer mechanism as a shared library —
+	// so ReadRealInodeFromFd dedup and per-image attach-once are preserved, and
+	// attachUprobe skips (logged) any executable that does not export the symbol.
+	exePath, ok := t.containerExecutableFromOCI(containerPid)
+	if !ok {
+		return nil, nil
+	}
+	return []string{exePath}, nil
+}
+
+// containerExecutableFromOCI resolves a container's intended executable to its
+// in-container absolute path from the OCI config recorded at AttachContainer
+// (process.args[0]). First cut: only absolute argv[0] is supported (covers
+// Node.js and most images, whose runtime resolves the image Entrypoint/Cmd to an
+// absolute path); a relative argv[0] resolved against PATH is a follow-up.
+func (t *Tracer[Event]) containerExecutableFromOCI(containerPid uint32) (string, bool) {
+	ociConfig, ok := t.containerPid2OciConfig[containerPid]
+	if !ok || ociConfig == "" {
+		return "", false
+	}
+	args, err := containercollection.OCIConfigGetProcessArgs(ociConfig)
+	if err != nil || len(args) == 0 {
+		t.logger.Debugf("uprobetracer: container %d: cannot read process args from OCI config: %v", containerPid, err)
+		return "", false
+	}
+	exe := args[0]
+	if !filepath.IsAbs(exe) {
+		t.logger.Debugf("uprobetracer: container %d: entrypoint %q is not absolute; PATH resolution not yet supported", containerPid, exe)
+		return "", false
+	}
+	t.logger.Debugf("uprobetracer: %q not in ld cache for container %d; attaching to executable %q from OCI spec", t.attachFilePath, containerPid, exe)
+	return exe, true
 }
 
 // attach uprobe program to the inode of the file passed in parameter
@@ -266,6 +322,9 @@ func (t *Tracer[Event]) AttachContainer(container *containercollection.Container
 	}
 
 	pid := container.ContainerPid()
+	// Record the OCI config so the (possibly deferred) attach can resolve a
+	// statically-linked symbol to the container's executable via the OCI spec.
+	t.containerPid2OciConfig[pid] = container.OciConfig
 	if t.prog == nil {
 		_, exist := t.pendingContainerPids[pid]
 		if exist {
@@ -291,6 +350,7 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 	}
 
 	pid := container.ContainerPid()
+	delete(t.containerPid2OciConfig, pid)
 	if t.prog == nil {
 		// remove from pending list
 		_, exist := t.pendingContainerPids[pid]
