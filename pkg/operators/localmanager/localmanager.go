@@ -70,6 +70,11 @@ type MountNsMapSetter interface {
 type Attacher interface {
 	AttachContainer(container *containercollection.Container) error
 	DetachContainer(*containercollection.Container) error
+	// ReattachContainer re-drives attachment after a tracked container's
+	// process has execve'd into its final executable. Needed for uprobe gadgets
+	// targeting statically-linked runtimes, where the create-time attach bound
+	// the runtime shim's inode. Implementations with no uprobes may no-op.
+	ReattachContainer(container *containercollection.Container) error
 }
 
 type localManager struct {
