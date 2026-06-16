@@ -137,6 +137,20 @@ type ContainerEvent struct {
 
 type ContainerNotifyFunc func(notif ContainerEvent)
 
+// collectExecEvents gates the per-execve exec_events stream. It is off by
+// default so the container-hook adds no per-execve cost; a consumer that needs
+// EventTypeExecContainer (e.g. a uprobe gadget re-attaching to statically
+// linked runtimes) calls SetExecEventsCollection(true) before the notifier is
+// created.
+var collectExecEvents atomic.Bool
+
+// SetExecEventsCollection enables or disables emission of EventTypeExecContainer.
+// It must be called before NewContainerNotifier so the setting is applied when
+// the eBPF program is loaded.
+func SetExecEventsCollection(enabled bool) {
+	collectExecEvents.Store(enabled)
+}
+
 type watchedContainer struct {
 	id  string
 	pid int
@@ -291,6 +305,15 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return err
 	}
 
+	execEventsEnabled := collectExecEvents.Load()
+	collectExecEventsVal := uint8(0)
+	if execEventsEnabled {
+		collectExecEventsVal = 1
+	}
+	if err := execSpec.CollectExecEvents.Set(collectExecEventsVal); err != nil {
+		return err
+	}
+
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			KernelTypes: btfgen.GetBTFSpec(),
@@ -332,9 +355,11 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	}
 	n.links = append(n.links, l)
 
-	n.execReader, err = ringbuf.NewReader(n.objs.ExecEvents)
-	if err != nil {
-		return fmt.Errorf("opening exec_events ringbuf reader: %w", err)
+	if execEventsEnabled {
+		n.execReader, err = ringbuf.NewReader(n.objs.ExecEvents)
+		if err != nil {
+			return fmt.Errorf("opening exec_events ringbuf reader: %w", err)
+		}
 	}
 
 	return nil
@@ -393,12 +418,15 @@ func (n *ContainerNotifier) install() error {
 		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ", "))
 	}
 
-	n.wg.Add(5)
+	n.wg.Add(4)
 	go n.watchContainersTermination()
 	go n.watchRuntimeBinary()
 	go n.watchPendingContainers()
 	go n.checkTimeout()
-	go n.watchExecEvents()
+	if n.execReader != nil {
+		n.wg.Add(1)
+		go n.watchExecEvents()
+	}
 
 	return nil
 }

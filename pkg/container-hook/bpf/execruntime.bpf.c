@@ -15,6 +15,11 @@ const struct exec_event *unused_exec_event __attribute__((unused));
 // configured by userspace
 const volatile u64 tracer_group = 0;
 
+// When zero (the default), ig_sched_exec does not emit to exec_events, so the
+// per-execve path costs nothing. Userspace sets it to 1 only when a consumer
+// (e.g. a uprobe gadget that re-attaches on exec) needs the stream.
+const volatile u8 collect_exec_events = 0;
+
 // ig_fa_pick_ctx keeps context for kprobe/kretprobe fsnotify_remove_first_event
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -190,6 +195,9 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	// a thread. Thankfully, the old thread id is passed in ctx->old_pid.
 	u32 execs_lookup_key = ctx->old_pid;
 	bpf_map_delete_elem(&exec_args, &execs_lookup_key);
+
+	if (!collect_exec_events)
+		return 0;
 
 	// Emit the settled exec so userspace can re-attach uprobes to a container's
 	// final executable. This tracepoint is post-execve, so /proc/<tgid>/exe now

@@ -92,8 +92,9 @@ type execruntimeMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execruntimeVariableSpecs struct {
-	TracerGroup     *ebpf.VariableSpec `ebpf:"tracer_group"`
-	UnusedExecEvent *ebpf.VariableSpec `ebpf:"unused_exec_event"`
+	CollectExecEvents *ebpf.VariableSpec `ebpf:"collect_exec_events"`
+	TracerGroup       *ebpf.VariableSpec `ebpf:"tracer_group"`
+	UnusedExecEvent   *ebpf.VariableSpec `ebpf:"unused_exec_event"`
 }
 
 // execruntimeObjects contains all objects after they have been loaded into the kernel.
@@ -135,8 +136,9 @@ func (m *execruntimeMaps) Close() error {
 //
 // It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execruntimeVariables struct {
-	TracerGroup     *ebpf.Variable `ebpf:"tracer_group"`
-	UnusedExecEvent *ebpf.Variable `ebpf:"unused_exec_event"`
+	CollectExecEvents *ebpf.Variable `ebpf:"collect_exec_events"`
+	TracerGroup       *ebpf.Variable `ebpf:"tracer_group"`
+	UnusedExecEvent   *ebpf.Variable `ebpf:"unused_exec_event"`
 }
 
 // execruntimePrograms contains all programs after they have been loaded into the kernel.
