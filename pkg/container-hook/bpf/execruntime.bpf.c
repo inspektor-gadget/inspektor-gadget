@@ -8,6 +8,10 @@
 
 static const struct record empty_record = {};
 
+// Force struct exec_event into the BTF so bpf2go can generate its Go type; the
+// ringbuf map carries it without a __type() annotation.
+const struct exec_event *unused_exec_event __attribute__((unused));
+
 // configured by userspace
 const volatile u64 tracer_group = 0;
 
@@ -25,6 +29,16 @@ struct {
 	__uint(max_entries, 64);
 	__type(value, struct record);
 } ig_fa_records SEC(".maps");
+
+// exec_events streams one exec_event per successful execve. Consumed by a
+// ringbuf reader in userspace, which resolves the mntns to a tracked container
+// and re-attaches uprobes to the settled executable. Unlike ig_fa_records
+// (driven by the fanotify path on the runtime binary), this fires for every
+// execve; userspace drops events whose mntns is not a tracked container.
+struct {
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 256 * 1024);
+} exec_events SEC(".maps");
 
 // man clone(2):
 //   If any of the threads in a thread group performs an
@@ -176,6 +190,19 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 	// a thread. Thankfully, the old thread id is passed in ctx->old_pid.
 	u32 execs_lookup_key = ctx->old_pid;
 	bpf_map_delete_elem(&exec_args, &execs_lookup_key);
+
+	// Emit the settled exec so userspace can re-attach uprobes to a container's
+	// final executable. This tracepoint is post-execve, so /proc/<tgid>/exe now
+	// points at the real binary (not the runtime shim). We emit the tgid, which
+	// is the container init PID for an in-place wrapper exec.
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	struct exec_event *event =
+		bpf_ringbuf_reserve(&exec_events, sizeof(*event), 0);
+	if (event) {
+		event->mntns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+		event->pid = bpf_get_current_pid_tgid() >> 32;
+		bpf_ringbuf_submit(event, 0);
+	}
 	return 0;
 }
 

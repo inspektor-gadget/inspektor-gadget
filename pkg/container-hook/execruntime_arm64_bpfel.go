@@ -13,6 +13,13 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type execruntimeExecEvent struct {
+	_       structs.HostLayout
+	MntnsId uint64
+	Pid     uint32
+	_       [4]byte
+}
+
 type execruntimeRecord struct {
 	_          structs.HostLayout
 	MntnsId    uint64
@@ -76,6 +83,7 @@ type execruntimeProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type execruntimeMapSpecs struct {
 	ExecArgs    *ebpf.MapSpec `ebpf:"exec_args"`
+	ExecEvents  *ebpf.MapSpec `ebpf:"exec_events"`
 	IgFaPickCtx *ebpf.MapSpec `ebpf:"ig_fa_pick_ctx"`
 	IgFaRecords *ebpf.MapSpec `ebpf:"ig_fa_records"`
 }
@@ -84,7 +92,8 @@ type execruntimeMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execruntimeVariableSpecs struct {
-	TracerGroup *ebpf.VariableSpec `ebpf:"tracer_group"`
+	TracerGroup     *ebpf.VariableSpec `ebpf:"tracer_group"`
+	UnusedExecEvent *ebpf.VariableSpec `ebpf:"unused_exec_event"`
 }
 
 // execruntimeObjects contains all objects after they have been loaded into the kernel.
@@ -108,6 +117,7 @@ func (o *execruntimeObjects) Close() error {
 // It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execruntimeMaps struct {
 	ExecArgs    *ebpf.Map `ebpf:"exec_args"`
+	ExecEvents  *ebpf.Map `ebpf:"exec_events"`
 	IgFaPickCtx *ebpf.Map `ebpf:"ig_fa_pick_ctx"`
 	IgFaRecords *ebpf.Map `ebpf:"ig_fa_records"`
 }
@@ -115,6 +125,7 @@ type execruntimeMaps struct {
 func (m *execruntimeMaps) Close() error {
 	return _ExecruntimeClose(
 		m.ExecArgs,
+		m.ExecEvents,
 		m.IgFaPickCtx,
 		m.IgFaRecords,
 	)
@@ -124,7 +135,8 @@ func (m *execruntimeMaps) Close() error {
 //
 // It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execruntimeVariables struct {
-	TracerGroup *ebpf.Variable `ebpf:"tracer_group"`
+	TracerGroup     *ebpf.Variable `ebpf:"tracer_group"`
+	UnusedExecEvent *ebpf.Variable `ebpf:"unused_exec_event"`
 }
 
 // execruntimePrograms contains all programs after they have been loaded into the kernel.

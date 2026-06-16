@@ -27,6 +27,10 @@ const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
 	EventTypePreCreateContainer
+	// EventTypeExecContainer is published when a tracked container's process
+	// execve's into a new executable. Gadgets that attach uprobes to
+	// statically-linked runtimes use it to re-attach to the settled binary.
+	EventTypeExecContainer
 )
 
 func (e *EventType) String() string {
@@ -35,6 +39,8 @@ func (e *EventType) String() string {
 		return "DELETED"
 	case EventTypePreCreateContainer:
 		return "PRECREATE"
+	case EventTypeExecContainer:
+		return "EXEC"
 	case EventTypeAddContainer:
 		fallthrough
 	default:
@@ -48,6 +54,8 @@ func EventTypeFromString(s string) EventType {
 		return EventTypeRemoveContainer
 	case "PRECREATE":
 		return EventTypePreCreateContainer
+	case "EXEC":
+		return EventTypeExecContainer
 	case "CREATED":
 		fallthrough
 	default:
