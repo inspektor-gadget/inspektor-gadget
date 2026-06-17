@@ -194,6 +194,7 @@ require (
 )
 
 require github.com/NVIDIA/go-nvml v0.13.3-0
+require github.com/moby/sys/capability v0.4.0
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect

@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/google/uuid"
+	"github.com/moby/sys/capability"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -259,6 +260,17 @@ func (l *localManager) Init(operatorParams *params.Params) error {
 	return nil
 }
 
+func hasEffectiveCap(cap capability.Cap) (bool, error) {
+	caps, err := capability.NewPid2(0)
+	if err != nil {
+		return false, err
+	}
+	if err := caps.Load(); err != nil {
+		return false, err
+	}
+	return caps.Get(capability.EFFECTIVE, cap), nil
+}
+
 // initCollections initializes the container collection and tracer collection.
 func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, kubeconfig string, enrichWithK8s bool) error {
 	var cc containercollection.ContainerCollection
@@ -289,10 +301,20 @@ func (l *localManager) initCollections(rc []*containerutilsTypes.RuntimeConfig, 
 		containercollection.WithLinuxNamespaceEnrichment(),
 		containercollection.WithMultipleContainerRuntimesEnrichment(rc),
 		containercollection.WithOCIConfigForInitialContainer(),
-		containercollection.WithContainerFanotifyEbpf(),
 		containercollection.WithTracerCollection(l.tracerCollection),
 		containercollection.WithProcEnrichment(),
 	}...)
+
+	ok, err := hasEffectiveCap(capability.CAP_SYS_ADMIN)
+	if err != nil {
+		log.Warnf("checking if binary has CAP_SYS_ADMIN: %v", err)
+	}
+
+	if ok {
+		ccOpts = append(ccOpts, containercollection.WithContainerFanotifyEbpf())
+	} else {
+		log.Warn("binary does not have CAP_SYS_ADMIN: new containers will not be detected")
+	}
 
 	if kubeconfig != "" {
 		ccOpts = append(ccOpts, containercollection.WithKubeconfigPath(kubeconfig))
