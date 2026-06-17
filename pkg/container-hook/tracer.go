@@ -154,6 +154,10 @@ func SetExecEventsCollection(enabled bool) {
 type watchedContainer struct {
 	id  string
 	pid int
+	// mntnsID is the container's mount namespace, recorded when exec-event
+	// collection is enabled so it can be removed from tracked_mntns on
+	// termination. Zero when not tracked.
+	mntnsID uint64
 }
 
 type pendingContainer struct {
@@ -433,9 +437,10 @@ func (n *ContainerNotifier) install() error {
 
 // watchExecEvents drains the exec_events ringbuf and emits an
 // EventTypeExecContainer for each execve so consumers can re-attach uprobes to
-// the settled executable. The ringbuf fires for every execve on the host; the
-// consumer (e.g. the container collection) resolves the mntns to a tracked
-// container and drops the rest.
+// the settled executable. The ringbuf is scoped in-kernel to tracked_mntns
+// (maintained from the container lifecycle), so only execs in watched
+// containers arrive here — host and untracked-container execs are dropped in
+// the kernel before they cost a ringbuf record or a wakeup.
 func (n *ContainerNotifier) watchExecEvents() {
 	defer n.wg.Done()
 
@@ -466,6 +471,18 @@ func (n *ContainerNotifier) watchExecEvents() {
 // containers detected by ContainerNotifier, but it can also be called for
 // containers detected externally such as initial containers.
 func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
+	// When exec-event collection is on, resolve the container's mount namespace
+	// so ig_sched_exec emits exec events for it (and only it). Resolve before
+	// taking the lock to avoid holding it across the /proc read.
+	var mntnsID uint64
+	if n.execReader != nil {
+		var err error
+		mntnsID, err = containerutils.GetMntNs(containerPID)
+		if err != nil {
+			log.Debugf("container-hook: not tracking exec mntns for container %s (pid %d): %s", containerID, containerPID, err)
+		}
+	}
+
 	n.containersMu.Lock()
 	defer n.containersMu.Unlock()
 
@@ -475,8 +492,16 @@ func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, con
 	}
 
 	n.containers[containerID] = &watchedContainer{
-		id:  containerID,
-		pid: containerPID,
+		id:      containerID,
+		pid:     containerPID,
+		mntnsID: mntnsID,
+	}
+
+	if mntnsID != 0 {
+		val := uint8(1)
+		if err := n.objs.TrackedMntns.Update(&mntnsID, &val, ebpf.UpdateAny); err != nil {
+			log.Debugf("container-hook: tracking exec mntns %d: %s", mntnsID, err)
+		}
 	}
 
 	return nil
@@ -523,6 +548,13 @@ func (n *ContainerNotifier) watchContainersTermination() {
 				if c.pid > math.MaxUint32 {
 					log.Errorf("container PID (%d) exceeds math.MaxUint32 (%d)", c.pid, math.MaxUint32)
 					return
+				}
+
+				if c.mntnsID != 0 {
+					mntnsID := c.mntnsID
+					if err := n.objs.TrackedMntns.Delete(&mntnsID); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+						log.Debugf("container-hook: untracking exec mntns %d: %s", mntnsID, err)
+					}
 				}
 
 				go n.callback(ContainerEvent{

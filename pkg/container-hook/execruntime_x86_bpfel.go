@@ -82,10 +82,11 @@ type execruntimeProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execruntimeMapSpecs struct {
-	ExecArgs    *ebpf.MapSpec `ebpf:"exec_args"`
-	ExecEvents  *ebpf.MapSpec `ebpf:"exec_events"`
-	IgFaPickCtx *ebpf.MapSpec `ebpf:"ig_fa_pick_ctx"`
-	IgFaRecords *ebpf.MapSpec `ebpf:"ig_fa_records"`
+	ExecArgs     *ebpf.MapSpec `ebpf:"exec_args"`
+	ExecEvents   *ebpf.MapSpec `ebpf:"exec_events"`
+	IgFaPickCtx  *ebpf.MapSpec `ebpf:"ig_fa_pick_ctx"`
+	IgFaRecords  *ebpf.MapSpec `ebpf:"ig_fa_records"`
+	TrackedMntns *ebpf.MapSpec `ebpf:"tracked_mntns"`
 }
 
 // execruntimeVariableSpecs contains global variables before they are loaded into the kernel.
@@ -117,10 +118,11 @@ func (o *execruntimeObjects) Close() error {
 //
 // It can be passed to loadExecruntimeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execruntimeMaps struct {
-	ExecArgs    *ebpf.Map `ebpf:"exec_args"`
-	ExecEvents  *ebpf.Map `ebpf:"exec_events"`
-	IgFaPickCtx *ebpf.Map `ebpf:"ig_fa_pick_ctx"`
-	IgFaRecords *ebpf.Map `ebpf:"ig_fa_records"`
+	ExecArgs     *ebpf.Map `ebpf:"exec_args"`
+	ExecEvents   *ebpf.Map `ebpf:"exec_events"`
+	IgFaPickCtx  *ebpf.Map `ebpf:"ig_fa_pick_ctx"`
+	IgFaRecords  *ebpf.Map `ebpf:"ig_fa_records"`
+	TrackedMntns *ebpf.Map `ebpf:"tracked_mntns"`
 }
 
 func (m *execruntimeMaps) Close() error {
@@ -129,6 +131,7 @@ func (m *execruntimeMaps) Close() error {
 		m.ExecEvents,
 		m.IgFaPickCtx,
 		m.IgFaRecords,
+		m.TrackedMntns,
 	)
 }
 
