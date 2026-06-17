@@ -392,7 +392,9 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 // It is idempotent and safe to call repeatedly:
 //   - an inode already counted for this pid is a no-op;
 //   - an inode already counted for another pid only bumps the shared refcount;
-//   - an unknown pid is attached fresh (no error).
+//   - a pid that AttachContainer never recorded (or that DetachContainer has
+//     already cleaned up) is a no-op — fresh-attaching would install a uprobe
+//     link with no DetachContainer to ever release it.
 //
 // containerPid2Inodes[pid] is treated as a SET — each (pid, realInode) holds
 // exactly one reference — so DetachContainer's decrement-once-per-inode logic
@@ -407,6 +409,16 @@ func (t *Tracer[Event]) ReattachContainerPid(containerPid uint32) error {
 	if t.prog == nil {
 		// Pending mode: AttachContainer recorded the pid; the create-time attach
 		// path will run searchForLibrary once AttachProg loads the program.
+		return nil
+	}
+
+	// Tracked-pid guard: AttachContainer keys every live container's init pid in
+	// containerPid2Inodes (even with an empty inode slice when the create-time
+	// attach found no symbol). A Reattach for a pid not in the map means either
+	// DetachContainer has already cleaned up — the exec event raced teardown —
+	// or the pid was never an AttachContainer target. Either way, fresh-attaching
+	// here would install a uprobe link with no DetachContainer to ever release it.
+	if _, tracked := t.containerPid2Inodes[containerPid]; !tracked {
 		return nil
 	}
 

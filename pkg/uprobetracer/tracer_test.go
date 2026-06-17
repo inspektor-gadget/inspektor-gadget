@@ -180,18 +180,24 @@ func TestDetachAfterReattachNoLeak(t *testing.T) {
 	}
 }
 
-func TestReattachUnknownPidIsFreshAttach(t *testing.T) {
+// An exec event for a pid that AttachContainer never recorded (e.g. the event
+// raced DetachContainer and landed after teardown) must be a no-op: attaching
+// fresh would install a uprobe link with no DetachContainer to ever release it.
+func TestReattachUntrackedPidIsNoOp(t *testing.T) {
 	tr, st := newTestTracer(t)
 	st.currentInode = 300
 
 	if err := tr.ReattachContainerPid(fakePid); err != nil {
-		t.Fatalf("ReattachContainerPid on unknown pid: %v", err)
+		t.Fatalf("ReattachContainerPid on untracked pid: %v", err)
 	}
-	if st.attachCount != 1 {
-		t.Errorf("attachCount = %d, want 1 (unknown pid -> fresh attach)", st.attachCount)
+	if st.attachCount != 0 {
+		t.Errorf("attachCount = %d, want 0 (untracked pid must not fresh-attach)", st.attachCount)
 	}
-	if k := tr.inodeRefCount[300]; k == nil || k.counter != 1 {
-		t.Errorf("inodeRefCount[300] = %+v, want counter 1", k)
+	if len(tr.inodeRefCount) != 0 {
+		t.Errorf("inodeRefCount mutated for untracked pid: %v", tr.inodeRefCount)
+	}
+	if _, ok := tr.containerPid2Inodes[fakePid]; ok {
+		t.Errorf("containerPid2Inodes added entry for untracked pid (would leak)")
 	}
 }
 
