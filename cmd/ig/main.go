@@ -19,6 +19,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"golang.org/x/sys/unix"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -64,6 +65,10 @@ func main() {
 	if experimental.Enabled() {
 		log.Info("Experimental features enabled")
 	}
+
+	// We need this in order to read /proc/self after setting capabilities
+	// manually.
+	_ = unix.Prctl(unix.PR_SET_DUMPABLE, 1, 0, 0, 0)
 
 	rootCmd := &cobra.Command{
 		Use:   "ig",

@@ -194,6 +194,8 @@ require (
 	sigs.k8s.io/release-utils v0.11.1 // indirect
 )
 
+require github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
+
 require (
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/containers/common v0.62.3 // indirect
