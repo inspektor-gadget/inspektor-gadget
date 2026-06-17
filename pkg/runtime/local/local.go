@@ -15,10 +15,6 @@
 package local
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -30,10 +26,6 @@ func New() *Runtime {
 }
 
 func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
-	if os.Geteuid() != 0 {
-		return fmt.Errorf("%s must be run as root to be able to run eBPF programs", filepath.Base(os.Args[0]))
-	}
-
 	err := host.Init(host.Config{})
 	if err != nil {
 		return err
