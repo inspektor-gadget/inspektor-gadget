@@ -161,7 +161,11 @@ func (i *SocketEnricherInstance) PostGadgetRun() error {
 	defer i.manager.mu.Unlock()
 
 	i.manager.refCount--
-	if i.manager.refCount == 0 {
+	// Guard against a nil enricher: the manager-level Close() (see above) may
+	// have already torn it down independently of refCount (e.g. on agent
+	// shutdown/restart), so calling Close() here unconditionally would
+	// dereference a nil *tracer.SocketEnricher and panic.
+	if i.manager.refCount == 0 && i.manager.socketEnricher != nil {
 		i.manager.socketEnricher.Close()
 		i.manager.socketEnricher = nil
 	}
