@@ -19,14 +19,16 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"strconv"
+	"fmt"
 )
 
 // WaitForEnd waits until the user-set timeout happened or SIGINT or SIGTERM
 // is sent to us
 func WaitForEnd(f *CommonFlags) {
 	timeoutChannel := make(<-chan time.Time)
-	if f.Timeout != 0 {
-		timeoutChannel = time.After(time.Duration(f.Timeout) * time.Second)
+	if duration,err:= parseTimeout(f.Timeout);err==nil {
+		timeoutChannel = time.After(duration)
 	}
 
 	stop := make(chan os.Signal, 1)
@@ -36,4 +38,17 @@ func WaitForEnd(f *CommonFlags) {
 	case <-timeoutChannel:
 	case <-stop:
 	}
+}
+
+func parseTimeout(s string) (time.Duration, error) {
+	d, err := time.ParseDuration(s)
+    if err == nil {
+		return d, nil
+    }
+    sec, err := strconv.ParseInt(s, 10, 64)
+    if err != nil {
+        return 0, err
+    }
+    fmt.Printf("WARNING: The --timeout flag no longer accepts plain numeric values...")
+    return time.Duration(sec) * time.Second, nil
 }
