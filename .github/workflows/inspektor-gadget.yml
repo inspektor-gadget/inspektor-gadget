@@ -918,11 +918,11 @@ jobs:
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
-        uses: ./.github/actions/sign-container-image
+        uses: ./.github/actions/sign-oci-artifact
         with:
           password: '${{ secrets.COSIGN_PASSWORD }}'
           private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+          oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
@@ -988,11 +988,11 @@ jobs:
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
       - name: Sign the manifest list
         if: needs.check-secrets.outputs.cosign == 'true'
-        uses: ./.github/actions/sign-container-image
+        uses: ./.github/actions/sign-oci-artifact
         with:
           password: '${{ secrets.COSIGN_PASSWORD }}'
           private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+          oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
 
   build-helper-images:
     # level: 2
@@ -1133,11 +1133,11 @@ jobs:
         echo "${{ matrix.image.name }}=${image}" >> $GITHUB_OUTPUT
     - name: Sign ${{ matrix.image.name }} image
       if:  needs.check-secrets.outputs.cosign == 'true' && vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS'
-      uses: ./.github/actions/sign-container-image
+      uses: ./.github/actions/sign-oci-artifact
       with:
         password: '${{ secrets.COSIGN_PASSWORD }}'
         private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-        image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.push-image.outputs.digest }}"
+        oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.push-image.outputs.digest }}"
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
