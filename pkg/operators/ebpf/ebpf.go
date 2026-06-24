@@ -126,11 +126,12 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		program: program,
 
 		// Preallocate maps
-		tracers:   make(map[string]*Tracer),
-		structs:   make(map[string]*Struct),
-		iterators: make(map[string]*Iterator),
-		params:    make(map[string]*param),
-		mapIters:  make(map[string]*mapIter),
+		tracers:        make(map[string]*Tracer),
+		structs:        make(map[string]*Struct),
+		iterators:      make(map[string]*Iterator),
+		params:         make(map[string]*param),
+		mapIters:       make(map[string]*mapIter),
+		iterTargetMaps: make(map[string]string),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -178,12 +179,16 @@ type ebpfInstance struct {
 	collectionSpec *ebpf.CollectionSpec
 	collection     *ebpf.Collection
 
-	tracers     map[string]*Tracer
-	structs     map[string]*Struct
-	iterators   map[string]*Iterator
-	mapIters    map[string]*mapIter
-	params      map[string]*param
-	paramValues map[string]string
+	tracers   map[string]*Tracer
+	structs   map[string]*Struct
+	iterators map[string]*Iterator
+	mapIters  map[string]*mapIter
+	// iterTargetMaps maps a SEC("iter/bpf_map_elem") BPF program name to the
+	// map (by name) it should iterate over. Populated from
+	// GADGET_ITER_TARGET_MAP() declarations in the BPF object.
+	iterTargetMaps map[string]string
+	params         map[string]*param
+	paramValues    map[string]string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -239,6 +244,13 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 				gadgetCtx.Logger().Warnf("%s prefix is deprecated; please use %s instead", snapshottersPrefix, iteratorsPrefix)
 				return i.populateIterators(b, s)
 			},
+		},
+		{
+			// Distinct stem from iteratorsPrefix on purpose; see comment
+			// in types.go.
+			prefixFunc:   hasPrefix(iterTargetMapPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.populateIterTargetMap,
 		},
 		{
 			prefixFunc:   hasPrefix(iteratorsPrefix),
