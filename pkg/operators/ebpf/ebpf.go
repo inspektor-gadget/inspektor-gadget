@@ -757,6 +757,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Maps: ebpf.MapOptions{
+			PinPath: "/sys/fs/bpf",
+		},
 	}
 
 	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {

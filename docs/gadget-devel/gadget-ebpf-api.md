@@ -702,6 +702,37 @@ GADGET_PARAM(collect_ustack);
 	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
 ```
 
+## Map pinning
+
+Gadget maps can be pinned to bpffs by adding the `pinning` field to the map
+declaration:
+
+```c
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 4096);
+	__type(key, struct mykey);
+	__type(value, struct myval);
+	__uint(pinning, LIBBPF_PIN_BY_NAME);
+} my_map SEC(".maps");
+```
+
+This pins the map at `/sys/fs/bpf/<map_name>`. Behaviour:
+
+- If no map exists at the pin path, libbpf creates the map and pins it.
+- If a compatible map already exists (matching type, key/value sizes,
+  max_entries, flags), libbpf reuses it instead of creating a new one. This
+  is what enables consumer gadgets to read maps written by an external
+  producer process (e.g. a userspace daemon polling hardware metrics and
+  publishing them through bpffs-pinned maps).
+- If an incompatible map exists at the pin path, gadget load fails with a
+  clear error.
+
+Pinned maps persist in bpffs across `ig run` invocations. To iterate the
+contents of such a map non-destructively, see
+[`iter/bpf_map_elem`](program-types.md#iterators) and the
+`GADGET_ITER_TARGET_MAP` macro.
+
 ## Metrics
 
 Check [metrics](metrics.md#using-well-known-types-in-the-ebpf-code).
