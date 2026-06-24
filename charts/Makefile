@@ -34,7 +34,9 @@ endif
 
 # install uses 'helm upgrade --install' to make chart installation idempotent.
 install: build
-	$(HELM) upgrade --install gadget $(CHART_DIR) --namespace gadget --create-namespace $$HELM_PARAMS
+	$(HELM) upgrade --install gadget $(CHART_DIR) --namespace gadget --create-namespace \
+		--set-file config.operator.oci.public-keys[0]=../pkg/resources/inspektor-gadget.pub \
+		$$HELM_PARAMS
 
 uninstall:
 	$(HELM) uninstall gadget --namespace gadget $$HELM_PARAMS
@@ -43,7 +45,9 @@ lint: build
 	$(HELM) lint $(CHART_DIR) $$HELM_PARAMS
 
 template: build
-	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds $$HELM_PARAMS | tee $(OUTPUT_DIR)/deploy.yaml
+	$(HELM) template gadget $(CHART_DIR) --namespace gadget --skip-crds \
+		--set-file config.operator.oci.public-keys[0]=../pkg/resources/inspektor-gadget.pub \
+		$$HELM_PARAMS | tee $(OUTPUT_DIR)/deploy.yaml
 
 package: build
 	$(HELM) package $(CHART_DIR) -d $(BUILD_DIR) $$HELM_PARAMS
@@ -60,3 +64,4 @@ help:
 	@echo "  template  - Template chart"
 	@echo "  package   - Package chart"
 	@echo "  help      - Print this help"
+
