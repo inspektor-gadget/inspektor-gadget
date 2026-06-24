@@ -10,7 +10,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
 	github.com/coreos/go-systemd/v22 v22.7.0
-	github.com/cyphar/filepath-securejoin v0.5.1
+	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.5.3+incompatible
@@ -195,6 +195,7 @@ require (
 )
 
 require (
+	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/containers/common v0.62.3 // indirect
 	github.com/elastic/go-freelru v0.16.0 // indirect
