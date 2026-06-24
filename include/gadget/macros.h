@@ -78,4 +78,32 @@
 #define GADGET_MAPITER(name, mapname) \
 	const void *gadget_mapiter_##name##___##mapname __attribute__((unused));
 
+// GADGET_ITER_TARGET_MAP binds a BPF iter program declared with
+// SEC("iter/bpf_map_elem") to the map it should iterate over. The kernel
+// requires the target map FD at attach time; this macro tells IG which map
+// to pass to bpf_link_create's iter_info.map_fd. Use together with
+// GADGET_ITER(name, event_type, prog_name).
+//
+// Example:
+//
+//   struct {
+//       __uint(type, BPF_MAP_TYPE_LRU_HASH);
+//       __uint(max_entries, 4096);
+//       __type(key,   struct mykey);
+//       __type(value, struct myval);
+//       __uint(pinning, LIBBPF_PIN_BY_NAME);
+//   } my_pinned_map SEC(".maps");
+//
+//   GADGET_ITER(my_iter, my_event, dump_my_map);
+//   GADGET_ITER_TARGET_MAP(dump_my_map, my_pinned_map);
+//
+//   SEC("iter/bpf_map_elem")
+//   int dump_my_map(struct bpf_iter__bpf_map_elem *ctx) { ... }
+//
+// - prog_name is the BPF iter program (SEC("iter/bpf_map_elem")).
+// - mapname is the map declared in this object (commonly LIBBPF_PIN_BY_NAME).
+#define GADGET_ITER_TARGET_MAP(prog_name, mapname)                          \
+	const void *gadget_mapelem_iter_target_##prog_name##___##mapname    \
+		__attribute__((unused));
+
 #endif /* __MACROS_H */

@@ -72,6 +72,7 @@ GADGETS ?= \
 	ci/image_inspect \
 	ci/container_filtering \
 	ci/stacks \
+	ci/test_iter_map_elem \
 	snapshot_file \
 	top_cuda_memory \
 	#

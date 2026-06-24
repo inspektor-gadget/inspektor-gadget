@@ -130,6 +130,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		iterators: make(map[string]*Iterator),
 		params:    make(map[string]*param),
 		mapIters:  make(map[string]*mapIter),
+		iterTargetMaps: make(map[string]string),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -181,6 +182,10 @@ type ebpfInstance struct {
 	structs     map[string]*Struct
 	iterators   map[string]*Iterator
 	mapIters    map[string]*mapIter
+	// iterTargetMaps maps a SEC("iter/bpf_map_elem") BPF program name to the
+	// map (by name) it should iterate over. Populated from
+	// GADGET_ITER_TARGET_MAP() declarations in the BPF object.
+	iterTargetMaps map[string]string
 	params      map[string]*param
 	paramValues map[string]string
 
@@ -238,6 +243,13 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 				gadgetCtx.Logger().Warnf("%s prefix is deprecated; please use %s instead", snapshottersPrefix, iteratorsPrefix)
 				return i.populateIterators(b, s)
 			},
+		},
+		{
+			// Distinct stem from iteratorsPrefix on purpose; see comment
+			// in types.go.
+			prefixFunc:   hasPrefix(iterTargetMapPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.populateIterTargetMap,
 		},
 		{
 			prefixFunc:   hasPrefix(iteratorsPrefix),
