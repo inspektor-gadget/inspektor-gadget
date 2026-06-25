@@ -21,5 +21,8 @@ import (
 //go:embed manifests/deploy.yaml
 var GadgetDeployment string
 
+//go:embed manifests/kubelet-get-ca-job.yaml
+var KubeletGetCAJob string
+
 //go:embed inspektor-gadget.pub
 var InspektorGadgetPublicKey string

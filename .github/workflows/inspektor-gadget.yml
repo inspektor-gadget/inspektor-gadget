@@ -11,6 +11,7 @@ env:
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:main
   DEFAULT_GADGET_BUILDER_IMAGE: ghcr.io/inspektor-gadget/gadget-builder:main
   DEFAULT_TOOLS_BENCH_IMAGE: ghcr.io/inspektor-gadget/benchmark:main
+  DEFAULT_KUBELET_GET_CA_IMAGE: ghcr.io/inspektor-gadget/kubeletget-ca:main
   # With the recent update of docker/build-push-action to v6, this action
   # started creating docker build summary files (i.e. .dockerbuild).
   # Sadly, these files create troubles when trying to download artifact in the
@@ -1032,7 +1033,7 @@ jobs:
             # So, this variables controls whether the last layer of
             # gadget-builder, i.e. the one upgrading the packages to be run
             # without cache.
-            # Changing this value in the repository will force this behaviorn,
+            # Changing this value in the repository will force this behavior,
             # this is particularly useful if trivy reports a CVE in the image
             # and fixed versions exist in debian repository.
             build-args: |
@@ -1042,6 +1043,11 @@ jobs:
             dockerfile: "tools/bench/Dockerfile"
             platform: "linux/amd64,linux/arm64"
             key-files: "tools/bench/*"
+          - name: "kubelet-get-ca"
+            context: "tools/kubelet-get-ca"
+            dockerfile: "tools/kubelet-get-ca/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
+            key-files: "tools/kubelet-get-ca/*"
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
@@ -1124,6 +1130,8 @@ jobs:
             image=${DEFAULT_GADGET_BUILDER_IMAGE}
           elif [ ${{ matrix.image.name }} == "benchmark" ]; then
             image=${DEFAULT_TOOLS_BENCH_IMAGE}
+          elif [ ${{ matrix.image.name }} == "kubelet-get-ca" ]; then
+            image=${DEFAULT_KUBELET_GET_CA_IMAGE}
           else
             >&2 echo "No default image for ${{ matrix.image.name }}!"
             exit 1
@@ -1138,6 +1146,25 @@ jobs:
         password: '${{ secrets.COSIGN_PASSWORD }}'
         private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.push-image.outputs.digest }}"
+    - name: Export kubelet-get-ca image as docker tarball (linux/amd64)
+      if: matrix.image.name == 'kubelet-get-ca'
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      with:
+        context: ${{ matrix.image.context }}
+        file: ${{ matrix.image.dockerfile }}
+        outputs: type=docker,dest=/tmp/kubelet-get-ca-linux-amd64.tar
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        # This will reuse above buildx cache, so this is basically a no-op.
+        cache-from: type=local,src=/tmp/.buildx-cache-new
+        platforms: linux/amd64
+        build-args: ${{ matrix.image.build-args || '' }}
+    - name: Upload kubelet-get-ca container image as artifact
+      if: matrix.image.name == 'kubelet-get-ca'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: kubelet-get-ca-container-image-linux-amd64.tar
+        path: /tmp/kubelet-get-ca-linux-amd64.tar
+        retention-days: 1
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
@@ -2317,6 +2344,21 @@ jobs:
         # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
         docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
         minikube image load "${CONTAINER_REPO}:${IMAGE_TAG}"
+    - name: Get kubelet-get-ca container image from artifact.
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: kubelet-get-ca-container-image-linux-amd64.tar
+        path: /home/runner/work/inspektor-gadget/
+    - name: Prepare minikube by loading kubelet-get-ca image
+      env:
+        IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+      run: |
+        # cmd/kubectl-gadget/deploy.go rewrites the kubelet-get-ca image tag
+        # to match the gadget container tag, and build-helper-images already
+        # built kubelet-get-ca with exactly that IMAGE_TAG. Combined with
+        # --image-pull-policy=Never set in run-integration-tests, this avoids
+        # any registry pull.
+        minikube image load /home/runner/work/inspektor-gadget/kubelet-get-ca-linux-amd64.tar
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
