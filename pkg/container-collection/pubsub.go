@@ -21,6 +21,12 @@ import (
 
 type EventType int
 
+// FuncNotify is the callback invoked for each container event. Callbacks may be
+// invoked concurrently: Publish runs every subscriber in its own goroutine, and
+// overlapping Publish calls (e.g. from simultaneous container add/remove events)
+// can invoke the same callback from multiple goroutines at once. Implementations
+// must therefore be safe for concurrent use and protect any shared state with
+// their own synchronization.
 type FuncNotify func(event PubSubEvent)
 
 const (

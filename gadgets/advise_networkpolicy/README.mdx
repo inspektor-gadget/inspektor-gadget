@@ -25,7 +25,9 @@ $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/advise_networkpolicy:%IG_TA
 
 ## Flags
 
-No flags.
+- `--policy-format`: Output format for generated policies.
+  - `k8s` (default): `networking.k8s.io/v1` `NetworkPolicy`
+  - `cilium`: `cilium.io/v2` `CiliumNetworkPolicy`
 
 ## Guide
 
@@ -138,6 +140,13 @@ spec:
   policyTypes:
   - Ingress
   - Egress
+```
+
+To generate Cilium policies instead, run the gadget with
+`--policy-format cilium`:
+
+```bash
+$ kubectl gadget run advise_networkpolicy:%IG_TAG% --policy-format cilium
 ```
 
 Finally, clean the system:

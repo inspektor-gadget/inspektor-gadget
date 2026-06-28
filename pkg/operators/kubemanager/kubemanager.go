@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
@@ -224,6 +225,7 @@ type KubeManagerInstance struct {
 	mountnsmap   *ebpf.Map
 	subscribed   bool
 
+	containerMutex     sync.Mutex
 	attachedContainers map[string]*containercollection.Container
 	attacher           Attacher
 	params             *params.Params
@@ -291,7 +293,9 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 				return
 			}
 
+			m.containerMutex.Lock()
 			m.attachedContainers[container.Runtime.ContainerID] = container
+			m.containerMutex.Unlock()
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
 				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
@@ -299,7 +303,9 @@ func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.Detach()")
+			m.containerMutex.Lock()
 			delete(m.attachedContainers, container.Runtime.ContainerID)
+			m.containerMutex.Unlock()
 
 			err := attacher.DetachContainer(container)
 			if err != nil {
@@ -360,8 +366,17 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 		m.gadgetCtx.Logger().Debugf("calling Unsubscribe()")
 		m.manager.containerCollection.Unsubscribe(m.id)
 
-		// emit detach for all remaining containers
+		// emit detach for all remaining containers. Snapshot the map under
+		// the lock so we don't hold it while calling DetachContainer and so we
+		// don't race with callbacks that might still be running.
+		m.containerMutex.Lock()
+		remaining := make([]*containercollection.Container, 0, len(m.attachedContainers))
 		for _, container := range m.attachedContainers {
+			remaining = append(remaining, container)
+		}
+		m.containerMutex.Unlock()
+
+		for _, container := range remaining {
 			m.attacher.DetachContainer(container)
 		}
 	}
