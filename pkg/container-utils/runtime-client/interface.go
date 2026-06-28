@@ -50,6 +50,7 @@ type RuntimeContainerData struct {
 	ContainerImageID     string
 	ContainerImageDigest string
 	ContainerStartedAt   types.Time
+	OciRuntime           string
 
 	// Current state of the container.
 	State string

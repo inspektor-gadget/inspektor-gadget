@@ -120,6 +120,8 @@ type BasicRuntimeMetadata struct {
 	// from multiple runtimes.
 	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,width:19,fixed,hide"`
 
+	OciRuntime string `json:"ociRuntime,omitempty" column:"ociRuntime,hide"`
+
 	// ContainerID is the container ContainerID without the container runtime prefix. For
 	// instance, without the "cri-o://" for CRI-O.
 	ContainerID string `json:"containerId,omitempty" column:"containerId,width:13,maxWidth:64,hide"`
