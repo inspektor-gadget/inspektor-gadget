@@ -133,10 +133,13 @@ type ContainerRuntimeClient interface {
 	Close() error
 }
 
-// normalizeOCIRuntime converts runtime specific identifiers
+// NormalizeOCIRuntime converts runtime specific identifiers
 // (for example "io.containerd.runc.v2") into canonical OCI runtime
 // names ("runc", "crun", "kata", "runsc").
 // It returns an empty string if the runtime cannot be determined.
+// Note: under containerd, crun runs through the runc shim
+// (io.containerd.runc.v2), so it is reported as runc; use the
+// fanotify hook value to distinguish them.
 func NormalizeOCIRuntime(raw string) string {
 	switch {
 	case strings.Contains(raw, "runc"):

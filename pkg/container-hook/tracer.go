@@ -142,7 +142,7 @@ type pendingContainer struct {
 	mntnsId     uint64
 	timestamp   time.Time
 	removeMarks []func()
-	OciRuntime  string
+	ociRuntime  string
 }
 
 type futureContainer struct {
@@ -594,7 +594,7 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		ContainerConfig: string(bundleConfigJSON),
 		Bundle:          pc.bundleDir,
 		ContainerName:   containerName,
-		OciRuntime:      pc.OciRuntime,
+		OciRuntime:      pc.ociRuntime,
 	})
 
 	return nil
@@ -730,7 +730,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		mntnsId:     mntnsId,
 		timestamp:   now,
 		removeMarks: removeMarks,
-		OciRuntime:  ociRuntime,
+		ociRuntime:  ociRuntime,
 	}
 	n.pendingContainers[pidFile] = pc
 
@@ -758,7 +758,7 @@ func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer)
 		ContainerID:     pc.id,
 		ContainerConfig: string(pc.configJSON),
 		Bundle:          pc.bundleDir,
-		OciRuntime:      pc.OciRuntime,
+		OciRuntime:      pc.ociRuntime,
 	})
 }
 
