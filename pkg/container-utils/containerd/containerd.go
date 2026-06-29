@@ -172,8 +172,8 @@ func (c *ContainerdClient) GetContainerDetails(containerID string) (*runtimeclie
 			Destination: mount.Destination,
 		}
 	}
-    
-	if inf, err :=container.Info(c.ctx); err == nil {
+
+	if inf, err := container.Info(c.ctx); err == nil {
 		containerData.Runtime.OciRuntime = inf.Runtime.Name
 	}
 	return &runtimeclient.ContainerDetailsData{

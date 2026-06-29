@@ -262,8 +262,8 @@ func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus CR
 	if err != nil {
 		return nil, err
 	}
-    
-	if podSandbox !=nil {
+
+	if podSandbox != nil {
 		containerDetailsData.Runtime.OciRuntime = podSandbox.RuntimeHandler
 	}
 	return containerDetailsData, nil

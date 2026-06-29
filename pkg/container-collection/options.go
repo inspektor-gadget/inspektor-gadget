@@ -641,7 +641,7 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 							ContainerID:   notif.ContainerID,
 							ContainerPID:  notif.ContainerPID,
 							ContainerName: notif.ContainerName,
-							OciRuntime:     notif.OciRuntime,
+							OciRuntime:    notif.OciRuntime,
 						},
 					},
 					OciConfig: notif.ContainerConfig,

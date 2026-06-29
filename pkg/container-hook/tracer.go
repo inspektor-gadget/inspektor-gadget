@@ -142,7 +142,7 @@ type pendingContainer struct {
 	mntnsId     uint64
 	timestamp   time.Time
 	removeMarks []func()
-	OciRuntime string
+	OciRuntime  string
 }
 
 type futureContainer struct {
@@ -730,7 +730,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		mntnsId:     mntnsId,
 		timestamp:   now,
 		removeMarks: removeMarks,
-		OciRuntime: ociRuntime,
+		OciRuntime:  ociRuntime,
 	}
 	n.pendingContainers[pidFile] = pc
 
