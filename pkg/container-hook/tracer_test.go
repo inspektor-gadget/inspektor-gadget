@@ -44,6 +44,7 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},
@@ -63,6 +64,7 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},
@@ -75,6 +77,7 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},
