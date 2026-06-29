@@ -193,7 +193,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		Pid:           containerJSON.State.Pid,
 		CgroupsPath:   string(containerJSON.HostConfig.Cgroup),
 	}
-	containerDetailsData.Runtime.OciRuntime = containerJSON.HostConfig.Runtime
+	containerDetailsData.Runtime.OciRuntime = runtimeclient.NormalizeOCIRuntime(containerJSON.HostConfig.Runtime)
 	if len(containerJSON.Mounts) > 0 {
 		containerDetailsData.Mounts = make([]runtimeclient.ContainerMountData, len(containerJSON.Mounts))
 		for i, containerMount := range containerJSON.Mounts {

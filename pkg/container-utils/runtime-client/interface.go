@@ -133,6 +133,25 @@ type ContainerRuntimeClient interface {
 	Close() error
 }
 
+// normalizeOCIRuntime converts runtime specific identifiers
+// (for example "io.containerd.runc.v2") into canonical OCI runtime
+// names ("runc", "crun", "kata", "runsc"). 
+// It returns an empty string if the runtime cannot be determined.
+func NormalizeOCIRuntime(raw string) string {
+	switch {
+	case strings.Contains(raw, "runc"):
+		return "runc"
+	case strings.Contains(raw, "crun"):
+		return "crun"
+	case strings.Contains(raw, "kata"):
+		return "kata"
+	case strings.Contains(raw, "runsc"):
+		return "runsc"
+	default:
+		return ""
+	}
+}
+
 func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {
 	// If ID contains a prefix, it must match the format "<runtime>://<ID>"
 	split := strings.SplitN(containerID, "://", 2)

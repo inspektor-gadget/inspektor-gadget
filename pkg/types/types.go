@@ -120,6 +120,9 @@ type BasicRuntimeMetadata struct {
 	// from multiple runtimes.
 	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,width:19,fixed,hide"`
 
+	// OciRuntime is the underlying OCI Runtime binary name (e.g. runc, crun etc)
+	// This is the best effort and may be empty if the runtime cannot be determined.
+	// The fanotify hook is the authoritative source and runtime client paths are fallbacks.
 	OciRuntime string `json:"ociRuntime,omitempty" column:"ociRuntime,hide"`
 
 	// ContainerID is the container ContainerID without the container runtime prefix. For
