@@ -135,7 +135,7 @@ type ContainerRuntimeClient interface {
 
 // normalizeOCIRuntime converts runtime specific identifiers
 // (for example "io.containerd.runc.v2") into canonical OCI runtime
-// names ("runc", "crun", "kata", "runsc"). 
+// names ("runc", "crun", "kata", "runsc").
 // It returns an empty string if the runtime cannot be determined.
 func NormalizeOCIRuntime(raw string) string {
 	switch {

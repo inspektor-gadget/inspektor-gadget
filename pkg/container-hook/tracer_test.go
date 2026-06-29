@@ -48,10 +48,10 @@ func TestContainerHookEvent(t *testing.T) {
 			}),
 		},
 		"one_container_with_oc_runtime": {
-		    generateEvent: generateEvent(0),
+			generateEvent: generateEvent(0),
 			validateEvent: utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, containerID string) *ContainerEvent {
 				return &ContainerEvent{
-				    Type:        EventTypeAddContainer,
+					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
 					OciRuntime:  "runc",
 				}
