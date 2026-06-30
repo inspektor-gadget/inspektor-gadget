@@ -76,6 +76,7 @@ GADGETS ?= \
 	snapshot_file \
 	top_cuda_memory \
 	gpu_top \
+	gpu_top_per_pid \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
