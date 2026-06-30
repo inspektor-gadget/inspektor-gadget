@@ -1,0 +1,64 @@
+---
+title: gpu_top_per_pid
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `gpu_top_per_pid` gadget reports per-process GPU usage from the
+[gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge) daemon and
+enriches each row with the standard Inspektor Gadget process,
+container, and Kubernetes context — so you can answer "which pod is
+holding GPU memory right now?" in one line.
+
+Each `ig run` iterates the bridge's pinned `gpu_per_pid` map (one
+entry per PID, aggregated across devices), refreshes every second
+(like `top`), and emits one event per active PID.
+
+## Requirements
+
+- Minimum Kernel Version: 6.0 (for the `bpf_task_from_pid` kfunc used
+  to look up the process from the PID stored in the bridge's map)
+- The [gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge)
+  daemon must be running on the host. It publishes the bpffs-pinned
+  maps that this gadget reads.
+
+## Getting started
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/gpu_top_per_pid:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/gpu_top_per_pid:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+With the bridge running and a CUDA workload active:
+
+<Tabs groupId="env">
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run gpu_top_per_pid:%IG_TAG%
+RUNTIME.CONTAINERNAME  COMM       PID    SM_UTIL  MEM_UTIL    MEM_USED  DEVICE  N
+training-job-7         python    12345        92        65       14 GB       0  1
+inference-server-2     python    12346        24        18        4 GB       0  1
+^C
+```
+</TabItem>
+</Tabs>
+
+Memory values are rendered as human-friendly strings ("14 GB", "512
+MB") in column output. The numeric byte counts are also available as
+`mem_used_raw` for `-o json` consumers.
+
+If the bridge daemon is not running, the gadget fails to start with
+`could not get info by name "gpu_per_pid"`.
