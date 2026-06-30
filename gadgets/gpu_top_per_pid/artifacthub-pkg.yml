@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.1.0
+name: "gpu top per pid"
+category: monitoring-logging
+displayName: "gpu top per pid"
+createdAt: "2026-06-30T14:00:00Z"
+digest: "2026-06-30T14:00:00Z"
+description: "Per-process GPU memory and utilization, refreshed once a second, enriched with container/pod context. Reads pinned eBPF maps published by the gpu-ebpf-bridge daemon."
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/gpu_top_per_pid:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - gpu
+    - nvidia
+    - per-process
+    - top
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gpu_top_per_pid"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/gpu_top_per_pid:latest
+    ```
+provider:
+    name: Inspektor Gadget
