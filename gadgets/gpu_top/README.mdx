@@ -1,0 +1,82 @@
+---
+title: gpu_top
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `gpu_top` gadget reports real-time per-device GPU telemetry
+(utilization, memory, temperature, power) published in eBPF maps by
+the [gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge) daemon.
+
+Each `ig run` iterates the bridge's pinned `gpu_device` map and emits
+one event per active device. Iteration is non-destructive, so the
+gadget can be re-run (or run with a fetch interval) to refresh the
+view.
+
+## Requirements
+
+- Minimum Kernel Version : 5.8 (for `iter/bpf_map_elem`)
+- The
+  [gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge) daemon
+  must be running on the host. It publishes the bpffs-pinned maps that
+  this gadget reads.
+
+## Getting started
+
+Start the bridge daemon on the host (one-time setup, requires NVIDIA
+drivers + libnvidia-ml.so.1):
+
+```bash
+$ sudo gpu-ebpf-bridge --mode=real --poll-interval=500ms &
+```
+
+Then run the gadget:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/gpu_top:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/gpu_top:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+With the bridge running and at least one GPU in the system, `gpu_top`
+refreshes the device view once a second (like the classic `top`
+command) until you stop it with Ctrl-C:
+
+<Tabs groupId="env">
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run gpu_top:%IG_TAG%
+DEVICE SM_UTIL_PCT MEM_UTIL_PCT     MEM_USED    MEM_TOTAL TEMP_C POWER_MW
+     0          71           53        15 GB        80 GB     42   215000
+     0          82           58        15 GB        80 GB     43   228000
+     0          71           53        15 GB        80 GB     43   220000
+^C
+```
+</TabItem>
+</Tabs>
+
+Memory values are rendered as human-friendly strings ("15 GB",
+"512 MB") in column/text output via the bytes formatter. The
+underlying numeric values are still available as `mem_used_raw`,
+`mem_total_raw`, `mem_reserved_raw` for `-o json` consumers and tools
+that need to do arithmetic.
+
+Many fields (clocks, throttle reasons, PCIe/NVLink bandwidth, ECC,
+fan, compute mode) are hidden by default but can be enabled with the
+standard ig column flags (e.g. `--fields device,sm_clock_mhz,mem_clock_mhz`).
+
+If the bridge daemon is not running, the gadget fails to start with
+`could not get info by name "gpu_device"` (the pinned map does not
+exist). Start the bridge and try again.
