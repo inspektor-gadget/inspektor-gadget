@@ -1,0 +1,133 @@
+name: gpu top
+description: Show real-time GPU device telemetry (utilization, memory, temperature, power) published by the gpu-ebpf-bridge daemon.
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/gpu_top
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gpu_top
+datasources:
+  gpu_top:
+    fields:
+      device:
+        annotations:
+          description: GPU device index (0-based)
+          columns.width: 6
+          columns.alignment: right
+      sm_util_pct:
+        annotations:
+          description: Streaming-multiprocessor utilization (0-100)
+          columns.width: 7
+          columns.alignment: right
+      mem_util_pct:
+        annotations:
+          description: Memory-bus utilization (0-100)
+          columns.width: 8
+          columns.alignment: right
+      mem_used:
+        annotations:
+          description: Memory used (bytes)
+          columns.width: 14
+          columns.alignment: right
+      mem_total:
+        annotations:
+          description: Total memory (bytes)
+          columns.width: 14
+          columns.alignment: right
+      mem_reserved:
+        annotations:
+          description: Driver-reserved memory (bytes)
+          columns.width: 14
+          columns.alignment: right
+          columns.hidden: true
+      temp_c:
+        annotations:
+          description: GPU temperature (degrees Celsius)
+          columns.width: 6
+          columns.alignment: right
+      power_mw:
+        annotations:
+          description: Power draw (milliwatts)
+          columns.width: 9
+          columns.alignment: right
+      sm_clock_mhz:
+        annotations:
+          description: SM (graphics) clock (MHz)
+          columns.width: 9
+          columns.alignment: right
+          columns.hidden: true
+      mem_clock_mhz:
+        annotations:
+          description: Memory clock (MHz)
+          columns.width: 9
+          columns.alignment: right
+          columns.hidden: true
+      enc_util_pct:
+        annotations:
+          description: Video encoder utilization (0-100)
+          columns.width: 7
+          columns.alignment: right
+          columns.hidden: true
+      dec_util_pct:
+        annotations:
+          description: Video decoder utilization (0-100)
+          columns.width: 7
+          columns.alignment: right
+          columns.hidden: true
+      throttle_reasons:
+        annotations:
+          description: NVML clocksEventReasons bitmask
+          columns.width: 18
+          columns.alignment: right
+          columns.hidden: true
+      pcie_tx_kbps:
+        annotations:
+          description: PCIe transmit bandwidth (kB/s)
+          columns.width: 12
+          columns.alignment: right
+          columns.hidden: true
+      pcie_rx_kbps:
+        annotations:
+          description: PCIe receive bandwidth (kB/s)
+          columns.width: 12
+          columns.alignment: right
+          columns.hidden: true
+      nvlink_tx_kbps:
+        annotations:
+          description: NVLink transmit bandwidth (kB/s); 0 on non-NVLink GPUs
+          columns.width: 14
+          columns.alignment: right
+          columns.hidden: true
+      nvlink_rx_kbps:
+        annotations:
+          description: NVLink receive bandwidth (kB/s); 0 on non-NVLink GPUs
+          columns.width: 14
+          columns.alignment: right
+          columns.hidden: true
+      ecc_corrected_total:
+        annotations:
+          description: ECC corrected errors (cumulative since driver init)
+          columns.width: 18
+          columns.alignment: right
+          columns.hidden: true
+      ecc_uncorrected_total:
+        annotations:
+          description: ECC uncorrected errors (cumulative since driver init)
+          columns.width: 18
+          columns.alignment: right
+          columns.hidden: true
+      fan_speed_pct:
+        annotations:
+          description: Fan speed (0-100); 0 on GPUs without controllable fans
+          columns.width: 6
+          columns.alignment: right
+          columns.hidden: true
+      compute_mode:
+        annotations:
+          description: NVML_COMPUTEMODE_* enum value
+          columns.width: 12
+          columns.alignment: right
+          columns.hidden: true
+      timestamp_ns:
+        annotations:
+          description: CLOCK_MONOTONIC timestamp of the bridge's last write for this device
+          columns.width: 20
+          columns.alignment: right
+          columns.hidden: true

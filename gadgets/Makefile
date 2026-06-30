@@ -75,6 +75,7 @@ GADGETS ?= \
 	ci/test_iter_map_elem \
 	snapshot_file \
 	top_cuda_memory \
+	gpu_top \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
