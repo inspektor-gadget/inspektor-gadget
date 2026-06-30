@@ -88,16 +88,20 @@ type gpuDeviceMetrics struct {
 
 // expectedEvent mirrors struct gpu_top_event in program.bpf.c. JSON
 // field names follow IG's serialization, which uses the BPF struct
-// field names verbatim.
+// field names verbatim. The mem_*_raw fields are the numeric byte
+// counts; the matching mem_* (without _raw) string fields are added
+// by the formatters operator and contain human-readable strings
+// ("15 GB" etc.) — we don't assert on those here because they are a
+// presentation concern verified separately by humans.
 type expectedEvent struct {
 	Device uint32 `json:"device"`
 
 	SmUtilPct  uint32 `json:"sm_util_pct"`
 	MemUtilPct uint32 `json:"mem_util_pct"`
 
-	MemUsed     uint64 `json:"mem_used"`
-	MemTotal    uint64 `json:"mem_total"`
-	MemReserved uint64 `json:"mem_reserved"`
+	MemUsedRaw     uint64 `json:"mem_used_raw"`
+	MemTotalRaw    uint64 `json:"mem_total_raw"`
+	MemReservedRaw uint64 `json:"mem_reserved_raw"`
 
 	TempC   uint32 `json:"temp_c"`
 	PowerMw uint32 `json:"power_mw"`
@@ -213,9 +217,9 @@ func TestGpuTop(t *testing.T) {
 			Device:              0,
 			SmUtilPct:           71,
 			MemUtilPct:          53,
-			MemUsed:             16_106_127_360,
-			MemTotal:            85_899_345_920,
-			MemReserved:         536_870_912,
+			MemUsedRaw:          16_106_127_360,
+			MemTotalRaw:         85_899_345_920,
+			MemReservedRaw:      536_870_912,
 			TempC:               42,
 			PowerMw:             215_000,
 			SmClockMhz:          1410,
@@ -229,9 +233,9 @@ func TestGpuTop(t *testing.T) {
 			Device:              1,
 			SmUtilPct:           91,
 			MemUtilPct:          43,
-			MemUsed:             32_212_254_720,
-			MemTotal:            85_899_345_920,
-			MemReserved:         536_870_912,
+			MemUsedRaw:          32_212_254_720,
+			MemTotalRaw:         85_899_345_920,
+			MemReservedRaw:      536_870_912,
 			TempC:               58,
 			PowerMw:             310_000,
 			SmClockMhz:          1410,
@@ -243,10 +247,16 @@ func TestGpuTop(t *testing.T) {
 		},
 	}
 
+	// gadget.yaml defaults to fetch-interval=1s + fetch-count=0
+	// (unlimited refreshes, top-like behaviour), so the JSON output
+	// is a stream of arrays — one per refresh tick. Each array
+	// independently contains the same two devices, so it's enough
+	// to assert that the expected entries are present in at least
+	// one of the arrays.
 	runnerOpts := []igrunner.Option{
 		igrunner.WithFlags("--timeout=2"),
 		igrunner.WithValidateOutput(func(t *testing.T, output string) {
-			match.MatchEntries(t, match.JSONSingleArrayMode, output, nil, expected...)
+			match.MatchEntries(t, match.JSONMultiArrayMode, output, nil, expected...)
 		}),
 	}
 

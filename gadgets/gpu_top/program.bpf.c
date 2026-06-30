@@ -85,16 +85,24 @@ struct {
  * useful columns for an at-a-glance "GPU top": device id, utilization,
  * memory, thermal/power. Less-used telemetry (clocks, throttle reasons,
  * PCIe/NVLink, ECC) is included for completeness and hidden by default
- * in gadget.yaml. */
+ * in gadget.yaml.
+ *
+ * mem_*_raw fields are typed as gadget_bytes (a __u64 typedef); the
+ * formatters operator picks them up by the `_raw` suffix and adds
+ * corresponding string fields (`mem_used`, `mem_total`, `mem_reserved`)
+ * containing the human-readable forms ("15 GB" instead of
+ * "16106127360"). Those string fields are what appears in the default
+ * column output. The numeric `_raw` fields stay available for JSON
+ * consumers and for further math. */
 struct gpu_top_event {
 	__u32 device;
 
 	__u32 sm_util_pct;
 	__u32 mem_util_pct;
 
-	__u64 mem_used;
-	__u64 mem_total;
-	__u64 mem_reserved;
+	gadget_bytes mem_used_raw;
+	gadget_bytes mem_total_raw;
+	gadget_bytes mem_reserved_raw;
 
 	__u32 temp_c;
 	__u32 power_mw;
@@ -145,9 +153,9 @@ int dump_gpu_devices(struct bpf_iter__bpf_map_elem *ctx)
 		.device              = *key,
 		.sm_util_pct         = val->sm_util_pct,
 		.mem_util_pct        = val->mem_util_pct,
-		.mem_used            = val->mem_used,
-		.mem_total           = val->mem_total,
-		.mem_reserved        = val->mem_reserved,
+		.mem_used_raw        = val->mem_used,
+		.mem_total_raw       = val->mem_total,
+		.mem_reserved_raw    = val->mem_reserved,
 		.temp_c              = val->temp_c,
 		.power_mw            = val->power_mw,
 		.sm_clock_mhz        = val->sm_clock_mhz,

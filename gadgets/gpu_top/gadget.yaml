@@ -5,6 +5,14 @@ documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/gpu_top
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gpu_top
 datasources:
   gpu_top:
+    annotations:
+      # Re-fetch the gpu_device map once per second so `ig run gpu_top`
+      # behaves like a `top`-style command. Override with
+      #   -A datasources.gpu_top.fetch-interval=500ms
+      # or stop after N refreshes with
+      #   -A datasources.gpu_top.fetch-count=5
+      fetch-interval: 1s
+      fetch-count: "0"
     fields:
       device:
         annotations:
@@ -21,20 +29,29 @@ datasources:
           description: Memory-bus utilization (0-100)
           columns.width: 8
           columns.alignment: right
+      mem_used_raw:
+        annotations:
+          description: Memory used by user-allocated CUDA contexts (bytes)
       mem_used:
         annotations:
-          description: Memory used (bytes)
-          columns.width: 14
+          description: Memory used by user-allocated CUDA contexts (human-readable)
+          columns.width: 12
           columns.alignment: right
-      mem_total:
+      mem_total_raw:
         annotations:
           description: Total memory (bytes)
-          columns.width: 14
+      mem_total:
+        annotations:
+          description: Total memory (human-readable)
+          columns.width: 12
           columns.alignment: right
-      mem_reserved:
+      mem_reserved_raw:
         annotations:
           description: Driver-reserved memory (bytes)
-          columns.width: 14
+      mem_reserved:
+        annotations:
+          description: Driver-reserved memory (human-readable)
+          columns.width: 12
           columns.alignment: right
           columns.hidden: true
       temp_c:

@@ -51,17 +51,27 @@ Then run the gadget:
 ## Guide
 
 With the bridge running and at least one GPU in the system, `gpu_top`
-shows a row per active GPU:
+refreshes the device view once a second (like the classic `top`
+command) until you stop it with Ctrl-C:
 
 <Tabs groupId="env">
 <TabItem value="ig" label="ig">
 ```bash
 $ sudo ig run gpu_top:%IG_TAG%
-DEVICE SM_UTIL_PCT MEM_UTIL_PCT       MEM_USED      MEM_TOTAL TEMP_C POWER_MW
-     0          71           53    16106127360    85899345920     42   215000
+DEVICE SM_UTIL_PCT MEM_UTIL_PCT     MEM_USED    MEM_TOTAL TEMP_C POWER_MW
+     0          71           53        15 GB        80 GB     42   215000
+     0          82           58        15 GB        80 GB     43   228000
+     0          71           53        15 GB        80 GB     43   220000
+^C
 ```
 </TabItem>
 </Tabs>
+
+Memory values are rendered as human-friendly strings ("15 GB",
+"512 MB") in column/text output via the bytes formatter. The
+underlying numeric values are still available as `mem_used_raw`,
+`mem_total_raw`, `mem_reserved_raw` for `-o json` consumers and tools
+that need to do arithmetic.
 
 Many fields (clocks, throttle reasons, PCIe/NVLink bandwidth, ECC,
 fan, compute mode) are hidden by default but can be enabled with the
