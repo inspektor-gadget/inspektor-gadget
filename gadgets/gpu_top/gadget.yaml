@@ -13,6 +13,9 @@ datasources:
       #   -A datasources.gpu_top.fetch-count=5
       fetch-interval: 1s
       fetch-count: "0"
+      # Clear the terminal before each refresh so the output looks
+      # like classic `top` rather than scrolling history.
+      cli.clear-screen-before: "true"
     fields:
       device:
         annotations:
