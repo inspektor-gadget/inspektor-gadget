@@ -85,6 +85,7 @@ func newListContainerTestStep(
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerStartedAt = 0
 				c.Runtime.ContainerImageID = ""
+				c.Runtime.OciRuntime = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
