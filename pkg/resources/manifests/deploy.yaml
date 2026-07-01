@@ -139,6 +139,19 @@ subjects:
   - kind: ServiceAccount
     name: gadget
 ---
+# Source: gadget/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-app: gadget
+  name: gadget
+  namespace: gadget
+spec:
+  clusterIP: None
+  selector:
+    k8s-app: gadget
+---
 # Source: gadget/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
