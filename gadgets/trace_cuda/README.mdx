@@ -1,0 +1,150 @@
+---
+title: trace_cuda
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# trace_cuda
+
+Trace CUDA Driver API calls such as memory allocations and memory copies, and capture CUDA kernel launch information via a CUPTI based userspace library.
+
+## Requirements
+
+- The CUPTI userspace library must be installed.  
+  Follow the instructions in:
+
+```
+
+inspektor-gadget/gadgets/trace_cuda/cupti/README.md
+
+````
+
+Without the CUPTI library, only memory allocation and memory copy events will be available.
+
+- NVIDIA drivers must be installed.
+- CUDA runtime libraries must be available.
+
+## Getting started
+
+Running the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+      ```bash
+      $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_cuda:%IG_TAG% [flags]
+      ```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+      ```bash
+      $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_cuda:%IG_TAG% [flags]
+      ```
+  </TabItem>
+</Tabs>
+
+## Flags
+
+### `--collect_ustack`
+
+Collect user space stack traces for each kernel launch event.
+Enabling this flag increases overhead and may impact CUDA application performance.
+
+### `--host`
+
+Also trace CUDA activity from processes running on the host.
+
+## Guide
+
+### 1. Install the CUPTI library
+
+First, build and install the required CUPTI userspace library by following the instructions in:
+
+````
+
+inspektor-gadget/gadgets/trace_cuda/cupti/README.md
+
+````
+
+### 2. Run the gadget
+
+Start the gadget using one of the commands shown in the *Getting started* section.
+
+### 3. Run a sample CUDA application
+
+You can test the gadget using a simple CUDA program such as the following SAXPY example:
+
+```bash
+cat << EOF > saxpy.cu
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+__global__
+void saxpy(int n, float a, float *x, float *y)
+{
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n)
+    y[i] = a * x[i] + y[i];
+}
+
+int main(void)
+{
+  int N = 1<<20;
+  float *x, *y, *d_x, *d_y;
+
+  x = (float*)malloc(N * sizeof(float));
+  y = (float*)malloc(N * sizeof(float));
+
+  cudaMalloc(&d_x, N * sizeof(float));
+  cudaMalloc(&d_y, N * sizeof(float));
+
+  for (int i = 0; i < N; i++) {
+    x[i] = 1.0f;
+    y[i] = 2.0f;
+  }
+
+  cudaMemcpy(d_x, x, N * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_y, y, N * sizeof(float), cudaMemcpyHostToDevice);
+
+  // Perform SAXPY on 1M elements
+  saxpy<<<(N + 255) / 256, 256>>>(N, 2.0f, d_x, d_y);
+
+  cudaMemcpy(y, d_y, N * sizeof(float), cudaMemcpyDeviceToHost);
+
+  float maxError = 0.0f;
+  for (int i = 0; i < N; i++)
+    maxError = fmax(maxError, fabs(y[i] - 4.0f));
+
+  printf("Max error: %f\n", maxError);
+
+  cudaFree(d_x);
+  cudaFree(d_y);
+  free(x);
+  free(y);
+}
+EOF
+````
+
+Compile and run it:
+
+```bash
+nvcc saxpy.cu -o saxpy
+./saxpy
+```
+
+While the program is running, `trace_cuda` will report:
+
+* Memory allocation events
+* Memory copy operations
+* Kernel launch information (if the CUPTI library is installed)
+
+## Notes
+
+* `trace_cuda` complements the `cuda_metrics` gadget by providing per event visibility into how GPU metrics are generated.
+* Without the CUPTI userspace library, only memory allocation and memory copy events will be traced.
+* Enabling `--collect_ustack` increases overhead and may affect performance sensitive workloads.
+
+```
+
