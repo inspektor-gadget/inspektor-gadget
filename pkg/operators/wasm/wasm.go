@@ -53,6 +53,9 @@ const (
 	// Indicates the handle encodes a member of a data array as index << 16 | arrayHandle
 	dataArrayHandleFlag = uint32(1 << 31)
 
+	// Indicates the max value for a handle index, as the rest of the uint32 is used to store other data
+	maxHandleIndexValue = 0xFFFF // 16 bits
+
 	// cache path for the wasm compilation
 	cacheDir = "/var/run/ig/wasm-cache"
 )
@@ -180,9 +183,10 @@ func (i *wasmOperatorInstance) addHandle(obj any) uint32 {
 
 	// look for a free index in the map
 	for {
-		// zero is reserved, handle overflow
-		if handleIndex == 0 {
-			handleIndex++
+		// zero is reserved. 0xFFFF (65535) is the maximum value that fits in 16 bits.
+		// If we exceed 16 bits, wrap around to 1.
+		if handleIndex == 0 || handleIndex > maxHandleIndexValue {
+			handleIndex = 1
 		}
 
 		if _, ok := i.handleMap[handleIndex]; !ok {
