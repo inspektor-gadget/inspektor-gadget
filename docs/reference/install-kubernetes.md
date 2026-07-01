@@ -298,12 +298,7 @@ operator:
     allowed-gadgets: []
     disallow-pulling: false
     insecure-registries: []
-    public-keys:
-      - |
-        -----BEGIN PUBLIC KEY-----
-        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
-        Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
-        -----END PUBLIC KEY-----
+    public-keys: []
     verify-image: true
   otel-metrics:
     otel-metrics-listen: false
@@ -327,6 +322,14 @@ Inspektor Gadget can also be installed using our [official Helm chart](https://g
 ```bash
 helm install gadget --namespace=gadget --create-namespace oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=%IG_CHART%
 ```
+
+> **Note:** To enable image verification with the default public key, add `--set-file`:
+> ```bash
+> helm install gadget --namespace=gadget --create-namespace \
+>   --set-file config.operator.oci.public-keys[0]=path/to/inspektor-gadget.pub \
+>   oci://ghcr.io/inspektor-gadget/inspektor-gadget/charts/gadget --version=%IG_CHART%
+> ```
+> The public key is available at `pkg/resources/inspektor-gadget.pub` in the repository.
 
 #### From HTTP(s) repository
 
