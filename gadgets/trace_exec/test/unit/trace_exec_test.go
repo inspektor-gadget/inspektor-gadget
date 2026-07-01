@@ -48,8 +48,12 @@ type testDef struct {
 	runnerConfig   *utils.RunnerConfig
 	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 	argv           []string
-	runFromThread  bool
-	validate       func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string)
+	// execPath, when set, is the path passed to execve while argv is used as
+	// the argument vector. It allows testing an argv[0] that differs from the
+	// executed path.
+	execPath      string
+	runFromThread bool
+	validate      func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string)
 }
 
 func TestTraceExecGadget(t *testing.T) {
@@ -105,6 +109,19 @@ func TestTraceExecGadget(t *testing.T) {
 		"error": {
 			runnerConfig: &utils.RunnerConfig{},
 			argv:         []string{"/bin/foobar", "hello"},
+			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
+				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
+				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
+				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, "ENOENT", events[0].Error)
+			},
+		},
+		"failed_exec_argv0_differs_from_path": {
+			runnerConfig: &utils.RunnerConfig{},
+			// execve() a non-existent path with an argv[0] that differs from it.
+			// The reported args must reflect the real argv[0], not the path.
+			execPath: "/bin/nonexistent-trace-exec-xyz",
+			argv:     []string{"masked-name", "arg1"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
@@ -175,7 +192,11 @@ func TestTraceExecGadget(t *testing.T) {
 					if testCase.runFromThread {
 						generateEventFromThread(t, testCase.argv)
 					} else {
-						p, err := os.StartProcess(testCase.argv[0], testCase.argv, &os.ProcAttr{})
+						path := testCase.argv[0]
+						if testCase.execPath != "" {
+							path = testCase.execPath
+						}
+						p, err := os.StartProcess(path, testCase.argv, &os.ProcAttr{})
 						if err == nil {
 							defer p.Wait()
 						}

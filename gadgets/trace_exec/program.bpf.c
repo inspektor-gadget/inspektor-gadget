@@ -103,7 +103,7 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(exec, events, event);
 
-static __always_inline int enter_execve(const char *pathname, const char **args)
+static __always_inline int enter_execve(const char **args)
 {
 	u64 id;
 	pid_t pid;
@@ -149,7 +149,10 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 		bpf_probe_read_kernel_str(event->cwd, sizeof(event->cwd), cwd);
 	}
 
-	ret = bpf_probe_read_user_str(event->args, ARGSIZE, pathname);
+	/* args[0] is argv[0] (the command name) */
+	argp = NULL;
+	bpf_probe_read_user(&argp, sizeof(argp), &args[0]);
+	ret = bpf_probe_read_user_str(event->args, ARGSIZE, argp);
 	if (ret <= ARGSIZE) {
 		event->args_size += ret;
 	} else {
@@ -189,17 +192,15 @@ static __always_inline int enter_execve(const char *pathname, const char **args)
 SEC("tracepoint/syscalls/sys_enter_execve")
 int ig_execve_e(struct syscall_trace_enter *ctx)
 {
-	const char *pathname = (const char *)ctx->args[0];
 	const char **args = (const char **)(ctx->args[1]);
-	return enter_execve(pathname, args);
+	return enter_execve(args);
 }
 
 SEC("tracepoint/syscalls/sys_enter_execveat")
 int ig_execveat_e(struct syscall_trace_enter *ctx)
 {
-	const char *pathname = (const char *)ctx->args[1];
 	const char **args = (const char **)(ctx->args[2]);
-	return enter_execve(pathname, args);
+	return enter_execve(args);
 }
 
 static __always_inline bool __is_from_rootfs(struct task_struct *task,
