@@ -134,6 +134,10 @@ int main(int argc, char *argv[], char **envp) {
 	// copies /usr/bin/sh to /usr/bin/sh2 to check that the upper_layer is true when executing /usr/bin/sh2
 	cmd := fmt.Sprintf("%s %s && cp /usr/bin/sh /usr/bin/sh2 && setpriv --reuid 1000 --regid 1111 --clear-groups /usr/bin/sh2 -c '%s'", prepareScriptsCmd, buildCmd, innerCmd)
 	innerShArgs := []string{"/usr/bin/sh2", "-c", innerCmd}
+	// with_shebeng.sh has a "#!/bin/sh" shebang, so the kernel executes it as
+	// "/bin/sh /bin/with_shebeng.sh". As the arguments are read from the new
+	// process' memory (/proc/<pid>/cmdline), they reflect the interpreter's argv.
+	shebangArgs := []string{"/bin/sh", "/bin/with_shebeng.sh"}
 
 	testContainer := containerFactory.NewContainer(containerName, cmd, containerOpts...)
 
@@ -207,7 +211,7 @@ int main(int argc, char *argv[], char **envp) {
 						CommonData:    utils.BuildCommonData(containerName, commonDataOpts...),
 						Proc:          utils.BuildProc("with_shebeng.sh", 1000, 1111),
 						Cwd:           "/tmp",
-						Args:          "/bin/with_shebeng.sh",
+						Args:          strings.Join(shebangArgs, consts.ArgsSeparator),
 						PupperLayer:   true,
 						UpperLayer:    false,
 						FupperLayer:   true,
