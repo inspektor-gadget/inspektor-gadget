@@ -20,16 +20,48 @@
 //     different pid namespaces.
 package kfilefields
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
+
+// The tracer is expensive to create: installing it loads a BPF collection
+// (parsing the full kernel BTF, several MB) and attaches two kprobes. Doing that
+// per call caused large allocation churn under high call rates — e.g. uprobe
+// re-attach on exec calls ReadRealInodeFromFd once per attach, which under an
+// exec/pod burst produced a multi-hundred-MB spike and OOMs. The tracer's BPF
+// program is fd-agnostic (the fd is passed in per read), so a single
+// process-wide instance serves every Read*. It is created lazily on first use
+// and kept for the process lifetime.
+//
+// tracerMu also serializes reads: the tracer's socketpair and its single-slot
+// result map are not safe for concurrent use.
+var (
+	tracerMu      sync.Mutex
+	sharedTracer  *Tracer
+	tracerErr     error
+	tracerCreated bool
+)
+
+// sharedTracerLocked returns the lazily-created process-wide tracer. The caller
+// must hold tracerMu.
+func sharedTracerLocked() (*Tracer, error) {
+	if !tracerCreated {
+		sharedTracer, tracerErr = creatAndInstallTracer()
+		tracerCreated = true
+	}
+	return sharedTracer, tracerErr
+}
 
 // ReadPrivateDataFromFd uses ebpf to read the private_data pointer from the
 // kernel "struct file" associated with the given fd.
 func ReadPrivateDataFromFd(fd int) (uint64, error) {
-	t, err := creatAndInstallTracer()
+	tracerMu.Lock()
+	defer tracerMu.Unlock()
+	t, err := sharedTracerLocked()
 	if err != nil {
 		return 0, fmt.Errorf("creating and installing tracer: %w", err)
 	}
-	defer t.close()
 	ff, err := t.readStructFileFields(fd)
 	if err != nil {
 		return 0, fmt.Errorf("reading file fields: %w", err)
@@ -43,11 +75,12 @@ func ReadFOpForFdType(ft FdType) (uint64, error) {
 	if _, ok := supportedFdTypesForFOp[ft]; !ok {
 		return 0, fmt.Errorf("unsupported fd type %s", ft.String())
 	}
-	t, err := creatAndInstallTracer()
+	tracerMu.Lock()
+	defer tracerMu.Unlock()
+	t, err := sharedTracerLocked()
 	if err != nil {
 		return 0, fmt.Errorf("creating and installing tracer: %w", err)
 	}
-	defer t.close()
 	fd, err := t.getFdFromType(ft)
 	if err != nil {
 		return 0, fmt.Errorf("getting fd from type %s: %w", ft.String(), err)
@@ -67,11 +100,12 @@ func ReadFOpForFdType(ft FdType) (uint64, error) {
 // underlying file, even if they come from two different overlay filesystems.
 // This is useful for uprobes because they get attached to the underlying file.
 func ReadRealInodeFromFd(fd int) (uint64, error) {
-	t, err := creatAndInstallTracer()
+	tracerMu.Lock()
+	defer tracerMu.Unlock()
+	t, err := sharedTracerLocked()
 	if err != nil {
 		return 0, fmt.Errorf("creating and installing tracer: %w", err)
 	}
-	defer t.close()
 	ff, err := t.readStructFileFields(fd)
 	if err != nil {
 		return 0, fmt.Errorf("reading file fields: %w", err)

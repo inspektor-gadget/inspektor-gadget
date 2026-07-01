@@ -1083,6 +1083,22 @@ func (i *ebpfInstance) AttachContainer(container *containercollection.Container)
 	return nil
 }
 
+// ReattachContainer re-drives uprobe attachment for an already-tracked
+// container after its process has settled into its final executable (exec).
+// Only uprobe tracers need this: for statically-linked runtimes the create-time
+// attach bound the runc shim's inode, so the symbol's real inode only appears
+// once the container execve's into its binary. Network/tc tracers attach to
+// interfaces, not executables, so they are not re-driven here. ReattachContainerPid
+// is idempotent, so this is safe to call repeatedly.
+func (i *ebpfInstance) ReattachContainer(container *containercollection.Container) error {
+	for _, handler := range i.uprobeTracers {
+		if err := handler.ReattachContainerPid(container.ContainerPid()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (i *ebpfInstance) DetachContainer(container *containercollection.Container) error {
 	i.mu.Lock()
 	delete(i.containers, container.Runtime.ContainerID)

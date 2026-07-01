@@ -32,6 +32,7 @@
 package containerhook
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -47,6 +48,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -60,7 +62,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type record -type exec_event execruntime ./bpf/execruntime.bpf.c -- -I./bpf/
 
 func init() {
 	spec, err := loadExecruntime()
@@ -76,6 +78,11 @@ const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
 	EventTypePreCreateContainer
+	// EventTypeExecContainer is emitted once per successful execve inside a
+	// container, after the process has settled into its final executable. It
+	// carries the mount namespace and tgid so consumers can re-attach uprobes
+	// to statically-linked runtimes whose symbol only appears post-execve.
+	EventTypeExecContainer
 )
 
 const (
@@ -122,13 +129,35 @@ type ContainerEvent struct {
 	// runtime spec
 	// See https://github.com/opencontainers/runtime-spec/blob/main/bundle.md
 	Bundle string
+
+	// MntnsID is the mount namespace of the process, set for
+	// EventTypeExecContainer so the consumer can resolve the tracked container.
+	MntnsID uint64
 }
 
 type ContainerNotifyFunc func(notif ContainerEvent)
 
+// collectExecEvents gates the per-execve exec_events stream. It is off by
+// default so the container-hook adds no per-execve cost; a consumer that needs
+// EventTypeExecContainer (e.g. a uprobe gadget re-attaching to statically
+// linked runtimes) calls SetExecEventsCollection(true) before the notifier is
+// created.
+var collectExecEvents atomic.Bool
+
+// SetExecEventsCollection enables or disables emission of EventTypeExecContainer.
+// It must be called before NewContainerNotifier so the setting is applied when
+// the eBPF program is loaded.
+func SetExecEventsCollection(enabled bool) {
+	collectExecEvents.Store(enabled)
+}
+
 type watchedContainer struct {
 	id  string
 	pid int
+	// mntnsID is the container's mount namespace, recorded when exec-event
+	// collection is enabled so it can be removed from tracked_mntns on
+	// termination. Zero when not tracked.
+	mntnsID uint64
 }
 
 type pendingContainer struct {
@@ -179,6 +208,10 @@ type ContainerNotifier struct {
 
 	objs  execruntimeObjects
 	links []link.Link
+
+	// execReader streams per-execve events from the exec_events ringbuf so
+	// uprobes can be re-attached once a container settles into its executable.
+	execReader *ringbuf.Reader
 
 	// set to true when the notifier is closed is closed
 	closed atomic.Bool
@@ -276,6 +309,15 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return err
 	}
 
+	execEventsEnabled := collectExecEvents.Load()
+	collectExecEventsVal := uint8(0)
+	if execEventsEnabled {
+		collectExecEventsVal = 1
+	}
+	if err := execSpec.CollectExecEvents.Set(collectExecEventsVal); err != nil {
+		return err
+	}
+
 	opts := ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			KernelTypes: btfgen.GetBTFSpec(),
@@ -316,6 +358,13 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 	n.links = append(n.links, l)
+
+	if execEventsEnabled {
+		n.execReader, err = ringbuf.NewReader(n.objs.ExecEvents)
+		if err != nil {
+			return fmt.Errorf("opening exec_events ringbuf reader: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -378,8 +427,43 @@ func (n *ContainerNotifier) install() error {
 	go n.watchRuntimeBinary()
 	go n.watchPendingContainers()
 	go n.checkTimeout()
+	if n.execReader != nil {
+		n.wg.Add(1)
+		go n.watchExecEvents()
+	}
 
 	return nil
+}
+
+// watchExecEvents drains the exec_events ringbuf and emits an
+// EventTypeExecContainer for each execve so consumers can re-attach uprobes to
+// the settled executable. The ringbuf is scoped in-kernel to tracked_mntns
+// (maintained from the container lifecycle), so only execs in watched
+// containers arrive here — host and untracked-container execs are dropped in
+// the kernel before they cost a ringbuf record or a wakeup.
+func (n *ContainerNotifier) watchExecEvents() {
+	defer n.wg.Done()
+
+	for {
+		rec, err := n.execReader.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) || n.closed.Load() {
+				return
+			}
+			log.Errorf("fanotify: reading exec_events: %s", err)
+			continue
+		}
+		if len(rec.RawSample) < 12 {
+			continue
+		}
+		mntnsID := binary.NativeEndian.Uint64(rec.RawSample[0:8])
+		pid := binary.NativeEndian.Uint32(rec.RawSample[8:12])
+		n.callback(ContainerEvent{
+			Type:         EventTypeExecContainer,
+			ContainerPID: pid,
+			MntnsID:      mntnsID,
+		})
+	}
 }
 
 // AddWatchContainerTermination watches a container for termination and
@@ -387,6 +471,18 @@ func (n *ContainerNotifier) install() error {
 // containers detected by ContainerNotifier, but it can also be called for
 // containers detected externally such as initial containers.
 func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
+	// When exec-event collection is on, resolve the container's mount namespace
+	// so ig_sched_exec emits exec events for it (and only it). Resolve before
+	// taking the lock to avoid holding it across the /proc read.
+	var mntnsID uint64
+	if n.execReader != nil {
+		var err error
+		mntnsID, err = containerutils.GetMntNs(containerPID)
+		if err != nil {
+			log.Debugf("container-hook: not tracking exec mntns for container %s (pid %d): %s", containerID, containerPID, err)
+		}
+	}
+
 	n.containersMu.Lock()
 	defer n.containersMu.Unlock()
 
@@ -396,8 +492,16 @@ func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, con
 	}
 
 	n.containers[containerID] = &watchedContainer{
-		id:  containerID,
-		pid: containerPID,
+		id:      containerID,
+		pid:     containerPID,
+		mntnsID: mntnsID,
+	}
+
+	if mntnsID != 0 {
+		val := uint8(1)
+		if err := n.objs.TrackedMntns.Update(&mntnsID, &val, ebpf.UpdateAny); err != nil {
+			log.Debugf("container-hook: tracking exec mntns %d: %s", mntnsID, err)
+		}
 	}
 
 	return nil
@@ -444,6 +548,13 @@ func (n *ContainerNotifier) watchContainersTermination() {
 				if c.pid > math.MaxUint32 {
 					log.Errorf("container PID (%d) exceeds math.MaxUint32 (%d)", c.pid, math.MaxUint32)
 					return
+				}
+
+				if c.mntnsID != 0 {
+					mntnsID := c.mntnsID
+					if err := n.objs.TrackedMntns.Delete(&mntnsID); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+						log.Debugf("container-hook: untracking exec mntns %d: %s", mntnsID, err)
+					}
 				}
 
 				go n.callback(ContainerEvent{
@@ -1012,6 +1123,10 @@ func (n *ContainerNotifier) Close() {
 	}
 	if n.pidFileDirNotify != nil {
 		n.pidFileDirNotify.File.Close()
+	}
+	if n.execReader != nil {
+		// Unblocks watchExecEvents (Read returns ringbuf.ErrClosed).
+		n.execReader.Close()
 	}
 	n.wg.Wait()
 

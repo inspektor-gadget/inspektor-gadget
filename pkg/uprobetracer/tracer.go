@@ -103,7 +103,27 @@ type Tracer[Event any] struct {
 	// used as a set, keeps PIDs of the pending containers
 	pendingContainerPids map[uint32]bool
 
+	// keeps the OCI runtime config (verbatim config.json) per attached/pending
+	// container PID, recorded at AttachContainer. Used to resolve a container's
+	// intended executable (process.args[0]) when a targeted library is statically
+	// linked into the binary rather than present as a shared object — see
+	// searchForLibrary. Kept here so the pending-attach path (which only has PIDs)
+	// can still resolve the executable once the program loads.
+	containerPid2OciConfig map[uint32]string
+
+	// keeps the last /proc/<pid>/exe symlink target re-resolved for each PID by
+	// ReattachContainerPid. Used as a cheap guard so an exec storm that does not
+	// change the settled executable short-circuits before the open/inode work.
+	containerPid2ExeTarget map[uint32]string
+
 	logger logger.Logger
+
+	// seams over the impure operations, so the refcount/attach bookkeeping can be
+	// unit-tested without a kernel or live containers. They default to the real
+	// implementations in NewTracer and are only overridden in tests.
+	openInContainer func(containerPid uint32, filePath string) (*os.File, error)
+	readRealInode   func(fd int) (uint64, error)
+	attachToFile    func(file *os.File) (link.Link, error)
 
 	closed bool
 	mu     sync.Mutex
@@ -111,12 +131,17 @@ type Tracer[Event any] struct {
 
 func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 	t := &Tracer[Event]{
-		containerPid2Inodes:  make(map[uint32][]uint64),
-		inodeRefCount:        make(map[uint64]*inodeKeeper),
-		pendingContainerPids: make(map[uint32]bool),
-		logger:               logger,
-		closed:               false,
+		containerPid2Inodes:    make(map[uint32][]uint64),
+		inodeRefCount:          make(map[uint64]*inodeKeeper),
+		pendingContainerPids:   make(map[uint32]bool),
+		containerPid2OciConfig: make(map[uint32]string),
+		containerPid2ExeTarget: make(map[uint32]string),
+		openInContainer:        secureopen.OpenInContainer,
+		readRealInode:          kfilefields.ReadRealInodeFromFd,
+		logger:                 logger,
+		closed:                 false,
 	}
+	t.attachToFile = t.attachUprobe
 	return t, nil
 }
 
@@ -177,7 +202,75 @@ func (t *Tracer[Event]) searchForLibrary(containerPid uint32) ([]string, error) 
 	if err != nil {
 		return nil, fmt.Errorf("parsing ld cache: %w", err)
 	}
-	return ldCachePaths, nil
+	if len(ldCachePaths) > 0 {
+		return ldCachePaths, nil
+	}
+
+	// The requested library is not a shared object in this container's ld cache.
+	// This is the common case for statically-linked runtimes that embed the
+	// library into their main executable (Node.js, and Go/Rust binaries that
+	// statically link OpenSSL/BoringSSL), where a `libssl`-targeted uprobe gadget
+	// would otherwise find nothing to attach to. Fall back to the container's
+	// intended executable: the symbol may be defined there.
+	//
+	// The executable is resolved from the OCI runtime config (process.args[0]),
+	// NOT from /proc/<pid>/exe: at container-create time (when AttachContainer
+	// fires) the PID still points at the runtime shim, because runc execve's into
+	// the entrypoint in-place slightly later and a uprobe binds an inode without
+	// following execve. The OCI-spec value is the in-rootfs path of the settled
+	// binary, opened via the same OpenInContainer mechanism as a shared library —
+	// so ReadRealInodeFromFd dedup and per-image attach-once are preserved, and
+	// attachUprobe skips (logged) any executable that does not export the symbol.
+	exePath, ok := t.containerExecutableFromOCI(containerPid)
+	if !ok {
+		return nil, nil
+	}
+	return []string{exePath}, nil
+}
+
+// settledExecutablePath returns the in-container absolute path of the binary the
+// container's process is currently running, read from /proc/<pid>/exe. At exec
+// time this is the settled executable (e.g. /usr/local/bin/node), which is the
+// attach target for statically-linked runtimes whose TLS symbol lives in the
+// main binary rather than a shared library. The /proc/<pid>/exe symlink resolves
+// in the process's own mount namespace, so the path is directly usable with
+// secureopen.OpenInContainer.
+func (t *Tracer[Event]) settledExecutablePath(containerPid uint32) (string, bool) {
+	exeLink := filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "exe")
+	target, err := os.Readlink(exeLink)
+	if err != nil {
+		return "", false
+	}
+	// A binary replaced or removed after exec shows up as "<path> (deleted)".
+	target = strings.TrimSuffix(target, " (deleted)")
+	if !filepath.IsAbs(target) {
+		return "", false
+	}
+	return target, true
+}
+
+// containerExecutableFromOCI resolves a container's intended executable to its
+// in-container absolute path from the OCI config recorded at AttachContainer
+// (process.args[0]). First cut: only absolute argv[0] is supported (covers
+// Node.js and most images, whose runtime resolves the image Entrypoint/Cmd to an
+// absolute path); a relative argv[0] resolved against PATH is a follow-up.
+func (t *Tracer[Event]) containerExecutableFromOCI(containerPid uint32) (string, bool) {
+	ociConfig, ok := t.containerPid2OciConfig[containerPid]
+	if !ok || ociConfig == "" {
+		return "", false
+	}
+	args, err := containercollection.OCIConfigGetProcessArgs(ociConfig)
+	if err != nil || len(args) == 0 {
+		t.logger.Debugf("uprobetracer: container %d: cannot read process args from OCI config: %v", containerPid, err)
+		return "", false
+	}
+	exe := args[0]
+	if !filepath.IsAbs(exe) {
+		t.logger.Debugf("uprobetracer: container %d: entrypoint %q is not absolute; PATH resolution not yet supported", containerPid, exe)
+		return "", false
+	}
+	t.logger.Debugf("uprobetracer: %q not in ld cache for container %d; attaching to executable %q from OCI spec", t.attachFilePath, containerPid, exe)
+	return exe, true
 }
 
 // attach uprobe program to the inode of the file passed in parameter
@@ -207,9 +300,60 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 	}
 }
 
+// attachOneFile opens filePath inside the container of containerPid, resolves
+// its real (overlayFS-backed) inode and attaches the uprobe to it. It returns
+// the resolved realInodePtr and whether it was newly added to THIS pid's set.
+//
+// existing is the set of realInodePtr already counted for this pid; an inode in
+// existing is a no-op (idempotent re-attach). An inode already counted for a
+// DIFFERENT pid only bumps the shared refcount. Caller holds t.mu.
+func (t *Tracer[Event]) attachOneFile(containerPid uint32, filePath string, existing map[uint64]bool) (uint64, bool, error) {
+	// Thankfully, OpenInContainer returns a fd opened without `O_PATH`.
+	// This is necessary because `ReadRealInodeFromFd` needs the
+	// `private_data` field in kernel "struct file", to access the
+	// underlying inode through overlayFS. Using `O_PATH` flag will cause
+	// the `private_data` field to be zero.
+	file, err := t.openInContainer(containerPid, filePath)
+	if err != nil {
+		return 0, false, fmt.Errorf("opening file %q for uprobe: %w", filePath, err)
+	}
+	realInodePtr, err := t.readRealInode(int(file.Fd()))
+	if err != nil {
+		file.Close()
+		return 0, false, fmt.Errorf("getting inode info for %q: %w", filePath, err)
+	}
+
+	// Already counted for THIS pid: nothing to do.
+	if existing[realInodePtr] {
+		file.Close()
+		return realInodePtr, false, nil
+	}
+
+	if keeper, exists := t.inodeRefCount[realInodePtr]; exists {
+		// Already attached for another pid (or another path of this pid):
+		// only bump the shared refcount.
+		keeper.counter++
+		file.Close()
+		t.logger.Debugf("uprobe %q already attached for inode of %q; bumped refcount for container %d", t.progName, filePath, containerPid)
+		return realInodePtr, true, nil
+	}
+
+	progLink, err := t.attachToFile(file)
+	if err != nil {
+		// The target exists but does not export the symbol (e.g. runc, or a
+		// wrapper executable). Skip it without taking a reference, so this inode
+		// is not tracked for the pid and DetachContainer stays balanced.
+		file.Close()
+		t.logger.Debugf("not attaching uprobe %q to %q for container %d: %s", t.progName, filePath, containerPid, err.Error())
+		return realInodePtr, false, nil
+	}
+	t.logger.Debugf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
+	t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink}
+	return realInodePtr, true, nil
+}
+
 // try attaching to a container, will update `containerPid2Inodes`
 func (t *Tracer[Event]) attach(containerPid uint32) {
-	var attachedRealInodes []uint64
 	unsecuredAttachFilePaths, err := t.searchForLibrary(containerPid)
 	if err != nil {
 		t.logger.Debugf("attaching to container %d: %s", containerPid, err.Error())
@@ -219,41 +363,121 @@ func (t *Tracer[Event]) attach(containerPid uint32) {
 		t.logger.Debugf("cannot find file to attach in container %d for symbol %q", containerPid, t.attachSymbol)
 	}
 
+	// Fresh attach: the existing set starts empty, so this is union-from-empty.
+	existing := make(map[uint64]bool)
+	var attachedRealInodes []uint64
 	for _, filePath := range unsecuredAttachFilePaths {
-		// Thankfully, OpenInContainer returns a fd opened without `O_PATH`.
-		// This is necessary because `ReadRealInodeFromFd` needs the
-		// `private_data` field in kernel "struct file", to access the
-		// underlying inode through overlayFS. Using `O_PATH` flag will cause
-		// the `private_data` field to be zero.
-		file, err := secureopen.OpenInContainer(containerPid, filePath)
+		realInodePtr, added, err := t.attachOneFile(containerPid, filePath, existing)
 		if err != nil {
-			t.logger.Debugf("opening file '%q' for uprobe: %s", filePath, err.Error())
+			t.logger.Debugf("%s", err.Error())
 			continue
 		}
-		realInodePtr, err := kfilefields.ReadRealInodeFromFd(int(file.Fd()))
-		if err != nil {
-			t.logger.Debugf("getting inode info for '%q': %s", filePath, err.Error())
-			file.Close()
-			continue
-		}
-
-		t.logger.Debugf("attaching uprobe %q to container %d: %q", t.progName, containerPid, filePath)
-		attachedRealInodes = append(attachedRealInodes, realInodePtr)
-
-		inode, exists := t.inodeRefCount[realInodePtr]
-		if !exists {
-			progLink, err := t.attachUprobe(file)
-			if err != nil {
-				t.logger.Debugf("failed to attach uprobe %q: %s", t.progName, err.Error())
-			}
-			t.inodeRefCount[realInodePtr] = &inodeKeeper{1, file, progLink}
-		} else {
-			inode.counter++
-			file.Close()
+		if added {
+			existing[realInodePtr] = true
+			attachedRealInodes = append(attachedRealInodes, realInodePtr)
 		}
 	}
 
 	t.containerPid2Inodes[containerPid] = attachedRealInodes
+}
+
+// ReattachContainerPid re-resolves the attach target for a container PID and
+// attaches the uprobe to any newly-settled executable. It is the load-bearing
+// addition for statically-linked runtimes (Node.js, and Go/Rust binaries that
+// embed OpenSSL/BoringSSL): at container-create time /proc/<pid>/exe still
+// points at the runtime shim (runc), so the create-time attach binds the wrong
+// inode. Calling this after the container's process has execve'd into its final
+// binary re-resolves the executable and attaches to the settled inode.
+//
+// It is idempotent and safe to call repeatedly:
+//   - an inode already counted for this pid is a no-op;
+//   - an inode already counted for another pid only bumps the shared refcount;
+//   - a pid that AttachContainer never recorded (or that DetachContainer has
+//     already cleaned up) is a no-op — fresh-attaching would install a uprobe
+//     link with no DetachContainer to ever release it.
+//
+// containerPid2Inodes[pid] is treated as a SET — each (pid, realInode) holds
+// exactly one reference — so DetachContainer's decrement-once-per-inode logic
+// stays correct across the create-time attach plus N re-attaches.
+func (t *Tracer[Event]) ReattachContainerPid(containerPid uint32) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.closed {
+		return errors.New("uprobetracer has been closed")
+	}
+	if t.prog == nil {
+		// Pending mode: AttachContainer recorded the pid; the create-time attach
+		// path will run searchForLibrary once AttachProg loads the program.
+		return nil
+	}
+
+	// Tracked-pid guard: AttachContainer keys every live container's init pid in
+	// containerPid2Inodes (even with an empty inode slice when the create-time
+	// attach found no symbol). A Reattach for a pid not in the map means either
+	// DetachContainer has already cleaned up — the exec event raced teardown —
+	// or the pid was never an AttachContainer target. Either way, fresh-attaching
+	// here would install a uprobe link with no DetachContainer to ever release it.
+	if _, tracked := t.containerPid2Inodes[containerPid]; !tracked {
+		return nil
+	}
+
+	// exe-inode-change guard: if /proc/<pid>/exe still points at the same target
+	// we last *successfully* re-attached for this pid, there is nothing new to
+	// attach. The target is recorded only after a clean pass below, so a transient
+	// failure (e.g. racing an overlayfs mount) is retried on the next exec instead
+	// of being permanently short-circuited.
+	exeLink := filepath.Join(host.HostProcFs, fmt.Sprint(containerPid), "exe")
+	exeTarget, _ := os.Readlink(exeLink)
+	if exeTarget != "" {
+		if last, ok := t.containerPid2ExeTarget[containerPid]; ok && last == exeTarget {
+			return nil
+		}
+	}
+
+	// At exec time the settled binary is /proc/<pid>/exe: for statically-linked
+	// runtimes the target symbol lives there, not in a shared library. Resolve it
+	// first, then fall back to the normal create-time resolution (absolute path,
+	// ld cache, or OCI process.args[0]) so dynamic-libssl containers keep working.
+	var unsecuredAttachFilePaths []string
+	if exe, ok := t.settledExecutablePath(containerPid); ok {
+		unsecuredAttachFilePaths = append(unsecuredAttachFilePaths, exe)
+	}
+	libPaths, err := t.searchForLibrary(containerPid)
+	if err != nil {
+		t.logger.Debugf("re-attaching to container %d: %s", containerPid, err.Error())
+	}
+	unsecuredAttachFilePaths = append(unsecuredAttachFilePaths, libPaths...)
+
+	// Union-with-delta: seed the set from the inodes already attached for this
+	// pid, then add only newly-resolved inodes. Holding t.mu across this whole
+	// read-modify-write keeps the per-pid set and the shared refcount consistent.
+	attachedRealInodes := t.containerPid2Inodes[containerPid]
+	existing := make(map[uint64]bool, len(attachedRealInodes))
+	for _, inode := range attachedRealInodes {
+		existing[inode] = true
+	}
+	attachFailed := false
+	for _, filePath := range unsecuredAttachFilePaths {
+		realInodePtr, added, err := t.attachOneFile(containerPid, filePath, existing)
+		if err != nil {
+			t.logger.Debugf("%s", err.Error())
+			attachFailed = true
+			continue
+		}
+		if added {
+			existing[realInodePtr] = true
+			attachedRealInodes = append(attachedRealInodes, realInodePtr)
+		}
+	}
+	t.containerPid2Inodes[containerPid] = attachedRealInodes
+
+	// Record the settled exe target only after a clean pass so the guard above
+	// does not permanently skip a pid whose attach failed transiently.
+	if exeTarget != "" && !attachFailed {
+		t.containerPid2ExeTarget[containerPid] = exeTarget
+	}
+	return nil
 }
 
 // AttachContainer will attach now if the prog is ready, otherwise it will add container into the pending list
@@ -266,6 +490,9 @@ func (t *Tracer[Event]) AttachContainer(container *containercollection.Container
 	}
 
 	pid := container.ContainerPid()
+	// Record the OCI config so the (possibly deferred) attach can resolve a
+	// statically-linked symbol to the container's executable via the OCI spec.
+	t.containerPid2OciConfig[pid] = container.OciConfig
 	if t.prog == nil {
 		_, exist := t.pendingContainerPids[pid]
 		if exist {
@@ -291,6 +518,8 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 	}
 
 	pid := container.ContainerPid()
+	delete(t.containerPid2OciConfig, pid)
+	delete(t.containerPid2ExeTarget, pid)
 	if t.prog == nil {
 		// remove from pending list
 		_, exist := t.pendingContainerPids[pid]
@@ -336,5 +565,6 @@ func (t *Tracer[Event]) Close() {
 
 	t.containerPid2Inodes = nil
 	t.inodeRefCount = nil
+	t.containerPid2ExeTarget = nil
 	t.closed = true
 }

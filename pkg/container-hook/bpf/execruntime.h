@@ -19,4 +19,13 @@ struct record {
 	__u8 args[FULL_MAX_ARGS_ARR];
 };
 
+// exec_event is emitted once per successful execve so userspace can re-attach
+// uprobes to a container's settled executable. pid is the tgid (the process
+// that completed the execve), which is the container init PID for an in-place
+// wrapper exec (e.g. node:20-slim's docker-entrypoint.sh exec'ing node).
+struct exec_event {
+	__u64 mntns_id;
+	__u32 pid;
+};
+
 #endif /* __EXECRUNTIME_H */
