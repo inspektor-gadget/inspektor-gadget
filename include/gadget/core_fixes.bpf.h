@@ -309,7 +309,12 @@ gadget_get_ctime_nanosec_from_inode(struct inode *inode)
 	if (sec < 0)
 		return 0;
 
-	return (u64)sec * 1000000000ULL + (u32)nsec;
+	// On kernels with multigrain timestamps (>= v6.13), the top bit of
+	// i_ctime_nsec holds the I_CTIME_QUERIED flag (BIT(31)), which the kernel
+	// masks out in inode_get_ctime_nsec(). Mask it here too so the value matches
+	// stat(); harmless on older kernels where nsec < 1e9 keeps the bit clear.
+	// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=4e40eff0b5737c0de39e1ae5812509efbc0b986e
+	return (u64)sec * 1000000000ULL + ((u32)nsec & ~(1U << 31));
 }
 
 /**
