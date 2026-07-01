@@ -66,11 +66,14 @@ func TestTraceExecGadget(t *testing.T) {
 		},
 		"large_argument_list": {
 			runnerConfig: &utils.RunnerConfig{},
-			// should only capture TOTAL_ARGS_SIZE ~ 20 arguments
+			// The arguments are read from the new process' memory
+			// (mm->arg_start .. mm->arg_end), so the whole argument list is
+			// captured as long as it fits in the args buffer (bounded by bytes,
+			// FULL_MAX_ARGS_ARR, rather than by a fixed number of arguments).
 			argv: []string{"/bin/echo", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10", "arg11", "arg12", "arg13", "arg14", "arg15", "arg16", "arg17", "arg18", "arg19", "arg20", "arg21"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs[:20], traceexec.ArgsSeparator)
+				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[0].Args)
 			},
 		},
@@ -133,8 +136,9 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
+				// args are read from the new process' memory, so argv[0] is the
+				// value passed to execve ("python3") and not the resolved path.
+				require.Contains(t, events[0].Args, "python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[1].Args)
 			},
@@ -145,8 +149,9 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
+				// args are read from the new process' memory, so argv[0] is the
+				// value passed to execve ("python3") and not the resolved path.
+				require.Contains(t, events[0].Args, "python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[1].Args)
 				require.Equal(t, "ENOENT", events[1].Error)

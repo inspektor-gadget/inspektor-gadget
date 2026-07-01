@@ -244,6 +244,29 @@ static __always_inline bool has_upper_layer(struct inode *inode)
 	return upperdentry != NULL;
 }
 
+// read_committed_args re-reads the process arguments from the new process's
+// address space (mm->arg_start .. mm->arg_end)
+static __always_inline void read_committed_args(struct event *event,
+						struct task_struct *task)
+{
+	struct mm_struct *mm = BPF_CORE_READ(task, mm);
+	if (!mm)
+		return;
+
+	unsigned long arg_start = BPF_CORE_READ(mm, arg_start);
+	unsigned long arg_end = BPF_CORE_READ(mm, arg_end);
+	if (arg_end <= arg_start)
+		return;
+
+	u64 args_size = arg_end - arg_start;
+	if (args_size > sizeof(event->args))
+		args_size = sizeof(event->args);
+
+	if (bpf_probe_read_user(event->args, args_size,
+				(const void *)arg_start) == 0)
+		event->args_size = args_size;
+}
+
 // tracepoint/sched/sched_process_exec is called after a successful execve
 SEC("tracepoint/sched/sched_process_exec")
 int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
@@ -275,6 +298,9 @@ int ig_sched_exec(struct trace_event_raw_sched_process_exec *ctx)
 
 	gadget_process_populate(&event->proc);
 	event->error_raw = 0;
+
+	// Re-read the arguments from the new process's memory
+	read_committed_args(event, task);
 
 	if (paths) {
 		char *exepath = get_path_str(&exe_file->f_path);
