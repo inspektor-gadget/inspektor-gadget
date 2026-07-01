@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -35,22 +36,66 @@ type localOciStore struct {
 	indexFlock *flock.Flock
 }
 
+const userOciStoreSubDir = ".ig/oci-store"
+
+var useUserOciStore bool
+
+func SetUseUserOciStore(v bool) {
+	useUserOciStore = v
+}
+
+func getOciStorePath() (string, error) {
+	username := ""
+	if os.Geteuid() == 0 {
+		if useUserOciStore {
+			// Running as root, with --oci-store-user.
+			username = os.Getenv("SUDO_USER")
+		} else {
+			// Running as root, without --oci-store-user
+			return rootOciStore, nil
+		}
+	} else {
+		// Running as normal user.
+		u, err := user.Current()
+		if err != nil {
+			return "", fmt.Errorf("getting current user: %w", err)
+		}
+		username = u.Username
+	}
+
+	return getUserOciStorePath(username)
+}
+
+func getUserOciStorePath(username string) (string, error) {
+	u, err := user.Lookup(username)
+	if err != nil {
+		return "", fmt.Errorf("finding user %q: %w", username, err)
+	}
+
+	return filepath.Join(u.HomeDir, userOciStoreSubDir), nil
+}
+
 // newLocalOciStore returns a localOciStore that is safe when executed
 // concurrently, even from different processes.
 func newLocalOciStore() (*localOciStore, error) {
-	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
+	ociStorePath, err := getOciStorePath()
+	if err != nil {
+		return nil, fmt.Errorf("getting OCI store path: %w", err)
+	}
+
+	if err := os.MkdirAll(ociStorePath, 0o700); err != nil {
 		return nil, err
 	}
 
-	indexPath := path.Join(defaultOciStore, "index.json")
-	indexLock := flock.New(path.Join(defaultOciStore, "index.json.lock"))
+	indexPath := path.Join(ociStorePath, "index.json")
+	indexLock := flock.New(path.Join(ociStorePath, "index.json.lock"))
 
 	// lock the file before reading the index below
 	// RLock can't be used since we might create and init an empty index file in oci.New()
 	indexLock.Lock()
 	defer indexLock.Unlock()
 
-	ociStore, err := oci.New(defaultOciStore)
+	ociStore, err := oci.New(ociStorePath)
 	if err != nil {
 		return nil, err
 	}
