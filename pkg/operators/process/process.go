@@ -65,7 +65,7 @@ const (
 	fieldCPUTime          = "cpuTime"
 	fieldCPUTimeStr       = "cpuTimeStr"
 	fieldCPUUsage         = "cpuUsage"
-	fieldCPUUsageRelative = "cpuUsageRelative"
+	fieldCPUUsageRelative = "cpuRelative"
 	fieldMemoryRSS        = "memoryRSS"
 	fieldMemoryVirtual    = "memoryVirtual"
 	fieldMemoryRelative   = "memoryRelative"
@@ -247,7 +247,7 @@ func (p *processOperator) InstantiateDataOperator(gadgetCtx operators.GadgetCont
 				metadatav1.ColumnsMaxWidthAnnotation:  "8",
 			}))
 			if err != nil {
-				return nil, fmt.Errorf("adding cpuUsageRelative field: %w", err)
+				return nil, fmt.Errorf("adding cpuRelative field: %w", err)
 			}
 			requireCPUInfo = true
 		case fieldMemoryRSS:
