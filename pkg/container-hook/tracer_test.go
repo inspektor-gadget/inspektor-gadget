@@ -44,6 +44,17 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
+				}
+			}),
+		},
+		"one_container_with_oc_runtime": {
+			generateEvent: generateEvent(0),
+			validateEvent: utils.ExpectAtLeastOneEvent(func(info *utils.RunnerInfo, containerID string) *ContainerEvent {
+				return &ContainerEvent{
+					Type:        EventTypeAddContainer,
+					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},
@@ -53,6 +64,7 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},
@@ -65,6 +77,7 @@ func TestContainerHookEvent(t *testing.T) {
 				return &ContainerEvent{
 					Type:        EventTypeAddContainer,
 					ContainerID: containerID,
+					OciRuntime:  "runc",
 				}
 			}),
 		},

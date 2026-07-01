@@ -173,6 +173,9 @@ func (c *ContainerdClient) GetContainerDetails(containerID string) (*runtimeclie
 		}
 	}
 
+	if inf, err := container.Info(c.ctx); err == nil {
+		containerData.Runtime.OciRuntime = runtimeclient.NormalizeOCIRuntime(inf.Runtime.Name)
+	}
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: *containerData,
 		Pid:           int(task.pid),

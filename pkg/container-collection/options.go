@@ -66,6 +66,7 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	// Runtime
 	setIfEmptyStr(&container.Runtime.ContainerID, containerData.Runtime.ContainerID)
 	setIfEmptyStr(&container.Runtime.RuntimeName, containerData.Runtime.RuntimeName)
+	setIfEmptyStr(&container.Runtime.OciRuntime, containerData.Runtime.OciRuntime)
 	setIfEmptyStr(&container.Runtime.ContainerName, containerData.Runtime.ContainerName)
 	setIfEmptyStr(&container.Runtime.ContainerImageName, containerData.Runtime.ContainerImageName)
 	setIfEmptyStr(&container.Runtime.ContainerImageID, containerData.Runtime.ContainerImageID)
@@ -640,6 +641,7 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 							ContainerID:   notif.ContainerID,
 							ContainerPID:  notif.ContainerPID,
 							ContainerName: notif.ContainerName,
+							OciRuntime:    notif.OciRuntime,
 						},
 					},
 					OciConfig: notif.ContainerConfig,
