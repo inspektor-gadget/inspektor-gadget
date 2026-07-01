@@ -22,6 +22,21 @@ type execruntimeRecord struct {
 	Args       [5120]uint8
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	execruntimeMapExecArgs     = "exec_args"
+	execruntimeMapIgFaPickCtx  = "ig_fa_pick_ctx"
+	execruntimeMapIgFaRecords  = "ig_fa_records"
+	execruntimeProgIgExecveE   = "ig_execve_e"
+	execruntimeProgIgExecveX   = "ig_execve_x"
+	execruntimeProgIgFaPickE   = "ig_fa_pick_e"
+	execruntimeProgIgFaPickX   = "ig_fa_pick_x"
+	execruntimeProgIgSchedExec = "ig_sched_exec"
+	execruntimeVarTracerGroup  = "tracer_group"
+)
+
 // loadExecruntime returns the embedded CollectionSpec for execruntime.
 func loadExecruntime() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_ExecruntimeBytes)
@@ -42,7 +57,7 @@ func loadExecruntime() (*ebpf.CollectionSpec, error) {
 //	*execruntimeMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadExecruntimeObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadExecruntimeObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadExecruntime()
 	if err != nil {
 		return err

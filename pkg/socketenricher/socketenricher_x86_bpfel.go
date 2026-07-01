@@ -46,6 +46,27 @@ type socketenricherGadgetSocketValue struct {
 	Exepath             [4096]int8
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	socketenricherMapBufs                = "bufs"
+	socketenricherMapGadgetSockets       = "gadget_sockets"
+	socketenricherMapIgTmpSocketsValue   = "ig_tmp_sockets_value"
+	socketenricherMapStart               = "start"
+	socketenricherProgIgBindIpv4E        = "ig_bind_ipv4_e"
+	socketenricherProgIgBindIpv4X        = "ig_bind_ipv4_x"
+	socketenricherProgIgBindIpv6E        = "ig_bind_ipv6_e"
+	socketenricherProgIgBindIpv6X        = "ig_bind_ipv6_x"
+	socketenricherProgIgFreeIpv4E        = "ig_free_ipv4_e"
+	socketenricherProgIgFreeIpv6E        = "ig_free_ipv6_e"
+	socketenricherProgIgTcpCoE           = "ig_tcp_co_e"
+	socketenricherProgIgTcpCoX           = "ig_tcp_co_x"
+	socketenricherProgIgUdp6Sendmsg      = "ig_udp6_sendmsg"
+	socketenricherProgIgUdpSendmsg       = "ig_udp_sendmsg"
+	socketenricherVarDisableBpfIterators = "disable_bpf_iterators"
+)
+
 // loadSocketenricher returns the embedded CollectionSpec for socketenricher.
 func loadSocketenricher() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_SocketenricherBytes)
@@ -66,7 +87,7 @@ func loadSocketenricher() (*ebpf.CollectionSpec, error) {
 //	*socketenricherMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadSocketenricherObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadSocketenricherObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadSocketenricher()
 	if err != nil {
 		return err
