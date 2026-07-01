@@ -60,4 +60,86 @@ Default value: ""
 
 ## Guide
 
-TODO
+In this guide, we will use the `trace_signal` gadget to monitor signals sent to processes.
+
+First, let's start the gadget. We will filter for signals sent to a specific container to reduce noise.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_signal:%IG_TAG% -- -c test-trace-signal
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_signal:%IG_TAG% -c test-trace-signal
+        ```
+    </TabItem>
+</Tabs>
+
+Now, let's start a container that we can send signals to.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run test-trace-signal --image=busybox --restart=Never -- /bin/sh -c "sleep infinity"
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-trace-signal --rm -d busybox /bin/sh -c "sleep infinity"
+        ```
+    </TabItem>
+</Tabs>
+
+Now, let's send a signal to the container.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl exec test-trace-signal -- kill -SIGUSR1 1
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker kill -s SIGUSR1 test-trace-signal
+        ```
+    </TabItem>
+</Tabs>
+
+The gadget should show the signal event.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        K8S.NODE          K8S.NAMESPACE        K8S.PODNAME          K8S.CONTAINERNAME    COMM             PID        TID        TPID       SIG        ERROR
+        minikube          default              test-trace-signal    test-trace-signal    kill             147026     147026     146864     SIGUSR1    0
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        RUNTIME.CONTAINERNAME     COMM             PID        TID        TPID       SIG        ERROR
+        test-trace-signal         kill             146387     146387     146227     SIGUSR1    0
+        ```
+    </TabItem>
+</Tabs>
+
+Finally, clean up the container.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod test-trace-signal
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-signal
+        ```
+    </TabItem>
+</Tabs>
