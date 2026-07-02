@@ -46,6 +46,17 @@ type socketsiterGadgetSocketValue struct {
 	Exepath             [4096]int8
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	socketsiterMapBufs              = "bufs"
+	socketsiterMapGadgetSockets     = "gadget_sockets"
+	socketsiterProgIgSkCleanup      = "ig_sk_cleanup"
+	socketsiterProgIgSocketsIt      = "ig_sockets_it"
+	socketsiterVarSocketFileOpsAddr = "socket_file_ops_addr"
+)
+
 // loadSocketsiter returns the embedded CollectionSpec for socketsiter.
 func loadSocketsiter() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_SocketsiterBytes)
@@ -66,7 +77,7 @@ func loadSocketsiter() (*ebpf.CollectionSpec, error) {
 //	*socketsiterMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadSocketsiterObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadSocketsiterObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadSocketsiter()
 	if err != nil {
 		return err

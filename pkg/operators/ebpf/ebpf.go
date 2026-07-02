@@ -85,6 +85,7 @@ type gadgetObjects struct {
 type ebpfOperator struct {
 	mu         sync.Mutex
 	gadgetObjs map[operators.GadgetContext]gadgetObjects
+	btfCache   *btf.Cache
 }
 
 func (o *ebpfOperator) Name() string {
@@ -757,6 +758,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
+		Cache:           i.bpfOperator.btfCache,
 	}
 
 	if seBtfSpecI, ok := gadgetCtx.GetVar("socketEnricherbtf"); ok {
@@ -1111,7 +1113,9 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 	return nil
 }
 
-var ebpfOp = &ebpfOperator{}
+var ebpfOp = &ebpfOperator{
+	btfCache: btf.NewCache(),
+}
 
 func init() {
 	operators.RegisterOperatorForMediaType(eBPFObjectMediaType, ebpfOp)
