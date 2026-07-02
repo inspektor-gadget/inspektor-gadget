@@ -92,7 +92,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
+    - uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
     - name: Update latest tag
       env:
         IMAGE_TAG: ${{ github.event.release.tag_name }}
