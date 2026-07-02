@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 )
@@ -44,7 +45,24 @@ const (
 
 const (
 	disabledProgram = "gadget_program_disabled"
+
+	// defaultSockhashMapName is the sockhash map an sk_skb program is attached
+	// to when the gadget does not override it via
+	// "programs.<name>.attach_to". It matches the map defined by the shared
+	// <gadget/tcp_stream.h> header.
+	defaultSockhashMapName = "gadget_sockhash"
 )
+
+// sockmapAttachment records an sk_skb program attached to a sockmap/sockhash
+// map. sk_skb attachments are done via BPF_PROG_ATTACH and, unlike most other
+// program types, are not backed by a bpf_link. We therefore keep track of the
+// information needed to detach them explicitly on Stop() (mirroring how perf
+// event fds are tracked).
+type sockmapAttachment struct {
+	prog       *ebpf.Program
+	sockmap    *ebpf.Map
+	attachType ebpf.AttachType
+}
 
 func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.ProgramSpec, prog *ebpf.Program) (link.Link, error) {
 	attachTo := p.AttachTo
@@ -149,6 +167,54 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 		return link.AttachLSM(link.LSMOptions{
 			Program: prog,
 		})
+	case ebpf.SockOps:
+		// sock_ops programs are attached to a cgroup v2. By default we attach
+		// to the cgroup v2 root so the program observes every socket on the
+		// host; this can be overridden per-program via
+		// "programs.<name>.cgroup". sock_ops is typically used to populate a
+		// sockhash map (see <gadget/tcp_stream.h>) that sk_skb programs then
+		// process.
+		cgroupPath, err := i.sockOpsCgroupPath(p.Name)
+		if err != nil {
+			return nil, fmt.Errorf("resolving cgroup for sockops program %q: %w", p.Name, err)
+		}
+		i.logger.Debugf("Attaching sockops %q to cgroup %q", p.Name, cgroupPath)
+		return link.AttachCgroup(link.CgroupOptions{
+			Path:    cgroupPath,
+			Attach:  ebpf.AttachCGroupSockOps,
+			Program: prog,
+		})
+	case ebpf.SkSKB, ebpf.SkMsg:
+		// sk_skb (STREAM_PARSER / STREAM_VERDICT) and sk_msg (MSG_VERDICT)
+		// programs are attached to a sockmap/sockhash map, not to a kernel
+		// hook. sk_skb runs on the receive path of the sockets in the map,
+		// sk_msg on their send path. The target map is named by
+		// "programs.<name>.attach_to" and defaults to the sockhash defined by
+		// <gadget/tcp_stream.h>. The attachment is done via BPF_PROG_ATTACH,
+		// which is not backed by a bpf_link, so we record it for explicit
+		// detachment on Stop().
+		mapName := attachTo
+		if mapName == "" {
+			mapName = defaultSockhashMapName
+		}
+		sockmap, ok := i.collection.Maps[mapName]
+		if !ok {
+			return nil, fmt.Errorf("sockhash map %q not found for %s program %q", mapName, p.Type, p.Name)
+		}
+		i.logger.Debugf("Attaching %s %q to sockhash map %q", p.Type, p.Name, mapName)
+		if err := link.RawAttachProgram(link.RawAttachProgramOptions{
+			Target:  sockmap.FD(),
+			Program: prog,
+			Attach:  p.AttachType,
+		}); err != nil {
+			return nil, fmt.Errorf("attaching %s program %q to sockhash %q: %w", p.Type, p.Name, mapName, err)
+		}
+		i.sockmapAttachments = append(i.sockmapAttachments, sockmapAttachment{
+			prog:       prog,
+			sockmap:    sockmap,
+			attachType: p.AttachType,
+		})
+		return nil, nil
 	case ebpf.PerfEvent:
 		perfType := uint32(unix.PERF_TYPE_SOFTWARE)
 		perfConfig := uint64(unix.PERF_COUNT_SW_CPU_CLOCK)
@@ -228,4 +294,20 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
+}
+
+// sockOpsCgroupPath returns the cgroup v2 path a sock_ops program should be
+// attached to. It defaults to the cgroup v2 root (so the program sees every
+// socket on the host) and can be overridden per-program via the
+// "programs.<name>.cgroup" configuration key.
+func (i *ebpfInstance) sockOpsCgroupPath(progName string) (string, error) {
+	if path := i.config.GetString("programs." + progName + ".cgroup"); path != "" {
+		return path, nil
+	}
+
+	path, err := cgroups.CgroupPathV2AddMountpoint("/")
+	if err != nil {
+		return "", fmt.Errorf("resolving cgroup v2 root mountpoint: %w", err)
+	}
+	return path, nil
 }

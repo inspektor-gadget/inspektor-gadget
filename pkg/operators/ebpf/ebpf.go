@@ -195,6 +195,11 @@ type ebpfInstance struct {
 	links   []link.Link
 	perfFds []int
 
+	// sockmapAttachments tracks sk_skb programs attached to sockmap/sockhash
+	// maps via BPF_PROG_ATTACH. These are not backed by a bpf_link and must be
+	// detached explicitly on Stop().
+	sockmapAttachments []sockmapAttachment
+
 	containers map[string]*containercollection.Container
 
 	enums      []*enum
@@ -1014,6 +1019,20 @@ func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		gadgets.CloseLink(l)
 	}
 	i.links = nil
+
+	// Detach sk_skb programs from their sockmap/sockhash maps. This must happen
+	// while the collection (and therefore the map and program fds) is still
+	// open, i.e. before Close() runs.
+	for _, a := range i.sockmapAttachments {
+		if err := link.RawDetachProgram(link.RawDetachProgramOptions{
+			Target:  a.sockmap.FD(),
+			Program: a.prog,
+			Attach:  a.attachType,
+		}); err != nil {
+			i.logger.Errorf("detaching sk_skb program from sockhash: %v", err)
+		}
+	}
+	i.sockmapAttachments = nil
 
 	for _, fd := range i.perfFds {
 		// Disable perf event.
