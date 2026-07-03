@@ -123,7 +123,7 @@ func NewTracer[Event any](logger logger.Logger) (*Tracer[Event], error) {
 // AttachProg loads the ebpf program, and try attaching if there are pending containers
 func (t *Tracer[Event]) AttachProg(progName string, progType ProgType, attachTo string, prog *ebpf.Program) error {
 	if progType != ProgUprobe && progType != ProgUretprobe && progType != ProgUSDT {
-		return fmt.Errorf("unsupported uprobe prog type: %q", progType)
+		return fmt.Errorf("unsupported uprobe prog type: %d", progType)
 	}
 
 	if prog == nil {
@@ -203,7 +203,7 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 				RefCtrOffset: attachInfo.semaphoreAddress,
 			})
 	default:
-		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %q", t.progType)
+		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %d", t.progType)
 	}
 }
 

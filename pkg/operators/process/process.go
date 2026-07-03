@@ -404,7 +404,7 @@ func (p *processOperatorInstance) Start(gadgetCtx operators.GadgetContext) error
 	// Get the system boot time
 	bootTime, err := getBootTime()
 	if err != nil {
-		gadgetCtx.Logger().Warn("Could not determine system boot time, using current time: %v", err)
+		gadgetCtx.Logger().Warnf("Could not determine system boot time, using current time: %v", err)
 	}
 
 	p.bootTime = bootTime

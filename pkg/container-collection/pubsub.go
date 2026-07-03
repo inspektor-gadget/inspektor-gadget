@@ -35,8 +35,8 @@ const (
 	EventTypePreCreateContainer
 )
 
-func (e *EventType) String() string {
-	switch *e {
+func (e EventType) String() string {
+	switch e {
 	case EventTypeRemoveContainer:
 		return "DELETED"
 	case EventTypePreCreateContainer:
