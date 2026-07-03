@@ -278,6 +278,12 @@ struct inode___older_v611 {
 	struct timespec64 __i_ctime;
 };
 
+// On kernels with multigrain timestamps (>= v6.13), the top bit of i_ctime_nsec
+// holds the I_CTIME_QUERIED flag, which the kernel masks out in
+// inode_get_ctime_nsec().
+// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=4e40eff0b5737c0de39e1ae5812509efbc0b986e
+#define I_CTIME_QUERIED (1U << 31)
+
 // Based on get_ctime_nanosec_timespec from:
 // https://github.com/aquasecurity/tracee/blob/main/pkg/ebpf/c/common/filesystem.h#L61
 static __always_inline u64
@@ -309,7 +315,9 @@ gadget_get_ctime_nanosec_from_inode(struct inode *inode)
 	if (sec < 0)
 		return 0;
 
-	return (u64)sec * 1000000000ULL + (u32)nsec;
+	// Mask I_CTIME_QUERIED so the value matches stat(); harmless on older
+	// kernels where nsec < 1e9 keeps the bit clear.
+	return (u64)sec * 1000000000ULL + ((u32)nsec & ~I_CTIME_QUERIED);
 }
 
 /**
