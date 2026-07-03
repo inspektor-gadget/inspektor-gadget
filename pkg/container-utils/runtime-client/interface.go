@@ -141,18 +141,21 @@ type ContainerRuntimeClient interface {
 // (io.containerd.runc.v2), so it is reported as runc; use the
 // fanotify hook value to distinguish them.
 func NormalizeOCIRuntime(raw string) string {
-	switch {
-	case strings.Contains(raw, "runc"):
-		return "runc"
-	case strings.Contains(raw, "crun"):
-		return "crun"
-	case strings.Contains(raw, "kata"):
-		return "kata"
-	case strings.Contains(raw, "runsc"):
-		return "runsc"
-	default:
-		return ""
-	}
+    knownOCIRuntime := map[string]string{
+        "runc": "runc", "crun": "crun",
+        "kata": "kata", "runsc": "runsc",
+    }
+    if v, ok := knownOCIRuntime[raw]; ok {
+        return v
+    }
+    for _, part := range strings.FieldsFunc(raw, func(r rune) bool {
+        return r == '.' || r == '/'
+    }) {
+        if v, ok := knownOCIRuntime[part]; ok {
+            return v
+        }
+    }
+    return ""
 }
 
 func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {
