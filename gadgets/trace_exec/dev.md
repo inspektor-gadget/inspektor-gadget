@@ -12,31 +12,41 @@ The following diagrams are generated using the `ig image inspect` command. Note 
 flowchart LR
 bufs[("bufs")]
 events[("events")]
+events_lost_samples[("events_lost_samples")]
+exec_argv[("exec_argv")]
 execs[("execs")]
 gadget_mntns_filter_map[("gadget_mntns_filter_map")]
 security_bprm_hit_map[("security_bprm_hit_map")]
 ig_execve_e -- "Lookup" --> gadget_mntns_filter_map
 ig_execve_e -- "Lookup+Update" --> execs
 ig_execve_e -- "Lookup" --> bufs
+ig_execve_e -- "Update" --> exec_argv
 ig_execve_e["ig_execve_e"]
 ig_execve_x -- "Lookup+Delete" --> execs
+ig_execve_x -- "Lookup+Delete" --> exec_argv
 ig_execve_x -- "Lookup" --> bufs
+ig_execve_x -- "Lookup" --> events_lost_samples
 ig_execve_x -- "EventOutput" --> events
 ig_execve_x -- "Delete" --> security_bprm_hit_map
 ig_execve_x["ig_execve_x"]
 ig_execveat_e -- "Lookup" --> gadget_mntns_filter_map
 ig_execveat_e -- "Lookup+Update" --> execs
 ig_execveat_e -- "Lookup" --> bufs
+ig_execveat_e -- "Update" --> exec_argv
 ig_execveat_e["ig_execveat_e"]
 ig_execveat_x -- "Lookup+Delete" --> execs
+ig_execveat_x -- "Lookup+Delete" --> exec_argv
 ig_execveat_x -- "Lookup" --> bufs
+ig_execveat_x -- "Lookup" --> events_lost_samples
 ig_execveat_x -- "EventOutput" --> events
 ig_execveat_x -- "Delete" --> security_bprm_hit_map
 ig_execveat_x["ig_execveat_x"]
 ig_sched_exec -- "Lookup+Delete" --> execs
 ig_sched_exec -- "Lookup" --> bufs
+ig_sched_exec -- "Lookup" --> events_lost_samples
 ig_sched_exec -- "EventOutput" --> events
 ig_sched_exec -- "Delete" --> security_bprm_hit_map
+ig_sched_exec -- "Delete" --> exec_argv
 ig_sched_exec["ig_sched_exec"]
 security_bprm_check -- "Lookup" --> execs
 security_bprm_check -- "Lookup+Update" --> security_bprm_hit_map
@@ -60,6 +70,8 @@ box eBPF Maps
 participant gadget_mntns_filter_map
 participant execs
 participant bufs
+participant exec_argv
+participant events_lost_samples
 participant events
 participant security_bprm_hit_map
 end
@@ -67,25 +79,35 @@ ig_execve_e->>gadget_mntns_filter_map: Lookup
 ig_execve_e->>execs: Update
 ig_execve_e->>execs: Lookup
 ig_execve_e->>bufs: Lookup
+ig_execve_e->>exec_argv: Update
 ig_execve_x->>execs: Lookup
+ig_execve_x->>exec_argv: Lookup
 ig_execve_x->>bufs: Lookup
+ig_execve_x->>events_lost_samples: Lookup
 ig_execve_x->>events: EventOutput
 ig_execve_x->>execs: Delete
 ig_execve_x->>security_bprm_hit_map: Delete
+ig_execve_x->>exec_argv: Delete
 ig_execveat_e->>gadget_mntns_filter_map: Lookup
 ig_execveat_e->>execs: Update
 ig_execveat_e->>execs: Lookup
 ig_execveat_e->>bufs: Lookup
+ig_execveat_e->>exec_argv: Update
 ig_execveat_x->>execs: Lookup
+ig_execveat_x->>exec_argv: Lookup
 ig_execveat_x->>bufs: Lookup
+ig_execveat_x->>events_lost_samples: Lookup
 ig_execveat_x->>events: EventOutput
 ig_execveat_x->>execs: Delete
 ig_execveat_x->>security_bprm_hit_map: Delete
+ig_execveat_x->>exec_argv: Delete
 ig_sched_exec->>execs: Lookup
 ig_sched_exec->>bufs: Lookup
+ig_sched_exec->>events_lost_samples: Lookup
 ig_sched_exec->>events: EventOutput
 ig_sched_exec->>execs: Delete
 ig_sched_exec->>security_bprm_hit_map: Delete
+ig_sched_exec->>exec_argv: Delete
 security_bprm_check->>execs: Lookup
 security_bprm_check->>security_bprm_hit_map: Lookup
 security_bprm_check->>security_bprm_hit_map: Update

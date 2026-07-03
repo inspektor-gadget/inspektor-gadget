@@ -48,8 +48,12 @@ type testDef struct {
 	runnerConfig   *utils.RunnerConfig
 	mntnsFilterMap func(info *utils.RunnerInfo) *ebpf.Map
 	argv           []string
-	runFromThread  bool
-	validate       func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string)
+	// execPath, when set, is the path passed to execve while argv is used as
+	// the argument vector. It allows testing an argv[0] that differs from the
+	// executed path.
+	execPath      string
+	runFromThread bool
+	validate      func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string)
 }
 
 func TestTraceExecGadget(t *testing.T) {
@@ -66,11 +70,14 @@ func TestTraceExecGadget(t *testing.T) {
 		},
 		"large_argument_list": {
 			runnerConfig: &utils.RunnerConfig{},
-			// should only capture TOTAL_ARGS_SIZE ~ 20 arguments
+			// The arguments are read from the new process' memory
+			// (mm->arg_start .. mm->arg_end), so the whole argument list is
+			// captured as long as it fits in the args buffer (bounded by bytes,
+			// FULL_MAX_ARGS_ARR, rather than by a fixed number of arguments).
 			argv: []string{"/bin/echo", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10", "arg11", "arg12", "arg13", "arg14", "arg15", "arg16", "arg17", "arg18", "arg19", "arg20", "arg21"},
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
-				expectedArgs := strings.Join(inputArgs[:20], traceexec.ArgsSeparator)
+				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[0].Args)
 			},
 		},
@@ -109,6 +116,19 @@ func TestTraceExecGadget(t *testing.T) {
 				require.Equal(t, "ENOENT", events[0].Error)
 			},
 		},
+		"failed_exec_argv0_differs_from_path": {
+			runnerConfig: &utils.RunnerConfig{},
+			// execve() a non-existent path with an argv[0] that differs from it.
+			// The reported args must reflect the real argv[0], not the path.
+			execPath: "/bin/nonexistent-trace-exec-xyz",
+			argv:     []string{"masked-name", "arg1"},
+			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
+				require.Len(t, events, 1, "Expected 1 event but got %d", len(events))
+				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
+				require.Equal(t, expectedArgs, events[0].Args)
+				require.Equal(t, "ENOENT", events[0].Error)
+			},
+		},
 		"ctime": {
 			runnerConfig: &utils.RunnerConfig{},
 			argv:         []string{"/bin/echo", "ctime-test"},
@@ -133,8 +153,9 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
+				// args are read from the new process' memory, so argv[0] is the
+				// value passed to execve ("python3") and not the resolved path.
+				require.Contains(t, events[0].Args, "python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[1].Args)
 			},
@@ -145,8 +166,9 @@ func TestTraceExecGadget(t *testing.T) {
 			runFromThread: true,
 			validate: func(t *testing.T, info *utils.RunnerInfo, events []ExpectedTraceExecEvent, inputArgs []string) {
 				require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
-				// We do not check the full path of the executable/symlink here, as it may vary depending on the environment.
-				require.Contains(t, events[0].Args, "/bin/python3"+traceexec.ArgsSeparator+"-c")
+				// args are read from the new process' memory, so argv[0] is the
+				// value passed to execve ("python3") and not the resolved path.
+				require.Contains(t, events[0].Args, "python3"+traceexec.ArgsSeparator+"-c")
 				expectedArgs := strings.Join(inputArgs, traceexec.ArgsSeparator)
 				require.Equal(t, expectedArgs, events[1].Args)
 				require.Equal(t, "ENOENT", events[1].Error)
@@ -170,7 +192,11 @@ func TestTraceExecGadget(t *testing.T) {
 					if testCase.runFromThread {
 						generateEventFromThread(t, testCase.argv)
 					} else {
-						p, err := os.StartProcess(testCase.argv[0], testCase.argv, &os.ProcAttr{})
+						path := testCase.argv[0]
+						if testCase.execPath != "" {
+							path = testCase.execPath
+						}
+						p, err := os.StartProcess(path, testCase.argv, &os.ProcAttr{})
 						if err == nil {
 							defer p.Wait()
 						}
