@@ -283,6 +283,27 @@ message GadgetInstanceId {
   string id = 1;
 }
 
+message CatalogGadget {
+  // image is the OCI image reference of the gadget
+  string image = 1;
+
+  // name is a human-friendly display name for the gadget
+  string name = 2;
+
+  // description is a short description of what the gadget does
+  string description = 3;
+
+  // tags can hold multiple opaque strings so that users can more easily find
+  // gadgets in the catalog
+  repeated string tags = 4;
+}
+
+message GetCatalogRequest {}
+
+message GetCatalogResponse {
+  repeated CatalogGadget gadgets = 1;
+}
+
 message StatusResponse {
   int32 result = 1;
   string message = 2;
@@ -302,4 +323,8 @@ service GadgetInstanceManager {
   rpc ListGadgetInstances(ListGadgetInstancesRequest) returns (ListGadgetInstanceResponse) {}
   rpc GetGadgetInstance(GadgetInstanceId) returns (GadgetInstance) {}
   rpc RemoveGadgetInstance(GadgetInstanceId) returns (StatusResponse) {}
+}
+
+service GadgetCatalogManager {
+  rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse) {}
 }

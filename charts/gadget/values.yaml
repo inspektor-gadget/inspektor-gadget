@@ -44,6 +44,51 @@ config:
       otel-metrics-listen: false
       otel-metrics-listen-address: "0.0.0.0:2224"
 
+  # -- Catalog of gadgets that clients (kubectl-gadget, gadgetctl) can discover
+  # via `catalog list`. This is discovery-only: it does not restrict which
+  # gadgets can run (see `operator.oci.allowed-gadgets` for that) nor run
+  # anything itself. Override or clear this list for air-gapped, custom-registry
+  # or otherwise restricted deployments.
+  catalog:
+    - image: ghcr.io/inspektor-gadget/gadget/trace_open:latest
+      name: trace_open
+      description: Trace open() system calls
+      tags:
+        - file
+        - trace
+    - image: ghcr.io/inspektor-gadget/gadget/trace_exec:latest
+      name: trace_exec
+      description: Trace new processes created via exec()
+      tags:
+        - process
+        - trace
+    - image: ghcr.io/inspektor-gadget/gadget/trace_dns:latest
+      name: trace_dns
+      description: Trace DNS requests and responses
+      tags:
+        - network
+        - dns
+        - trace
+    - image: ghcr.io/inspektor-gadget/gadget/trace_tcp:latest
+      name: trace_tcp
+      description: Trace TCP connect, accept and close events
+      tags:
+        - network
+        - tcp
+        - trace
+    - image: ghcr.io/inspektor-gadget/gadget/top_file:latest
+      name: top_file
+      description: Show reads and writes by file
+      tags:
+        - file
+        - top
+    - image: ghcr.io/inspektor-gadget/gadget/snapshot_process:latest
+      name: snapshot_process
+      description: Take a snapshot of running processes
+      tags:
+        - process
+        - snapshot
+
   # -- Gadget ConfigMaps to create. Each entry creates a ConfigMap with
   # label `type: gadget-instance` that the gadget daemon will reconcile and run
   # automatically.

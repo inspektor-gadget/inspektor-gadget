@@ -1,0 +1,119 @@
+---
+title: 'Gadget Catalog'
+sidebar_position: 320
+description: How to curate and discover a server-side catalog of Gadgets
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Gadget Catalog lets administrators curate, on the server side (the Inspektor
+Gadget pod or the `ig daemon`), a list of Gadgets that clients can discover. Each
+catalog entry has an image, a display name, a description and a set of tags.
+
+The catalog is **discovery-only**: it does not restrict which Gadgets can run
+(see [Restricting Gadgets](./restricting-gadgets.mdx) for that) and it does not
+run anything itself. It simply gives users a curated, searchable list of Gadgets
+that are relevant for a given deployment.
+
+## Configuring the Catalog
+
+The catalog is configured through the `catalog` key in the server
+[configuration file](./configuration.md). Each entry supports the following
+fields:
+
+- `image` (required): the OCI image reference of the Gadget.
+- `name`: a human-friendly display name.
+- `description`: a short description of what the Gadget does.
+- `tags`: a list of opaque strings used for filtering.
+
+```yaml
+catalog:
+  - image: ghcr.io/inspektor-gadget/gadget/trace_open:latest
+    name: trace_open
+    description: Trace open() system calls
+    tags:
+      - file
+      - trace
+  - image: ghcr.io/inspektor-gadget/gadget/trace_dns:latest
+    name: trace_dns
+    description: Trace DNS requests and responses
+    tags:
+      - network
+      - dns
+      - trace
+```
+
+There is no catalog baked into the binaries: the server returns exactly what is
+present in its configuration. When no catalog is configured, `catalog list`
+returns an empty list. This keeps the feature suitable for air-gapped,
+custom-registry or otherwise restricted deployments.
+
+### On Kubernetes (Helm)
+
+When deploying with Helm, the catalog can be configured with the
+`config.catalog` value. The chart ships a curated default list of official
+Gadgets that you can extend, trim, or fully override in your `values.yaml`:
+
+```yaml
+config:
+  catalog:
+    - image: ghcr.io/inspektor-gadget/gadget/trace_open:latest
+      name: trace_open
+      description: Trace open() system calls
+      tags:
+        - file
+        - trace
+```
+
+## Listing the Catalog
+
+Clients discover the catalog with the `catalog list` command:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl catalog list
+NAME             IMAGE                                                    TAGS             DESCRIPTION
+trace_open       ghcr.io/inspektor-gadget/gadget/trace_open:latest        file,trace       Trace open() system calls
+trace_dns        ghcr.io/inspektor-gadget/gadget/trace_dns:latest         network,dns,…    Trace DNS requests and responses
+```
+    </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget catalog list
+NAME             IMAGE                                                    TAGS             DESCRIPTION
+trace_open       ghcr.io/inspektor-gadget/gadget/trace_open:latest        file,trace       Trace open() system calls
+trace_dns        ghcr.io/inspektor-gadget/gadget/trace_dns:latest         network,dns,…    Trace DNS requests and responses
+```
+    </TabItem>
+</Tabs>
+
+### Filtering by Tags
+
+Use the `--tags` flag to only show Gadgets that have **all** of the given tags
+(comma-separated):
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl catalog list --tags network,trace
+NAME             IMAGE                                                    TAGS             DESCRIPTION
+trace_dns        ghcr.io/inspektor-gadget/gadget/trace_dns:latest         network,dns,…    Trace DNS requests and responses
+```
+    </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget catalog list --tags network,trace
+NAME             IMAGE                                                    TAGS             DESCRIPTION
+trace_dns        ghcr.io/inspektor-gadget/gadget/trace_dns:latest         network,dns,…    Trace DNS requests and responses
+```
+    </TabItem>
+</Tabs>
+
+Once you find a Gadget of interest, run it as usual with the `run` command using
+its image, e.g. `kubectl gadget run trace_dns:latest`.

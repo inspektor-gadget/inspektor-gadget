@@ -51,6 +51,32 @@
           "deprecated": true,
           "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
         },
+        "catalog": {
+          "type": "array",
+          "description": "Discovery-only catalog of gadgets that clients can list via `catalog list`.",
+          "items": {
+            "type": "object",
+            "required": ["image"],
+            "properties": {
+              "image": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
         "disallowGadgetsPulling": {
           "type": "boolean",
           "deprecated": true,
