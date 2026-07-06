@@ -3,6 +3,10 @@ description: trace init_module and finit_module syscalls
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_init_module
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_init_module
+tags:
+  - kernel
+  - module
+  - syscall
 datasources:
   init:
     fields:

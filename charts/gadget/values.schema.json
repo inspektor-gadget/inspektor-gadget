@@ -51,6 +51,33 @@
           "deprecated": true,
           "description": "The value is deprecated and will be removed in +v0.43.0. Use operator configuration instead"
         },
+        "catalog": {
+          "type": "array",
+          "description": "Discovery-only catalog of gadgets that clients can list via `catalog list`. Overrides the built-in default catalog when set.",
+          "items": {
+            "type": "object",
+            "required": ["gadget"],
+            "properties": {
+              "gadget": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "defaultCatalog": {
+          "type": "boolean",
+          "description": "Whether to include the built-in generated default catalog when `catalog` is not set."
+        },
         "disallowGadgetsPulling": {
           "type": "boolean",
           "deprecated": true,

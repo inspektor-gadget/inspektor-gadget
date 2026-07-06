@@ -4,6 +4,9 @@ description: use uprobe to trace pthread_mutex_lock and pthread_mutex_unlock in 
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/deadlock
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/deadlock
+tags:
+  - mutex
+  - debug
 datasources:
   mutex:
     annotations:

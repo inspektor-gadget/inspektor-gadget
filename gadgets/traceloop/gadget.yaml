@@ -3,6 +3,8 @@ description: syscalls flight recorder
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/traceloop
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/traceloop
+tags:
+  - syscall
 annotations:
   enable-containers-datasource: true
 datasources:

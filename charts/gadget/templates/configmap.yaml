@@ -18,5 +18,12 @@ data:
       podman-socketpath: {{ .Values.config.podmanSocketPath }}
       gadget-namespace: {{ include "gadget.namespace" . }}
       daemon-log-level: {{ .Values.config.daemonLogLevel }}
+      {{- if .Values.config.catalog }}
+      catalog:
+        {{- toYaml .Values.config.catalog | nindent 8 }}
+      {{- else if .Values.config.defaultCatalog }}
+      catalog:
+        {{- .Files.Get "files/catalog.yaml" | nindent 8 }}
+      {{- end }}
       operator:
         {{- include "gadget.operatorConfig" . | nindent 8 -}}

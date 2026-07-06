@@ -59,6 +59,7 @@ type Service struct {
 	api.UnimplementedBuiltInGadgetManagerServer
 	api.UnimplementedGadgetManagerServer
 	api.UnimplementedGadgetInstanceManagerServer
+	api.UnimplementedGadgetCatalogManagerServer
 	instanceMgr       *instancemanager.Manager
 	store             store.Store
 	listener          net.Listener
@@ -216,6 +217,7 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 	server := grpc.NewServer(serverOptions...)
 	api.RegisterBuiltInGadgetManagerServer(server, s)
 	api.RegisterGadgetManagerServer(server, s)
+	api.RegisterGadgetCatalogManagerServer(server, s)
 
 	if s.store != nil {
 		api.RegisterGadgetInstanceManagerServer(server, s)

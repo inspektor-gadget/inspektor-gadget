@@ -3,6 +3,8 @@ description: Periodically report process statistics
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_process
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_process
+tags:
+  - process
 operator:
   process:
     emitstats: true

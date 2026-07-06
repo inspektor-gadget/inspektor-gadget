@@ -3,6 +3,10 @@ description: Profile TCP connections' Round-Trip Time (RTT)
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/profile_tcprtt
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/profile_tcprtt
+tags:
+  - network
+  - tcp
+  - latency
 dataSources:
   tcprtt:
     annotations:

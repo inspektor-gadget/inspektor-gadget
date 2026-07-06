@@ -3,6 +3,10 @@ description: trace hardlink and symlink creation
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_link
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_link
+tags:
+  - file
+  - filesystem
+  - syscall
 datasources:
   link:
     fields:

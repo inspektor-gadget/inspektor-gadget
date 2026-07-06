@@ -3,6 +3,10 @@ description: Periodically report input/output block device activity.
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_blockio
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_blockio
+tags:
+  - storage
+  - io
+  - block-device
 datasources:
   blockio:
     annotations:
