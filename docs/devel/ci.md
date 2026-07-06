@@ -242,11 +242,16 @@ $ az role assignment create --role contributor --assignee-object-id $sp_id --ass
 # It should reply with a big JSON object.
 }
 
+# Let's gather some IDs in order to create the immutable subject:
+# https://docs.github.com/en/enterprise-cloud@latest/actions/reference/security/oidc#immutable-subject-claims
+$ organization_id=$(curl -s https://api.github.com/users/${organization} | jq .id)
+$ repository_id=$(curl -s https://api.github.com/repos/${organization}/${repository} | jq .id)
+$ subject="repo:${organization}@${organization_id}/${repository}@${repository_id}:environment:${environment}"
 # Create the federated credential to be able to "az login" from the CI.
 $ az ad app federated-credential create --id $app_id --parameters <(echo "{
   \"name\": \"${federated_name}\",
   \"issuer\": \"https://token.actions.githubusercontent.com\",
-  \"subject\": \"repo:${organization}/${repository}:environment:${environment}\",
+  \"subject\": \"${subject}\",
   \"description\": \"AKS federated credentials for CI\",
   \"audiences\": [
     \"api://AzureADTokenExchange\"
