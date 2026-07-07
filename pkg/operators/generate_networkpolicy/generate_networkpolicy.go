@@ -40,6 +40,14 @@ var defaultLabelsToIgnore = map[string]struct{}{
 	"controller-revision-hash": {},
 	"pod-template-generation":  {},
 	"pod-template-hash":        {},
+	// Well-known topology labels are derived from the node the pod is scheduled
+	// on, not from the workload identity. Including them in a policy selector
+	// would pin the policy to a region/zone and stop matching the pod once it is
+	// rescheduled elsewhere, so ignore them.
+	"topology.kubernetes.io/region":            {},
+	"topology.kubernetes.io/zone":              {},
+	"failure-domain.beta.kubernetes.io/region": {},
+	"failure-domain.beta.kubernetes.io/zone":   {},
 }
 
 var LabelsToIgnore = defaultLabelsToIgnore
