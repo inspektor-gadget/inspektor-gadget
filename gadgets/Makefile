@@ -8,6 +8,10 @@ BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/gadget-builder:main
 KERNEL_REPOSITORY ?= ghcr.io/inspektor-gadget/ci-kernels
 IG ?= ig
 KUBECTL_GADGET ?= kubectl-gadget
+# gpu-ebpf-bridge binary. Currently only used by gadgets/ci/gpu.
+# The caller of test-local should either have gpu-ebpf-bridge on
+# $PATH or override this variable to point at a pre-built binary.
+GPU_EBPF_BRIDGE ?= gpu-ebpf-bridge
 IG_RUNTIME ?= docker
 IG_FLAGS ?=
 IG_DEBUG_LOGS ?= true
@@ -72,6 +76,7 @@ GADGETS ?= \
 	ci/image_inspect \
 	ci/container_filtering \
 	ci/stacks \
+	ci/gpu \
 	ci/test_iter_map_elem \
 	snapshot_file \
 	top_cuda_memory \
@@ -220,6 +225,7 @@ test-unit: build
 .PHONY:
 %/test-integration: %
 	IG_PATH=$(IG_PATH) \
+	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
@@ -230,6 +236,7 @@ test-unit: build
 .PHONY:
 test-integration: build
 	IG_PATH=$(IG_PATH) \
+	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \
 	GADGET_REPOSITORY=$(GADGET_REPOSITORY) \
 	GADGET_TAG=$(GADGET_TAG) \
@@ -239,6 +246,7 @@ test-integration: build
 
 .PHONY:
 test-local: IG_PATH=$(IG)
+test-local: GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE)
 test-local: test-integration
 
 .PHONY:

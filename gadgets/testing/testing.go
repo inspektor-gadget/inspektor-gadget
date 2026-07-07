@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,44 @@ func RequireEnvironmentVariables(t testing.TB) {
 	if os.Getenv("IG_RUNTIME") == "" {
 		t.Skip("environment variable IG_RUNTIME undefined")
 	}
+}
+
+// RequireGpuEbpfBridge is called by tests that spawn a gpu-ebpf-bridge
+// subprocess (currently only gadgets/ci/gpu). It resolves the bridge
+// binary named by the GPU_EBPF_BRIDGE_PATH environment variable (the
+// analogue of IG_PATH for the bridge binary: gadgets/Makefile sets it
+// from GPU_EBPF_BRIDGE via the test-local target-specific override) and
+// returns its path.
+//
+// A bare name with no path separator (the Makefile default,
+// GPU_EBPF_BRIDGE ?= gpu-ebpf-bridge) is looked up on $PATH; an
+// explicit path is used verbatim. The test is skipped -- not failed --
+// when the variable is empty or the binary cannot be found, so
+// environments that do not build the bridge (e.g. the default CI
+// gadget-test job) skip cleanly instead of failing.
+//
+// Kept separate from RequireEnvironmentVariables because most gadget
+// tests do not need the bridge and should not skip when it is
+// unavailable.
+func RequireGpuEbpfBridge(t testing.TB) string {
+	t.Helper()
+	bridge := os.Getenv("GPU_EBPF_BRIDGE_PATH")
+	if bridge == "" {
+		t.Skip("environment variable GPU_EBPF_BRIDGE_PATH undefined; the caller must build cmd/gpu-ebpf-bridge and set GPU_EBPF_BRIDGE")
+	}
+	// A bare name (no path separator) is resolved via $PATH, matching
+	// the Makefile default; an explicit path is used as-is.
+	if !strings.ContainsRune(bridge, os.PathSeparator) {
+		resolved, err := exec.LookPath(bridge)
+		if err != nil {
+			t.Skipf("gpu-ebpf-bridge %q not found on $PATH: %v; build cmd/gpu-ebpf-bridge and set GPU_EBPF_BRIDGE to run this test", bridge, err)
+		}
+		bridge = resolved
+	}
+	if _, err := os.Stat(bridge); err != nil {
+		t.Skipf("gpu-ebpf-bridge binary %q not available: %v", bridge, err)
+	}
+	return bridge
 }
 
 func RemoveMemlock(t testing.TB) {
