@@ -165,7 +165,7 @@ func (i *wasmOperatorInstance) getSyscallDeclaration(ctx context.Context, m wapi
 
 		isPointer, err := declaration.ParamIsPointer(idx)
 		if err != nil {
-			i.logger.Warnf("getSyscallDeclaration: getting parameter type %d for %q: %v", syscallName, err)
+			i.logger.Warnf("getSyscallDeclaration: getting parameter type %d for %q: %v", idx, syscallName, err)
 			stack[0] = 1
 			return
 		}

@@ -1,6 +1,6 @@
 module trace_dns
 
-go 1.25.7
+go 1.26.0
 
 require (
 	// Version doesn't matter because of the replace directive below.
