@@ -20,6 +20,15 @@ type bpfPidIterEntry struct {
 	Comm [16]uint8
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	bpfProgIgTopEbpfIt    = "ig_top_ebpf_it"
+	bpfVarBpfProgFopsAddr = "bpf_prog_fops_addr"
+	bpfVarUnused          = "unused"
+)
+
 // loadBpf returns the embedded CollectionSpec for bpf.
 func loadBpf() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_BpfBytes)
@@ -40,7 +49,7 @@ func loadBpf() (*ebpf.CollectionSpec, error) {
 //	*bpfMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadBpfObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadBpfObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadBpf()
 	if err != nil {
 		return err

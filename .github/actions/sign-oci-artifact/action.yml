@@ -1,15 +1,15 @@
-name: "Sign the container image"
-description: "Sign the container image given as argument with cosign using the provided private key."
+name: "Sign the OCI artifact"
+description: "Sign the OCI artifact given as argument with cosign using the provided private key."
 
 inputs:
   password:
     description: "Private key password"
     required: true
   private_key:
-    description: "Private key to sign the image"
+    description: "Private key to sign the OCI artifact"
     required: true
-  image:
-    description: "The image to sign"
+  oci_artifact:
+    description: "The OCI artifact to sign"
     required: true
 
 runs:
@@ -17,13 +17,13 @@ runs:
   steps:
     - name: Install Cosign
       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-    - name: Sign the container image
+    - name: Sign the OCI artifact
       env:
         COSIGN_PASSWORD: '${{ inputs.password }}'
         COSIGN_PRIVATE_KEY: '${{ inputs.private_key }}'
-        IMAGE: '${{ inputs.image }}'
+        OCI_ARTIFACT: '${{ inputs.oci_artifact }}'
       shell: bash
       run: |
         # Force using legacy .sig format.
         # TODO Switch to bundle format.
-        cosign sign --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes --recursive "${IMAGE}"
+        cosign sign --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY --yes --recursive "${OCI_ARTIFACT}"

@@ -4,13 +4,13 @@ go 1.25.7
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cilium/ebpf v0.21.0
+	github.com/cilium/ebpf v0.22.0
 	github.com/cloudflare/cbpfc v0.0.0-20240920015331-ff978e94500b
-	github.com/containerd/containerd v1.7.32
+	github.com/containerd/containerd v1.7.33
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/nri v0.9.0
 	github.com/coreos/go-systemd/v22 v22.7.0
-	github.com/cyphar/filepath-securejoin v0.5.1
+	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.5.3+incompatible
@@ -76,7 +76,7 @@ require (
 	k8s.io/client-go v0.35.4
 	k8s.io/cri-api v0.35.4
 	k8s.io/kubelet v0.35.4
-	oras.land/oras-go/v2 v2.6.0
+	oras.land/oras-go/v2 v2.6.1
 	sigs.k8s.io/controller-runtime v0.21.0 // indirect
 	sigs.k8s.io/security-profiles-operator v0.9.1
 	sigs.k8s.io/yaml v1.6.0
@@ -175,7 +175,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
@@ -195,6 +195,7 @@ require (
 )
 
 require (
+	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/containers/common v0.62.3 // indirect
 	github.com/elastic/go-freelru v0.16.0 // indirect

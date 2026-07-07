@@ -12,6 +12,17 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	filefieldsMapIgFileFields  = "ig_file_fields"
+	filefieldsProgIgFgetX      = "ig_fget_x"
+	filefieldsProgIgScmSndE    = "ig_scm_snd_e"
+	filefieldsVarSocketIno     = "socket_ino"
+	filefieldsVarTracerPidTgid = "tracer_pid_tgid"
+)
+
 // loadFilefields returns the embedded CollectionSpec for filefields.
 func loadFilefields() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_FilefieldsBytes)
@@ -32,7 +43,7 @@ func loadFilefields() (*ebpf.CollectionSpec, error) {
 //	*filefieldsMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadFilefieldsObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadFilefieldsObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadFilefields()
 	if err != nil {
 		return err

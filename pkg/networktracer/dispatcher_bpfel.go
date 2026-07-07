@@ -12,6 +12,15 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	dispatcherMapTailCall     = "tail_call"
+	dispatcherProgIgNetDisp   = "ig_net_disp"
+	dispatcherVarCurrentNetns = "current_netns"
+)
+
 // loadDispatcher returns the embedded CollectionSpec for dispatcher.
 func loadDispatcher() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_DispatcherBytes)
@@ -32,7 +41,7 @@ func loadDispatcher() (*ebpf.CollectionSpec, error) {
 //	*dispatcherMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadDispatcherObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadDispatcherObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadDispatcher()
 	if err != nil {
 		return err
