@@ -10,6 +10,8 @@
 /gadgetctl-*-*
 /kubectl-gadget
 /kubectl-gadget-*-*
+/gpu-ebpf-bridge
+/gpu-ebpf-bridge-*-*
 /gadget-container/bin
 
 # Test binary, build with `go test -c`
