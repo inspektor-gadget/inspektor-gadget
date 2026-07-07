@@ -74,7 +74,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 								ContainerName:      cn,
 								ContainerID:        c.ID(),
 								ContainerImageName: containerImageName,
-								OciRuntime:         "runc",
+								OciRuntime:         "",
 								State:              runtimeclient.StateRunning,
 							},
 							K8s: runtimeclient.K8sContainerData{},
@@ -163,6 +163,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 					// ContainerImageDigest may vary among versions, so we do not check its value
 					cData.Runtime.ContainerImageDigest = ""
 					cData.Runtime.ContainerImageID = ""
+					cData.Runtime.OciRuntime = ""
 
 					// TODO: Is it worth to compare the cgroups path and mounts?
 					require.NotEmpty(t, cData.CgroupsPath)

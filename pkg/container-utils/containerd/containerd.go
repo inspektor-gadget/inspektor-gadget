@@ -27,6 +27,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	runcoptions "github.com/containerd/containerd/api/types/runc/options"
+	"github.com/containerd/typeurl/v2"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -174,7 +176,18 @@ func (c *ContainerdClient) GetContainerDetails(containerID string) (*runtimeclie
 	}
 
 	if inf, err := container.Info(c.ctx); err == nil {
-		containerData.Runtime.OciRuntime = runtimeclient.NormalizeOCIRuntime(inf.Runtime.Name)
+		ociRuntime := ""
+		if inf.Runtime.Options != nil {
+			if opts, err := typeurl.UnmarshalAny(inf.Runtime.Options); err == nil {
+				if runcOpts, ok := opts.(*runcoptions.Options); ok {
+					ociRuntime = runtimeclient.NormalizeOCIRuntime(runcOpts.GetBinaryName())
+				}
+			}
+		}
+		if ociRuntime == "" {
+			ociRuntime = runtimeclient.NormalizeOCIRuntime(inf.Runtime.Name)
+		}
+		containerData.Runtime.OciRuntime = ociRuntime
 	}
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: *containerData,
