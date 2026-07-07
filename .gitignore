@@ -40,6 +40,7 @@ pkg/btfgen/btfs/arm64/*
 !pkg/container-hook/**/*.o
 !pkg/kfilefields/**/*.o
 !pkg/gadgets/**/*.o
+!pkg/gpu-ebpf-bridge/**/*.o
 !pkg/socketenricher/*.o
 .daemon-config.yaml
 
