@@ -717,6 +717,54 @@ GADGET_PARAM(collect_ustack);
 	gadget_get_user_stack(ctx, &event->ustack);
 ```
 
+## Socket map programs
+
+`sk_skb` and `sk_msg` programs are attached to a sockmap or sockhash. Declare
+the target of each program with `GADGET_SK_TARGET_MAP`:
+
+```c
+#include <gadget/macros.h>
+
+struct sock_key {
+	__u32 src_ip;
+	__u32 dst_ip;
+	__u32 src_port;
+	__u32 dst_port;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_SOCKHASH);
+	__uint(max_entries, 1024);
+	__type(key, struct sock_key);
+	__type(value, __u32);
+} sockets SEC(".maps");
+
+SEC("sk_skb/stream_parser")
+int parse(struct __sk_buff *skb)
+{
+	/* Return the length of the next complete message. */
+	return skb->len;
+}
+GADGET_SK_TARGET_MAP(parse, sockets);
+
+SEC("sk_skb/stream_verdict")
+int verdict(struct __sk_buff *skb)
+{
+	/* Inspect or redirect the message. */
+	return SK_PASS;
+}
+GADGET_SK_TARGET_MAP(verdict, sockets);
+```
+
+The target map must be declared in the same eBPF object and have type
+`BPF_MAP_TYPE_SOCKMAP` or `BPF_MAP_TYPE_SOCKHASH`. Declare the macro once for
+each `sk_skb` or `sk_msg` program. Inspektor Gadget detaches these programs
+when the gadget stops.
+
+`sockops` programs need no target declaration. Inspektor Gadget attaches them
+once to the host's cgroup-v2 root, so they can populate the same sockmap or
+sockhash for sockets from any cgroup.
+
 ## Map pinning
 
 Gadget maps can be pinned to bpffs by adding the `pinning` field to the map

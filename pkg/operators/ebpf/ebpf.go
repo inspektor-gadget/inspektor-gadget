@@ -132,6 +132,7 @@ func (o *ebpfOperator) InstantiateImageOperator(
 		params:         make(map[string]*param),
 		mapIters:       make(map[string]*mapIter),
 		iterTargetMaps: make(map[string]string),
+		skTargetMaps:   make(map[string]string),
 
 		containers: make(map[string]*containercollection.Container),
 
@@ -187,8 +188,11 @@ type ebpfInstance struct {
 	// map (by name) it should iterate over. Populated from
 	// GADGET_ITER_TARGET_MAP() declarations in the BPF object.
 	iterTargetMaps map[string]string
-	params         map[string]*param
-	paramValues    map[string]string
+	// skTargetMaps maps sk_skb and sk_msg programs to their sockmap or
+	// sockhash, as declared with GADGET_SK_TARGET_MAP().
+	skTargetMaps map[string]string
+	params       map[string]*param
+	paramValues  map[string]string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -199,6 +203,10 @@ type ebpfInstance struct {
 
 	links   []link.Link
 	perfFds []int
+
+	// rawDetachers undo BPF_PROG_ATTACH attachments that don't return a Link
+	// (sk_skb stream_parser/verdict). Run on Stop().
+	rawDetachers []func() error
 
 	containers map[string]*containercollection.Container
 
@@ -251,6 +259,11 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 			prefixFunc:   hasPrefix(iterTargetMapPrefix),
 			validator:    i.validateGlobalConstVoidPtrVar,
 			populateFunc: i.populateIterTargetMap,
+		},
+		{
+			prefixFunc:   hasPrefix(skTargetMapPrefix),
+			validator:    i.validateGlobalConstVoidPtrVar,
+			populateFunc: i.populateSKTargetMap,
 		},
 		{
 			prefixFunc:   hasPrefix(iteratorsPrefix),
@@ -1048,11 +1061,22 @@ func (i *ebpfInstance) PreStop(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+func (i *ebpfInstance) detachRawPrograms() {
+	for _, detach := range i.rawDetachers {
+		if err := detach(); err != nil {
+			i.logger.Errorf("detaching sk program: %v", err)
+		}
+	}
+	i.rawDetachers = nil
+}
+
 func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 	for _, t := range i.tracers {
 		t.close()
 	}
 	i.tracers = nil
+
+	i.detachRawPrograms()
 
 	for _, l := range i.links {
 		gadgets.CloseLink(l)
@@ -1077,6 +1101,8 @@ func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 }
 
 func (i *ebpfInstance) Close(gadgetCtx operators.GadgetContext) error {
+	i.detachRawPrograms()
+
 	if i.collection != nil {
 		i.collection.Close()
 		i.collection = nil

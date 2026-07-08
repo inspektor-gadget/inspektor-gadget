@@ -43,6 +43,10 @@ const (
 	// consumed by populateIterators.
 	iterTargetMapPrefix = "gadget_mapelem_iter_target_"
 
+	// Prefix used by GADGET_SK_TARGET_MAP to bind an sk_skb or sk_msg program
+	// to its sockmap or sockhash.
+	skTargetMapPrefix = "gadget_sk_prog_target_"
+
 	// Prefix used to mark variables used by operators
 	varPrefix = "gadget_var_"
 

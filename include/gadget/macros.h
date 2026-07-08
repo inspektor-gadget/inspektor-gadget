@@ -106,4 +106,10 @@
 	const void *gadget_mapelem_iter_target_##prog_name##___##mapname \
 		__attribute__((unused));
 
+// GADGET_SK_TARGET_MAP binds an sk_skb or sk_msg program to the sockmap or
+// sockhash where it should be attached.
+#define GADGET_SK_TARGET_MAP(prog_name, mapname)                    \
+	const void *gadget_sk_prog_target_##prog_name##___##mapname \
+		__attribute__((unused));
+
 #endif /* __MACROS_H */
