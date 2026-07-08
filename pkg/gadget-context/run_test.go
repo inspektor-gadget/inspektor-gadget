@@ -312,3 +312,39 @@ func TestRun(t *testing.T) {
 		})
 	}
 }
+
+// TestParamsDefaultCaseInsensitive verifies that a gadget's paramDefaults are
+// applied to operators whose name is not all-lowercase. viper lowercases config
+// keys, so the lookup must match case-insensitively.
+func TestParamsDefaultCaseInsensitive(t *testing.T) {
+	op := &fakeOperator{
+		name:     "FakeOp",
+		priority: 0,
+	}
+
+	ctx := New(t.Context(), "", WithDataOperators(op))
+	metadata := `
+paramDefaults:
+  operator.FakeOp.foo: "123"
+`
+
+	err := ctx.SetMetadata([]byte(metadata))
+	require.NoError(t, err)
+
+	err = ctx.PrepareGadgetInfo(nil)
+	require.NoError(t, err)
+
+	info, err := ctx.SerializeGadgetInfo(false)
+	require.NoError(t, err)
+
+	for _, p := range info.Params {
+		if p.Prefix+p.Key == "operator.FakeOp.foo" {
+			// The operator's built-in default is "567"; the gadget's
+			// paramDefaults override it with "123".
+			require.Equal(t, "123", p.DefaultValue)
+			return
+		}
+	}
+
+	require.Fail(t, "param not found")
+}
