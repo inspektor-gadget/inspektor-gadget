@@ -2,6 +2,7 @@
 /* Copyright (c) 2025 Shaheer Ahmad */
 
 #include <vmlinux.h>
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 
 #include <gadget/macros.h>
@@ -116,9 +117,12 @@ int ig_snap_file(struct bpf_iter__task_file *ctx)
 	if (!task || !file)
 		return 0;
 
-	if (gadget_should_discard_data(
-		    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
-		    task->comm, task->cred->uid.val, task->cred->gid.val))
+	__u32 uid = BPF_CORE_READ(task, cred, uid.val);
+	__u32 gid = BPF_CORE_READ(task, cred, gid.val);
+
+	if (gadget_should_discard_data(task->nsproxy->mnt_ns->ns.inum,
+				       task->tgid, task->pid, task->comm, uid,
+				       gid))
 		return 0;
 
 	info.mntns_id = task->nsproxy->mnt_ns->ns.inum;

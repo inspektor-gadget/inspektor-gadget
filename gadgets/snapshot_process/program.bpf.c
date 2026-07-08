@@ -9,6 +9,7 @@
 /* This BPF program uses the GPL-restricted function bpf_seq_write(). */
 
 #include <vmlinux.h>
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 
 #include <gadget/macros.h>
@@ -36,24 +37,28 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	if (!show_threads && task->tgid != task->pid)
 		return 0;
 
-	if (gadget_should_discard_data(
-		    task->nsproxy->mnt_ns->ns.inum, task->tgid, task->pid,
-		    task->comm, task->cred->uid.val, task->cred->gid.val))
+	__u32 uid = BPF_CORE_READ(task, cred, uid.val);
+	__u32 gid = BPF_CORE_READ(task, cred, gid.val);
+
+	if (gadget_should_discard_data(task->nsproxy->mnt_ns->ns.inum,
+				       task->tgid, task->pid, task->comm, uid,
+				       gid))
 		return 0;
 
 	process.mntns_id = task->nsproxy->mnt_ns->ns.inum;
 	__builtin_memcpy(process.comm, task->comm, TASK_COMM_LEN);
 	process.pid = task->tgid;
 	process.tid = task->pid;
-	process.creds.uid = task->cred->uid.val;
-	process.creds.gid = task->cred->gid.val;
+	process.creds.uid = uid;
+	process.creds.gid = gid;
 
-	parent = task->real_parent;
+	parent = BPF_CORE_READ(task, real_parent);
 	if (parent) {
-		process.parent.pid = parent->tgid;
-		process.parent.tid = parent->pid;
-		__builtin_memcpy(process.parent.comm, parent->comm,
-				 TASK_COMM_LEN);
+		process.parent.pid = BPF_CORE_READ(parent, tgid);
+		process.parent.tid = BPF_CORE_READ(parent, pid);
+		bpf_probe_read_kernel(&process.parent.comm,
+				      sizeof(process.parent.comm),
+				      parent->comm);
 	}
 
 	bpf_seq_write(seq, &process, sizeof(process));
