@@ -195,6 +195,10 @@ type ebpfInstance struct {
 	links   []link.Link
 	perfFds []int
 
+	// rawDetachers undo BPF_PROG_ATTACH attachments that don't return a Link
+	// (sk_skb stream_parser/verdict). Run on Stop().
+	rawDetachers []func() error
+
 	containers map[string]*containercollection.Container
 
 	enums      []*enum
@@ -1009,6 +1013,15 @@ func (i *ebpfInstance) Stop(gadgetCtx operators.GadgetContext) error {
 		t.close()
 	}
 	i.tracers = nil
+
+	// Detach sk_skb programs from the sockmap before closing links; the
+	// collection (and thus program/map FDs) is still open at this point.
+	for _, detach := range i.rawDetachers {
+		if err := detach(); err != nil {
+			i.logger.Errorf("detaching sk_skb program: %v", err)
+		}
+	}
+	i.rawDetachers = nil
 
 	for _, l := range i.links {
 		gadgets.CloseLink(l)
