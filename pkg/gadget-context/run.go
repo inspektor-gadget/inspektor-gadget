@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
@@ -103,7 +104,9 @@ func (c *GadgetContext) instantiateOperators(paramValues api.ParamValues) error 
 		if v, ok := cfg.(*viper.Viper); ok {
 			defaults := v.GetStringMapString("paramDefaults")
 			for _, p := range params {
-				fullName := p.Prefix + p.Key
+				// viper lowercases config keys, so match case-insensitively
+				// to support operators whose name is not all-lowercase.
+				fullName := strings.ToLower(p.Prefix + p.Key)
 				if val, ok := defaults[fullName]; ok {
 					p.DefaultValue = val
 				}
