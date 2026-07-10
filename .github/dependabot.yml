@@ -7,6 +7,8 @@ updates:
       # Il est cinq heures, Paris s'éveille !
       time: "05:00"
       timezone: "Europe/Paris"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "ci:"
   # Update root go dependencies
@@ -17,6 +19,8 @@ updates:
       interval: "daily"
       time: "05:00"
       timezone: "Europe/Paris"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "go:"
     groups:
@@ -45,5 +49,7 @@ updates:
       interval: "daily"
       time: "05:00"
       timezone: "Europe/Paris"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "Dockerfiles:"
