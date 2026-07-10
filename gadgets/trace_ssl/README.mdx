@@ -38,4 +38,74 @@ Default value: "true"
 
 ## Guide
 
-TODO
+This guide shows how to use the `trace_ssl` gadget to observe TLS operations
+from an application. The gadget traces user-space TLS libraries, so it can show
+the function that handled the data and, when `--record-data` is enabled, the
+unencrypted buffer passed to or returned from that function.
+
+First, run an application that repeatedly performs HTTPS requests:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run trace-ssl --restart=Never --image=curlimages/curl --command -- sh -c 'while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
+        pod/trace-ssl created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-trace-ssl -d --entrypoint sh curlimages/curl -c 'while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
+        ```
+    </TabItem>
+</Tabs>
+
+Then, run the gadget and filter it to the workload. The `--fields` flag keeps
+the output focused on the TLS operation, latency, and captured buffer:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run trace_ssl:%IG_TAG% --podname trace-ssl --fields=k8s.node,k8s.namespace,k8s.podname,k8s.containername,comm,pid,operation,latency_ns,buf
+        K8S.NODE        K8S.NAMESPACE K8S.PODNAME K8S.CONTAINERNAME COMM PID     OPERATION                LATENCY_NS BUF
+        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_do_handshake  7.864ms
+        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_write         23.418us  GET / HTTP/1.1...
+        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_read          41.906us  HTTP/1.1 200 OK...
+        ^C
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run trace_ssl:%IG_TAG% --containername test-trace-ssl --fields=runtime.containername,comm,pid,operation,latency_ns,buf
+        RUNTIME.CONTAINERNAME COMM PID     OPERATION                LATENCY_NS BUF
+        test-trace-ssl        curl 3777052 libssl_SSL_do_handshake  8.102ms
+        test-trace-ssl        curl 3777052 libssl_SSL_write         25.337us  GET / HTTP/1.1...
+        test-trace-ssl        curl 3777052 libssl_SSL_read          48.219us  HTTP/1.1 200 OK...
+        ^C
+        ```
+    </TabItem>
+</Tabs>
+
+The `SSL_do_handshake` event shows the TLS handshake. The `SSL_write` and
+`SSL_read` events show plaintext buffers before encryption or after decryption,
+which is useful when debugging application-level HTTPS traffic. If you only need
+operation and latency information, run the gadget with `--record-data=false` to
+avoid collecting buffer contents.
+
+Finally, clean up the workload:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod trace-ssl
+        pod "trace-ssl" deleted
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-ssl
+        ```
+    </TabItem>
+</Tabs>
