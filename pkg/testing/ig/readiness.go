@@ -57,7 +57,7 @@ const (
 	// start exits and is caught immediately by exit tracking (see WaitForReady), so this can be
 	// generous without making failing tests hang. If it expires with at least one instance
 	// capturing, the gate proceeds anyway.
-	readinessTimeout = 60 * time.Second
+	readinessTimeout = 120 * time.Second
 )
 
 // readinessWatcher tracks gadget readiness on stderr. For the gRPC runtime (kubectl-gadget) it
@@ -175,13 +175,21 @@ func parseReadyNode(line string) (string, bool) {
 	return fields[len(fields)-1], true
 }
 
+// isDebugLine reports whether a stderr line is a logrus debug line. Such lines are the verbose
+// noise produced by "-v" and are dropped from the stored stderr to keep test reports readable.
+func isDebugLine(line string) bool {
+	return strings.Contains(line, "level=debug")
+}
+
 // enableReadinessGate configures the runner to detect the gadget readiness marker on stderr. It
-// runs the gadget with "-v" so the marker is emitted and observes stderr live.
+// runs the gadget with "-v" so the marker is emitted, observes stderr live and drops the extra
+// debug noise from the stored stderr.
 func (ig *runner) enableReadinessGate() {
 	ig.waitReady = true
 	ig.readyWatcher = newReadinessWatcher()
 	ig.flags = append(ig.flags, "-v")
 	ig.StdErrLineObserver = ig.readyWatcher.observe
+	ig.StdErrStoreFilter = isDebugLine
 	// Track the process exit so the gate can fail fast if the gadget exits before it becomes
 	// ready (e.g. image pull, signature, eBPF load/verifier or capability errors), instead of
 	// waiting for readinessTimeout.

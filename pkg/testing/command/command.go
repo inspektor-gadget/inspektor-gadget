@@ -48,6 +48,11 @@ type Command struct {
 	// command is still running (e.g. to detect a readiness marker).
 	StdErrLineObserver func(line string)
 
+	// StdErrStoreFilter, if set and returning true for a given standard error line, causes
+	// that line to be omitted from the stderr buffer used for validation and logging. It's
+	// used to drop verbose/debug noise while still allowing StdErrLineObserver to see it.
+	StdErrStoreFilter func(line string) bool
+
 	// StartAndStop indicates this command should first be started then stopped.
 	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
 	StartAndStop bool
@@ -66,9 +71,9 @@ type Command struct {
 	// stderr contains command standard output when started using Startcommand().
 	stderr bytes.Buffer
 
-	// stderrProc is the live stderr line processor, set when StdErrLineObserver is used. It
-	// must be flushed once the process has exited so a final line without a trailing newline
-	// is not lost.
+	// stderrProc is the live stderr line processor, set when StdErrLineObserver or
+	// StdErrStoreFilter is used. It must be flushed once the process has exited so a final
+	// line without a trailing newline is not lost.
 	stderrProc *stderrLineProcessor
 
 	// trackExit, when set before Start(), makes a background goroutine own Cmd.Wait() so the
@@ -117,11 +122,13 @@ func (c *Command) initExecCmd() {
 		c.Cmd.Stdout = c.StdOutWriter
 	}
 
-	// When a caller wants to observe stderr lines live, route stderr through a line
-	// processor that feeds the observer while still storing every line.
-	if c.StdErrLineObserver != nil {
+	// When a caller wants to observe stderr lines live or filter noise out of the stored
+	// stderr, route stderr through a line processor that feeds the observer and only stores
+	// the lines that pass the filter.
+	if c.StdErrLineObserver != nil || c.StdErrStoreFilter != nil {
 		c.stderrProc = &stderrLineProcessor{
 			observer: c.StdErrLineObserver,
+			filter:   c.StdErrStoreFilter,
 			store:    &c.stderr,
 		}
 		c.Cmd.Stderr = c.stderrProc
@@ -312,12 +319,13 @@ func killErrorAllowingSignal(err error, sig syscall.Signal) error {
 }
 
 // stderrLineProcessor is an io.Writer that splits the incoming bytes into lines and, for each
-// complete line, invokes an optional observer and stores the line in a backing buffer. It's used
-// to observe stderr live (e.g. to detect a readiness marker) without losing it from the command's
-// stored stderr.
+// complete line, invokes an optional observer and optionally stores the line in a backing buffer.
+// It's used to observe stderr live (e.g. to detect a readiness marker) while keeping the stored
+// stderr free of verbose/debug noise.
 type stderrLineProcessor struct {
 	buf      []byte
 	observer func(line string)
+	filter   func(line string) bool
 	store    *bytes.Buffer
 }
 
@@ -339,7 +347,7 @@ func (p *stderrLineProcessor) handle(line string, hasNewline bool) {
 	if p.observer != nil {
 		p.observer(line)
 	}
-	if p.store != nil {
+	if p.store != nil && (p.filter == nil || !p.filter(line)) {
 		p.store.WriteString(line)
 		if hasNewline {
 			p.store.WriteByte('\n')

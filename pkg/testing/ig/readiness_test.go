@@ -141,3 +141,9 @@ func TestReadinessWatcher_UpdatedSignal(t *testing.T) {
 	default:
 	}
 }
+
+func TestIsDebugLine(t *testing.T) {
+	assert.True(t, isDebugLine(bareMarker))
+	assert.True(t, isDebugLine(nodeAMarker))
+	assert.False(t, isDebugLine(`time="2026-07-08T12:00:00Z" level=warning msg="something"`))
+}

@@ -32,6 +32,7 @@ func TestStderrLineProcessor(t *testing.T) {
 
 	p := &stderrLineProcessor{
 		observer: func(line string) { observed = append(observed, line) },
+		filter:   func(line string) bool { return line == "drop-me" },
 		store:    &store,
 	}
 
@@ -43,20 +44,21 @@ func TestStderrLineProcessor(t *testing.T) {
 		require.Equal(t, len(w), n)
 	}
 
-	// The observer sees every complete line.
+	// The observer sees every complete line, including the filtered one.
 	assert.Equal(t, []string{"keep-1", "drop-me", "keep-2"}, observed)
 
-	// The store keeps every line; the trailing line without a newline is not flushed.
-	assert.Equal(t, "keep-1\ndrop-me\nkeep-2\n", store.String())
+	// The store keeps only the lines that pass the filter; the trailing line without a
+	// newline is not flushed.
+	assert.Equal(t, "keep-1\nkeep-2\n", store.String())
 
 	// After the process exits, flush emits the final unterminated line so it is not lost.
 	p.flush()
 	assert.Equal(t, []string{"keep-1", "drop-me", "keep-2", "partial-no-newline"}, observed)
-	assert.Equal(t, "keep-1\ndrop-me\nkeep-2\npartial-no-newline", store.String())
+	assert.Equal(t, "keep-1\nkeep-2\npartial-no-newline", store.String())
 
 	// A second flush is a no-op.
 	p.flush()
-	assert.Equal(t, "keep-1\ndrop-me\nkeep-2\npartial-no-newline", store.String())
+	assert.Equal(t, "keep-1\nkeep-2\npartial-no-newline", store.String())
 }
 
 func TestKillErrorAllowingSignal(t *testing.T) {
