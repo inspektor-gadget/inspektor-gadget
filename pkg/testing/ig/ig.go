@@ -39,6 +39,18 @@ type runner struct {
 	// command.Command contains *exec.Cmd and additional properties and methods for the same.
 	command.Command
 	flags []string
+
+	// waitReady and readyWatcher implement the readiness gate (see readiness.go). They are set
+	// for StartAndStop gadgets so the harness waits for the gadget to actually be capturing
+	// before running the workload, instead of relying on a fixed sleep.
+	waitReady    bool
+	readyWatcher *readinessWatcher
+
+	// noReadinessGate disables the readiness gate even for StartAndStop gadgets. It is used by
+	// gadgets that do not emit the standard "running..." readiness marker in a usable way (e.g.
+	// the OTel eBPF profiler, which samples over a window and has its own initialization
+	// timing), so they keep relying on an explicit sleep instead.
+	noReadinessGate bool
 }
 
 func (ig *runner) createCmd() {
@@ -68,6 +80,15 @@ func WithFlags(flags ...string) Option {
 func WithStartAndStop() Option {
 	return func(ig *runner) {
 		ig.StartAndStop = true
+	}
+}
+
+// WithoutReadinessGate disables the readiness gate for a StartAndStop gadget. Use it for gadgets
+// that do not emit the standard "running..." readiness marker in a usable way (e.g. the OTel
+// eBPF profiler), which instead rely on an explicit sleep before the workload.
+func WithoutReadinessGate() Option {
+	return func(ig *runner) {
+		ig.noReadinessGate = true
 	}
 }
 
@@ -126,6 +147,13 @@ func New(image string, opts ...Option) igtesting.TestStep {
 
 	for _, opt := range opts {
 		opt(factoryRunner)
+	}
+
+	// StartAndStop gadgets run concurrently with the workload; enable the readiness gate so the
+	// harness waits for the gadget to be capturing before the workload runs (see readiness.go),
+	// unless the gadget opted out (it does not emit a usable readiness marker).
+	if factoryRunner.StartAndStop && !factoryRunner.noReadinessGate {
+		factoryRunner.enableReadinessGate()
 	}
 
 	factoryRunner.createCmd()

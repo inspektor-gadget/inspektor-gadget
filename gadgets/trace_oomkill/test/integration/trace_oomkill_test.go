@@ -17,7 +17,6 @@ package tests
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	igtesting "github.com/inspektor-gadget/inspektor-gadget/pkg/testing"
@@ -114,7 +113,6 @@ func TestTraceOomKill(t *testing.T) {
 
 	testSteps := []igtesting.TestStep{
 		traceOomkillCmd,
-		utils.Sleep(10 * time.Second),
 		testContainer,
 	}
 

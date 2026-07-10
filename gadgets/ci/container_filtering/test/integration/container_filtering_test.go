@@ -17,7 +17,6 @@ package integration
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -116,7 +115,6 @@ func TestContainerFiltering(t *testing.T) {
 
 	testSteps := []igtesting.TestStep{
 		containerFilteringCmd,
-		utils.Sleep(3 * time.Second),
 	}
 	igtesting.RunTestSteps(testSteps, t, testingOpts...)
 }
