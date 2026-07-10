@@ -38,4 +38,62 @@ Default value: "false"
 
 ## Guide
 
-TODO
+This example traces allocation and release operations from a process in a
+container. Start a container that repeatedly invokes utilities backed by the C
+library:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run --restart=Never --image=busybox trace-malloc-demo -- sh -c 'while true; do /bin/true; sleep 1; done'
+        pod/trace-malloc-demo created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name trace-malloc-demo -d busybox sh -c 'while true; do /bin/true; sleep 1; done'
+        ```
+    </TabItem>
+</Tabs>
+
+Run the gadget and filter it to the demo workload. The `OPERATION`, `ADDR`, and
+`SIZE` columns identify the allocation or release, the returned address, and
+the allocation size. Release operations have a size of zero.
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run trace_malloc:%IG_TAG% --podname trace-malloc-demo
+        K8S.NODE         K8S.NAMESPACE K8S.PODNAME        K8S.CONTAINERNAME COMM  PID     TID     OPERATION ADDR                 SIZE
+        minikube-docker  default       trace-malloc-demo  trace-malloc-demo  true  12345   12345   malloc    0x000055f1b4c9d2a0   32
+        minikube-docker  default       trace-malloc-demo  trace-malloc-demo  true  12345   12345   free      0x000055f1b4c9d2a0   0
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run trace_malloc:%IG_TAG% --containername trace-malloc-demo
+        RUNTIME.CONTAINERNAME  COMM  PID     TID     OPERATION ADDR                 SIZE
+        trace-malloc-demo      true  12345   12345   malloc    0x000055f1b4c9d2a0   32
+        trace-malloc-demo      true  12345   12345   free      0x000055f1b4c9d2a0   0
+        ```
+    </TabItem>
+</Tabs>
+
+Stop the gadget with `Ctrl-C`, then remove the demo workload:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod trace-malloc-demo
+        pod "trace-malloc-demo" deleted
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f trace-malloc-demo
+        ```
+    </TabItem>
+</Tabs>
