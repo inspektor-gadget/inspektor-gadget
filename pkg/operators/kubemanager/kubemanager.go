@@ -58,10 +58,6 @@ const (
 	ParamAllNamespaces = "all-namespaces"
 )
 
-type MountNsMapSetter interface {
-	SetMountNsMap(*ebpf.Map)
-}
-
 type Attacher interface {
 	AttachContainer(container *containercollection.Container) error
 	DetachContainer(*containercollection.Container) error
@@ -219,11 +215,11 @@ func (k *KubeManager) Close() error {
 }
 
 type KubeManagerInstance struct {
-	id           string
-	manager      *KubeManager
-	enrichEvents bool
-	mountnsmap   *ebpf.Map
-	subscribed   bool
+	id                string
+	manager           *KubeManager
+	enrichEvents      bool
+	tracerRegistered  bool
+	subscribed        bool
 
 	containerMutex     sync.Mutex
 	attachedContainers map[string]*containercollection.Container
@@ -256,25 +252,6 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 
 func (m *KubeManagerInstance) handleGadgetInstance(log logger.Logger) error {
 	containerSelector := newContainerSelector(m.params)
-
-	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
-		err := m.manager.tracerCollection.AddTracer(m.id, containerSelector)
-		if err != nil {
-			return fmt.Errorf("adding tracer: %w", err)
-		}
-
-		// Create mount namespace map to filter by containers
-		mountnsmap, err := m.manager.tracerCollection.TracerMountNsMap(m.id)
-		if err != nil {
-			m.manager.tracerCollection.RemoveTracer(m.id)
-			return fmt.Errorf("creating mountns map: %w", err)
-		}
-
-		log.Debugf("set mountnsmap for gadget")
-		setter.SetMountNsMap(mountnsmap)
-
-		m.mountnsmap = mountnsmap
-	}
 
 	if attacher, ok := m.gadgetInstance.(Attacher); ok {
 		m.attacher = attacher
@@ -357,7 +334,7 @@ func newContainerSelector(params *params.Params) containercollection.ContainerSe
 }
 
 func (m *KubeManagerInstance) PostGadgetRun() error {
-	if m.mountnsmap != nil {
+	if m.tracerRegistered {
 		m.gadgetCtx.Logger().Debugf("calling RemoveTracer()")
 		m.manager.tracerCollection.RemoveTracer(m.id)
 	}
@@ -503,7 +480,7 @@ func (m *KubeManagerInstance) PreStart(gadgetCtx operators.GadgetContext) error 
 	gadgetCtx.SetVar(gadgets.MntNsFilterMapName, mountnsmap)
 	gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
 
-	m.mountnsmap = mountnsmap
+	m.tracerRegistered = true
 	// using PreGadgetRun() for the time being to register attacher funcs
 	return m.PreGadgetRun()
 }
