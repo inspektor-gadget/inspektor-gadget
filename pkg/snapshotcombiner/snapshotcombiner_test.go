@@ -108,3 +108,26 @@ func TestSnapshotCombiner(t *testing.T) {
 		require.Len(t, res, step.ExpectedEntries, "expected %d, got %d", step.ExpectedEntries, len(res))
 	}
 }
+
+// TestSnapshotCombiner_ExpiredEntriesAreDeleted verifies that GetSnapshots() removes
+// entries whose TTL has reached zero from the internal map, preventing memory leaks
+// in long-running deployments with high node churn.
+func TestSnapshotCombiner_ExpiredEntriesAreDeleted(t *testing.T) {
+	ttl := 1
+	sc := NewSnapshotCombiner[int](ttl)
+
+	val := 42
+	sc.AddSnapshot("node1", []*int{&val})
+
+	// First call: TTL goes from 1 to 0, entry is still returned.
+	res, stats := sc.GetSnapshots()
+	require.Len(t, res, 1, "expected snapshot to be present on first call")
+	require.Equal(t, 1, stats.TotalSnapshots, "map should still hold the entry after first call")
+
+	// Second call: TTL is 0, entry must be excluded from results AND deleted from the map.
+	res, stats = sc.GetSnapshots()
+	require.Len(t, res, 0, "expected no snapshot after TTL expired")
+	require.Equal(t, 0, stats.TotalSnapshots, "expired entry should have been deleted from the internal map")
+	require.Equal(t, 1, stats.ExpiredSnapshots, "expired snapshot count should reflect the removed entry")
+}
+

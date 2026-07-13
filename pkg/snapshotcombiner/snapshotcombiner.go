@@ -75,7 +75,8 @@ func (sc *SnapshotCombiner[T]) AddSnapshot(key string, snapshot []*T) {
 }
 
 // GetSnapshots combines all stored wrappedSnapshots from all keys and decreases each keys defaultTTL by one.
-// If the ttl of an entry is less than zero, it will not be returned anymore.
+// If the ttl of an entry reaches zero, it will not be returned anymore and is removed from the internal map
+// so that its memory can be reclaimed by the garbage collector.
 func (sc *SnapshotCombiner[T]) GetSnapshots() ([]*T, Stats) {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
@@ -87,8 +88,11 @@ func (sc *SnapshotCombiner[T]) GetSnapshots() ([]*T, Stats) {
 		Epochs: sc.epoch,
 	}
 
+	// Collect keys of expired entries so we can delete them after the iteration.
+	var expiredKeys []string
+
 	result := make([]*T, 0, len(sc.wrappedSnapshots))
-	for _, wrapper := range sc.wrappedSnapshots {
+	for key, wrapper := range sc.wrappedSnapshots {
 		if wrapper.ttl == sc.defaultTTL {
 			stats.CurrentSnapshots++
 		}
@@ -97,7 +101,14 @@ func (sc *SnapshotCombiner[T]) GetSnapshots() ([]*T, Stats) {
 			wrapper.ttl--
 		} else {
 			stats.ExpiredSnapshots++
+			expiredKeys = append(expiredKeys, key)
 		}
+	}
+
+	// Remove expired entries to avoid unbounded memory growth in long-running
+	// deployments where nodes join and leave over time.
+	for _, key := range expiredKeys {
+		delete(sc.wrappedSnapshots, key)
 	}
 
 	stats.TotalSnapshots = len(sc.wrappedSnapshots)
