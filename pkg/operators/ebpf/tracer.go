@@ -50,6 +50,7 @@ type Tracer struct {
 	perfReader    *perf.Reader
 	slowBuf       []byte
 	logger        logger.Logger
+	done          chan struct{}
 }
 
 func validateTracerMap(traceMap *ebpf.MapSpec) error {
@@ -111,6 +112,7 @@ func (i *ebpfInstance) populateTracer(t btf.Type, varName string) error {
 		mapName:    mapName,
 		structName: btfStruct.Name,
 		eventSize:  btfStruct.Size,
+		done:       make(chan struct{}),
 	}
 
 	err := i.populateStructDirect(btfStruct)
@@ -139,7 +141,14 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 		if t.lostSampleMap != nil {
 			readLostSamples := func() {
 				ticker := time.NewTicker(time.Second)
-				for range ticker.C {
+				defer ticker.Stop()
+				for {
+					select {
+					case <-t.done:
+						return
+					case <-ticker.C:
+					}
+
 					// Ring buffer does not report the number of lost samples. For this,
 					// we have a specific map, for each ring buffer, which store the
 					// number of lost samples when gadget_reserve_buf() is used.
@@ -267,6 +276,9 @@ func (t *Tracer) processEvent(gadgetCtx operators.GadgetContext, fullSample []by
 }
 
 func (t *Tracer) close() {
+	if t.done != nil {
+		close(t.done)
+	}
 	if t.ringbufReader != nil {
 		t.ringbufReader.Close()
 	}
