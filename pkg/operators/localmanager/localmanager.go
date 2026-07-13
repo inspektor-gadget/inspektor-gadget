@@ -63,6 +63,10 @@ const (
 	KubeconfigPath         = "kubeconfig"
 )
 
+type MountNsMapSetter interface {
+	SetMountNsMap(*ebpf.Map)
+}
+
 type Attacher interface {
 	AttachContainer(container *containercollection.Container) error
 	DetachContainer(*containercollection.Container) error
@@ -325,6 +329,7 @@ func (l *localManager) Close() error {
 
 type localManagerTrace struct {
 	manager         *localManager
+	mountnsmap      *ebpf.Map
 	enrichEvents    bool
 	subscriptionKey string
 	// tracerID is the id the tracer was registered under at the
@@ -366,6 +371,36 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 	host := l.params.Get(Host).AsBool()
 
 	containerSelector := common.NewContainerSelector(l.params)
+
+	// If --host is set, we do not want to create the below map because we do not
+	// want any filtering.
+	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
+		if !host {
+			if l.manager.containerCollection == nil {
+				return fmt.Errorf("container-collection isn't available")
+			}
+
+			id := id.String()
+			if err := l.manager.tracerCollection.AddTracer(id, containerSelector); err != nil {
+				return fmt.Errorf("adding tracer %q: %w", id, err)
+			}
+
+			// Create mount namespace map to filter by containers
+			mountnsmap, err := l.manager.tracerCollection.TracerMountNsMap(id)
+			if err != nil {
+				l.manager.tracerCollection.RemoveTracer(id)
+				return fmt.Errorf("getting mount namespace map for tracer %q: %w", id, err)
+			}
+
+			log.Debugf("set mountnsmap for gadget")
+			setter.SetMountNsMap(mountnsmap)
+
+			l.mountnsmap = mountnsmap
+			l.tracerID = id
+		} else if l.manager.containerCollection == nil {
+			log.Warn("container-collection isn't available: container enrichment and filtering won't work")
+		}
+	}
 
 	if attacher, ok := l.gadgetInstance.(Attacher); ok {
 		if l.manager.containerCollection == nil {
