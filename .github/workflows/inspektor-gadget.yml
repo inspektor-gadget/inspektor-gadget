@@ -1290,7 +1290,7 @@ jobs:
         # GitHub API token to make a commit comment
         github-token: ${{ secrets.BENCHMARKS_TOKEN }}
         # Enable alert commit comment
-        comment-on-alert: true
+        comment-on-alert: false
         # Enable Job Summary for PRs
         # summary-always: true
         # Mention people in the commit comment
