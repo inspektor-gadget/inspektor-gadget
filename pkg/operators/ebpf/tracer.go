@@ -152,14 +152,14 @@ func (t *Tracer) receiveEvents(gadgetCtx operators.GadgetContext, wg *sync.WaitG
 
 					err := t.lostSampleMap.Lookup(&zero, readValues)
 					if err != nil {
-						t.logger.Warnf("getting lost samples: %w", err)
+						t.logger.Warnf("getting lost samples: %v", err)
 
 						continue
 					}
 
 					err = t.lostSampleMap.Update(&zero, zeroValues, ebpf.UpdateExist)
 					if err != nil {
-						t.logger.Warnf("resetting lost samples: %w", err)
+						t.logger.Warnf("resetting lost samples: %v", err)
 
 						continue
 					}

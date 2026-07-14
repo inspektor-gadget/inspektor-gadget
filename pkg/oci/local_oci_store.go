@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 
 	"github.com/gofrs/flock"
@@ -38,8 +37,8 @@ type localOciStore struct {
 // newLocalOciStore returns a localOciStore that is safe when executed
 // concurrently, even from different processes.
 func newLocalOciStore() (*localOciStore, error) {
-	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
-		return nil, err
+	if err := os.MkdirAll(defaultOciStore, 0o700); err != nil {
+		return nil, fmt.Errorf("creating oci store directory %q: %w", defaultOciStore, err)
 	}
 
 	indexPath := path.Join(defaultOciStore, "index.json")
@@ -47,7 +46,9 @@ func newLocalOciStore() (*localOciStore, error) {
 
 	// lock the file before reading the index below
 	// RLock can't be used since we might create and init an empty index file in oci.New()
-	indexLock.Lock()
+	if err := indexLock.Lock(); err != nil {
+		return nil, fmt.Errorf("locking index file %q: %w", indexLock.Path(), err)
+	}
 	defer indexLock.Unlock()
 
 	ociStore, err := oci.New(defaultOciStore)
@@ -70,7 +71,9 @@ func newLocalOciStore() (*localOciStore, error) {
 }
 
 func (o *localOciStore) saveIndexWithLock() error {
-	o.indexFlock.Lock()
+	if err := o.indexFlock.Lock(); err != nil {
+		return fmt.Errorf("locking index file %q: %w", o.indexFlock.Path(), err)
+	}
 	defer o.indexFlock.Unlock()
 
 	currentIndex, err := readIndexFile(o.indexPath)

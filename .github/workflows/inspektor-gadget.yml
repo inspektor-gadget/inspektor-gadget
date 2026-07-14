@@ -3,7 +3,7 @@ env:
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
-  GO_VERSION: 1.26.4
+  GO_VERSION: 1.26.5
   # controller-gen with go >1.21 panics, but we can't update controller-gen itself
   GO_VERSION_DOC_CHECK: 1.21.3
   HELM_VERSION: v3.18.4
@@ -2409,7 +2409,7 @@ jobs:
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' "inspektor-gadget-${GITHUB_REF_NAME}.yaml"
     - name: Create Draft Release
       id: create_release
-      uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+      uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref_name }}

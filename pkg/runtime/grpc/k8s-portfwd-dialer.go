@@ -26,10 +26,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	"k8s.io/streaming/pkg/httpstream"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
@@ -65,7 +65,7 @@ func NewK8SPortFwdConn(ctx context.Context, config *rest.Config, namespace strin
 
 	targetURL.Path = fmt.Sprintf("api/v1/namespaces/%s/pods/%s/portforward", namespace, conn.podName)
 
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, targetURL)
+	dialer := spdy.NewDialerForStreaming(upgrader, &http.Client{Transport: transport}, http.MethodPost, targetURL)
 
 	newConn, _, err := dialer.Dial(portforward.PortForwardProtocolV1Name)
 	if err != nil {
