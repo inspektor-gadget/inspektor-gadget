@@ -60,6 +60,16 @@ datasources:
         annotations:
           columns.alias: 'S'
           columns.maxWidth: 1
+      CPUWait:
+        annotations:
+          columns.alias: 'CPUWAIT'
+          columns.maxWidth: 10
+          description: 'Time spent by process waiting for CPU (iowait)'
+      CPUPressure:
+        annotations:
+          columns.alias: 'CPUPRESS'
+          columns.maxWidth: 10
+          description: 'System-wide CPU pressure (avg10 from /proc/pressure/cpu)'
 params:
   custom:
     interval:
