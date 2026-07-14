@@ -31,7 +31,9 @@ config:
       hook-mode: "auto"
     oci:
       verify-image: true
-      public-keys: []
+      public-keys:
+        - |
+          %PUBLIC_KEY%
       allowed-gadgets: []
       disallow-pulling: false
       insecure-registries: []
