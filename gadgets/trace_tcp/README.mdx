@@ -113,7 +113,7 @@ Default value: "false"
         The gadget will print that connection on the first terminal
 
         ```bash
-        $ sudo ig trace tcp -c test-trace-tcp
+        $ sudo ig run trace_tcp:%IG_TAG% --containername test-trace-tcp
         RUNTIME.CONTAINERNAME        SRC                                   DST                                   COMM                        PID            TID            UID            GID TYPE
         test-trace-tcp               172.17.0.2:39664                      93.184.215.14:443                     wget                     757178         757178              0              0 connect
         ```
