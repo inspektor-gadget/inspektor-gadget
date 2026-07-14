@@ -40,7 +40,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
@@ -56,7 +55,6 @@ type GadgetContext struct {
 	args          []string
 	runtime       runtime.Runtime
 	runtimeParams *params.Params
-	parser        parser.Parser
 	logger        logger.Logger
 	result        []byte
 	resultError   error
@@ -119,10 +117,6 @@ func (c *GadgetContext) Context() context.Context {
 
 func (c *GadgetContext) Cancel() {
 	c.cancel()
-}
-
-func (c *GadgetContext) Parser() parser.Parser {
-	return c.parser
 }
 
 func (c *GadgetContext) Runtime() runtime.Runtime {
