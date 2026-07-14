@@ -221,7 +221,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-    - uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+    - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
       with:
         languages: go
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -384,7 +384,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
-    - uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+    - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
       with:
         languages: go
     - name: Build ig-linux-${{ matrix.platform }} for CWE checks
@@ -417,7 +417,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
-    - uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+    - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
       with:
         languages: go
     - name: Build gadget-container-deps
