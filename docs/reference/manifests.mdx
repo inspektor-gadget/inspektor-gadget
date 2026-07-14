@@ -8,9 +8,13 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 Instead of providing all the parameters from command line, you can also use the `-f` flag in combination with the `run`
-command to specify a manifest file to run gadgets from. A manifest file is a file in
-[YAML format](https://en.wikipedia.org/wiki/YAML), that can hold information about one or more gadget instances. Such a
+command to specify a manifest file to run gadgets from. A gadget instance manifest is a file in
+[YAML format](https://en.wikipedia.org/wiki/YAML) that can hold information about one or more gadget instances. Such a
 file could look like this:
+
+:::note
+These are Inspektor Gadget-specific manifests, not Kubernetes resource manifests. They are intended to be used with `run -f` command, not with `kubectl apply -f`.
+:::
 
 ```yaml
 apiVersion: 1
