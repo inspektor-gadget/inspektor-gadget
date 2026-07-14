@@ -21,12 +21,10 @@ like filtering and sorting on them.
 package parser
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
-	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 
@@ -35,7 +33,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/snapshotcombiner"
 )
 
 type LogCallback func(severity logger.Level, fmt string, params ...any)
@@ -93,10 +90,6 @@ type Parser interface {
 	// SetLogCallback sets the function to use to send log messages
 	SetLogCallback(logCallback LogCallback)
 
-	// EnableSnapshots initializes the snapshot combiner, which is able to aggregate snapshots from several sources
-	// and can return (optionally cached) results on demand; used for top gadgets
-	EnableSnapshots(ctx context.Context, t time.Duration, ttl int)
-
 	// EnableCombiner initializes the event combiner, which aggregates events from all sources; used for snapshot gadgets.
 	// Events are released by calling Flush().
 	EnableCombiner()
@@ -134,7 +127,6 @@ type parser[T any] struct {
 	eventCallback      func(*T)
 	eventCallbackArray func([]*T)
 	logCallback        LogCallback
-	snapshotCombiner   *snapshotcombiner.SnapshotCombiner[T]
 	columnFilters      []columns.ColumnFilter
 
 	// event combiner related fields
@@ -150,35 +142,6 @@ func NewParser[T any](columns *columns.Columns[T]) Parser {
 	return p
 }
 
-func (p *parser[T]) EnableSnapshots(ctx context.Context, interval time.Duration, ttl int) {
-	if p.eventCallbackArray == nil {
-		panic("EnableSnapshots needs EventCallbackArray set")
-	}
-	p.snapshotCombiner = snapshotcombiner.NewSnapshotCombiner[T](ttl)
-	go func() {
-		ticker := time.NewTicker(interval)
-		for {
-			select {
-			case <-ticker.C:
-				p.flushSnapshotCombiner()
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-}
-
-func (p *parser[T]) flushSnapshotCombiner() {
-	if p.snapshotCombiner == nil {
-		panic("snapshotCombiner is not initialized")
-	}
-	out, _ := p.snapshotCombiner.GetSnapshots()
-	if p.sortSpec != nil {
-		p.sortSpec.Sort(out)
-	}
-	p.eventCallbackArray(out)
-}
-
 func (p *parser[T]) EnableCombiner() {
 	if p.eventCallbackArray == nil {
 		panic("eventCallbackArray has to be set before using EnableCombiner()")
@@ -189,10 +152,6 @@ func (p *parser[T]) EnableCombiner() {
 }
 
 func (p *parser[T]) Flush() {
-	if p.snapshotCombiner != nil {
-		p.flushSnapshotCombiner()
-		return
-	}
 	if p.sortSpec != nil {
 		p.sortSpec.Sort(p.combinedEvents)
 	}
@@ -309,14 +268,10 @@ func (p *parser[T]) JSONHandlerFunc(enrichers ...func(any) error) func([]byte) {
 	}
 }
 
-func (p *parser[T]) JSONHandlerFuncArray(key string, enrichers ...func(any) error) func([]byte) {
+func (p *parser[T]) JSONHandlerFuncArray(_ string, enrichers ...func(any) error) func([]byte) {
 	cb := p.eventCallbackArray
 	if p.eventCombinerEnabled {
 		cb = p.combineEventsArrayCallback
-	} else if p.snapshotCombiner != nil {
-		cb = func(events []*T) {
-			p.snapshotCombiner.AddSnapshot(key, events)
-		}
 	}
 
 	handler := p.eventHandlerArray(cb, enrichers...)
