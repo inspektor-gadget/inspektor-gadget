@@ -82,6 +82,7 @@ GADGETS ?= \
 	top_cuda_memory \
 	gpu_top \
 	gpu_top_per_pid \
+	trace_gpu_starvation \
 	#
 
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
