@@ -63,3 +63,19 @@ params:
       key: include-idle
       defaultValue: "false"
       description: Include time the cpu is idle
+    gpu_idle_only:
+      key: gpu-idle-only
+      defaultValue: "false"
+      description: Only sample processes that own GPU memory while their GPU is underutilized (requires the gpu-ebpf-bridge)
+    gpu_util_max_pct:
+      key: gpu-util-max-pct
+      defaultValue: "70"
+      description: With --gpu-idle-only, only record a sample when the primary GPU's SM utilization is below this percentage
+    min_gpu_mem_bytes:
+      key: min-gpu-mem-bytes
+      defaultValue: "1"
+      description: With --gpu-idle-only, minimum resident GPU memory (bytes) for a process to count as a GPU holder
+    stale_threshold_ms:
+      key: stale-threshold-ms
+      defaultValue: "300"
+      description: With --gpu-idle-only, discard samples when the bridge data is older than this many milliseconds
