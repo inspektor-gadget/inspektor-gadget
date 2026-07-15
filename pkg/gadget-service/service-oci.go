@@ -30,8 +30,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/datasource"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/auth"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	kubemanagerpolicy "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/policy"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/simple"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -79,6 +81,9 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		if gi == nil {
 			return nil, fmt.Errorf("instance %s not found", req.ImageName)
 		}
+		if err := kubemanagerpolicy.AuthorizeParamValues(ctx, gi.ParamValues()); err != nil {
+			return nil, err
+		}
 		gadgetInfo, err := gi.GadgetInfo()
 		if err != nil {
 			return nil, err
@@ -92,8 +97,10 @@ func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoReque
 		ops = append(ops, op)
 	}
 
+	// Image metadata is not namespace-scoped, and final namespace parameters are
+	// unavailable while the client discovers the gadget's parameters.
 	gadgetCtx := gadgetcontext.New(
-		ctx,
+		auth.WithoutPolicyScope(ctx),
 		req.ImageName,
 		gadgetcontext.WithDataOperators(ops...),
 		gadgetcontext.WithAsRemoteCall(true),
@@ -120,6 +127,13 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		}
 		if s.instanceMgr == nil {
 			return errors.New("instance manager not initialized")
+		}
+		gi := s.instanceMgr.LookupInstance(attachRequest.Id)
+		if gi == nil {
+			return fmt.Errorf("instance %s not found", attachRequest.Id)
+		}
+		if err := kubemanagerpolicy.AuthorizeParamValues(runGadget.Context(), gi.ParamValues()); err != nil {
+			return err
 		}
 
 		s.ctrAttachGadget.Add(context.Background(), 1)

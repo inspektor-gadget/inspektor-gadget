@@ -20,9 +20,20 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/namesgenerator"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	kubemanagerpolicy "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager/policy"
 )
 
 func (s *Service) CreateGadgetInstance(ctx context.Context, request *api.CreateGadgetInstanceRequest) (*api.CreateGadgetInstanceResponse, error) {
+	if request.GadgetInstance == nil || request.GadgetInstance.GadgetConfig == nil {
+		return nil, fmt.Errorf("missing gadget instance configuration")
+	}
+	if request.GadgetInstance.GadgetConfig.ParamValues == nil {
+		request.GadgetInstance.GadgetConfig.ParamValues = api.ParamValues{}
+	}
+	if err := kubemanagerpolicy.EnforcePolicyScopeOnParamValues(ctx, request.GadgetInstance.GadgetConfig.ParamValues); err != nil {
+		return nil, err
+	}
+
 	// Create random ID if not set by the client
 	if request.GadgetInstance.Id == "" {
 		var err error
@@ -49,13 +60,19 @@ func (s *Service) ListGadgetInstances(ctx context.Context, request *api.ListGadg
 	if err != nil {
 		return nil, fmt.Errorf("listing gadget instances: %w", err)
 	}
+	visible := resp.GadgetInstances[:0]
 	for _, gi := range resp.GadgetInstances {
+		if err := authorizeGadgetInstance(ctx, gi); err != nil {
+			continue
+		}
 		st, err := s.instanceMgr.InstanceState(gi.Id)
 		if err != nil {
 			return nil, fmt.Errorf("getting instance status for %q: %w", gi.Id, err)
 		}
 		gi.State = st
+		visible = append(visible, gi)
 	}
+	resp.GadgetInstances = visible
 	return resp, nil
 }
 
@@ -66,6 +83,9 @@ func (s *Service) GetGadgetInstance(ctx context.Context, id *api.GadgetInstanceI
 	gi, err := s.store.GetGadgetInstance(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget instance from store: %w", err)
+	}
+	if err := authorizeGadgetInstance(ctx, gi); err != nil {
+		return nil, err
 	}
 	st, err := s.instanceMgr.InstanceState(gi.Id)
 	if err != nil {
@@ -79,5 +99,19 @@ func (s *Service) RemoveGadgetInstance(ctx context.Context, id *api.GadgetInstan
 	if !api.IsValidInstanceID(id.Id) {
 		return nil, fmt.Errorf("invalid gadget instance id: %s", id.Id)
 	}
+	gi, err := s.store.GetGadgetInstance(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget instance from store: %w", err)
+	}
+	if err := authorizeGadgetInstance(ctx, gi); err != nil {
+		return nil, err
+	}
 	return s.store.RemoveGadgetInstance(ctx, id)
+}
+
+func authorizeGadgetInstance(ctx context.Context, instance *api.GadgetInstance) error {
+	if instance == nil || instance.GadgetConfig == nil {
+		return fmt.Errorf("missing gadget instance configuration")
+	}
+	return kubemanagerpolicy.AuthorizeParamValues(ctx, instance.GadgetConfig.ParamValues)
 }
