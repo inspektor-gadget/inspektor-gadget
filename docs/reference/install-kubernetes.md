@@ -114,7 +114,7 @@ $ kubectl gadget deploy --node-selector 'kubernetes.io/hostname in (minikube, mi
 
 By default Inspektor Gadget is deployed to the namespace `gadget`.
 This can be changed with the `--gadget-namespace` flag.
-When using gadgets (e.g. `kubectl gadget trace exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
+When using gadgets (e.g. `kubectl gadget run trace_exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
 For `undeploy` the `--gadget-namespace` flag is mandatory.
 
 ##### Deploying with an AppArmor profile

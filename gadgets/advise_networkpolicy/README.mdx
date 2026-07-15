@@ -157,3 +157,16 @@ deployment.apps "nginx" deleted
 $ kubectl delete service nginx
 service "nginx" deleted
 ```
+
+## Limitations
+
+The gadget ignores the following non-identity pod labels when generating policy
+selectors:
+
+- `controller-revision-hash`
+- `pod-template-generation`
+- `pod-template-hash`
+- `topology.kubernetes.io/region`
+- `topology.kubernetes.io/zone`
+- `failure-domain.beta.kubernetes.io/region`
+- `failure-domain.beta.kubernetes.io/zone`

@@ -99,6 +99,23 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 				return link.AttachIter(link.IterOptions{
 					Program: prog,
 				})
+			case "bpf_map_elem":
+				mapName, ok := i.iterTargetMaps[p.Name]
+				if !ok {
+					return nil, fmt.Errorf("iter/bpf_map_elem program %q has no target map; declare GADGET_ITER_TARGET_MAP(%s, <map_name>) in the BPF source",
+						p.Name, p.Name)
+				}
+				targetMap, ok := i.collection.Maps[mapName]
+				if !ok {
+					return nil, fmt.Errorf("iter target map %q for program %q not found in loaded collection",
+						mapName, p.Name)
+				}
+				i.logger.Debugf("Attaching iter/bpf_map_elem %q to map %q (fd=%d)",
+					p.Name, mapName, targetMap.FD())
+				return link.AttachIter(link.IterOptions{
+					Program: prog,
+					Map:     targetMap,
+				})
 			}
 			return nil, fmt.Errorf("unsupported iter type %q", attachTo)
 		case strings.HasPrefix(p.SectionName, fentryPrefix):
