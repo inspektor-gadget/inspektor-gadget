@@ -16,8 +16,8 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -150,20 +150,36 @@ func AddInstanceCommands(
 			if err != nil {
 				return fmt.Errorf("getting gadget instances: %w", err)
 			}
+
+			var retErr error
 			if len(ambiguous) > 0 {
-				fmt.Fprintf(os.Stderr, "ambiguous names/ids: %s\n", strings.Join(ambiguous, ", "))
+				retErr = errors.Join(retErr, fmt.Errorf("ambiguous names/ids: %s", strings.Join(ambiguous, ", ")))
 			}
-			if len(notfound) > 0 {
-				fmt.Fprintf(os.Stderr, "not found names/ids: %s\n", strings.Join(notfound, ", "))
-			}
+			ids := make([]string, 0, len(instances)+len(notfound))
 			for _, instance := range instances {
-				err := runtime.RemoveGadgetInstance(context.Background(), runtimeParams, instance.Id)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to remove gadget instance %q: %v\n", instance.Id, err)
-				}
-				fmt.Printf("%s\n", instance.Id)
+				ids = append(ids, instance.Id)
 			}
-			return nil
+			unresolved := notfound[:0]
+			for _, idOrName := range notfound {
+				if api.IsValidInstanceID(idOrName) {
+					ids = append(ids, idOrName)
+				} else {
+					unresolved = append(unresolved, idOrName)
+				}
+			}
+			if len(unresolved) > 0 {
+				retErr = errors.Join(retErr, fmt.Errorf("not found names/ids: %s", strings.Join(unresolved, ", ")))
+			}
+
+			for _, id := range ids {
+				err := runtime.RemoveGadgetInstance(context.Background(), runtimeParams, id)
+				if err != nil {
+					retErr = errors.Join(retErr, fmt.Errorf("removing gadget instance %q: %w", id, err))
+					continue
+				}
+				fmt.Printf("%s\n", id)
+			}
+			return retErr
 		},
 	}
 	AddFlags(deleteCmd, runtimeParams, nil, runtime)
