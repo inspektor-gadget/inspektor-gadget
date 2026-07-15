@@ -199,6 +199,7 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 			Runtime: RuntimeMetadata{
 				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
 					RuntimeName:          containerData.Runtime.RuntimeName,
+					OciRuntime:           containerData.Runtime.OciRuntime,
 					ContainerID:          containerData.Runtime.ContainerID,
 					ContainerName:        containerData.Runtime.ContainerName,
 					ContainerPID:         uint32(pid),
