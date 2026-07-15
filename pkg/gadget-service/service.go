@@ -26,11 +26,13 @@ import (
 
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/version"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/auth"
 	instancemanager "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/instance-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/store"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -53,6 +55,15 @@ type RunConfig struct {
 	// If SocketGID != 0 and a unix socket is used, the ownership of that socket
 	// will be changed to the given SocketGID
 	SocketGID int
+
+	// MultiTenancy enables Kubernetes authentication and namespace isolation.
+	MultiTenancy bool
+
+	// KubernetesClient is used for TokenReview and SubjectAccessReview.
+	KubernetesClient kubernetes.Interface
+
+	// MultiTenancyScope defines the namespace permission checked by Kubernetes.
+	MultiTenancyScope auth.ScopeConfig
 }
 
 type Service struct {
@@ -211,6 +222,24 @@ func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) e
 		s.listener = listener
 	default:
 		return fmt.Errorf("invalid socket type: %s", runConfig.SocketType)
+	}
+
+	if runConfig.MultiTenancy {
+		if runConfig.KubernetesClient == nil {
+			return fmt.Errorf("multi-tenancy enabled but no Kubernetes client provided")
+		}
+		scope := runConfig.MultiTenancyScope
+		if scope.Resource == "" {
+			scope = auth.DefaultScopeConfig()
+		}
+		if scope.Verb == "" {
+			return fmt.Errorf("multi-tenancy scope verb cannot be empty")
+		}
+		s.logger.Infof("multi-tenancy enabled (audience=%q, scope=%s/%s/%s)", auth.Audience, scope.APIGroup, scope.Resource, scope.Verb)
+		serverOptions = append(serverOptions,
+			grpc.UnaryInterceptor(auth.UnaryInterceptor(runConfig.KubernetesClient, s.logger, scope)),
+			grpc.StreamInterceptor(auth.StreamInterceptor(runConfig.KubernetesClient, s.logger, scope)),
+		)
 	}
 
 	server := grpc.NewServer(serverOptions...)
