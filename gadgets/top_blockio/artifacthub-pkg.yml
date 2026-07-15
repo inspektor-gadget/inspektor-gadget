@@ -1,10 +1,10 @@
 # Artifact Hub package metadata file
-version: 0.53.2
+version: 0.54.1
 name: "top blockio"
 category: monitoring-logging
 displayName: "top blockio"
-createdAt: "2026-06-17T14:49:27Z"
-digest: "2026-06-17T14:49:27Z"
+createdAt: "2026-07-14T09:46:46Z"
+digest: "2026-07-14T09:46:46Z"
 description: "Periodically report input/output block device activity. This gadget requires Linux Kernel Version 6.5+"
 logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
 license: ""

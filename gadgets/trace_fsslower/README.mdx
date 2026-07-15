@@ -62,7 +62,10 @@ Let's start the gadget before running our workload:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
-TODO
+```bash
+$ kubectl gadget run trace_fsslower:%IG_TAG% --podname test-trace-fsslower --filesystem ext4 --min 1000
+K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID              DELTA_US   OFFSET     SIZE FILE             OP
+```
   </TabItem>
 
   <TabItem value="ig" label="ig">
@@ -78,7 +81,10 @@ Launch a container that will perform input/output operations:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
-TODO
+```bash
+$ kubectl run test-trace-fsslower --restart=Never --image=debian -- /bin/sh -c "apt-get update && apt-get install -y git"
+pod/test-trace-fsslower created
+```
   </TabItem>
 
   <TabItem value="ig" label="ig">
@@ -98,12 +104,29 @@ The tool will list the I/O operations that were slower than 1ms:
 
 <Tabs groupId="env">
   <TabItem value="kubectl-gadget" label="kubectl gadget">
-TODO
+```bash
+$ kubectl gadget run trace_fsslower:%IG_TAG% --podname test-trace-fsslower --filesystem ext4 --min 1000
+K8S.NODE                       K8S.NAMESPACE                  K8S.PODNAME                    K8S.CONTAINERNAME              COMM                          PID              TID TID              DELTA_US   OFFSET     SIZE FILE             OP
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775                5832  3857488     8520 deb.debian.org_… F_WRITE
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            http                        60778            60778 60775                1387  6647227     1688 deb.debian.org_… F_WRITE
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            store                       60786            60786 60775                2085 14163567    25817 deb.debian.org_… F_WRITE
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                3077        0 9223372… #56749           F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                2464        0 9223372… #56751           F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                3393        0 9223372… config.dat-new   F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg-preconfigu             60898            60898 60897                2077        0 9223372… templates.dat-n… F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                3669        0 9223372… triggers         F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                3031        0 9223372… shlibs           F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                3348        0 9223372… symbols          F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                3064        0 9223372… md5sums          F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                3108        0 9223372… control          F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                2271        0 9223372… tmp.ci           F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                1837        0 9223372… tmp.i            F_FSYNC
+minikube                       default                        test-trace-fsslower            test-trace-fsslower            dpkg                        60985            60985 60849                1570        0 9223372… updates          F_FSYNC
+```
   </TabItem>
-
   <TabItem value="ig" label="ig">
 ```bash
-$ sudo ig run trace_fsslower%IG_TAG% --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
+$ sudo ig run trace_fsslower:%IG_TAG% --verify-image=false --filesystem ext4 --min 1000 -c test-trace-fsslower
 RUNTIME.CONTAINERNAME     COMM                 PID        TID DELTA_… OFFSET   SIZE FILE         OP
 test-trace-fsslower       dpkg-preconf…     204239     204239    1008      0 92233… #38586681    F_FSYNC
 test-trace-fsslower       dpkg-preconf…     204239     204239    1878      0 92233… #38586683    F_FSYNC
