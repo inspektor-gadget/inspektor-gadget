@@ -39,6 +39,11 @@ const (
 
 	OtelMetricsListen        = "otel-metrics-listen"
 	OtelMetricsListenAddress = "otel-metrics-listen-address"
+
+	MultiTenancy              = "multi-tenancy"
+	MultiTenancyScopeAPIGroup = "multi-tenancy-scope-api-group"
+	MultiTenancyScopeResource = "multi-tenancy-scope-resource"
+	MultiTenancyScopeVerb     = "multi-tenancy-scope-verb"
 )
 
 func Init() error {
@@ -46,6 +51,10 @@ func Init() error {
 
 	config.Config.SetDefault(EventsBufferLengthKey, 16384)
 	config.Config.SetDefault(DaemonLogLevel, "info")
+	config.Config.SetDefault(MultiTenancy, false)
+	config.Config.SetDefault(MultiTenancyScopeAPIGroup, "")
+	config.Config.SetDefault(MultiTenancyScopeResource, "pods")
+	config.Config.SetDefault(MultiTenancyScopeVerb, "create")
 
 	err := config.Config.ReadInConfig()
 	if err != nil {
@@ -77,7 +86,8 @@ func FullKeyPath(key string) string {
 func isRootKey(key string) bool {
 	switch key {
 	case EventsBufferLengthKey, ContainerdSocketPath, CrioSocketPath, DockerSocketPath,
-		PodmanSocketPath, GadgetNamespace, DaemonLogLevel:
+		PodmanSocketPath, GadgetNamespace, DaemonLogLevel, MultiTenancy,
+		MultiTenancyScopeAPIGroup, MultiTenancyScopeResource, MultiTenancyScopeVerb:
 		return true
 	default:
 		return false
