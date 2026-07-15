@@ -193,6 +193,7 @@ func (o *otelResolverInstance) GetEbpfReplacements() map[string]any {
 	}
 	return map[string]any{
 		symbolizer.OtelEbpfProgramKprobe:    o.trc.GetProbeEntryEbpfProgram(),
+		symbolizer.OtelEbpfProgramPerf:      o.trc.GetPerfEntryEbpfProgram(),
 		symbolizer.OtelGenericParamsMapName: o.trc.GetGenericParamsEbpfMap(),
 	}
 }

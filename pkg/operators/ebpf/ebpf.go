@@ -879,33 +879,62 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	}
 	i.collection = collection
 
-	if otelEbpfProgramI, ok := gadgetCtx.GetVar(symbolizer.OtelEbpfProgramKprobe); ok {
+	// Load the OTel entry programs into their type-matching prog-array maps.
+	// OTel symbolization uses BPF tail calls, which require the tail-called
+	// program and the caller to share the same BPF_PROG_TYPE. We therefore
+	// keep two separate prog arrays: otel_tc_kprobe (for kprobe/kretprobe/
+	// uprobe/uretprobe gadget programs) and otel_tc_perf (for perf_event
+	// gadget programs). Each is populated only with its matching-type entry
+	// program.
+	otelTailCalls := []struct {
+		mapName string
+		progVar string
+		want    ebpf.ProgramType
+	}{
+		{symbolizer.OtelTailCallForKprobeMapName, symbolizer.OtelEbpfProgramKprobe, ebpf.Kprobe},
+		{symbolizer.OtelTailCallForPerfMapName, symbolizer.OtelEbpfProgramPerf, ebpf.PerfEvent},
+	}
+	for _, tc := range otelTailCalls {
+		otelEbpfProgramI, ok := gadgetCtx.GetVar(tc.progVar)
+		if !ok {
+			continue
+		}
 		otelEbpfProgram, ok := otelEbpfProgramI.(*ebpf.Program)
 		if !ok {
-			return fmt.Errorf("invalid otel ebpf program: expected *ebpf.Program, got %T", otelEbpfProgramI)
+			return fmt.Errorf("invalid otel ebpf program %q: expected *ebpf.Program, got %T", tc.progVar, otelEbpfProgramI)
 		}
-		if progMap, ok := collection.Maps[symbolizer.OtelTailCallForKprobeMapName]; ok {
-			err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny)
-			if err != nil {
-				return fmt.Errorf("updating %s map: %w", symbolizer.OtelTailCallForKprobeMapName, err)
-			}
+		progMap, ok := collection.Maps[tc.mapName]
+		if !ok {
+			// The gadget does not use this program type's OTel path.
+			continue
+		}
 
-			// Warn if non-kprobe programs reference the otel tail call
-			// map. OTel symbolization uses BPF tail calls which require
-			// matching program types. Only BPF_PROG_TYPE_KPROBE (used by
-			// kprobes, kretprobes, uprobes, uretprobes) is compatible
-			// with the OTel profiler programs.
-			for name, prog := range i.collectionSpec.Programs {
-				if prog.Type == ebpf.Kprobe {
-					continue
-				}
-				refs := prog.Instructions.ReferenceOffsets()
-				if _, ok := refs[symbolizer.OtelTailCallForKprobeMapName]; ok {
-					i.logger.Warnf("program %q (type %s) uses OTel user stack collection, but OTel eBPF Profiler symbolization only supports kprobe/uprobe programs", name, prog.Type)
-				}
+		// A BPF_MAP_TYPE_PROG_ARRAY is locked to the program type of the
+		// first program that references it (kernel
+		// bpf_prog_array_compatible). Only load the entry program if a
+		// gadget program of the matching type actually references this
+		// map; otherwise the update would fail (or the tail call could
+		// never run). Warn about mismatched-type referrers, which cannot
+		// be symbolized with the OTel eBPF Profiler.
+		matched := false
+		for name, prog := range i.collectionSpec.Programs {
+			refs := prog.Instructions.ReferenceOffsets()
+			if _, ok := refs[tc.mapName]; !ok {
+				continue
 			}
-		} else {
-			i.logger.Warnf("%s map not found in gadget collection", symbolizer.OtelTailCallForKprobeMapName)
+			if prog.Type == tc.want {
+				matched = true
+			} else {
+				i.logger.Warnf("program %q (type %s) references OTel tail call map %q (expects %s); OTel eBPF Profiler symbolization only supports matching program types",
+					name, prog.Type, tc.mapName, tc.want)
+			}
+		}
+		if !matched {
+			continue
+		}
+
+		if err := progMap.Update(uint32(0), otelEbpfProgram, ebpf.UpdateAny); err != nil {
+			return fmt.Errorf("updating %s map: %w", tc.mapName, err)
 		}
 	}
 

@@ -411,7 +411,7 @@ Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stac
 
 ### `gadget_user_stack`
 
-Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack, collect_ustack)` (see [user-stack-traces](#user-stack-traces)).
+Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack)` (see [user-stack-traces](#user-stack-traces)).
 
 ### `gadget_uid` and `gadget_gid`
 
@@ -679,10 +679,25 @@ struct {
 Then, add a field in the event structure with the type of `gadget_user_stack`,
 designated for storing the stack id along with identifiers for the executable
 so that the stack can be symbolised in userspace.
-`gadget_get_user_stack(ctx, &event->ustack, collect_ustack)` could be used
-to populate this field, this helper function will store the kernel stack into
+`gadget_get_user_stack(ctx, &event->ustack)` could be used
+to populate this field, this helper function will store the user stack into
 `ig_ustack` and fill the field passed as parameter. When `collect_ustack` is
 false, `ustack` is initialized to zero and ig will ignore the stack trace.
+
+`gadget_get_user_stack()` dispatches at compile time on the static type of
+`ctx` (using `_Generic`): `struct pt_regs *` selects the
+`kprobe`/`kretprobe`/`uprobe`/`uretprobe` variant, and
+`struct bpf_perf_event_data *` selects the `perf_event` variant. These are the
+program types for which OpenTelemetry eBPF profiler symbolization is available
+(see [Limitations specific to the OpenTelemetry eBPF
+Profiler](../reference/stack-traces.mdx#limitations-specific-to-the-opentelemetry-ebpf-profiler)).
+Passing a `ctx` of any other type is a compile-time error.
+
+For a `tracepoint` gadget, whose program type cannot use OpenTelemetry
+symbolization, call `gadget_get_user_stack_from_tracepoint(ctx, &event->ustack)`
+instead. It collects the plain user stack (still symbolizable by the symtab and
+debuginfod methods); requesting `--collect-otel-stack` with such a gadget makes
+the loader reject the program instead of silently returning an empty stack.
 
 ```C
 struct event {
@@ -699,7 +714,7 @@ GADGET_PARAM(collect_ustack);
 	if (!event)
 		return 0;
 
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 ```
 
 ## Map pinning
