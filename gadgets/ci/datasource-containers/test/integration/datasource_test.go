@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/require"
@@ -115,8 +114,6 @@ func TestDatasourceContainers(t *testing.T) {
 
 	steps := []igtesting.TestStep{
 		datasourceContainersCmd,
-		// wait to ensure ig or kubectl-gadget has started
-		utils.Sleep(3 * time.Second),
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }
@@ -187,8 +184,6 @@ func TestDatasourceContainersPreCreate(t *testing.T) {
 
 	steps := []igtesting.TestStep{
 		datasourceContainersCmd,
-		// wait to ensure ig or kubectl-gadget has started
-		utils.Sleep(5 * time.Second),
 		testContainer,
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)

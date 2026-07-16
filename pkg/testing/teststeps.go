@@ -84,9 +84,22 @@ func RunTestSteps(steps []TestStep, t *testing.T, options ...Option) {
 	for _, step := range steps {
 		if step.IsStartAndStop() {
 			step.Start(t)
+			// If the step supports a readiness gate (e.g. a gadget), wait until it is
+			// actually capturing before moving on to the next steps (typically the
+			// workload). This replaces racy fixed sleeps.
+			if rw, ok := step.(readinessWaiter); ok {
+				rw.WaitForReady(t)
+			}
 			continue
 		}
 
 		step.Run(t)
 	}
+}
+
+// readinessWaiter is optionally implemented by TestSteps that can report when they are ready
+// (e.g. a gadget that has started capturing). RunTestSteps waits on it after starting such a
+// step so subsequent steps only run once the step is ready.
+type readinessWaiter interface {
+	WaitForReady(t *testing.T)
 }
