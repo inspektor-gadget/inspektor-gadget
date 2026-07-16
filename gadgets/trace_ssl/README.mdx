@@ -43,55 +43,56 @@ from an application. The gadget traces user-space TLS libraries, so it can show
 the function that handled the data and, when `--record-data` is enabled, the
 unencrypted buffer passed to or returned from that function.
 
-First, run an application that repeatedly performs HTTPS requests:
+First, run a Debian-based application that repeatedly performs HTTPS requests.
+The image uses glibc and provides an `/etc/ld.so.cache`, which the gadget uses
+to locate TLS libraries inside the container:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl run trace-ssl --restart=Never --image=curlimages/curl --command -- sh -c 'while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
+        $ kubectl run trace-ssl --restart=Never --image=debian:stable-slim --command -- sh -c 'apt-get update && apt-get install -y curl && while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
         pod/trace-ssl created
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ docker run --name test-trace-ssl -d --entrypoint sh curlimages/curl -c 'while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
+        $ docker run --name test-trace-ssl -d --entrypoint sh debian:stable-slim -c 'apt-get update && apt-get install -y curl && while true; do curl --http1.1 -s https://example.com >/dev/null; sleep 3; done'
         ```
     </TabItem>
 </Tabs>
 
-Then, run the gadget and filter it to the workload. The `--fields` flag keeps
-the output focused on the TLS operation, latency, and captured buffer:
+Then, run the gadget and filter it to the workload. The captured buffer is a
+fixed-size byte array, so column output summarizes it as `<8192 bytes>`. Request
+JSON output and use `jq` to remove the zero padding and decode the plaintext:
 
 <Tabs groupId="env">
     <TabItem value="kubectl-gadget" label="kubectl gadget">
         ```bash
-        $ kubectl gadget run trace_ssl:%IG_TAG% --podname trace-ssl --fields=k8s.node,k8s.namespace,k8s.podname,k8s.containername,comm,pid,operation,latency_ns,buf
-        K8S.NODE        K8S.NAMESPACE K8S.PODNAME K8S.CONTAINERNAME COMM PID     OPERATION                LATENCY_NS BUF
-        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_do_handshake  7.864ms
-        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_write         23.418us  GET / HTTP/1.1...
-        minikube-docker default       trace-ssl   trace-ssl         curl 3776418 libssl_SSL_read          41.906us  HTTP/1.1 200 OK...
+        $ kubectl gadget run trace_ssl:%IG_TAG% --podname trace-ssl --fields=operation,buf -o json | \
+            jq -rc 'select(.operation | test("SSL_write|SSL_read")) | {operation, data: (.buf | map(select(. != 0)) | implode)}'
+        {"operation":"libssl_SSL_write","data":"GET / HTTP/1.1\r\nHost: example.com\r\n..."}
+        {"operation":"libssl_SSL_read","data":"HTTP/1.1 200 OK\r\n..."}
         ^C
         ```
     </TabItem>
 
     <TabItem value="ig" label="ig">
         ```bash
-        $ sudo ig run trace_ssl:%IG_TAG% --containername test-trace-ssl --fields=runtime.containername,comm,pid,operation,latency_ns,buf
-        RUNTIME.CONTAINERNAME COMM PID     OPERATION                LATENCY_NS BUF
-        test-trace-ssl        curl 3777052 libssl_SSL_do_handshake  8.102ms
-        test-trace-ssl        curl 3777052 libssl_SSL_write         25.337us  GET / HTTP/1.1...
-        test-trace-ssl        curl 3777052 libssl_SSL_read          48.219us  HTTP/1.1 200 OK...
+        $ sudo ig run trace_ssl:%IG_TAG% --containername test-trace-ssl --fields=operation,buf -o json | \
+            jq -rc 'select(.operation | test("SSL_write|SSL_read")) | {operation, data: (.buf | map(select(. != 0)) | implode)}'
+        {"operation":"libssl_SSL_write","data":"GET / HTTP/1.1\r\nHost: example.com\r\n..."}
+        {"operation":"libssl_SSL_read","data":"HTTP/1.1 200 OK\r\n..."}
         ^C
         ```
     </TabItem>
 </Tabs>
 
-The `SSL_do_handshake` event shows the TLS handshake. The `SSL_write` and
-`SSL_read` events show plaintext buffers before encryption or after decryption,
-which is useful when debugging application-level HTTPS traffic. If you only need
-operation and latency information, run the gadget with `--record-data=false` to
-avoid collecting buffer contents.
+The full event stream also includes `SSL_do_handshake` events. The filter above
+keeps `SSL_write` and `SSL_read`, whose buffers contain plaintext before
+encryption or after decryption. If you only need operation and latency
+information, use `--fields=operation,latency_ns --record-data=false` to avoid
+collecting buffer contents.
 
 Finally, clean up the workload:
 
