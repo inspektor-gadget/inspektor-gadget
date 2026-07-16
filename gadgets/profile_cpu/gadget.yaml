@@ -25,6 +25,12 @@ datasources:
       profiles.type: samples
       profiles.unit: count
     fields:
+      user_stack_id:
+        annotations:
+          # Internal aggregation key (equals user_stack_raw.stack_id); hide it
+          # so the output schema is unchanged for consumers.
+          json.skip: "true"
+          columns.hidden: "true"
       runtime.containerName:
         annotations:
           flamegraph.level: 0

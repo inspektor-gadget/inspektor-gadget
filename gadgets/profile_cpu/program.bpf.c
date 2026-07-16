@@ -15,9 +15,17 @@
 
 #define MAX_ENTRIES 10240
 
+/* The aggregation key holds only the sample's *identity*: the user stack is
+ * represented by its stack id (a stable hash of the stack), not by the whole
+ * struct gadget_user_stack. Embedding the full struct here would be wrong
+ * because it carries per-sample fields (boot_timestamp, otel_correlation_id)
+ * that differ on every sample, which would make every sample a unique key and
+ * defeat aggregation. The full struct is stored in the value instead (see
+ * struct values below), mirroring profile_cuda.
+ */
 struct key_t {
 	__u64 kernel_ip;
-	struct gadget_user_stack user_stack_raw;
+	__u32 user_stack_id;
 	gadget_kernel_stack kern_stack_raw;
 	struct gadget_process proc;
 };
@@ -46,8 +54,16 @@ GADGET_PARAM(user_stacks_only);
 const volatile bool include_idle = false;
 GADGET_PARAM(include_idle);
 
+/* The value carries the aggregated sample count plus the full user-stack
+ * metadata. user_stack_raw lives here (not in the key) so that identical
+ * stacks aggregate: its per-sample fields (boot_timestamp, otel_correlation_id)
+ * would otherwise make every sample a unique key. On first insertion the
+ * metadata of that first sample is stored; subsequent identical stacks only
+ * bump samples. This mirrors profile_cuda's alloc_val.
+ */
 struct values {
 	__u64 samples;
+	struct gadget_user_stack user_stack_raw;
 };
 
 struct {
@@ -58,6 +74,23 @@ struct {
 } counts SEC(".maps");
 
 GADGET_MAPITER(samples, counts);
+
+/* Per-CPU temporary storage for the user stack and the value struct, to keep
+ * them off the BPF stack (same rationale as tmp_key above).
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct gadget_user_stack);
+} tmp_gadget_user_stack SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct values);
+} tmp_values SEC(".maps");
 
 /*
  * If PAGE_OFFSET macro is not available in vmlinux.h, determine ip whose MSB
@@ -88,9 +121,6 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 
 	u32 tid = id;
 	struct values *valp;
-	static const struct values zero = {
-		0,
-	};
 	u32 map_key = 0;
 	bpf_map_update_elem(&tmp_key, &map_key, &empty_key, BPF_ANY);
 	struct key_t *key = bpf_map_lookup_elem(&tmp_key, &map_key);
@@ -108,8 +138,19 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 		key->kern_stack_raw =
 			bpf_get_stackid(&ctx->regs, &ig_kstack, 0);
 
+	/* Fetch the user stack into per-CPU scratch and key only on its stack
+	 * id, keeping the full metadata (with its per-sample fields) out of the
+	 * aggregation key. See the comments on struct key_t / struct values.
+	 */
+	struct gadget_user_stack *ustack_raw =
+		bpf_map_lookup_elem(&tmp_gadget_user_stack, &map_key);
+	if (!ustack_raw)
+		return 0;
 	if (!kernel_stacks_only)
-		gadget_get_user_stack(ctx, &key->user_stack_raw);
+		gadget_get_user_stack(ctx, ustack_raw);
+	else
+		__builtin_memset(ustack_raw, 0, sizeof(*ustack_raw));
+	key->user_stack_id = ustack_raw->stack_id;
 
 	if (key->kern_stack_raw >= 0) {
 		// populate extras to fix the kernel stack
@@ -119,9 +160,18 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 			key->kernel_ip = ip;
 	}
 
-	valp = bpf_map_lookup_or_try_init(&counts, key, &zero);
-	if (valp)
+	valp = bpf_map_lookup_elem(&counts, key);
+	if (!valp) {
+		struct values *new_val =
+			bpf_map_lookup_elem(&tmp_values, &map_key);
+		if (!new_val)
+			return 0;
+		new_val->samples = 1;
+		new_val->user_stack_raw = *ustack_raw;
+		bpf_map_update_elem(&counts, key, new_val, BPF_NOEXIST);
+	} else {
 		__sync_fetch_and_add(&valp->samples, 1);
+	}
 
 	return 0;
 }
