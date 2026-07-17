@@ -8,6 +8,22 @@ import TabItem from '@theme/TabItem';
 
 The `snapshot_file` gadget shows open files for running processes.
 
+## Requirements
+
+- Minimum Kernel Version : *5.8
+
+The gadget uses the `task_file` BPF iterator, available since Linux 5.8.
+
+Classifying anonymous-inode file types (`BPF_MAP`, `BPF_LINK`, `BPF_PROG`,
+`EVENTFD`, `TIMERFD`, `SIGNALFD`, `EPOLL`, `PERF_EVENT`, `USERFAULTFD`, `PIDFD`,
+`IO_URING`, `FANOTIFY`, `INOTIFY`) additionally relies on `__ksym` weak data
+relocations, which require Linux 5.11 or later and `CAP_SYSLOG` (to read symbol
+addresses from `/proc/kallsyms`). When a required symbol is unavailable, files of
+that type fall back to `OTHER` instead of their specific type; all other
+functionality is unaffected.
+
+*This is the minimal kernel version we have tried for this Gadget, however it's possible that it works with earlier versions.
+
 ## Getting started
 
 Running the gadget:
@@ -28,30 +44,48 @@ Running the gadget:
 
 ## Flags
 
+### `--type-mask`
+
+Filter which file types to display using a bitmask. Each file type has a
+bit; set a bit to include that type. By default all types are shown
+(4294967295). Sum the values of the types you want to keep.
+
+| Bit | Value | Type | Description |
+|-----|-------|------|-------------|
+| 0 | 1 | REGULAR | Regular file |
+| 1 | 2 | SOCKET | Socket |
+| 2 | 4 | PIPE | Pipe / FIFO |
+| 3 | 8 | BPF_MAP | BPF map |
+| 4 | 16 | DIRECTORY | Directory |
+| 5 | 32 | CHAR_DEV | Character device |
+| 6 | 64 | BLOCK_DEV | Block device |
+| 7 | 128 | SYMLINK | Symbolic link |
+| 8 | 256 | BPF_LINK | BPF link |
+| 9 | 512 | BPF_PROG | BPF program |
+| 10 | 1024 | EVENTFD | eventfd |
+| 11 | 2048 | TIMERFD | timerfd |
+| 12 | 4096 | SIGNALFD | signalfd |
+| 13 | 8192 | EPOLL | epoll instance |
+| 14 | 16384 | PERF_EVENT | perf event |
+| 15 | 32768 | USERFAULTFD | userfaultfd |
+| 16 | 65536 | PIDFD | pidfd |
+| 17 | 131072 | IO_URING | io_uring |
+| 18 | 262144 | FANOTIFY | fanotify |
+| 19 | 524288 | INOTIFY | inotify |
+| 20 | 1048576 | OTHER | Any other file type |
+
+Examples:
+- Regular files and directories only: 1 + 16 = 17
+- BPF maps, links and programs: 8 + 256 + 512 = 776
+- All types (default): 4294967295
+
+Default value: "4294967295"
+
 ### `--paths`
 
-Show full file paths (by default, only dentry names are shown).
+Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
 
-Default value: `"false"`
-
-### `--file-type-mask`
-
-Filter which file types to display using a bitmask.
-By default, only **regular files** and **directories** are shown (bitmask value 17).
-
-Supported file types:
-
-- REGULAR
-- SOCKET
-- PIPE
-- BPF_MAP
-- DIRECTORY
-- CHAR_DEV
-- BLOCK_DEV
-- SYMLINK
-- OTHER
-
-The bitmask order, from left to right, corresponds to the file types listed above.
+Default value: "false"
 
 ## Guide
 

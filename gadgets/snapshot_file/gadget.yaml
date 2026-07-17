@@ -26,5 +26,37 @@ params:
       description: Enable to get the complete file paths in the output. If disabled, only the file names will be shown.
     file_type_mask:
       key: type-mask
-      defaultValue: "17"
-      description: File type mask to filter files by type (default includes regular files and directories => 2^0 + 2^4 = 17)
+      defaultValue: "4294967295"
+      description: |
+        Filter which file types to display using a bitmask. Each file type has a
+        bit; set a bit to include that type. By default all types are shown
+        (4294967295). Sum the values of the types you want to keep.
+
+        | Bit | Value | Type | Description |
+        |-----|-------|------|-------------|
+        | 0 | 1 | REGULAR | Regular file |
+        | 1 | 2 | SOCKET | Socket |
+        | 2 | 4 | PIPE | Pipe / FIFO |
+        | 3 | 8 | BPF_MAP | BPF map |
+        | 4 | 16 | DIRECTORY | Directory |
+        | 5 | 32 | CHAR_DEV | Character device |
+        | 6 | 64 | BLOCK_DEV | Block device |
+        | 7 | 128 | SYMLINK | Symbolic link |
+        | 8 | 256 | BPF_LINK | BPF link |
+        | 9 | 512 | BPF_PROG | BPF program |
+        | 10 | 1024 | EVENTFD | eventfd |
+        | 11 | 2048 | TIMERFD | timerfd |
+        | 12 | 4096 | SIGNALFD | signalfd |
+        | 13 | 8192 | EPOLL | epoll instance |
+        | 14 | 16384 | PERF_EVENT | perf event |
+        | 15 | 32768 | USERFAULTFD | userfaultfd |
+        | 16 | 65536 | PIDFD | pidfd |
+        | 17 | 131072 | IO_URING | io_uring |
+        | 18 | 262144 | FANOTIFY | fanotify |
+        | 19 | 524288 | INOTIFY | inotify |
+        | 20 | 1048576 | OTHER | Any other file type |
+
+        Examples:
+        - Regular files and directories only: 1 + 16 = 17
+        - BPF maps, links and programs: 8 + 256 + 512 = 776
+        - All types (default): 4294967295

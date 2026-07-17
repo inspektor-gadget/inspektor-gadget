@@ -23,11 +23,49 @@ enum file_type {
 	CHAR_DEV,
 	BLOCK_DEV,
 	SYMLINK,
+	BPF_LINK,
+	BPF_PROG,
+	EVENTFD,
+	TIMERFD,
+	SIGNALFD,
+	EPOLL,
+	PERF_EVENT,
+	USERFAULTFD,
+	PIDFD,
+	IO_URING,
+	FANOTIFY,
+	INOTIFY,
 	OTHER
 };
 
-// Regular and Directory by default
-const volatile u32 file_type_mask = (1U << REGULAR) | (1U << DIRECTORY);
+/*
+ * Several file types are exposed to userspace through anonymous inodes, whose
+ * i_mode carries permission bits only (no S_IFMT type bits), so they cannot be
+ * classified by mode. Instead we compare file->f_op against the kernel's
+ * per-type file_operations tables. cilium/ebpf resolves these __ksym externs
+ * from /proc/kallsyms at load time. They are __weak so that a kernel missing the
+ * symbol (or a process without CAP_SYSLOG) resolves them to NULL and simply
+ * falls back to the regular mode-based classification.
+ *
+ * Requires: Linux >= 5.11 for __ksym weak data relocations. See the gadget's
+ * README.mdx (## Requirements) for details.
+ */
+extern void bpf_map_fops __ksym __weak;
+extern void bpf_link_fops __ksym __weak;
+extern void bpf_prog_fops __ksym __weak;
+extern void eventfd_fops __ksym __weak;
+extern void timerfd_fops __ksym __weak;
+extern void signalfd_fops __ksym __weak;
+extern void eventpoll_fops __ksym __weak;
+extern void perf_fops __ksym __weak;
+extern void userfaultfd_fops __ksym __weak;
+extern void pidfd_fops __ksym __weak;
+extern void io_uring_fops __ksym __weak;
+extern void fanotify_fops __ksym __weak;
+extern void inotify_fops __ksym __weak;
+
+// Show all file types by default; use file_type_mask to filter.
+const volatile u32 file_type_mask = 0xffffffff;
 
 struct gadget_file {
 	gadget_mntns_id mntns_id;
@@ -57,6 +95,33 @@ GADGET_SNAPSHOTTER(files, gadget_file, ig_snap_file);
 
 static __always_inline u32 classify_file_type(struct file *file)
 {
+	// Anonymous-inode file types (bpf objects, eventfd, epoll, io_uring, ...)
+	// carry no S_IFMT type bits in i_mode, so identify them by their
+	// file_operations table (resolved via the __ksym externs above). The
+	// &sym guard skips symbols that were not resolved (older kernel or no
+	// CAP_SYSLOG), letting classification fall back to the mode switch below.
+	const void *fop = BPF_CORE_READ(file, f_op);
+
+#define MATCH_FOP(sym, type)         \
+	if (&sym && fop == &sym)     \
+		return type;
+
+	MATCH_FOP(bpf_map_fops, BPF_MAP);
+	MATCH_FOP(bpf_link_fops, BPF_LINK);
+	MATCH_FOP(bpf_prog_fops, BPF_PROG);
+	MATCH_FOP(eventfd_fops, EVENTFD);
+	MATCH_FOP(timerfd_fops, TIMERFD);
+	MATCH_FOP(signalfd_fops, SIGNALFD);
+	MATCH_FOP(eventpoll_fops, EPOLL);
+	MATCH_FOP(perf_fops, PERF_EVENT);
+	MATCH_FOP(userfaultfd_fops, USERFAULTFD);
+	MATCH_FOP(pidfd_fops, PIDFD);
+	MATCH_FOP(io_uring_fops, IO_URING);
+	MATCH_FOP(fanotify_fops, FANOTIFY);
+	MATCH_FOP(inotify_fops, INOTIFY);
+
+#undef MATCH_FOP
+
 	u32 mode = BPF_CORE_READ(file, f_inode, i_mode) & S_IFMT;
 
 	switch (mode) {
