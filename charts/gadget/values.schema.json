@@ -167,6 +167,25 @@
           }
         }
       }
+    },
+    "skipDefaultTolerations": {
+      "type": "boolean",
+      "description": "Skip the default NoSchedule and NoExecute Exists tolerations."
+    },
+    "tolerations": {
+      "description": "Additional tolerations for the gadget DaemonSet. An empty object is accepted for compatibility with previous chart versions.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "type": "object",
+          "maxProperties": 0
+        }
+      ]
     }
   }
 }
