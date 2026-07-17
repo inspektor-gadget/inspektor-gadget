@@ -100,8 +100,7 @@ resources: {}
 skipLabels: false
 
 # -- Labels to be added to all other resources.
-additionalLabels:
-  labels: {}
+additionalLabels: {}
 
 # -- Use the host PID namespace
 hostPID: false
