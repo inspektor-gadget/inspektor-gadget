@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
 	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -31,6 +33,120 @@ type fakeTracerMapsUpdater struct {
 }
 
 var r *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func TestInitializeCleansUpOnError(t *testing.T) {
+	cleanedUp := false
+	workerDone := make(chan struct{})
+	var cc ContainerCollection
+
+	err := cc.Initialize(
+		func(cc *ContainerCollection) error {
+			go func() {
+				<-cc.done
+				close(workerDone)
+			}()
+			cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+				cleanedUp = true
+			})
+			return nil
+		},
+		func(*ContainerCollection) error {
+			return fmt.Errorf("initialization failed")
+		},
+	)
+
+	require.EqualError(t, err, "initialization failed")
+	require.True(t, cleanedUp)
+	select {
+	case <-workerDone:
+	case <-time.After(time.Second):
+		close(cc.done)
+		t.Fatal("initialization worker did not stop")
+	}
+}
+
+func TestAddContainerClosesRejectedDuplicate(t *testing.T) {
+	var cc ContainerCollection
+	cc.AddContainer(&Container{
+		Runtime: RuntimeMetadata{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{ContainerID: "container"},
+		},
+	})
+
+	mntPipe := make([]int, 2)
+	require.NoError(t, unix.Pipe(mntPipe))
+	t.Cleanup(func() {
+		unix.Close(mntPipe[0])
+		unix.Close(mntPipe[1])
+	})
+	netPipe := make([]int, 2)
+	require.NoError(t, unix.Pipe(netPipe))
+	t.Cleanup(func() {
+		unix.Close(netPipe[0])
+		unix.Close(netPipe[1])
+	})
+
+	cc.AddContainer(&Container{
+		Runtime: RuntimeMetadata{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{ContainerID: "container"},
+		},
+		mntNsFd: mntPipe[0],
+		netNsFd: netPipe[0],
+	})
+
+	for _, fd := range []int{mntPipe[0], netPipe[0]} {
+		require.Eventually(t, func() bool {
+			_, err := unix.FcntlInt(uintptr(fd), unix.F_GETFD, 0)
+			return err == unix.EBADF
+		}, time.Second, 10*time.Millisecond)
+	}
+}
+
+func TestCloseRunsCleanupWithoutCollectionLock(t *testing.T) {
+	var cc ContainerCollection
+	require.NoError(t, cc.Initialize(func(cc *ContainerCollection) error {
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			cc.mu.Lock()
+			cc.mu.Unlock()
+		})
+		return nil
+	}))
+
+	done := make(chan struct{})
+	go func() {
+		cc.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Close held the collection lock while running cleanup")
+	}
+}
+
+func TestOwnerReferenceConcurrentAccess(t *testing.T) {
+	var cc ContainerCollection
+	container := &Container{
+		Runtime: RuntimeMetadata{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{ContainerID: "container"},
+		},
+	}
+	cc.AddContainer(container)
+
+	done := make(chan struct{})
+	go func() {
+		for range 1000 {
+			container.K8s.ownerReferenceMu.Lock()
+			container.K8s.ownerReference = &metav1.OwnerReference{Kind: "Deployment", Name: "test"}
+			container.K8s.ownerReferenceMu.Unlock()
+		}
+		close(done)
+	}()
+	for range 1000 {
+		container.K8sOwnerReference()
+	}
+	<-done
+}
 
 func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 	return func(event PubSubEvent) {

@@ -48,8 +48,4 @@ COPY --from=builder /gadget/gadget-container/bin/ocihookgadget /opt/hooks/oci/
 # cri-o
 COPY gadget-container/hooks/crio/gadget-prestart.json gadget-container/hooks/crio/gadget-poststop.json /opt/hooks/crio/
 
-# nri
-COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
-COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
-
 ## Hooks Ends
