@@ -15,8 +15,10 @@
 package containercollection
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/moby/moby/client/pkg/stringid"
@@ -101,7 +103,9 @@ type K8sMetadata struct {
 	types.BasicK8sMetadata `json:",inline"`
 	PodUID                 string `json:"podUID,omitempty"`
 
-	ownerReference *metav1.OwnerReference
+	ownerReferenceMu    *sync.Mutex
+	ownerReference      *metav1.OwnerReference
+	deferOwnerReference bool
 }
 
 type K8sSelector struct {
@@ -126,6 +130,16 @@ type ContainerSelector struct {
 // enrich" this information because this operation is expensive and this
 // information is only needed in some cases.
 func (c *Container) GetOwnerReference(kubeconfigPath string) (*metav1.OwnerReference, error) {
+	return c.getOwnerReference(context.TODO(), kubeconfigPath)
+}
+
+func (c *Container) getOwnerReference(ctx context.Context, kubeconfigPath string) (*metav1.OwnerReference, error) {
+	if c.K8s.ownerReferenceMu == nil {
+		c.K8s.ownerReferenceMu = &sync.Mutex{}
+	}
+	c.K8s.ownerReferenceMu.Lock()
+	defer c.K8s.ownerReferenceMu.Unlock()
+
 	if c.K8s.ownerReference != nil {
 		return c.K8s.ownerReference, nil
 	}
@@ -139,7 +153,7 @@ func (c *Container) GetOwnerReference(kubeconfigPath string) (*metav1.OwnerRefer
 		return nil, fmt.Errorf("getting get dynamic Kubernetes client: %w", err)
 	}
 
-	err = ownerReferenceEnrichment(dynamicClient, c, nil)
+	err = ownerReferenceEnrichment(ctx, dynamicClient, c, nil)
 	if err != nil {
 		return nil, fmt.Errorf("enriching owner reference: %w", err)
 	}
@@ -154,6 +168,7 @@ func (c *Container) GetOwnerReference(kubeconfigPath string) (*metav1.OwnerRefer
 const maxOwnerReferenceDepth = 8
 
 func ownerReferenceEnrichment(
+	ctx context.Context,
 	dynamicClient dynamic.Interface,
 	container *Container,
 	ownerReferences []metav1.OwnerReference,
@@ -185,7 +200,7 @@ func ownerReferenceEnrichment(
 	for depth := 0; depth < maxOwnerReferenceDepth; depth++ {
 		if len(ownerReferences) == 0 {
 			var err error
-			ownerReferences, err = getOwnerReferences(dynamicClient,
+			ownerReferences, err = getOwnerReferences(ctx, dynamicClient,
 				resNamespace, resKind, resGroupVersion, resName)
 			if err != nil {
 				return fmt.Errorf("getting %s/%s/%s/%s owner reference: %w",
@@ -267,6 +282,12 @@ func (c *Container) ContainerPid() uint32 {
 }
 
 func (c *Container) K8sOwnerReference() *types.K8sOwnerReference {
+	if c.K8s.ownerReferenceMu == nil {
+		return &types.K8sOwnerReference{}
+	}
+	c.K8s.ownerReferenceMu.Lock()
+	defer c.K8s.ownerReferenceMu.Unlock()
+
 	if c.K8s.ownerReference == nil {
 		return &types.K8sOwnerReference{}
 	}
