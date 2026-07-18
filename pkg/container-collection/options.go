@@ -85,6 +85,7 @@ func containerRuntimeEnricher(
 	runtimeName types.RuntimeName,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
+	containerIsRunning bool,
 ) bool {
 	// If the container is already enriched with all the metadata a runtime
 	// client is able to provide, skip it.
@@ -97,7 +98,7 @@ func containerRuntimeEnricher(
 	// because the container doesn't exist yet. So, if we have the sandbox ID,
 	// let's enrich the container at least with the PodLabels as the PodSandbox
 	// do exist at this point.
-	if container.Runtime.RuntimeName == types.RuntimeNameCrio {
+	if container.Runtime.RuntimeName == types.RuntimeNameCrio && !containerIsRunning {
 		criClient, ok := runtimeClient.(*cri.CRIClient)
 		if ok && container.SandboxId != "" {
 			labels, err := criClient.GetPodLabels(container.SandboxId)
@@ -198,7 +199,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) 
 			// unavailable and once it is up, we will start receiving the
 			// notifications for its containers thus we will be able to enrich them.
 			cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-				return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
+				return containerRuntimeEnricher(runtime.Name, runtimeClient, container, false)
 			})
 		}
 
@@ -479,7 +480,7 @@ func getExpectedOwnerReference(ownerReferences []metav1.OwnerReference) *metav1.
 	return ownerRef
 }
 
-func getOwnerReferences(dynamicClient dynamic.Interface,
+func getOwnerReferences(ctx context.Context, dynamicClient dynamic.Interface,
 	resNamespace, resKind, resGroupVersion, resName string,
 ) ([]metav1.OwnerReference, error) {
 	gv, err := schema.ParseGroupVersion(resGroupVersion)
@@ -497,7 +498,7 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 	res, err := dynamicClient.
 		Resource(params).
 		Namespace(resNamespace).
-		Get(context.TODO(), resName, metav1.GetOptions{})
+		Get(ctx, resName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s/%s %s/%s: %w",
 			resKind, resGroupVersion, resNamespace, resName, err)
@@ -610,9 +611,8 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 				}
 			}
 
-			if container.K8s.ownerReference == nil {
-				_, err = container.GetOwnerReference(cc.kubeconfigPath)
-				if err != nil {
+			if !container.K8s.deferOwnerReference {
+				if _, err = container.GetOwnerReference(cc.kubeconfigPath); err != nil {
 					log.Errorf("kubernetes enricher: failed to get owner reference for container %s: %s", container.Runtime.ContainerID, err)
 					// Don't drop the container. We just have problems getting the owner reference, but still want to trace the container.
 				}
@@ -828,28 +828,7 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 func WithOCIConfigForInitialContainer() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		for _, container := range cc.initialContainers {
-			info, err := processhelpers.GetProcessInfo(int(container.ContainerPid()), 0, &procOpts{})
-			if err != nil {
-				log.Errorf("OCIConfig enricher: failed to get process info for container %s: %s", container.Runtime.ContainerID, err)
-				continue
-			}
-			bPath, err := os.Readlink(filepath.Join(host.HostProcFs, fmt.Sprintf("%d", info.PPID), "cwd"))
-			if err != nil {
-				log.Errorf("OCIConfig enricher: failed to read cwd symlink of container runtime for container %s: %s", container.Runtime.ContainerID, err)
-				continue
-			}
-
-			// In case of containerd, we get the bundle path of sandbox containers so we need to switch to the actual container directory.
-			if container.Runtime.RuntimeName == types.RuntimeNameContainerd && !strings.HasSuffix(bPath, container.Runtime.ContainerID) {
-				bPath = filepath.Join(filepath.Dir(bPath), filepath.Base(container.Runtime.ContainerID))
-			}
-
-			cfgPath, err := securejoin.SecureJoin(host.HostRoot, filepath.Join(bPath, "config.json"))
-			if err != nil {
-				log.Errorf("OCIConfig enricher: failed to join config.json path for container %s: %s", container.Runtime.ContainerID, err)
-				continue
-			}
-			cfg, err := readOciConfigFromPath(cfgPath)
+			cfg, err := ociConfigForContainer(container)
 			if err != nil {
 				log.Errorf("OCIConfig enricher: failed to get OCI config for container %s: %s", container.Runtime.ContainerID, err)
 				continue
@@ -858,6 +837,28 @@ func WithOCIConfigForInitialContainer() ContainerCollectionOption {
 		}
 		return nil
 	}
+}
+
+func ociConfigForContainer(container *Container) (string, error) {
+	info, err := processhelpers.GetProcessInfo(int(container.ContainerPid()), 0, &procOpts{})
+	if err != nil {
+		return "", fmt.Errorf("getting process info: %w", err)
+	}
+	bPath, err := os.Readlink(filepath.Join(host.HostProcFs, fmt.Sprintf("%d", info.PPID), "cwd"))
+	if err != nil {
+		return "", fmt.Errorf("reading container runtime cwd: %w", err)
+	}
+
+	// In case of containerd, we get the bundle path of sandbox containers so we need to switch to the actual container directory.
+	if container.Runtime.RuntimeName == types.RuntimeNameContainerd && !strings.HasSuffix(bPath, container.Runtime.ContainerID) {
+		bPath = filepath.Join(filepath.Dir(bPath), filepath.Base(container.Runtime.ContainerID))
+	}
+
+	cfgPath, err := securejoin.SecureJoin(host.HostRoot, filepath.Join(bPath, "config.json"))
+	if err != nil {
+		return "", fmt.Errorf("joining config.json path: %w", err)
+	}
+	return readOciConfigFromPath(cfgPath)
 }
 
 func readOciConfigFromPath(cfgPath string) (string, error) {
