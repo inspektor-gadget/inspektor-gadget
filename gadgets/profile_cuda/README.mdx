@@ -39,4 +39,98 @@ Running the gadget:
 
 ## Guide
 
-TODO
+In this example, we will use the `profile_cuda` gadget to identify which code paths in a CUDA
+application are responsible for GPU memory allocations.
+
+:::note
+This gadget requires a node with NVIDIA GPU hardware and the CUDA driver (`libcuda.so`) installed.
+:::
+
+First, we need to run a CUDA workload. We will use a simple PyTorch application that performs
+repeated matrix multiplications, which triggers GPU memory allocations.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cuda-workload
+spec:
+  containers:
+  - name: cuda-workload
+    image: pytorch/pytorch:latest
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+    command:
+    - python3
+    - -c
+    - |
+      import torch, time
+      while True:
+          x = torch.randn(2000, 2000, device='cuda')
+          torch.matmul(x, x)
+          time.sleep(0.1)
+EOF
+pod/cuda-workload created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --gpus all --name test-cuda -d pytorch/pytorch:latest python3 -c "
+import torch, time
+while True:
+    x = torch.randn(2000, 2000, device='cuda')
+    torch.matmul(x, x)
+    time.sleep(0.1)
+"
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget to collect a CUDA memory allocation profile:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl gadget run profile_cuda:%IG_TAG% --podname cuda-workload --timeout 10
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME   K8S.CONTAINE… COMM         PID ALLOCS    USER_STACK
+gpu-node-1         default       cuda-workload cuda-workload python3    45678  320       [0]cuMemAlloc_v2; [1]at::native::empty_cuda; [2]at::Tensor::Tensor…
+gpu-node-1         default       cuda-workload cuda-workload python3    45678   80       [0]cuMemAlloc_v2; [1]at::native::empty_strided_cuda; [2]at::Tensor…
+gpu-node-1         default       cuda-workload cuda-workload python3    45678   40       [0]cuMemAllocManaged; [1]c10::cuda::CUDACachingAllocator::malloc; …
+```
+
+The output is grouped by unique allocation call stack and shows how many times each was executed.
+This lets you identify the hottest code paths for GPU memory usage.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run profile_cuda:%IG_TAG% --containername test-cuda --timeout 10
+RUNTIME.CONTAINERNA… COMM                PID         ALLOCS       USER_STACK
+test-cuda            python3           45678          320          [0]cuMemAlloc_v2; [1]at::native::empty_cuda; [2]at::Tensor::Tensor; …
+test-cuda            python3           45678           80          [0]cuMemAlloc_v2; [1]at::native::empty_strided_cuda; [2]at::Tensor; …
+test-cuda            python3           45678           40          [0]cuMemAllocManaged; [1]c10::cuda::CUDACachingAllocator::malloc; …
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod cuda-workload
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-cuda
+```
+  </TabItem>
+</Tabs>
