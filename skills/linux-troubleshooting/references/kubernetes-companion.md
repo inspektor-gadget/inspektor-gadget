@@ -9,8 +9,9 @@ the target is a Kubernetes cluster:**
 
 - The symptom is about a **pod / Service / Deployment**, not a bare process.
 - You need **cluster-wide** tracing across many nodes from one command.
-- You need events **enriched with `k8s.namespace` / `podName` / `containerName`
-  / `node`** so you can correlate a kernel event back to a workload.
+- You need events enriched with `k8s.namespace`, `k8s.podName`,
+  `k8s.containerName`, and `k8s.node` so you can correlate a kernel event back
+  to a workload.
 - You want to trace **by namespace / pod / label** (`-n` / `-p` / selectors).
 
 The **gadgets, flags, fields, and the discover-don't-guess rule are identical** —
@@ -19,22 +20,22 @@ only the launcher and enrichment differ:
 | | `linux-troubleshooting` | `kubernetes-troubleshooting` |
 |---|---|---|
 | Launcher | `sudo ig run <g>:latest` | `kubectl gadget run <g>:latest` |
-| Scope flags | `-c` / `--host` / `--runtimes` | `-n` / `-p` / `-c` |
-| Enrichment | `runtime.containerName/runtimeName` | `k8s.namespace/podName/…` |
-| Needs | root on the host | in-cluster IG DaemonSet |
+| Kubernetes scope flags | `--k8s-namespace`, `--k8s-podname`, `--k8s-containername`, `--k8s-selector` (long form only) | `-n`, `-p`, `-c`, `-l` |
+| Enrichment | `runtime.*`; local `k8s.*` with Kubernetes API enrichment | `k8s.namespace`, `k8s.podName`, `k8s.containerName`, `k8s.node` |
+| Needs | root on the host; local container runtime | in-cluster IG DaemonSet |
 
 When you follow a `kubectl gadget run …` example from the shared domain playbooks
-(e.g. the security or storage flow), translate it for a host: drop `-n`/`-p`, swap
-the enrichment field `k8s.podName`/`k8s.containerName` → `runtime.containerName`,
-and add `--host` to include non-container processes. Example — the "permission
-denied" capability check on a host:
+(e.g. the security or storage flow), translate Kubernetes short scope flags to
+their long `--k8s-*` forms. Keep `k8s.*` fields when local Kubernetes enrichment
+is available; otherwise use `runtime.containerName`. Add `--host` to include
+non-container processes. Example — the "permission denied" capability check on a
+host:
 
 ```bash
 sudo ig run trace_capabilities:latest -c <container> --timeout 15 \
-  -o columns=runtime.containerName,proc.comm,cap,capable,syscall
+  -o columns --fields runtime.containerName,proc.comm,cap,capable,syscall
 ```
 
-Rule of thumb: **one node, no cluster → `ig`; a Kubernetes workload → `kubectl
-gadget`.** If you're SSH'd into a single node and only care about its local
-containers, `ig` is faster (no DaemonSet, no API round-trip); if you need
-pod-aware, cluster-wide correlation, use `kubectl gadget`.
+Rule of thumb: **one node → `ig`; cluster-wide tracing → `kubectl gadget`.**
+Standalone `ig` can enrich local-runtime events with Kubernetes identity; use
+`kubectl gadget` when one command must cover workloads across nodes.

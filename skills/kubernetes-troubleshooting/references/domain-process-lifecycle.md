@@ -27,20 +27,22 @@ with what argv?).
 
 ```bash
 # 1. What is the container exec-ing? (catch a failing entrypoint/argv)
-kubectl gadget run trace_exec:latest -n <ns> -p <pod> --paths --timeout 15 \
-  -o columns=k8s.podName,proc.comm,args,error
+kubectl gadget run trace_exec:latest -n <ns> -p <pod> --ignore-failed=false \
+  --paths --timeout 15 \
+  -o columns --fields k8s.podName,proc.comm,args,error
 # 2. Is something signalling it?
 kubectl gadget run trace_signal:latest -n <ns> --timeout 15 \
-  -o columns=k8s.podName,proc.comm,sig,tpid
+  -o columns --fields k8s.podName,proc.comm,sig,tpid
 # 3. Is it an OOM kill?
 kubectl gadget run trace_oomkill:latest -A --timeout 20 -o json
 ```
 
-Read: in step 1 a non-zero `error` on the exec (e.g. ENOENT/EACCES) means the
+Read: `trace_exec` ignores failed executions by default, so step 1 explicitly
+sets `--ignore-failed=false`. A non-zero `error` (e.g. ENOENT/EACCES) means the
 binary/path is wrong or not executable — a classic CrashLoop cause the app logs
 never show. In step 2, a `SIGKILL` from a non-kubelet `proc.comm` points at a
 sidecar/supervisor. In step 3, any row = confirmed OOM (raise limits / fix leak;
-pivot to `trace_malloc`/`profile_cpu`).
+pivot to `trace_malloc`).
 
 ## Point-in-time snapshots (state, not stream)
 
@@ -48,10 +50,10 @@ pivot to `trace_malloc`/`profile_cpu`).
   confirm whether a process you expect is actually alive, or spot an unexpected
   one. `--max-entries` to cap. **Also pass `--timeout`** — although snapshots are
   "one-shot", `snapshot_process` can hang waiting on node/DaemonSet responses
-  (observed >2min without one), so always bound it. For **nested** fields like
-  `parent.comm`, `-o columns=…,parent.comm` is silently dropped ("not supported;
-  skipping data source") — use `-o json` + `jq '.[].parent.comm'` for anything
-  nested.
+  (observed >2min without one), so always bound it. For columns, use
+  `-o columns --fields …,parent.comm` (the `-o columns=field,field` comma form is
+  parsed as separate output modes and silently drops everything — see
+  `common-flags.md`); `-o json` + `jq '.[].parent.comm'` also works for nested fields.
 - **`top_process`** — periodic process stats (CPU/mem ranking) — "what's hot
   right now". Verified flags: `--sort` (join with `,`; `-` prefix = descending,
   e.g. `--sort -memoryRSS` for the biggest memory users), `--interval` (default

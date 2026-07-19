@@ -14,9 +14,10 @@ kubectl gadget version    # prints the server version too, once the DaemonSet is
 ```
 
 - Plugin **present** and a `Server version:` is shown → IG is ready; nothing to install.
-- Plugin **present** but `Server version: not available` → the plugin is fine; the
-  DaemonSet may not be deployed. You can usually still run gadgets — only if a run
-  errors on connectivity do section 2 (`kubectl gadget deploy`).
+- Plugin **present** but `Server version: not available` → no usable server
+  version was discovered, usually because no IG deployment is running. Check
+  `kubectl get pods -n gadget`; repair an existing deployment or, with operator
+  approval, do section 2.
 - Plugin **missing** → do section 1 (and usually section 2). **Ask the operator
   before installing** — the DaemonSet is privileged and needs cluster rights.
 
@@ -62,12 +63,11 @@ kubectl gadget undeploy
   DaemonSet on the same IG version. A "built with vX, running vY" message is a
   **warning**, not a failure; the run still produces data, but match versions
   when you can to avoid field/flag skew.
-- **"Server version: not available" is not a blocker.** `kubectl gadget version`
-  printing `Server version: not available` only means the version probe didn't
-  answer — **try `kubectl gadget run …` anyway**; it usually still works. Only if
-  the run itself errors on connectivity, check `kubectl get pods -n gadget`; and
-  only if the DaemonSet pod isn't `Running` do you fall back to `sudo ig run` on a
-  single node.
+- **"Server version: not available" means no usable server version was
+  discovered.** Usually no IG deployment is running; check the `gadget` namespace
+  before running a gadget. If the DaemonSet is absent, deploy it only with
+  operator approval; if its pods are unhealthy, repair them. Fall back to
+  `sudo ig run` only for intentional single-node work.
 
 ## 4. Sanity check
 
@@ -76,6 +76,6 @@ kubectl gadget run trace_exec:latest -A --timeout 5 -o json   # should stream a 
 ```
 
 If this hangs or errors on connectivity, re-check `kubectl get pods -n gadget`
-and your kubeconfig context. If it errors on image signature, you likely have a
-locally-built image shadowing the upstream one — pull the upstream image (see
-`common-flags.md` → gotchas).
+and your kubeconfig context. For an image-signature error, inspect the exact
+image reference and signer; do not disable verification to bypass an unexplained
+failure.

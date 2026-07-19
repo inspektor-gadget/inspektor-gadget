@@ -47,9 +47,9 @@ skills/
   from the trigger, and states what it is **not** for (logs, dashboards, cluster
   edits) to prevent mis-fire.
 - **Discover, don't guess.** The skills teach the agent to enumerate a gadget's
-  real flags and fields at run time (`<gadget>:latest --help`, `-o json | jq
-  keys`) rather than hardcoding them. This is what makes the skills correct
-  against **any future upstream gadget** without edits.
+  real flags and fields at run time (`<gadget>:latest --help`, then inspect a
+  shape-aware JSON sample) rather than hardcoding them. This limits drift as
+  gadget interfaces evolve; the routing catalog still needs periodic updates.
 - **Bounded runs.** Every streaming example is scoped and time-boxed
   (`--timeout`, `--max-entries`) to avoid flooding the agent's context or the
   API server.

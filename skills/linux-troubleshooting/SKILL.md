@@ -51,7 +51,8 @@ real interface at run time:
 
 ```bash
 sudo ig run <gadget>:latest --help       # flags + a "--fields" block listing every data source & field
-sudo ig run <gadget>:latest --timeout 5 -o json | jq '.[0] | keys'   # real field names in a live sample
+sudo ig run <gadget>:latest --timeout 5 -o json \
+  | jq -s '(.[0] // {}) | if type == "array" then (.[0] // {}) else . end | keys'
 ```
 
 Each gadget is an OCI image pulled on demand; there is **no `list-gadgets`
@@ -89,9 +90,9 @@ the source of truth. See `references/discovering-params-and-fields.md`.
 | Slow disk / file I/O | storage-fs | `trace_fsslower` | `profile_blockio`, `top_blockio` |
 | Unexpected mount/umount, or suspicious hardlink/symlink (escape) | storage-fs | `trace_mount` | `trace_link` (`type` = HARDLINK/SYMLINK cuts the noise) |
 | fd leak / "too many open files" / inotify watch storm | storage-fs | `fdpass` | `fsnotify`; `snapshot_file` (unclosed fds in one proc) |
-| Permission denied despite correct FS perms | security | `trace_capabilities` | `trace_lsm`, `audit_seccomp` |
-| Seccomp/AppArmor/SELinux denial | security | `trace_lsm` | `audit_seccomp`, `advise_seccomp` |
-| Syscall blocked by a seccomp profile ("operation not permitted") | security | `audit_seccomp` | the audited syscall = what the profile forbids; `advise_seccomp` to author one |
+| Permission denied despite correct FS perms | security | `trace_capabilities` | `audit_seccomp`; host audit logs for AppArmor/SELinux |
+| Seccomp denial | security | `audit_seccomp` | the `code` + syscall identify the seccomp action; `advise_seccomp` to author a profile |
+| AppArmor/SELinux denial | security | host audit logs | `trace_lsm` can correlate hook activity, but does not expose another LSM's verdict |
 | Kernel module loaded / rootkit / unexpected insmod | security | `trace_init_module` | `trace_capabilities` (CAP_SYS_MODULE) |
 | Harden / author a seccomp or NetworkPolicy profile | security | `advise_seccomp` | `advise_networkpolicy` |
 | High CPU, or slow despite low CPU% (CFS throttling / cgroup CPU limit) | performance | `profile_cpu` | `top_cpu_throttle` (capped?), `top_process` |
@@ -101,10 +102,10 @@ the source of truth. See `references/discovering-params-and-fields.md`.
 | Quantify eBPF/gadget CPU or memory overhead (self-profiling) | meta | `bpfstats` | needs an active window — longer `--timeout` |
 
 This is a deliberately **thin shortlist, not the catalog** — it names the few
-gadgets that fit the most common symptoms so you don't scan all ~42, keeping this
-always-loaded router small. **Symptom not listed, or
+gadgets that fit the most common symptoms so you don't scan the full bundled set,
+keeping this always-loaded router small. **Symptom not listed, or
 unsure which row fits?** Read `references/gadget-catalog.md` — it groups **all
-42** gadgets by domain with the disambiguation reasoning (which of the
+bundled** gadgets by domain with the disambiguation reasoning (which of the
 TCP/file/TLS/CPU gadgets to pick). The authoritative live list is whatever `sudo
 ig run <name>:latest --help` resolves; confirm a gadget's flags/fields there
 before relying on them.

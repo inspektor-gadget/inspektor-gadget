@@ -23,7 +23,7 @@ Flags below are verified against the shipped images.
 ```bash
 # Which process is writing the most, per file?
 kubectl gadget run top_file:latest -n <ns> --sort -wbytes --max-entries 10 \
-  -o columns=k8s.podName,comm,pid,file,wbytes,rbytes
+  -o columns --fields k8s.podName,comm,pid,file,wbytes,rbytes
 ```
 
 Rule of thumb: *open is failing* → `trace_open --failed`; *what's open now* →
@@ -54,10 +54,12 @@ never appears in app logs.
   never resolves the dentry, so `fpath` comes back **empty** — only `fname` (the raw
   path argument) is populated. Read `fname` when hunting a missing file; trust
   `fpath` only on *successful* opens.
-- **`-o columns=…,error` silently emits ZERO rows.** A column literally named
-  `error` collides with an output-mode name — the gadget warns
-  `output mode "error" … not supported; skipping data source` and prints nothing.
-  Use `-o json` for any read that includes the errno (verified live).
+- **Never write `-o columns=field,field` — it silently emits ZERO rows.** `-o`
+  parses its value as a comma-separated list of output *modes*, so
+  `-o columns=comm,error` becomes the modes `columns=comm`, `error` — both unknown
+  (`output mode "error" … not supported; skipping data source`) and nothing prints.
+  Use **`-o columns --fields comm,error`** to pick columns (verified live, ig v0.54),
+  or `-o json` for any read that includes the errno.
 
 ## Slow disk / file I/O
 

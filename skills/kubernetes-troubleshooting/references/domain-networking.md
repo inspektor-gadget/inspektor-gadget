@@ -27,7 +27,7 @@ Rule of thumb: *can't connect* → `trace_tcp`; *connects but slow/lossy* →
 ```bash
 # Watch DNS for one namespace — read fields reliably via json + jq
 kubectl gadget run trace_dns:latest -n <ns> --timeout 10 -o json \
-  | jq -r '.[] | "\(.name)\t\(.qtype)\t\(.rcode)\t\(.latency_ns)"'
+  | jq -r '"\(.name)\t\(.qtype)\t\(.rcode)\t\(.latency_ns)"'
 ```
 
 Read: `rcode` (e.g. NXDOMAIN, SERVFAIL), `latency_ns` (slow resolver), `name`
@@ -37,12 +37,14 @@ resolver / NetworkPolicy / egress problem — pivot to `trace_tcpdrop` or
 `trace_tcp` toward the DNS service IP).
 
 **Gotchas that fake a "no data" result (read before concluding "DNS is fine"):**
-- **`-o columns=…,latency_ns` silently emits ZERO rows.** `latency_ns` is a valid
-  *field* (json / `--fields`) but NOT a valid `-o columns` template — the gadget
-  warns `output mode "latency_ns" … not supported; skipping data source` and prints
-  nothing. Use `-o json | jq` for any latency read (verified live). For **arithmetic/sort**
-  use the raw sibling `latency_ns_raw`; the bare `latency_ns` is a human-formatted
-  string (e.g. "1.2ms") — see the `*_raw` convention in `common-flags.md`.
+- **Never write `-o columns=field,field` — it silently emits ZERO rows.** `-o`
+  takes a comma-separated list of output *modes*, so `-o columns=name,latency_ns`
+  is parsed as the modes `columns=name`, `latency_ns`, … — each an unknown mode
+  (`output mode "latency_ns" … not supported; skipping data source`) and nothing
+  prints. Select columns with **`-o columns --fields name,latency_ns`** instead
+  (verified live, ig v0.54). For **arithmetic/sort** use the raw sibling
+  `latency_ns_raw`; the bare `latency_ns` is a human-formatted string (e.g. "1.2ms")
+  — see the `*_raw` convention in `common-flags.md`. `-o json | jq` also works.
 - **Benign NXDOMAIN is expected.** libc walks the `search`-domain list per `ndots`,
   so short names legitimately return NXDOMAIN for each search suffix before the real
   FQDN resolves — read the `name` column and ignore the suffix misses; only a
@@ -63,7 +65,8 @@ kubectl gadget run trace_tcp:latest -n <ns> --failure-only --timeout 10 -o json
 # Retransmissions toward a suspect upstream
 kubectl gadget run trace_tcpretrans:latest -n <ns> --timeout 15 -o json
 # Kernel drops with reason
-kubectl gadget run trace_tcpdrop:latest -A --timeout 15 -o json | jq '.[].reason' | sort | uniq -c
+kubectl gadget run trace_tcpdrop:latest -A --timeout 15 -o json \
+  | jq -r '.reason' | sort | uniq -c
 ```
 
 Read: `src`/`dst` (+ `.k8s.*` for the peer pod), `error`/errno on failures,
@@ -103,7 +106,7 @@ with `-h` first:
 
 ```bash
 # Who is holding the port right now? (state=LISTEN on that src port = the holder)
-kubectl gadget run snapshot_socket:latest -n <ns> -o columns=k8s.podName,src,dst,state
+kubectl gadget run snapshot_socket:latest -n <ns> -o columns --fields k8s.podName,src,dst,state
 # Catch the failing bind() live — EADDRINUSE surfaces in the error field
 kubectl gadget run trace_bind:latest -n <ns> --timeout 10 -o json
 ```

@@ -18,21 +18,26 @@ authoritative field list for the image you actually pulled.
 ## 2. Confirm field names from a real sample
 
 ```bash
-sudo ig run <gadget>:latest --timeout 5 -o json | jq '.[0] | keys'
+sudo ig run <gadget>:latest --timeout 5 -o json \
+  | jq -s '(.[0] // {}) | if type == "array" then (.[0] // {}) else . end | keys'
 ```
 
-Use the exact keys from this output in your `jq`/filters. Nested groups appear
-dotted (e.g. `runtime.containerName`, `proc.comm`, `dst.port`).
+Streaming datasources emit one JSON object per line; snapshot/top datasources emit
+JSON arrays. `jq -s` collects the bounded sample, and the expression inspects only
+its first event or first array row. Use the exact keys from this output in your
+`jq`/filters. Nested groups appear dotted (e.g. `runtime.containerName`,
+`proc.comm`, `dst.port`).
 
 ## 3. Select only the fields you need
 
 ```bash
 sudo ig run trace_dns:latest --timeout 5 \
-  -o columns=runtime.containerName,name,qtype,rcode,latency_ns
+  -o columns --fields runtime.containerName,name,qtype,rcode,latency_ns
 ```
 
-`-o json` for machine parsing, `-o columns=<comma-list>` for a compact table,
-`-o jsonpretty` when eyeballing structure.
+`-o json` for machine parsing, `-o columns --fields <comma-list>` for a compact
+table, `-o jsonpretty` when eyeballing structure. (Do **not** write
+`-o columns=<comma-list>` — `-o` comma-splits into output *modes*, so it prints nothing.)
 
 ## 4. There is no gadget list command — gadgets are images
 

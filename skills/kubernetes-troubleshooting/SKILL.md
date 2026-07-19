@@ -38,15 +38,13 @@ This skill drives `kubectl gadget`. Confirm it's usable before the loop:
 
 ```bash
 command -v kubectl-gadget >/dev/null 2>&1 || echo "kubectl gadget plugin MISSING"
-kubectl gadget version    # Client version = plugin OK; "Server version: not available" = DaemonSet not deployed
+kubectl gadget version    # "Server version: not available" = inspect the gadget namespace
 ```
 
-If the plugin is **missing**, or a later run errors on connectivity because the
-DaemonSet isn't deployed, **open `references/install.md` and follow it** — don't
-guess an install command. Installing the plugin and running `kubectl gadget deploy`
-need cluster rights and start a **privileged DaemonSet**, so **ask the operator
-before installing**. ("Server version: not available" alone is only a hint — try
-your run anyway; see `references/install.md`.)
+If the plugin is **missing** or the server version is unavailable, **open
+`references/install.md` and follow it** — don't guess an install command.
+Installing the plugin and running `kubectl gadget deploy` need cluster rights and
+start a **privileged DaemonSet**, so **ask the operator before installing**.
 
 ## The one rule: discover, don't guess
 
@@ -55,7 +53,8 @@ evolve and new gadgets ship. Always enumerate the real interface at run time:
 
 ```bash
 kubectl gadget run <gadget>:latest -h          # flags + a "--fields" block listing every data source & field
-kubectl gadget run <gadget>:latest -A --timeout 5 -o json | jq '.[0] | keys'   # real field names in a live sample
+kubectl gadget run <gadget>:latest -A --timeout 5 -o json \
+  | jq -s '(.[0] // {}) | if type == "array" then (.[0] // {}) else . end | keys'
 ```
 
 The gadget's own `-h`/`--fields` output is the source of truth, so this skill
@@ -93,9 +92,9 @@ confirm its flags/fields with `-h` before relying on them. See
 | Slow disk / file I/O | storage-fs | `trace_fsslower` | `profile_blockio`, `top_blockio` |
 | Unexpected mount/umount, or suspicious hardlink/symlink (escape) | storage-fs | `trace_mount` | `trace_link` (`type` = HARDLINK/SYMLINK cuts the noise) |
 | fd leak / "too many open files" / inotify watch storm | storage-fs | `fdpass` | `fsnotify`; `snapshot_file` (unclosed fds in one proc) |
-| Permission denied despite correct RBAC/FS | security | `trace_capabilities` | `trace_lsm`, `audit_seccomp` |
-| Seccomp/AppArmor/SELinux denial | security | `trace_lsm` | `audit_seccomp`, `advise_seccomp` |
-| Syscall blocked by a seccomp profile ("operation not permitted") | security | `audit_seccomp` | the audited syscall = what the profile forbids; `advise_seccomp` to author one |
+| Permission denied despite correct RBAC/FS | security | `trace_capabilities` | `audit_seccomp`; node audit logs for AppArmor/SELinux |
+| Seccomp denial | security | `audit_seccomp` | the `code` + syscall identify the seccomp action; `advise_seccomp` to author a profile |
+| AppArmor/SELinux denial | security | node audit logs | `trace_lsm` can correlate hook activity, but does not expose another LSM's verdict |
 | Kernel module loaded / rootkit / unexpected insmod | security | `trace_init_module` | `trace_capabilities` (CAP_SYS_MODULE) |
 | Harden / author a seccomp or NetworkPolicy profile | security | `advise_seccomp` | `advise_networkpolicy` (policy from observed traffic) |
 | High CPU, or slow despite low CPU% (CFS throttling / cgroup CPU limit) | performance | `profile_cpu` | `top_cpu_throttle` (capped?), `top_process` |
@@ -105,10 +104,10 @@ confirm its flags/fields with `-h` before relying on them. See
 | Quantify eBPF/gadget CPU or memory overhead (self-profiling) | meta | `bpfstats` | needs an active window — use a longer `--timeout` |
 
 This is a deliberately **thin shortlist, not the catalog** — it names the few
-gadgets that fit the most common symptoms so you don't scan all ~42, keeping this
-always-loaded router small. **Symptom not listed here,
+gadgets that fit the most common symptoms so you don't scan the full bundled set,
+keeping this always-loaded router small. **Symptom not listed here,
 or unsure which row fits?** Open `references/gadget-catalog.md` — it groups **all
-42** gadgets by domain with the disambiguation reasoning. The authoritative live
+bundled** gadgets by domain with the disambiguation reasoning. The authoritative live
 list is whatever `kubectl gadget run <name>:latest -h` resolves; always confirm a
 gadget's flags/fields there before relying on them.
 

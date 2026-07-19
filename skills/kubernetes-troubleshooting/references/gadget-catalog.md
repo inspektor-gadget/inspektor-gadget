@@ -4,7 +4,10 @@ The authoritative live interface for any gadget is `run <gadget>:latest -h`
 (see `discovering-params-and-fields.md`). This catalog is a **routing aid**: it
 groups the shipped upstream gadgets so you can pick the right one for a symptom,
 then confirm its flags/fields with `-h`. One-liners are the gadgets' own
-descriptions. Gadgets are OCI images; there is no `list-gadgets` command.
+descriptions. Gadgets are OCI images; there is no `list-gadgets` command. This
+catalog tracks the upstream `gadgets/` tree at the time it is updated. Recheck
+that tree and the release catalog when editing it; a generated drift check can
+be added separately.
 
 > Run form: `kubectl gadget run <gadget>:latest …` (Kubernetes) or
 > `sudo ig run <gadget>:latest …` (single host). Both accept the same gadgets.
@@ -32,11 +35,11 @@ descriptions. Gadgets are OCI images; there is no `list-gadgets` command.
 | Gadget | What it traces |
 |---|---|
 | `trace_capabilities` | security capability checks (which CAP_* was tested, allowed/denied) |
-| `trace_lsm` | LSM hook decisions — "a strace for LSM" (AppArmor/SELinux/BPF-LSM) |
-| `audit_seccomp` | syscalls audited against the seccomp profile (seccomp denials) |
+| `trace_lsm` | LSM hook invocations (activity only; it does not expose another LSM's verdict) |
+| `audit_seccomp` | seccomp audit events with syscall and return code/action |
 | `advise_seccomp` | suggest a seccomp profile from observed syscalls |
 | `trace_init_module` | `init_module`/`finit_module` — kernel module loads |
-| `trace_lsm`/`trace_capabilities` | pair these when "permission denied" has correct FS perms/RBAC |
+| `trace_lsm`/`trace_capabilities` | capability verdicts plus LSM hook activity; use node audit logs for AppArmor/SELinux verdicts |
 
 ## Process lifecycle (exec / signals / OOM / snapshots / recording)
 

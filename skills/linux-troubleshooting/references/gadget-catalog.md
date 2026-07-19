@@ -5,6 +5,9 @@ The authoritative live interface for any gadget is `sudo ig run <gadget>:latest
 aid**: it groups the shipped upstream gadgets so you can pick the right one for a
 symptom, then confirm its flags/fields with `--help`. One-liners are the gadgets'
 own descriptions. Gadgets are OCI images; there is no `list-gadgets` command.
+This catalog tracks the upstream `gadgets/` tree at the time it is updated.
+Recheck that tree and the release catalog when editing it; a generated drift
+check can be added separately.
 
 > Run form: `sudo ig run <gadget>:latest …`. The same gadgets also run under
 > `kubectl gadget run …` in a cluster (see `kubernetes-companion.md`).
@@ -32,8 +35,8 @@ own descriptions. Gadgets are OCI images; there is no `list-gadgets` command.
 | Gadget | What it traces |
 |---|---|
 | `trace_capabilities` | capability checks (which CAP_* tested, allowed/denied) |
-| `trace_lsm` | LSM hook decisions — "strace for LSM" |
-| `audit_seccomp` | syscalls audited against the seccomp profile |
+| `trace_lsm` | LSM hook invocations (activity only; it does not expose another LSM's verdict) |
+| `audit_seccomp` | seccomp audit events with syscall and return code/action |
 | `advise_seccomp` | suggest a seccomp profile from observed syscalls |
 | `trace_init_module` | init_module/finit_module — kernel module loads |
 
@@ -109,10 +112,10 @@ sudo ig image list --no-trunc     # every locally installed gadget image + diges
 ```
 
 Route to any locally-installed image by its symptom the same way as a bundled
-gadget. Third-party images are often **unsigned by the upstream cosign key**, so
-a manual run needs `--verify-image=false` (and `--pull never` to force the local
-copy). Confirm the real flags/fields at run time with
-`sudo ig run <ref>:latest --help` — do not hardcode them (see
-`discovering-params-and-fields.md`). Examples of security-enforcement add-ons
-seen in the wild: capability/filesystem/ptrace restriction gadgets (BPF-LSM
-enforcers) and userspace-DNS / open-file snapshot tracers.
+gadget. Third-party images are not normally signed by the official Inspektor Gadget key.
+Configure the publisher's trusted public key as documented in the image
+verification guide. Do not disable verification merely to make an unknown image
+run; `--verify-image=false` is a development-only escape hatch after provenance
+has been independently established. Confirm the real flags/fields at run time
+with `sudo ig run <full-ref> --help` — do not hardcode them (see
+`discovering-params-and-fields.md`).

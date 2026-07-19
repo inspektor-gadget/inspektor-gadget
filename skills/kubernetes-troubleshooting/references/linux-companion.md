@@ -23,7 +23,7 @@ only the launcher and the enrichment metadata differ:
 |---|---|---|
 | Launcher | `kubectl gadget run <g>:latest` | `sudo ig run <g>:latest` |
 | Scope flags | `-n` / `-p` / `-c` | `-c` / `--host` / `--runtimes` |
-| Enrichment | `k8s.namespace/podName/…` | `runtime.containerName/runtimeName` |
+| Enrichment | `k8s.namespace`, `k8s.podName`, `k8s.containerName`, `k8s.node` | `runtime.containerName`, `runtime.runtimeName` |
 | Needs | in-cluster IG DaemonSet | root on the host |
 
 If you're already at a shell on a node, `ig` is often faster (no DaemonSet, no

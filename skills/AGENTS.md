@@ -54,10 +54,10 @@ file.
    symptom→gadget shortlist; `references/gadget-catalog.md` has the full grouped
    list).
 2. **Discover, don't guess** — read the gadget's real flags and fields at run
-   time with `<gadget>:latest --help` (and `-o json | jq keys` on a live sample).
+   time with `<gadget>:latest --help` and inspect a shape-aware JSON sample.
    Never hardcode a field name from memory; gadget images evolve and new gadgets
-   ship. This one rule is what keeps the skills correct against **any future
-   upstream gadget**.
+   ship. This limits interface drift, while the routing catalog still needs
+   periodic updates.
 3. **Run bounded** — always scope (`-n`/`-p`/`-c`/`--host`) and time-box
    (`--timeout`, `--max-entries`) so a trace can't flood context or the cluster.
 4. **Read the columns** — inspect the enriched fields to confirm/refute a

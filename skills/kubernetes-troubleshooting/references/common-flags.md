@@ -13,7 +13,7 @@ use most, all verified against a live cluster.
 | One pod | `-p <pod>` | `-p api-7d9` |
 | Container name | `-c <name>` | `-c nginx` (comma-list; `!` excludes) |
 | Only a process name | `--comm <name>` | `--comm curl` |
-| A selector/podset | (filter output by `k8s.*` fields) | `-o json | jq 'select(.k8s.namespace=="prod")'` |
+| Label selector | `-l <sel>` / `--selector` | `-l app=api` (k8s label selector, comma-list; `!` excludes) |
 
 Narrow scope = less noise, less context burned, faster root-cause. Start at the
 namespace or pod, not `-A`, unless you're hunting something cluster-wide.
@@ -25,14 +25,39 @@ namespace or pod, not `-A`, unless you're hunting something cluster-wide.
 - **`--max-entries <n>`** — for `top_*` and `snapshot_*` gadgets, to cap rows.
 - Prefer several short, scoped runs over one long unscoped one.
 
+## Filter events with the native filter operator
+
+- **`--filter <field><op><value>`** (short **`-F`**) filters rows before output.
+  Operators: `==`, `!=`, `>=`, `<=`, `>`, `<`, `~` (regex
+  match), `!~` (regex non-match). Combine with commas: `--filter 'comm==curl,error!=0'`.
+  Quote the expression (single quotes) especially with regex.
+- **`--filter-expr <expr>`** (short **`-E`**) is the richer expression-language
+  form for compound logic. Prefer `--filter` for simple field comparisons.
+- The filter operator currently runs in user space, like `jq`, but it is the
+  native interface and can move closer to eBPF without changing your command.
+  Use it when you already know the field/value you want.
+
+## `top_*` gadgets: rank and refresh
+
+- **`--sort <field>`** orders rows; prefix a field with `-` for descending, join
+  multiple with `,` (e.g. `--sort -rbytes,wbytes`). This is how you get "the
+  heaviest N" — combine with `--max-entries <n>`.
+- **`--map-fetch-interval <dur>`** sets how often the gadget snapshots its BPF
+  maps (default `1000ms`); raise it (e.g. `5s`) to sample less often and reduce
+  overhead on a busy host.
+
 ## Output modes
 
 | Mode | When |
 |---|---|
 | `-o json` | machine parsing with `jq`; the default for agents |
 | `-o jsonpretty` | eyeballing nested structure |
-| `-o columns=a,b,c` | compact human table of just the fields you need |
+| `-o columns --fields a,b,c` | compact human table of just the fields you need (the `-o columns=a,b,c` comma form is parsed as separate output modes and prints nothing) |
 | default (no `-o`) | gadget's built-in columns; fine for a quick look |
+
+Streaming datasources produce newline-delimited JSON objects; map-backed
+top/snapshot datasources produce JSON arrays. Match the `jq` expression to the
+shape (see `discovering-params-and-fields.md`).
 
 ## Common enrichment fields (present on most gadgets via kubectl gadget)
 
@@ -46,20 +71,21 @@ namespace or pod, not `-A`, unless you're hunting something cluster-wide.
 
 ## Gotchas (learned from live runs)
 
-- **`:latest` is required.** `run <gadget>` without a tag fails with
-  `invalid reference format`; always `run <gadget>:latest` (or a pinned digest).
+- **Tag defaults to `:latest`.** `run <gadget>` without a tag resolves to
+  `<gadget>:latest` automatically, so both forms work. Use an immutable version
+  tag or digest for reproducibility; `:latest` is mutable.
 - **Path fields need `--paths`.** Fields like `cwd`/`exepath`/`fpath` are only
   populated when you pass `--paths`; otherwise they're empty.
 - **`--failed`/`--failure-only` narrows to errors.** Many trace gadgets have a
   flag to show only failing events (e.g. `trace_open --failed`,
   `trace_tcp --failure-only`) — use it when hunting a failure, it cuts noise hard.
-- **A locally-built gadget image can shadow the upstream one** and fail signature
-  verification. If you hit a cosign/signature error on `:latest`, you likely have
-  a local build with that name; pull by upstream digest or (in a trusted
-  troubleshooting context) use the documented verification override. Prefer the
-  upstream image.
-- **Version skew warning is usually benign.** "gadget built with vX, run with vY"
-  is a warning, not a failure — the run still produces data; note it and proceed.
+- **A locally-built gadget image can shadow the upstream one.** To guarantee a
+  fresh registry copy, use **`--pull always`**; use a pinned digest when exact
+  reproducibility matters.
+- **Treat version skew as a diagnostic signal.** The warning is not itself a
+  failure, but field or protocol skew can change output or produce no useful
+  rows. Prefer matching client, DaemonSet, and gadget versions before concluding
+  that an empty trace means no events occurred.
 - **Bare field vs `*_raw`.** Numeric fields often render as a human-formatted
   string (`latency_ns`="1.2ms", `memoryRSS`="12 MB", `throttledTime`="4ms"); the
   `_raw` sibling (`latency_ns_raw`, `memoryRSS_raw`, `throttledTime_raw`) is the

@@ -15,7 +15,10 @@ kubectl gadget run <gadget>:latest -h
 The help output ends with a **`--fields`** block that enumerates every *data
 source* and every *field* the gadget can emit, each with a short description.
 This is the authoritative field list — richer than any doc, and always current
-for the image you actually pulled. Example (abridged) for `trace_dns`:
+for the image you actually pulled. Today this block is human-readable text
+only — there is no machine-parseable (`-o json`) form of `-h`, so to feed the
+field list into `jq`/tooling you currently scrape the text or run the gadget
+once with `-o json` and read the keys off a sample event. Example (abridged) for `trace_dns`:
 
 ```
 --fields string   Available data sources / fields
@@ -34,11 +37,15 @@ Flags tell you what *can* be emitted; a live sample tells you the exact JSON
 keys you'll parse:
 
 ```bash
-kubectl gadget run <gadget>:latest -A --timeout 5 -o json | jq '.[0] | keys'
+kubectl gadget run <gadget>:latest -A --timeout 5 -o json \
+  | jq -s '(.[0] // {}) | if type == "array" then (.[0] // {}) else . end | keys'
 ```
 
-Use the exact keys from this output in your `jq`/filters. Nested groups appear
-dotted (e.g. `k8s.podName`, `proc.comm`, `dst.port`).
+Streaming datasources emit one JSON object per line; snapshot/top datasources emit
+JSON arrays. `jq -s` collects the bounded sample, and the expression inspects only
+its first event or first array row. Use the exact keys from this output in your
+`jq`/filters. Nested groups appear dotted (e.g. `k8s.podName`, `proc.comm`,
+`dst.port`).
 
 ## 3. Select only the fields you need
 
@@ -47,11 +54,12 @@ their names:
 
 ```bash
 kubectl gadget run trace_dns:latest -n prod --timeout 5 \
-  -o columns=k8s.podName,name,qtype,rcode,latency_ns
+  -o columns --fields k8s.podName,name,qtype,rcode,latency_ns
 ```
 
-`-o json` for machine parsing, `-o columns=<comma-list>` for a compact human
-table, `-o jsonpretty` when eyeballing structure.
+`-o json` for machine parsing, `-o columns --fields <comma-list>` for a compact
+human table, `-o jsonpretty` when eyeballing structure. (Do **not** write
+`-o columns=<comma-list>` — `-o` comma-splits into output *modes*, so it prints nothing.)
 
 ## 4. There is no gadget list command — gadgets are images
 

@@ -49,10 +49,10 @@ to run it as a privileged container.)
 sudo ig run trace_exec:latest --host --timeout 5 -o json   # should stream a few exec events
 ```
 
-If it errors on privileges, re-run with `sudo`. If it errors on image signature,
-you likely have a locally-built image shadowing the upstream one — pull the
-upstream image (see `common-flags.md` → gotchas). If it errors on BTF, your
-kernel lacks `/sys/kernel/btf/vmlinux`.
+If it errors on privileges, re-run with `sudo`. For an image-signature error,
+inspect the exact image reference and signer; do not disable verification to
+bypass an unexplained failure. If it errors on BTF, your kernel lacks
+`/sys/kernel/btf/vmlinux`.
 
 ## 4. Optional: daemon mode
 
