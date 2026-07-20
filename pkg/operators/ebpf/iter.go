@@ -281,7 +281,7 @@ func isIteratorKindSupported(kind string) bool {
 	//
 	// But at the moment, only a subset is supported by Inspektor Gadget.
 	switch kind {
-	case "task", "task_file", "ksym", "tcp", "udp":
+	case "task", "task_file", "ksym", "tcp", "udp", "bpf_map_elem":
 		return true
 	}
 	return false

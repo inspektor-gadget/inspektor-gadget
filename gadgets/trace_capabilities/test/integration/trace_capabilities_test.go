@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -233,8 +232,6 @@ int main() {
 
 	steps := []igtesting.TestStep{
 		traceCapabilitiesCmd,
-		// wait to ensure ig or kubectl-gadget has started
-		utils.Sleep(3 * time.Second),
 	}
 	igtesting.RunTestSteps(steps, t, testingOpts...)
 }

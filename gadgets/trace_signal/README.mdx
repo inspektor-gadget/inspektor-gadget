@@ -60,4 +60,87 @@ Default value: ""
 
 ## Guide
 
-TODO
+In this example, we will use the trace_signal gadget to observe signals sent between processes inside a container.
+
+First, we need to run an application.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while true; do sleep 60 & wait $!; done'
+pod/mypod created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-signal -d busybox sh -c 'while true; do sleep 60 & wait $!; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+
+```bash
+$ kubectl gadget run trace_signal:%IG_TAG% --podname mypod
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME K8S.CONTAINE… COMM  PID     TID TCOMM              TPID SIG     ERROR
+```
+
+In another terminal, send a signal to the sleeping process:
+
+```bash
+$ kubectl exec mypod -- sh -c 'kill -SIGTERM $(pgrep sleep)'
+```
+
+Back in the gadget terminal, we can observe the signal being sent:
+
+```
+minikube-docker    default       mypod       mypod         sh  522100  522100 sleep            522105 SIGTERM
+^C
+```
+
+The `COMM` and `PID` columns show the process that sent the signal, while `TCOMM` and `TPID` show the target process.
+We can stop the gadget by hitting Ctrl-C.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+
+```bash
+$ sudo ig run trace_signal:%IG_TAG% --containername test-signal
+RUNTIME.CONTAINERNA… COMM                PID         TID         TCOMM               TPID SIG     ERROR
+```
+
+In another terminal, send a signal to the sleeping process:
+
+```bash
+$ docker exec test-signal sh -c 'kill -SIGTERM $(pgrep sleep)'
+```
+
+Back in the gadget terminal, we can observe the signal:
+
+```
+test-signal          sh               522100      522100      sleep              522105 SIGTERM
+^C
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod mypod
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-signal
+```
+  </TabItem>
+</Tabs>

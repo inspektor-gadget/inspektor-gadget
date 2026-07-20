@@ -110,6 +110,10 @@ func TestCiStacks(t *testing.T) {
 			"--verify-image=false",
 		),
 		igrunner.WithStartAndStop(),
+		// The OTel eBPF profiler does not emit the standard readiness marker and has its own
+		// initialization timing, so it keeps using the explicit sleep below instead of the
+		// readiness gate.
+		igrunner.WithoutReadinessGate(),
 		igrunner.WithValidateOutput(func(t *testing.T, output string) {
 			expectedEntries := []*stacksEvent{
 				{

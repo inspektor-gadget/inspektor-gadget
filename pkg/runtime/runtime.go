@@ -25,7 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
 const (
@@ -36,7 +35,6 @@ const (
 type GadgetContext interface {
 	ID() string
 	Name() string
-	Parser() parser.Parser
 	Context() context.Context
 	Logger() logger.Logger
 	RuntimeParams() *params.Params

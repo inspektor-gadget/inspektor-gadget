@@ -332,6 +332,9 @@ type localManagerTrace struct {
 	mountnsmap      *ebpf.Map
 	enrichEvents    bool
 	subscriptionKey string
+	// tracerID is the id the tracer was registered under at the
+	// tracer-collection; it is needed to remove the tracer again.
+	tracerID string
 
 	// Keep a map to attached containers, so we can clean up properly
 	containerMutex     sync.Mutex
@@ -393,6 +396,7 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 			setter.SetMountNsMap(mountnsmap)
 
 			l.mountnsmap = mountnsmap
+			l.tracerID = id
 		} else if l.manager.containerCollection == nil {
 			log.Warn("container-collection isn't available: container enrichment and filtering won't work")
 		}
@@ -484,9 +488,9 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 }
 
 func (l *localManagerTrace) PostGadgetRun() error {
-	if l.mountnsmap != nil {
-		log.Debugf("calling RemoveMountNsMap()")
-		l.manager.tracerCollection.RemoveTracer(l.subscriptionKey)
+	if l.tracerID != "" {
+		log.Debugf("calling RemoveTracer()")
+		l.manager.tracerCollection.RemoveTracer(l.tracerID)
 	}
 	if l.subscriptionKey != "" {
 		host := l.params.Get(Host).AsBool()
@@ -657,6 +661,7 @@ func (l *localManagerTraceWrapper) PreStart(gadgetCtx operators.GadgetContext) e
 		gadgetCtx.SetVar(gadgets.FilterByMntNsName, true)
 
 		l.mountnsmap = mountnsmap
+		l.tracerID = id
 	} else if l.manager.containerCollection == nil {
 		log.Warn("container-collection isn't available: container enrichment and filtering won't work")
 	}

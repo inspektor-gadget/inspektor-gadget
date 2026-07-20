@@ -13,18 +13,18 @@ require (
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v29.6.1+incompatible
+	github.com/docker/cli v29.6.2+incompatible
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/expr-lang/expr v1.17.8
-	github.com/florianl/go-tc v0.4.7
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/florianl/go-tc v0.4.8
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/gopacket/gopacket v1.5.0
+	github.com/gopacket/gopacket v1.7.0
 	github.com/in-toto/attestation v1.2.0
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby/api v1.55.0
@@ -36,14 +36,14 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.11.0 // indirect
-	github.com/sigstore/sigstore v1.10.4
+	github.com/sigstore/sigstore v1.10.8
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tetratelabs/wazero v1.11.0
-	github.com/tklauser/numcpus v0.11.0
+	github.com/tetratelabs/wazero v1.12.0
+	github.com/tklauser/numcpus v0.12.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
 	go.opentelemetry.io/collector/pdata/pprofile v0.147.0
@@ -77,7 +77,7 @@ require (
 	k8s.io/cri-api v0.36.2
 	k8s.io/kubelet v0.36.2
 	k8s.io/streaming v0.36.2
-	oras.land/oras-go/v2 v2.6.1
+	oras.land/oras-go/v2 v2.6.2
 	sigs.k8s.io/controller-runtime v0.21.0 // indirect
 	sigs.k8s.io/security-profiles-operator v0.9.1
 	sigs.k8s.io/yaml v1.6.0
@@ -159,7 +159,7 @@ require (
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/secure-systems-lab/go-securesystemslib v0.10.0
+	github.com/secure-systems-lab/go-securesystemslib v0.11.0
 	github.com/sigstore/protobuf-specs v0.5.1
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -211,6 +211,7 @@ require (
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/veraison/go-cose v1.3.0 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.53.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0 // indirect
