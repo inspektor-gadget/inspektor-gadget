@@ -112,7 +112,7 @@ int ig_snap_file(struct bpf_iter__task_file *ctx)
 	struct seq_file *seq = ctx->meta->seq;
 	struct task_struct *task = ctx->task;
 	struct file *file = ctx->file;
-	struct gadget_file info;
+	struct gadget_file info = {};
 
 	if (!task || !file)
 		return 0;
