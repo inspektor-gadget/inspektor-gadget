@@ -28,6 +28,12 @@ jobs:
             repo: docker.io/library
           - image: nginx:latest
             repo: docker.io/library
+          # Pinned to 3.13 (not the floating "3" tag): the OTel eBPF profiler
+          # only symbolizes CPython up to 3.14, so a newer default would break
+          # stack-symbolization tests. See maxVer in:
+          # https://github.com/open-telemetry/opentelemetry-ebpf-profiler/blob/1de801e979a36561ea1308533388dc61d1290150/interpreter/python/python.go#L796-L797
+          - image: python:3.13-slim
+            repo: docker.io/library
           - image: registry:2
             repo: docker.io/library
           - image: network-multitool:latest
