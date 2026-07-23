@@ -3,6 +3,10 @@ description: Trace file descriptor passing via a unix socket (SCM_RIGHTS)
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/fdpass
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/fdpass
+tags:
+  - file
+  - socket
+  - ipc
 datasources:
   fdpass:
     fields:

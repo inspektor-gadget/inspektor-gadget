@@ -3,6 +3,9 @@ description: trace sni
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_sni
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_sni
+tags:
+  - network
+  - tls
 datasources:
   sni:
     fields:

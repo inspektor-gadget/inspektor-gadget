@@ -3,6 +3,10 @@ description: Generate network policies according to the K8s traffic
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/advise_networkpolicy
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/advise_networkpolicy
+tags:
+  - network
+  - kubernetes
+  - security
 datasources:
   network_connections:
     annotations:

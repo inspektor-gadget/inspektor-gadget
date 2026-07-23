@@ -105,6 +105,7 @@ func main() {
 	hiddenColumnTags := []string{"kubernetes"}
 
 	common.AddInstanceCommands(rootCmd, runtime)
+	common.AddCatalogCommands(rootCmd, runtime)
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeRun))
 	rootCmd.AddCommand(common.NewRunCommand(rootCmd, runtime, hiddenColumnTags, common.CommandModeAttach))
 	rootCmd.AddCommand(common.NewConfigCmd(runtime, rootFlags))

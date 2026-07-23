@@ -371,6 +371,10 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 btfgen:
 	+make -f Makefile.btfgen
 
+.PHONY: generate-catalog
+generate-catalog:
+	go run ./tools/generate-catalog
+
 .PHONY: generate-manifests
 generate-manifests:
 	echo "---" > pkg/resources/manifests/deploy.yaml
@@ -475,6 +479,7 @@ help:
 	@echo  '  clang-format			- Format ebpf source files'
 	@echo  '  lint				- Lint the Go code'
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
+	@echo  '  generate-catalog		- Generate the default gadget catalog for the Helm chart'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
 	@echo  '  debug-ig			- Build ig and start a debug session using delve'

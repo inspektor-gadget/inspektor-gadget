@@ -1,0 +1,130 @@
+---
+title: 'Gadget Catalog'
+sidebar_position: 320
+description: How to curate and discover a server-side catalog of Gadgets
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Gadget Catalog lets administrators curate, on the server side (the Inspektor
+Gadget pod or the `ig daemon`), a list of Gadgets that clients can discover. Each
+catalog entry has an image, a display name, a description and a set of tags.
+
+The catalog is **discovery-only**: it does not restrict which Gadgets can run
+(see [Restricting Gadgets](./restricting-gadgets.mdx) for that) and it does not
+run anything itself. It simply gives users a curated, searchable list of Gadgets
+that are relevant for a given deployment.
+
+## Configuring the Catalog
+
+The catalog is configured through the `catalog` key in the server
+[configuration file](./configuration.md). Each entry supports the following
+fields:
+
+- `gadget` (required): the Gadget's short name / image reference (e.g.
+  `trace_open`).
+- `description`: a short description of what the Gadget does.
+- `tags`: a list of opaque strings used for filtering.
+
+```yaml
+catalog:
+  - gadget: trace_open
+    description: Trace open() system calls
+    tags:
+      - file
+      - trace
+  - gadget: trace_dns
+    description: Trace DNS requests and responses
+    tags:
+      - network
+      - dns
+      - trace
+```
+
+There is no catalog baked into the binaries: the server returns exactly what is
+present in its configuration. When no catalog is configured, `catalog list`
+returns an empty list. This keeps the feature suitable for air-gapped,
+custom-registry or otherwise restricted deployments.
+
+### On Kubernetes (Helm)
+
+When deploying with Helm, the chart ships a **generated default catalog** of the
+official Gadgets (`charts/gadget/files/catalog.yaml`, produced by `make
+generate-catalog`). You can:
+
+- fully override it by setting `config.catalog` to your own list, or
+- disable the built-in default entirely by setting `config.defaultCatalog` to
+  `false` (useful for air-gapped or restricted deployments).
+
+```yaml
+config:
+  # Override the default catalog with a custom list.
+  catalog:
+    - gadget: trace_open
+      description: Trace open() system calls
+      tags:
+        - file
+        - trace
+  # Or keep `catalog` empty and disable the built-in default:
+  # defaultCatalog: false
+```
+
+:::note
+The default catalog file is generated from the Gadgets' metadata
+(`gadgets/*/gadget.yaml`) by `make generate-catalog`. Tags are derived from the
+Gadget name (split on `_`) and its category, so the list stays in sync with the
+Gadgets shipped in the repository.
+:::
+
+## Listing the Catalog
+
+Clients discover the catalog with the `catalog list` command:
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl catalog list
+GADGET             TAGS               DESCRIPTION
+trace_dns          trace,dns          Trace DNS requests and responses
+trace_open         trace,open         Trace open() system calls
+```
+    </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget catalog list
+GADGET             TAGS               DESCRIPTION
+trace_dns          trace,dns          Trace DNS requests and responses
+trace_open         trace,open         Trace open() system calls
+```
+    </TabItem>
+</Tabs>
+
+### Filtering by Tags
+
+Use the `--tags` flag to only show Gadgets that have **all** of the given tags
+(comma-separated):
+
+<Tabs groupId="env">
+    <TabItem value="gadgetctl" label="gadgetctl">
+
+```bash
+$ gadgetctl catalog list --tags trace,dns
+GADGET             TAGS               DESCRIPTION
+trace_dns          trace,dns          Trace DNS requests and responses
+```
+    </TabItem>
+    <TabItem value="kubectl-gadget" label="kubectl-gadget">
+
+```bash
+$ kubectl gadget catalog list --tags trace,dns
+GADGET             TAGS               DESCRIPTION
+trace_dns          trace,dns          Trace DNS requests and responses
+```
+    </TabItem>
+</Tabs>
+
+Once you find a Gadget of interest, run it as usual with the `run` command, e.g.
+`kubectl gadget run trace_dns:latest`.

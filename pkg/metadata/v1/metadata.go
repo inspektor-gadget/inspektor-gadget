@@ -59,6 +59,9 @@ type GadgetMetadata struct {
 	DocumentationURL string `yaml:"documentationURL,omitempty"`
 	// SourceURL is the URL to the gadget's source code repository
 	SourceURL string `yaml:"sourceURL,omitempty"`
+	// Tags is a list of opaque strings used to categorize the gadget, e.g. for
+	// discovery via the gadget catalog
+	Tags []string `yaml:"tags,omitempty"`
 	// Annotations is a map of key-value pairs that provide additional information about the gadget
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	// DataSources exposed by the gadget

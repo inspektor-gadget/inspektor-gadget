@@ -3,6 +3,10 @@ description: Periodically report cgroup CPU throttling statistics to identify co
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_cpu_throttle
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cpu_throttle
+tags:
+  - cpu
+  - container
+  - performance
 operator:
   cgroup:
     emitstats: true

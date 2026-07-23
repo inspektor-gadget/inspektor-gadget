@@ -3,6 +3,10 @@ description: Trace open, read, write and fsync operations slower than a threshol
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_fsslower
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_fsslower
+tags:
+  - file
+  - filesystem
+  - latency
 datasources:
   malloc:
     fields:

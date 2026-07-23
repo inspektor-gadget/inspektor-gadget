@@ -3,6 +3,9 @@ description: Track CUDA memory allocations and frees per process, split by libra
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/top_cuda_memory
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/top_cuda_memory
+tags:
+  - gpu
+  - memory
 datasources:
   libcuda_mem_stats:
     annotations:
