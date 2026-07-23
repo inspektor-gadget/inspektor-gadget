@@ -1037,7 +1037,7 @@ jobs:
             # So, this variables controls whether the last layer of
             # gadget-builder, i.e. the one upgrading the packages to be run
             # without cache.
-            # Changing this value in the repository will force this behaviorn,
+            # Changing this value in the repository will force this behavior,
             # this is particularly useful if trivy reports a CVE in the image
             # and fixed versions exist in debian repository.
             build-args: |
