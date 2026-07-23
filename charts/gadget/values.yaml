@@ -83,8 +83,15 @@ affinity: {}
 # -- Capabilities used by `gadget` container
 capabilities: {}
 
-# -- Tolerations used by `gadget` container
-tolerations: {}
+# -- Tolerations used by `gadget` container. Defaults to tolerating all taints
+# so the DaemonSet runs on every node. Override this to restrict the nodes the
+# gadget runs on, or to comply with policies that disallow broad
+# `operator: Exists` tolerations. Set to `[]` to use no tolerations.
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
 
 # -- Resource requests and limits for the `gadget` container.
 # See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
