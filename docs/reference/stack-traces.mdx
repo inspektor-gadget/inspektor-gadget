@@ -127,6 +127,23 @@ the OpenTelemetry eBPF profiler library.
 It cannot resolve symbols when it does not know about the process in advance.
 Once the process is noticed, it can resolve the symbols correctly.
 
+The OpenTelemetry eBPF profiler resolves user addresses through a correlation id
+that is computed by an OpenTelemetry entry program reached with a BPF tail call.
+Since a tail call requires the caller and the callee to share the same eBPF
+program type, this symbolization is only available for gadget programs whose type
+has a matching OpenTelemetry entry program:
+
+- `kprobe`, `kretprobe`, `uprobe` and `uretprobe` programs (all
+  `BPF_PROG_TYPE_KPROBE`), for example `trace_capabilities`, `trace_malloc` or
+  `profile_cuda`.
+- `perf_event` programs (`BPF_PROG_TYPE_PERF_EVENT`), for example `profile_cpu`.
+
+Other program types, such as `tracepoint` gadgets (e.g. `trace_open`), cannot use
+the OpenTelemetry symbolization method. Their user stacks are still collected and
+can be symbolized by the other methods (symtab, debuginfod). Requesting
+`--collect-otel-stack` from such a gadget causes the eBPF program to be rejected
+at load time rather than silently returning empty OpenTelemetry stacks.
+
 The OpenTelemetry eBPF profiler requires a minimum Linux kernel version of 5.4.
 See the [upstream documentation](https://github.com/open-telemetry/opentelemetry-ebpf-profiler#supported-linux-kernel-version)
 for details on kernel version requirements.
