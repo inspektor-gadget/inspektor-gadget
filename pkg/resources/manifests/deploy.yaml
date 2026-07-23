@@ -35,6 +35,7 @@ data:
         kubemanager:
           fallback-podinformer: true
           hook-mode: auto
+          nri-socket-path: /run/nri/nri.sock
         oci:
           allowed-gadgets: []
           disallow-pulling: false
@@ -288,12 +289,11 @@ spec:
             - mountPath: /host/bin
               name: bin
               readOnly: true
-            # We need to have read/write as we write NRI and OCI config files
-            # here.
+            # We need to have read/write as we write OCI hook config files here.
             - mountPath: /host/etc
               name: etc
               readOnly: false
-            # We need to have read/write as we write NRI and OCI binaries here.
+            # We need to have read/write as we write OCI hook binaries here.
             - mountPath: /host/opt
               name: opt
               readOnly: false
@@ -355,14 +355,11 @@ spec:
             path: /bin
         # /etc is needed for several reasons:
         # 1. entrypoint needs /etc/os-release to print information.
-        # 2. entrypoint needs /etc/nri to handle NRI hooks
-        # 3. entrypoint needs /etc/containers/oci to handle OCI hooks.
+        # 2. entrypoint needs /etc/containers/oci to handle OCI hooks.
         - name: etc
           hostPath:
             path: /etc
-        # /opt is needed for several reasons:
-        # 1. entrypoint needs /opt/nri to handle NRI hooks.
-        # 2. entrypoint needs /opt/hooks/oci to handle OCI hooks.
+        # /opt is needed for /opt/hooks/oci.
         - name: opt
           hostPath:
             path: /opt

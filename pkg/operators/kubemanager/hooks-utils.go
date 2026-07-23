@@ -15,7 +15,6 @@
 package kubemanager
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -23,7 +22,6 @@ import (
 	"path/filepath"
 	"regexp"
 
-	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -120,93 +118,19 @@ func installCRIOHooks() error {
 	return nil
 }
 
-func installNRIHooks() error {
-	log.Info("Installing NRI hooks")
-
-	destinationPath := filepath.Join(host.HostRoot, "opt/nri/bin")
-	err := os.MkdirAll(destinationPath, 0o755)
-	if err != nil {
-		return fmt.Errorf("creating %s: %w", destinationPath, err)
-	}
-
-	err = copyFile(destinationPath, "/opt/hooks/nri/nrigadget", 0o640)
-	if err != nil {
-		return fmt.Errorf("copying: %w", err)
-	}
-
-	hostConfigPath := filepath.Join(host.HostRoot, "etc/nri/conf.json")
-	content, err := os.ReadFile(hostConfigPath)
-	if err == nil {
-		var configList nriv1.ConfigList
-
-		err := json.Unmarshal(content, &configList)
-		if err != nil {
-			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
-		}
-
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"})
-
-		content, err = json.Marshal(configList)
-		if err != nil {
-			return fmt.Errorf("marshalling JSON: %w", err)
-		}
-
-		err = os.WriteFile(hostConfigPath, content, 0o640)
-		if err != nil {
-			return fmt.Errorf("writing %s: %w", hostConfigPath, err)
-		}
-	} else {
-		destinationPath := filepath.Join(host.HostRoot, "etc/nri")
-		err = os.MkdirAll(destinationPath, 0o755)
-		if err != nil {
-			return fmt.Errorf("creating %s: %w", destinationPath, err)
-		}
-
-		err := copyFile(destinationPath, "/opt/hooks/nri/conf.json", 0o640)
-		if err != nil {
-			return fmt.Errorf("copying: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func parseHookMode(hookMode string) (string, error) {
-	path := "/proc/self/cgroup"
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("reading %s: %w", path, err)
-	}
-
-	crio := false
-	if crioRegex.Match(content) {
-		log.Infof("CRI-O detected.")
-		crio = true
-	}
-
-	if (hookMode == hookModeAuto) && crio {
-		log.Info("Hook mode CRI-O detected")
-		hookMode = hookModeCrio
-	}
-
-	switch hookMode {
-	case hookModeCrio:
+	if hookMode == hookModeCrio {
 		err := installCRIOHooks()
 		if err != nil {
 			return "", fmt.Errorf("installing CRIO hooks: %w", err)
-		}
-	case hookModeNRI:
-		err := installNRIHooks()
-		if err != nil {
-			return "", fmt.Errorf("installing NRI hooks: %w", err)
 		}
 	}
 
 	parsedHookMode := hookModeAuto
 	switch hookMode {
-	case hookModeCrio, hookModeNRI:
+	case hookModeCrio:
 		parsedHookMode = hookModeNone
-	case hookModeFanotifyEbpf, hookModePodInformer:
+	case hookModeNRI, hookModeFanotifyEbpf, hookModePodInformer:
 		parsedHookMode = hookMode
 	}
 
@@ -215,27 +139,22 @@ func parseHookMode(hookMode string) (string, error) {
 	return parsedHookMode, nil
 }
 
-func hookMode2ccOpts(node, hookMode string, fallbackPodInformer bool) ([]containercollection.ContainerCollectionOption, error) {
+func hookMode2ccOpts(node, hookMode, nriSocketPath string, fallbackPodInformer bool) ([]containercollection.ContainerCollectionOption, error) {
 	var ccOpts []containercollection.ContainerCollectionOption
 
 	podInformerUsed := false
 	switch hookMode {
 	case "none":
-		// Used by nri and crio: They will call the hook-service directly to add and remove container
+		// CRI-O hooks call the hook-service directly to add and remove containers.
 		log.Infof("KubeManager: hook mode: none")
 		ccOpts = append(ccOpts, containercollection.WithInitialKubernetesContainers(node))
 		ccOpts = append(ccOpts, containercollection.WithOCIConfigForInitialContainer())
 	case "auto":
-		if containerhook.Supported() {
-			log.Infof("KubeManager: hook mode: fanotify+ebpf (auto)")
-			ccOpts = append(ccOpts, containercollection.WithContainerFanotifyEbpf())
-			ccOpts = append(ccOpts, containercollection.WithInitialKubernetesContainers(node))
-			ccOpts = append(ccOpts, containercollection.WithOCIConfigForInitialContainer())
-		} else {
-			log.Infof("KubeManager: hook mode: podinformer (auto)")
-			ccOpts = append(ccOpts, containercollection.WithPodInformer(node))
-			podInformerUsed = true
-		}
+		ccOpts = append(ccOpts, autoHookOption(node, nriSocketPath, fallbackPodInformer))
+		podInformerUsed = true
+	case "nri":
+		log.Infof("KubeManager: hook mode: nri")
+		ccOpts = append(ccOpts, containercollection.WithNRI(nriSocketPath))
 	case "podinformer":
 		log.Infof("KubeManager: hook mode: podinformer")
 		ccOpts = append(ccOpts, containercollection.WithPodInformer(node))
@@ -255,4 +174,59 @@ func hookMode2ccOpts(node, hookMode string, fallbackPodInformer bool) ([]contain
 	}
 
 	return ccOpts, nil
+}
+
+func autoHookOption(node, nriSocketPath string, fallbackPodInformer bool) containercollection.ContainerCollectionOption {
+	return func(cc *containercollection.ContainerCollection) error {
+		if err := containercollection.WithNRI(nriSocketPath)(cc); err == nil {
+			log.Infof("KubeManager: hook mode: nri (auto)")
+			if fallbackPodInformer {
+				return containercollection.WithFallbackPodInformer(node)(cc)
+			}
+			return nil
+		} else {
+			log.Infof("KubeManager: NRI unavailable: %s", err)
+		}
+
+		content, err := os.ReadFile("/proc/self/cgroup")
+		if err != nil {
+			return fmt.Errorf("reading /proc/self/cgroup: %w", err)
+		}
+		if crioRegex.Match(content) {
+			log.Infof("KubeManager: hook mode: crio (auto)")
+			if err := installCRIOHooks(); err != nil {
+				return fmt.Errorf("installing CRIO hooks: %w", err)
+			}
+			if err := containercollection.WithInitialKubernetesContainers(node)(cc); err != nil {
+				return err
+			}
+			if err := containercollection.WithOCIConfigForInitialContainer()(cc); err != nil {
+				return err
+			}
+			if fallbackPodInformer {
+				return containercollection.WithFallbackPodInformer(node)(cc)
+			}
+			return nil
+		}
+
+		if containerhook.Supported() {
+			log.Infof("KubeManager: hook mode: fanotify+ebpf (auto)")
+			if err := containercollection.WithContainerFanotifyEbpf()(cc); err != nil {
+				return err
+			}
+			if err := containercollection.WithInitialKubernetesContainers(node)(cc); err != nil {
+				return err
+			}
+			if err := containercollection.WithOCIConfigForInitialContainer()(cc); err != nil {
+				return err
+			}
+			if fallbackPodInformer {
+				return containercollection.WithFallbackPodInformer(node)(cc)
+			}
+			return nil
+		}
+
+		log.Infof("KubeManager: hook mode: podinformer (auto)")
+		return containercollection.WithPodInformer(node)(cc)
+	}
 }
