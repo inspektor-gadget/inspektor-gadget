@@ -146,12 +146,10 @@ func (i *ebpfInstance) runIterators() error {
 				if !isIteratorKindSupported(l.typ) {
 					return fmt.Errorf("iterator kind %q is not supported", l.typ)
 				}
-				if !isIteratorKindPerNetNs(l.typ) {
-					buf, err := bpfiterns.Read(l.link)
-					if err != nil {
-						return fmt.Errorf("reading iterator %q: %w", pName, err)
-					}
 
+				// appendBuf splits the raw iterator output into fixed-size
+				// records and appends them to the packet array.
+				appendBuf := func(buf []byte) error {
 					size := iter.accessor.Size()
 					if uint32(len(buf))%size != 0 {
 						return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
@@ -166,7 +164,13 @@ func (i *ebpfInstance) runIterators() error {
 						}
 						pArray.Append(data)
 					}
-				} else {
+					return nil
+				}
+
+				switch {
+				case isIteratorKindPerNetNs(l.typ):
+					// Network namespace iterators (tcp, udp) must be run once
+					// per network namespace using setns.
 					visitedNetNs := make(map[uint64]struct{})
 					for _, container := range i.containers {
 						_, visited := visitedNetNs[container.Netns]
@@ -187,27 +191,35 @@ func (i *ebpfInstance) runIterators() error {
 								return fmt.Errorf("reading iterator %q: %w", pName, err)
 							}
 
-							size := iter.accessor.Size()
-							if uint32(len(buf))%size != 0 {
-								return fmt.Errorf("iter %q returned an invalid buffer's size %d, expected multiple of %d",
-									pName, len(buf), size)
-							}
-
-							for i := uint32(0); i < uint32(len(buf)); i += size {
-								data := pArray.New()
-								if err := iter.accessor.Set(data, buf[i:i+size]); err != nil {
-									pArray.Release(data)
-									return fmt.Errorf("setting data element %d: %w", i, err)
-								}
-								pArray.Append(data)
-							}
-
-							return nil
+							return appendBuf(buf)
 						})
 						if err != nil && !errors.Is(err, os.ErrNotExist) {
 							return fmt.Errorf("entering container %q's netns to run iterator %q: %w",
 								container.Runtime.ContainerName, pName, err)
 						}
+					}
+				case isIteratorKindPerPidNs(l.typ):
+					// Task iterators (task, task_file) must enumerate the host's
+					// processes, so when running inside a pod they are read from
+					// the host pid namespace. bpfiterns.Read handles that by
+					// pinning the iterator on the host bpffs when needed.
+					buf, err := bpfiterns.Read(l.link)
+					if err != nil {
+						return fmt.Errorf("reading iterator %q: %w", pName, err)
+					}
+					if err := appendBuf(buf); err != nil {
+						return err
+					}
+				default:
+					// Namespace-agnostic iterators (bpf_map_elem, ksym) return
+					// the same data regardless of the pid or network namespace,
+					// so read them directly without any setns or pinning.
+					buf, err := bpfiterns.ReadOnCurrentPidNs(l.link)
+					if err != nil {
+						return fmt.Errorf("reading iterator %q: %w", pName, err)
+					}
+					if err := appendBuf(buf); err != nil {
+						return err
 					}
 				}
 			}
@@ -265,6 +277,19 @@ func (i *ebpfInstance) runIterators() error {
 // network namespace.
 func isIteratorKindPerNetNs(kind string) bool {
 	if kind == "tcp" || kind == "udp" {
+		return true
+	}
+	return false
+}
+
+// isIteratorKindPerPidNs returns true if the iterator kind enumerates tasks and
+// therefore needs to be run in the host pid namespace to observe all processes
+// on the node rather than only those visible in the current pid namespace.
+// Namespace-agnostic iterators (e.g. bpf_map_elem, ksym) must not go through
+// this path, as it pins the iterator on the host bpffs, which is both
+// unnecessary and unreliable when running inside a pod.
+func isIteratorKindPerPidNs(kind string) bool {
+	if kind == "task" || kind == "task_file" {
 		return true
 	}
 	return false

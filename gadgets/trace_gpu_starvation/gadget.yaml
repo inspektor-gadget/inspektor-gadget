@@ -1,0 +1,52 @@
+name: trace gpu starvation
+description: Detect threads burning CPU while the GPU their process owns sits idle, and capture the responsible call stack. Uses the gpu-ebpf-bridge maps plus a finish_task_switch scheduler kprobe.
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_gpu_starvation
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_gpu_starvation
+datasources:
+  gpu_starvation:
+    fields:
+      timestamp_raw:
+        annotations:
+          columns.hidden: true
+      cpu_time_ns:
+        annotations:
+          description: On-CPU time this thread burned while the GPU was idle, this window (ns)
+          columns.width: 14
+          columns.alignment: right
+      idle_ns:
+        annotations:
+          description: How long the GPU has been idle for this process at emit time (ns)
+          columns.width: 14
+          columns.alignment: right
+      hit_count:
+        annotations:
+          description: Context-switch samples accumulated in this window
+          columns.width: 9
+          columns.alignment: right
+      kstack_raw:
+        annotations:
+          columns.hidden: true
+      kstack:
+        annotations:
+          description: kernel stack
+          columns.width: 10
+          columns.hidden: true
+params:
+  ebpf:
+    min_idle_ms:
+      key: min-idle-ms
+      defaultValue: "1000"
+      description: Minimum GPU idle duration (ms) before a thread's CPU time counts as starvation. Should be at least 2x the bridge poll interval.
+    min_gpu_mem_bytes:
+      key: min-gpu-mem-bytes
+      defaultValue: "1"
+      description: Only consider processes holding at least this many bytes of GPU memory
+    stale_threshold_ms:
+      key: stale-threshold-ms
+      defaultValue: "300"
+      description: Ignore bridge data older than this (ms). Should be about 3x the bridge poll interval.
+    collect_kstack:
+      key: collect-kstack
+      defaultValue: "false"
+      description: Collect kernel stack traces (mostly scheduler frames; user stack is the useful one)

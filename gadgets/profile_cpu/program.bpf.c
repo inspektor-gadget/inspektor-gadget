@@ -13,6 +13,16 @@
 #include <gadget/kernel_stack_map.h>
 #include <gadget/user_stack_map.h>
 
+/* Pinned gpu-ebpf-bridge maps + CO-RE helpers, shared with the other GPU
+ * gadgets. Only pulled in for the optional --gpu-idle-only filter below;
+ * when that filter is off the maps are declared but never read, so on a
+ * host without the bridge they are simply created empty and ignored.
+ */
+#define GPU_BRIDGE_WANT_PER_PID
+#define GPU_BRIDGE_WANT_DEVICE
+#define GPU_BRIDGE_WANT_META
+#include <gadget/gpu_bridge_maps.h>
+
 #define MAX_ENTRIES 10240
 
 /* The aggregation key holds only the sample's *identity*: the user stack is
@@ -54,12 +64,50 @@ GADGET_PARAM(user_stacks_only);
 const volatile bool include_idle = false;
 GADGET_PARAM(include_idle);
 
+/* ---- GPU-idle attribution (optional) ----
+ *
+ * With --gpu-idle-only, a sample is only recorded when the sampled process
+ * currently owns GPU memory AND its GPU is underutilized at that instant.
+ * The result is a flamegraph of exactly the CPU code that runs while the
+ * GPU the process paid for sits idle: the on-CPU work standing between
+ * successive GPU kernels (GPU starvation). Unlike the recency-based
+ * trace_gpu_starvation, a sampler has no dependence on the bridge poll
+ * interval, so it also surfaces "many small gaps" starvation (e.g. a
+ * per-frame CPU preprocess step that keeps the GPU at ~50% duty cycle).
+ *
+ * Data comes from the gpu-ebpf-bridge pinned maps; if the bridge is not
+ * running these maps are empty, gpu_meta_fresh() fails, and every sample is
+ * discarded (empty profile) rather than mis-attributed.
+ */
+const volatile bool gpu_idle_only = false;
+GADGET_PARAM(gpu_idle_only);
+
+/* Record a sample only if the primary GPU's SM utilization is strictly below
+ * this percentage. Utilization at or above it means the GPU is busy, so the
+ * concurrent CPU work is not starving it.
+ */
+const volatile __u32 gpu_util_max_pct = 70;
+GADGET_PARAM(gpu_util_max_pct);
+
+/* Minimum resident GPU memory (bytes) for a process to count as a GPU
+ * holder. The default of 1 means "any GPU allocation at all".
+ */
+const volatile __u64 min_gpu_mem_bytes = 1;
+GADGET_PARAM(min_gpu_mem_bytes);
+
+/* Bridge data older than this (milliseconds) is treated as stale and the
+ * sample is discarded, so a dead/paused bridge never yields stale
+ * attribution.
+ */
+const volatile __u64 stale_threshold_ms = 300;
+GADGET_PARAM(stale_threshold_ms);
+
 /* The value carries the aggregated sample count plus the full user-stack
  * metadata. user_stack_raw lives here (not in the key) so that identical
- * stacks aggregate: its per-sample fields (boot_timestamp, otel_correlation_id)
- * would otherwise make every sample a unique key. On first insertion the
- * metadata of that first sample is stored; subsequent identical stacks only
- * bump samples. This mirrors profile_cuda's alloc_val.
+ * stacks aggregate: its per-sample fields (boot_timestamp,
+ * otel_correlation_id) would otherwise make every sample a unique key. On
+ * first insertion the metadata of that first sample is stored; subsequent
+ * identical stacks only bump samples. This mirrors profile_cuda's alloc_val.
  */
 struct values {
 	__u64 samples;
@@ -111,6 +159,37 @@ static __always_inline bool is_kernel_addr(u64 addr)
 }
 #endif /* __TARGET_ARCH_arm64 || __TARGET_ARCH_x86 */
 
+/* Returns true if the sample should be discarded because --gpu-idle-only is
+ * on and the current process is not a GPU holder whose GPU is currently idle.
+ * When gpu_idle_only is off this is compiled to a constant false and the
+ * bridge maps are never touched.
+ */
+static __always_inline bool gpu_idle_gate_discards(__u32 tgid)
+{
+	if (!gpu_idle_only)
+		return false;
+
+	__u64 now = bpf_ktime_get_boot_ns();
+	if (!gpu_meta_fresh(now, stale_threshold_ms))
+		return true;
+
+	struct gpu_pid_metrics_aggregated *gm =
+		gpu_pid_holder(tgid, min_gpu_mem_bytes);
+	if (!gm)
+		return true;
+
+	/* Single-GPU process: gate on that device's utilization. Multi-device
+	 * holders (gpu_device_primary == GPU_DEVICE_PRIMARY_MULTI) have no
+	 * single primary to consult, so require ownership only and skip the
+	 * per-device utilization gate.
+	 */
+	if (gm->gpu_device_primary != GPU_DEVICE_PRIMARY_MULTI &&
+	    !gpu_device_underutilized(gm->gpu_device_primary, gpu_util_max_pct))
+		return true;
+
+	return false;
+}
+
 SEC("perf_event/profiler")
 int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 {
@@ -128,6 +207,9 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 		return 0;
 
 	if (!include_idle && tid == 0)
+		return 0;
+
+	if (gpu_idle_gate_discards(id >> 32))
 		return 0;
 
 	gadget_process_populate(&key->proc);

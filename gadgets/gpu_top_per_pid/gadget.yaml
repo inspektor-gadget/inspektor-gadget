@@ -1,0 +1,47 @@
+name: gpu top per pid
+description: Show per-process GPU usage (VRAM, peak SM/mem utilization, devices) published by the gpu-ebpf-bridge daemon, with automatic container/pod enrichment.
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/gpu_top_per_pid
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gpu_top_per_pid
+datasources:
+  gpu_top_per_pid:
+    annotations:
+      fetch-interval: 1s
+      fetch-count: "0"
+      cli.clear-screen-before: "true"
+    fields:
+      mem_used_raw:
+        annotations:
+          description: Total GPU memory in use across all devices (bytes)
+      mem_used:
+        annotations:
+          description: Total GPU memory in use across all devices (human-readable)
+          columns.width: 12
+          columns.alignment: right
+      sm_util_pct_max:
+        annotations:
+          description: Peak SM utilization across devices (0-100)
+          columns.width: 8
+          columns.alignment: right
+      mem_util_pct_max:
+        annotations:
+          description: Peak memory-bus utilization across devices (0-100)
+          columns.width: 9
+          columns.alignment: right
+      gpu_device_primary:
+        annotations:
+          description: First device this PID is on (0xFF = multi-device)
+          columns.width: 8
+          columns.alignment: right
+      device_count:
+        annotations:
+          description: Number of devices the PID is using
+          columns.width: 8
+          columns.alignment: right
+      _pad:
+        annotations:
+          columns.hidden: true
+      timestamp_ns:
+        annotations:
+          description: CLOCK_MONOTONIC timestamp of the bridge's last write for this PID
+          columns.hidden: true

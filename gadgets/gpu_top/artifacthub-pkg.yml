@@ -1,0 +1,33 @@
+# Artifact Hub package metadata file
+version: 0.1.0
+name: "gpu top"
+category: monitoring-logging
+displayName: "gpu top"
+createdAt: "2026-06-30T13:00:00Z"
+digest: "2026-06-30T13:00:00Z"
+description: "Real-time per-device GPU telemetry (utilization, memory, temperature, power) from the gpu-ebpf-bridge daemon"
+logoURL: "https://inspektor-gadget.io/media/brand-icon.svg"
+license: ""
+homeURL: "https://inspektor-gadget.io/"
+containersImages:
+    - name: gadget
+      image: "ghcr.io/inspektor-gadget/gadget/gpu_top:latest"
+      platforms:
+        - linux/amd64
+        - linux/arm64
+keywords:
+    - gadget
+    - gpu
+    - nvidia
+    - utilization
+    - telemetry
+links:
+    - name: source
+      url: "https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/gpu_top"
+install: |
+    # Run
+    ```bash
+    sudo ig run ghcr.io/inspektor-gadget/gadget/gpu_top:latest
+    ```
+provider:
+    name: Inspektor Gadget

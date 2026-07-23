@@ -1,0 +1,106 @@
+# Demo workloads for trace_gpu_starvation / profile_cpu --gpu-idle-only.
+#
+# The image is referenced as $CONTAINER_REPO/workload/gpu-starvation-demo.
+# Kubernetes does not expand environment variables in manifests, so set
+# CONTAINER_REPO to your registry and substitute it before applying:
+#   export CONTAINER_REPO=your-registry.example.com
+#   envsubst < video-frame-inference.yaml | kubectl apply -f -
+#
+# Each pod loops forever (N_FRAMES=0) so the gadget has time to observe it.
+# PREPROCESS_MS / INFER_MS make the per-frame CPU and GPU work take a fixed
+# wall-clock time regardless of node speed (default 1500ms each). Keeping
+# INFER_MS >= PREPROCESS_MS is what lets 'good' hide the CPU work. BATCH
+# (default 64) keeps the GPU kernels large enough that NVML per-process
+# sampling registers them — with BATCH=1 even a busy 'good' looks idle.
+# Delete when done:
+#   kubectl delete -f video-frame-inference.yaml
+#
+# - gpu-starvation-bad:      sequential pipeline, GPU idle ~PREPROCESS_MS/frame.
+#                            The gadget fires; stack points at cv2.resize/numpy.
+# - gpu-starvation-good:     pipelined with a CUDA stream, GPU stays busy.
+#                            The gadget stays quiet (control case).
+# - gpu-starvation-threaded: prep thread feeds an inference thread via a queue;
+#                            two stacks appear (blocking queue.get vs cv2.resize).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-starvation-bad
+  namespace: default
+  labels:
+    app: gpu-starvation-demo
+spec:
+  terminationGracePeriodSeconds: 0
+  restartPolicy: Never
+  containers:
+    - name: demo
+      image: $CONTAINER_REPO/workload/gpu-starvation-demo:latest
+      imagePullPolicy: Always
+      args: ["bad"]
+      env:
+        - name: N_FRAMES
+          value: "0"
+        - name: PREPROCESS_MS
+          value: "1500"
+        - name: INFER_MS
+          value: "1500"
+        - name: BATCH
+          value: "64"
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-starvation-good
+  namespace: default
+  labels:
+    app: gpu-starvation-demo
+spec:
+  terminationGracePeriodSeconds: 0
+  restartPolicy: Never
+  containers:
+    - name: demo
+      image: $CONTAINER_REPO/workload/gpu-starvation-demo:latest
+      imagePullPolicy: Always
+      args: ["good"]
+      env:
+        - name: N_FRAMES
+          value: "0"
+        - name: PREPROCESS_MS
+          value: "1500"
+        - name: INFER_MS
+          value: "1500"
+        - name: BATCH
+          value: "64"
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-starvation-threaded
+  namespace: default
+  labels:
+    app: gpu-starvation-demo
+spec:
+  terminationGracePeriodSeconds: 0
+  restartPolicy: Never
+  containers:
+    - name: demo
+      image: $CONTAINER_REPO/workload/gpu-starvation-demo:latest
+      imagePullPolicy: Always
+      args: ["threaded"]
+      env:
+        - name: N_FRAMES
+          value: "0"
+        - name: PREPROCESS_MS
+          value: "1500"
+        - name: INFER_MS
+          value: "1500"
+        - name: BATCH
+          value: "64"
+      resources:
+        limits:
+          nvidia.com/gpu: "1"

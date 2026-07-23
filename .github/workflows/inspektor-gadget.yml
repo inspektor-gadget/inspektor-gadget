@@ -747,6 +747,233 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
+  build-gpu-ebpf-bridge-container-images:
+    name: gpu-ebpf-bridge img
+    # level: 1
+    needs:
+      - check-secrets
+    runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    outputs:
+      digest-amd64: ${{ steps.published-gpu-ebpf-bridge-container-images.outputs.amd64 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ linux ]
+        # Amd64 only for v1. Cross-compilation of the cgo/nvml-linked
+        # binary would require a musl/zig cross-toolchain we do not
+        # maintain; arm64 support can be added when the demand for
+        # arm64 GPU deployments becomes concrete. See
+        # docs/design/004-gpu-telemetry-enricher.md.
+        platform: [ amd64 ]
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        persist-credentials: false
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+    - name: Cache Docker layers
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        lookup-only: ${{ env.IS_RELEASE == 'true' }} # zizmor: ignore[cache-poisoning]
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-docker-gpu-ebpf-bridge-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gpu-ebpf-bridge.Dockerfile') }}
+        restore-keys: |
+          ${{ runner.os }}-docker-gpu-ebpf-bridge-${{ matrix.platform }}-
+    - name: Login to Container Registry
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ github.repository_owner }}/gpu-ebpf-bridge
+    - name: Build gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gpu-ebpf-bridge.Dockerfile
+        outputs: type=docker,dest=/tmp/gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+    - name: Publish gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+        path: /tmp/gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+        retention-days: 1
+    - name: Generate gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image SBOM
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gpu-ebpf-bridge.Dockerfile
+        outputs: type=local,dest=/tmp/gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          BUILDKIT_SYNTAX=crazymax/dockerfile:sbom
+    - name: Publish gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image to registry
+      id: publish-gpu-ebpf-bridge-container-images
+      if: github.event_name != 'pull_request'
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gpu-ebpf-bridge.Dockerfile
+        outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
+        cache-from: type=local,src=/tmp/.buildx-cache-new
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+    - name: Setup oras
+      if: github.event_name != 'pull_request'
+      uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+    - name: Attach SBOM to container image
+      if: github.event_name != 'pull_request'
+      id: gpu-ebpf-bridge-container-images-attach-sbom
+      env:
+        CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        DIGEST: ${{ steps.publish-gpu-ebpf-bridge-container-images.outputs.digest }}
+      run: |
+        # See the equivalent step for build-ig-container-images for
+        # the full rationale: we need the per-platform image digest
+        # (not the manifest digest) so the SBOM stays attached to
+        # the image and survives future imagetools manifest edits.
+        manifest=$(oras manifest fetch "${CONTAINER_REPO}@${DIGEST}")
+        image_digest=$(echo $manifest | jq -e '[.manifests[] | select ( .platform.architecture == "${{ matrix.platform }}" and .platform.os == "${{ matrix.os }}" )] | if length != 1 then empty else .[0].digest end')
+        image_digest=$(echo "$image_digest" | tr -d '"')
+
+        sbom_digest=$(oras attach "${CONTAINER_REPO}@${image_digest}" /tmp/gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}/sbom_cyclonedx.json --disable-path-validation --artifact-type example/sbom | grep 'Digest:' | awk '{ print $2 }')
+
+        echo "sbom-${{ matrix.platform }}=${sbom_digest}" >> $GITHUB_OUTPUT
+    - name: Sign the SBOM
+      if: github.event_name != 'pull_request' && needs.check-secrets.outputs.cosign == 'true'
+      uses: ./.github/actions/sign-oci-artifact
+      with:
+        password: '${{ secrets.COSIGN_PASSWORD }}'
+        private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.gpu-ebpf-bridge-container-images-attach-sbom.outputs[format('sbom-{0}', matrix.platform)] }}"
+    - name: Save gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image digest output
+      id: published-gpu-ebpf-bridge-container-images
+      if: github.event_name != 'pull_request'
+      env:
+        DIGEST: ${{ steps.publish-gpu-ebpf-bridge-container-images.outputs.digest }}
+      run: |
+          echo "${{ matrix.platform }}=$DIGEST" >> $GITHUB_OUTPUT
+    # old cache entries aren't deleted, so the cache size keeps growing
+    # remove old cache and move new cache to cache path to workaround the issue
+    # https://github.com/docker/build-push-action/issues/252
+    - name: Move gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image cache to correct location
+      run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  scan-gpu-ebpf-bridge-container-images:
+    name: Scan gpu-ebpf-bridge img
+    # level: 2
+    needs: build-gpu-ebpf-bridge-container-images
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ linux ]
+        platform: [ amd64 ]
+    steps:
+      - name: Download gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+          path: ${{ github.workspace }}
+      - name: Scan gpu-ebpf-bridge ${{ matrix.os }} ${{ matrix.platform }} container image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          input: gpu-ebpf-bridge-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+          format: 'table'
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+  publish-gpu-ebpf-bridge-images-manifest:
+    name: Publish gpu-ebpf-bridge img manifest
+    # level: 2
+    if: github.event_name != 'pull_request'
+    needs:
+      - build-gpu-ebpf-bridge-container-images
+      - check-secrets
+    runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      - name: Login to Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set container repository and determine image tag
+        id: set-repo-determine-image-tag
+        uses: ./.github/actions/set-container-repo-and-determine-image-tag
+        with:
+          registry: ${{ env.REGISTRY }}
+          container-image: ${{ github.repository_owner }}/gpu-ebpf-bridge
+      - name: Publish the manifest list
+        id: publish-manifest-list
+        env:
+          CONTAINER_REPO: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+          IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          DIGEST_AMD64: ${{ needs.build-gpu-ebpf-bridge-container-images.outputs.digest-amd64 }}
+        run: |
+          IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
+          IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
+          IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
+          IMAGE_LICENSES="Apache-2.0"
+          IMAGE_TITLE="Inspektor Gadget gpu-ebpf-bridge"
+          IMAGE_DESCRIPTION="Userspace daemon that polls GPU telemetry via NVML and publishes it through bpffs-pinned BPF maps. Deployed alongside the Inspektor Gadget DaemonSet on GPU-enabled nodes."
+
+          docker buildx imagetools create \
+            -t "$IMAGE_REF" \
+              "${CONTAINER_REPO}@${DIGEST_AMD64}" \
+            --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
+            --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
+            --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
+            --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
+            --annotation index:org.opencontainers.image.title="$IMAGE_TITLE"
+
+          image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' "$IMAGE_REF" | jq -r)
+          echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
+      - name: Sign the manifest list
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-oci-artifact
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          oci_artifact: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+
   analyse-ig-binary-size:
     name: IG binary size analysis
     runs-on: ubuntu-latest
@@ -1872,6 +2099,16 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: ${{ env.IS_RELEASE == 'false' }} # zizmor: ignore[cache-poisoning]
       id: go
+    - name: Build gpu-ebpf-bridge (mock, no NVML)
+      shell: bash
+      run: |
+          # The gadgets/ci/gpu integration test launches gpu-ebpf-bridge
+          # as a subprocess in --mode=mock, which needs no GPU or NVML.
+          # Build a no-nvml binary (real_stub.go backend) and install it
+          # on $PATH so gadgets/Makefile's default
+          # GPU_EBPF_BRIDGE=gpu-ebpf-bridge resolves it under sudo.
+          CGO_ENABLED=0 go build -o gpu-ebpf-bridge ./cmd/gpu-ebpf-bridge
+          sudo mv gpu-ebpf-bridge /usr/local/bin/gpu-ebpf-bridge
     - name: Gadgets tests
       id: gadgets-tests
       shell: bash

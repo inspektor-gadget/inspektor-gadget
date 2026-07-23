@@ -1,3 +1,6 @@
+{{- if and .Values.bridges.gpu.enabled (not .Values.hostPID) }}
+{{- fail (printf "bridges.gpu.enabled=true requires hostPID=true because NVML enumerates GPU-using processes via /proc reads and returns host PIDs, so the bridge sidecar must share the host PID namespace. Rerun helm with --set hostPID=true (or set it in your values file).") }}
+{{- end }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -229,6 +232,84 @@ spec:
             - mountPath: /var/run/ig/wasm-cache
               name: wasm-cache
               readOnly: false
+        {{- if .Values.bridges.gpu.enabled }}
+        # gpu-ebpf-bridge sidecar. See docs/design/004-gpu-telemetry-enricher.md.
+        # The bridge is safe on any node: on nodes without an NVIDIA
+        # driver it enters idle mode via --idle-if-no-gpu (log warning,
+        # block on SIGTERM). No nodeSelector needed at the DaemonSet
+        # level; the whole IG DaemonSet keeps running on every node.
+        - name: gpu-ebpf-bridge
+          image: "{{ .Values.bridges.gpu.image.repository }}:{{ .Values.bridges.gpu.image.tag | default (include "gadget.image.tag" .) }}"
+          imagePullPolicy: {{ .Values.bridges.gpu.image.pullPolicy }}
+          args:
+            - --mode=real
+            - --pin-dir=/sys/fs/bpf
+            - --poll-interval={{ .Values.bridges.gpu.pollInterval }}
+            - --log-level={{ .Values.bridges.gpu.logLevel }}
+            - --keep-pins=false
+            - --idle-if-no-gpu
+            {{- if eq .Values.bridges.gpu.accessMode "hostpath" }}
+            - --host-path=/host
+            - --symlink-nvidia-devs
+            {{- end }}
+          securityContext:
+            privileged: true
+          {{- if eq .Values.bridges.gpu.accessMode "device-plugin" }}
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            {{- with .Values.bridges.gpu.resources }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- else }}
+          {{- with .Values.bridges.gpu.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- if or (eq .Values.bridges.gpu.accessMode "toolkit-env") .Values.bridges.gpu.additionalEnv }}
+          env:
+            {{- if eq .Values.bridges.gpu.accessMode "toolkit-env" }}
+            # NVIDIA Container Toolkit prestart hook triggers on
+            # these env vars, bind-mounting libnvidia-ml.so.1 and
+            # granting /dev/nvidia* access without reserving a GPU.
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "utility"
+            {{- end }}
+            {{- /*
+              Note: hostpath mode intentionally does NOT set LD_LIBRARY_PATH.
+              The bridge locates libnvidia-ml.so.1 under /host/usr/ itself
+              (see cmd/gpu-ebpf-bridge/hostdev.go findNvmlLibrary) and
+              passes the absolute path to xnvml.SetLibraryOptions. A broad
+              LD_LIBRARY_PATH pointing at /host/usr/lib{,64,/x86_64-linux-gnu}
+              would drag in the host's libc / libpthread / libdl, and any
+              glibc-version mismatch with the container's own libc triggers
+              "*** stack smashing detected ***" from glibc's canary check.
+            */}}
+            {{- if .Values.bridges.gpu.additionalEnv }}
+            {{- toYaml .Values.bridges.gpu.additionalEnv | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            # Shared with the main IG container so both see the
+            # same pinned maps. The bridge writes, gadgets read.
+            - mountPath: /sys/fs/bpf
+              name: bpffs
+            {{- if eq .Values.bridges.gpu.accessMode "hostpath" }}
+            # Bind-mount the host's / at /host/ so libnvidia-ml.so.1
+            # (any distro path) and /dev/nvidia* are reachable without
+            # requiring the source paths to exist for kubelet to
+            # accept the pod. /host/dev must not be read-only because
+            # the driver's char devices need write access.
+            - mountPath: /host/dev
+              name: host-dev
+            - mountPath: /host/usr
+              name: host-usr
+              readOnly: true
+            {{- end }}
+        {{- end }}
       nodeSelector:
         {{- .Values.nodeSelector | toYaml | nindent 8 }}
       affinity:
@@ -300,3 +381,16 @@ spec:
             defaultMode: 0o400
         - name: wasm-cache
           emptyDir: {}
+        {{- if and .Values.bridges.gpu.enabled (eq .Values.bridges.gpu.accessMode "hostpath") }}
+        # HostPath mounts for the gpu-ebpf-bridge sidecar when using
+        # the "hostpath" accessMode. Both source paths (/dev and /usr)
+        # exist on every Linux node, so kubelet accepts the pod on
+        # non-GPU nodes too. The bridge's --idle-if-no-gpu handles
+        # the "no NVIDIA driver on this node" case at runtime.
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: host-usr
+          hostPath:
+            path: /usr
+        {{- end }}
