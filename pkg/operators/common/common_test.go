@@ -1,4 +1,4 @@
-// Copyright 2025 The Inspektor Gadget authors
+// Copyright 2025-2026 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,10 @@
 package common
 
 import (
-	"bytes"
+	"context"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -28,6 +27,8 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/cachedmap"
 )
+
+const eventuallyTimeout = 2 * time.Second
 
 func TestStartIncrementsUseCount(t *testing.T) {
 	fakeClientSet := fake.NewClientset()
@@ -52,289 +53,167 @@ func TestStartIncrementsUseCount(t *testing.T) {
 	// Verify resources are cleaned up after last Stop
 	assert.Nil(t, cache.factory)
 	assert.Nil(t, cache.pods)
+	assert.Nil(t, cache.svcs)
 }
 
-func TestInventoryCacheAdd(t *testing.T) {
-	type addTestCase struct {
-		testName      string
-		kind          string
-		initialObj    any
-		expectedName  string
-		expectedIP    string
-		ok            bool
-		expectedError string
+// TestInventoryCacheInformer drives a real shared informer (over a fake
+// clientset) end-to-end. It proves the informer accepts our custom transformed
+// type (*SlimPod/*SlimService) and that by-name and by-IP indexer lookups, plus
+// updates and deletions, behave as expected.
+func TestInventoryCacheInformer(t *testing.T) {
+	pod := constructPod("test-pod", "default", "1.2.3.4")
+	svc := constructService("test-svc", "default", "10.0.0.1")
+	cache := &inventoryCache{
+		clientset: fake.NewClientset(pod, svc),
+		graceTTL:  200 * time.Millisecond,
 	}
+	cache.Start()
+	defer cache.Stop()
 
-	testCases := []addTestCase{
-		{
-			testName:     "Add valid Pod with IP",
-			kind:         "pod",
-			initialObj:   constructPod("test-pod", "default", "1.2.3.4"),
-			expectedName: "test-pod",
-			expectedIP:   "1.2.3.4",
-			ok:           true,
-		},
-		{
-			testName:     "Add valid Service with ClusterIP",
-			kind:         "svc",
-			initialObj:   constructService("test-svc", "default", "10.0.0.1"),
-			expectedName: "test-svc",
-			expectedIP:   "10.0.0.1",
-			ok:           true,
-		},
-		{
-			testName:     "Add Pod with no IP",
-			kind:         "pod",
-			initialObj:   constructPod("no-ip-pod", "default", ""),
-			expectedName: "no-ip-pod",
-			expectedIP:   "",
-			ok:           true,
-		},
-		{
-			testName:     "Add Service with no ClusterIP",
-			kind:         "svc",
-			initialObj:   constructService("no-ip-svc", "default", ""),
-			expectedName: "no-ip-svc",
-			expectedIP:   "",
-			ok:           true,
-		},
-		{
-			testName: "Add Pod with invalid key",
-			kind:     "pod",
-			// Create a pod with no metadata to trigger a key error.
-			initialObj:    &v1.Pod{},
-			expectedError: "OnAdd: empty key for pod",
-			ok:            false,
-		},
-		{
-			testName:      "Add unknown object",
-			kind:          "unknown",
-			initialObj:    "not a valid object",
-			expectedError: "OnAdd: unknown object type:",
-			ok:            false,
-		},
-	}
+	// Initial objects are stored via the transform and reachable by name and IP.
+	require.Eventually(t, func() bool {
+		return cache.GetPodByName("default", "test-pod") != nil
+	}, eventuallyTimeout, 5*time.Millisecond)
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			// Prepare the cache with all maps.
-			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Second),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Second),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Second),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Second),
-			}
+	gotPod := cache.GetPodByName("default", "test-pod")
+	require.NotNil(t, gotPod)
+	assert.Equal(t, "test-pod", gotPod.Name)
+	assert.Equal(t, "1.2.3.4", gotPod.Status.PodIP)
 
-			// If we expect an error, capture log output.
-			if !tc.ok {
-				var logBuffer bytes.Buffer
-				origOut := logrus.StandardLogger().Out
-				logrus.SetOutput(&logBuffer)
-				defer logrus.SetOutput(origOut)
+	require.NotNil(t, cache.GetPodByIp("1.2.3.4"))
+	require.NotNil(t, cache.GetSvcByName("default", "test-svc"))
+	require.NotNil(t, cache.GetSvcByIp("10.0.0.1"))
 
-				cache.OnAdd(tc.initialObj, false)
-				logContent := logBuffer.String()
-				assert.Contains(t, logContent, tc.expectedError)
-				return
-			}
+	// GetPods/GetSvcs return the live set.
+	assert.Len(t, cache.GetPods(), 1)
+	assert.Len(t, cache.GetSvcs(), 1)
 
-			// Otherwise, perform the addition.
-			cache.OnAdd(tc.initialObj, false)
+	// Update the pod IP; the new IP must resolve and the stale IP must be dropped.
+	updated := constructPod("test-pod", "default", "5.6.7.8")
+	_, err := cache.clientset.CoreV1().Pods("default").Update(context.TODO(), updated, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return cache.GetPodByIp("5.6.7.8") != nil && cache.GetPodByIp("1.2.3.4") == nil
+	}, eventuallyTimeout, 5*time.Millisecond)
 
-			// Verify results based on kind.
-			switch tc.kind {
-			case "pod":
-				retrieved := cache.GetPodByName("default", tc.expectedName)
-				require.NotNil(t, retrieved, "expected pod to be added")
-				assert.Equal(t, tc.expectedName, retrieved.Name)
-				if tc.expectedIP != "" {
-					retrievedByIP := cache.GetPodByIp(tc.expectedIP)
-					require.NotNil(t, retrievedByIP, "expected pod to be retrievable by IP")
-					assert.Equal(t, tc.expectedName, retrievedByIP.Name)
-				}
-			case "svc":
-				retrieved := cache.GetSvcByName("default", tc.expectedName)
-				require.NotNil(t, retrieved, "expected service to be added")
-				assert.Equal(t, tc.expectedName, retrieved.Name)
-				if tc.expectedIP != "" {
-					retrievedByIP := cache.GetSvcByIp(tc.expectedIP)
-					require.NotNil(t, retrievedByIP, "expected service to be retrievable by IP")
-					assert.Equal(t, tc.expectedName, retrievedByIP.Name)
-				}
-			}
-		})
-	}
+	// Delete the pod; after the grace TTL it must no longer resolve.
+	err = cache.clientset.CoreV1().Pods("default").Delete(context.TODO(), "test-pod", metav1.DeleteOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return cache.GetPodByName("default", "test-pod") == nil &&
+			cache.GetPodByIp("5.6.7.8") == nil
+	}, 3*time.Second, 5*time.Millisecond)
 }
 
-func TestInventoryCacheUpdate(t *testing.T) {
-	type updateTestCase struct {
-		testName      string
-		kind          string
-		initialObj    any
-		updatedObj    any
-		expectedIP    string
-		ok            bool
-		expectedError string
+// TestOnDeleteAtomicGrace verifies the gap-closure guarantee: deleting an object
+// moves it from the live map to the grace window atomically, so a lookup
+// immediately after OnDelete still resolves it (never a gap where it is absent),
+// and it disappears only after the grace TTL.
+func TestOnDeleteAtomicGrace(t *testing.T) {
+	ttl := 100 * time.Millisecond
+	cache := &inventoryCache{
+		pods:     cachedmap.NewCachedMap[string, *SlimPod](ttl),
+		podsByIp: cachedmap.NewCachedMap[string, *SlimPod](ttl),
+		svcs:     cachedmap.NewCachedMap[string, *SlimService](ttl),
+		svcsByIp: cachedmap.NewCachedMap[string, *SlimService](ttl),
 	}
+	defer func() {
+		cache.pods.Close()
+		cache.podsByIp.Close()
+		cache.svcs.Close()
+		cache.svcsByIp.Close()
+	}()
 
-	testCases := []updateTestCase{
-		{
-			testName:   "Update Pod IP",
-			kind:       "pod",
-			initialObj: constructPod("test-pod", "default", "1.2.3.4"),
-			updatedObj: constructPod("test-pod", "default", "5.6.7.8"),
-			expectedIP: "5.6.7.8",
-			ok:         true,
-		},
-		{
-			testName:   "Update Service ClusterIP",
-			kind:       "svc",
-			initialObj: constructService("test-svc", "default", "10.0.0.1"),
-			updatedObj: constructService("test-svc", "default", "10.0.0.2"),
-			expectedIP: "10.0.0.2",
-			ok:         true,
-		},
-		{
-			testName:   "Update Pod with invalid key",
-			kind:       "pod",
-			initialObj: constructPod("invalid-pod", "default", "1.2.3.4"),
-			// Updated object is missing metadata to force key error.
-			updatedObj:    &v1.Pod{},
-			expectedError: "OnUpdate: empty key for pod",
-			ok:            false,
-		},
-		{
-			testName:      "Update unknown object",
-			kind:          "unknown",
-			initialObj:    constructPod("some-pod", "default", "1.2.3.4"),
-			updatedObj:    "not a valid object",
-			expectedError: "OnUpdate: unknown object type:",
-			ok:            false,
-		},
-	}
+	pod := NewSlimPod(constructPod("test-pod", "default", "1.2.3.4"))
+	svc := NewSlimService(constructService("test-svc", "default", "10.0.0.1"))
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-			}
+	cache.OnAdd(pod, false)
+	cache.OnAdd(svc, false)
+	require.NotNil(t, cache.GetPodByName("default", "test-pod"))
+	require.NotNil(t, cache.GetPodByIp("1.2.3.4"))
+	require.NotNil(t, cache.GetSvcByName("default", "test-svc"))
+	require.NotNil(t, cache.GetSvcByIp("10.0.0.1"))
 
-			cache.OnAdd(tc.initialObj, false)
+	cache.OnDelete(pod)
+	cache.OnDelete(svc)
 
-			if !tc.ok {
-				var logBuffer bytes.Buffer
-				origOut := logrus.StandardLogger().Out
-				logrus.SetOutput(&logBuffer)
-				defer logrus.SetOutput(origOut)
+	// Atomic handoff: immediately resolvable after delete (no gap).
+	require.NotNil(t, cache.GetPodByName("default", "test-pod"), "must stay resolvable in grace right after delete")
+	require.NotNil(t, cache.GetPodByIp("1.2.3.4"))
+	require.NotNil(t, cache.GetSvcByName("default", "test-svc"))
+	require.NotNil(t, cache.GetSvcByIp("10.0.0.1"))
 
-				cache.OnUpdate(tc.initialObj, tc.updatedObj)
-				logContent := logBuffer.String()
-				assert.Contains(t, logContent, tc.expectedError)
-				return
-			}
-
-			cache.OnUpdate(tc.initialObj, tc.updatedObj)
-
-			switch tc.kind {
-			case "pod":
-				retrieved := cache.GetPodByName("default", "test-pod")
-				require.NotNil(t, retrieved, "expected pod to exist after update")
-				assert.Equal(t, tc.expectedIP, retrieved.Status.PodIP)
-				retrievedByIP := cache.GetPodByIp(tc.expectedIP)
-				require.NotNil(t, retrievedByIP, "expected pod to be retrievable by new IP")
-			case "svc":
-				retrieved := cache.GetSvcByName("default", "test-svc")
-				require.NotNil(t, retrieved, "expected service to exist after update")
-				assert.Equal(t, tc.expectedIP, retrieved.Spec.ClusterIP)
-				retrievedByIP := cache.GetSvcByIp(tc.expectedIP)
-				require.NotNil(t, retrievedByIP, "expected service to be retrievable by new IP")
-			}
-		})
-	}
+	// Gone after the grace TTL expires.
+	require.Eventually(t, func() bool {
+		return cache.GetPodByName("default", "test-pod") == nil &&
+			cache.GetPodByIp("1.2.3.4") == nil &&
+			cache.GetSvcByName("default", "test-svc") == nil &&
+			cache.GetSvcByIp("10.0.0.1") == nil
+	}, eventuallyTimeout, 5*time.Millisecond)
 }
 
-func TestInventoryCacheDelete(t *testing.T) {
-	type deleteTestCase struct {
-		testName      string
-		kind          string
-		initialObj    any
-		ok            bool
-		expectedError string
+func TestSlimDeepCopyObject(t *testing.T) {
+	pod := NewSlimPod(constructPod("p", "default", "1.2.3.4"))
+	pod.Labels = map[string]string{"a": "b"}
+	cp := pod.DeepCopyObject().(*SlimPod)
+	require.NotSame(t, pod, cp)
+	cp.Labels["a"] = "c"
+	assert.Equal(t, "b", pod.Labels["a"], "deep copy must not share the labels map")
+
+	svc := NewSlimService(constructService("s", "default", "10.0.0.1"))
+	svc.Spec.Selector = map[string]string{"app": "x"}
+	scp := svc.DeepCopyObject().(*SlimService)
+	require.NotSame(t, svc, scp)
+	assert.Equal(t, "10.0.0.1", scp.Spec.ClusterIP)
+	scp.Spec.Selector["app"] = "y"
+	assert.Equal(t, "x", svc.Spec.Selector["app"], "deep copy must not share the selector map")
+}
+
+func TestHostNetworkPodNotIndexedByIP(t *testing.T) {
+	ttl := time.Second
+	cache := &inventoryCache{
+		pods:     cachedmap.NewCachedMap[string, *SlimPod](ttl),
+		podsByIp: cachedmap.NewCachedMap[string, *SlimPod](ttl),
+		svcs:     cachedmap.NewCachedMap[string, *SlimService](ttl),
+		svcsByIp: cachedmap.NewCachedMap[string, *SlimService](ttl),
 	}
+	defer func() {
+		cache.pods.Close()
+		cache.podsByIp.Close()
+		cache.svcs.Close()
+		cache.svcsByIp.Close()
+	}()
 
-	testCases := []deleteTestCase{
-		{
-			testName:   "Delete Pod",
-			kind:       "pod",
-			initialObj: constructPod("test-pod", "default", "1.2.3.4"),
-			ok:         true,
-		},
-		{
-			testName:   "Delete Service",
-			kind:       "svc",
-			initialObj: constructService("test-svc", "default", "10.0.0.1"),
-			ok:         true,
-		},
-		{
-			testName:      "Delete unknown object",
-			kind:          "unknown",
-			initialObj:    "not a valid object",
-			expectedError: "OnDelete: unknown object type:",
-			ok:            false,
-		},
+	hostNetPod := NewSlimPod(constructPod("host-pod", "default", "10.0.0.5"))
+	hostNetPod.Spec.HostNetwork = true
+	cache.OnAdd(hostNetPod, false)
+
+	// Resolvable by name, but NOT by its (node-shared) IP.
+	require.NotNil(t, cache.GetPodByName("default", "host-pod"))
+	assert.Nil(t, cache.GetPodByIp("10.0.0.5"), "hostNetwork pod must not be indexed by IP")
+}
+
+// TestConcurrentGetAndStop exercises the RWMutex: concurrent Get* calls while
+// Stop() tears the cache down must not panic or data-race (run with -race).
+func TestConcurrentGetAndStop(t *testing.T) {
+	cache := &inventoryCache{
+		clientset: fake.NewClientset(constructPod("p", "default", "1.2.3.4")),
+		graceTTL:  200 * time.Millisecond,
 	}
+	cache.Start()
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			// Use a very short duration so that cache entries can expire.
-			cache := &inventoryCache{
-				pods:     cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				podsByIp: cachedmap.NewCachedMap[string, *SlimPod](time.Nanosecond),
-				svcs:     cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-				svcsByIp: cachedmap.NewCachedMap[string, *SlimService](time.Nanosecond),
-			}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 10000; i++ {
+			cache.GetPodByName("default", "p")
+			cache.GetPodByIp("1.2.3.4")
+			cache.GetPods()
+		}
+	}()
 
-			if tc.ok {
-				cache.OnAdd(tc.initialObj, false)
-			}
-
-			if !tc.ok {
-				var logBuffer bytes.Buffer
-				origOut := logrus.StandardLogger().Out
-				logrus.SetOutput(&logBuffer)
-				defer logrus.SetOutput(origOut)
-
-				cache.OnDelete(tc.initialObj)
-				logContent := logBuffer.String()
-				assert.Contains(t, logContent, tc.expectedError)
-				return
-			}
-			cache.OnDelete(tc.initialObj)
-
-			start := time.Now()
-			for {
-				if tc.kind == "pod" {
-					rtvdName := cache.GetPodByName(tc.initialObj.(*v1.Pod).Namespace, tc.initialObj.(*v1.Pod).Name)
-					rtvdIp := cache.GetPodByIp(tc.initialObj.(*v1.Pod).Status.PodIP)
-					if rtvdName == nil && rtvdIp == nil {
-						break
-					}
-				} else if tc.kind == "svc" {
-					rtvdName := cache.GetSvcByName(tc.initialObj.(*v1.Service).Namespace, tc.initialObj.(*v1.Service).Name)
-					rtvdIp := cache.GetSvcByIp(tc.initialObj.(*v1.Service).Spec.ClusterIP)
-					if rtvdName == nil && rtvdIp == nil {
-						break
-					}
-				}
-				time.Sleep(time.Nanosecond)
-
-				require.False(t, time.Since(start) > 1*time.Second, "Timed out waiting for object to be deleted")
-			}
-		})
-	}
+	cache.Stop() // last user -> Close() nils the maps while Get* may be running
+	<-done
 }
 
 func constructPod(name, namespace, ip string) *v1.Pod {
