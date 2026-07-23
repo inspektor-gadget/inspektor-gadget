@@ -38,4 +38,72 @@ Default value: "true"
 
 ## Guide
 
-TODO
+In this example, we will trace SSL/TLS operations performed by a container making HTTPS requests.
+
+First, we need to run an application that generates some events.
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl run --restart=Never --image=curlimages/curl mypod -- sh -c 'while true; do curl -s https://example.com -o /dev/null; sleep 3; done'
+pod/mypod created
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker run --name test-ssl -d curlimages/curl sh -c 'while true; do curl -s https://example.com -o /dev/null; sleep 3; done'
+```
+  </TabItem>
+</Tabs>
+
+Then, let's run the gadget:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+Using the trace_ssl gadget, we can see the unencrypted data as it passes through the OpenSSL layer.
+We can filter for the pod "mypod" to observe its HTTPS traffic:
+
+```bash
+$ kubectl gadget run trace_ssl:%IG_TAG% --podname mypod
+K8S.NODE           K8S.NAMESPACE K8S.PODNAME K8S.CONTAINE… COMM   PID     TID  OPERATION   LATENCY_NS  BUF
+minikube-docker    default       mypod       mypod         curl  520001  520001 write             2345  GET / HTTP/1.1\r\nHost: exam…
+minikube-docker    default       mypod       mypod         curl  520001  520001 read               987  HTTP/1.1 200 OK\r\nContent-T…
+minikube-docker    default       mypod       mypod         curl  520002  520002 write             1234  GET / HTTP/1.1\r\nHost: exam…
+minikube-docker    default       mypod       mypod         curl  520002  520002 read              1023  HTTP/1.1 200 OK\r\nContent-T…
+^C
+```
+
+We can see the plaintext HTTP request and response data intercepted at the SSL layer before encryption (on write) and after decryption (on read).
+We can stop the gadget by hitting Ctrl-C.
+
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_ssl:%IG_TAG% --containername test-ssl
+RUNTIME.CONTAINERNA… COMM                PID         TID         OPERATION    LATENCY_NS  BUF
+test-ssl             curl             520345      520345      write              2345      GET / HTTP/1.1\r\nHost: example…
+test-ssl             curl             520345      520345      read               987       HTTP/1.1 200 OK\r\nContent-Type…
+test-ssl             curl             520346      520346      write              1234      GET / HTTP/1.1\r\nHost: example…
+test-ssl             curl             520346      520346      read              1045       HTTP/1.1 200 OK\r\nContent-Type…
+^C
+```
+  </TabItem>
+</Tabs>
+
+Finally, clean the system:
+
+<Tabs groupId="env">
+  <TabItem value="kubectl-gadget" label="kubectl gadget">
+```bash
+$ kubectl delete pod mypod
+```
+  </TabItem>
+
+  <TabItem value="ig" label="ig">
+```bash
+$ docker rm -f test-ssl
+```
+  </TabItem>
+</Tabs>
