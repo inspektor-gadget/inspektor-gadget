@@ -17,6 +17,7 @@ package instancemanager
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -78,6 +79,12 @@ func (p *GadgetInstance) GadgetInfo() (*api.GadgetInfo, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.gadgetInfo, p.error
+}
+
+func (p *GadgetInstance) ParamValues() api.ParamValues {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return maps.Clone(p.request.ParamValues)
 }
 
 func (p *GadgetInstance) AddClient(client api.GadgetManager_RunGadgetServer) chan struct{} {

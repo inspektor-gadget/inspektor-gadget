@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	img "github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	kgauth "github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/auth"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	igconfig "github.com/inspektor-gadget/inspektor-gadget/pkg/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -80,6 +82,7 @@ func main() {
 	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
 	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
+	mintOptions := kgauth.AddFlags(rootCmd)
 	grpcRuntime.Init(runtimeGlobalParams)
 
 	// evaluate flags early for runtimeGlobalParams; this will make
@@ -106,6 +109,10 @@ func main() {
 		log.Fatalf("Creating RESTConfig: %s", err)
 	}
 	grpcRuntime.SetRestConfig(config)
+
+	if err := kgauth.MaybeMintAndApply(context.Background(), config, grpcRuntime, mintOptions); err != nil {
+		log.Fatalf("minting audience-scoped token: %v", err)
+	}
 
 	namespace, _ := utils.GetNamespace()
 	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)

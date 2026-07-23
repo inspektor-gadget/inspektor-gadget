@@ -77,7 +77,7 @@ nextName:
 		for _, tmpGadgetInstance := range gadgetInstances {
 			if idOrName == tmpGadgetInstance.Id {
 				instances = append(instances, tmpGadgetInstance)
-				break nextName
+				continue nextName
 			}
 			// match partial ID or full name
 			if tmpGadgetInstance.Name == idOrName || strings.HasPrefix(tmpGadgetInstance.Id, idOrName) {
