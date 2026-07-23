@@ -58,6 +58,7 @@ GADGETS ?= \
 	trace_tcp \
 	trace_tcpdrop \
 	trace_tcpretrans \
+	trace_nvidia_errors \
 	top_blockio \
 	top_cpu_throttle \
 	top_file \

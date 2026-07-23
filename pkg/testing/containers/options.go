@@ -101,3 +101,11 @@ func WithExpectedExitCode(code int) ContainerOption {
 		opts.options = append(opts.options, testutils.WithExpectedExitCode(code))
 	}
 }
+
+// WithGPUs requests all GPUs for the container (--gpus=all on Docker,
+// nvidia.com/gpu resource limit on Kubernetes).
+func WithGPUs() ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithGPUs())
+	}
+}

@@ -45,6 +45,7 @@ type containerOptions struct {
 	limits               map[string]string
 	expectedExitCode     *int
 	sysctls              map[string]string
+	gpus                 bool
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -177,5 +178,14 @@ func WithLimits(limits map[string]string) Option {
 func WithSysctls(sysctls map[string]string) Option {
 	return func(opts *containerOptions) {
 		opts.sysctls = sysctls
+	}
+}
+
+// WithGPUs requests all GPUs for the container. On Docker this sets
+// --gpus=all (DeviceRequests); on Kubernetes it adds nvidia.com/gpu to
+// resource limits.
+func WithGPUs() Option {
+	return func(opts *containerOptions) {
+		opts.gpus = true
 	}
 }
