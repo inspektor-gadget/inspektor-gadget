@@ -17,6 +17,7 @@ package ebpfoperator
 import (
 	"fmt"
 	"net"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -144,6 +146,43 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			Name:    attachTo,
 			Program: prog,
 		})
+	case ebpf.SockOps:
+		cgroupPath, err := cgroupV2Root()
+		if err != nil {
+			return nil, fmt.Errorf("attaching sock_ops program %q: %w", p.Name, err)
+		}
+		i.logger.Debugf("Attaching sock_ops %q to cgroup %q", p.Name, cgroupPath)
+		return link.AttachCgroup(link.CgroupOptions{
+			Path:    cgroupPath,
+			Attach:  ebpf.AttachCGroupSockOps,
+			Program: prog,
+		})
+	case ebpf.SkSKB, ebpf.SkMsg:
+		sockMapName, sockMap, err := i.findSockMap()
+		if err != nil {
+			return nil, fmt.Errorf("attaching %s program %q: %w", p.Type, p.Name, err)
+		}
+		i.logger.Debugf("Attaching %s %q (%s) to sockmap %q", p.Type, p.Name, p.AttachType, sockMapName)
+		if err := link.RawAttachProgram(link.RawAttachProgramOptions{
+			Target:  sockMap.FD(),
+			Program: prog,
+			Attach:  p.AttachType,
+		}); err != nil {
+			return nil, fmt.Errorf("attaching %s program %q to sockmap %q: %w", p.Type, p.Name, sockMapName, err)
+		}
+		// sk_skb/sk_msg attachments predate bpf_link, so RawAttachProgram returns
+		// no Link. Record a detacher run on Stop() while the collection (and thus
+		// the program and map FDs) is still open.
+		targetFD := sockMap.FD()
+		attachType := p.AttachType
+		i.rawDetachers = append(i.rawDetachers, func() error {
+			return link.RawDetachProgram(link.RawDetachProgramOptions{
+				Target:  targetFD,
+				Program: prog,
+				Attach:  attachType,
+			})
+		})
+		return nil, nil
 	case ebpf.SchedCLS:
 		handler := i.tcHandlers[p.Name]
 
@@ -245,4 +284,44 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 	default:
 		return nil, fmt.Errorf("unsupported program %q of type %q", p.Name, p.Type)
 	}
+}
+
+// cgroupV2Root returns the path to the host's cgroup-v2 (unified) mount point,
+// honoring HOST_ROOT. sock_ops programs are attached here host-wide.
+func cgroupV2Root() (string, error) {
+	candidates := []string{
+		filepath.Join(host.HostRoot, "sys/fs/cgroup"),
+		filepath.Join(host.HostRoot, "sys/fs/cgroup/unified"),
+	}
+	for _, p := range candidates {
+		var st unix.Statfs_t
+		if err := unix.Statfs(p, &st); err != nil {
+			continue
+		}
+		if st.Type == unix.CGROUP2_SUPER_MAGIC {
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("no cgroup v2 mount found (looked in %v)", candidates)
+}
+
+// findSockMap returns the single sockmap/sockhash in the collection, which
+// sk_skb stream_parser/verdict programs are attached to. It errors if there is
+// not exactly one such map.
+func (i *ebpfInstance) findSockMap() (string, *ebpf.Map, error) {
+	var name string
+	var m *ebpf.Map
+	for n, candidate := range i.collection.Maps {
+		switch candidate.Type() {
+		case ebpf.SockMap, ebpf.SockHash:
+			if m != nil {
+				return "", nil, fmt.Errorf("multiple sockmaps found (%q and %q); expected exactly one", name, n)
+			}
+			name, m = n, candidate
+		}
+	}
+	if m == nil {
+		return "", nil, fmt.Errorf("no sockmap/sockhash found in gadget")
+	}
+	return name, m, nil
 }
