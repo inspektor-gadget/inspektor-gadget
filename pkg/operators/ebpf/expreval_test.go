@@ -101,6 +101,22 @@ func TestGateMapsDropsWhenFalse(t *testing.T) {
 	assert.Equal(t, "gatedmap", i.gatedMaps[0].name)
 }
 
+func TestEvaluateDefinesChained(t *testing.T) {
+	i := newTestInstance(t)
+	i.exprEval = exprgate.New([]string{"a", "b"}, exprgate.KallsymsFuncs{})
+
+	progA, err := i.exprEval.Compile("params.n + 1", exprgate.KindDefine, "a")
+	require.NoError(t, err)
+	progB, err := i.exprEval.Compile("a * 2", exprgate.KindDefine, "b")
+	require.NoError(t, err)
+	i.exprDefines = []exprBinding{{name: "a", prog: progA}, {name: "b", prog: progB}}
+
+	defines, err := i.evaluateDefines(map[string]any{"n": int64(10)})
+	require.NoError(t, err)
+	assert.EqualValues(t, 11, defines["a"])
+	assert.EqualValues(t, 22, defines["b"], "define b should see the value of earlier define a")
+}
+
 func TestGateMapsKeepsWhenTrue(t *testing.T) {
 	spec := &ebpf.CollectionSpec{
 		Maps: map[string]*ebpf.MapSpec{
