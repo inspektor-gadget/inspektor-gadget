@@ -198,6 +198,15 @@ func (i *ebpfInstance) initStackConverter(gadgetCtx operators.GadgetContext) err
 				return err
 			}
 			converter := func(ds datasource.DataSource, data datasource.Data) error {
+				// The kernel stack map may have been gated off by
+				// GADGET_MAP_ONLY_IF (e.g. --collect-kstack=false). The
+				// event still carries the kstack field, but there is no
+				// map to resolve it against, so emit an empty stack
+				// instead of dereferencing a nil map.
+				if i.kernelStackMap == nil {
+					out.Set(data, []byte{})
+					return nil
+				}
 				inBytes := in.Get(data)
 				stackId := ds.ByteOrder().Uint32(inBytes)
 				outString, err := fetchAndFormatStackTrace(stackId, i.kernelStackMap.Lookup, kernelSymbolResolver.LookupByInstructionPointer)
