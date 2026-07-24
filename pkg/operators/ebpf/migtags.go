@@ -16,6 +16,7 @@ package ebpfoperator
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/cilium/ebpf/btf"
@@ -25,14 +26,21 @@ import (
 
 // readMigratedDeclTags reads the ig: decl tags that are the new encoding of the
 // legacy name-encoded magic globals (GADGET_PARAM -> ig:param, GADGET_MAPITER ->
-// ig:mapiter, GADGET_ITER_TARGET_MAP -> ig:iter_target_map). It runs in
-// analyze(), before fillParamDefaults(), alongside — not instead of — the legacy
-// prefix walk (see pkg/operators/ebpf/types.go): a gadget built with the new
-// macros carries ig: tags, while a pre-built old image carries only the
-// gadget_*___* symbols. Both are supported permanently; the populate* helpers
-// (and the guards here) are idempotent, so an object carrying both encodings is
-// handled once.
+// ig:mapiter, GADGET_ITER_TARGET_MAP -> ig:iter_target_map, GADGET_TRACER ->
+// ig:tracer, GADGET_ITER -> ig:iter / ig:iter_type). It runs in analyze(),
+// before fillParamDefaults(), alongside — not instead of — the legacy prefix
+// walk (see pkg/operators/ebpf/types.go): a gadget built with the new macros
+// carries ig: tags, while a pre-built old image carries only the gadget_*___*
+// symbols. Both are supported permanently; the populate* helpers (and the guards
+// here) are idempotent, so an object carrying both encodings is handled once.
 func (i *ebpfInstance) readMigratedDeclTags(gadgetCtx operators.GadgetContext) error {
+	// iterTypes maps an iterator name to its element struct name (from the
+	// ig:iter_type phantom); iterProgs maps an iterator name to its member
+	// program functions (from ig:iter tags on the funcs). Both are gathered
+	// first, then combined into populateIterators calls.
+	iterTypes := map[string]string{}
+	iterProgs := map[string][]string{}
+
 	for typ, err := range i.collectionSpec.Types.All() {
 		if err != nil {
 			return fmt.Errorf("iterating over types: %w", err)
@@ -77,8 +85,77 @@ func (i *ebpfInstance) readMigratedDeclTags(gadgetCtx operators.GadgetContext) e
 				if err := i.populateIterTargetMap(nil, value); err != nil {
 					return fmt.Errorf("handling ig:iter_target_map %q: %w", value, err)
 				}
+			case igTagTracer:
+				// value is "<name>___<map>___<event_type>"; populateTracer
+				// splits it on typeSplitter. Skip if the legacy gadget_tracer_
+				// walk already registered it.
+				if name, _, ok := strings.Cut(value, typeSplitter); ok {
+					if _, dup := i.tracers[name]; dup {
+						continue
+					}
+				}
+				if err := i.populateTracer(nil, value); err != nil {
+					return fmt.Errorf("handling ig:tracer %q: %w", value, err)
+				}
+			case igTagIterType:
+				// value is "<name>___<struct>". Record the element type; the
+				// program list is gathered from the func tags below.
+				name, structName, ok := strings.Cut(value, typeSplitter)
+				if !ok {
+					return fmt.Errorf("malformed ig:iter_type %q: expected <name>___<struct>", value)
+				}
+				iterTypes[name] = structName
 			}
 		}
 	}
+
+	// Gather GADGET_ITER_MEMBER programs: each iter program function carries an
+	// ig:iter:<name> tag on its btf.Func (attached to the first instruction).
+	for progName, p := range i.collectionSpec.Programs {
+		if len(p.Instructions) == 0 {
+			continue
+		}
+		fn := btf.FuncMetadata(&p.Instructions[0])
+		if fn == nil {
+			continue
+		}
+		for _, tag := range fn.Tags {
+			kind, value, ok := parseIGTag(tag)
+			if !ok || kind != igTagIter {
+				continue
+			}
+			iterProgs[value] = append(iterProgs[value], progName)
+		}
+	}
+
+	// Combine element type + program list into the legacy
+	// "<name>___<struct>___<prog1>___..." encoding and reuse populateIterators.
+	for name, structName := range iterTypes {
+		if _, dup := i.iterators[name]; dup {
+			continue
+		}
+		progs := iterProgs[name]
+		if len(progs) == 0 {
+			return fmt.Errorf("iterator %q (ig:iter_type) has no program tagged with GADGET_ITER_MEMBER(%s)", name, name)
+		}
+		// Sort for a deterministic program order (map iteration is random).
+		sort.Strings(progs)
+		parts := append([]string{name, structName}, progs...)
+		if err := i.populateIterators(nil, strings.Join(parts, typeSplitter)); err != nil {
+			return fmt.Errorf("handling ig:iter %q: %w", name, err)
+		}
+	}
+
+	// Any ig:iter tags whose iterator has no ig:iter_type phantom are an error
+	// (the element struct is required to resolve the event type).
+	for name := range iterProgs {
+		if _, ok := iterTypes[name]; !ok {
+			if _, dup := i.iterators[name]; dup {
+				continue
+			}
+			return fmt.Errorf("GADGET_ITER_MEMBER(%s) has no matching GADGET_ITER(%s, <type>)", name, name)
+		}
+	}
+
 	return nil
 }
