@@ -117,6 +117,34 @@ func TestEvaluateDefinesChained(t *testing.T) {
 	assert.EqualValues(t, 22, defines["b"], "define b should see the value of earlier define a")
 }
 
+func TestEvaluateAsserts(t *testing.T) {
+	i := newTestInstance(t)
+	i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+
+	pass, err := i.exprEval.Compile("params.n > 0", exprgate.KindAssert, "")
+	require.NoError(t, err)
+	fail1, err := i.exprEval.Compile("params.n > 100", exprgate.KindAssert, "")
+	require.NoError(t, err)
+	fail2, err := i.exprEval.Compile("params.n < 5", exprgate.KindAssert, "")
+	require.NoError(t, err)
+
+	// All pass.
+	i.exprAsserts = []exprBinding{{name: "positive", prog: pass}}
+	require.NoError(t, i.evaluateAsserts(map[string]any{"n": int64(10)}, map[string]any{}))
+
+	// Two fail: the error names both.
+	i.exprAsserts = []exprBinding{
+		{name: "positive", prog: pass},
+		{name: "big", prog: fail1},
+		{name: "small", prog: fail2},
+	}
+	err = i.evaluateAsserts(map[string]any{"n": int64(10)}, map[string]any{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "big")
+	assert.Contains(t, err.Error(), "small")
+	assert.NotContains(t, err.Error(), "positive")
+}
+
 func TestGateMapsKeepsWhenTrue(t *testing.T) {
 	spec := &ebpf.CollectionSpec{
 		Maps: map[string]*ebpf.MapSpec{
