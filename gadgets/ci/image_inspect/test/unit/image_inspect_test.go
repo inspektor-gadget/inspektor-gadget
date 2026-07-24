@@ -94,7 +94,7 @@ func TestInspectCmd(t *testing.T) {
 
 	// Validate eBPF variables
 	validateExtraInfoValue(t, "ebpf.variables", info.ExtraInfo.Data["ebpf.variables"], []string{
-		"gadget_mapiter_qdisc___map1", "__ig_param_ifindex", "__ig_param_targ_ms", "ifindex", "targ_ms",
+		"__ig_mapiter_qdisc___map1", "__ig_param_ifindex", "__ig_param_targ_ms", "ifindex", "targ_ms",
 	})
 
 	// Validate flowchart
