@@ -70,15 +70,34 @@ func (i *ebpfInstance) evaluateExprTags(gadgetCtx operators.GadgetContext, param
 
 	exprParams := i.buildExprParams(paramMap)
 
-	// Defines and asserts are wired up in later changes; for now only map
-	// gating is evaluated.
-	defines := map[string]any{}
+	defines, err := i.evaluateDefines(exprParams)
+	if err != nil {
+		return err
+	}
 
+	// Asserts and attach_to are wired up in later changes.
 	if err := i.gateMaps(gadgetCtx, exprParams, defines); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// evaluateDefines evaluates every GADGET_EXPR_DEFINE in source order,
+// accumulating each result into the defines environment so that a later define
+// can reference an earlier one. The resulting map is shared as the defines
+// environment for map gating, asserts and attach_to.
+func (i *ebpfInstance) evaluateDefines(exprParams map[string]any) (map[string]any, error) {
+	defines := make(map[string]any, len(i.exprDefines))
+	for _, d := range i.exprDefines {
+		val, err := i.exprEval.EvalAny(d.prog, exprParams, defines)
+		if err != nil {
+			return nil, fmt.Errorf("GADGET_EXPR_DEFINE %q: %w", d.name, err)
+		}
+		defines[d.name] = val
+		i.logger.Debugf("define %q = %v (from %q)", d.name, val, d.prog.Src())
+	}
+	return defines, nil
 }
 
 // buildExprParams builds the params.* environment from the resolved parameter
