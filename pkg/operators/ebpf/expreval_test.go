@@ -15,10 +15,13 @@
 package ebpfoperator
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -145,6 +148,45 @@ func TestEvaluateAsserts(t *testing.T) {
 	assert.NotContains(t, err.Error(), "positive")
 }
 
+func TestEvaluateAttachTo(t *testing.T) {
+	newProg := func(i *ebpfInstance, expr string) *exprgate.Program {
+		p, err := i.exprEval.Compile(expr, exprgate.KindAttachTo, "")
+		require.NoError(t, err)
+		return p
+	}
+
+	t.Run("resolves and sets config", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.progAttachTo["p"] = newProg(i, `params.old ? "sym_a" : "sym_b"`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{"old": false}, map[string]any{}))
+		assert.Equal(t, "sym_b", i.config.GetString("programs.p.attach_to"))
+	})
+
+	t.Run("does not clobber explicit config", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.config.Set("programs.p.attach_to", "user_choice")
+		i.progAttachTo["p"] = newProg(i, `"expr_choice"`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{}, map[string]any{}))
+		assert.Equal(t, "user_choice", i.config.GetString("programs.p.attach_to"))
+	})
+
+	t.Run("can disable a program", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.progAttachTo["p"] = newProg(i, `program.disabled`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{}, map[string]any{}))
+		assert.Equal(t, exprgate.ProgramDisabled, i.config.GetString("programs.p.attach_to"))
+	})
+}
+
 func TestGateMapsKeepsWhenTrue(t *testing.T) {
 	spec := &ebpf.CollectionSpec{
 		Maps: map[string]*ebpf.MapSpec{
@@ -173,4 +215,79 @@ func TestGateMapsKeepsWhenTrue(t *testing.T) {
 	assert.Contains(t, spec.Maps, "gatedmap", "map should be kept")
 	assert.True(t, spec.Programs["prog"].Instructions[0].IsLoadFromMap(), "reference should be intact")
 	assert.Empty(t, i.gatedMaps)
+}
+
+func emptyBTFSpec(t *testing.T) *btf.Spec {
+	t.Helper()
+	b, err := btf.NewBuilder(nil, nil)
+	require.NoError(t, err)
+	raw, err := b.Marshal(nil, nil)
+	require.NoError(t, err)
+	spec, err := btf.LoadSpecFromReader(bytes.NewReader(raw))
+	require.NoError(t, err)
+	return spec
+}
+
+func TestReadExprTagsDuplicates(t *testing.T) {
+	tests := []struct {
+		name        string
+		mapTags     []string
+		progTags    []string
+		errContains string
+	}{
+		{
+			name:     "single only_if and attach_to",
+			mapTags:  []string{"ig:only_if:params.enabled"},
+			progTags: []string{"ig:attach_to:'sched/sched_process_exec'"},
+		},
+		{
+			name:        "identical only_if",
+			mapTags:     []string{"ig:only_if:params.enabled", "ig:only_if:params.enabled"},
+			errContains: `map "gatedmap" has more than one GADGET_MAP_ONLY_IF: "params.enabled" and "params.enabled"`,
+		},
+		{
+			name:        "conflicting only_if",
+			mapTags:     []string{"ig:only_if:params.enabled", "ig:only_if:!params.enabled"},
+			errContains: `map "gatedmap" has more than one GADGET_MAP_ONLY_IF: "params.enabled" and "!params.enabled"`,
+		},
+		{
+			name:        "identical attach_to",
+			progTags:    []string{"ig:attach_to:'sched/sched_process_exec'", "ig:attach_to:'sched/sched_process_exec'"},
+			errContains: `program "prog" has more than one GADGET_PROG_ATTACH_TO: "'sched/sched_process_exec'" and "'sched/sched_process_exec'"`,
+		},
+		{
+			name:        "conflicting attach_to",
+			progTags:    []string{"ig:attach_to:'sched/sched_process_exec'", "ig:attach_to:'sched/sched_process_exit'"},
+			errContains: `program "prog" has more than one GADGET_PROG_ATTACH_TO: "'sched/sched_process_exec'" and "'sched/sched_process_exit'"`,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &ebpf.CollectionSpec{
+				Maps: map[string]*ebpf.MapSpec{
+					"gatedmap": {Name: "gatedmap", Tags: tc.mapTags},
+				},
+				Programs: map[string]*ebpf.ProgramSpec{
+					"prog": {
+						Instructions: asm.Instructions{
+							btf.WithFuncMetadata(asm.Mov.Imm(asm.R0, 0), &btf.Func{Name: "prog", Tags: tc.progTags}),
+							asm.Return(),
+						},
+					},
+				},
+				Types: emptyBTFSpec(t),
+			}
+			i := newTestInstance(t)
+			i.collectionSpec = spec
+
+			err := i.readExprTags(nil)
+			if tc.errContains != "" {
+				require.ErrorContains(t, err, tc.errContains)
+				return
+			}
+			require.NoError(t, err)
+			assert.Contains(t, i.mapOnlyIf, "gatedmap")
+			assert.Contains(t, i.progAttachTo, "prog")
+		})
+	}
 }
