@@ -41,6 +41,9 @@ const (
 	igTagTracer        = "tracer"          // GADGET_TRACER (on a throwaway var)
 	igTagIter          = "iter"            // GADGET_ITER_MEMBER (on a program func)
 	igTagIterType      = "iter_type"       // GADGET_ITER element type (on a throwaway var)
+	igTagTracerMap     = "tracer_map"      // GADGET_TRACER_MAP (on the ring buffer map)
+	igTagVar           = "var"             // gadget variable (on a const volatile var)
+	igTagPacketFilter  = "packetfilter"    // GADGET_PF (on the gadget_pf_ func, discovery only)
 )
 
 // exprBinding is a named, compiled expression (used for defines and asserts).
