@@ -211,6 +211,7 @@ type ebpfInstance struct {
 	progAttachTo map[string]*exprgate.Program // program name -> GADGET_PROG_ATTACH_TO expr
 	exprDefines  []exprBinding                // GADGET_EXPR_DEFINE, in source order
 	exprAsserts  []exprBinding                // GADGET_ASSERT
+	gatedMaps    []gatedMap                   // maps dropped by GADGET_MAP_ONLY_IF
 
 	links   []link.Link
 	perfFds []int
@@ -798,6 +799,13 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	// Evaluate the ig: decl-tag expressions now that params are resolved, and
+	// before the collection is loaded (map gating poisons instructions and
+	// drops maps, which must happen before NewCollectionWithOptions).
+	if err := i.evaluateExprTags(gadgetCtx, paramMap); err != nil {
+		return err
+	}
+
 	opts := ebpf.CollectionOptions{
 		MapReplacements: mapReplacements,
 		Cache:           i.bpfOperator.btfCache,
@@ -905,6 +913,9 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 			gadgetCtx.Logger().Debugf("running gadget: verifier error: %+v\n", verifierErr)
 		}
 
+		if hint := i.gatedMapHint(err); hint != "" {
+			return fmt.Errorf("creating eBPF collection: %w\n%s", err, hint)
+		}
 		return fmt.Errorf("creating eBPF collection: %w", err)
 	}
 	i.collection = collection
