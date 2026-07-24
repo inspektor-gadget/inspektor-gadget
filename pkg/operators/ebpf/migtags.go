@@ -27,12 +27,18 @@ import (
 // readMigratedDeclTags reads the ig: decl tags that are the new encoding of the
 // legacy name-encoded magic globals (GADGET_PARAM -> ig:param, GADGET_MAPITER ->
 // ig:mapiter, GADGET_ITER_TARGET_MAP -> ig:iter_target_map, GADGET_TRACER ->
-// ig:tracer, GADGET_ITER -> ig:iter / ig:iter_type). It runs in analyze(),
-// before fillParamDefaults(), alongside — not instead of — the legacy prefix
-// walk (see pkg/operators/ebpf/types.go): a gadget built with the new macros
-// carries ig: tags, while a pre-built old image carries only the gadget_*___*
-// symbols. Both are supported permanently; the populate* helpers (and the guards
-// here) are idempotent, so an object carrying both encodings is handled once.
+// ig:tracer, GADGET_ITER -> ig:iter / ig:iter_type, GADGET_TRACER_MAP ->
+// ig:tracer_map, gadget_var_ -> ig:var). It runs in analyze(), before
+// fillParamDefaults(), alongside — not instead of — the legacy prefix walk (see
+// pkg/operators/ebpf/types.go): a gadget built with the new macros carries ig:
+// tags, while a pre-built old image carries only the gadget_*___* symbols. Both
+// are supported permanently; the populate* helpers (and the guards here) are
+// idempotent, so an object carrying both encodings is handled once.
+//
+// GADGET_PF is intentionally not read here: packet filters are discovered by
+// scanning instruction symbols for the gadget_pf_ prefix (see analyze()), so its
+// ig:packetfilter tag is additive discovery metadata with no behavior-changing
+// reader.
 func (i *ebpfInstance) readMigratedDeclTags(gadgetCtx operators.GadgetContext) error {
 	// iterTypes maps an iterator name to its element struct name (from the
 	// ig:iter_type phantom); iterProgs maps an iterator name to its member
@@ -105,6 +111,33 @@ func (i *ebpfInstance) readMigratedDeclTags(gadgetCtx operators.GadgetContext) e
 					return fmt.Errorf("malformed ig:iter_type %q: expected <name>___<struct>", value)
 				}
 				iterTypes[name] = structName
+			case igTagVar:
+				// The ig:var tag sits on the real const volatile variable, so
+				// populateVar receives the actual btf.Var (unlike the encodings
+				// above, which use throwaway vars). Skip if the legacy
+				// gadget_var_ walk already registered it.
+				if _, dup := i.vars[v.Name]; dup {
+					continue
+				}
+				if err := i.populateVar(v, v.Name); err != nil {
+					return fmt.Errorf("handling ig:var %q: %w", v.Name, err)
+				}
+			}
+		}
+	}
+
+	// Maps: GADGET_TRACER_MAP tags its ring buffer map with ig:tracer_map so IG
+	// can downgrade it to a perf event array when BPF ring buffers are
+	// unavailable. fixTracerMap is idempotent, so an old image carrying both the
+	// legacy gadget_map_tracer_ throwaway and the tag is handled correctly.
+	for mapName, ms := range i.collectionSpec.Maps {
+		for _, tag := range ms.Tags {
+			kind, _, ok := parseIGTag(tag)
+			if !ok || kind != igTagTracerMap {
+				continue
+			}
+			if err := i.fixTracerMap(nil, mapName); err != nil {
+				return fmt.Errorf("handling ig:tracer_map %q: %w", mapName, err)
 			}
 		}
 	}
