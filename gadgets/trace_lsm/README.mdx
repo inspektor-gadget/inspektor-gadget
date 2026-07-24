@@ -920,4 +920,68 @@ Default value: "false"
 
 ## Guide
 
-TODO
+This example traces the `file_open` LSM hook while a small workload repeatedly
+opens files.
+
+First, start a workload that generates file-open events:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl run trace-lsm --restart=Never --image=busybox -- sh -c 'while true; do cat /etc/hostname >/dev/null; sleep 2; done'
+        pod/trace-lsm created
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker run --name test-trace-lsm -d busybox sh -c 'while true; do cat /etc/hostname >/dev/null; sleep 2; done'
+        ```
+    </TabItem>
+</Tabs>
+
+Then, run the gadget with the `file_open` hook enabled. Restricting the output
+to the process and tracepoint fields makes the events easy to identify:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run trace_lsm:%IG_TAG% --podname trace-lsm --trace-file_open --fields=comm,pid,tracepoint
+        K8S.PODNAME COMM PID      TRACEPOINT
+        trace-lsm  cat  2178431  file_open
+        trace-lsm  cat  2178431  file_open
+        ^C
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run trace_lsm:%IG_TAG% --containername test-trace-lsm --trace-file_open --fields=comm,pid,tracepoint
+        RUNTIME.CONTAINERNAME COMM PID      TRACEPOINT
+        test-trace-lsm        cat  2179012  file_open
+        test-trace-lsm        cat  2179012  file_open
+        ^C
+        ```
+    </TabItem>
+</Tabs>
+
+Use `--trace-all` to enable every LSM hook supported by the running kernel, or
+replace `--trace-file_open` with another `--trace-*` flag to focus on a
+different hook. Stop the gadget with Ctrl-C when you are done.
+
+Finally, clean up the workload:
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl delete pod trace-lsm
+        pod "trace-lsm" deleted
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ docker rm -f test-trace-lsm
+        ```
+    </TabItem>
+</Tabs>
