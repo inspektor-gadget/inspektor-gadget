@@ -35,6 +35,46 @@
 // Public macros. Use these in your code
 // Keep this aligned with pkg/gadgets/run/types/metadata.go
 
+// Internal: prefix every IG decl tag with "ig:". Do not use directly.
+#define __ig_tag(s) __attribute__((btf_decl_tag("ig:" s)))
+
+// GADGET_MAP_ONLY_IF gates a map on an expression. Place it on a map
+// definition (in .maps). The map is created only when <expr> (an expr-lang
+// expression over params, e.g. "params.collect_ustack") evaluates to true;
+// otherwise the map is not created and every instruction referencing it is
+// poisoned. Those references MUST therefore be dead code, i.e. guarded by (a
+// superset of) the same condition. <expr> MUST be a string literal and must be
+// a function of the same const volatile param(s) that guard the map's C users;
+// it must NOT depend on kallsyms.* (put symbol preconditions in GADGET_ASSERT).
+#define GADGET_MAP_ONLY_IF(expr) __ig_tag("only_if:" expr)
+
+// GADGET_PROG_ATTACH_TO selects a program's attach target. Place it on a
+// program (function) definition, immediately before the return type. <expr>
+// (an expr-lang expression over params.*, kallsyms.*, program.disabled) MUST
+// return a string: a kernel symbol to attach to, or program.disabled to skip
+// the program. <expr> MUST be a string literal.
+#define GADGET_PROG_ATTACH_TO(expr) __ig_tag("attach_to:" expr)
+
+// GADGET_ASSERT declares a standalone load-time precondition. It is NOT
+// attached to any param; it emits a throwaway declaration carrying the tag.
+// <name> is an identifier used only as a diagnostic label and to keep the
+// symbol unique. <expr> (over params.*, kallsyms.* and defines) is evaluated
+// once after params are resolved; if it is false, the gadget fails to load
+// with an error naming <name> and quoting <expr>. <expr> MUST be a string
+// literal returning bool. Place at file scope.
+#define GADGET_ASSERT(name, expr)                    \
+	const int __ig_assert_##name __attribute__(( \
+		unused, btf_decl_tag("ig:assert:" #name ":" expr))) = 0;
+
+// GADGET_EXPR_DEFINE declares a gadget-scoped named value added to the expr
+// environment, so every expression declared after it can reference <name>.
+// It emits a throwaway declaration carrying the tag. <expr> (over params.*,
+// kallsyms.*, program.disabled and earlier defines) is evaluated once, in
+// source order. <expr> MUST be a string literal. Place at file scope.
+#define GADGET_EXPR_DEFINE(name, expr)               \
+	const int __ig_define_##name __attribute__(( \
+		unused, btf_decl_tag("ig:define:" #name ":" expr))) = 0;
+
 // GADGET_TRACER is used to define a tracer. Currently only one tracer per eBPF object is allowed.
 // name is the tracer's name
 // map_name is the name of the perf event array or ring buffer maps used to send events to user
