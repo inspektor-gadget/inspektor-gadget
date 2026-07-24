@@ -11,3 +11,4 @@
 * [Maya Singh](https://github.com/mayasingh17) (project manager)
 * [Michael Friese](https://github.com/flyth)
 * [Qasim Sarfraz](https://github.com/mqasimsarfraz) (project lead)
+* [Veaceslav Falico](https://github.com/vfalico)
