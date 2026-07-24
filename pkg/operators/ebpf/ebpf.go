@@ -51,6 +51,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/exprgate"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
@@ -141,6 +142,9 @@ func (o *ebpfOperator) InstantiateImageOperator(
 
 		vars: make(map[string]*ebpfVar),
 
+		mapOnlyIf:    make(map[string]*exprgate.Program),
+		progAttachTo: make(map[string]*exprgate.Program),
+
 		networkTracers: make(map[string]*networktracer.Tracer[api.GadgetData]),
 		tcHandlers:     make(map[string]*tchandler.Handler),
 		uprobeTracers:  make(map[string]*uprobetracer.Tracer[api.GadgetData]),
@@ -200,6 +204,13 @@ type ebpfInstance struct {
 
 	// map from ebpf variable name to ebpfVar struct
 	vars map[string]*ebpfVar
+
+	// Compiled ig: decl-tag expressions (see exprtags.go / package exprgate).
+	exprEval     *exprgate.Evaluator
+	mapOnlyIf    map[string]*exprgate.Program // map name -> GADGET_MAP_ONLY_IF expr
+	progAttachTo map[string]*exprgate.Program // program name -> GADGET_PROG_ATTACH_TO expr
+	exprDefines  []exprBinding                // GADGET_EXPR_DEFINE, in source order
+	exprAsserts  []exprBinding                // GADGET_ASSERT
 
 	links   []link.Link
 	perfFds []int
@@ -342,6 +353,12 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 	err := i.fillParamDefaults()
 	if err != nil {
 		i.logger.Debugf("error extracting default values for params: %v", err)
+	}
+
+	// Read and compile the ig: decl-tag expressions (GADGET_MAP_ONLY_IF,
+	// GADGET_PROG_ATTACH_TO, GADGET_ASSERT, GADGET_EXPR_DEFINE).
+	if err := i.readExprTags(gadgetCtx); err != nil {
+		return fmt.Errorf("reading ig: decl tags: %w", err)
 	}
 
 	// Iterate over programs
