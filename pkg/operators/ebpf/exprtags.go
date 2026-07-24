@@ -38,6 +38,9 @@ const (
 	igTagParam         = "param"           // GADGET_PARAM (on a throwaway var)
 	igTagMapIter       = "mapiter"         // GADGET_MAPITER (on a throwaway var)
 	igTagIterTargetMap = "iter_target_map" // GADGET_ITER_TARGET_MAP (on a throwaway var)
+	igTagTracer        = "tracer"          // GADGET_TRACER (on a throwaway var)
+	igTagIter          = "iter"            // GADGET_ITER_MEMBER (on a program func)
+	igTagIterType      = "iter_type"       // GADGET_ITER element type (on a throwaway var)
 )
 
 // exprBinding is a named, compiled expression (used for defines and asserts).
