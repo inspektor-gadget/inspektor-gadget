@@ -168,6 +168,11 @@ GADGET_PARAM(tracee_pid);
 GADGET_PARAM(inotify_only);
 GADGET_PARAM(fanotify_only);
 
+// inotify_only and fanotify_only are mutually exclusive: setting both filters
+// out inotify events (as non-fanotify) and fanotify events (as non-inotify),
+// leaving no output. Reject the combination early with a clear error.
+GADGET_ASSERT(notify_mode, "!(params.inotify_only && params.fanotify_only)");
+
 struct gadget_event {
 	gadget_timestamp timestamp_raw;
 
