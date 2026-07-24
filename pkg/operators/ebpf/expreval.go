@@ -80,11 +80,39 @@ func (i *ebpfInstance) evaluateExprTags(gadgetCtx operators.GadgetContext, param
 		return err
 	}
 
-	// attach_to is wired up in a later change.
+	if err := i.evaluateAttachTo(exprParams, defines); err != nil {
+		return err
+	}
+
 	if err := i.gateMaps(gadgetCtx, exprParams, defines); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// evaluateAttachTo evaluates GADGET_PROG_ATTACH_TO for every tagged program and
+// records the resulting symbol as the programs.<name>.attach_to config value,
+// which attachProgram already consults. An explicit config value (e.g. a user
+// override or gadget.yaml setting) takes precedence and is never clobbered. The
+// expression may evaluate to the sentinel that disables the program.
+func (i *ebpfInstance) evaluateAttachTo(exprParams, defines map[string]any) error {
+	for progName, prog := range i.progAttachTo {
+		key := "programs." + progName + ".attach_to"
+		if i.config != nil && i.config.IsSet(key) {
+			i.logger.Debugf("program %q attach_to already set to %q; not overriding with expr",
+				progName, i.config.GetString(key))
+			continue
+		}
+		sym, err := i.exprEval.EvalString(prog, exprParams, defines)
+		if err != nil {
+			return fmt.Errorf("GADGET_PROG_ATTACH_TO on program %q: %w", progName, err)
+		}
+		i.logger.Debugf("program %q attach_to resolved to %q (from %q)", progName, sym, prog.Src())
+		if i.config != nil {
+			i.config.Set(key, sym)
+		}
+	}
 	return nil
 }
 
