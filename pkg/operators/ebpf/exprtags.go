@@ -35,6 +35,7 @@ const (
 	igTagAttachTo = "attach_to" // GADGET_PROG_ATTACH_TO (on a program func)
 	igTagAssert   = "assert"    // GADGET_ASSERT (on a throwaway var)
 	igTagDefine   = "define"    // GADGET_EXPR_DEFINE (on a throwaway var)
+	igTagParam    = "param"     // GADGET_PARAM (on a throwaway var)
 )
 
 // exprBinding is a named, compiled expression (used for defines and asserts).

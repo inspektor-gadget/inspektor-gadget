@@ -86,10 +86,15 @@
 	const struct event_type *__gadget_tracer_type_##name             \
 		__attribute__((unused));
 
-// GADGET_PARAM is used to indicate that a given variable is used as a parameter.
-// Users of Inspektor Gadget can set these values from userspace
-#define GADGET_PARAM(name) \
-	const void *gadget_param_##name __attribute__((unused));
+// GADGET_PARAM marks a const volatile variable as a user-settable parameter.
+// Users of Inspektor Gadget can set these values from userspace. It emits a
+// throwaway declaration carrying an "ig:param:<name>" decl tag; the ebpf
+// operator reads the tag and registers <name> as a parameter. The legacy
+// gadget_param_<name> name-encoding is still read for pre-built gadget images
+// (see pkg/operators/ebpf/types.go), so old images keep working.
+#define GADGET_PARAM(name)          \
+	const int __ig_param_##name \
+		__attribute__((unused, btf_decl_tag("ig:param:" #name))) = 0;
 
 // GADGET_SNAPSHOTTER is used to define a snapshotter:
 // name is the snapshotter's name
