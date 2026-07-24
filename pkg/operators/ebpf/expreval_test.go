@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -143,6 +144,45 @@ func TestEvaluateAsserts(t *testing.T) {
 	assert.Contains(t, err.Error(), "big")
 	assert.Contains(t, err.Error(), "small")
 	assert.NotContains(t, err.Error(), "positive")
+}
+
+func TestEvaluateAttachTo(t *testing.T) {
+	newProg := func(i *ebpfInstance, expr string) *exprgate.Program {
+		p, err := i.exprEval.Compile(expr, exprgate.KindAttachTo, "")
+		require.NoError(t, err)
+		return p
+	}
+
+	t.Run("resolves and sets config", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.progAttachTo["p"] = newProg(i, `params.old ? "sym_a" : "sym_b"`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{"old": false}, map[string]any{}))
+		assert.Equal(t, "sym_b", i.config.GetString("programs.p.attach_to"))
+	})
+
+	t.Run("does not clobber explicit config", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.config.Set("programs.p.attach_to", "user_choice")
+		i.progAttachTo["p"] = newProg(i, `"expr_choice"`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{}, map[string]any{}))
+		assert.Equal(t, "user_choice", i.config.GetString("programs.p.attach_to"))
+	})
+
+	t.Run("can disable a program", func(t *testing.T) {
+		i := newTestInstance(t)
+		i.exprEval = exprgate.New(nil, exprgate.KallsymsFuncs{})
+		i.config = viper.New()
+		i.progAttachTo["p"] = newProg(i, `program.disabled`)
+
+		require.NoError(t, i.evaluateAttachTo(map[string]any{}, map[string]any{}))
+		assert.Equal(t, exprgate.ProgramDisabled, i.config.GetString("programs.p.attach_to"))
+	})
 }
 
 func TestGateMapsKeepsWhenTrue(t *testing.T) {
