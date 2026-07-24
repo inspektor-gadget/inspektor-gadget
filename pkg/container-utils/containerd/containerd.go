@@ -20,9 +20,11 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	runcoptions "github.com/containerd/containerd/api/types/runc/options"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/errdefs"
+	"github.com/containerd/typeurl/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -173,6 +175,20 @@ func (c *ContainerdClient) GetContainerDetails(containerID string) (*runtimeclie
 		}
 	}
 
+	if inf, err := container.Info(c.ctx); err == nil {
+		ociRuntime := ""
+		if inf.Runtime.Options != nil {
+			if opts, err := typeurl.UnmarshalAny(inf.Runtime.Options); err == nil {
+				if runcOpts, ok := opts.(*runcoptions.Options); ok {
+					ociRuntime = runtimeclient.NormalizeOCIRuntime(runcOpts.GetBinaryName())
+				}
+			}
+		}
+		if ociRuntime == "" {
+			ociRuntime = runtimeclient.NormalizeOCIRuntime(inf.Runtime.Name)
+		}
+		containerData.Runtime.OciRuntime = ociRuntime
+	}
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: *containerData,
 		Pid:           int(task.pid),

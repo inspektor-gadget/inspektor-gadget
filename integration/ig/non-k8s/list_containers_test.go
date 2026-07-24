@@ -63,6 +63,7 @@ func TestFilterByContainerName(t *testing.T) {
 				c.Runtime.ContainerImageName = ""
 				c.Runtime.ContainerImageDigest = ""
 				c.Runtime.ContainerImageID = ""
+				c.Runtime.OciRuntime = ""
 			}
 
 			match.MatchAllEntries(t, match.JSONSingleArrayMode, output, normalize, expectedContainer)
@@ -132,6 +133,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.Runtime.ContainerImageName = ""
 				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.Runtime.ContainerImageID = ""
+				e.Container.Runtime.OciRuntime = ""
 			}
 
 			match.MatchEntries(t, match.JSONMultiObjectMode, output, normalize, expectedEvents...)

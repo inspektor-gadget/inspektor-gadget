@@ -262,7 +262,6 @@ func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus CR
 	if err != nil {
 		return nil, err
 	}
-
 	return containerDetailsData, nil
 }
 
