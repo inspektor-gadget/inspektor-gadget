@@ -17,6 +17,7 @@ package ebpfoperator
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
@@ -75,11 +76,35 @@ func (i *ebpfInstance) evaluateExprTags(gadgetCtx operators.GadgetContext, param
 		return err
 	}
 
-	// Asserts and attach_to are wired up in later changes.
+	if err := i.evaluateAsserts(exprParams, defines); err != nil {
+		return err
+	}
+
+	// attach_to is wired up in a later change.
 	if err := i.gateMaps(gadgetCtx, exprParams, defines); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// evaluateAsserts evaluates every GADGET_ASSERT precondition. All failing
+// asserts are aggregated into a single error so the author sees every unmet
+// requirement at once rather than fixing them one at a time.
+func (i *ebpfInstance) evaluateAsserts(exprParams, defines map[string]any) error {
+	var failures []string
+	for _, a := range i.exprAsserts {
+		ok, err := i.exprEval.EvalBool(a.prog, exprParams, defines)
+		if err != nil {
+			return fmt.Errorf("GADGET_ASSERT %q: %w", a.name, err)
+		}
+		if !ok {
+			failures = append(failures, fmt.Sprintf("%s (%s)", a.name, a.prog.Src()))
+		}
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("GADGET_ASSERT precondition(s) failed: %s", strings.Join(failures, "; "))
+	}
 	return nil
 }
 
