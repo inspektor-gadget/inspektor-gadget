@@ -350,6 +350,14 @@ func (i *ebpfInstance) analyze(gadgetCtx operators.GadgetContext, paramValues ap
 		}
 	}
 
+	// Read the migrated ig: decl tags (new encoding of the legacy magic
+	// globals, e.g. GADGET_PARAM -> ig:param) before defaults are filled, so
+	// tag-encoded params are registered in time. Runs alongside the legacy
+	// prefix walk above; see readMigratedDeclTags.
+	if err := i.readMigratedDeclTags(gadgetCtx); err != nil {
+		return fmt.Errorf("reading migrated ig: decl tags: %w", err)
+	}
+
 	// Fill param defaults
 	err := i.fillParamDefaults()
 	if err != nil {
