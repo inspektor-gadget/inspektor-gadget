@@ -75,6 +75,12 @@ GADGET_PARAM(kernel_stacks_only);
 const volatile bool user_stacks_only = false;
 GADGET_PARAM(user_stacks_only);
 
+// user_stacks_only and kernel_stacks_only are mutually exclusive: setting both
+// disables the kernel stack and zeroes the user stack, so neither is collected.
+// Reject the combination early with a clear error.
+GADGET_ASSERT(stack_mode,
+	      "!(params.user_stacks_only && params.kernel_stacks_only)");
+
 const volatile bool include_idle = false;
 GADGET_PARAM(include_idle);
 
