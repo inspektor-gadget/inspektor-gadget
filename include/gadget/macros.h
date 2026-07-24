@@ -120,8 +120,14 @@
 // GADGET_MAPITER defines maps that IG should periodically fetch into data sources
 // - name is the name of the map iterator
 // - mapname is the name of the hash map used to send events to user space.
-#define GADGET_MAPITER(name, mapname) \
-	const void *gadget_mapiter_##name##___##mapname __attribute__((unused));
+//
+// It emits a throwaway declaration carrying an ig:mapiter:<name>___<mapname>
+// decl tag. The <name>___<mapname> value keeps the two identifiers that the old
+// gadget_mapiter_<name>___<mapname> symbol encoded; IG resolves the map by name.
+#define GADGET_MAPITER(name, mapname)                                   \
+	const int __ig_mapiter_##name##___##mapname                     \
+		__attribute__((unused, btf_decl_tag("ig:mapiter:" #name \
+						    "___" #mapname))) = 0;
 
 // GADGET_ITER_TARGET_MAP binds a BPF iter program declared with
 // SEC("iter/bpf_map_elem") to the map it should iterate over. The kernel
@@ -147,9 +153,15 @@
 //
 // - prog_name is the BPF iter program (SEC("iter/bpf_map_elem")).
 // - mapname is the map declared in this object (commonly LIBBPF_PIN_BY_NAME).
-#define GADGET_ITER_TARGET_MAP(prog_name, mapname)                       \
-	const void *gadget_mapelem_iter_target_##prog_name##___##mapname \
-		__attribute__((unused));
+//
+// It emits a throwaway declaration carrying an
+// ig:iter_target_map:<prog_name>___<mapname> decl tag (both identifiers are
+// preserved from the old gadget_mapelem_iter_target_<prog>___<map> symbol).
+#define GADGET_ITER_TARGET_MAP(prog_name, mapname)                           \
+	const int __ig_iter_target_map_##prog_name##___##mapname             \
+		__attribute__((unused,                                       \
+			       btf_decl_tag("ig:iter_target_map:" #prog_name \
+					    "___" #mapname))) = 0;
 
 // GADGET_SK_TARGET_MAP binds an sk_skb or sk_msg program to the sockmap or
 // sockhash where it should be attached.
