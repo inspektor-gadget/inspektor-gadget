@@ -33,6 +33,12 @@ params:
       description: Description for the param
 ```
 
+Parameters are also the inputs to the declarative decl-tag expressions: a
+`GADGET_MAP_ONLY_IF`, `GADGET_PROG_ATTACH_TO` or `GADGET_ASSERT` expression reads
+resolved parameter values as `params.<name>`. In particular, `GADGET_ASSERT` can
+validate a parameter at load time and fail with a clear message. See
+[Declarative gating and configuration](./gadget-ebpf-api.md#declarative-gating-and-configuration).
+
 ## Customizable parameters
 
 Much of Inspektor Gadget's functionality is controlled by parameters and
