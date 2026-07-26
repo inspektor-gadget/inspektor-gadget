@@ -97,6 +97,10 @@ DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GADGETS_README = $(filter-out ci/%, $(addsuffix /README.mdx, $(GADGETS)))
 GADGETS_README_DEV = $(filter-out ci/%, $(addsuffix /dev.md, $(GADGETS)))
 
+.PHONY: list-gadgets
+list-gadgets:
+	@printf '%s\n' $(GADGETS)
+
 .PHONY: all
 all: build
 
