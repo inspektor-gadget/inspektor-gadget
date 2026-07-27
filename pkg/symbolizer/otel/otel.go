@@ -17,12 +17,14 @@ package otel
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
+	otellog "go.opentelemetry.io/ebpf-profiler/log"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	oteltimes "go.opentelemetry.io/ebpf-profiler/times"
 	oteltracer "go.opentelemetry.io/ebpf-profiler/tracer"
@@ -100,6 +102,20 @@ type otelResolverInstance struct {
 // The 800ms timeout provides sufficient headroom over the worst case
 // (one full 250ms poll interval + processing time).
 const correlationTimeout = 800 * time.Millisecond
+
+// otelSamplesPerSecond sizes the per-CPU trace_events perf ring buffer that the
+// OTel profiler uses to send unwound stacks to userspace. The buffer is
+// SamplesPerSecond*sizeof(Trace) bytes, or a single page (~4 KiB) when 0 (see
+// startTraceEventMonitor in the profiler's tracer/events.go).
+//
+// We do not use CPU sampling (SetSampleFreq is the only other consumer of this
+// value, via AttachTracer, which we never call), so it purely controls buffer
+// sizing. A 4 KiB buffer overflows during bursts (e.g. profile_cuda tracing a
+// GIL-bound process whose uprobes fire many stacks back-to-back faster than the
+// 250 ms poll interval drains them); dropped traces never reach correlationMap,
+// causing "no frames found" timeouts in Resolve(). A non-zero value enlarges the
+// buffer (~494 KiB per CPU) to absorb these bursts.
+const otelSamplesPerSecond = 20
 
 func (o *otelResolverInstance) IsPruningNeeded() bool {
 	return true
@@ -355,7 +371,27 @@ func bpfVerifierLogLevel() uint32 {
 	return 0
 }
 
+// logrusToSlogLevel maps IG's logrus level to the slog level used by the OTel
+// profiler's internal logger, so the profiler logs at the same verbosity as IG.
+func logrusToSlogLevel(level log.Level) slog.Level {
+	switch level {
+	case log.TraceLevel, log.DebugLevel:
+		return slog.LevelDebug
+	case log.InfoLevel:
+		return slog.LevelInfo
+	case log.WarnLevel:
+		return slog.LevelWarn
+	default: // Error, Fatal, Panic
+		return slog.LevelError
+	}
+}
+
 func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error {
+	// Make the OTel profiler's internal logger follow IG's configured log
+	// level, so enabling debug logging in IG also surfaces the profiler's
+	// debug output.
+	otellog.SetLevel(logrusToSlogLevel(log.GetLevel()))
+
 	includeTracers, err := oteltracertypes.Parse("all")
 	if err != nil {
 		return fmt.Errorf("parsing list of OpenTelemetry tracers: %w", err)
@@ -397,7 +433,7 @@ func (o *otelResolverInstance) startOtelEbpfProfiler(ctx context.Context) error 
 		Intervals:              intervals,
 		IncludeTracers:         includeTracers,
 		FilterErrorFrames:      true,
-		SamplesPerSecond:       0,
+		SamplesPerSecond:       otelSamplesPerSecond,
 		MapScaleFactor:         0,
 		KernelVersionCheck:     false,
 		VerboseMode:            log.IsLevelEnabled(log.DebugLevel),
