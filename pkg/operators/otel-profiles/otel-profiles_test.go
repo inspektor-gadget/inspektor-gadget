@@ -17,6 +17,7 @@ package otelprofiles
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -251,6 +252,108 @@ func TestOtelProfilesOperator(t *testing.T) {
 			require.Equal(t, profilesUnit, periodUnitStr, "Bad period unit")
 
 			require.Equal(t, int64(1), prof.Period(), "Bad period value")
+		})
+	}
+}
+
+// TestOtelProfilesProfileName verifies that the profile name exported for
+// profiling gadgets (e.g. profile_cuda) stays stable in the way Pyroscope
+// derives it. Pyroscope builds the string "sampleType:sampleUnit:periodType:periodUnit"
+// and uses its third element (index 2, the period type) as the profile name
+// (see grafana/pyroscope pkg/ingester/otlp/convert.go). This test locks that
+// invariant so a change to how the operator sets these fields cannot silently
+// break the profile name shown in Pyroscope.
+func TestOtelProfilesProfileName(t *testing.T) {
+	t.Parallel()
+
+	const stackFieldName = "ustack_raw.symbols"
+	const valueFieldName = "count"
+
+	tests := []struct {
+		name string
+		// annotations as set in the gadget's gadget.yaml
+		profilesName string
+		profilesType string
+		profilesUnit string
+		// expectedProfileType is the "sampleType:sampleUnit:periodType:periodUnit"
+		// string Pyroscope composes from the exported profile.
+		expectedProfileType string
+		// expectedProfileName is what Pyroscope derives from expectedProfileType.
+		expectedProfileName string
+	}{
+		{
+			// gadgets/profile_cuda/gadget.yaml
+			name:                "profile_cuda",
+			profilesName:        "process_cuda",
+			profilesType:        "malloc",
+			profilesUnit:        "bytes",
+			expectedProfileType: "malloc:bytes:process_cuda:bytes",
+			expectedProfileName: "process_cuda",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tt := initTest(t)
+
+			tt.ds.AddAnnotation(stackFieldsAnnotation, stackFieldName)
+			tt.ds.AddAnnotation(valueFieldAnnotation, valueFieldName)
+			tt.ds.AddAnnotation(profilesNameAnnotation, tc.profilesName)
+			tt.ds.AddAnnotation(profilesTypeAnnotation, tc.profilesType)
+			tt.ds.AddAnnotation(profilesUnitAnnotation, tc.profilesUnit)
+
+			stackField, err := tt.ds.AddField(stackFieldName, api.Kind_String)
+			require.NoError(t, err)
+
+			valueField, err := tt.ds.AddField(valueFieldName, api.Kind_Int64)
+			require.NoError(t, err)
+
+			err = tt.opInst.PreStart(tt.gadgetCtx)
+			require.NoError(t, err)
+
+			dataArray, err := tt.ds.NewPacketArray()
+			require.NoError(t, err)
+
+			data := dataArray.New()
+			err = stackField.PutString(data, "main; foo; bar")
+			require.NoError(t, err)
+			err = valueField.PutInt64(data, 42)
+			require.NoError(t, err)
+			dataArray.Append(data)
+
+			err = tt.ds.EmitAndRelease(dataArray)
+			require.NoError(t, err)
+
+			require.Equal(t, 1, len(tt.mockClient.exportReq), "Export was not called on the mock client")
+
+			profiles := tt.mockClient.exportReq[0].Profiles()
+			require.Equal(t, 1, profiles.ResourceProfiles().Len(), "Expected one ResourceProfile")
+			rp := profiles.ResourceProfiles().At(0)
+			require.Equal(t, 1, rp.ScopeProfiles().Len(), "Expected one ScopeProfile")
+			sp := rp.ScopeProfiles().At(0)
+			require.Equal(t, 1, sp.Profiles().Len(), "Expected one Profile")
+			prof := sp.Profiles().At(0)
+
+			dic := profiles.Dictionary()
+			st := prof.SampleType()
+			pt := prof.PeriodType()
+
+			sampleType := dic.StringTable().At(int(st.TypeStrindex()))
+			sampleUnit := dic.StringTable().At(int(st.UnitStrindex()))
+			periodType := dic.StringTable().At(int(pt.TypeStrindex()))
+			periodUnit := dic.StringTable().At(int(pt.UnitStrindex()))
+
+			// Period must be non-zero, otherwise Pyroscope ignores the period type.
+			require.NotZero(t, prof.Period(), "Period must be set for Pyroscope to use the period type")
+
+			profileType := fmt.Sprintf("%s:%s:%s:%s", sampleType, sampleUnit, periodType, periodUnit)
+			require.Equal(t, tc.expectedProfileType, profileType, "Bad Pyroscope profile type")
+
+			parts := strings.Split(profileType, ":")
+			require.GreaterOrEqual(t, len(parts), 3, "profile type must have at least 3 parts for Pyroscope to derive a name")
+			require.Equal(t, tc.expectedProfileName, parts[2], "Bad Pyroscope-derived profile name")
 		})
 	}
 }
