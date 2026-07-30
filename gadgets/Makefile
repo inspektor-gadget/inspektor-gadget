@@ -14,6 +14,11 @@ KUBECTL_GADGET ?= kubectl-gadget
 GPU_EBPF_BRIDGE ?= gpu-ebpf-bridge
 IG_RUNTIME ?= docker
 IG_FLAGS ?=
+# Number of times to retry pushing/signing a gadget after a failure.
+# Defaults to 0 (a single attempt) so interactive users are not slowed
+# down; CI sets this to work around flaky ghcr.io 500s on concurrent
+# manifest PUTs.
+GADGET_PUSH_RETRIES ?= 0
 IG_DEBUG_LOGS ?= true
 COSIGN ?= cosign
 # Force using legacy .sig format.
@@ -160,7 +165,16 @@ push: $(addsuffix -push,$(GADGETS))
 
 %-push-existing: %
 	@echo "Pushing existing $*"
-	@$(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS)
+	@n=0; \
+	until $(SUDO) $(IG) image push $(GADGET_REPOSITORY)/$*:$(GADGET_TAG) $(IG_FLAGS); do \
+		if [ $$n -ge $(GADGET_PUSH_RETRIES) ]; then \
+			echo "Push of $* failed after $$n retries"; \
+			exit 1; \
+		fi; \
+		n=$$((n+1)); \
+		echo "Push of $* failed, retry $$n/$(GADGET_PUSH_RETRIES) in $$((n*5))s..."; \
+		sleep $$((n*5)); \
+	done
 
 .PHONY:
 push-existing: $(addsuffix -push-existing,$(GADGETS))
@@ -174,8 +188,17 @@ sign: $(addsuffix -sign,$(GADGETS))
 
 %-sign-existing:
 	@echo "Signing existing $*"
-	digest=$$($(SUDO) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
-	$(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest
+	@digest=$$($(SUDO) $(IG) image list --no-trunc | grep "$* " | awk '{ print $$3 }') ; \
+	n=0; \
+	until $(COSIGN) sign $(COSIGN_FLAGS) --key env://COSIGN_PRIVATE_KEY --yes --recursive $(GADGET_REPOSITORY)/$*@$$digest; do \
+		if [ $$n -ge $(GADGET_PUSH_RETRIES) ]; then \
+			echo "Signing of $* failed after $$n retries"; \
+			exit 1; \
+		fi; \
+		n=$$((n+1)); \
+		echo "Signing of $* failed, retry $$n/$(GADGET_PUSH_RETRIES) in $$((n*5))s..."; \
+		sleep $$((n*5)); \
+	done
 
 sign-existing: $(addsuffix -sign-existing,$(GADGETS))
 
