@@ -16,6 +16,10 @@
 #include <gadget/filter.h>
 #include <gadget/macros.h>
 #include <gadget/types.h>
+// The kernel stack is only collected when the collect_kstack param is set, so
+// gate its map on the same param: dropped (and its dead reference poisoned)
+// when the user runs with --collect-kstack=false.
+#define GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR "params.collect_kstack"
 #include <gadget/kernel_stack_map.h>
 #include <gadget/user_stack_map.h>
 
