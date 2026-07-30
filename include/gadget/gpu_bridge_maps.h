@@ -22,6 +22,12 @@
  *   GPU_BRIDGE_WANT_PER_PID_PER_DEVICE
  *   GPU_BRIDGE_WANT_ALL   -- selects all four (used by the bridge itself)
  *
+ * Consumers that use the selected maps only when a runtime parameter is
+ * enabled can also define GPU_BRIDGE_MAP_ONLY_IF_EXPR to that parameter
+ * expression. The expression must guard every use of each selected map:
+ *
+ *   #define GPU_BRIDGE_MAP_ONLY_IF_EXPR "params.gpu_idle_only"
+ *
  * This header must be included after <vmlinux.h> and <bpf/bpf_helpers.h>
  * (for the map macros and bpf_map_lookup_elem used by the helpers below).
  */
@@ -33,6 +39,13 @@
 #include <bpf/bpf_core_read.h>
 
 #include <gadget/gpu_types.h>
+#include <gadget/macros.h>
+
+#ifdef GPU_BRIDGE_MAP_ONLY_IF_EXPR
+#define __GPU_BRIDGE_MAP_ONLY_IF GADGET_MAP_ONLY_IF(GPU_BRIDGE_MAP_ONLY_IF_EXPR)
+#else
+#define __GPU_BRIDGE_MAP_ONLY_IF
+#endif
 
 #ifdef GPU_BRIDGE_WANT_ALL
 #define GPU_BRIDGE_WANT_META
@@ -50,7 +63,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct gpu_meta);
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
-} gpu_meta SEC(".maps");
+} gpu_meta SEC(".maps") __GPU_BRIDGE_MAP_ONLY_IF;
 #endif
 
 #ifdef GPU_BRIDGE_WANT_DEVICE
@@ -60,7 +73,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct gpu_device_metrics);
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
-} gpu_device SEC(".maps");
+} gpu_device SEC(".maps") __GPU_BRIDGE_MAP_ONLY_IF;
 #endif
 
 #ifdef GPU_BRIDGE_WANT_PER_PID
@@ -70,7 +83,7 @@ struct {
 	__type(key, __u32); /* host tgid */
 	__type(value, struct gpu_pid_metrics_aggregated);
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
-} gpu_per_pid SEC(".maps");
+} gpu_per_pid SEC(".maps") __GPU_BRIDGE_MAP_ONLY_IF;
 #endif
 
 #ifdef GPU_BRIDGE_WANT_PER_PID_PER_DEVICE
@@ -80,7 +93,7 @@ struct {
 	__type(key, __u64); /* (pid << 32) | device_idx */
 	__type(value, struct gpu_pid_metrics);
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
-} gpu_per_pid_per_device SEC(".maps");
+} gpu_per_pid_per_device SEC(".maps") __GPU_BRIDGE_MAP_ONLY_IF;
 #endif
 
 /* ---- CO-RE read helpers ----
@@ -122,5 +135,7 @@ gpu_pid_holder(__u32 tgid, __u64 min_gpu_mem_bytes)
 	return gm;
 }
 #endif
+
+#undef __GPU_BRIDGE_MAP_ONLY_IF
 
 #endif /* __GPU_BRIDGE_MAPS_H */

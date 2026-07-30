@@ -15,12 +15,13 @@
 
 /* Pinned gpu-ebpf-bridge maps + CO-RE helpers, shared with the other GPU
  * gadgets. Only pulled in for the optional --gpu-idle-only filter below;
- * when that filter is off the maps are declared but never read, so on a
- * host without the bridge they are simply created empty and ignored.
+ * when that filter is off the maps and their dead references are removed
+ * before the object is loaded.
  */
 #define GPU_BRIDGE_WANT_PER_PID
 #define GPU_BRIDGE_WANT_DEVICE
 #define GPU_BRIDGE_WANT_META
+#define GPU_BRIDGE_MAP_ONLY_IF_EXPR "params.gpu_idle_only"
 #include <gadget/gpu_bridge_maps.h>
 
 /* Returns true if device dev_idx exists and its SM utilization is strictly
