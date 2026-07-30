@@ -127,3 +127,89 @@ additionalEnv: []
   #     secretKeyRef:
   #       name: secret-name
   #       key: secret-key
+
+# -- Telemetry bridges. A bridge is an optional sidecar that runs
+# alongside Inspektor Gadget and publishes external telemetry into
+# bpffs-pinned BPF maps that consumer gadgets read for per-event
+# enrichment. Grouped under `bridges` so future non-GPU bridges can
+# be added alongside `gpu`.
+bridges:
+  # -- gpu-ebpf-bridge sidecar. When enabled, adds a gpu-ebpf-bridge
+  # container to the IG pod. The bridge polls NVIDIA GPUs via NVML and
+  # publishes telemetry into bpffs-pinned BPF maps that consumer
+  # gadgets can read for per-event enrichment.
+  # See docs/design/004-gpu-telemetry-enricher.md for the full design.
+  gpu:
+    # -- Enable the gpu-ebpf-bridge sidecar container. Off by default.
+    # Requires hostPID=true so the bridge can enumerate GPU-using
+    # processes via NVML (the driver returns host PIDs from
+    # nvmlDeviceGetComputeRunningProcesses and needs the container to
+    # be in the host PID namespace to correlate them with /proc). The
+    # chart's template refuses to render if this is inconsistent.
+    enabled: false
+
+    image:
+      # -- Container repository for the gpu-ebpf-bridge image
+      repository: ghcr.io/inspektor-gadget/gpu-ebpf-bridge
+      # -- Pull policy for the gpu-ebpf-bridge container image
+      pullPolicy: Always
+      # -- Tag for the gpu-ebpf-bridge container image. Defaults to
+      # the same tag as the main gadget image.
+      tag: ""
+
+    # -- Poll interval for NVML. Lower = fresher data at higher CPU cost.
+    pollInterval: 500ms
+
+    # -- Log verbosity: debug, info, warn, error.
+    logLevel: info
+
+    # -- How the bridge container obtains GPU access. Pick based on
+    # your cluster's GPU setup:
+    #
+    #   toolkit-env    (recommended) Sets NVIDIA_VISIBLE_DEVICES=all
+    #                  + NVIDIA_DRIVER_CAPABILITIES=utility. The
+    #                  NVIDIA Container Toolkit's runc prestart hook
+    #                  bind-mounts libnvidia-ml.so.1 and grants
+    #                  /dev/nvidia* access. Does NOT reserve a GPU
+    #                  for scheduling. Same setting DCGM Exporter
+    #                  uses. Works on clusters with the NVIDIA GPU
+    #                  Operator, GKE, OpenShift, AKS-with-GPU-Operator,
+    #                  and self-managed k8s where
+    #                  nvidia-container-runtime is the default runtime.
+    #
+    #   hostpath       Bypasses the toolkit hook. Bind-mounts /host/dev
+    #                  and /host/usr from the node into the bridge
+    #                  container so it can reach the NVIDIA driver's
+    #                  char devices and libnvidia-ml.so.1 regardless
+    #                  of the container runtime configuration. Both
+    #                  hostPath source paths (/dev and /usr) exist on
+    #                  every Linux node, so kubelet accepts the pod on
+    #                  non-GPU nodes too; the bridge idles at runtime
+    #                  when NVML is unavailable. The bridge locates
+    #                  libnvidia-ml.so.1 itself under /host/usr/ (no
+    #                  LD_LIBRARY_PATH pollution: a broad
+    #                  LD_LIBRARY_PATH would drag the host's libc into
+    #                  the container's dynamic-linker search path and
+    #                  trigger "stack smashing detected" from glibc's
+    #                  canary check on version mismatch). Works on any
+    #                  cluster including AKS default GPU node pools.
+    #
+    #   device-plugin  Requests nvidia.com/gpu: 1 via resources.limits.
+    #                  WARNING: reserves a GPU per node for the bridge,
+    #                  unavailable to workloads. Not recommended for
+    #                  fleet-wide telemetry; only useful if MIG is
+    #                  used with a dedicated telemetry partition.
+    accessMode: toolkit-env
+
+    # -- Resource requests and limits for the gpu-ebpf-bridge container.
+    resources: {}
+      # limits:
+      #   cpu: 200m
+      #   memory: 128Mi
+      # requests:
+      #   cpu: 50m
+      #   memory: 32Mi
+
+    # -- Additional environment variables to add to the gpu-ebpf-bridge
+    # container.
+    additionalEnv: []

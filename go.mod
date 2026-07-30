@@ -193,6 +193,8 @@ require (
 	sigs.k8s.io/release-utils v0.11.1 // indirect
 )
 
+require github.com/NVIDIA/go-nvml v0.13.3-0
+
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/Azure/go-ntlmssp v0.1.1 // indirect

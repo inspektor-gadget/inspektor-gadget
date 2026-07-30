@@ -620,7 +620,7 @@ recommended because:
 - A separate container image (rather than baking the NVML-linked
   binary into `ig` itself) keeps IG's own image free of libnvidia-ml
   dependencies and lets non-GPU deployments avoid pulling the bridge
-  entirely — the helm chart opts users in via `gpu.enabled: true`
+  entirely — the helm chart opts users in via `bridges.gpu.enabled: true`
   (see the Deployment section above).
 
 **Consider option B (in-process enricher) once the maintainers accept
@@ -661,7 +661,7 @@ unchanged and any such enricher can populate it.
 3. **Helm chart integration.** Regardless of packaging variant,
    the IG helm chart will need first-class support for the bridge
    so users don't have to hand-craft pod spec changes. What is the
-   expected UX — a values.yaml toggle (`gpu.enabled: true`)? An
+   expected UX — a values.yaml toggle (`bridges.gpu.enabled: true`)? An
    auto-detected node selector? This should be scoped alongside the
    packaging decision.
 4. **Third-party enrichers.** Is a general subsystem for user-

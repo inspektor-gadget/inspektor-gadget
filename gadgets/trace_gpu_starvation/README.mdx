@@ -1,0 +1,221 @@
+---
+title: trace_gpu_starvation
+sidebar_position: 0
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `trace_gpu_starvation` gadget detects **GPU starvation**: a process
+holds GPU memory, but its GPU sits idle while one of its threads keeps
+burning CPU. This is the signature of a pipeline that is CPU-bound in
+the code path that is *supposed* to be feeding the GPU (slow
+preprocessing, a Python `for` loop between kernel launches, a blocking
+dependency between threads, …). The gadget attributes the wasted CPU to
+the exact thread and call stack keeping the GPU starved.
+
+It joins two signals:
+
+- the GPU metrics published by the
+  [gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge) daemon
+  — per device, whether the GPU is currently busy (SM utilization from
+  NVML hardware counters); and per process, the VRAM it holds and which
+  device that memory lives on — and
+- a `finish_task_switch` scheduler kprobe that measures each thread's
+  on-CPU time and captures its user stack.
+
+Because GPU idleness is read from NVML hardware counters rather than
+inferred from CPU behaviour, the gadget is **not fooled by asynchronous
+CUDA**: a thread that launches a kernel and immediately returns to CPU
+work is only flagged if the GPU is genuinely idle.
+
+## Requirements
+
+- Minimum Kernel Version: 6.2 (for `bpf_ktime_get_boot_ns` in tracing
+  programs and the user-stack map helpers).
+- The [gpu-ebpf-bridge](https://inspektor-gadget.io/docs/latest/reference/gpu-ebpf-bridge)
+  daemon must be running on the host. It publishes the bpffs-pinned
+  `gpu_per_pid` and `gpu_meta` maps that this gadget reads. Without it,
+  the gadget starts but never emits events.
+- `finish_task_switch` must be attachable as a kprobe. On most kernels
+  the symbol is emitted with a compiler suffix (e.g.
+  `finish_task_switch.isra.0`); the gadget's WASM module resolves the
+  right name at startup via `/proc/kallsyms`.
+
+## Getting started
+
+<Tabs groupId="env">
+    <TabItem value="kubectl-gadget" label="kubectl gadget">
+        ```bash
+        $ kubectl gadget run ghcr.io/inspektor-gadget/gadget/trace_gpu_starvation:%IG_TAG% [flags]
+        ```
+    </TabItem>
+
+    <TabItem value="ig" label="ig">
+        ```bash
+        $ sudo ig run ghcr.io/inspektor-gadget/gadget/trace_gpu_starvation:%IG_TAG% [flags]
+        ```
+    </TabItem>
+</Tabs>
+
+## Guide
+
+With the bridge running and a GPU workload that stalls its GPU between
+frames:
+
+<Tabs groupId="env">
+<TabItem value="ig" label="ig">
+```bash
+$ sudo ig run trace_gpu_starvation:%IG_TAG% --collect-ustack
+RUNTIME.CONTAINERNAME  COMM     PID      TID      CPU_TIME_NS       IDLE_NS  HIT_COUNT
+inference-server-2     python  12346    12360      412583910     317884012        188
+inference-server-2     python  12346    12360      398117204     684551221        174
+^C
+```
+</TabItem>
+</Tabs>
+
+Each row means: thread `12360` of process `12346` spent `CPU_TIME_NS`
+on-CPU during the last one-second window while the process's GPU had
+been idle for `IDLE_NS`. `HIT_COUNT` is the number of context-switch
+samples that contributed to the window.
+
+Pass `--collect-ustack` to capture the user stack of the starving
+thread, and add `--collect-otel-stack --symbolizers=otel-ebpf-profiler`
+(with `hostPid=true`) to resolve Python source lines. The raw kernel
+stack is available with `--collect-kstack` but is rarely useful (it is
+mostly scheduler frames).
+
+## Parameters
+
+### `--min-idle-ms`
+
+Minimum GPU idle duration (ms) before a thread's CPU time counts as
+starvation. Must be **at least 2× the bridge poll interval** (see
+Limitations).
+
+Default value: "1000"
+
+### `--min-gpu-mem-bytes`
+
+Only consider processes holding at least this many bytes of GPU memory.
+Filters out processes with trivial or leftover allocations.
+
+Default value: "1"
+
+### `--stale-threshold-ms`
+
+Ignore bridge data older than this (ms), so a crashed or paused bridge
+does not produce stale verdicts. Should be about 3× the bridge poll
+interval.
+
+Default value: "300"
+
+### `--collect-kstack`
+
+Collect kernel stack traces. Mostly scheduler frames; the user stack is
+the useful one.
+
+Default value: "false"
+
+### `--collect-ustack`
+
+Collect the user stack of the starving thread.
+
+Default value: "false"
+
+## Architecture
+
+The `gpu-ebpf-bridge` daemon polls NVML and publishes two things the
+gadget joins:
+
+- **per device** (`gpu_device` map): the current SM utilization and the
+  wall-clock timestamp of that sample, and
+- **per process** (`gpu_per_pid` map): the GPU memory held and which
+  device that memory primarily lives on (`gpu_device_primary`).
+
+Device-level SM utilization is used deliberately in place of per-process
+utilization. NVML's per-process activity API only samples at ~1 s and
+intermittently drops a busy process entirely, so it cannot resolve
+sub-second GPU-idle stalls. "Is the GPU idle" is really a device
+property; the gadget attributes it to a process via the device that
+process's GPU memory lives on.
+
+To keep the "GPU is active" signal fresh, the gadget maintains a
+**device-activity latch** in a separate `sched_switch` tracepoint
+program: for each device it records the most recent time the device was
+seen busy (SM utilization > 0). Running on every context switch
+system-wide, the latch stays current even while a GPU-holding thread
+runs a long CPU slice without ever being scheduled out. The GPU-idle
+duration for a device is then simply `now - last_active[device]`. (The
+latch is a separate program from the `finish_task_switch` kprobe below so
+that its per-device loop gets its own verifier instruction budget.)
+
+The gadget hooks `finish_task_switch`, which runs just after a context
+switch in the context of the incoming task and receives the outgoing
+task as its argument:
+
+- **schedule-in**: for a thread whose process holds GPU memory (with
+  fresh bridge data) the gadget records the start time and captures the
+  user stack. It captures at schedule-in because Inspektor Gadget's OTel
+  eBPF-profiler symbolizes the *current* task, which at
+  `finish_task_switch` is the incoming thread — so the unwind is valid.
+- **schedule-out**: when that same thread is switched off the CPU, the
+  gadget computes the on-CPU slice and, if its device has been idle for
+  at least `--min-idle-ms`, accumulates the slice into a per-thread
+  window and emits at most one event per second per thread.
+
+The device sample timestamp is NVML's `CLOCK_REALTIME` value; it is
+converted to the kernel's `CLOCK_BOOTTIME` using `clock_offset_ns`
+(published by the bridge and recalibrated every poll tick), so it can be
+compared against `bpf_ktime_get_boot_ns()` inside eBPF.
+
+### Why a kprobe (not the `sched_switch` tracepoint)
+
+OTel-based user-stack symbolization is reached through a `bpf_tail_call`
+into a `BPF_PROG_TYPE_KPROBE` program, and `bpf_tail_call` requires the
+caller and callee to share the same program type. Only kprobe-family
+programs can therefore obtain OTel stacks; `tracepoint`/`tp_btf`
+programs cannot. `finish_task_switch` is a plain (non-`NOKPROBE`) kernel
+function, so a kprobe on it gives both scheduler visibility and
+OTel-capable stacks. (The device-activity latch does *not* need stacks,
+so it uses a lightweight `sched_switch` tracepoint instead.)
+
+## Limitations
+
+1. **Minimum detectable stall is bounded by the device SM sampling
+   resolution (~167 ms) and the bridge poll interval.** Fine-grained
+   pipelines (e.g. 10 ms CPU + 10 ms GPU per frame) are **not
+   detectable** — the GPU never stays idle long enough for the NVML
+   device SM counters to register a zero, regardless of `--min-idle-ms`.
+   This is a fundamental NVML hardware limit.
+
+2. **`--min-idle-ms` must be ≥ 2× the bridge poll interval, and large
+   enough to clear the device SM sampling granularity.** With the
+   default 100 ms bridge poll the hard lower bound is 200 ms. The
+   default is **1000 ms**, high enough to suppress sampling noise while
+   still catching real multi-hundred-millisecond stalls. Lower it
+   (e.g. `--min-idle-ms 200`) only if the bridge polls fast and you accept
+   the extra false positives.
+
+3. **Python stacks require `--collect-ustack --collect-otel-stack
+   --symbolizers=otel-ebpf-profiler` and `hostPid=true`.** The OTel eBPF
+   profiler resolves Python source lines using DWARF and interpreter
+   introspection (no frame pointers required). Without these flags,
+   stacks show CPython C internals. C extensions (numpy, torch) are
+   still recognisable without OTel.
+
+4. **Blocking-dependency scenarios produce two stacks.** When Thread A
+   holds the GPU but waits on Thread B to prepare data, both threads
+   generate events: Thread A shows the blocking call (`futex`,
+   `queue.get`), Thread B shows the actual CPU work. Together they tell
+   the complete story; in a flamegraph Thread B dominates (more
+   `cpu_time_ns` weight), correctly identifying the bottleneck.
+
+5. **Bridge required.** The gadget emits nothing without the
+   `gpu-ebpf-bridge` daemon running and its maps pinned under
+   `/sys/fs/bpf/`.
+
+6. **Host processes need `--host`.** As with other Inspektor Gadget
+   gadgets, non-containerized (host) processes are only traced when
+   `--host` is passed.
