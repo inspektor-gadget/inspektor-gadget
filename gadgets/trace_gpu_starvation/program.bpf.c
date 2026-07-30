@@ -43,6 +43,7 @@
 #include <gadget/macros.h>
 #include <gadget/buffer.h>
 #include <gadget/user_stack_map.h>
+#define GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR "params.collect_kstack"
 #include <gadget/kernel_stack_map.h>
 
 /* ---- bridge schema + pinned maps (shared with the other GPU gadgets) ---- */
