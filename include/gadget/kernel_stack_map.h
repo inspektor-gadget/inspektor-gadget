@@ -8,17 +8,28 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
+#include <gadget/macros.h>
 #include <gadget/types.h>
 
 #define GADGET_KERNEL_MAX_STACK_DEPTH 127
 #define GADGET_KERNEL_STACK_MAP_MAX_ENTRIES 10000
+
+/* A consumer whose stack collection is runtime-optional can define this to
+ * the parameter expression that guards every gadget_get_kernel_stack() call.
+ */
+#ifdef GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR
+#define __GADGET_KERNEL_STACK_MAP_ONLY_IF \
+	GADGET_MAP_ONLY_IF(GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR)
+#else
+#define __GADGET_KERNEL_STACK_MAP_ONLY_IF
+#endif
 
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, GADGET_KERNEL_MAX_STACK_DEPTH * sizeof(u64));
 	__uint(max_entries, GADGET_KERNEL_STACK_MAP_MAX_ENTRIES);
-} ig_kstack SEC(".maps");
+} ig_kstack SEC(".maps") __GADGET_KERNEL_STACK_MAP_ONLY_IF;
 
 /* Sentinel for a gadget_kernel_stack field that holds no stack because the
  * gadget did not collect one, e.g. when its collect_kstack parameter is off.
@@ -51,5 +62,7 @@ static __always_inline long gadget_get_kernel_stack(void *ctx)
 {
 	return bpf_get_stackid(ctx, &ig_kstack, BPF_F_FAST_STACK_CMP);
 }
+
+#undef __GADGET_KERNEL_STACK_MAP_ONLY_IF
 
 #endif /* __STACK_MAP_H */
