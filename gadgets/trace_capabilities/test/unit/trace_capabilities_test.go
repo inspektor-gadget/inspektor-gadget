@@ -217,3 +217,19 @@ func TestTraceCapabilitiesKstackGating(t *testing.T) {
 			}))
 	})
 }
+
+// TestTraceCapabilitiesUniqueGating verifies the gadget loads with the dedup
+// "seen" map gated off (default) and on via --unique, where GADGET_MAP_ONLY_IF
+// only allocates the map when uniqueness tracking is requested.
+func TestTraceCapabilitiesUniqueGating(t *testing.T) {
+	t.Run("without unique", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_capabilities")
+	})
+
+	t.Run("with unique", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_capabilities",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.unique": "true",
+			}))
+	})
+}
