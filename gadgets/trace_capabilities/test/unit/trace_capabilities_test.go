@@ -201,3 +201,19 @@ func TestNonAuditCapabilities(t *testing.T) {
 		}
 	})(t, runner.Info, 0, gadgetRunner.CapturedEvents)
 }
+
+// TestTraceCapabilitiesKstackGating verifies the gadget loads with the kernel
+// stack map present (default) and with it gated off via --collect-kstack=false,
+// where GADGET_MAP_ONLY_IF drops ig_kstack and poisons its (dead) reference.
+func TestTraceCapabilitiesKstackGating(t *testing.T) {
+	t.Run("with kernel stacks", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_capabilities")
+	})
+
+	t.Run("without kernel stacks", func(t *testing.T) {
+		gadgettesting.DummyGadgetTest(t, "trace_capabilities",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.collect-kstack": "false",
+			}))
+	})
+}
