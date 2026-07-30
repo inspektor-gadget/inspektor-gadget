@@ -10,6 +10,10 @@
 #include <gadget/types.h>
 #include <gadget/macros.h>
 #include <gadget/common.h>
+// ig_kstack is only read when kernel stacks are wanted, i.e. when
+// user_stacks_only is off; gate the map on the same condition so it is
+// dropped (and its dead reference poisoned) under --user-stacks-only.
+#define GADGET_KERNEL_STACK_MAP_ONLY_IF_EXPR "!params.user_stacks_only"
 #include <gadget/kernel_stack_map.h>
 #include <gadget/user_stack_map.h>
 
