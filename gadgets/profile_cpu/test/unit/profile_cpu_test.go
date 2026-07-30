@@ -31,4 +31,14 @@ func TestProfileCpu(t *testing.T) {
 				"operator.oci.ebpf.gpu-idle-only": "true",
 			}))
 	})
+
+	t.Run("user stacks only", func(t *testing.T) {
+		// Exercises the kernel-stack gating: --user-stacks-only drops
+		// ig_kstack (GADGET_MAP_ONLY_IF "!params.user_stacks_only") and
+		// poisons its dead reference.
+		gadgettesting.DummyGadgetTest(t, "profile_cpu",
+			gadgettesting.WithParamValues(map[string]string{
+				"operator.oci.ebpf.user-stacks-only": "true",
+			}))
+	})
 }
