@@ -131,7 +131,7 @@ struct {
 	__uint(max_entries, 10240);
 	__type(key, struct unique_key);
 	__type(value, u64);
-} seen SEC(".maps");
+} seen SEC(".maps") GADGET_MAP_ONLY_IF("params.unique");
 
 struct syscall_context {
 	// Syscall id
