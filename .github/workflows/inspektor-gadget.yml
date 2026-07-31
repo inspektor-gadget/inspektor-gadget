@@ -2350,7 +2350,7 @@ jobs:
       # NOTE: This action generates the Kubernetes config file in the current
       # directory. Therefore, it must be run after checking out code otherwise
       # the file will be cleaned up.
-      uses: redhat-actions/oc-login@5eb45e848b168b6bf6b8fe7f1561003c12e3c99d # v1.3
+      uses: redhat-actions/oc-login@f19c5f4f98c725396a5eeb265b1338333634828a # v2.0
       with:
         # API Server URL
         openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
