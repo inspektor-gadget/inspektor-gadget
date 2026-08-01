@@ -162,9 +162,9 @@ spec:
         # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
         # (For reference, see: https://github.com/inspektor-gadget/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
         container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
-        # keep aligned with values in pkg/operators/prometheus/prometheus.go
+        # keep aligned with config.operator.otel-metrics.otel-metrics-listen-address
         prometheus.io/scrape: "true"
-        prometheus.io/port: "2223"
+        prometheus.io/port: "2224"
         prometheus.io/path: "/metrics"
     spec:
       serviceAccount: gadget
