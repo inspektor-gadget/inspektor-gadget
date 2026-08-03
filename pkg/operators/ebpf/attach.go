@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 )
@@ -144,6 +145,49 @@ func (i *ebpfInstance) attachProgram(gadgetCtx operators.GadgetContext, p *ebpf.
 			Name:    attachTo,
 			Program: prog,
 		})
+	case ebpf.SockOps:
+		cgroupPath, err := cgroups.GetCgroupV2Mountpoint()
+		if err != nil {
+			return nil, fmt.Errorf("attaching sock_ops program %q: %w", p.Name, err)
+		}
+		i.logger.Debugf("Attaching sock_ops %q to cgroup %q", p.Name, cgroupPath)
+		return link.AttachCgroup(link.CgroupOptions{
+			Path:    cgroupPath,
+			Attach:  ebpf.AttachCGroupSockOps,
+			Program: prog,
+		})
+	case ebpf.SkSKB, ebpf.SkMsg:
+		sockMapName, ok := i.skTargetMaps[p.Name]
+		if !ok {
+			return nil, fmt.Errorf("%s program %q has no target map; declare GADGET_SK_TARGET_MAP(%s, <map_name>) in the BPF source",
+				p.Type, p.Name, p.Name)
+		}
+		sockMap, ok := i.collection.Maps[sockMapName]
+		if !ok {
+			return nil, fmt.Errorf("sk target map %q for program %q not found in loaded collection",
+				sockMapName, p.Name)
+		}
+		i.logger.Debugf("Attaching %s %q (%s) to sockmap %q", p.Type, p.Name, p.AttachType, sockMapName)
+		if err := link.RawAttachProgram(link.RawAttachProgramOptions{
+			Target:  sockMap.FD(),
+			Program: prog,
+			Attach:  p.AttachType,
+		}); err != nil {
+			return nil, fmt.Errorf("attaching %s program %q to sockmap %q: %w", p.Type, p.Name, sockMapName, err)
+		}
+		// sk_skb/sk_msg attachments predate bpf_link, so RawAttachProgram returns
+		// no Link. Record a detacher run on Stop() while the collection (and thus
+		// the program and map FDs) is still open.
+		targetFD := sockMap.FD()
+		attachType := p.AttachType
+		i.rawDetachers = append(i.rawDetachers, func() error {
+			return link.RawDetachProgram(link.RawDetachProgramOptions{
+				Target:  targetFD,
+				Program: prog,
+				Attach:  attachType,
+			})
+		})
+		return nil, nil
 	case ebpf.SchedCLS:
 		handler := i.tcHandlers[p.Name]
 
