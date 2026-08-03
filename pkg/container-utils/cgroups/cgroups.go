@@ -43,8 +43,8 @@ func CgroupPathV2AddMountpoint(path string) (string, error) {
 // GetCgroupV2Mountpoint returns the host's cgroup-v2 mount point.
 func GetCgroupV2Mountpoint() (string, error) {
 	candidates := []string{
-		filepath.Join(host.HostRoot, "sys/fs/cgroup"),
-		filepath.Join(host.HostRoot, "sys/fs/cgroup/unified"),
+		"/sys/fs/cgroup",
+		"/sys/fs/cgroup/unified",
 	}
 	for _, path := range candidates {
 		var stat unix.Statfs_t
