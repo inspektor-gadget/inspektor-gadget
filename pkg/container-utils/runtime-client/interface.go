@@ -50,6 +50,7 @@ type RuntimeContainerData struct {
 	ContainerImageID     string
 	ContainerImageDigest string
 	ContainerStartedAt   types.Time
+	OciRuntime           string
 
 	// Current state of the container.
 	State string
@@ -130,6 +131,31 @@ type ContainerRuntimeClient interface {
 
 	// Close tears down the connection with the container runtime.
 	Close() error
+}
+
+// NormalizeOCIRuntime converts runtime specific identifiers
+// (for example "io.containerd.runc.v2") into canonical OCI runtime
+// names ("runc", "crun", "kata", "runsc").
+// It returns an empty string if the runtime cannot be determined.
+// Note: under containerd, crun runs through the runc shim
+// (io.containerd.runc.v2), so it is reported as runc; use the
+// fanotify hook value to distinguish them.
+func NormalizeOCIRuntime(raw string) string {
+	knownOCIRuntime := map[string]string{
+		"runc": "runc", "crun": "crun",
+		"kata": "kata", "runsc": "runsc",
+	}
+	if v, ok := knownOCIRuntime[raw]; ok {
+		return v
+	}
+	for _, part := range strings.FieldsFunc(raw, func(r rune) bool {
+		return r == '.' || r == '/'
+	}) {
+		if v, ok := knownOCIRuntime[part]; ok {
+			return v
+		}
+	}
+	return ""
 }
 
 func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {

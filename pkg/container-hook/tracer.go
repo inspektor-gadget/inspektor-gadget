@@ -122,6 +122,8 @@ type ContainerEvent struct {
 	// runtime spec
 	// See https://github.com/opencontainers/runtime-spec/blob/main/bundle.md
 	Bundle string
+
+	OciRuntime string
 }
 
 type ContainerNotifyFunc func(notif ContainerEvent)
@@ -140,6 +142,7 @@ type pendingContainer struct {
 	mntnsId     uint64
 	timestamp   time.Time
 	removeMarks []func()
+	ociRuntime  string
 }
 
 type futureContainer struct {
@@ -591,6 +594,7 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		ContainerConfig: string(bundleConfigJSON),
 		Bundle:          pc.bundleDir,
 		ContainerName:   containerName,
+		OciRuntime:      pc.ociRuntime,
 	})
 
 	return nil
@@ -619,7 +623,7 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 	return os.SameFile(f1, f2), nil
 }
 
-func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir string, pidFile string) error {
+func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir string, pidFile string, ociRuntime string) error {
 	removeMarks := []func(){}
 
 	// The pidfile does not exist yet, so we cannot monitor it directly.
@@ -726,6 +730,7 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		mntnsId:     mntnsId,
 		timestamp:   now,
 		removeMarks: removeMarks,
+		ociRuntime:  ociRuntime,
 	}
 	n.pendingContainers[pidFile] = pc
 
@@ -753,6 +758,7 @@ func (n *ContainerNotifier) callPreCreateContainerCallback(pc *pendingContainer)
 		ContainerID:     pc.id,
 		ContainerConfig: string(pc.configJSON),
 		Bundle:          pc.bundleDir,
+		OciRuntime:      pc.ociRuntime,
 	})
 }
 
@@ -864,7 +870,7 @@ func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 	n.futureMu.Unlock()
 }
 
-func (n *ContainerNotifier) parseOCIRuntime(mntnsId uint64, cmdlineArr []string) {
+func (n *ContainerNotifier) parseOCIRuntime(mntnsId uint64, cmdlineArr []string, ociRuntime string) {
 	// Parse oci-runtime (runc/crun) command line
 	createFound := false
 	bundleDir := ""
@@ -888,7 +894,7 @@ func (n *ContainerNotifier) parseOCIRuntime(mntnsId uint64, cmdlineArr []string)
 	}
 
 	if createFound && bundleDir != "" && pidFile != "" {
-		err := n.monitorRuntimeInstance(mntnsId, bundleDir, pidFile)
+		err := n.monitorRuntimeInstance(mntnsId, bundleDir, pidFile, ociRuntime)
 		if err != nil {
 			log.Errorf("error monitoring runtime instance: %v\n", err)
 		}
@@ -996,7 +1002,7 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		// Calling sequence: crio/podman -> conmon -> runc/crun
 		n.parseConmonCmdline(cmdlineArr)
 	case "runc", "crun":
-		n.parseOCIRuntime(record.MntnsId, cmdlineArr)
+		n.parseOCIRuntime(record.MntnsId, cmdlineArr, calleeComm)
 	default:
 		return nil
 	}

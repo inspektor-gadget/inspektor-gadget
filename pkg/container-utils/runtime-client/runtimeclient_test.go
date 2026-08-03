@@ -74,6 +74,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 								ContainerName:      cn,
 								ContainerID:        c.ID(),
 								ContainerImageName: containerImageName,
+								OciRuntime:         "",
 								State:              runtimeclient.StateRunning,
 							},
 							K8s: runtimeclient.K8sContainerData{},
@@ -115,7 +116,12 @@ func TestRuntimeClientInterface(t *testing.T) {
 						// ContainerImageDigest may vary among versions, so we do not check its value
 						cData.Runtime.ContainerImageDigest = ""
 						cData.Runtime.ContainerImageID = ""
-						if cmp.Equal(*cData, eData.ContainerData) {
+						expected := eData.ContainerData
+						expected.Runtime.OciRuntime = ""
+
+						cData.Runtime.OciRuntime = ""
+
+						if cmp.Equal(*cData, expected) {
 							found = true
 							break
 						}
@@ -136,8 +142,13 @@ func TestRuntimeClientInterface(t *testing.T) {
 					// ContainerImageDigest may vary among versions, so we do not check its value
 					cData.Runtime.ContainerImageDigest = ""
 					cData.Runtime.ContainerImageID = ""
-					require.True(t, cmp.Equal(*cData, eData.ContainerData),
-						"unexpected container data:\n%s", cmp.Diff(*cData, eData.ContainerData))
+					expected := eData.ContainerData
+					expected.Runtime.OciRuntime = ""
+
+					cData.Runtime.OciRuntime = ""
+
+					require.True(t, cmp.Equal(*cData, expected),
+						"unexpected container data:\n%s", cmp.Diff(*cData, expected))
 				}
 			})
 
@@ -152,6 +163,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 					// ContainerImageDigest may vary among versions, so we do not check its value
 					cData.Runtime.ContainerImageDigest = ""
 					cData.Runtime.ContainerImageID = ""
+					cData.Runtime.OciRuntime = ""
 
 					// TODO: Is it worth to compare the cgroups path and mounts?
 					require.NotEmpty(t, cData.CgroupsPath)
