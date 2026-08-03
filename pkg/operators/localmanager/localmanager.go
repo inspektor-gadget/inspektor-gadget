@@ -70,6 +70,11 @@ type MountNsMapSetter interface {
 type Attacher interface {
 	AttachContainer(container *containercollection.Container) error
 	DetachContainer(*containercollection.Container) error
+	// ReattachContainer re-drives attachment after a tracked container's
+	// process has execve'd into its final executable. Needed for uprobe gadgets
+	// targeting statically-linked runtimes, where the create-time attach bound
+	// the runtime shim's inode. Implementations with no uprobes may no-op.
+	ReattachContainer(container *containercollection.Container) error
 }
 
 type localManager struct {
@@ -450,6 +455,13 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 				container.K8s.ContainerName, container.ContainerPid(), container.Mntns, container.Netns)
 		}
 
+		reattachContainerFunc := func(container *containercollection.Container) {
+			log.Debugf("calling gadget.ReattachContainer()")
+			if err := attacher.ReattachContainer(container); err != nil {
+				log.Warnf("re-attaching container %q: %s", container.K8s.ContainerName, err)
+			}
+		}
+
 		if l.manager.containerCollection != nil {
 			l.subscriptionKey = id.String()
 			log.Debugf("add subscription to containerCollection")
@@ -463,13 +475,16 @@ func (l *localManagerTrace) handleGadgetInstance(log logger.Logger) error {
 						attachContainerFunc(event.Container)
 					case containercollection.EventTypeRemoveContainer:
 						detachContainerFunc(event.Container)
+					case containercollection.EventTypeExecContainer:
+						reattachContainerFunc(event.Container)
 					case containercollection.EventTypePreCreateContainer:
 						// nothing to do
 					default:
-						log.Errorf("unknown event type, expected either %s, %s or %s, got %s",
+						log.Errorf("unknown event type, expected either %s, %s, %s or %s, got %s",
 							containercollection.EventTypePreCreateContainer,
 							containercollection.EventTypeAddContainer,
 							containercollection.EventTypeRemoveContainer,
+							containercollection.EventTypeExecContainer,
 							event.Type)
 					}
 				},

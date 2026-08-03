@@ -59,3 +59,26 @@ func ociConfigGetAnnotations(ociConfig string) (map[string]string, error) {
 	}
 	return config.Annotations, nil
 }
+
+// OCIConfigGetProcessArgs returns the container process argv (process.args) from
+// the OCI runtime config. args[0] is the container's intended executable; callers
+// that need to locate the binary in the container rootfs (e.g. to attach a uprobe
+// to a statically-linked symbol) use it instead of /proc/<pid>/exe, which at
+// container-create time still points at the runtime shim before runc execve's
+// into the entrypoint.
+func OCIConfigGetProcessArgs(ociConfig string) ([]string, error) {
+	if ociConfig == "" {
+		return nil, errors.New("ociConfig is empty")
+	}
+
+	var config struct {
+		Process struct {
+			Args []string `json:"args,omitempty"`
+		} `json:"process,omitempty"`
+	}
+	err := json.Unmarshal([]byte(ociConfig), &config)
+	if err != nil {
+		return nil, err
+	}
+	return config.Process.Args, nil
+}

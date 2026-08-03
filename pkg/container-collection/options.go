@@ -661,6 +661,16 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 					}
 					cc.pubsub.Publish(EventTypePreCreateContainer, container)
 				}
+			case containerhook.EventTypeExecContainer:
+				// A process inside some container execve'd. Resolve the mntns to
+				// a tracked container (non-tracked execs resolve to nil and are
+				// dropped) and republish so uprobe gadgets can re-attach to the
+				// settled executable.
+				if cc.pubsub != nil {
+					if container := cc.LookupContainerByMntns(notif.MntnsID); container != nil {
+						cc.pubsub.Publish(EventTypeExecContainer, container)
+					}
+				}
 			}
 		})
 		if err != nil {
