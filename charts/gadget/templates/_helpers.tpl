@@ -125,3 +125,12 @@ Operator configuration
 {{- end }}
 {{- toYaml $operator }}
 {{- end }}
+
+{{/*
+Prometheus scrape port
+*/}}
+{{- define "gadget.otelMetricsPort" -}}
+{{- $operator := include "gadget.operatorConfig" . | fromYaml -}}
+{{- $listenAddress := dig "otel-metrics" "otel-metrics-listen-address" "" $operator -}}
+{{- regexFind ":[0-9]+$" (toString $listenAddress) | trimPrefix ":" | default "2224" -}}
+{{- end }}
