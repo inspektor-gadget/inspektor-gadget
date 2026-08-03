@@ -1,0 +1,20 @@
+name: sk_msg_sk_skb
+description: test sk_msg and sk_skb programs with HTTP traffic
+homepageURL: https://inspektor-gadget.io/
+documentationURL: https://inspektor-gadget.io/docs/latest/
+sourceURL: https://github.com/inspektor-gadget/inspektor-gadget
+datasources:
+  http:
+    fields:
+      program:
+        annotations:
+          description: eBPF program that observed the HTTP data
+          columns.width: 26
+      len:
+        annotations:
+          description: Message length, or the positive sockhash update error
+          columns.alignment: right
+      prefix:
+        annotations:
+          description: First 24 bytes of the HTTP data
+          columns.width: 26

@@ -78,6 +78,7 @@ GADGETS ?= \
 	ci/stacks \
 	ci/gpu \
 	ci/test_iter_map_elem \
+	ci/sk_msg_sk_skb \
 	snapshot_file \
 	top_cuda_memory \
 	gpu_top \
