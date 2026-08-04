@@ -162,6 +162,30 @@ type ContainerNotifier struct {
 	pidFileDirNotify    *fanotify.NotifyFD
 	callback            ContainerNotifyFunc
 
+	// pidMarkMu serializes fanotify_mark(2) on pidFileDirNotify with the
+	// close of its fd. It must be held (via pidMark / pidClose) around every
+	// Mark and around the File.Close of pidFileDirNotify, but NOT around the
+	// read (GetEvent) or the response (Response{Allow,Deny}).
+	//
+	// Why Mark needs it but read/response don't: go-fanotify's Mark calls
+	// unix.FanotifyMark(handle.Fd, ...) on the raw int fd, which bypasses the
+	// protection that os.File provides. Once we close the fd, its number can
+	// be reused by another fanotify user in the same process (IG can be
+	// embedded as a library), and a stale Mark would then operate on an
+	// unrelated fanotify group. Guarding Mark with a "closed" flag under this
+	// mutex guarantees we never issue a mark on a closed/reused fd.
+	//
+	// read and response instead go through pidFileDirNotify.File (an
+	// *os.File): internal/poll refcounts the fd and flips a "closed" flag
+	// atomically on Close, so an in-flight read holds a reference that defers
+	// the real close(2) until it returns, and a read starting after Close
+	// fails with ErrClosed without ever issuing a syscall on a reused number.
+	// Hence they are safe without this mutex — which matters because the read
+	// blocks legitimately and holding the mutex around it would prevent
+	// pidClose from ever unblocking it.
+	pidMarkMu       sync.Mutex
+	pidNotifyClosed bool // guarded by pidMarkMu
+
 	// containers is the set of containers that are being watched for
 	// termination. This prevents duplicate calls to
 	// AddWatchContainerTermination.
@@ -656,6 +680,32 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 	return os.SameFile(f1, f2), nil
 }
 
+// pidMark performs a fanotify mark on pidFileDirNotify unless its fd has been
+// closed. It serializes with pidClose so we never issue a fanotify_mark(2) on a
+// raw fd number that may have been closed and reused by another fanotify user
+// in the same process. See the pidMarkMu comment for details.
+func (n *ContainerNotifier) pidMark(flags uint, mask uint64, dirFd int, path string) error {
+	n.pidMarkMu.Lock()
+	defer n.pidMarkMu.Unlock()
+	if n.pidNotifyClosed {
+		// The fd is closed (shutting down or a watcher failed): skip silently.
+		return nil
+	}
+	return n.pidFileDirNotify.Mark(flags, mask, dirFd, path)
+}
+
+// pidClose closes the pidFileDirNotify fd and marks it as closed so no further
+// mark is issued on it. It is idempotent and safe to call from any goroutine.
+func (n *ContainerNotifier) pidClose() {
+	n.pidMarkMu.Lock()
+	defer n.pidMarkMu.Unlock()
+	if n.pidNotifyClosed {
+		return
+	}
+	n.pidNotifyClosed = true
+	n.pidFileDirNotify.File.Close()
+}
+
 func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir string, pidFile string) error {
 	removeMarks := []func(){}
 
@@ -698,26 +748,26 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	}
 
 	pidFileDir := filepath.Dir(pidFile)
-	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+	err = n.pidMark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	if err != nil {
 		return fmt.Errorf("marking %s: %w", pidFileDir, err)
 	}
 
 	removeMarks = append(removeMarks, func() {
-		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
+		_ = n.pidMark(unix.FAN_MARK_REMOVE, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	})
 
 	// IG no longer reads config.json from the fanotify watcher, so the
 	// ignore mask is only needed to suppress events from runc / runc-init
 	// reading config.json themselves (noise reduction on >= 5.9; ignored
 	// silently on < 5.9 due to the same 497b0c5a7c06 issue noted above).
-	err = n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+	err = n.pidMark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
 	removeMarks = append(removeMarks, func() {
-		_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+		_ = n.pidMark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	})
 
 	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
@@ -733,10 +783,10 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		// No need to os.Stat() before: this is best-effort and we ignore the
 		// errors. Not all files are guaranteed to exist depending on the
 		// container runtime.
-		err := n.pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
+		err := n.pidMark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 		if err == nil {
 			removeMarks = append(removeMarks, func() {
-				_ = n.pidFileDirNotify.Mark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
+				_ = n.pidMark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 			})
 		} else if !errors.Is(err, fs.ErrNotExist) {
 			// Don't log if the error is "NotExist": this is normal
@@ -803,6 +853,14 @@ func (n *ContainerNotifier) watchRuntimeBinary() {
 		}
 		if err != nil {
 			log.Errorf("error watching runtime binary: %v\n", err)
+			// This goroutine is the only reader of runtimeBinaryNotify and is
+			// about to stop. Close its fanotify fd so the kernel removes our
+			// FAN_OPEN_EXEC_PERM mark and auto-allows any pending or future
+			// exec permission event. Otherwise every runc exec on the host
+			// would block forever waiting for a response we can no longer send.
+			// We only touch our own fd: the pid-file fanotify group keeps
+			// running under watchPendingContainers.
+			n.runtimeBinaryNotify.File.Close()
 			return
 		}
 	}
@@ -818,6 +876,15 @@ func (n *ContainerNotifier) watchPendingContainers() {
 		}
 		if err != nil {
 			log.Errorf("error watching pid file directories: %v\n", err)
+			// As in watchRuntimeBinary: this goroutine is the only reader of
+			// pidFileDirNotify and is about to stop, so close its fanotify fd
+			// to let the kernel auto-resolve pending FAN_ACCESS_PERM events
+			// instead of blocking accesses to the watched pid-file directories.
+			// The runtime-binary fanotify group is left to watchRuntimeBinary.
+			// pidClose serializes with pidMark so the runtime goroutine (which
+			// marks pidFileDirNotify via monitorRuntimeInstance) stops issuing
+			// marks once the fd is closed.
+			n.pidClose()
 			return
 		}
 	}
@@ -1048,7 +1115,7 @@ func (n *ContainerNotifier) Close() {
 		n.runtimeBinaryNotify.File.Close()
 	}
 	if n.pidFileDirNotify != nil {
-		n.pidFileDirNotify.File.Close()
+		n.pidClose()
 	}
 	n.wg.Wait()
 
