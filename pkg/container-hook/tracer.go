@@ -32,6 +32,7 @@
 package containerhook
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -44,6 +45,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -91,6 +93,11 @@ const (
 	// pid files store a string with a int32 value, so 11 characters.
 	// Keep a larger buffer to be able to notice errors with strconv.Atoi.
 	pidFileMaxSize = int64(32)
+
+	// fanotifyEventMetadataSize is the size in bytes of a single fanotify
+	// event as read by go-fanotify's GetEvent(). It is used to size the
+	// read buffer to exactly one event; see initFanotify.
+	fanotifyEventMetadataSize = int(unsafe.Sizeof(unix.FanotifyEventMetadata{}))
 )
 
 var (
@@ -218,7 +225,37 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 	// Flags for the fd installed when reading a fanotify event (e.g. flag for
 	// the runc fd or the pid file fd).
 	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
-	return fanotify.Initialize(fanotifyFlags, openFlags)
+	notifyFD, err := fanotify.Initialize(fanotifyFlags, openFlags)
+	if err != nil {
+		return nil, err
+	}
+
+	// Shrink the read buffer to a single event.
+	//
+	// go-fanotify wraps the fanotify fd in a bufio.Reader with the default
+	// 4096-byte buffer, while each event read by GetEvent() is only
+	// fanotifyEventMetadataSize (24) bytes. A single read() syscall would
+	// therefore drain as many events as fit in the buffer (~170) at once, even
+	// though the notifier processes them one at a time. That has two harmful
+	// consequences:
+	//
+	//  1. Coherence with the ebpf ig_fa_records queue. Each fanotify exec event
+	//     has a matching record pushed by the ebpf program. The notifier reads
+	//     one fanotify event, then LookupAndDelete's its record before handling
+	//     the next. If a single read() pulls many events ahead, records pile up
+	//     and overflow the fixed-size queue, causing "lookup record: key does
+	//     not exist" and lost events.
+	//  2. File-descriptor pressure. For permission events the kernel installs
+	//     one fd per event *during that read()*. Draining ~170 events installs
+	//     ~170 fds at once, which can hit RLIMIT_NOFILE and make the kernel fail
+	//     to create the fd (EMFILE/ENFILE).
+	//
+	// Sizing the buffer to exactly one event guarantees each read() picks a
+	// single fanotify event (and installs at most one fd), keeping the notifier
+	// in lockstep with the ig_fa_records queue.
+	notifyFD.Rd = bufio.NewReaderSize(notifyFD.File, fanotifyEventMetadataSize)
+
+	return notifyFD, nil
 }
 
 // Supported detects if RuncNotifier is supported in the current environment
