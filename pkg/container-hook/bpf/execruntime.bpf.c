@@ -12,17 +12,31 @@ static const struct record empty_record = {};
 const volatile u64 tracer_group = 0;
 
 // ig_fa_pick_ctx keeps context for kprobe/kretprobe fsnotify_remove_first_event
+//
+// A single slot is enough: all callers of fsnotify_remove_first_event hold
+// group->notification_lock across the call, so at most one task at a time can
+// be inside that function for the Inspektor Gadget fanotify group, and that
+// task is always the single IG reader goroutine.
+//
+// An array is used rather than a hash so that storing the context can never
+// fail (no -E2BIG on a full map) and so that a leftover value, if a kretprobe
+// were ever missed, is simply overwritten by the next call instead of wedging
+// the map permanently.
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 64);
-	__type(key, u64); // tgid_pid
-	__type(value, u64); // dummy
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	// tgid_pid of the IG task currently inside
+	// fsnotify_remove_first_event, or 0 if none. 0 is a valid "empty"
+	// marker: only the idle task has tgid_pid == 0 and it never calls
+	// fsnotify_remove_first_event.
+	__type(value, u64);
 } ig_fa_pick_ctx SEC(".maps");
 
 // ig_fa_records is consumed by userspace
 struct {
 	__uint(type, BPF_MAP_TYPE_QUEUE);
-	__uint(max_entries, 64);
+	__uint(max_entries, 1);
 	__type(value, struct record);
 } ig_fa_records SEC(".maps");
 
@@ -52,16 +66,18 @@ struct {
 SEC("kprobe/fsnotify_remove_first_event")
 int BPF_KPROBE(ig_fa_pick_e, struct fsnotify_group *group)
 {
-	u64 current_pid_tgid;
-	u64 dummy = 0;
+	u32 zero = 0;
+	u64 *ctx_pid_tgid;
 
 	if (tracer_group != (u64)group)
 		return 0;
 
-	current_pid_tgid = bpf_get_current_pid_tgid();
+	ctx_pid_tgid = bpf_map_lookup_elem(&ig_fa_pick_ctx, &zero);
+	if (!ctx_pid_tgid)
+		return 0;
 
 	// Keep context for kretprobe/fsnotify_remove_first_event
-	bpf_map_update_elem(&ig_fa_pick_ctx, &current_pid_tgid, &dummy, 0);
+	*ctx_pid_tgid = bpf_get_current_pid_tgid();
 
 	return 0;
 }
@@ -71,15 +87,22 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 {
 	struct record *record;
 	u64 current_pid_tgid;
+	u64 *ctx_pid_tgid;
 	u32 event_pid;
-	u64 *exists;
+	u32 zero = 0;
 
 	// current_pid_tgid is the Inspektor Gadget task
 	current_pid_tgid = bpf_get_current_pid_tgid();
 
-	exists = bpf_map_lookup_elem(&ig_fa_pick_ctx, &current_pid_tgid);
-	if (!exists)
+	ctx_pid_tgid = bpf_map_lookup_elem(&ig_fa_pick_ctx, &zero);
+	if (!ctx_pid_tgid || *ctx_pid_tgid != current_pid_tgid)
 		return 0;
+
+	// Reset the context on all paths below: leaving it set would let a later
+	// call from the same task on a different fanotify group (the pid file
+	// group is read by another goroutine, and goroutines share threads) be
+	// mistaken for a call on our group and push a bogus record.
+	*ctx_pid_tgid = 0;
 
 	// event_pid is the thread that triggered the fanotify event.
 	// Since Inspektor Gadget uses FAN_REPORT_TID, this is the thread id
@@ -90,16 +113,11 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 	if (!record) {
 		// no record found but we need to push an empty record in the queue to
 		// ensure userspace understands that there is no record for this event
-		goto fail;
+		bpf_map_push_elem(&ig_fa_records, &empty_record, 0);
+		return 0;
 	}
 
 	bpf_map_push_elem(&ig_fa_records, record, 0);
-	bpf_map_delete_elem(&ig_fa_pick_ctx, &current_pid_tgid);
-	return 0;
-
-fail:
-	bpf_map_push_elem(&ig_fa_records, &empty_record, 0);
-	bpf_map_delete_elem(&ig_fa_pick_ctx, &current_pid_tgid);
 	return 0;
 }
 
