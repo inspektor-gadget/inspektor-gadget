@@ -540,14 +540,17 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 	dataFile := data.File()
 	defer dataFile.Close()
 
+	// Answer any permission event before anything else can return early.
+	if data.Mask&(unix.FAN_OPEN_PERM|unix.FAN_ACCESS_PERM|unix.FAN_OPEN_EXEC_PERM) != 0 {
+		// This unblocks whoever is accessing the pidfile
+		defer n.pidFileDirNotify.ResponseAllow(data)
+	}
+
 	if !data.MatchMask(unix.FAN_ACCESS_PERM) {
 		// This should not happen: FAN_ACCESS_PERM is the only mask Marked
 		log.Errorf("fanotify: unknown event on pid file: mask=%d pid=%d", data.Mask, data.Pid)
 		return nil
 	}
-
-	// This unblocks whoever is accessing the pidfile
-	defer n.pidFileDirNotify.ResponseAllow(data)
 
 	pathFromProcfs, err := data.GetPath()
 	if err != nil {
@@ -1017,20 +1020,25 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 	// Don't leak the fd received by GetEvent
 	defer data.Close()
 
+	// Answer any permission event before anything else can return early.
+	if data.Mask&(unix.FAN_OPEN_PERM|unix.FAN_ACCESS_PERM|unix.FAN_OPEN_EXEC_PERM) != 0 {
+		// This unblocks the execution
+		defer n.runtimeBinaryNotify.ResponseAllow(data)
+	}
+
+	// Lookup entry in ebpf map ig_fa_records. The ebpf program pushed exactly
+	// one record for this event, so drain it before any early return below.
+	var record execruntimeRecord
+	recordErr := n.objs.IgFaRecords.LookupAndDelete(nil, &record)
+
 	if !data.MatchMask(unix.FAN_OPEN_EXEC_PERM) {
 		// This should not happen: FAN_OPEN_EXEC_PERM is the only mask Marked
 		log.Errorf("fanotify: unknown event on runtime: mask=%d pid=%d", data.Mask, data.Pid)
 		return nil
 	}
 
-	// This unblocks the execution
-	defer n.runtimeBinaryNotify.ResponseAllow(data)
-
-	// Lookup entry in ebpf map ig_fa_records
-	var record execruntimeRecord
-	err = n.objs.IgFaRecords.LookupAndDelete(nil, &record)
-	if err != nil {
-		log.Errorf("fanotify: lookup record: %s", err)
+	if recordErr != nil {
+		log.Errorf("fanotify: lookup record: %s", recordErr)
 		return nil
 	}
 
