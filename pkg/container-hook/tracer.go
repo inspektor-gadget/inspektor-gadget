@@ -537,8 +537,6 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 
 	// Don't leak the fd received by GetEvent
 	defer data.Close()
-	dataFile := data.File()
-	defer dataFile.Close()
 
 	// Answer any permission event before anything else can return early.
 	if data.Mask&(unix.FAN_OPEN_PERM|unix.FAN_ACCESS_PERM|unix.FAN_OPEN_EXEC_PERM) != 0 {
@@ -551,6 +549,13 @@ func (n *ContainerNotifier) watchPidFileIterate() error {
 		log.Errorf("fanotify: unknown event on pid file: mask=%d pid=%d", data.Mask, data.Pid)
 		return nil
 	}
+
+	dataFile := data.File()
+	if dataFile == nil {
+		log.Errorf("fanotify: could not duplicate event fd for pid file")
+		return nil
+	}
+	defer dataFile.Close()
 
 	pathFromProcfs, err := data.GetPath()
 	if err != nil {
@@ -1028,8 +1033,16 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 
 	// Lookup entry in ebpf map ig_fa_records. The ebpf program pushed exactly
 	// one record for this event, so drain it before any early return below.
+	// This includes FAN_Q_OVERFLOW: it is dequeued by
+	// fsnotify_remove_first_event() like any other event, so the eBPF program
+	// pushes a record for it too.
 	var record execruntimeRecord
 	recordErr := n.objs.IgFaRecords.LookupAndDelete(nil, &record)
+
+	if data.Mask&unix.FAN_Q_OVERFLOW != 0 {
+		log.Errorf("fanotify: event queue overflow")
+		return nil
+	}
 
 	if !data.MatchMask(unix.FAN_OPEN_EXEC_PERM) {
 		// This should not happen: FAN_OPEN_EXEC_PERM is the only mask Marked
