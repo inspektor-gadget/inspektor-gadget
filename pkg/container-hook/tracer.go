@@ -100,6 +100,15 @@ const (
 	fanotifyEventMetadataSize = int(unsafe.Sizeof(unix.FanotifyEventMetadata{}))
 )
 
+const (
+	// Flags used to add and remove the ignore marks on the files below the
+	// watched pid file directory. FAN_MARK_IGNORED_SURV_MODIFY is only
+	// meaningful when adding: fanotify_mark_remove_from_mask() picks the mask
+	// to clear from FAN_MARK_IGNORED_MASK alone.
+	ignoreMarkAddFlags    = unix.FAN_MARK_ADD | unix.FAN_MARK_IGNORED_MASK | unix.FAN_MARK_IGNORED_SURV_MODIFY
+	ignoreMarkRemoveFlags = unix.FAN_MARK_REMOVE | unix.FAN_MARK_IGNORED_MASK
+)
+
 var (
 	// How long to wait for a container after a "conmon" or a "runc start" command
 	// The values can be overridden by tests.
@@ -769,13 +778,19 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	// ignore mask is only needed to suppress events from runc / runc-init
 	// reading config.json themselves (noise reduction on >= 5.9; ignored
 	// silently on < 5.9 due to the same 497b0c5a7c06 issue noted above).
-	err = n.pidMark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+	//
+	// FAN_MARK_IGNORED_SURV_MODIFY is required for the mark to be created at
+	// all: fanotify_add_inode_mark() returns 0 without adding it if the inode
+	// is open for write and the flag is absent. The runtime writes config.json
+	// just before we get here and a concurrent fork can leave a copy of that
+	// write descriptor open past its close(), keeping i_writecount elevated.
+	err = n.pidMark(ignoreMarkAddFlags, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
 	removeMarks = append(removeMarks, func() {
-		_ = n.pidMark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
+		_ = n.pidMark(ignoreMarkRemoveFlags, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	})
 
 	// This is best-effort to reduce noise: Linux < 5.9 doesn't respect ignore
@@ -791,10 +806,10 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 		// No need to os.Stat() before: this is best-effort and we ignore the
 		// errors. Not all files are guaranteed to exist depending on the
 		// container runtime.
-		err := n.pidMark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
+		err := n.pidMark(ignoreMarkAddFlags, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 		if err == nil {
 			removeMarks = append(removeMarks, func() {
-				_ = n.pidMark(unix.FAN_MARK_REMOVE|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
+				_ = n.pidMark(ignoreMarkRemoveFlags, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, ignoreFilePath)
 			})
 		} else if !errors.Is(err, fs.ErrNotExist) {
 			// Don't log if the error is "NotExist": this is normal
