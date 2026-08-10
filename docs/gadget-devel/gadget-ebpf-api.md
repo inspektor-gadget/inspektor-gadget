@@ -411,7 +411,7 @@ Symbolize the kernel stack from `gadget_get_kernel_stack(ctx)` (see [kernel-stac
 
 ### `gadget_user_stack`
 
-Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack, collect_ustack)` (see [user-stack-traces](#user-stack-traces)).
+Symbolize the user stack from `gadget_get_user_stack(ctx, &event->ustack)` (see [user-stack-traces](#user-stack-traces)).
 
 ### `gadget_uid` and `gadget_gid`
 
@@ -679,10 +679,25 @@ struct {
 Then, add a field in the event structure with the type of `gadget_user_stack`,
 designated for storing the stack id along with identifiers for the executable
 so that the stack can be symbolised in userspace.
-`gadget_get_user_stack(ctx, &event->ustack, collect_ustack)` could be used
-to populate this field, this helper function will store the kernel stack into
+`gadget_get_user_stack(ctx, &event->ustack)` could be used
+to populate this field, this helper function will store the user stack into
 `ig_ustack` and fill the field passed as parameter. When `collect_ustack` is
 false, `ustack` is initialized to zero and ig will ignore the stack trace.
+
+`gadget_get_user_stack()` dispatches at compile time on the static type of
+`ctx` (using `_Generic`): `struct pt_regs *` selects the
+`kprobe`/`kretprobe`/`uprobe`/`uretprobe` variant, and
+`struct bpf_perf_event_data *` selects the `perf_event` variant. These are the
+program types for which OpenTelemetry eBPF profiler symbolization is available
+(see [Limitations specific to the OpenTelemetry eBPF
+Profiler](../reference/stack-traces.mdx#limitations-specific-to-the-opentelemetry-ebpf-profiler)).
+Passing a `ctx` of any other type is a compile-time error.
+
+For a `tracepoint` gadget, whose program type cannot use OpenTelemetry
+symbolization, call `gadget_get_user_stack_from_tracepoint(ctx, &event->ustack)`
+instead. It collects the plain user stack (still symbolizable by the symtab and
+debuginfod methods); requesting `--collect-otel-stack` with such a gadget makes
+the loader reject the program instead of silently returning an empty stack.
 
 ```C
 struct event {
@@ -699,8 +714,56 @@ GADGET_PARAM(collect_ustack);
 	if (!event)
 		return 0;
 
-	gadget_get_user_stack(ctx, &event->ustack, collect_ustack);
+	gadget_get_user_stack(ctx, &event->ustack);
 ```
+
+## Socket map programs
+
+`sk_skb` and `sk_msg` programs are attached to a sockmap or sockhash. Declare
+the target of each program with `GADGET_SK_TARGET_MAP`:
+
+```c
+#include <gadget/macros.h>
+
+struct sock_key {
+	__u32 src_ip;
+	__u32 dst_ip;
+	__u32 src_port;
+	__u32 dst_port;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_SOCKHASH);
+	__uint(max_entries, 1024);
+	__type(key, struct sock_key);
+	__type(value, __u32);
+} sockets SEC(".maps");
+
+SEC("sk_skb/stream_parser")
+int parse(struct __sk_buff *skb)
+{
+	/* Return the length of the next complete message. */
+	return skb->len;
+}
+GADGET_SK_TARGET_MAP(parse, sockets);
+
+SEC("sk_skb/stream_verdict")
+int verdict(struct __sk_buff *skb)
+{
+	/* Inspect or redirect the message. */
+	return SK_PASS;
+}
+GADGET_SK_TARGET_MAP(verdict, sockets);
+```
+
+The target map must be declared in the same eBPF object and have type
+`BPF_MAP_TYPE_SOCKMAP` or `BPF_MAP_TYPE_SOCKHASH`. Declare the macro once for
+each `sk_skb` or `sk_msg` program. Inspektor Gadget detaches these programs
+when the gadget stops.
+
+`sockops` programs need no target declaration. Inspektor Gadget attaches them
+once to the host's cgroup-v2 root, so they can populate the same sockmap or
+sockhash for sockets from any cgroup.
 
 ## Map pinning
 

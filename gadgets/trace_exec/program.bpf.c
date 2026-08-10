@@ -42,6 +42,8 @@ struct event {
 	gadget_errno error_raw;
 	int args_count;
 	int tty;
+	unsigned int tty_major;
+	unsigned int tty_minor;
 	bool from_rootfs;
 	bool file_from_rootfs;
 	bool upper_layer;
@@ -115,6 +117,32 @@ GADGET_TRACER_MAP(events, 1024 * 256);
 
 GADGET_TRACER(exec, events, event);
 
+// read_tty fills in the controlling terminal of the task, if any.
+//
+// tty->index alone does not identify a terminal: it is only the index of the
+// terminal within its own driver, so /dev/pts/0 and /dev/tty0 both have index
+// 0, which is also the value reported for a task without a controlling
+// terminal. The device number is what identifies the terminal unambiguously, so
+// report it as well and leave it at 0:0 when there is no controlling terminal.
+//
+// The device number is computed the same way as the kernel's tty_devnum():
+// MKDEV(tty->driver->major, tty->driver->minor_start) + tty->index
+static __always_inline void read_tty(struct event *event,
+				     struct task_struct *task)
+{
+	struct tty_struct *tty = BPF_CORE_READ(task, signal, tty);
+	if (!tty)
+		return;
+
+	struct tty_driver *driver = BPF_CORE_READ(tty, driver);
+	if (!driver)
+		return;
+
+	event->tty = BPF_CORE_READ(tty, index);
+	event->tty_major = BPF_CORE_READ(driver, major);
+	event->tty_minor = BPF_CORE_READ(driver, minor_start) + event->tty;
+}
+
 static __always_inline int enter_execve(const char **args)
 {
 	u64 id;
@@ -148,7 +176,7 @@ static __always_inline int enter_execve(const char **args)
 	if (bpf_core_field_exists(task->sessionid))
 		event->sessionid = BPF_CORE_READ(task, sessionid);
 
-	event->tty = BPF_CORE_READ(task, signal, tty, index);
+	read_tty(event, task);
 
 	if (paths) {
 		struct fs_struct *fs = BPF_CORE_READ(task, fs);

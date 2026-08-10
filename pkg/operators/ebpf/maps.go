@@ -360,3 +360,42 @@ func (i *ebpfInstance) populateIterTargetMap(t btf.Type, varName string) error {
 	i.iterTargetMaps[progName] = mapName
 	return nil
 }
+
+func (i *ebpfInstance) populateSKTargetMap(t btf.Type, varName string) error {
+	i.logger.Debugf("populating sk target map %q", varName)
+
+	info := strings.Split(varName, typeSplitter)
+	if len(info) != 2 {
+		return fmt.Errorf("invalid name for %s type: %q (expected <prog_name>%s<map_name>)",
+			skTargetMapPrefix, varName, typeSplitter)
+	}
+
+	progName := info[0]
+	mapName := info[1]
+
+	if existing, ok := i.skTargetMaps[progName]; ok {
+		return fmt.Errorf("duplicate sk target map for program %q (already bound to %q)",
+			progName, existing)
+	}
+
+	prog, ok := i.collectionSpec.Programs[progName]
+	if !ok {
+		return fmt.Errorf("sk target map references unknown program %q", progName)
+	}
+	if prog.Type != ebpf.SkSKB && prog.Type != ebpf.SkMsg {
+		return fmt.Errorf("program %q has type %s; GADGET_SK_TARGET_MAP only applies to sk_skb and sk_msg programs",
+			progName, prog.Type)
+	}
+
+	targetMap, ok := i.collectionSpec.Maps[mapName]
+	if !ok {
+		return fmt.Errorf("sk target map references unknown map %q (for program %q)", mapName, progName)
+	}
+	if targetMap.Type != ebpf.SockMap && targetMap.Type != ebpf.SockHash {
+		return fmt.Errorf("map %q has type %s; GADGET_SK_TARGET_MAP requires a sockmap or sockhash",
+			mapName, targetMap.Type)
+	}
+
+	i.skTargetMaps[progName] = mapName
+	return nil
+}

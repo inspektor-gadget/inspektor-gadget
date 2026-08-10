@@ -28,6 +28,12 @@ jobs:
             repo: docker.io/library
           - image: nginx:latest
             repo: docker.io/library
+          # Pinned to 3.13 (not the floating "3" tag): the OTel eBPF profiler
+          # only symbolizes CPython up to 3.14, so a newer default would break
+          # stack-symbolization tests. See maxVer in:
+          # https://github.com/open-telemetry/opentelemetry-ebpf-profiler/blob/1de801e979a36561ea1308533388dc61d1290150/interpreter/python/python.go#L796-L797
+          - image: python:3.13-slim
+            repo: docker.io/library
           - image: registry:2
             repo: docker.io/library
           - image: network-multitool:latest
@@ -36,16 +42,16 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
             registry: ${{ env.REGISTRY }}
             username: ${{ github.actor }}
             password: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
          go-version: ${{ env.GO_VERSION }}
       - uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7

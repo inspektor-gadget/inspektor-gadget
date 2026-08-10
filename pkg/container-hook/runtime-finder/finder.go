@@ -42,6 +42,7 @@ var RuntimePaths = []string{
 	"/var/lib/rancher/k3s/data/current/bin/runc", // Used in k3s
 	"/var/lib/rancher/rke2/bin/runc",             // Used in RKE2
 	"/usr/libexec/crio/runc",                     // Used in kubeadm on Debian, upstream crio
+	"/usr/libexec/crio/crun",                     // Used by upstream CRI-O
 	"/var/lib/k0s/bin/runc",                      // Used in k0s
 	"/aarch64-bottlerocket-linux-gnu/sys-root/usr/bin/runc", // Used in Bottlerocket OS
 	"/x86_64-bottlerocket-linux-gnu/sys-root/usr/bin/runc",  // Used in Bottlerocket OS

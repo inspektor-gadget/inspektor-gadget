@@ -10,6 +10,8 @@
 /gadgetctl-*-*
 /kubectl-gadget
 /kubectl-gadget-*-*
+/gpu-ebpf-bridge
+/gpu-ebpf-bridge-*-*
 /gadget-container/bin
 
 # Test binary, build with `go test -c`
@@ -40,6 +42,7 @@ pkg/btfgen/btfs/arm64/*
 !pkg/container-hook/**/*.o
 !pkg/kfilefields/**/*.o
 !pkg/gadgets/**/*.o
+!pkg/gpu-ebpf-bridge/**/*.o
 !pkg/socketenricher/*.o
 .daemon-config.yaml
 
