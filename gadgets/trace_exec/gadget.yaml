@@ -104,9 +104,21 @@ datasources:
           columns.hidden: true
       tty:
         annotations:
-          description: The controlling terminal of the process. 0 for processes without a terminal.
+          description: The index of the controlling terminal of the process within its own driver. It does not identify a terminal on its own, as the index is only unique per driver, use tty_major and tty_minor instead. 0 for processes without a controlling terminal, which is indistinguishable from the first terminal of any driver.
           columns.width: 5
           columns.hidden: false
+      tty_major:
+        annotations:
+          description: The major number of the device of the controlling terminal of the process, e.g. 136 for a pseudo terminal or 4 for a virtual console. 0 for processes without a controlling terminal.
+          columns.width: 5
+          columns.hidden: true
+          columns.alignment: right
+      tty_minor:
+        annotations:
+          description: The minor number of the device of the controlling terminal of the process. 0 for processes without a controlling terminal.
+          columns.width: 5
+          columns.hidden: true
+          columns.alignment: right
       from_rootfs:
         annotations:
           description: Whether the executable file of the process (interpreter in case of script) is in the rootfs of the container. Initialized when the execution succeeded or failed with the -ENOEXEC error ("Exec format error"). Notice that to get failed executions, you need to set ignore_failed to false.

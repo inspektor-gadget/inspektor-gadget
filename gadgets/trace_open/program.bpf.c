@@ -126,7 +126,11 @@ static __always_inline int trace_exit(struct syscall_trace_exit *ctx)
 
 	/* event data */
 	gadget_process_populate(&event->proc);
-	gadget_get_user_stack(ctx, &event->ustack);
+	/* trace_open is a tracepoint gadget: OTel symbolization is not available
+	 * for tracepoint programs, but the plain user stack is still collected
+	 * and symbolized by the symbol-table symbolizer.
+	 */
+	gadget_get_user_stack_from_tracepoint(ctx, &event->ustack);
 
 	bpf_probe_read_user_str(&event->fname, sizeof(event->fname), ap->fname);
 	event->flags_raw = ap->flags;

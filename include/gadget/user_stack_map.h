@@ -11,6 +11,7 @@
 #include <gadget/types.h>
 #include <gadget/macros.h>
 #include <gadget/fnv1a.h>
+#include <gadget/core_fixes.bpf.h>
 
 const volatile bool collect_ustack = false;
 GADGET_PARAM(collect_ustack);
@@ -63,6 +64,14 @@ struct {
 	__type(value, u32);
 	__array(values, int());
 } otel_tc_kprobe SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, u32);
+	__array(values, int());
+} otel_tc_perf SEC(".maps");
 
 // Linux v4.0 - v4.17
 struct timespec___obsolete {
@@ -178,11 +187,21 @@ gadget_fetch_otel_stack_from_kprobe(void *ctx)
 	return 0;
 }
 
-/* gadget_get_user_stack gets the user stack into ustack if collect_ustack is
- * true, or initialize ustack to 0 otherwise.
+static __attribute__((noinline)) int
+gadget_fetch_otel_stack_from_perf_event(void *ctx)
+{
+	u32 key = 0;
+	bpf_tail_call(ctx, &otel_tc_perf, key);
+	return 0;
+}
+
+/* __gadget_fill_user_stack fills the user stack into ustack if collect_ustack is
+ * true, or initializes ustack to 0 otherwise. It performs everything except the
+ * OTel correlation-id fetch, which is program-type specific and handled by the
+ * gadget_get_user_stack_from_{kprobe,perf_event} wrappers below.
  */
 static __always_inline void
-gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
+__gadget_fill_user_stack(void *ctx, struct gadget_user_stack *ustack)
 {
 	if (!collect_ustack) {
 		ustack->major = 0;
@@ -242,6 +261,9 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 
 	ustack->base_addr_hash = gadget_get_base_addr_hash(task);
 
+	// otel_correlation_id is filled by the program-type specific wrapper.
+	ustack->otel_correlation_id = 0;
+
 	if (collect_build_id && ustack->stack_id >= 0) {
 		int already_exists =
 			bpf_map_update_elem(&ig_build_id, &ustack->stack_id,
@@ -261,18 +283,100 @@ gadget_get_user_stack(void *ctx, struct gadget_user_stack *ustack)
 		if (ret < 0)
 			return;
 	}
+}
 
-	if (collect_otel_stack) {
+// __gadget_read_otel_correlation reads the OTel correlation id that the OTel
+// entry program wrote to the shared otel_generic_params map during the tail
+// call, and stores it in ustack.
+static __always_inline void
+__gadget_read_otel_correlation(struct gadget_user_stack *ustack)
+{
+	struct generic_param *ret_param;
+	int zero = 0;
+	ret_param = bpf_map_lookup_elem(&otel_generic_params, &zero);
+	if (!ret_param)
+		return;
+
+	ustack->otel_correlation_id = ret_param->correlation_id;
+}
+
+/* gadget_get_user_stack_from_kprobe gets the user stack (and, if
+ * collect_otel_stack is set, the OTel correlation id) for a gadget program of
+ * type BPF_PROG_TYPE_KPROBE (kprobe, kretprobe, uprobe, uretprobe).
+ */
+static __always_inline void
+gadget_get_user_stack_from_kprobe(void *ctx, struct gadget_user_stack *ustack)
+{
+	__gadget_fill_user_stack(ctx, ustack);
+
+	if (collect_ustack && collect_otel_stack) {
 		gadget_fetch_otel_stack_from_kprobe(ctx);
-
-		struct generic_param *ret_param;
-		int zero = 0;
-		ret_param = bpf_map_lookup_elem(&otel_generic_params, &zero);
-		if (!ret_param)
-			return;
-
-		ustack->otel_correlation_id = ret_param->correlation_id;
+		__gadget_read_otel_correlation(ustack);
 	}
 }
 
-#endif /* __STACK_MAP_H */
+/* gadget_get_user_stack_from_perf_event gets the user stack (and, if
+ * collect_otel_stack is set, the OTel correlation id) for a gadget program of
+ * type BPF_PROG_TYPE_PERF_EVENT.
+ */
+static __always_inline void
+gadget_get_user_stack_from_perf_event(void *ctx,
+				      struct gadget_user_stack *ustack)
+{
+	__gadget_fill_user_stack(ctx, ustack);
+
+	if (collect_ustack && collect_otel_stack) {
+		gadget_fetch_otel_stack_from_perf_event(ctx);
+		__gadget_read_otel_correlation(ustack);
+	}
+}
+
+/* gadget_get_user_stack_from_tracepoint gets the user stack for a gadget program
+ * whose type cannot use OTel symbolization (e.g. BPF_PROG_TYPE_TRACEPOINT). The
+ * plain user stack is always collected and remains symbolizable by the
+ * symbol-table symbolizer.
+ *
+ * OTel symbolization relies on a correlation id produced by a bpf_tail_call that
+ * requires a matching program type, which a tracepoint program cannot satisfy,
+ * so requesting it here is unsupported. Rather than reference an incompatible
+ * OTel prog-array (or silently return an empty correlation id),
+ * bpf_core_unreachable() makes the loader reject the program if OTel stacks are
+ * requested. Because collect_otel_stack is a const-volatile param, the verifier
+ * prunes this branch entirely when it is unset (the common case), so the guard
+ * is zero-cost and references no OTel prog-array.
+ */
+static __always_inline void
+gadget_get_user_stack_from_tracepoint(void *ctx,
+				      struct gadget_user_stack *ustack)
+{
+	__gadget_fill_user_stack(ctx, ustack);
+
+	if (collect_ustack && collect_otel_stack)
+		bpf_core_unreachable();
+}
+
+/* gadget_get_user_stack dispatches to the program-type-correct variant based on
+ * the static C type of ctx, resolved at compile time by _Generic. Only the
+ * selected variant's bpf_tail_call survives in the program, so each program
+ * references only its own OTel prog-array (otel_tc_kprobe or otel_tc_perf) and
+ * the kernel prog-array type lock (bpf_prog_array_compatible) is never hit.
+ *
+ *   struct bpf_perf_event_data *  -> perf_event variant
+ *   struct pt_regs *              -> kprobe variant (also covers
+ *                                    kretprobe/uprobe/uretprobe, which are all
+ *                                    BPF_PROG_TYPE_KPROBE)
+ *
+ * There is deliberately no default association: a ctx of any other type (e.g. a
+ * tracepoint ctx or a plain void *) is a compile-time error ("controlling
+ * expression type ... not compatible with any generic association type").
+ * Tracepoint gadgets should call gadget_get_user_stack_from_tracepoint() (user
+ * stack only, no OTel symbolization); other program types should call the
+ * matching gadget_get_user_stack_from_{kprobe,perf_event}() helper directly.
+ */
+#define gadget_get_user_stack(ctx, ustack)                                           \
+	_Generic((ctx),                                                              \
+		struct bpf_perf_event_data *: gadget_get_user_stack_from_perf_event, \
+		struct pt_regs *: gadget_get_user_stack_from_kprobe)((ctx),          \
+								     (ustack))
+
+#endif /* __USER_STACK_MAP_H */

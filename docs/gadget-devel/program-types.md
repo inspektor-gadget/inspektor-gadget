@@ -25,6 +25,31 @@ available tracepoints on `/sys/kernel/debug/tracing/events`.
 The section name must start with `socket`. Socket programs are attached to all network namespaces
 matching the filter configuration when running the gadget.
 
+### SockOps
+
+The section name must be `sockops`. Socket operation programs are attached once
+to the host's cgroup-v2 root and therefore apply to all sockets on the host.
+
+### SkSKB / SkMsg
+
+Socket map programs use `sk_skb/stream_parser`, `sk_skb/stream_verdict`, or
+`sk_msg` section names. Each program must name the `BPF_MAP_TYPE_SOCKMAP` or
+`BPF_MAP_TYPE_SOCKHASH` where it will be attached:
+
+```c
+GADGET_SK_TARGET_MAP(parse, sockets);
+GADGET_SK_TARGET_MAP(verdict, sockets);
+
+SEC("sk_skb/stream_parser")
+int parse(struct __sk_buff *skb) { /* ... */ }
+
+SEC("sk_skb/stream_verdict")
+int verdict(struct __sk_buff *skb) { /* ... */ }
+```
+
+See [Socket map programs](gadget-ebpf-api.md#socket-map-programs) for the full
+map declaration and attachment details.
+
 ### Tracing
 
 Currently we support some iterators and fentry/fexit programs.

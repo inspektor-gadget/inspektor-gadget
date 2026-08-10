@@ -25,6 +25,8 @@ const (
 	OtelGenericParamsMapName     = "otel_generic_params"
 	OtelTailCallForKprobeMapName = "otel_tc_kprobe"
 	OtelEbpfProgramKprobe        = "otel_ebpf_program_kprobe"
+	OtelTailCallForPerfMapName   = "otel_tc_perf"
+	OtelEbpfProgramPerf          = "otel_ebpf_program_perf"
 )
 
 const (

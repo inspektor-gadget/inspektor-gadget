@@ -29,6 +29,7 @@ import (
 	igrunner "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/ig"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/match"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type traceDNSEvent struct {
@@ -129,16 +130,31 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 	var runnerOpts []igrunner.Option
 	var testingOpts []igtesting.Option
 	commonDataOpts := []utils.CommonDataOption{utils.WithContainerID(clientContainer.ID())}
+	normalizeContainerImageName := false
 
 	switch utils.CurrentTestComponent {
 	case utils.IgLocalTestComponent:
 		// TODO: skip validation of ContainerImageName because of https://github.com/inspektor-gadget/inspektor-gadget/issues/4104
 		commonDataOpts = append(commonDataOpts, utils.WithContainerImageName(utils.NormalizedStr))
+		normalizeContainerImageName = true
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-r=%s", utils.Runtime), "--timeout=5"))
 	case utils.KubectlGadgetTestComponent:
 		runnerOpts = append(runnerOpts, igrunner.WithFlags(fmt.Sprintf("-n=%s", nsTest), "--timeout=5"))
 		testingOpts = append(testingOpts, igtesting.WithCbBeforeCleanup(utils.PrintLogsFn(nsTest)))
-		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(nsTest), utils.WithContainerImageName(tc.clientImage))
+		containerImageName := tc.clientImage
+		if utils.ContainerRuntime == eventtypes.RuntimeNameCrio.String() {
+			// CRI-O 1.35 reports the resolved platform digest instead of the requested
+			// multi-arch index digest because of cri-o/cri-o#9615. The expected
+			// platform digest cannot be derived from the index digest alone: it
+			// requires resolving the index for the node's OS and architecture.
+			// https://github.com/cri-o/cri-o/commit/f6bc16be2461a1e39788a18ae92a6cb5bdd6bd59
+			//
+			// TODO: Remove this workaround when the minimum CRI-O version is 1.36.
+			// cri-o/cri-o#9730 reverted the digest-ordering change above.
+			containerImageName = utils.NormalizedStr
+			normalizeContainerImageName = true
+		}
+		commonDataOpts = append(commonDataOpts, utils.WithK8sNamespace(nsTest), utils.WithContainerImageName(containerImageName))
 	}
 
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
@@ -323,7 +339,7 @@ func newTraceDNSStep(t *testing.T, tc testCase) (igtesting.TestStep, []igtesting
 					utils.NormalizeInt(&e.Dst.Port)
 				}
 
-				if utils.CurrentTestComponent == utils.IgLocalTestComponent {
+				if normalizeContainerImageName {
 					utils.NormalizeString(&e.Runtime.ContainerImageName)
 				}
 			}

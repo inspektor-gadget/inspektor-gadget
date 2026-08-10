@@ -129,3 +129,43 @@ Running the gadget:
 
     </TabItem>
 </Tabs>
+
+## GPU-idle attribution (`--gpu-idle-only`)
+
+On a machine running the [gpu-ebpf-bridge](../../pkg/gpu-ebpf-bridge), the
+`--gpu-idle-only` flag turns `profile_cpu` into a GPU-starvation profiler: it
+only records a stack sample when the sampled process **owns GPU memory** and
+its **GPU is underutilized** at that instant. The resulting flamegraph shows
+exactly the CPU code that runs while the GPU the process paid for sits idle —
+the on-CPU work sitting between successive GPU kernels.
+
+Because it is sampling-based, it has no dependence on the bridge poll interval
+and therefore also catches "many small gaps" starvation (for example a
+per-frame CPU preprocessing step that keeps an inference GPU at only ~50% duty
+cycle), which the recency-based [trace_gpu_starvation](../trace_gpu_starvation)
+gadget cannot see.
+
+```bash
+$ sudo ig run ghcr.io/inspektor-gadget/gadget/profile_cpu:%IG_TAG% \
+    --gpu-idle-only
+```
+
+Relevant flags:
+
+- `--gpu-idle-only`: enable the filter (default `false`).
+- `--gpu-util-max-pct`: only record a sample when the primary GPU's SM
+  utilization is below this percentage (default `70`).
+- `--min-gpu-mem-bytes`: minimum resident GPU memory for a process to count as
+  a GPU holder (default `1`, i.e. any allocation).
+- `--stale-threshold-ms`: discard samples when the bridge data is older than
+  this (default `300`). If the bridge is not running the maps are empty and
+  every sample is discarded, yielding an empty profile rather than
+  mis-attributed stacks.
+
+> **Note on symbolization:** by default `--gpu-idle-only` symbolizes stacks
+> from native symbol tables only (the `user_stack_raw.symbols` field), so C/C++
+> and other compiled frames (for example `cv::resize` / numpy) resolve. To also
+> get interpreted-language frames — most importantly Python — add
+> `--collect-otel-stack --symbolizers otel-ebpf-profiler`, which unwinds the
+> interpreter stack via the OTel eBPF profiler (supported for `profile_cpu`'s
+> `perf_event` program type).

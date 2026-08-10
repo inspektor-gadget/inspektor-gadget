@@ -20,7 +20,16 @@ OUTPUT ?= pkg/btfgen/btfs
 
 SOURCE_BTF_FILES = $(shell find $(BTFHUB_ARCHIVE)/ -iregex ".*$(subst x86,x86_64,$(ARCH_CLEANED)).*" -type f -name '*.btf.tar.xz')
 MIN_CORE_BTF_FILES = $(patsubst $(BTFHUB_ARCHIVE)/%.btf.tar.xz, $(OUTPUT)/$(ARCH_CLEANED)/%.btf, $(SOURCE_BTF_FILES))
-BPF_ALL_O_FILES = $(shell find pkg/ -type f -regex ".*\($(ARCH_CLEANED)\|bpfel\).o")
+# Only include BPF objects that carry a .BTF.ext section: bpftool
+# gen min_core_btf needs CO-RE relocation records from .BTF.ext, and
+# clang only emits that section when the source has actual BPF
+# programs performing CO-RE reads. Map-only bpf2go objects (e.g.
+# pkg/gpu-ebpf-bridge/maps/) have nothing to relocate and would
+# make btfgen fail with "section .BTF.ext not found". Filtering by
+# section presence rather than by path keeps this future-proof
+# regardless of which bpf2go packages appear in pkg/ later.
+BPF_ALL_O_FILES = $(shell find pkg/ -type f -regex ".*\($(ARCH_CLEANED)\|bpfel\)\.o" | \
+	while read -r f; do readelf -WS "$$f" 2>/dev/null | grep -qF ".BTF.ext" && echo "$$f"; done)
 
 .PHONY: all
 all: $(MIN_CORE_BTF_FILES)

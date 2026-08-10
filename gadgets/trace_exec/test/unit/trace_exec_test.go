@@ -25,7 +25,9 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/creack/pty"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 
 	gadgettesting "github.com/inspektor-gadget/inspektor-gadget/gadgets/testing"
 	traceexec "github.com/inspektor-gadget/inspektor-gadget/gadgets/trace_exec/consts"
@@ -36,12 +38,15 @@ import (
 )
 
 type ExpectedTraceExecEvent struct {
-	Proc   utils.Process `json:"proc"`
-	Error  string        `json:"error"`
-	Args   string        `json:"args"`
-	Ctime  uint64        `json:"ctime"`
-	Fctime uint64        `json:"fctime"`
-	Pctime uint64        `json:"pctime"`
+	Proc     utils.Process `json:"proc"`
+	Error    string        `json:"error"`
+	Args     string        `json:"args"`
+	Ctime    uint64        `json:"ctime"`
+	Fctime   uint64        `json:"fctime"`
+	Pctime   uint64        `json:"pctime"`
+	Tty      int32         `json:"tty"`
+	TtyMajor uint32        `json:"tty_major"`
+	TtyMinor uint32        `json:"tty_minor"`
 }
 
 type testDef struct {
@@ -220,6 +225,88 @@ func TestTraceExecGadget(t *testing.T) {
 			testCase.validate(t, runner.Info, gadgetRunner.CapturedEvents, testCase.argv)
 		})
 	}
+}
+
+// TestTraceExecTty checks the controlling terminal reported for a process that
+// has one and for a process that has none. Both processes are started in their
+// own session so that the controlling terminal does not depend on the one of
+// the process running the test.
+func TestTraceExecTty(t *testing.T) {
+	gadgettesting.InitUnitTest(t)
+
+	// Open the pty outside of the runner: the file descriptors are inherited by
+	// the child regardless of the namespaces it is started in.
+	ptmx, pts, err := pty.Open()
+	require.NoError(t, err, "Opening pty")
+	defer ptmx.Close()
+	defer pts.Close()
+
+	var stat unix.Stat_t
+	err = unix.Fstat(int(pts.Fd()), &stat)
+	require.NoError(t, err, "Getting the device number of %s", pts.Name())
+	expectedMajor := unix.Major(uint64(stat.Rdev))
+	expectedMinor := unix.Minor(uint64(stat.Rdev))
+
+	runner := utils.NewRunnerWithTest(t, &utils.RunnerConfig{})
+	onGadgetRun := func(gadgetCtx operators.GadgetContext) error {
+		utils.RunWithRunner(t, runner, func() error {
+			// First event: the pty is made the controlling terminal of the new
+			// session, i.e. it is the controlling terminal of the process.
+			argv := []string{"/bin/echo", "with-tty"}
+			p, err := os.StartProcess(argv[0], argv, &os.ProcAttr{
+				Files: []*os.File{pts, pts, pts},
+				Sys: &syscall.SysProcAttr{
+					Setsid:  true,
+					Setctty: true,
+					Ctty:    0,
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if _, err := p.Wait(); err != nil {
+				return err
+			}
+
+			// Second event: a new session without a controlling terminal.
+			argv = []string{"/bin/echo", "without-tty"}
+			p, err = os.StartProcess(argv[0], argv, &os.ProcAttr{
+				Sys: &syscall.SysProcAttr{Setsid: true},
+			})
+			if err != nil {
+				return err
+			}
+			_, err = p.Wait()
+			return err
+		})
+		return nil
+	}
+
+	opts := gadgetrunner.GadgetRunnerOpts[ExpectedTraceExecEvent]{
+		Image:          "trace_exec",
+		Timeout:        5 * time.Second,
+		MntnsFilterMap: utils.CreateMntNsFilterMap(t, runner.Info.MountNsID),
+		OnGadgetRun:    onGadgetRun,
+	}
+	gadgetRunner := gadgetrunner.NewGadgetRunner(t, opts)
+
+	gadgetRunner.RunGadget()
+
+	events := gadgetRunner.CapturedEvents
+	require.Len(t, events, 2, "Expected 2 events but got %d", len(events))
+
+	withTty := events[0]
+	require.Contains(t, withTty.Args, "with-tty")
+	require.Equal(t, expectedMajor, withTty.TtyMajor,
+		"tty_major should be the major number of %s", pts.Name())
+	require.Equal(t, expectedMinor, withTty.TtyMinor,
+		"tty_minor should be the minor number of %s", pts.Name())
+
+	withoutTty := events[1]
+	require.Contains(t, withoutTty.Args, "without-tty")
+	require.Zero(t, withoutTty.Tty, "tty should be 0 without a controlling terminal")
+	require.Zero(t, withoutTty.TtyMajor, "tty_major should be 0 without a controlling terminal")
+	require.Zero(t, withoutTty.TtyMinor, "tty_minor should be 0 without a controlling terminal")
 }
 
 func generateEventFromThread(t *testing.T, argv []string) {
