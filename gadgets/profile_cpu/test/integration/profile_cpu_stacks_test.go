@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -142,8 +141,6 @@ func TestProfileCpuOtelStacks(t *testing.T) {
 
 	steps := []igtesting.TestStep{
 		profileCpuCmd,
-		// OTel eBPF profiler needs ~16s to initialize.
-		utils.Sleep(20 * time.Second),
 		workload,
 	}
 	igtesting.RunTestSteps(steps, t)

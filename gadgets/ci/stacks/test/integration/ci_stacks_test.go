@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -110,10 +109,6 @@ func TestCiStacks(t *testing.T) {
 			"--verify-image=false",
 		),
 		igrunner.WithStartAndStop(),
-		// The OTel eBPF profiler does not emit the standard readiness marker and has its own
-		// initialization timing, so it keeps using the explicit sleep below instead of the
-		// readiness gate.
-		igrunner.WithoutReadinessGate(),
 		igrunner.WithValidateOutput(func(t *testing.T, output string) {
 			expectedEntries := []*stacksEvent{
 				{
@@ -151,8 +146,6 @@ func TestCiStacks(t *testing.T) {
 
 	steps := []igtesting.TestStep{
 		stacksCmd,
-		// OTel eBPF profiler needs ~16s to initialize.
-		utils.Sleep(20 * time.Second),
 		workload,
 	}
 	igtesting.RunTestSteps(steps, t)
