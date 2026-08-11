@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
@@ -35,6 +36,7 @@ import (
 	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
@@ -53,11 +55,13 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	ebpftypes "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/ebpf/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/symbolizer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -66,6 +70,7 @@ const (
 	typeSplitter = "___"
 
 	ParamIface       = "iface"
+	ParamNetnsPath   = "netns-path"
 	ParamTraceKernel = "trace-pipe"
 
 	kernelTypesVar = "kernelTypes"
@@ -193,6 +198,11 @@ type ebpfInstance struct {
 	skTargetMaps map[string]string
 	params       map[string]*param
 	paramValues  map[string]string
+
+	// netnsPath is the value of the netns-path parameter, resolved against the
+	// host root. Empty unless the user asked for a network namespace path, in
+	// which case network tracers attach to it instead of to containers.
+	netnsPath string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
 	tcHandlers     map[string]*tchandler.Handler
@@ -490,6 +500,18 @@ func (i *ebpfInstance) init(gadgetCtx operators.GadgetContext) error {
 		}
 	}
 
+	if len(i.tcHandlers) > 0 || len(i.networkTracers) > 0 {
+		// Registered for TC gadgets too, even though they don't support it yet:
+		// Start() then rejects it explicitly instead of the CLI reporting an
+		// unknown parameter.
+		i.params[ParamNetnsPath] = &param{
+			Param: &api.Param{
+				Key:         ParamNetnsPath,
+				Description: "Path of the network namespace to attach to, e.g. /run/netns/mynetns. Bypasses container discovery, so the resulting events carry no container or Kubernetes enrichment",
+			},
+		}
+	}
+
 	i.params[ParamTraceKernel] = &param{
 		Param: &api.Param{
 			Key:          ParamTraceKernel,
@@ -712,6 +734,78 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
+// resolveNetnsPath validates the netns-path parameter and resolves it against
+// the host root. It runs before anything is attached: a gadget that mixes
+// socket filter and TC programs has to be rejected as a whole, rather than
+// having its socket filters attached before the TC program is refused.
+func (i *ebpfInstance) resolveNetnsPath() error {
+	path := i.paramValues[ParamNetnsPath]
+	if path == "" {
+		return nil
+	}
+
+	if len(i.tcHandlers) > 0 {
+		return fmt.Errorf("%q is not yet supported for TC programs", ParamNetnsPath)
+	}
+	if len(i.networkTracers) == 0 {
+		return fmt.Errorf("%q is only supported by gadgets with network programs", ParamNetnsPath)
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("%q must be an absolute path, got %q", ParamNetnsPath, path)
+	}
+
+	// The path is provided by the user and interpreted inside the host
+	// filesystem, which is mounted elsewhere when running in a container, so it
+	// is resolved with securejoin: no symlink along the way may escape the host
+	// root.
+	//
+	// Paths under /proc are the exception. A namespace link such as
+	// /proc/<pid>/ns/net is a magic link, which no userspace path resolution can
+	// follow: securejoin turns it into the literal string "net:[4026531840]".
+	// For those, only the directory is resolved and the last component is left
+	// to the kernel, which resolves it on open. That is safe because procfs
+	// contains no attacker-controlled symlinks in the positions involved, while
+	// for every other path the whole thing is confined.
+	var resolved string
+	if isProcfsPath(path) {
+		dir, base := filepath.Split(path)
+		if base == "" {
+			return fmt.Errorf("%q must point at a network namespace, got %q", ParamNetnsPath, path)
+		}
+		resolvedDir, err := securejoin.SecureJoin(host.HostRoot, dir)
+		if err != nil {
+			return fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+		}
+		resolved = filepath.Join(resolvedDir, base)
+	} else {
+		var err error
+		resolved, err = securejoin.SecureJoin(host.HostRoot, path)
+		if err != nil {
+			return fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+		}
+	}
+
+	// Fail fast, before any program is attached, on a path that does not exist
+	// or is not a namespace at all. This is a check, not the resolution the
+	// attachment uses: AttachNetnsPath() opens the path itself and validates the
+	// file descriptor it got, so nothing here is trusted later on.
+	handle, _, err := rawsock.OpenNetnsPath(resolved)
+	if err != nil {
+		return fmt.Errorf("network namespace path %q: %w", path, err)
+	}
+	handle.Close()
+
+	i.netnsPath = resolved
+	return nil
+}
+
+// isProcfsPath reports whether path lives under /proc, where namespace links
+// are magic links that only the kernel can resolve.
+func isProcfsPath(path string) bool {
+	clean := filepath.Clean(path)
+	return clean == "/proc" || strings.HasPrefix(clean, "/proc/")
+}
+
 func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	i.logger.Debugf("starting ebpfInstance")
 
@@ -727,6 +821,10 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 	err := parameters.CopyFromMap(i.paramValues, "")
 	if err != nil {
 		return fmt.Errorf("parsing parameter values: %w", err)
+	}
+
+	if err := i.resolveNetnsPath(); err != nil {
+		return err
 	}
 
 	if paramMap[ParamTraceKernel].AsBool() {
@@ -1132,9 +1230,13 @@ func (i *ebpfInstance) AttachContainer(container *containercollection.Container)
 	i.containers[container.Runtime.ContainerID] = container
 	i.mu.Unlock()
 
-	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.AttachContainer(container); err != nil {
-			return err
+	// With netns-path, the network tracers are attached to that namespace in
+	// Start(); containers are not attach targets.
+	if i.netnsPath == "" {
+		for _, networkTracer := range i.networkTracers {
+			if err := networkTracer.AttachContainer(container); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1160,9 +1262,11 @@ func (i *ebpfInstance) DetachContainer(container *containercollection.Container)
 	delete(i.containers, container.Runtime.ContainerID)
 	i.mu.Unlock()
 
-	for _, networkTracer := range i.networkTracers {
-		if err := networkTracer.DetachContainer(container); err != nil {
-			return err
+	if i.netnsPath == "" {
+		for _, networkTracer := range i.networkTracers {
+			if err := networkTracer.DetachContainer(container); err != nil {
+				return err
+			}
 		}
 	}
 
