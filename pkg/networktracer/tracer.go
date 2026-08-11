@@ -59,8 +59,16 @@ type attachment struct {
 	// 1. several containers in a pod (sharing the netns)
 	// 2. pods with networkHost=true
 	// In both cases, we want to attach the BPF program only once.
+	//
+	// Attachments created by AttachNetnsPath() have no pid to key on and use
+	// the netnsPathUser sentinel instead.
 	users map[uint32]struct{}
 }
+
+// netnsPathUser is the users key for attachments created by
+// AttachNetnsPath(). Zero is never a valid pid for Attach(), which resolves
+// /proc/<pid>/ns/net and would fail for pid 0.
+const netnsPathUser = uint32(0)
 
 type Tracer[Event any] struct {
 	socketEnricherMap *ebpf.Map
@@ -73,6 +81,12 @@ type Tracer[Event any] struct {
 	// value: Tracelet
 	attachments map[uint64]*attachment
 
+	// netnsPaths maps a path passed to AttachNetnsPath() to the network
+	// namespace inode resolved at attach time. Detaching uses this instead of
+	// resolving the path again: the path can be unlinked while attached (the
+	// pod is deleted), and the open socket keeps the namespace itself alive.
+	netnsPaths map[string]uint64
+
 	eventHandler func(ev *Event)
 
 	// mu protects attachments from concurrent access
@@ -81,12 +95,13 @@ type Tracer[Event any] struct {
 }
 
 func (t *Tracer[Event]) newAttachment(
-	pid uint32,
+	user uint32,
 	netns uint64,
+	openSock func() (int, error),
 ) (_ *attachment, err error) {
 	a := &attachment{
 		sockFd: -1,
-		users:  map[uint32]struct{}{pid: {}},
+		users:  map[uint32]struct{}{user: {}},
 	}
 	defer func() {
 		if err != nil {
@@ -118,7 +133,7 @@ func (t *Tracer[Event]) newAttachment(
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	a.sockFd, err = rawsock.OpenRawSock(pid)
+	a.sockFd, err = openSock()
 	if err != nil {
 		return nil, fmt.Errorf("opening raw socket: %w", err)
 	}
@@ -132,6 +147,7 @@ func (t *Tracer[Event]) newAttachment(
 func NewTracer[Event any]() (_ *Tracer[Event], err error) {
 	t := &Tracer[Event]{
 		attachments: make(map[uint64]*attachment),
+		netnsPaths:  make(map[string]uint64),
 	}
 
 	// Keep in sync with tail_call map in bpf/dispatcher.bpf.c
@@ -167,11 +183,88 @@ func (t *Tracer[Event]) Attach(pid uint32) error {
 		return nil
 	}
 
-	a, err := t.newAttachment(pid, netns)
+	a, err := t.newAttachment(pid, netns, func() (int, error) {
+		return rawsock.OpenRawSock(pid)
+	})
 	if err != nil {
 		return fmt.Errorf("creating network tracer attachment for pid %d: %w", pid, err)
 	}
 	t.attachments[netns] = a
+
+	return nil
+}
+
+// AttachNetnsPath attaches the dispatcher program to the network namespace
+// referred to by path, without going through container discovery. The path is
+// typically a bind mount created by "ip netns add" (/run/netns/<name>) or a
+// procfs namespace link (/proc/<pid>/ns/net).
+//
+// Calling it twice with the same path is a no-op, and a path that refers to a
+// namespace already attached to by a container is deduplicated as well, since
+// both are keyed by the network namespace inode.
+func (t *Tracer[Event]) AttachNetnsPath(path string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// The path is resolved exactly once, here. Everything below works off the
+	// resulting handle, so the namespace the socket ends up in is necessarily
+	// the one the key identifies, even if the path is replaced in between.
+	netnsHandle, netns, err := rawsock.OpenNetnsPath(path)
+	if err != nil {
+		return err
+	}
+	defer netnsHandle.Close()
+
+	if a, ok := t.attachments[netns]; ok {
+		a.users[netnsPathUser] = struct{}{}
+		t.netnsPaths[path] = netns
+		return nil
+	}
+
+	a, err := t.newAttachment(netnsPathUser, netns, func() (int, error) {
+		return rawsock.OpenRawSockInNetns(netnsHandle)
+	})
+	if err != nil {
+		return fmt.Errorf("creating network tracer attachment for netns path %q: %w", path, err)
+	}
+	t.attachments[netns] = a
+	t.netnsPaths[path] = netns
+
+	return nil
+}
+
+// DetachNetnsPath detaches from the network namespace that path referred to
+// when AttachNetnsPath() was called. The path is not resolved again: it may
+// have been unlinked in the meantime, while the namespace itself is kept alive
+// by the attachment's socket.
+func (t *Tracer[Event]) DetachNetnsPath(path string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	netns, ok := t.netnsPaths[path]
+	if !ok {
+		return fmt.Errorf("netns path %q is not attached", path)
+	}
+	delete(t.netnsPaths, path)
+
+	a, ok := t.attachments[netns]
+	if !ok {
+		return fmt.Errorf("no attachment for netns %d (path %q)", netns, path)
+	}
+
+	// Several paths can refer to the same network namespace, e.g. the bind
+	// mount and the procfs link of the same pod. Keep the attachment until the
+	// last one is detached.
+	for _, other := range t.netnsPaths {
+		if other == netns {
+			return nil
+		}
+	}
+
+	delete(a.users, netnsPathUser)
+	if len(a.users) == 0 {
+		t.releaseAttachment(netns, a)
+	}
 
 	return nil
 }
@@ -193,6 +286,12 @@ func (t *Tracer[Event]) releaseAttachment(netns uint64, a *attachment) {
 func (t *Tracer[Event]) Detach(pid uint32) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
+	// Zero is the netnsPathUser sentinel, not a pid: refuse it here so that a
+	// container detach can never release a netns-path attachment.
+	if pid == netnsPathUser {
+		return fmt.Errorf("pid %d is not attached", pid)
+	}
 
 	for netns, a := range t.attachments {
 		if _, ok := a.users[pid]; ok {
@@ -219,6 +318,7 @@ func (t *Tracer[Event]) Close() {
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
 	}
+	clear(t.netnsPaths)
 	if t.dispatcherMap != nil {
 		t.dispatcherMap.Close()
 	}
