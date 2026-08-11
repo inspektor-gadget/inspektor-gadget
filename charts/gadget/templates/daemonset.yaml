@@ -327,14 +327,18 @@ spec:
         {{- .Values.nodeSelector | toYaml | nindent 8 }}
       affinity:
         {{- toYaml .Values.affinity | nindent 8 }}
+      {{- if or (not .Values.skipDefaultTolerations) .Values.tolerations }}
       tolerations:
+        {{- if not .Values.skipDefaultTolerations }}
         - effect: NoSchedule
           operator: Exists
         - effect: NoExecute
           operator: Exists
-        {{- if .Values.tolerations }}
-          {{- toYaml .Values.tolerations | nindent 8 }}
-        {{ end }}
+        {{- end }}
+        {{- with .Values.tolerations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
       volumes:
         # /bin is needed to find runc.
         - name: bin
