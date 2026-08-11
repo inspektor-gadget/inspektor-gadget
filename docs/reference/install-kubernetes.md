@@ -510,6 +510,16 @@ operator:
 
 For more information about the configuration file, check the [configuration guide](./configuration.md).
 
+### Permissions required to deploy
+
+Deploying Inspektor Gadget creates cluster-scoped RBAC objects (a [ClusterRole](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/clusterrole.yaml) and a ['ClusterRoleBinding'](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/clusterrolebinding.yaml)) as well as a namespaced [Role](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/role.yaml) and [RoleBinding](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/rolebinding.yaml).
+Kubernetes [privilege escalation prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention) requires that whoever creates these objects already holds every permission being granted, or holds the `escalate`/`bind` verbs on them.
+In practice, this usually means deploying as `cluster-admin`.
+
+It is possible to deploy with a narrower, explicitly enumerated set of permissions instead.
+Such a role must hold the union of everything granted by Inspektor Gadget's own ClusterRole and Role, plus create/delete rights on the objects the deployment creates.
+Note that this is not meaningfully less privileged than `cluster-admin` but it merely makes the permission set auditable.
+
 ## Uninstalling from the cluster
 
 Depending on your installation method, use one of the following command to
