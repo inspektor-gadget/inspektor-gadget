@@ -77,6 +77,7 @@ GADGETS ?= \
 	ci/image_inspect \
 	ci/container_filtering \
 	ci/stacks \
+	ci/uprobe \
 	ci/gpu \
 	ci/test_iter_map_elem \
 	snapshot_file \
@@ -237,8 +238,26 @@ test-unit: build
 	TEST_DNS_SERVER_IMAGE=$(DNSTESTER_IMAGE) \
 	go test -v -exec '$(SUDO)' ./$*/$(INTEGRATION_TEST_DIR)/...
 
+# CI-only gadgets can ship a workload container image built locally from
+# ci/<gadget>/workload/Dockerfile. It is tagged ig-<gadget>:test, e.g.
+# ig-ci-uprobe:test, and is never pushed anywhere.
+CI_WORKLOAD_GADGETS := $(patsubst %/workload/Dockerfile,%,$(wildcard ci/*/workload/Dockerfile))
+
+.PHONY: $(addsuffix /workload-image,$(CI_WORKLOAD_GADGETS))
+$(addsuffix /workload-image,$(CI_WORKLOAD_GADGETS)):
+	$(eval CI_WORKLOAD_GADGET := $(patsubst %/workload-image,%,$@))
+	$(DOCKER) build \
+		-f $(CI_WORKLOAD_GADGET)/workload/Dockerfile \
+		-t ig-$(subst /,-,$(CI_WORKLOAD_GADGET)):test \
+		$(CI_WORKLOAD_GADGET)/workload
+
+define CI_WORKLOAD_INTEGRATION_PREREQUISITE
+$(1)/test-integration: $(1)/workload-image
+endef
+$(foreach gadget,$(CI_WORKLOAD_GADGETS),$(eval $(call CI_WORKLOAD_INTEGRATION_PREREQUISITE,$(gadget))))
+
 .PHONY:
-test-integration: build
+test-integration: build $(addsuffix /workload-image,$(filter $(GADGETS),$(CI_WORKLOAD_GADGETS)))
 	IG_PATH=$(IG_PATH) \
 	GPU_EBPF_BRIDGE_PATH=$(GPU_EBPF_BRIDGE_PATH) \
 	CGO_ENABLED=0 \

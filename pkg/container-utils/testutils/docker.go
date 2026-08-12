@@ -66,9 +66,11 @@ func (d *DockerContainer) Run(t *testing.T) {
 
 	_, _ = d.client.ContainerRemove(d.options.ctx, d.name, client.ContainerRemoveOptions{})
 
-	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, client.ImagePullOptions{})
-	require.NoError(t, err, "Failed to pull image container")
-	io.Copy(io.Discard, reader)
+	if d.options.pullImage {
+		reader, err := d.client.ImagePull(d.options.ctx, d.options.image, client.ImagePullOptions{})
+		require.NoError(t, err, "Failed to pull image container")
+		io.Copy(io.Discard, reader)
+	}
 
 	hostConfig := &container.HostConfig{}
 	if d.options.seccompProfile != "" {
