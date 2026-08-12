@@ -288,16 +288,12 @@ func TestOpenNetnsPathConfinesToHostRoot(t *testing.T) {
 // TestOpenNetnsPathProcfsCarveOutIsNarrow checks the one place where a path
 // component is left for the kernel to resolve.
 //
-// A namespace link is a magic link, so its last component cannot be resolved
-// in userspace and is opened as it was given. That carve-out has to be exactly
-// as wide as the thing that justifies it: while it applied to every path below
-// /proc, an ordinary symlink in that position was followed straight out of the
-// host root, and only the nsfs check afterwards stood between the caller and
-// whatever it landed on - which catches nothing if the target is a namespace.
-//
-// So a path only takes that route if it has the shape of a namespace link and
-// the directory holding it really is procfs. Everything else goes through the
-// confined open, which refuses it at resolution rather than after opening it.
+// A namespace link is a magic link, so its last component cannot be resolved in
+// userspace and is opened as it was given. A path only takes that route if it
+// has the shape of a namespace link and the directory holding it really is
+// procfs; everything else goes through the confined open, which refuses it at
+// resolution rather than after opening it. Both conditions are asserted here,
+// along with the legitimate path the carve-out exists for.
 func TestOpenNetnsPathProcfsCarveOutIsNarrow(t *testing.T) {
 	t.Run("a namespace link still opens", func(t *testing.T) {
 		saved := host.HostRoot
