@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"runtime"
-	"strings"
 	"syscall"
 	"unsafe"
 
@@ -92,7 +92,10 @@ func OpenNetnsPath(path string) (netns.NsHandle, uint64, error) {
 // is returned: an attacker able to write to a directory along the way can
 // replace a component with a symlink before the open and redirect it out of the
 // host root. pathrs resolves and opens in one step, with
-// openat2(RESOLVE_IN_ROOT) where the kernel supports it, so there is no window.
+// openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS) where the kernel supports it,
+// so there is no window. RESOLVE_IN_ROOT is what confines the resolution;
+// refusing to traverse magic links is RESOLVE_NO_MAGICLINKS, which pathrs sets
+// as well.
 func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	// The handle is O_PATH, which is enough for the checks below and, unlike a
 	// real open, has no side effects on whatever the path turned out to refer
@@ -110,16 +113,21 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	}
 
 	// setns(2) rejects an O_PATH descriptor, so the handle has to be upgraded.
-	// Reopening goes through the descriptor rather than the path, so it lands
-	// on the file that was just checked and not on a replacement.
+	// Reopening goes through /proc/thread-self/fd/<n>, which the kernel
+	// resolves to the descriptor itself rather than walking the original path
+	// again, so it lands on the file that was just checked and not on a
+	// replacement. It does mean procfs has to be mounted for this to work.
 	file, err := pathrs.Reopen(pathHandle, unix.O_RDONLY)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("reopening %q: %w", path, err)
 	}
 
-	// netns.NsHandle owns the descriptor from here on, so detach it from the
-	// os.File to keep the two from closing it independently.
-	fd, err := unix.Dup(int(file.Fd()))
+	// netns.NsHandle takes over from the os.File here: duplicate the
+	// descriptor, then close the original, so the two never own the same one.
+	// F_DUPFD_CLOEXEC rather than dup(2), which does not copy the close-on-exec
+	// flag - a namespace descriptor surviving into an exec'd child would hand
+	// it a namespace it was never given.
+	fd, err := unix.FcntlInt(file.Fd(), unix.F_DUPFD_CLOEXEC, 0)
 	file.Close()
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("duplicating descriptor for %q: %w", path, err)
@@ -139,11 +147,18 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 //
 // A link such as /proc/<pid>/ns/net is a magic link, which no userspace path
 // resolution can follow: securejoin turns it into the literal string
-// "net:[4026531840]", and openat2(RESOLVE_IN_ROOT) refuses to traverse it at
-// all. Only the directory can be resolved; the last component is left to the
-// kernel, which resolves it on open. That is safe because procfs contains no
-// attacker-controlled symlinks in the positions involved, while every other
-// path is confined by openConfinedNetnsPath().
+// "net:[4026531840]", and openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS)
+// refuses to traverse it at all. Only the directory can be resolved; the last
+// component is left to the kernel, which resolves it on open.
+//
+// Leaving a component unresolved is only safe because of what the two checks
+// here establish. isProcfsPath() admits nothing but the exact shape of a
+// namespace link, so the unresolved component is always a name procfs itself
+// provides; and the directory holding it is required to be on procfs, so those
+// names are the kernel's and not an attacker's. Without the second check, a
+// directory an attacker can write to below <host root>/proc would do, since
+// the last component is opened following symlinks. Every other path is
+// confined by openConfinedNetnsPath().
 func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	dir, base := filepath.Split(path)
 	if base == "" {
@@ -152,6 +167,12 @@ func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	resolvedDir, err := securejoin.SecureJoin(host.HostRoot, dir)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
+	}
+
+	// The magic-link carve-out is only justified while the directory really is
+	// procfs. Anything else reaching this far is refused rather than opened.
+	if err := checkProcfs(resolvedDir, path); err != nil {
+		return netns.None(), 0, err
 	}
 
 	// netns.GetFromPath() opens the path; the resulting handle is only usable
@@ -172,11 +193,36 @@ func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	return netnsHandle, inode, nil
 }
 
-// isProcfsPath reports whether path lives under /proc, where namespace links
-// are magic links that only the kernel can resolve.
+// procfsNetnsLink matches the paths a namespace magic link can have, and
+// nothing else. "self" and "thread-self" are included because they are names
+// procfs provides just as much as the numeric ones are, and refusing them
+// would send a legitimate path to a resolution that cannot follow it.
+var procfsNetnsLink = regexp.MustCompile(`^/proc/(?:\d+|self|thread-self)(?:/task/\d+)?/ns/[a-z_]+$`)
+
+// isProcfsPath reports whether path is a procfs namespace link, whose last
+// component is a magic link that only the kernel can resolve.
+//
+// The predicate is deliberately no wider than that. It used to admit anything
+// below /proc, which handed the unconfined open of the last component to every
+// path a caller could spell that way: an ordinary symlink at
+// <host root>/proc/<anything>/<name> was followed straight out of the host
+// root. Only the namespace links need the carve-out, so only they get it, and
+// everything else is confined.
 func isProcfsPath(path string) bool {
-	clean := filepath.Clean(path)
-	return clean == "/proc" || strings.HasPrefix(clean, "/proc/")
+	return procfsNetnsLink.MatchString(filepath.Clean(path))
+}
+
+// checkProcfs returns an error unless dir is a directory on procfs. path is
+// only used for error messages.
+func checkProcfs(dir string, path string) error {
+	var statfs unix.Statfs_t
+	if err := unix.Statfs(dir, &statfs); err != nil {
+		return fmt.Errorf("statfs %q: %w", path, err)
+	}
+	if statfs.Type != unix.PROC_SUPER_MAGIC {
+		return fmt.Errorf("%q is not on procfs", path)
+	}
+	return nil
 }
 
 // checkNsfs returns an error unless the given file descriptor refers to a file
