@@ -257,3 +257,82 @@ func TestOpenNetnsPathConfinesToHostRoot(t *testing.T) {
 			"a symlink below the host root must be followed, then rejected on its own merits")
 	})
 }
+
+// TestOpenNetnsPathProcfsCarveOutIsNarrow checks the one place where a path
+// component is left for the kernel to resolve.
+//
+// A namespace link is a magic link, so its last component cannot be resolved
+// in userspace and is opened as it was given. That carve-out has to be exactly
+// as wide as the thing that justifies it: while it applied to every path below
+// /proc, an ordinary symlink in that position was followed straight out of the
+// host root, and only the nsfs check afterwards stood between the caller and
+// whatever it landed on - which catches nothing if the target is a namespace.
+//
+// So a path only takes that route if it has the shape of a namespace link and
+// the directory holding it really is procfs. Everything else goes through the
+// confined open, which refuses it at resolution rather than after opening it.
+func TestOpenNetnsPathProcfsCarveOutIsNarrow(t *testing.T) {
+	t.Run("a namespace link still opens", func(t *testing.T) {
+		saved := host.HostRoot
+		host.HostRoot = "/"
+		t.Cleanup(func() { host.HostRoot = saved })
+
+		// The shape the gadget tests use. Nothing here needs privileges: it is
+		// the caller's own network namespace.
+		path := fmt.Sprintf("/proc/%d/task/%d/ns/net", os.Getpid(), unix.Gettid())
+
+		handle, inode, err := OpenNetnsPath(path)
+		require.NoError(t, err, "narrowing the carve-out must not amputate the paths it exists for")
+		t.Cleanup(func() { handle.Close() })
+		require.NotEqual(t, uint64(0), inode)
+		require.Equal(t, statInode(t, path), inode, "the inode must be the one the path refers to")
+	})
+
+	t.Run("a symlink below /proc is refused, not opened", func(t *testing.T) {
+		hostRoot := t.TempDir()
+		outsideDir := t.TempDir()
+
+		saved := host.HostRoot
+		host.HostRoot = hostRoot
+		t.Cleanup(func() { host.HostRoot = saved })
+
+		outsideFile := filepath.Join(outsideDir, "loot")
+		require.NoError(t, os.WriteFile(outsideFile, []byte("out of root"), 0o644))
+
+		require.NoError(t, os.MkdirAll(filepath.Join(hostRoot, "proc", "fake"), 0o755))
+		require.NoError(t, os.Symlink(outsideFile, filepath.Join(hostRoot, "proc", "fake", "escape")))
+
+		handle, _, err := OpenNetnsPath("/proc/fake/escape")
+		require.Error(t, err)
+		require.Equal(t, -1, int(handle), "no file descriptor must be returned on error")
+		// The distinction is the whole point: being told it is not a namespace
+		// would mean it had been opened, outside the host root, and rejected
+		// only because of what it happened to be.
+		require.NotContains(t, err.Error(), "does not refer to a namespace",
+			"a path below /proc that is not a namespace link must be confined, not opened and then judged")
+	})
+
+	t.Run("a namespace link shape off procfs is refused", func(t *testing.T) {
+		hostRoot := t.TempDir()
+		outsideDir := t.TempDir()
+
+		saved := host.HostRoot
+		host.HostRoot = hostRoot
+		t.Cleanup(func() { host.HostRoot = saved })
+
+		outsideFile := filepath.Join(outsideDir, "loot")
+		require.NoError(t, os.WriteFile(outsideFile, []byte("out of root"), 0o644))
+
+		// Right shape, wrong filesystem: a directory an attacker can write to,
+		// dressed up as a namespace directory.
+		nsDir := filepath.Join(hostRoot, "proc", "1234", "ns")
+		require.NoError(t, os.MkdirAll(nsDir, 0o755))
+		require.NoError(t, os.Symlink(outsideFile, filepath.Join(nsDir, "net")))
+
+		handle, _, err := OpenNetnsPath("/proc/1234/ns/net")
+		require.Error(t, err)
+		require.Equal(t, -1, int(handle), "no file descriptor must be returned on error")
+		require.Contains(t, err.Error(), "is not on procfs",
+			"the shape alone must not buy an unconfined open")
+	})
+}
