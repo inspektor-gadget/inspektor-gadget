@@ -29,7 +29,7 @@ import (
 )
 
 // newNetnsPathInstance builds the minimum of an ebpfInstance that
-// resolveNetnsPath() looks at.
+// validateNetnsPath() looks at.
 func newNetnsPathInstance(path string, withNetworkTracer, withTCHandler bool) *ebpfInstance {
 	i := &ebpfInstance{
 		paramValues:    map[string]string{ParamNetnsPath: path},
@@ -45,7 +45,7 @@ func newNetnsPathInstance(path string, withNetworkTracer, withTCHandler bool) *e
 	return i
 }
 
-func TestResolveNetnsPath(t *testing.T) {
+func TestValidateNetnsPath(t *testing.T) {
 	ownNetns := fmt.Sprintf("/proc/%d/ns/net", os.Getpid())
 
 	tests := []struct {
@@ -111,7 +111,7 @@ func TestResolveNetnsPath(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			i := newNetnsPathInstance(test.path, test.withNetworkTracer, test.withTCHandler)
 
-			err := i.resolveNetnsPath()
+			err := i.validateNetnsPath()
 			if test.errContains != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), test.errContains)
@@ -123,18 +123,20 @@ func TestResolveNetnsPath(t *testing.T) {
 			if test.path == "" {
 				require.Empty(t, i.netnsPath)
 			} else {
-				// The host root is "/" in tests, so the path is kept as is.
+				// The parameter is stored exactly as given: resolving it here
+				// and keeping the result would leave a window in which the
+				// resolved path stops meaning what it meant when it was checked.
 				require.Equal(t, test.path, i.netnsPath)
 			}
 		})
 	}
 }
 
-// TestResolveNetnsPathConfinesToHostRoot checks that a symlink in the host
+// TestValidateNetnsPathConfinesToHostRoot checks that a symlink in the host
 // filesystem cannot make the gadget attach to a namespace outside of it. Only
 // paths under /proc are resolved component-wise, because their last component
 // is a magic link the kernel alone can follow.
-func TestResolveNetnsPathConfinesToHostRoot(t *testing.T) {
+func TestValidateNetnsPathConfinesToHostRoot(t *testing.T) {
 	hostRoot := t.TempDir()
 
 	saved := host.HostRoot
@@ -149,7 +151,7 @@ func TestResolveNetnsPathConfinesToHostRoot(t *testing.T) {
 
 	i := newNetnsPathInstance("/run/netns/escape", true, false)
 
-	err := i.resolveNetnsPath()
+	err := i.validateNetnsPath()
 	require.Error(t, err, "a symlink pointing out of the host root must not resolve")
 	require.Empty(t, i.netnsPath, "nothing must be attached to after a failure")
 }
