@@ -36,7 +36,6 @@ import (
 	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
-	securejoin "github.com/cyphar/filepath-securejoin"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
@@ -61,7 +60,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tchandler"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/uprobetracer"
 	ebpfutils "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/ebpf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const (
@@ -199,9 +197,11 @@ type ebpfInstance struct {
 	params       map[string]*param
 	paramValues  map[string]string
 
-	// netnsPath is the value of the netns-path parameter, resolved against the
-	// host root. Empty unless the user asked for a network namespace path, in
-	// which case network tracers attach to it instead of to containers.
+	// netnsPath is the value of the netns-path parameter, exactly as the user
+	// gave it: it is resolved below the host root at the point of use, never
+	// stored resolved. Empty unless the user asked for a network namespace
+	// path, in which case network tracers attach to it instead of to
+	// containers.
 	netnsPath string
 
 	networkTracers map[string]*networktracer.Tracer[api.GadgetData]
@@ -734,11 +734,11 @@ func (i *ebpfInstance) PreStart(gadgetCtx operators.GadgetContext) error {
 	return nil
 }
 
-// resolveNetnsPath validates the netns-path parameter and resolves it against
-// the host root. It runs before anything is attached: a gadget that mixes
-// socket filter and TC programs has to be rejected as a whole, rather than
-// having its socket filters attached before the TC program is refused.
-func (i *ebpfInstance) resolveNetnsPath() error {
+// validateNetnsPath checks the netns-path parameter. It runs before anything is
+// attached: a gadget that mixes socket filter and TC programs has to be
+// rejected as a whole, rather than having its socket filters attached before
+// the TC program is refused.
+func (i *ebpfInstance) validateNetnsPath() error {
 	path := i.paramValues[ParamNetnsPath]
 	if path == "" {
 		return nil
@@ -754,56 +754,19 @@ func (i *ebpfInstance) resolveNetnsPath() error {
 		return fmt.Errorf("%q must be an absolute path, got %q", ParamNetnsPath, path)
 	}
 
-	// The path is provided by the user and interpreted inside the host
-	// filesystem, which is mounted elsewhere when running in a container, so it
-	// is resolved with securejoin: no symlink along the way may escape the host
-	// root.
-	//
-	// Paths under /proc are the exception. A namespace link such as
-	// /proc/<pid>/ns/net is a magic link, which no userspace path resolution can
-	// follow: securejoin turns it into the literal string "net:[4026531840]".
-	// For those, only the directory is resolved and the last component is left
-	// to the kernel, which resolves it on open. That is safe because procfs
-	// contains no attacker-controlled symlinks in the positions involved, while
-	// for every other path the whole thing is confined.
-	var resolved string
-	if isProcfsPath(path) {
-		dir, base := filepath.Split(path)
-		if base == "" {
-			return fmt.Errorf("%q must point at a network namespace, got %q", ParamNetnsPath, path)
-		}
-		resolvedDir, err := securejoin.SecureJoin(host.HostRoot, dir)
-		if err != nil {
-			return fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
-		}
-		resolved = filepath.Join(resolvedDir, base)
-	} else {
-		var err error
-		resolved, err = securejoin.SecureJoin(host.HostRoot, path)
-		if err != nil {
-			return fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
-		}
-	}
-
-	// Fail fast, before any program is attached, on a path that does not exist
-	// or is not a namespace at all. This is a check, not the resolution the
-	// attachment uses: AttachNetnsPath() opens the path itself and validates the
-	// file descriptor it got, so nothing here is trusted later on.
-	handle, _, err := rawsock.OpenNetnsPath(resolved)
+	// Fail fast, before any program is attached, on a path that does not exist,
+	// escapes the host root, or is not a namespace at all. This is only a check:
+	// the path is stored as the user gave it, and rawsock.OpenNetnsPath()
+	// resolves and opens it as one operation each time it is used, so nothing
+	// resolved here is carried over to attach time.
+	handle, _, err := rawsock.OpenNetnsPath(path)
 	if err != nil {
 		return fmt.Errorf("network namespace path %q: %w", path, err)
 	}
 	handle.Close()
 
-	i.netnsPath = resolved
+	i.netnsPath = path
 	return nil
-}
-
-// isProcfsPath reports whether path lives under /proc, where namespace links
-// are magic links that only the kernel can resolve.
-func isProcfsPath(path string) bool {
-	clean := filepath.Clean(path)
-	return clean == "/proc" || strings.HasPrefix(clean, "/proc/")
 }
 
 func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
@@ -823,7 +786,7 @@ func (i *ebpfInstance) Start(gadgetCtx operators.GadgetContext) error {
 		return fmt.Errorf("parsing parameter values: %w", err)
 	}
 
-	if err := i.resolveNetnsPath(); err != nil {
+	if err := i.validateNetnsPath(); err != nil {
 		return err
 	}
 

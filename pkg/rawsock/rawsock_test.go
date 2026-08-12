@@ -20,6 +20,7 @@ package rawsock
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -27,6 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/testing/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 // createTestNetns creates a fresh network namespace and returns a filesystem
@@ -217,4 +219,41 @@ func TestOpenNetnsPathErrors(t *testing.T) {
 				"calling thread's network namespace must be unchanged after a failure")
 		})
 	}
+}
+
+// TestOpenNetnsPathConfinesToHostRoot checks that the path is interpreted
+// inside the host root: a symlink may point anywhere below it, but nothing may
+// leave it. Only the rejection is exercised, which needs no privileges.
+func TestOpenNetnsPathConfinesToHostRoot(t *testing.T) {
+	hostRoot := t.TempDir()
+
+	saved := host.HostRoot
+	host.HostRoot = hostRoot
+	t.Cleanup(func() { host.HostRoot = saved })
+
+	require.NoError(t, os.MkdirAll(filepath.Join(hostRoot, "run", "netns"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(hostRoot, "run", "inside"), []byte("x"), 0o644))
+
+	// Points at a real network namespace on the host, which must be read as
+	// <hostRoot>/proc/self/ns/net and so must not resolve.
+	require.NoError(t, os.Symlink("/proc/self/ns/net", filepath.Join(hostRoot, "run", "netns", "escape")))
+	// Stays below the host root and must be followed, failing on the nsfs check
+	// rather than on resolution.
+	require.NoError(t, os.Symlink("/run/inside", filepath.Join(hostRoot, "run", "netns", "inside")))
+
+	t.Run("symlink out of the host root", func(t *testing.T) {
+		handle, _, err := OpenNetnsPath("/run/netns/escape")
+		require.Error(t, err, "a symlink pointing out of the host root must not resolve")
+		require.Equal(t, -1, int(handle), "no file descriptor must be returned on error")
+		require.NotContains(t, err.Error(), "does not refer to a namespace",
+			"the path must be refused before it is opened, not after")
+	})
+
+	t.Run("symlink inside the host root", func(t *testing.T) {
+		handle, _, err := OpenNetnsPath("/run/netns/inside")
+		require.Error(t, err)
+		require.Equal(t, -1, int(handle), "no file descriptor must be returned on error")
+		require.Contains(t, err.Error(), "does not refer to a namespace",
+			"a symlink below the host root must be followed, then rejected on its own merits")
+	})
 }
