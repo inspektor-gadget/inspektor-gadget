@@ -61,12 +61,11 @@ const raceIterations = 20000
 // An implementation with a window can still resolve the first state and open
 // the second.
 //
-// The assertion is on confinement, not on the namespace check that follows it.
-// The out-of-root file is deliberately an ordinary file, which nsfs validation
-// would reject anyway; being told that it "does not refer to a namespace" is
-// itself the proof that it was opened, and opening a file outside the host root
-// is the whole of the vulnerability. Waiting for a target that passes
-// validation would miss every case where the escape lands on something else.
+// The assertion is on confinement, not on the nsfs check that follows it: the
+// out-of-root file is an ordinary file, and being told it "does not refer to a
+// namespace" is itself the proof that it was opened. Waiting for a target that
+// passes validation would miss every case where the escape lands on something
+// else.
 func TestOpenNetnsPathRacesPathSwap(t *testing.T) {
 	hostRoot := t.TempDir()
 	// A sibling of hostRoot, so nothing below hostRoot can legitimately reach

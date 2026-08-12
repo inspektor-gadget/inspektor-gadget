@@ -60,22 +60,19 @@ func OpenRawSock(pid uint32) (int, error) {
 	return OpenRawSockInNetns(netnsHandle)
 }
 
-// OpenNetnsPath opens the network namespace referred to by the given filesystem
-// path, e.g. a bind mount created by "ip netns add" (/run/netns/<name>) or a
-// procfs namespace link (/proc/<pid>/ns/net). It returns a handle to it
-// together with its inode number, both derived from the same file descriptor,
-// so that the namespace the inode identifies is necessarily the one the handle
-// refers to even if the path is replaced afterwards. The caller owns the handle
-// and must close it.
+// OpenNetnsPath opens the network namespace at the given filesystem path, e.g.
+// a bind mount created by "ip netns add" (/run/netns/<name>) or a procfs
+// namespace link (/proc/<pid>/ns/net). It returns a handle and the namespace
+// inode, both taken from the same file descriptor, so the two cannot end up
+// describing different namespaces. The caller owns the handle and must close it.
 //
-// The path is provided by the user and interpreted inside the host filesystem,
-// which is mounted elsewhere when running in a container, so it is confined to
+// The path comes from the user and is interpreted inside the host filesystem,
+// which is mounted elsewhere in a container, so it is confined to
 // host.HostRoot: no symlink along the way may escape it.
 //
-// The path is verified to live on nsfs: callers key attachments by inode, and
-// inode numbers are only comparable with the ones taken from /proc/<pid>/ns/net
-// within that filesystem. Without the check, an unrelated file could alias an
-// existing attachment.
+// It must also live on nsfs. Callers key attachments by inode, and inodes are
+// only comparable within one filesystem, so without the check an unrelated file
+// could alias an existing attachment.
 func OpenNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	if isProcfsPath(path) {
 		return openProcfsNetnsPath(path)
@@ -83,23 +80,19 @@ func OpenNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	return openConfinedNetnsPath(path)
 }
 
-// openConfinedNetnsPath resolves path below the host root and opens it as a
-// single operation.
+// openConfinedNetnsPath resolves path below the host root and opens it as one
+// operation, with openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS) where the
+// kernel supports it.
 //
-// Resolving to a path string first and opening it afterwards - what
-// securejoin.SecureJoin() does - would only be safe at the instant the string
-// is returned: an attacker able to write to a directory along the way can
-// replace a component with a symlink before the open and redirect it out of the
-// host root. pathrs resolves and opens in one step, with
-// openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS) where the kernel supports it,
-// so there is no window. RESOLVE_IN_ROOT is what confines the resolution;
-// refusing to traverse magic links is RESOLVE_NO_MAGICLINKS, which pathrs sets
-// as well.
+// Resolving to a string first and opening it afterwards - what
+// securejoin.SecureJoin() does - is only safe at the instant the string is
+// returned: anyone able to write to a directory along the way can replace a
+// component with a symlink before the open and redirect it out of the host
+// root.
 func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
-	// The handle is O_PATH, which is enough for the checks below and, unlike a
-	// real open, has no side effects on whatever the path turned out to refer
-	// to: opening a FIFO blocks until a writer appears, and some device nodes
-	// act on open.
+	// The handle is O_PATH, which is enough for the checks below and has none
+	// of the side effects of a real open: opening a FIFO blocks until a writer
+	// appears, and some device nodes act on open.
 	pathHandle, err := pathrs.OpenInRoot(host.HostRoot, path)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
@@ -113,19 +106,17 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 
 	// setns(2) rejects an O_PATH descriptor, so the handle has to be upgraded.
 	// Reopening goes through /proc/thread-self/fd/<n>, which the kernel
-	// resolves to the descriptor itself rather than walking the original path
-	// again, so it lands on the file that was just checked and not on a
-	// replacement. It does mean procfs has to be mounted for this to work.
+	// resolves to the descriptor rather than walking the path again, so it
+	// lands on the file just checked. It does mean procfs has to be mounted.
 	file, err := pathrs.Reopen(pathHandle, unix.O_RDONLY)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("reopening %q: %w", path, err)
 	}
 
-	// netns.NsHandle takes over from the os.File here: duplicate the
-	// descriptor, then close the original, so the two never own the same one.
-	// F_DUPFD_CLOEXEC rather than dup(2), which does not copy the close-on-exec
-	// flag - a namespace descriptor surviving into an exec'd child would hand
-	// it a namespace it was never given.
+	// Hand the descriptor over to netns.NsHandle, so the os.File and the handle
+	// never own the same one. F_DUPFD_CLOEXEC rather than dup(2), which does not
+	// copy the close-on-exec flag - a namespace descriptor surviving into an
+	// exec'd child would hand it a namespace it was never given.
 	fd, err := unix.FcntlInt(file.Fd(), unix.F_DUPFD_CLOEXEC, 0)
 	file.Close()
 	if err != nil {
@@ -144,27 +135,21 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 
 // openProcfsNetnsPath opens a namespace link below /proc.
 //
-// A link such as /proc/<pid>/ns/net is a magic link, which no userspace path
-// resolution can follow: securejoin turns it into the literal string
-// "net:[4026531840]", and openat2(RESOLVE_IN_ROOT|RESOLVE_NO_MAGICLINKS)
-// refuses to traverse it at all. Only the directory can be resolved; the last
-// component is left to the kernel, which resolves it on open.
+// /proc/<pid>/ns/net is a magic link, which no userspace path resolution can
+// follow: securejoin turns it into the literal string "net:[4026531840]", and
+// openat2(RESOLVE_NO_MAGICLINKS) refuses to traverse it at all. Only the
+// directory can be resolved; the last component is left to the kernel, which
+// resolves it on open.
 //
-// Leaving a component unresolved is only safe because of what the two checks
-// here establish. isProcfsPath() admits nothing but the exact shape of a
-// namespace link, so the unresolved component is always a name procfs itself
-// provides; and the directory holding it is required to be on procfs, so those
-// names are the kernel's and not an attacker's. Without the second check, a
-// directory an attacker can write to below <host root>/proc would do, since
-// the last component is opened following symlinks. Every other path is
-// confined by openConfinedNetnsPath().
+// Two checks make that safe, and both are needed. isProcfsPath() admits nothing
+// but the exact shape of a namespace link, so the unresolved component is
+// always a name procfs itself provides; checkProcfs() requires the directory to
+// be on procfs, so those names are the kernel's and not an attacker's. Without
+// the second, a directory below <host root>/proc that an attacker can write to
+// would do, since the last component is opened following symlinks.
 //
-// The directory is resolved once, to a descriptor, and everything afterwards
-// goes through it: the check that it is procfs and the open of the last
-// component are the same inode by construction. Resolving it to a string,
-// checking that, and opening the string again would leave the directory free
-// to be replaced in between - the same flaw as resolving and opening a path in
-// two steps, one component further along.
+// The directory is resolved once, to a descriptor, and both the check and the
+// open go through it, so they cannot land on different inodes.
 func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	dir, base := filepath.Split(path)
 	if base == "" {
@@ -178,22 +163,13 @@ func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	}
 	defer dirHandle.Close()
 
-	// The magic-link carve-out is only justified while the directory really is
-	// procfs. Anything else reaching this far is refused rather than opened.
 	if err := checkProcfs(int(dirHandle.Fd()), path); err != nil {
 		return netns.None(), 0, err
 	}
 
-	// The kernel resolves the magic link on open. Relative to the descriptor
-	// just checked, so it is that directory's entry and not one belonging to
-	// something that replaced it. O_PATH is not an option here, unlike in the
-	// confined case: setns(2) rejects it, and there is nothing to reopen
-	// through, since re-resolving is what this avoids.
-	//
-	// The resulting handle is only usable with setns(2) if it really refers to
-	// a network namespace, which OpenRawSockInNetns() relies on the kernel to
-	// enforce. The check below is what makes the failure diagnosable, and the
-	// inode trustworthy.
+	// O_PATH is not an option here, unlike in the confined case: setns(2)
+	// rejects it, and there is nothing to reopen through, since re-resolving is
+	// what this avoids.
 	fd, err := unix.Openat(int(dirHandle.Fd()), base, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("getting network namespace from path %q: %w", path, err)
@@ -210,20 +186,15 @@ func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 }
 
 // procfsNetnsLink matches the paths a namespace magic link can have, and
-// nothing else. "self" and "thread-self" are included because they are names
-// procfs provides just as much as the numeric ones are, and refusing them
-// would send a legitimate path to a resolution that cannot follow it.
+// nothing else. "self" and "thread-self" are names procfs provides just as much
+// as the numeric ones, so refusing them would send a legitimate path to a
+// resolution that cannot follow it.
 var procfsNetnsLink = regexp.MustCompile(`^/proc/(?:\d+|self|thread-self)(?:/task/\d+)?/ns/[a-z_]+$`)
 
 // isProcfsPath reports whether path is a procfs namespace link, whose last
-// component is a magic link that only the kernel can resolve.
-//
-// The predicate is deliberately no wider than that. It used to admit anything
-// below /proc, which handed the unconfined open of the last component to every
-// path a caller could spell that way: an ordinary symlink at
-// <host root>/proc/<anything>/<name> was followed straight out of the host
-// root. Only the namespace links need the carve-out, so only they get it, and
-// everything else is confined.
+// component is a magic link that only the kernel can resolve. Everything else
+// goes through the confined open, since only namespace links need the carve-out
+// in openProcfsNetnsPath().
 func isProcfsPath(path string) bool {
 	return procfsNetnsLink.MatchString(filepath.Clean(path))
 }
