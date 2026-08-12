@@ -129,6 +129,33 @@ func TestOpenRawSockCurrentNetns(t *testing.T) {
 	requireRawSocket(t, fd)
 }
 
+// TestOpenNetnsPathIsCloseOnExec covers the confined branch, whose success path
+// needs a namespace that is not a magic link - a bind mount, as "ip netns add"
+// makes - since magic links are refused there and only the procfs branch opens
+// them.
+func TestOpenNetnsPathIsCloseOnExec(t *testing.T) {
+	utilstest.RequireRoot(t)
+
+	saved := host.HostRoot
+	host.HostRoot = "/"
+	t.Cleanup(func() { host.HostRoot = saved })
+
+	dir := t.TempDir()
+	bind := filepath.Join(dir, "netns")
+	require.NoError(t, os.WriteFile(bind, nil, 0o644))
+	require.NoError(t, unix.Mount(fmt.Sprintf("/proc/%d/task/%d/ns/net", os.Getpid(), unix.Gettid()),
+		bind, "none", unix.MS_BIND, ""))
+	t.Cleanup(func() { unix.Unmount(bind, unix.MNT_DETACH) })
+
+	handle, _, err := OpenNetnsPath(bind)
+	require.NoError(t, err)
+	t.Cleanup(func() { handle.Close() })
+
+	flags, err := unix.FcntlInt(uintptr(handle), unix.F_GETFD, 0)
+	require.NoError(t, err)
+	require.NotZero(t, flags&unix.FD_CLOEXEC, "the returned descriptor must be close-on-exec")
+}
+
 func TestOpenRawSockNetnsPath(t *testing.T) {
 	utilstest.RequireRoot(t)
 
@@ -286,6 +313,12 @@ func TestOpenNetnsPathProcfsCarveOutIsNarrow(t *testing.T) {
 		t.Cleanup(func() { handle.Close() })
 		require.NotEqual(t, uint64(0), inode)
 		require.Equal(t, statInode(t, path), inode, "the inode must be the one the path refers to")
+
+		// A namespace descriptor surviving into an exec'd child would hand it a
+		// namespace it was never given.
+		flags, err := unix.FcntlInt(uintptr(handle), unix.F_GETFD, 0)
+		require.NoError(t, err)
+		require.NotZero(t, flags&unix.FD_CLOEXEC, "the returned descriptor must be close-on-exec")
 	})
 
 	t.Run("a symlink below /proc is refused, not opened", func(t *testing.T) {

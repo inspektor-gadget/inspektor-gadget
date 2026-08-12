@@ -24,7 +24,6 @@ import (
 	"syscall"
 	"unsafe"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	pathrs "github.com/cyphar/filepath-securejoin/pathrs-lite"
 	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
@@ -159,32 +158,49 @@ func openConfinedNetnsPath(path string) (netns.NsHandle, uint64, error) {
 // directory an attacker can write to below <host root>/proc would do, since
 // the last component is opened following symlinks. Every other path is
 // confined by openConfinedNetnsPath().
+//
+// The directory is resolved once, to a descriptor, and everything afterwards
+// goes through it: the check that it is procfs and the open of the last
+// component are the same inode by construction. Resolving it to a string,
+// checking that, and opening the string again would leave the directory free
+// to be replaced in between - the same flaw as resolving and opening a path in
+// two steps, one component further along.
 func openProcfsNetnsPath(path string) (netns.NsHandle, uint64, error) {
 	dir, base := filepath.Split(path)
 	if base == "" {
 		return netns.None(), 0, fmt.Errorf("%q must point at a network namespace", path)
 	}
-	resolvedDir, err := securejoin.SecureJoin(host.HostRoot, dir)
+
+	// Confined like any other path: only the last component needs the kernel.
+	dirHandle, err := pathrs.OpenInRoot(host.HostRoot, dir)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("resolving %q below host root %q: %w", path, host.HostRoot, err)
 	}
+	defer dirHandle.Close()
 
 	// The magic-link carve-out is only justified while the directory really is
 	// procfs. Anything else reaching this far is refused rather than opened.
-	if err := checkProcfs(resolvedDir, path); err != nil {
+	if err := checkProcfs(int(dirHandle.Fd()), path); err != nil {
 		return netns.None(), 0, err
 	}
 
-	// netns.GetFromPath() opens the path; the resulting handle is only usable
-	// with setns(2) if it really refers to a network namespace, which
-	// OpenRawSockInNetns() relies on the kernel to enforce. The checks below
-	// are what makes the failure diagnosable, and the inode trustworthy.
-	netnsHandle, err := netns.GetFromPath(filepath.Join(resolvedDir, base))
+	// The kernel resolves the magic link on open. Relative to the descriptor
+	// just checked, so it is that directory's entry and not one belonging to
+	// something that replaced it. O_PATH is not an option here, unlike in the
+	// confined case: setns(2) rejects it, and there is nothing to reopen
+	// through, since re-resolving is what this avoids.
+	//
+	// The resulting handle is only usable with setns(2) if it really refers to
+	// a network namespace, which OpenRawSockInNetns() relies on the kernel to
+	// enforce. The check below is what makes the failure diagnosable, and the
+	// inode trustworthy.
+	fd, err := unix.Openat(int(dirHandle.Fd()), base, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return netns.None(), 0, fmt.Errorf("getting network namespace from path %q: %w", path, err)
 	}
+	netnsHandle := netns.NsHandle(fd)
 
-	inode, err := netnsInode(int(netnsHandle), path)
+	inode, err := netnsInode(fd, path)
 	if err != nil {
 		netnsHandle.Close()
 		return netns.None(), 0, err
@@ -212,11 +228,11 @@ func isProcfsPath(path string) bool {
 	return procfsNetnsLink.MatchString(filepath.Clean(path))
 }
 
-// checkProcfs returns an error unless dir is a directory on procfs. path is
-// only used for error messages.
-func checkProcfs(dir string, path string) error {
+// checkProcfs returns an error unless the given file descriptor refers to a
+// directory on procfs. path is only used for error messages.
+func checkProcfs(fd int, path string) error {
 	var statfs unix.Statfs_t
-	if err := unix.Statfs(dir, &statfs); err != nil {
+	if err := unix.Fstatfs(fd, &statfs); err != nil {
 		return fmt.Errorf("statfs %q: %w", path, err)
 	}
 	if statfs.Type != unix.PROC_SUPER_MAGIC {
