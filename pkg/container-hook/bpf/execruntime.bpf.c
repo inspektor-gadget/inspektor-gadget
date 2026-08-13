@@ -152,6 +152,10 @@ int ig_execve_e(struct syscall_trace_enter *ctx)
 	bpf_get_current_comm(&record->caller_comm, sizeof(record->caller_comm));
 	record->mntns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	record->pid = tgid;
+	// euid.val is a kuid_t: it is always relative to the initial user
+	// namespace, so a process that mapped itself to uid 0 in a user
+	// namespace is not seen as root here.
+	record->euid = BPF_CORE_READ(task, cred, euid.val);
 	record->args_size = 0;
 
 	ret = bpf_probe_read_user_str(record->args, ARGSIZE,
