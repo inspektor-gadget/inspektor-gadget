@@ -1098,6 +1098,14 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 		return nil
 	}
 
+	// Only the real root can start containers: this prevents an unprivileged
+	// user from injecting a fake container by executing the container runtime.
+	if record.Euid != 0 {
+		log.Debugf("fanotify: skip event from %q (pid %d) with euid %d",
+			pathFromProcfs, record.Pid, record.Euid)
+		return nil
+	}
+
 	callerComm := strings.TrimRight(string(record.CallerComm[:]), "\x00")
 
 	cmdlineArr := []string{}

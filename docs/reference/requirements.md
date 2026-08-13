@@ -53,3 +53,8 @@ $ systemctl start --user podman.socket
 $ sudo ig -r podman --podman-socketpath /run/user/$UID/podman/podman.sock list-containers
 $ sudo ig -r podman --podman-socketpath /run/user/$UID/podman/podman.sock snapshot process
 ```
+
+The Podman API can find existing containers but does not notify us when new
+containers are created. Inspektor Gadget uses the [`fanotify+ebpf` container
+hook](../spec/operators/kubemanager.md) to detect new containers, but this hook
+does not support rootless containers.
