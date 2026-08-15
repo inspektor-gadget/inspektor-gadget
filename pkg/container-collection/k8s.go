@@ -16,12 +16,16 @@ package containercollection
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,6 +53,8 @@ type K8sClient struct {
 	runtimeClient runtimeclient.ContainerRuntimeClient
 	RuntimeConfig *containerutilsTypes.RuntimeConfig
 }
+
+const kubeletPort = "10250"
 
 func NewK8sClient(nodeName string, kubeconfigPath string, userAgentComment string) (*K8sClient, error) {
 	clientset, err := k8sutil.NewClientset(kubeconfigPath, userAgentComment)
@@ -257,18 +263,90 @@ func getContainerRuntimeSocketPath(clientset *kubernetes.Clientset, nodeName str
 	return socketPath, nil
 }
 
-// The /configz endpoint isn't officially documented. It was introduced in Kubernetes 1.26 and been around for a long time
-// as stated in https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/configz/OWNERS
+func getNodeInternalIP(node *v1.Node) (string, error) {
+	for _, a := range node.Status.Addresses {
+		if a.Type == v1.NodeInternalIP && a.Address != "" {
+			return a.Address, nil
+		}
+	}
+	return "", fmt.Errorf("no internal IP found for node %q", node.Name)
+}
+
+func getCurrentKubeletConfigThroughNodesConfigz(ctx context.Context, clientset *kubernetes.Clientset, nodeName string) ([]byte, error) {
+	node, err := clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("getting node %q: %w", nodeName, err)
+	}
+
+	nodeIP, err := getNodeInternalIP(node)
+	if err != nil {
+		return nil, fmt.Errorf("getting node internal IP: %w", err)
+	}
+
+	token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		return nil, fmt.Errorf("reading service account token: %w", err)
+	}
+
+	// Let's dialog with the kubelet through HTTPS.
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				// We cannot verify the kubelet serving
+				// certificate: there is no portable way to get
+				// the kubelet CA (it depends on the
+				// distribution), and fetching it from the
+				// kubelet itself would only verify the peer
+				// against the cert it just presented.
+				// Proxy is disabled so the request cannot
+				// leave the node; intercepting it requires
+				// host/CNI level control, at which point the
+				// attacker already owns the kubelet and our
+				// privileged pod.
+				// Same trade-off as node-feature-discovery's
+				// topology-updater:
+				// https://github.com/kubernetes-sigs/node-feature-discovery/blob/b35e1db7e862/pkg/nfd-topology-updater/nfd-topology-updater.go#L561-L573
+				// https://github.com/kubernetes-sigs/node-feature-discovery/blob/76e6cc8cc0d5/pkg/utils/kubeconf/kubelet_configz.go#L82
+				InsecureSkipVerify: true, //nolint:gosec
+				ServerName:         nodeName,
+			},
+			Proxy: nil,
+		},
+		Timeout: 5 * time.Second,
+	}
+	url := fmt.Sprintf("https://%s:%s/configz", nodeIP, kubeletPort)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building http request to kubelet %q: %w", url, err)
+	}
+	req.Header.Set("Authorization", "Bearer "+string(token))
+
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("getting kubelet /configz at %q: %w", url, err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("kubelet /configz status is %d, expected: %d", response.StatusCode, http.StatusOK)
+	}
+
+	return io.ReadAll(io.LimitReader(response.Body, 5<<20 /* 5MiB */))
+}
+
 func getCurrentKubeletConfig(clientset *kubernetes.Clientset, nodeName string) (*kubeletconfigv1beta1.KubeletConfiguration, error) {
-	resp, err := clientset.CoreV1().RESTClient().Get().Resource("nodes").
-		Name(nodeName).Suffix("proxy", "configz").DoRaw(context.TODO())
+	resp, err := getCurrentKubeletConfigThroughNodesConfigz(context.TODO(), clientset, nodeName)
 	if err != nil {
 		return nil, fmt.Errorf("fetching /configz from %q: %w", nodeName, err)
 	}
+
 	kubeCfg, err := decodeConfigz(resp)
 	if err != nil {
 		return nil, err
 	}
+
 	return kubeCfg, nil
 }
 

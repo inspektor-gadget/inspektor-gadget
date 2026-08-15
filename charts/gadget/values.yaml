@@ -83,7 +83,12 @@ affinity: {}
 # -- Capabilities used by `gadget` container
 capabilities: {}
 
-# -- Tolerations used by `gadget` container
+# -- Skip the default `NoSchedule` and `NoExecute` tolerations that use the
+# `Exists` operator and allow the DaemonSet to run on every node.
+skipDefaultTolerations: false
+
+# -- Additional tolerations used by the `gadget` container. To replace the
+# default tolerations, set `skipDefaultTolerations` to `true`.
 tolerations: {}
 
 # -- Resource requests and limits for the `gadget` container.

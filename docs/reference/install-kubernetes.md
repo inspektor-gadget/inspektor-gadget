@@ -311,6 +311,42 @@ operator:
 podman-socketpath: /run/podman/podman.sock
 ```
 
+##### Container Runtime Socket Path Detection
+
+Inspektor Gadget automatically detects the container runtime socket path by
+querying the kubelet's `/configz` endpoint on each node. This requires the
+`nodes/configz` RBAC permission, which is granted automatically on clusters
+running Kubernetes v1.33 or later (where fine-grained kubelet API authorization
+is enabled by default, see
+[KEP-2862](https://github.com/kubernetes/enhancements/issues/2862)).
+
+On older clusters (before v1.33), or on distributions where the kubelet API
+authorization feature gate has been explicitly disabled, socket path
+auto-detection is not available. Inspektor Gadget will log a warning and fall
+back to the configured socket path:
+
+```
+time="2026-08-10T14:36:21Z" level=warning msg="Failed to retrieve socket path for runtime client from kubelet: getting /configz: fetching /configz from \"minikube-docker\": kubelet /configz status is 403, expected: 200. Falling back to default container runtime"
+time="2026-08-10T14:36:21Z" level=warning msg="Failed to retrieve socket path for runtime client from kubelet: getting /configz: fetching /configz from \"minikube-docker\": kubelet /configz status is 403, expected: 200. Falling back to default container runtime"
+```
+
+If the default path does not match your setup, you can set it explicitly in a
+daemon configuration file:
+
+```yaml
+# daemon-config.yaml
+containerd-socketpath: /run/containerd/containerd.sock
+crio-socketpath:       /run/crio/crio.sock
+docker-socketpath:     /run/docker.sock
+podman-socketpath:     /run/podman/podman.sock
+```
+
+Then deploy with:
+
+```bash
+$ kubectl gadget deploy --daemon-config=daemon-config.yaml
+```
+
 ##### Other Deploy Options
 
 Please check the following documents to learn more about different options:
@@ -509,6 +545,16 @@ operator:
 ```
 
 For more information about the configuration file, check the [configuration guide](./configuration.md).
+
+### Permissions required to deploy
+
+Deploying Inspektor Gadget creates cluster-scoped RBAC objects (a [ClusterRole](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/clusterrole.yaml) and a ['ClusterRoleBinding'](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/clusterrolebinding.yaml)) as well as a namespaced [Role](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/role.yaml) and [RoleBinding](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/charts/gadget/templates/rolebinding.yaml).
+Kubernetes [privilege escalation prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention) requires that whoever creates these objects already holds every permission being granted, or holds the `escalate`/`bind` verbs on them.
+In practice, this usually means deploying as `cluster-admin`.
+
+It is possible to deploy with a narrower, explicitly enumerated set of permissions instead.
+Such a role must hold the union of everything granted by Inspektor Gadget's own ClusterRole and Role, plus create/delete rights on the objects the deployment creates.
+Note that this is not meaningfully less privileged than `cluster-admin` but it merely makes the permission set auditable.
 
 ## Uninstalling from the cluster
 
