@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE=golang:1.26.6-trixie@sha256:b75d466dd608587fd66cca705a307ba65b889827d06ad61d6a75f0482b51b7c7
+ARG BUILDER_IMAGE=golang:1.26.9-trixie@sha256:cf7e928cb9edc2ed8b3cc6fe77ee1ee30b9fea28149564c8840097321a7600ea
 ARG BASE_IMAGE=gcr.io/distroless/static-debian11:latest@sha256:1dbe426d60caed5d19597532a2d74c8056cd7b1674042b88f7328690b5ead8ed
 
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS builder
