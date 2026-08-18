@@ -443,14 +443,9 @@ All these options should be set at the same time to enable TLS connection`,
 			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
-	} else {
-		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
-		defer cancel()
-		dialCtx = newCtx
 	}
 
-	//nolint:staticcheck
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("passthrough:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
