@@ -57,14 +57,10 @@ struct edges_key {
 
 // Value type for edges. Holds information about the edge.
 struct edges_value {
-	gadget_mntns_id mntns_id;
-
-	gadget_tid tid;
+	struct gadget_process proc;
 
 	__u64 mutex1_stack_id;
 	__u64 mutex2_stack_id;
-
-	gadget_comm comm[TASK_COMM_LEN];
 };
 
 /* Map containing all edges in the mutex wait graph */
@@ -87,7 +83,6 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 	if (gadget_should_discard_data_current())
 		return 0;
 
-	u64 mtns_id = gadget_get_current_mntns_id();
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	u32 tid = (u32)pid_tgid;
 	u32 pid = pid_tgid >> 32;
@@ -131,11 +126,9 @@ static __always_inline int trace_mutex_acquire(struct pt_regs *ctx, u64 mutex)
 		edge_key.pid = pid;
 
 		struct edges_value edge_value = {};
-		edge_value.tid = tid;
-		edge_value.mntns_id = mtns_id;
+		gadget_process_populate(&edge_value.proc);
 		edge_value.mutex1_stack_id = held_mutexes[i].stack_id;
 		edge_value.mutex2_stack_id = stack_id;
-		bpf_get_current_comm(&edge_value.comm, sizeof(edge_value.comm));
 
 		int result = bpf_map_update_elem(&edges, &edge_key, &edge_value,
 						 BPF_ANY); // update graph
