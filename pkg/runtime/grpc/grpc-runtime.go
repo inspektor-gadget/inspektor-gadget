@@ -449,8 +449,7 @@ All these options should be set at the same time to enable TLS connection`,
 		dialCtx = newCtx
 	}
 
-	//nolint:staticcheck
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("passthrough:///"+target.addressOrPod, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
