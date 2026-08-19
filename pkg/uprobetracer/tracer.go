@@ -32,6 +32,7 @@
 package uprobetracer
 
 import (
+	"debug/elf"
 	"errors"
 	"fmt"
 	"os"
@@ -47,6 +48,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/safeelf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/secureopen"
 )
 
@@ -188,10 +190,19 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 		return nil, fmt.Errorf("opening %q: %w", attachPath, err)
 	}
 	switch t.progType {
-	case ProgUprobe:
-		return ex.Uprobe(t.attachSymbol, t.prog, nil)
-	case ProgUretprobe:
-		return ex.Uretprobe(t.attachSymbol, t.prog, nil)
+	case ProgUprobe, ProgUretprobe:
+		// Resolve symbol in IG's hardened code, then pass the file offset
+		// to cilium/ebpf. This bypasses cilium/ebpf's Symbols()/
+		// DynamicSymbols() path which doesn't limit memory consumption.
+		offset, err := resolveSymbolOffset(file, t.attachSymbol)
+		if err != nil {
+			return nil, fmt.Errorf("resolving symbol %q: %w", t.attachSymbol, err)
+		}
+		opts := &link.UprobeOptions{Address: offset}
+		if t.progType == ProgUprobe {
+			return ex.Uprobe("", t.prog, opts)
+		}
+		return ex.Uretprobe("", t.prog, opts)
 	case ProgUSDT:
 		attachInfo, err := getUsdtInfo(attachPath, t.attachSymbol)
 		if err != nil {
@@ -205,6 +216,38 @@ func (t *Tracer[Event]) attachUprobe(file *os.File) (link.Link, error) {
 	default:
 		return nil, fmt.Errorf("attaching to inode: unsupported prog type: %d", t.progType)
 	}
+}
+
+// resolveSymbolOffset resolves a symbol name to a file offset using bounded
+// iteration. This avoids loading the full string table into memory.
+func resolveSymbolOffset(file *os.File, symbol string) (uint64, error) {
+	ef, err := safeelf.NewFile(file)
+	if err != nil {
+		return 0, fmt.Errorf("parsing ELF: %w", err)
+	}
+	defer ef.Close()
+
+	for _, typ := range []elf.SectionType{elf.SHT_SYMTAB, elf.SHT_DYNSYM} {
+		var found bool
+		var addr uint64
+		iterErr := ef.IterateSymbols(typ, func(sym elf.Symbol) bool {
+			if elf.ST_TYPE(sym.Info) != elf.STT_FUNC {
+				return false
+			}
+			if sym.Name == symbol {
+				addr = sym.Value
+				found = true
+			}
+			return found
+		})
+		if found {
+			return vaddr2ElfOffset(ef.File, addr)
+		}
+		if iterErr != nil {
+			return 0, iterErr
+		}
+	}
+	return 0, fmt.Errorf("symbol %q not found", symbol)
 }
 
 // try attaching to a container, will update `containerPid2Inodes`
