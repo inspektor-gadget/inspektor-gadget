@@ -29,6 +29,8 @@ config:
       fallback-podinformer: true
       # -- How to get containers start/stop notifications. Valid values are: "auto", "crio", "podinformer", "nri", "fanotify+ebpf"
       hook-mode: "auto"
+      # -- NRI socket exposed by the container runtime
+      nri-socket-path: "/run/nri/nri.sock"
     oci:
       verify-image: true
       public-keys:

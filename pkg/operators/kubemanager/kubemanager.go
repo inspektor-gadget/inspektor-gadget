@@ -53,6 +53,7 @@ const (
 	ParamHookMode               = "hook-mode"
 	ParamFallbackPodInformer    = "fallback-podinformer"
 	ParamHookLivenessSocketFile = "hook-liveness-socketfile"
+	ParamNRISocketPath          = "nri-socket-path"
 
 	// Instance parameter keys
 	ParamAllNamespaces = "all-namespaces"
@@ -113,6 +114,12 @@ func (k *KubeManager) GlobalParamDescs() params.ParamDescs {
 			Description:  "Path to the socket file for serving hook's requests for adding/removing containers and for liveness checks",
 			TypeHint:     params.TypeString,
 		},
+		{
+			Key:          ParamNRISocketPath,
+			DefaultValue: containercollection.DefaultNRISocketPath,
+			Description:  "Path to the NRI socket exposed by the container runtime",
+			TypeHint:     params.TypeString,
+		},
 	}
 }
 
@@ -135,6 +142,7 @@ func (k *KubeManager) Init(params *params.Params) error {
 	hookMode := params.Get(ParamHookMode).AsString()
 	fallbackPodInformer := params.Get(ParamFallbackPodInformer).AsBool()
 	socketPath := params.Get(ParamHookLivenessSocketFile).AsString()
+	nriSocketPath := params.Get(ParamNRISocketPath).AsString()
 
 	var err error
 	hookMode, err = parseHookMode(hookMode)
@@ -142,7 +150,7 @@ func (k *KubeManager) Init(params *params.Params) error {
 		return fmt.Errorf("parsing hook mode: %w", err)
 	}
 
-	if err := k.initCollections(hookMode, fallbackPodInformer); err != nil {
+	if err := k.initCollections(hookMode, nriSocketPath, fallbackPodInformer); err != nil {
 		return fmt.Errorf("initializing collections: %w", err)
 	}
 
@@ -169,7 +177,7 @@ func (k *KubeManager) Init(params *params.Params) error {
 }
 
 // initCollections initializes the container collection and tracer collection.
-func (k *KubeManager) initCollections(hookMode string, fallbackPodInformer bool) error {
+func (k *KubeManager) initCollections(hookMode, nriSocketPath string, fallbackPodInformer bool) error {
 	var cc containercollection.ContainerCollection
 
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -198,7 +206,7 @@ func (k *KubeManager) initCollections(hookMode string, fallbackPodInformer bool)
 		containercollection.WithProcEnrichment(),
 	}
 
-	hookModeOpts, err := hookMode2ccOpts(node, hookMode, fallbackPodInformer)
+	hookModeOpts, err := hookMode2ccOpts(node, hookMode, nriSocketPath, fallbackPodInformer)
 	if err != nil {
 		return fmt.Errorf("getting extra container collection options: %w", err)
 	}

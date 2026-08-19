@@ -245,8 +245,8 @@ Inspektor Gadget needs to detect when containers are started and stopped. The
 different supported modes can be set by using the
 `operator.kubemanager.hook-mode` parameter:
 
-- `auto`(default): Inspektor Gadget will try to find the best option based on
-  the system it is running on.
+- `auto`(default): Inspektor Gadget first tries NRI, then the runtime-specific
+  CRI-O hooks or `fanotify+ebpf`, and finally `podinformer`.
 - `crio`: Use the [CRIO
   hooks](https://github.com/containers/podman/blob/v3.4.4/pkg/hooks/docs/oci-hooks.5.md)
   support. Inspektor Gadget installs the required hooks in
@@ -259,7 +259,10 @@ different supported modes can be set by using the
   lost. This mode is selected when `auto` is used and the above modes are not
   available.
 - `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri).
-  It requires containerd v1.5 and it's not considered when `auto` is used.
+  Inspektor Gadget registers with the runtime over
+  `/run/nri/nri.sock` and receives existing containers as well as
+  lifecycle events. NRI is available in containerd 1.7 and CRI-O 1.26 and is
+  enabled by default in containerd 2.0 and CRI-O 1.30.
 - `fanotify+ebpf`:  Uses the Linux
   [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
   eBPF module. It works with both runc and crun. It works regardless of the
@@ -294,6 +297,7 @@ operator:
   kubemanager:
     fallback-podinformer: true
     hook-mode: auto
+    nri-socket-path: /run/nri/nri.sock
   oci:
     allowed-gadgets: []
     disallow-pulling: false
