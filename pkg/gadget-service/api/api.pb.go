@@ -567,8 +567,25 @@ type InfoResponse struct {
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	Experimental  bool                   `protobuf:"varint,3,opt,name=experimental,proto3" json:"experimental,omitempty"`
 	ServerVersion string                 `protobuf:"bytes,4,opt,name=serverVersion,proto3" json:"serverVersion,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// serverIsHostPidNs tells whether the process serving this request runs in
+	// the PID namespace of PID 1, as seen through the procfs of the host. It is
+	// unset when it could not be determined, which is also the case when talking
+	// to a server that is too old to report it.
+	ServerIsHostPidNs *bool `protobuf:"varint,5,opt,name=serverIsHostPidNs,proto3,oneof" json:"serverIsHostPidNs,omitempty"`
+	// serverIsInitPidNs tells whether the process serving this request runs in
+	// the PID namespace the kernel created at boot time. It is unset when it
+	// could not be determined, which is also the case when talking to a server
+	// that is too old to report it.
+	//
+	// This is stricter than serverIsHostPidNs: when Inspektor Gadget runs on a
+	// node that is itself containerized, for instance a minikube node started
+	// with the docker driver, serverIsHostPidNs can be true while this is false.
+	// Features handling PIDs reported by eBPF programs, such as the OTel eBPF
+	// profiler symbolizer, need this one, since those PIDs are always relative
+	// to the initial PID namespace.
+	ServerIsInitPidNs *bool `protobuf:"varint,6,opt,name=serverIsInitPidNs,proto3,oneof" json:"serverIsInitPidNs,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *InfoResponse) Reset() {
@@ -620,6 +637,20 @@ func (x *InfoResponse) GetServerVersion() string {
 		return x.ServerVersion
 	}
 	return ""
+}
+
+func (x *InfoResponse) GetServerIsHostPidNs() bool {
+	if x != nil && x.ServerIsHostPidNs != nil {
+		return *x.ServerIsHostPidNs
+	}
+	return false
+}
+
+func (x *InfoResponse) GetServerIsInitPidNs() bool {
+	if x != nil && x.ServerIsInitPidNs != nil {
+		return *x.ServerIsInitPidNs
+	}
+	return false
 }
 
 type DataElement struct {
@@ -1951,11 +1982,15 @@ const file_api_api_proto_rawDesc = "" +
 	"\rattachRequest\x18\x03 \x01(\v2\x18.api.GadgetAttachRequestH\x00R\rattachRequestB\a\n" +
 	"\x05Event\"'\n" +
 	"\vInfoRequest\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\"r\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\"\x84\x02\n" +
 	"\fInfoResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\"\n" +
 	"\fexperimental\x18\x03 \x01(\bR\fexperimental\x12$\n" +
-	"\rserverVersion\x18\x04 \x01(\tR\rserverVersion\"'\n" +
+	"\rserverVersion\x18\x04 \x01(\tR\rserverVersion\x121\n" +
+	"\x11serverIsHostPidNs\x18\x05 \x01(\bH\x00R\x11serverIsHostPidNs\x88\x01\x01\x121\n" +
+	"\x11serverIsInitPidNs\x18\x06 \x01(\bH\x01R\x11serverIsInitPidNs\x88\x01\x01B\x14\n" +
+	"\x12_serverIsHostPidNsB\x14\n" +
+	"\x12_serverIsInitPidNs\"'\n" +
 	"\vDataElement\x12\x18\n" +
 	"\apayload\x18\x01 \x03(\fR\apayload\"X\n" +
 	"\n" +
@@ -2213,6 +2248,7 @@ func file_api_api_proto_init() {
 		(*GadgetControlRequest_StopRequest)(nil),
 		(*GadgetControlRequest_AttachRequest)(nil),
 	}
+	file_api_api_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
