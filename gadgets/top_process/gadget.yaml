@@ -25,24 +25,24 @@ datasources:
       cpuTimeStr:
         annotations:
           columns.alias: 'TIME+'
-      cpuUsage:
+      cpu:
         annotations:
           columns.alias: '%CPU'
-      cpuUsageRelative:
+      cpuRelative:
         annotations:
           columns.alias: '%RELCPU'
-      memoryRelative:
+      memRelative:
         annotations:
           columns.alias: '%MEM'
-      memoryRSS:
+      memRSS:
         annotations:
           columns.alias: 'RES'
           columns.maxWidth: 12
-      memoryShared:
+      memShared:
         annotations:
           columns.alias: 'SHR'
           columns.maxWidth: 12
-      memoryVirtual:
+      memVirtual:
         annotations:
           columns.alias: 'VIRT'
           columns.maxWidth: 12
