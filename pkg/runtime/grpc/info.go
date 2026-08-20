@@ -26,6 +26,12 @@ import (
 type Info struct {
 	Experimental  bool
 	ServerVersion string
+
+	// ServerIsHostPidNs and ServerIsInitPidNs tell whether the gadget service
+	// runs in the host and initial PID namespaces. They are nil when the
+	// server could not determine them or is too old to report them.
+	ServerIsHostPidNs *bool
+	ServerIsInitPidNs *bool
 }
 
 func (r *Runtime) GetInfo() (*Info, error) {
@@ -56,8 +62,10 @@ func (r *Runtime) GetInfo() (*Info, error) {
 	}
 
 	r.info = &Info{
-		Experimental:  info.Experimental,
-		ServerVersion: info.ServerVersion,
+		Experimental:      info.Experimental,
+		ServerVersion:     info.ServerVersion,
+		ServerIsHostPidNs: info.ServerIsHostPidNs,
+		ServerIsInitPidNs: info.ServerIsInitPidNs,
 	}
 	return r.info, nil
 }
