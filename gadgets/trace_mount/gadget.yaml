@@ -52,3 +52,7 @@ datasources:
       call:
         annotations:
           columns.width: 32
+      netns_id:
+        annotations:
+          description: Network namespace inode id
+          template: ns
