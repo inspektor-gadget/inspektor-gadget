@@ -147,7 +147,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -185,3 +185,6 @@ replace github.com/inspektor-gadget/inspektor-gadget => ../
 
 // use fork to get support for application/vnd.oci.empty.v1+json image
 replace github.com/notaryproject/notation-go => github.com/inspektor-gadget/notation-go v1.3.3
+
+// keep in sync with root module to preserve tracer/types import path
+replace go.opentelemetry.io/ebpf-profiler => github.com/inspektor-gadget/opentelemetry-ebpf-profiler v0.0.202611-0.20260715114040-ef6cf29492c8
