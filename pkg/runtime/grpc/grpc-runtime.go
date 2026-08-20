@@ -26,6 +26,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -370,13 +371,8 @@ func (r *Runtime) getConnFromTarget(ctx context.Context, runtimeParams *params.P
 	return conn, nil
 }
 
-func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{
-		//nolint:staticcheck
-		grpc.WithBlock(),
-		//nolint:staticcheck
-		grpc.WithReturnConnectionError(),
-	}
+func (r *Runtime) dialContext(ctx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
 
 	tlsKey := r.globalParams.Get(ParamTLSKey).String()
 	tlsCert := r.globalParams.Get(ParamTLSCert).String()
@@ -443,17 +439,33 @@ All these options should be set at the same time to enable TLS connection`,
 			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
 			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
-	} else {
-		newCtx, cancel := context.WithTimeout(dialCtx, timeout)
-		defer cancel()
-		dialCtx = newCtx
 	}
 
-	//nolint:staticcheck
-	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.addressOrPod, opts...)
+	conn, err := grpc.NewClient("passthrough:///"+target.addressOrPod, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
+		return nil, fmt.Errorf("creating client for %q (%q): %w", target.addressOrPod, target.node, err)
 	}
+
+	// Eagerly initiate the connection and wait for it to be ready,
+	// respecting the configured timeout. This preserves the fail-fast
+	// behavior that was previously provided by grpc.DialContext with
+	// grpc.WithBlock.
+	conn.Connect()
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		s := conn.GetState()
+		if s == connectivity.Ready {
+			break
+		}
+		if !conn.WaitForStateChange(timeoutCtx, s) {
+			// Context expired or was cancelled before reaching Ready.
+			conn.Close()
+			return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, timeoutCtx.Err())
+		}
+	}
+
 	return conn, nil
 }
 
