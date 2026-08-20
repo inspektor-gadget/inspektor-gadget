@@ -67,8 +67,8 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name
 	Containername string
 
-	// Number of seconds that the gadget will run for
-	Timeout int
+	// Time in duration that the gadget will run for
+	Timeout string
 }
 
 // GetNamespace returns the namespace specified by '-n' or the default
@@ -180,10 +180,10 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags, gadgetNamespace
 		"Show data from pods in all namespaces",
 	)
 
-	command.PersistentFlags().IntVar(
+	command.PersistentFlags().StringVar(
 		&params.Timeout,
 		"timeout",
-		0,
-		"Number of seconds that the gadget will run for",
+		"",
+		"Time in duration that the gadget will run for",
 	)
 }
