@@ -86,7 +86,7 @@ func TestTraceOpen(t *testing.T) {
 	runnerOpts = append(runnerOpts, igrunner.WithValidateOutput(
 		func(t *testing.T, output string) {
 			expectedEntry := &traceOpenEvent{
-				CommonData: utils.BuildCommonData(containerName, commonDataOpts...),
+				CommonData: utils.BuildCommonData(t, containerName, commonDataOpts...),
 				Proc:       utils.BuildProc("cat", 1000, 1111),
 				FName:      "/dev/null2",
 				FPath:      "/dev/null",

@@ -112,6 +112,7 @@ type Container interface {
 	K8sOwnerReference() *K8sOwnerReference
 	ContainerPid() uint32
 	K8sPodLabelsAsString() string
+	K8sPodUID() string
 }
 
 type BasicRuntimeMetadata struct {
@@ -159,6 +160,7 @@ func (b *BasicRuntimeMetadata) IsEnriched() bool {
 type BasicK8sMetadata struct {
 	Namespace     string            `json:"namespace,omitempty" column:"namespace,template:namespace"`
 	PodName       string            `json:"podName,omitempty" column:"podName,template:pod"`
+	PodUID        string            `json:"podUID,omitempty" column:"podUID,hide"`
 	PodLabels     map[string]string `json:"podLabels,omitempty" column:"labels,hide"`
 	ContainerName string            `json:"containerName,omitempty" column:"containerName,template:container"`
 }
