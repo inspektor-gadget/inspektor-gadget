@@ -17,9 +17,11 @@ type execruntimeRecord struct {
 	_          structs.HostLayout
 	MntnsId    uint64
 	Pid        uint32
+	Euid       uint32
 	ArgsSize   uint32
 	CallerComm [16]uint8
 	Args       [5120]uint8
+	_          [4]byte
 }
 
 // Names of all BPF objects in the ELF.

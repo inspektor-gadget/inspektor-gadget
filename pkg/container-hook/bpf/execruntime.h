@@ -14,6 +14,8 @@
 struct record {
 	__u64 mntns_id;
 	__u32 pid;
+	// euid of the caller, in the initial user namespace
+	__u32 euid;
 	unsigned int args_size;
 	__u8 caller_comm[TASK_COMM_LEN];
 	__u8 args[FULL_MAX_ARGS_ARR];

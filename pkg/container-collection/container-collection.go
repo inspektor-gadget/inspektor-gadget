@@ -205,6 +205,12 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 
 // AddContainer adds a container to the collection.
 func (cc *ContainerCollection) AddContainer(container *Container) {
+	if err := eventtypes.ValidateContainerID(container.Runtime.ContainerID); err != nil {
+		log.Warnf("container collection: ignoring container with invalid ID: %s", err)
+		container.close()
+		return
+	}
+
 	for _, enricher := range cc.containerEnrichers {
 		ok := enricher(container)
 		// Enrichers can decide to drop a container

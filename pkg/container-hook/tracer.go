@@ -59,6 +59,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -457,6 +458,10 @@ func (n *ContainerNotifier) install() error {
 // containers detected by ContainerNotifier, but it can also be called for
 // containers detected externally such as initial containers.
 func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
+	if err := types.ValidateContainerID(containerID); err != nil {
+		return err
+	}
+
 	n.containersMu.Lock()
 	defer n.containersMu.Unlock()
 
@@ -821,6 +826,9 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	// cri-o appends userdata to bundleDir,
 	// so we trim it here to get the correct containerID
 	containerID := filepath.Base(filepath.Clean(strings.TrimSuffix(bundleDir, "userdata")))
+	if err := types.ValidateContainerID(containerID); err != nil {
+		return fmt.Errorf("invalid container ID from bundle %q: %w", bundleDir, err)
+	}
 
 	n.pendingMu.Lock()
 	defer n.pendingMu.Unlock()
@@ -979,6 +987,10 @@ func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 	if containerName == "" || containerID == "" || bundleDir == "" || pidFile == "" {
 		return
 	}
+	if err := types.ValidateContainerID(containerID); err != nil {
+		log.Warnf("container-hook: ignoring conmon event with invalid container ID: %s", err)
+		return
+	}
 
 	n.futureMu.Lock()
 	n.futureContainers[containerID] = &futureContainer{
@@ -1095,6 +1107,14 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 	}
 	if record.ArgsSize == 0 {
 		log.Debugf("fanotify: skip event from %q (pid %d) without args", pathFromProcfs, data.Pid)
+		return nil
+	}
+
+	// Only the real root can start containers: this prevents an unprivileged
+	// user from injecting a fake container by executing the container runtime.
+	if record.Euid != 0 {
+		log.Debugf("fanotify: skip event from %q (pid %d) with euid %d",
+			pathFromProcfs, record.Pid, record.Euid)
 		return nil
 	}
 
