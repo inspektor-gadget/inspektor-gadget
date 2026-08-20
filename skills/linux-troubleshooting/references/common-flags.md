@@ -87,8 +87,8 @@ shape (see `discovering-params-and-fields.md`).
   registry copy, use **`--pull always`**; use a pinned digest when exact
   reproducibility matters.
 - **Bare field vs `*_raw`.** Numeric fields often render as a human-formatted
-  string (`latency_ns`="1.2ms", `memoryRSS`="12 MB"); the `_raw` sibling
-  (`latency_ns_raw`, `memoryRSS_raw`) is the machine number — use `_raw` for
+  string (`latency_ns`="1.2ms", `memRSS`="12 MB"); the `_raw` sibling
+  (`latency_ns_raw`, `memRSS_raw`) is the machine number — use `_raw` for
   arithmetic/sort/`jq`, the bare field for display. Both appear under `--fields`.
 - **Daemon mode.** For repeated runs you can start `sudo ig daemon` and connect a
   client, but one-shot `sudo ig run …` is fine for troubleshooting.
