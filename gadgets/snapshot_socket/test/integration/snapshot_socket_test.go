@@ -38,6 +38,7 @@ type snapshotSocketEntry struct {
 	SrcEndpoint utils.L4Endpoint `json:"src"`
 	DstEndpoint utils.L4Endpoint `json:"dst"`
 	Status      uint64           `json:"status"`
+	Path        string           `json:"path"`
 }
 
 func TestSnapshotSocket(t *testing.T) {
