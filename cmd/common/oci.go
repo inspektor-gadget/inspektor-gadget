@@ -34,6 +34,7 @@ import (
 	gadgetmanifest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-manifest"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	apihelpers "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	clioperator "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/cli"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/combiner"
@@ -162,6 +163,22 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		// Parse flags that are known at this time, like the ones we get from the gadget descriptor
 		if err := utils.ParseEarlyFlags(cmd, args); err != nil {
 			return err
+		}
+
+		if !runtime.IsClient() {
+			ociStoreUser, _ := cmd.PersistentFlags().GetBool("oci-store-user")
+			if ociStoreUser && os.Geteuid() == 0 {
+				if f := cmd.Flags().Lookup("pull"); f != nil {
+					if f.Changed && f.Value.String() != oci.PullImageNever {
+						return errors.New("--oci-store-user requires --pull=never: pulling as root would create root-owned files in the user's store")
+					}
+					if err := f.Value.Set(oci.PullImageNever); err != nil {
+						return err
+					}
+					log.Warnf("--oci-store-user is set: forcing --pull=%q", oci.PullImageNever)
+				}
+			}
+			oci.SetUseUserOciStore(ociStoreUser)
 		}
 
 		// Before running the gadget, we need to get the gadget info to be able to set
@@ -432,6 +449,14 @@ func NewRunCommand(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumn
 		0,
 		"Number of seconds that the gadget will run for, 0 to run indefinitely",
 	)
+
+	if !runtime.IsClient() {
+		cmd.PersistentFlags().Bool(
+			"oci-store-user",
+			false,
+			"Use user OCI store (~/.ig/oci-store) instead of system-wide store (/var/lib/ig/oci-store)",
+		)
+	}
 
 	if commandMode != CommandModeAttach {
 		AddOCIFlags(cmd, ociParams, skipParams, runtime)
