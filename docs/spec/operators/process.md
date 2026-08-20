@@ -21,11 +21,11 @@ operator:
     - comm
     - pid
     - ppid
-    - cpuUsage
-    - cpuUsageRelative
-    - memoryRSS
-    - memoryVirtual
-    - memoryRelative
+    - cpu
+    - cpuRelative
+    - memRSS
+    - memVirtual
+    - memRelative
     - threadCount
     - state
     - uid
@@ -54,11 +54,11 @@ Available fields:
 - `pid` - Process ID (always included)
 - `ppid` - Parent Process ID
 - `comm` - Command name
-- `cpuUsage` - CPU usage percentage
-- `cpuUsageRelative` - CPU usage percentage relative to number of CPUs available
-- `memoryRSS` - Resident Set Size
-- `memoryVirtual` - Virtual memory size
-- `memoryRelative` - Total memory used relative to available memory
+- `cpu` - CPU usage percentage
+- `cpuRelative` - CPU usage percentage relative to number of CPUs available
+- `memRSS` - Resident Set Size
+- `memVirtual` - Virtual memory size
+- `memRelative` - Total memory used relative to available memory
 - `threadCount` - Number of threads
 - `state` - Process state (for possible values see below)
 - `uid` - Process owner UID
@@ -92,31 +92,55 @@ The command name of the process.
 
 Type: `string`
 
-#### `cpuUsage`
+#### `cpu`
 
 The CPU usage of the process as a percentage.
 
 Type: `float64`
 
-#### `cpuUsageRelative`
+#### `cpuRelative`
 
 The CPU usage percentage relative to the number of CPUs available.
 
 Type: `float64`
 
-#### `memoryRSS`
+#### `memRSS`
 
-The Resident Set Size (RSS) of the process in bytes. This represents the portion of memory occupied by a process that is held in main memory (RAM).
+The Resident Set Size (RSS) of the process as a formatted string.
+
+Type: `string`
+
+#### `memRSS_raw`
+
+The Resident Set Size (RSS) of the process in bytes.
 
 Type: `uint64`
 
-#### `memoryVirtual`
+#### `memVirtual`
 
-The Virtual Memory Size of the process in bytes. This represents the total amount of virtual memory used by the process.
+The Virtual Memory Size of the process as a formatted string.
+
+Type: `string`
+
+#### `memVirtual_raw`
+
+The Virtual Memory Size of the process in bytes.
 
 Type: `uint64`
 
-#### `memoryRelative`
+#### `memShared`
+
+The Shared Memory Size of the process as a formatted string.
+
+Type: `string`
+
+#### `memShared_raw`
+
+The Shared Memory Size of the process in bytes.
+
+Type: `uint64`
+
+#### `memRelative`
 
 Percentage of RSS memory used relative to available memory.
 
@@ -206,8 +230,8 @@ operator:
     fields:
     - comm
     - ppid
-    - cpuUsage
-    - memoryRSS
+    - cpu
+    - memRSS
 ```
 
 This will enable the process operator, which will emit process events every 30 seconds with only the specified fields.
