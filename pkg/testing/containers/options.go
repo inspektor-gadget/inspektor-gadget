@@ -42,6 +42,12 @@ func WithContainerImage(image string) ContainerOption {
 	}
 }
 
+func WithoutContainerImagePull() ContainerOption {
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithoutImagePull())
+	}
+}
+
 func WithContainerSeccompProfile(profile string) ContainerOption {
 	return func(opts *cOptions) {
 		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))

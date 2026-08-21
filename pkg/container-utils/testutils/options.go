@@ -32,6 +32,7 @@ type containerOptions struct {
 	expectStartError     bool
 	image                string
 	imageTag             string
+	pullImage            bool
 	mounts               []string
 	seccompProfile       string
 	namespace            string
@@ -56,6 +57,7 @@ func defaultContainerOptions() *containerOptions {
 		ctx:                  context.TODO(),
 		image:                DefaultContainerImage,
 		imageTag:             DefaultContainerImageTag,
+		pullImage:            true,
 		logs:                 true,
 		wait:                 true,
 		removal:              true,
@@ -84,6 +86,12 @@ func WithExpectedExitCode(code int) Option {
 func WithImage(image string) Option {
 	return func(opts *containerOptions) {
 		opts.image = image
+	}
+}
+
+func WithoutImagePull() Option {
+	return func(opts *containerOptions) {
+		opts.pullImage = false
 	}
 }
 
