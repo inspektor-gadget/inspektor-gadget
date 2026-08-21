@@ -33,10 +33,7 @@ config:
       verify-image: true
       public-keys:
         - |
-          -----BEGIN PUBLIC KEY-----
-          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
-          Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
-          -----END PUBLIC KEY-----
+          %PUBLIC_KEY%
       allowed-gadgets: []
       disallow-pulling: false
       insecure-registries: []
