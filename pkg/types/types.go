@@ -16,7 +16,9 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -24,6 +26,26 @@ import (
 )
 
 type EventType string
+
+// ValidateContainerID rejects container IDs that are unsafe to use in logs,
+// paths, or runtime metadata. It uses the same rules as runc's validateID():
+// a non-empty string of [A-Za-z0-9_+-.] that is usable as a file name.
+func ValidateContainerID(containerID string) error {
+	if containerID == "" {
+		return errors.New("container ID is empty")
+	}
+	if strings.ContainsFunc(containerID, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') &&
+			r != '_' && r != '+' && r != '-' && r != '.'
+	}) {
+		return fmt.Errorf("container ID %q contains invalid characters", containerID)
+	}
+	// Reject IDs that cannot be used as a file name, such as "." and "..".
+	if "/"+containerID != path.Clean("/"+containerID) {
+		return fmt.Errorf("container ID %q is not usable as a file name", containerID)
+	}
+	return nil
+}
 
 var node string
 

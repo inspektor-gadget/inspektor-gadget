@@ -63,3 +63,29 @@ func TestK8sMetadataUnmarshalBadFormat2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected.PodLabels, actual.PodLabels)
 }
+
+func TestValidateContainerID(t *testing.T) {
+	for _, containerID := range []string{
+		"0123456789abcdef",
+		"container-1",
+		"container_1",
+		"container.1",
+		"container+1",
+		"...",
+	} {
+		assert.NoError(t, ValidateContainerID(containerID))
+	}
+
+	for _, containerID := range []string{
+		"",
+		".",
+		"..",
+		"a\nb",
+		"../container",
+		"container/name",
+		"container name",
+		"container\x1b[31m",
+	} {
+		assert.Error(t, ValidateContainerID(containerID))
+	}
+}

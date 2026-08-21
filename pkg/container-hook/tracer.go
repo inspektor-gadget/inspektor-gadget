@@ -32,6 +32,7 @@
 package containerhook
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -44,6 +45,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -57,6 +59,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms/symscache"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kfilefields"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -91,6 +94,11 @@ const (
 	// pid files store a string with a int32 value, so 11 characters.
 	// Keep a larger buffer to be able to notice errors with strconv.Atoi.
 	pidFileMaxSize = int64(32)
+
+	// fanotifyEventMetadataSize is the size in bytes of a single fanotify
+	// event as read by go-fanotify's GetEvent(). It is used to size the
+	// read buffer to exactly one event; see initFanotify.
+	fanotifyEventMetadataSize = int(unsafe.Sizeof(unix.FanotifyEventMetadata{}))
 )
 
 var (
@@ -218,7 +226,37 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 	// Flags for the fd installed when reading a fanotify event (e.g. flag for
 	// the runc fd or the pid file fd).
 	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
-	return fanotify.Initialize(fanotifyFlags, openFlags)
+	notifyFD, err := fanotify.Initialize(fanotifyFlags, openFlags)
+	if err != nil {
+		return nil, err
+	}
+
+	// Shrink the read buffer to a single event.
+	//
+	// go-fanotify wraps the fanotify fd in a bufio.Reader with the default
+	// 4096-byte buffer, while each event read by GetEvent() is only
+	// fanotifyEventMetadataSize (24) bytes. A single read() syscall would
+	// therefore drain as many events as fit in the buffer (~170) at once, even
+	// though the notifier processes them one at a time. That has two harmful
+	// consequences:
+	//
+	//  1. Coherence with the ebpf ig_fa_records queue. Each fanotify exec event
+	//     has a matching record pushed by the ebpf program. The notifier reads
+	//     one fanotify event, then LookupAndDelete's its record before handling
+	//     the next. If a single read() pulls many events ahead, records pile up
+	//     and overflow the fixed-size queue, causing "lookup record: key does
+	//     not exist" and lost events.
+	//  2. File-descriptor pressure. For permission events the kernel installs
+	//     one fd per event *during that read()*. Draining ~170 events installs
+	//     ~170 fds at once, which can hit RLIMIT_NOFILE and make the kernel fail
+	//     to create the fd (EMFILE/ENFILE).
+	//
+	// Sizing the buffer to exactly one event guarantees each read() picks a
+	// single fanotify event (and installs at most one fd), keeping the notifier
+	// in lockstep with the ig_fa_records queue.
+	notifyFD.Rd = bufio.NewReaderSize(notifyFD.File, fanotifyEventMetadataSize)
+
+	return notifyFD, nil
 }
 
 // Supported detects if RuncNotifier is supported in the current environment
@@ -387,6 +425,10 @@ func (n *ContainerNotifier) install() error {
 // containers detected by ContainerNotifier, but it can also be called for
 // containers detected externally such as initial containers.
 func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
+	if err := types.ValidateContainerID(containerID); err != nil {
+		return err
+	}
+
 	n.containersMu.Lock()
 	defer n.containersMu.Unlock()
 
@@ -711,6 +753,9 @@ func (n *ContainerNotifier) monitorRuntimeInstance(mntnsId uint64, bundleDir str
 	// cri-o appends userdata to bundleDir,
 	// so we trim it here to get the correct containerID
 	containerID := filepath.Base(filepath.Clean(strings.TrimSuffix(bundleDir, "userdata")))
+	if err := types.ValidateContainerID(containerID); err != nil {
+		return fmt.Errorf("invalid container ID from bundle %q: %w", bundleDir, err)
+	}
 
 	n.pendingMu.Lock()
 	defer n.pendingMu.Unlock()
@@ -852,6 +897,10 @@ func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 	if containerName == "" || containerID == "" || bundleDir == "" || pidFile == "" {
 		return
 	}
+	if err := types.ValidateContainerID(containerID); err != nil {
+		log.Warnf("container-hook: ignoring conmon event with invalid container ID: %s", err)
+		return
+	}
 
 	n.futureMu.Lock()
 	n.futureContainers[containerID] = &futureContainer{
@@ -955,6 +1004,14 @@ func (n *ContainerNotifier) watchRuntimeIterate() error {
 	}
 	if record.ArgsSize == 0 {
 		log.Debugf("fanotify: skip event from %q (pid %d) without args", pathFromProcfs, data.Pid)
+		return nil
+	}
+
+	// Only the real root can start containers: this prevents an unprivileged
+	// user from injecting a fake container by executing the container runtime.
+	if record.Euid != 0 {
+		log.Debugf("fanotify: skip event from %q (pid %d) with euid %d",
+			pathFromProcfs, record.Pid, record.Euid)
 		return nil
 	}
 

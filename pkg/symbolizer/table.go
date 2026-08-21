@@ -61,34 +61,34 @@ func NewSymbolTableFromFile(file *os.File) (*SymbolTable, error) {
 	}
 	defer elfFile.Close()
 
-	symtab, err := elfFile.Symbols()
-	if err != nil {
-		// No symbols found. This is not an error.
-		return &SymbolTable{
-			RuntimeBaseAddrCache: make(map[BaseAddrCacheKey]uint64),
-		}, nil
-	}
-
 	symbolCount := 0
-	for _, sym := range symtab {
-		if sym.Name == "" {
-			continue
+	iterErr := elfFile.IterateSymbols(elf.SHT_SYMTAB, func(sym elf.Symbol) bool {
+		if sym.Size == 0 || sym.Name == "" {
+			return false
 		}
-		if sym.Size == 0 {
-			continue
-		}
-		if len(sym.Name) > MaxSymbolLength {
-			sym.Name = sym.Name[:MaxSymbolLength]
+		name := sym.Name
+		if len(name) > MaxSymbolLength {
+			name = name[:MaxSymbolLength]
 		}
 		symbols = append(symbols, &Symbol{
-			Name:  sym.Name,
+			Name:  name,
 			Value: sym.Value,
 			Size:  sym.Size,
 		})
 		symbolCount++
-		if symbolCount > MaxSymbolCount {
-			return nil, fmt.Errorf("too many symbols: %d (exceeds limit %d)", symbolCount, MaxSymbolCount)
+		return symbolCount > MaxSymbolCount
+	})
+	if iterErr != nil {
+		// If iteration failed entirely (e.g. no section), return empty table.
+		if symbols == nil {
+			return &SymbolTable{
+				RuntimeBaseAddrCache: make(map[BaseAddrCacheKey]uint64),
+			}, nil
 		}
+		return nil, iterErr
+	}
+	if symbolCount > MaxSymbolCount {
+		return nil, fmt.Errorf("too many symbols: %d (exceeds limit %d)", symbolCount, MaxSymbolCount)
 	}
 	slices.SortFunc(symbols, func(a, b *Symbol) int {
 		if a.Value < b.Value {

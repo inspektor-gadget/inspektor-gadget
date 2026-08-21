@@ -114,13 +114,16 @@ func (d *debuginfodResolverInstance) newSymbolTableFromPath(path string, buildID
 	}
 	defer file.Close()
 
-	// Check if the file is empty
+	// Check if the file is empty or too large
 	if fi, err := file.Stat(); err != nil {
 		log.Warnf("Failed to stat debuginfo file %s: %v", path, err)
 		return nil, nil
 	} else if fi.Size() == 0 {
 		suggestedCmd := fmt.Sprintf("rm -f %s", path)
 		log.Warnf("Debuginfo %s for %s in %s is empty. Suggested remedial: %q", buildIDStr, task.Name, path, suggestedCmd)
+		return nil, nil
+	} else if fi.Size() > symbolizer.MaxExecutableSize {
+		log.Warnf("Debuginfo file %s too large (%d bytes, max %d)", path, fi.Size(), symbolizer.MaxExecutableSize)
 		return nil, nil
 	}
 
