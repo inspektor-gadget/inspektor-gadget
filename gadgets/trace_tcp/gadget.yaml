@@ -3,6 +3,9 @@ description: monitor connect, accept and close events of TCP connections
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_tcp
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_tcp
+tags:
+  - network
+  - tcp
 datasources:
   tracetcp:
     fields:

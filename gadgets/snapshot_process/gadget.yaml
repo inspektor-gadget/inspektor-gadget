@@ -3,6 +3,8 @@ description: Show running processes
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/snapshot_process
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/snapshot_process
+tags:
+  - process
 datasources:
   processes:
     fields:

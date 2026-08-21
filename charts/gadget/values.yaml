@@ -44,6 +44,27 @@ config:
       otel-metrics-listen: false
       otel-metrics-listen-address: "0.0.0.0:2224"
 
+  # -- Catalog of gadgets that clients (kubectl-gadget, gadgetctl) can discover
+  # via `catalog list`. This is discovery-only: it does not restrict which
+  # gadgets can run (see `operator.oci.allowed-gadgets` for that) nor run
+  # anything itself.
+  #
+  # By default the chart ships a generated catalog of the official gadgets
+  # (charts/gadget/files/catalog.yaml, produced by `make generate-catalog`).
+  # Set entries here to fully override that default list, or set
+  # `defaultCatalog` to false to ship no catalog at all (e.g. for air-gapped or
+  # otherwise restricted deployments).
+  catalog: []
+    # - gadget: trace_open
+    #   description: Trace open() system calls
+    #   tags:
+    #     - file
+    #     - trace
+
+  # -- Whether to include the built-in generated default catalog when `catalog`
+  # is not set. Set to false to disable shipping any default catalog.
+  defaultCatalog: true
+
   # -- Gadget ConfigMaps to create. Each entry creates a ConfigMap with
   # label `type: gadget-instance` that the gadget daemon will reconcile and run
   # automatically.

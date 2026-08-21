@@ -3,6 +3,9 @@ description: Capture network packets
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/tcpdump
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/tcpdump
+tags:
+  - network
+  - packets
 params:
   ebpf:
     snaplen:

@@ -3,6 +3,9 @@ description: Trace socket bindings
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_bind
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_bind
+tags:
+  - network
+  - socket
 datasources:
   bind:
     fields:

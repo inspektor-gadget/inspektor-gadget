@@ -283,6 +283,24 @@ message GadgetInstanceId {
   string id = 1;
 }
 
+message CatalogGadget {
+  // gadget is the short name / image reference of the gadget (e.g. trace_open)
+  string gadget = 1;
+
+  // description is a short description of what the gadget does
+  string description = 2;
+
+  // tags can hold multiple opaque strings so that users can more easily find
+  // gadgets in the catalog
+  repeated string tags = 3;
+}
+
+message GetCatalogRequest {}
+
+message GetCatalogResponse {
+  repeated CatalogGadget gadgets = 1;
+}
+
 message StatusResponse {
   int32 result = 1;
   string message = 2;
@@ -302,4 +320,8 @@ service GadgetInstanceManager {
   rpc ListGadgetInstances(ListGadgetInstancesRequest) returns (ListGadgetInstanceResponse) {}
   rpc GetGadgetInstance(GadgetInstanceId) returns (GadgetInstance) {}
   rpc RemoveGadgetInstance(GadgetInstanceId) returns (StatusResponse) {}
+}
+
+service GadgetCatalogManager {
+  rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse) {}
 }

@@ -4,6 +4,10 @@ description: Captures data on read/recv or write/send functions of OpenSSL, GnuT
 homepageURL: https://inspektor-gadget.io/
 documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/trace_ssl
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/trace_ssl
+tags:
+  - network
+  - tls
+  - encryption
 datasources:
   ssl:
     fields:
